@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
@@ -55,36 +56,47 @@ func testAccAPGroupCheckDestroy(s *terraform.State) error {
 	return nil
 }
 
+// TestAccAPGroupFramework_basic exercises the full CRUD + import lifecycle of an
+// AP group with EMPTY membership. Empty groups are portable: a freshly-booted
+// controller has no adopted access points, so any real device MAC would be
+// rejected with api.err.InvalidDeviceInApGroup. An empty group has no such
+// dependency, which lets create → read → update → import → delete run green
+// against any controller. The read/refresh path is the one that previously
+// returned HTTP 405 (surfacing as `invalid character '<'` when the HTML error
+// page was parsed as JSON); driving it here proves the fix.
 func TestAccAPGroupFramework_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		CheckDestroy:             testAccAPGroupCheckDestroy,
 		Steps: []resource.TestStep{
+			// Create an empty group.
 			{
-				Config: testAccAPGroupFrameworkConfig_basic(),
+				Config: testAccAPGroupFrameworkConfig_basic("tf-acc-apgroup"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_ap_group.test", "id"),
 					resource.TestCheckResourceAttr(
 						"unifi_ap_group.test",
 						"name",
-						"Test AP Group",
+						"tf-acc-apgroup",
 					),
-					resource.TestCheckResourceAttr("unifi_ap_group.test", "device_macs.#", "1"),
+					resource.TestCheckResourceAttr("unifi_ap_group.test", "device_macs.#", "0"),
 				),
 			},
+			// Update the name in place; membership stays empty.
 			{
-				Config: testAccAPGroupFrameworkConfig_update(),
+				Config: testAccAPGroupFrameworkConfig_basic("tf-acc-apgroup-2"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_ap_group.test", "id"),
 					resource.TestCheckResourceAttr(
 						"unifi_ap_group.test",
 						"name",
-						"Test AP Group",
+						"tf-acc-apgroup-2",
 					),
-					resource.TestCheckResourceAttr("unifi_ap_group.test", "device_macs.#", "2"),
+					resource.TestCheckResourceAttr("unifi_ap_group.test", "device_macs.#", "0"),
 				),
 			},
+			// Import the group and verify the imported state matches.
 			{
 				ResourceName:      "unifi_ap_group.test",
 				ImportState:       true,
@@ -94,27 +106,56 @@ func TestAccAPGroupFramework_basic(t *testing.T) {
 	})
 }
 
-func testAccAPGroupFrameworkConfig_basic() string {
-	return `
-resource "unifi_ap_group" "test" {
-	name = "Test AP Group"
-	device_macs = [
-		"00:11:22:33:44:55"
-	]
-}
-`
+// TestAccAPGroupFramework_withDevices asserts MAC semantic-equality: a member
+// written in upper/dash form must not produce a spurious plan against the same
+// address stored lowercase/colon form on the controller. It is skipped unless
+// UNIFI_ACC_AP_MAC names a real adopted access point, since the controller
+// rejects membership of any device it has not adopted.
+func TestAccAPGroupFramework_withDevices(t *testing.T) {
+	mac := os.Getenv("UNIFI_ACC_AP_MAC")
+	if mac == "" {
+		t.Skip("UNIFI_ACC_AP_MAC not set; skipping adopted-device AP group test")
+	}
+	upperDashMac := strings.ToUpper(strings.ReplaceAll(mac, ":", "-"))
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccAPGroupCheckDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAPGroupFrameworkConfig_withDevice("tf-acc-apgroup-dev", mac),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_ap_group.test", "id"),
+					resource.TestCheckResourceAttr("unifi_ap_group.test", "device_macs.#", "1"),
+				),
+			},
+			// The same MAC in UPPER/dash form must be semantically equal, so the
+			// plan is empty (no diff) even though the literal string differs.
+			{
+				Config:             testAccAPGroupFrameworkConfig_withDevice("tf-acc-apgroup-dev", upperDashMac),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+		},
+	})
 }
 
-func testAccAPGroupFrameworkConfig_update() string {
-	return `
+func testAccAPGroupFrameworkConfig_basic(name string) string {
+	return fmt.Sprintf(`
 resource "unifi_ap_group" "test" {
-	name = "Test AP Group"
-	device_macs = [
-		"00:11:22:33:44:55",
-		"00:11:22:33:44:66"
-	]
+	name        = %q
+	device_macs = []
 }
-`
+`, name)
+}
+
+func testAccAPGroupFrameworkConfig_withDevice(name, mac string) string {
+	return fmt.Sprintf(`
+resource "unifi_ap_group" "test" {
+	name        = %q
+	device_macs = [%q]
+}
+`, name, mac)
 }
 
 func TestNewAPGroupResource(t *testing.T) {

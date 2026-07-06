@@ -33,7 +33,7 @@ resource "unifi_ap_group" "example" {
 
 ### Required
 
-- `device_macs` (Set of String) The MAC addresses of the access points that are members of the group.
+- `device_macs` (Set of String) The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members.
 - `name` (String) The name of the AP group.
 
 ### Optional
