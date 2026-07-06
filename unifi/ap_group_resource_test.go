@@ -284,7 +284,7 @@ func Test_apGroupResource_apGroupToModel(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "empty macs produces null set",
+			name: "empty macs produces empty set",
 			api: &unifi.APGroup{
 				ID:         "ap2",
 				Name:       "Empty",
@@ -316,8 +316,12 @@ func Test_apGroupResource_apGroupToModel(t *testing.T) {
 			if tt.api.Name == "" && !model.Name.IsNull() {
 				t.Error("expected Name to be null for empty API name")
 			}
-			if len(tt.api.DeviceMacs) == 0 && !model.DeviceMacs.IsNull() {
-				t.Error("expected DeviceMacs to be null for empty DeviceMacs")
+			if len(tt.api.DeviceMacs) == 0 {
+				if model.DeviceMacs.IsNull() {
+					t.Error("expected DeviceMacs to be an empty (non-null) set for empty DeviceMacs")
+				} else if n := len(model.DeviceMacs.Elements()); n != 0 {
+					t.Errorf("expected empty DeviceMacs set, got %d elements", n)
+				}
 			}
 		})
 	}
