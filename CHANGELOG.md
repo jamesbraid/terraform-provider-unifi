@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.55.1] - 2026-07-05
+
+### 🐛 Bug Fixes
+
+- **`unifi_ap_group`: fix read failing with `invalid character '<'`.** The read fetched a group with a per-id `GET /v2/…/apgroups/{id}`, but the v2 apgroups endpoint has no per-id GET — the controller answers 405 with an HTML page, which JSON-decodes to `invalid character '<'`, so any plan that read an AP group errored. The go-unifi client now lists the collection and filters by ID (the same read the data source uses); PUT/DELETE on the per-id path were always fine and are unchanged. (go-unifi: `ubiquiti-community/go-unifi#52`)
+
+---
+
 ## [v0.55.0] - 2026-07-05
 
 ### ✨ Features
