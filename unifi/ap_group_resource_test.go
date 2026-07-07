@@ -132,7 +132,10 @@ func TestAccAPGroupFramework_withDevices(t *testing.T) {
 			// The same MAC in UPPER/dash form must be semantically equal, so the
 			// plan is empty (no diff) even though the literal string differs.
 			{
-				Config:             testAccAPGroupFrameworkConfig_withDevice("tf-acc-apgroup-dev", upperDashMac),
+				Config: testAccAPGroupFrameworkConfig_withDevice(
+					"tf-acc-apgroup-dev",
+					upperDashMac,
+				),
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: false,
 			},
@@ -359,7 +362,9 @@ func Test_apGroupResource_apGroupToModel(t *testing.T) {
 			}
 			if len(tt.api.DeviceMacs) == 0 {
 				if model.DeviceMacs.IsNull() {
-					t.Error("expected DeviceMacs to be an empty (non-null) set for empty DeviceMacs")
+					t.Error(
+						"expected DeviceMacs to be an empty (non-null) set for empty DeviceMacs",
+					)
 				} else if n := len(model.DeviceMacs.Elements()); n != 0 {
 					t.Errorf("expected empty DeviceMacs set, got %d elements", n)
 				}

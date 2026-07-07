@@ -320,7 +320,11 @@ func (r *apGroupResource) Update(
 	if currentAPGroup.NoEdit {
 		resp.Diagnostics.AddError(
 			"AP Group Not Editable",
-			fmt.Sprintf("AP group %q (%s) is a built-in group the controller marks non-editable (attr_no_edit); it cannot be modified via the API.", currentAPGroup.Name, id),
+			fmt.Sprintf(
+				"AP group %q (%s) is a built-in group the controller marks non-editable (attr_no_edit); it cannot be modified via the API.",
+				currentAPGroup.Name,
+				id,
+			),
 		)
 		return
 	}
@@ -403,7 +407,11 @@ func (r *apGroupResource) Delete(
 	if current, gerr := r.client.GetAPGroup(ctx, site, id); gerr == nil && current.NoDelete {
 		resp.Diagnostics.AddError(
 			"AP Group Not Deletable",
-			fmt.Sprintf("AP group %q (%s) is a built-in group the controller marks non-deletable (attr_no_delete); it cannot be deleted via the API.", current.Name, id),
+			fmt.Sprintf(
+				"AP group %q (%s) is a built-in group the controller marks non-deletable (attr_no_delete); it cannot be deleted via the API.",
+				current.Name,
+				id,
+			),
 		)
 		return
 	}
