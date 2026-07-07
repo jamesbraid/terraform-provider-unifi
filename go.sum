@@ -323,6 +323,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf h1:FtEj8sfIcaaBfAKrE1Cwb61YDtYq9JxChK1c7AKce7s=
 github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf/go.mod h1:yrqSXGoD/4EKfF26AOGzscPOgTTJcyAwM2rpixWT+t4=
+github.com/jamesbraid/go-unifi v1.33.46 h1:7mQLb8woAJEiKB9YWo8hrqlvgstixwkE5m+JFV3X244=
+github.com/jamesbraid/go-unifi v1.33.46/go.mod h1:QfZDUwKQmGJNNW4af3KHzb7f+VmiSvkyTqC4/D5aPWU=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
 github.com/jhump/protoreflect v1.17.0 h1:qOEr613fac2lOuTgWN4tPAtLL7fUSbuJL5X5XumQh94=
@@ -538,10 +540,6 @@ github.com/transparency-dev/formats v0.0.0-20251017110053-404c0d5b696c h1:5a2XDQ
 github.com/transparency-dev/formats v0.0.0-20251017110053-404c0d5b696c/go.mod h1:g85IafeFJZLxlzZCDRu4JLpfS7HKzR+Hw9qRh3bVzDI=
 github.com/transparency-dev/merkle v0.0.2 h1:Q9nBoQcZcgPamMkGn7ghV8XiTZ/kRxn1yCG81+twTK4=
 github.com/transparency-dev/merkle v0.0.2/go.mod h1:pqSy+OXefQ1EDUVmAJ8MUhHB9TXGuzVAT58PqBoHz1A=
-github.com/ubiquiti-community/go-unifi v1.33.43-0.20260624160408-04ec3376cd23 h1:BdwNPLBG4ntwy5qaH6Q69ilfz6A1ArJUV5kSJXhIEJg=
-github.com/ubiquiti-community/go-unifi v1.33.43-0.20260624160408-04ec3376cd23/go.mod h1:QfZDUwKQmGJNNW4af3KHzb7f+VmiSvkyTqC4/D5aPWU=
-github.com/ubiquiti-community/go-unifi v1.33.43-0.20260706191309-bc63776a9ebf h1:EKNgGAeqTbFll7ddVVFU6JLDtkKZDFytq2k0Cqg/rbk=
-github.com/ubiquiti-community/go-unifi v1.33.43-0.20260706191309-bc63776a9ebf/go.mod h1:QfZDUwKQmGJNNW4af3KHzb7f+VmiSvkyTqC4/D5aPWU=
 github.com/vbatts/tar-split v0.12.2 h1:w/Y6tjxpeiFMR47yzZPlPj/FcPLpXbTUi/9H7d3CPa4=
 github.com/vbatts/tar-split v0.12.2/go.mod h1:eF6B6i6ftWQcDqEn3/iGFRFRo8cBIMSJVOpnNdfTMFA=
 github.com/vmihailenco/msgpack v3.3.3+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
