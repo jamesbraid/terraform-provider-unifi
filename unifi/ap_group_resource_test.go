@@ -136,8 +136,10 @@ func TestAccAPGroupFramework_withDevices(t *testing.T) {
 					"tf-acc-apgroup-dev",
 					upperDashMac,
 				),
-				PlanOnly:           true,
-				ExpectNonEmptyPlan: false,
+				// PlanOnly with no expected changes: the upper/dash MAC must
+				// compare equal to the stored lowercase/colon form (semantic
+				// equality), so the plan is empty.
+				PlanOnly: true,
 			},
 		},
 	})
@@ -337,6 +339,15 @@ func Test_apGroupResource_apGroupToModel(t *testing.T) {
 			want: nil,
 		},
 		{
+			name: "nil macs produces empty set (not null)",
+			api: &unifi.APGroup{
+				ID:         "ap4",
+				Name:       "NilMacs",
+				DeviceMacs: nil,
+			},
+			want: nil,
+		},
+		{
 			name: "empty name produces null",
 			api: &unifi.APGroup{
 				ID:         "ap3",
@@ -368,6 +379,60 @@ func Test_apGroupResource_apGroupToModel(t *testing.T) {
 				} else if n := len(model.DeviceMacs.Elements()); n != 0 {
 					t.Errorf("expected empty DeviceMacs set, got %d elements", n)
 				}
+			} else if n := len(model.DeviceMacs.Elements()); n != len(tt.api.DeviceMacs) {
+				t.Errorf("DeviceMacs elements = %d, want %d", n, len(tt.api.DeviceMacs))
+			}
+		})
+	}
+}
+
+func Test_guardAPGroupEditable(t *testing.T) {
+	tests := []struct {
+		name    string
+		group   *unifi.APGroup
+		wantErr bool
+	}{
+		{"editable group", &unifi.APGroup{NoEdit: false}, false},
+		{"no_edit built-in group", &unifi.APGroup{NoEdit: true, Name: "All APs"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var diags diag.Diagnostics
+			got := guardAPGroupEditable(tt.group, "test-id", &diags)
+			if got != tt.wantErr {
+				t.Errorf("guardAPGroupEditable() = %v, want %v", got, tt.wantErr)
+			}
+			if tt.wantErr && !diags.HasError() {
+				t.Error("expected an error diagnostic, got none")
+			}
+			if !tt.wantErr && diags.HasError() {
+				t.Errorf("expected no diagnostic, got %v", diags)
+			}
+		})
+	}
+}
+
+func Test_guardAPGroupDeletable(t *testing.T) {
+	tests := []struct {
+		name    string
+		group   *unifi.APGroup
+		wantErr bool
+	}{
+		{"deletable group", &unifi.APGroup{NoDelete: false}, false},
+		{"no_delete built-in group", &unifi.APGroup{NoDelete: true, Name: "All APs"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var diags diag.Diagnostics
+			got := guardAPGroupDeletable(tt.group, "test-id", &diags)
+			if got != tt.wantErr {
+				t.Errorf("guardAPGroupDeletable() = %v, want %v", got, tt.wantErr)
+			}
+			if tt.wantErr && !diags.HasError() {
+				t.Error("expected an error diagnostic, got none")
+			}
+			if !tt.wantErr && diags.HasError() {
+				t.Errorf("expected no diagnostic, got %v", diags)
 			}
 		})
 	}

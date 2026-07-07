@@ -315,17 +315,9 @@ func (r *apGroupResource) Update(
 		return
 	}
 
-	// Built-in groups (e.g. the default "All APs") are flagged no-edit by the
-	// controller and reject a PUT with an opaque API error. Fail clearly instead.
-	if currentAPGroup.NoEdit {
-		resp.Diagnostics.AddError(
-			"AP Group Not Editable",
-			fmt.Sprintf(
-				"AP group %q (%s) is a built-in group the controller marks non-editable (attr_no_edit); it cannot be modified via the API.",
-				currentAPGroup.Name,
-				id,
-			),
-		)
+	// Built-in groups (e.g. the default "All APs") reject a PUT with an opaque
+	// API error; fail clearly instead.
+	if guardAPGroupEditable(currentAPGroup, id, &resp.Diagnostics) {
 		return
 	}
 
@@ -402,17 +394,19 @@ func (r *apGroupResource) Delete(
 	}
 
 	// Built-in groups (e.g. the default "All APs") are flagged no-delete by the
-	// controller; a delete returns an opaque API error. Check first and fail
-	// clearly. A missing group falls through and is treated as already deleted.
-	if current, gerr := r.client.GetAPGroup(ctx, site, id); gerr == nil && current.NoDelete {
-		resp.Diagnostics.AddError(
-			"AP Group Not Deletable",
-			fmt.Sprintf(
-				"AP group %q (%s) is a built-in group the controller marks non-deletable (attr_no_delete); it cannot be deleted via the API.",
-				current.Name,
-				id,
-			),
-		)
+	// controller; a delete returns an opaque API error, so read the group first
+	// and fail clearly. A group already gone (NotFoundError) falls through to
+	// DeleteAPGroup, which treats it as deleted; any other read error is surfaced.
+	current, gerr := r.client.GetAPGroup(ctx, site, id)
+	if gerr != nil {
+		if _, ok := gerr.(*unifi.NotFoundError); !ok {
+			resp.Diagnostics.AddError(
+				"Error Deleting AP Group",
+				fmt.Sprintf("Could not read AP group %s before delete: %s", id, gerr),
+			)
+			return
+		}
+	} else if guardAPGroupDeletable(current, id, &resp.Diagnostics) {
 		return
 	}
 
@@ -450,6 +444,44 @@ func (r *apGroupResource) ImportState(
 }
 
 // Helper methods
+
+// guardAPGroupEditable reports whether the AP group cannot be edited. Built-in
+// groups (e.g. the default "All APs") are flagged attr_no_edit by the controller
+// and reject a PUT with an opaque error; when so it adds a clear diagnostic and
+// returns true so the caller can abort.
+func guardAPGroupEditable(g *unifi.APGroup, id string, diags *diag.Diagnostics) bool {
+	if !g.NoEdit {
+		return false
+	}
+	diags.AddError(
+		"Error Updating AP Group",
+		fmt.Sprintf(
+			"AP group %q (%s) is a built-in group the controller marks non-editable (attr_no_edit); it cannot be modified via the API.",
+			g.Name,
+			id,
+		),
+	)
+	return true
+}
+
+// guardAPGroupDeletable reports whether the AP group cannot be deleted. Built-in
+// groups (e.g. the default "All APs") are flagged attr_no_delete by the controller
+// and reject a DELETE with an opaque error; when so it adds a clear diagnostic and
+// returns true so the caller can abort.
+func guardAPGroupDeletable(g *unifi.APGroup, id string, diags *diag.Diagnostics) bool {
+	if !g.NoDelete {
+		return false
+	}
+	diags.AddError(
+		"Error Deleting AP Group",
+		fmt.Sprintf(
+			"AP group %q (%s) is a built-in group the controller marks non-deletable (attr_no_delete); it cannot be deleted via the API.",
+			g.Name,
+			id,
+		),
+	)
+	return true
+}
 
 func (r *apGroupResource) modelToAPIAPGroup(
 	ctx context.Context,
