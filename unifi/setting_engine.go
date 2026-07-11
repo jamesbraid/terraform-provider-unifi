@@ -1,0 +1,205 @@
+package unifi
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/go-unifi/unifi/settings"
+)
+
+// setting_engine.go ties the whole settings machine together: one
+// ListSettings snapshot per read, capability-gated per-section decode
+// (readSections); reconcile-before-mutate, deterministic-order PUT, and
+// C2.4 best-effort recovery on a failed post-apply read-back
+// (applySections); and the bestEffortState/bestEffortObject helpers that
+// implement that recovery. No caller outside this file drives a
+// settingsClient directly.
+
+// listSnapshot performs the one ListSettings call for a settings-engine pass
+// and wraps the result in a keyed rawSettings snapshot.
+func listSnapshot(ctx context.Context, client settingsClient, site string) (rawSettings, error) {
+	raw, err := client.ListSettings(ctx, site)
+	if err != nil {
+		return rawSettings{}, err
+	}
+	return newRawSettings(raw), nil
+}
+
+// readSections performs exactly one ListSettings call, then for each section
+// in sections runs a fail-closed capability check before decoding.
+//
+// The settingSection interface has no "is this configured in plan"
+// predicate, so readSections relies on its caller to have already filtered
+// sections down to the relevant set (e.g. applySections passes only the
+// sections it just PUT or the plan's configured set; an import/refresh
+// caller passes the full registry). onlyConfigured selects which capability
+// policy applies to every section in that set:
+//
+//   - true: the caller asserts the user configured each section here, so an
+//     unsupported/unauthorized/unknown capability is a hard error
+//     (capabilityState.configuredError), fail closed.
+//   - false: the caller is doing a best-effort pass over a broader set (e.g.
+//     applySections' post-apply re-read, or import), so a section this
+//     controller doesn't support is silently skipped rather than erroring.
+func readSections(ctx context.Context, sections []settingSection, client settingsClient, site string, prior settingResourceModel, model *settingResourceModel, onlyConfigured bool) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	snap, err := listSnapshot(ctx, client, site)
+	if err != nil {
+		diags.AddError("read settings failed", err.Error())
+		return diags
+	}
+
+	for _, s := range sections {
+		sc := s.capability(snap)
+		if onlyConfigured {
+			capDiags := sc.configuredError(s.key())
+			diags.Append(capDiags...)
+			if capDiags.HasError() {
+				// Fail closed for this section only: an unsupported
+				// section the caller asserted was configured is reported,
+				// but does not block decoding of the remaining sections.
+				continue
+			}
+		} else if sc != capSupported && sc != capUnmaterialized {
+			// Best-effort pass over the full registry: a section this
+			// controller doesn't support is silently left untouched
+			// rather than erroring, since the caller did not assert the
+			// user configured it.
+			continue
+		}
+		diags.Append(s.decode(ctx, snap, prior, model)...)
+	}
+
+	return diags
+}
+
+// applySections snapshots current controller state, reconciles every
+// configured section's write overlay against that ONE snapshot before any
+// PUT is issued (reconcile-before-mutate: any overlay error aborts with no
+// writes at all), PUTs each section that needs writing in deterministic
+// (orderedSections) order, and re-reads canonical state afterward. If the
+// re-read itself fails, state is assembled best-effort from what is known
+// to have been successfully PUT (C2.4).
+func applySections(ctx context.Context, sections []settingSection, client settingsClient, site string, plan, prior settingResourceModel) (settingResourceModel, diag.Diagnostics) {
+	var d diag.Diagnostics
+	ordered := orderedSections(sections)
+	snap, err := listSnapshot(ctx, client, site)
+	if err != nil {
+		d.AddError("read settings failed", err.Error())
+		return prior, d
+	}
+	type pending struct {
+		s  settingSection
+		rs settings.RawSetting
+	}
+	var todo []pending
+	for _, s := range ordered {
+		rs, configured, sd := s.overlay(ctx, plan, prior, snap)
+		d.Append(sd...)
+		if configured {
+			todo = append(todo, pending{s, rs})
+		}
+	}
+	if d.HasError() {
+		return prior, d // reconcile-before-mutate: nothing written
+	}
+	put := map[string]bool{}
+	var putErr error
+	for _, p := range todo {
+		if err := client.UpdateRawSetting(ctx, site, p.rs); err != nil {
+			putErr = fmt.Errorf("section %q: %w", p.s.key(), err)
+			break
+		}
+		put[p.s.key()] = true
+	}
+	out := plan
+	if rd := readSections(ctx, sections, client, site, plan, &out, false); rd.HasError() {
+		var bd diag.Diagnostics
+		out, bd = bestEffortState(prior, plan, put, sections) // C2.4 second failure
+		d.Append(bd...)
+		d.AddWarning("settings read-back failed after apply",
+			"state written best-effort from applied values; run `terraform refresh`")
+	}
+	if putErr != nil {
+		d.AddError("settings apply failed", putErr.Error())
+	}
+	return out, d
+}
+
+// bestEffortState assembles a settingResourceModel for the C2.4
+// second-failure path: the canonical post-apply read-back itself failed, so
+// state cannot be read from the controller. It starts from prior (the only
+// state known to be true before this apply) and, for each section that was
+// successfully PUT this apply (put[key] == true), asks that section to
+// carry its own best-effort value onto the result via carryBestEffort. A
+// section that was NOT PUT this apply is left entirely as prior — it was
+// never touched, so prior is already correct for it.
+func bestEffortState(prior, plan settingResourceModel, put map[string]bool, sections []settingSection) (settingResourceModel, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	out := prior
+	for _, s := range sections {
+		if !put[s.key()] {
+			continue
+		}
+		diags.Append(s.carryBestEffort(&out, plan, prior)...)
+	}
+	return out, diags
+}
+
+// bestEffortObject rebuilds a types.Object from planObj's attribute types
+// and values, replacing ONLY each leaf classed ownerWriteOnlySecret in own
+// with priorObj's value for that leaf WHEN the leaf is null OR unknown in
+// planObj. Every other leaf (non-secret, or a secret leaf that IS set in
+// planObj, including an explicit empty string) comes from planObj verbatim.
+//
+// Codex-validated traps this function must honor:
+//  1. IsUnknown() is treated exactly like IsNull() for a secret leaf: retain
+//     priorObj's value for both, matching overlay's own delete-on-either
+//     behavior for write-only secrets.
+//  2. A configured EMPTY STRING secret (types.StringValue("")) is a
+//     rotate-to-empty that WAS sent this apply: it is kept from planObj,
+//     never replaced by priorObj.
+//  3. If planObj itself is null or unknown, priorObj is returned unchanged
+//     — a known object is never manufactured from a null/unknown section.
+//  4. Diagnostics are threaded out of the helper even though, structurally,
+//     rebuilding a same-schema object cannot fail in practice.
+func bestEffortObject(planObj, priorObj types.Object, own map[string]ownershipClass) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if planObj.IsNull() || planObj.IsUnknown() {
+		return priorObj, diags
+	}
+
+	attrTypes := planObj.AttributeTypes(context.Background())
+	planAttrs := planObj.Attributes()
+
+	var priorAttrs map[string]attr.Value
+	if !priorObj.IsNull() && !priorObj.IsUnknown() {
+		priorAttrs = priorObj.Attributes()
+	}
+
+	out := make(map[string]attr.Value, len(planAttrs))
+	for name, planVal := range planAttrs {
+		if own[name] == ownerWriteOnlySecret {
+			if sv, ok := planVal.(types.String); ok && (sv.IsNull() || sv.IsUnknown()) {
+				if priorAttrs != nil {
+					if pv, ok := priorAttrs[name]; ok {
+						out[name] = pv
+						continue
+					}
+				}
+				out[name] = planVal
+				continue
+			}
+		}
+		out[name] = planVal
+	}
+
+	obj, objDiags := types.ObjectValue(attrTypes, out)
+	diags.Append(objDiags...)
+	return obj, diags
+}

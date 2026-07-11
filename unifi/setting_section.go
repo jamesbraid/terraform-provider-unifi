@@ -40,6 +40,13 @@ type settingSection interface {
 
 	// capability classifies whether this section is usable against snap.
 	capability(snap rawSettings) capabilityState
+
+	// carryBestEffort copies this section's own field from plan (or, for a
+	// leaf classed ownerWriteOnlySecret, a per-leaf plan/prior choice via
+	// bestEffortObject) onto dst, for C2.4 second-failure recovery after a
+	// partial apply whose canonical re-read also failed. Implementations
+	// touch only their own field on dst.
+	carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics
 }
 
 // settingSections is the registry of all migrated settings sections. Tasks

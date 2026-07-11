@@ -32,6 +32,9 @@ func (f fakeSection) overlay(ctx context.Context, model, prior settingResourceMo
 	return settings.RawSetting{}, false, nil
 }
 func (f fakeSection) capability(snap rawSettings) capabilityState { return capUnknown }
+func (f fakeSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+	return nil
+}
 
 func TestOrderedSectionsDeterministic(t *testing.T) {
 	in := []settingSection{
@@ -273,3 +276,6 @@ func (f coverageFakeSection) overlay(ctx context.Context, model, prior settingRe
 	return settings.RawSetting{}, false, nil
 }
 func (f coverageFakeSection) capability(snap rawSettings) capabilityState { return capUnknown }
+func (f coverageFakeSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+	return nil
+}
