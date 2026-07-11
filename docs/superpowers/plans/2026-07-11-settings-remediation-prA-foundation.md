@@ -202,6 +202,10 @@ type settingSection interface {
 	decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics
 	overlay(ctx context.Context, model, prior settingResourceModel, snap rawSettings) (settings.RawSetting, bool, diag.Diagnostics)
 	capability(snap rawSettings) capabilityState
+	// carryBestEffort is ADDED IN TASK 7 (not built in Task 6). Task 6 ships the 7
+	// methods above; Task 7 is the consumer (bestEffortState) that reveals the need
+	// and extends the interface. Listed here so Tasks 10-22 implement all 8 methods.
+	carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics
 }
 var settingSections []settingSection
 func registerSection(s settingSection)                    // append
@@ -227,7 +231,14 @@ func orderedSections(in []settingSection) []settingSection // returns a copy sor
 **Interfaces — Produces (all take an explicit `sections []settingSection` — no global read):**
 - `func readSections(ctx, sections []settingSection, client settingsClient, site string, prior settingResourceModel, model *settingResourceModel, onlyConfigured bool) diag.Diagnostics` — one `ListSettings`; per configured (or all, import) section: capability check (fail closed if configured+unsupported), then `decode(snap, prior, model)`.
 - `func applySections(ctx, sections []settingSection, client settingsClient, site string, plan, prior settingResourceModel) (settingResourceModel, diag.Diagnostics)` — snapshot; reconcile ALL configured overlays (abort before any PUT on error); PUT in `orderedSections` order, recording successes; re-read canonical snapshot into state; on re-read failure use `bestEffortState`.
-- `func bestEffortState(prior, plan settingResourceModel, put map[string]bool, sections []settingSection) settingResourceModel` — start from `prior`; for each section where `put[key]` is true, replace that section's attribute with `plan`'s value (what was sent) **except** each `WriteOnlySecret` leaf that is null in `plan` keeps `prior`'s value (an unset secret was never sent, so it is unchanged; a *set/rotated* secret was sent, so `plan`'s value is the truth). Non-PUT sections keep `prior` entirely. This mirrors the overlay/decode secret-preservation rule exactly, so a successful secret rotation is retained and an unset secret is preserved.
+- `func bestEffortState(prior, plan settingResourceModel, put map[string]bool, sections []settingSection) (settingResourceModel, diag.Diagnostics)` — start from `prior`; for each section where `put[key]` is true, call `s.carryBestEffort(&out, plan, prior)`. Non-PUT sections keep `prior` entirely (never touched). Returns the assembled model + any diagnostics from the object rebuilds.
+
+  **Why a per-section method and not decode/overlay reuse** (codex-validated, conv `besteffort-mechanism`): this needs a per-LEAF choice between `plan` and `prior` (rotated secret → plan, unset secret → prior), which `decode` cannot express — `decode` uses ONE uniform `prior` source, so `prior=plan` gets rotation right but null wrong, and `prior=prior` gets null right but rotation wrong. `overlay` yields a PUT body (and deletes null secrets), not a TF object. Generic code also cannot assign `out.<SectionField> = plan.<SectionField>` without reflection over `tfsdk` tags (rejected as fragile). Hence each section owns the copy of its own `types.Object` field.
+
+- `carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics` — each section implementation (Tasks 10-22) sets ITS OWN field in `dst`:
+  - **Non-secret sections:** one line — `dst.<Field> = plan.<Field>`.
+  - **Secret sections** (mgmt `ssh_password`, radius `secret`): `dst.<Field>, d = bestEffortObject(plan.<Field>, prior.<Field>, s.ownership())`.
+- `func bestEffortObject(planObj, priorObj types.Object, own map[string]ownershipClass) (types.Object, diag.Diagnostics)` — shared engine helper. Rebuild an object from `planObj`'s attribute types and values, replacing ONLY each `ownerWriteOnlySecret` leaf that is **null OR unknown** in `planObj` with `priorObj`'s value; every other leaf comes from `planObj` verbatim. **Codex-validated traps that MUST be encoded + tested:** (1) treat `IsUnknown()` exactly like `IsNull()` — `overlay` deletes BOTH, so best-effort retains `prior` for both; (2) a configured **empty string** secret (`types.StringValue("")`) WAS sent (rotate-to-empty) → keep `plan`'s empty value, do NOT fall back to `prior`; (3) if `planObj` itself is null/unknown, return `priorObj` unchanged — never manufacture a known object from a null section; (4) thread diagnostics out (structurally can't fail for same-schema objects, but make the invariant explicit + tested).
 
 - [ ] **Step 1: Failing tests** (via the fake + two stub sections passed as the `sections` param):
   1. `TestEngine_noWriteBeforeReconcileError`: a stub `overlay` returns a diagnostic ⇒ `fake.puts` is empty.
@@ -235,7 +246,8 @@ func orderedSections(in []settingSection) []settingSection // returns a copy sor
   3. `TestEngine_partialApplyReReads`: section `a` PUTs ok, `b` injected-fail ⇒ error returned AND `readSections` after shows `a`'s new value, `b`'s old value.
   4. `TestEngine_preservesUnmodeledKeys`: overlay sets one key; the recorded PUT `Data` still contains a pre-existing unmodeled key from the snapshot.
   5. `TestBestEffortState_excludesUnattempted`: `put={a:true}`, plan has new `a` and `b` ⇒ result has plan's `a`, prior's `b`.
-  6. `TestBestEffortState_secretRotationRetained`: for a PUT section, a *set* (rotated) secret in `plan` is retained; a *null* secret in `plan` falls back to `prior`'s secret; a non-PUT section keeps `prior`.
+  6. `TestBestEffortState_secretRotationRetained`: uses stub sections (each implementing `carryBestEffort`) — for a PUT section, a *set* (rotated) secret in `plan` is retained; a *null* secret in `plan` falls back to `prior`'s secret; a non-PUT section keeps `prior`.
+  7. `TestBestEffortObject_secretLeafMatrix` (direct unit test of the helper with real `types.Object` values — the codex-validated matrix): null secret → prior; non-empty secret → plan; **empty-string secret → plan** (rotate-to-empty, NOT prior); **unknown secret → prior** (treated like null); non-secret sibling leaf → plan; and a null/unknown parent object → returns `prior` object unchanged.
 
 ```go
 func TestBestEffortState_excludesUnattempted(t *testing.T) {
@@ -283,7 +295,9 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 	}
 	out := plan
 	if rd := readSections(ctx, sections, client, site, plan, &out, false); rd.HasError() {
-		out = bestEffortState(prior, plan, put, sections) // C2.4 second failure
+		var bd diag.Diagnostics
+		out, bd = bestEffortState(prior, plan, put, sections) // C2.4 second failure
+		d.Append(bd...)
 		d.AddWarning("settings read-back failed after apply",
 			"state written best-effort from applied values; run `terraform refresh`")
 	}
@@ -294,7 +308,9 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 }
 ```
 
-Implement `readSections`, `listSnapshot`, and `bestEffortState` in full per the contracts above.
+Implement `readSections`, `listSnapshot`, `bestEffortState`, and the shared `bestEffortObject` helper in full per the contracts above. Also EXTEND the `settingSection` interface (from Task 6) with the `carryBestEffort` method and add it to the engine's stub sections in the test file. Real sections implement `carryBestEffort` in their own migration task (10-22).
+
+**Watch-item for the reviewer (named risk, do not pre-resolve):** `applySections`'s post-apply re-read passes `onlyConfigured=false`, re-decoding ALL registered sections into state. If the `unifi_setting` schema does not mark every section Computed, this risks a Terraform "provider produced inconsistent result after apply" for sections the user did not configure. Implement as written (`false`) — this was codex-approved at the plan level — but the reviewer must assess whether it is safe given the schema, and it is carried to Task 24a (wiring) + live validation.
 
 - [ ] **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `feat(setting): engine — reconcile-before-mutate, partial-apply, best-effort recovery (C2.2/2.4/2.5)`.
@@ -332,6 +348,8 @@ This task is a **regression guard** that pins that behavior so a future framewor
 ## Tasks 10–22: Migrate the 13 legacy sections (one task each)
 
 Each task ADDS a `settingSection` implementation and registers it, WITHOUT deleting the legacy converter (deletion is Task 24c). Each task asserts the new section's `overlay` reproduces the section's golden body (same expected bytes) and its `decode` round-trips. The **authoritative field↔raw-key mapping is the existing converter**, cited by line; port it verbatim and apply the ownership tags below.
+
+Each section MUST also implement `carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics` (the 8th interface method added in Task 7): a non-secret section is a one-line `dst.<Field> = plan.<Field>; return nil`; a **secret** section (mgmt `ssh_password`, radius `secret`) is `dst.<Field>, d := bestEffortObject(plan.<Field>, prior.<Field>, s.ownership()); return d`. The two secret sections (Tasks 21/22 for usg/mgmt-shape and the radius task) additionally add a `carryBestEffort` test covering the codex secret matrix (null→prior, non-empty→plan, empty→plan, unknown→prior, sibling→plan).
 
 **Structural templates** (fully worked with real code; reused by same-shape tasks): Task 10 (`auto_speedtest`) = **scalar**; Task 16 (`syslog`) = **list**; Task 21 (`usg`) = **nested-object** (`dns_verification`); Task 22 (`mgmt`) = **nested-list** (`ssh_keys`) **+ secret** (`ssh_password`). Each other task states its shape and follows the matching worked template.
 
