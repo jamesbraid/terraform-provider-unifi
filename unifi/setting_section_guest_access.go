@@ -42,6 +42,20 @@ type settingGuestAccessModel struct {
 	TemplateEngine      types.String `tfsdk:"template_engine"`
 	VoucherCustomized   types.Bool   `tfsdk:"voucher_customized"`
 	VoucherEnabled      types.Bool   `tfsdk:"voucher_enabled"`
+
+	Facebook             types.Object `tfsdk:"facebook"`
+	FacebookEnabled      types.Bool   `tfsdk:"facebook_enabled"`
+	FacebookWifi         types.Object `tfsdk:"facebook_wifi"`
+	Google               types.Object `tfsdk:"google"`
+	GoogleEnabled        types.Bool   `tfsdk:"google_enabled"`
+	Password             types.String `tfsdk:"password"`
+	PasswordEnabled      types.Bool   `tfsdk:"password_enabled"`
+	Radius               types.Object `tfsdk:"radius"`
+	RadiusEnabled        types.Bool   `tfsdk:"radius_enabled"`
+	RestrictedDNSEnabled types.Bool   `tfsdk:"restricted_dns_enabled"`
+	RestrictedDNSServers types.List   `tfsdk:"restricted_dns_servers"`
+	Wechat               types.Object `tfsdk:"wechat"`
+	WechatEnabled        types.Bool   `tfsdk:"wechat_enabled"`
 }
 
 type settingGuestAccessRedirectModel struct {
@@ -84,6 +98,40 @@ type settingGuestAccessPortalCustomizationModel struct {
 	WelcomeTextPosition    types.String `tfsdk:"welcome_text_position"`
 }
 
+type settingGuestAccessFacebookModel struct {
+	AppID      types.String `tfsdk:"app_id"`
+	AppSecret  types.String `tfsdk:"app_secret"`
+	ScopeEmail types.Bool   `tfsdk:"scope_email"`
+}
+
+type settingGuestAccessFacebookWifiModel struct {
+	BlockHttps    types.Bool   `tfsdk:"block_https"`
+	GatewayID     types.String `tfsdk:"gateway_id"`
+	GatewayName   types.String `tfsdk:"gateway_name"`
+	GatewaySecret types.String `tfsdk:"gateway_secret"`
+}
+
+type settingGuestAccessGoogleModel struct {
+	ClientID     types.String `tfsdk:"client_id"`
+	ClientSecret types.String `tfsdk:"client_secret"`
+	Domain       types.String `tfsdk:"domain"`
+	ScopeEmail   types.Bool   `tfsdk:"scope_email"`
+}
+
+type settingGuestAccessRadiusModel struct {
+	AuthType          types.String `tfsdk:"auth_type"`
+	DisconnectEnabled types.Bool   `tfsdk:"disconnect_enabled"`
+	DisconnectPort    types.Int64  `tfsdk:"disconnect_port"`
+	ProfileID         types.String `tfsdk:"profile_id"`
+}
+
+type settingGuestAccessWechatModel struct {
+	AppID     types.String `tfsdk:"app_id"`
+	AppSecret types.String `tfsdk:"app_secret"`
+	SecretKey types.String `tfsdk:"secret_key"`
+	ShopID    types.String `tfsdk:"shop_id"`
+}
+
 var (
 	guestAccessRedirectAttrTypes = map[string]attr.Type{
 		"to_https":  types.BoolType,
@@ -123,6 +171,35 @@ var (
 		"welcome_text_enabled":     types.BoolType,
 		"welcome_text_position":    types.StringType,
 	}
+	guestAccessFacebookAttrTypes = map[string]attr.Type{
+		"app_id":      types.StringType,
+		"app_secret":  types.StringType,
+		"scope_email": types.BoolType,
+	}
+	guestAccessFacebookWifiAttrTypes = map[string]attr.Type{
+		"block_https":    types.BoolType,
+		"gateway_id":     types.StringType,
+		"gateway_name":   types.StringType,
+		"gateway_secret": types.StringType,
+	}
+	guestAccessGoogleAttrTypes = map[string]attr.Type{
+		"client_id":     types.StringType,
+		"client_secret": types.StringType,
+		"domain":        types.StringType,
+		"scope_email":   types.BoolType,
+	}
+	guestAccessRadiusAttrTypes = map[string]attr.Type{
+		"auth_type":          types.StringType,
+		"disconnect_enabled": types.BoolType,
+		"disconnect_port":    types.Int64Type,
+		"profile_id":         types.StringType,
+	}
+	guestAccessWechatAttrTypes = map[string]attr.Type{
+		"app_id":     types.StringType,
+		"app_secret": types.StringType,
+		"secret_key": types.StringType,
+		"shop_id":    types.StringType,
+	}
 	guestAccessAttrTypes = map[string]attr.Type{
 		"allowed_subnet":    types.StringType,
 		"restricted_subnet": types.StringType,
@@ -144,6 +221,20 @@ var (
 		"template_engine":     types.StringType,
 		"voucher_customized":  types.BoolType,
 		"voucher_enabled":     types.BoolType,
+
+		"facebook":               types.ObjectType{AttrTypes: guestAccessFacebookAttrTypes},
+		"facebook_enabled":       types.BoolType,
+		"facebook_wifi":          types.ObjectType{AttrTypes: guestAccessFacebookWifiAttrTypes},
+		"google":                 types.ObjectType{AttrTypes: guestAccessGoogleAttrTypes},
+		"google_enabled":         types.BoolType,
+		"password":               types.StringType,
+		"password_enabled":       types.BoolType,
+		"radius":                 types.ObjectType{AttrTypes: guestAccessRadiusAttrTypes},
+		"radius_enabled":         types.BoolType,
+		"restricted_dns_enabled": types.BoolType,
+		"restricted_dns_servers": types.ListType{ElemType: types.StringType},
+		"wechat":                 types.ObjectType{AttrTypes: guestAccessWechatAttrTypes},
+		"wechat_enabled":         types.BoolType,
 	}
 )
 
@@ -284,6 +375,207 @@ func (guestAccessSection) schemaAttribute() schema.SingleNestedAttribute {
 			},
 			"voucher_enabled": schema.BoolAttribute{
 				MarkdownDescription: "Enable voucher authentication (requires `auth = \"hotspot\"`).",
+				Optional:            true,
+				Computed:            true,
+			},
+			"facebook": schema.SingleNestedAttribute{
+				MarkdownDescription: "Facebook authentication settings (enable with `facebook_enabled`).",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"app_id": schema.StringAttribute{
+						MarkdownDescription: "Facebook application ID.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"app_secret": schema.StringAttribute{
+						MarkdownDescription: "Facebook application secret.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"scope_email": schema.BoolAttribute{
+						MarkdownDescription: "Request the email scope.",
+						Optional:            true,
+						Computed:            true,
+					},
+				},
+			},
+			"facebook_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable Facebook authentication.",
+				Optional:            true,
+				Computed:            true,
+			},
+			"facebook_wifi": schema.SingleNestedAttribute{
+				MarkdownDescription: "Facebook WiFi settings (used with `auth = \"facebook_wifi\"`).",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"block_https": schema.BoolAttribute{
+						MarkdownDescription: "Block HTTPS traffic before authentication.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"gateway_id": schema.StringAttribute{
+						MarkdownDescription: "Facebook WiFi gateway ID.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"gateway_name": schema.StringAttribute{
+						MarkdownDescription: "Facebook WiFi gateway name.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"gateway_secret": schema.StringAttribute{
+						MarkdownDescription: "Facebook WiFi gateway secret.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+				},
+			},
+			"google": schema.SingleNestedAttribute{
+				MarkdownDescription: "Google authentication settings (enable with `google_enabled`).",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"client_id": schema.StringAttribute{
+						MarkdownDescription: "Google OAuth client ID.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"client_secret": schema.StringAttribute{
+						MarkdownDescription: "Google OAuth client secret.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"domain": schema.StringAttribute{
+						MarkdownDescription: "Restrict Google authentication to a domain.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"scope_email": schema.BoolAttribute{
+						MarkdownDescription: "Request the email scope.",
+						Optional:            true,
+						Computed:            true,
+					},
+				},
+			},
+			"google_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable Google authentication.",
+				Optional:            true,
+				Computed:            true,
+			},
+			"password": schema.StringAttribute{
+				MarkdownDescription: "Guest portal password (used with `password_enabled`).",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"password_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable simple password authentication.",
+				Optional:            true,
+				Computed:            true,
+			},
+			"radius": schema.SingleNestedAttribute{
+				MarkdownDescription: "RADIUS authentication settings (enable with `radius_enabled`).",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"auth_type": schema.StringAttribute{
+						MarkdownDescription: "RADIUS auth type: `chap` or `mschapv2`.",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("chap", "mschapv2"),
+						},
+					},
+					"disconnect_enabled": schema.BoolAttribute{
+						MarkdownDescription: "Enable RADIUS disconnect messages.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"disconnect_port": schema.Int64Attribute{
+						MarkdownDescription: "RADIUS disconnect port.",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.Int64{
+							int64validator.Between(1, 65535),
+						},
+					},
+					"profile_id": schema.StringAttribute{
+						MarkdownDescription: "RADIUS profile ID.",
+						Optional:            true,
+						Computed:            true,
+					},
+				},
+			},
+			"radius_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable RADIUS authentication.",
+				Optional:            true,
+				Computed:            true,
+			},
+			"restricted_dns_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Restrict guest DNS to `restricted_dns_servers`.",
+				Optional:            true,
+				Computed:            true,
+			},
+			"restricted_dns_servers": schema.ListAttribute{
+				MarkdownDescription: "Allowed DNS servers for guests, in priority order.",
+				Optional:            true,
+				Computed:            true,
+				ElementType:         types.StringType,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"wechat": schema.SingleNestedAttribute{
+				MarkdownDescription: "WeChat authentication settings (enable with `wechat_enabled`).",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"app_id": schema.StringAttribute{
+						MarkdownDescription: "WeChat app ID.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"app_secret": schema.StringAttribute{
+						MarkdownDescription: "WeChat app secret.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"secret_key": schema.StringAttribute{
+						MarkdownDescription: "WeChat secret key.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"shop_id": schema.StringAttribute{
+						MarkdownDescription: "WeChat shop ID.",
+						Optional:            true,
+						Computed:            true,
+					},
+				},
+			},
+			"wechat_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable WeChat authentication.",
 				Optional:            true,
 				Computed:            true,
 			},
@@ -589,6 +881,74 @@ func guestAccessModelToData(
 		setRawBool(data, "portal_customized_welcome_text_enabled", pc.WelcomeTextEnabled)
 		setRawString(data, "portal_customized_welcome_text_position", pc.WelcomeTextPosition)
 	}
+
+	setRawString(data, "x_password", m.Password)
+	setRawBool(data, "password_enabled", m.PasswordEnabled)
+	setRawBool(data, "facebook_enabled", m.FacebookEnabled)
+	setRawBool(data, "google_enabled", m.GoogleEnabled)
+	setRawBool(data, "radius_enabled", m.RadiusEnabled)
+	setRawBool(data, "wechat_enabled", m.WechatEnabled)
+	setRawBool(data, "restricted_dns_enabled", m.RestrictedDNSEnabled)
+	if !m.RestrictedDNSServers.IsNull() && !m.RestrictedDNSServers.IsUnknown() {
+		var servers []string
+		diags.Append(m.RestrictedDNSServers.ElementsAs(ctx, &servers, false)...)
+		data["restricted_dns_servers"] = servers
+	}
+
+	if !m.Facebook.IsNull() && !m.Facebook.IsUnknown() {
+		var fb settingGuestAccessFacebookModel
+		diags.Append(m.Facebook.As(ctx, &fb, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "facebook_app_id", fb.AppID)
+		setRawString(data, "x_facebook_app_secret", fb.AppSecret)
+		setRawBool(data, "facebook_scope_email", fb.ScopeEmail)
+	}
+	if !m.FacebookWifi.IsNull() && !m.FacebookWifi.IsUnknown() {
+		var fw settingGuestAccessFacebookWifiModel
+		diags.Append(m.FacebookWifi.As(ctx, &fw, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawBool(data, "facebook_wifi_block_https", fw.BlockHttps)
+		setRawString(data, "facebook_wifi_gw_id", fw.GatewayID)
+		setRawString(data, "facebook_wifi_gw_name", fw.GatewayName)
+		setRawString(data, "x_facebook_wifi_gw_secret", fw.GatewaySecret)
+	}
+	if !m.Google.IsNull() && !m.Google.IsUnknown() {
+		var g settingGuestAccessGoogleModel
+		diags.Append(m.Google.As(ctx, &g, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "google_client_id", g.ClientID)
+		setRawString(data, "x_google_client_secret", g.ClientSecret)
+		setRawString(data, "google_domain", g.Domain)
+		setRawBool(data, "google_scope_email", g.ScopeEmail)
+	}
+	if !m.Radius.IsNull() && !m.Radius.IsUnknown() {
+		var r settingGuestAccessRadiusModel
+		diags.Append(m.Radius.As(ctx, &r, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "radius_auth_type", r.AuthType)
+		setRawBool(data, "radius_disconnect_enabled", r.DisconnectEnabled)
+		setRawInt(data, "radius_disconnect_port", r.DisconnectPort)
+		setRawString(data, "radiusprofile_id", r.ProfileID)
+	}
+	if !m.Wechat.IsNull() && !m.Wechat.IsUnknown() {
+		var w settingGuestAccessWechatModel
+		diags.Append(m.Wechat.As(ctx, &w, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "wechat_app_id", w.AppID)
+		setRawString(data, "x_wechat_app_secret", w.AppSecret)
+		setRawString(data, "x_wechat_secret_key", w.SecretKey)
+		setRawString(data, "wechat_shop_id", w.ShopID)
+	}
 }
 
 // read pulls the guest_access section out of the raw settings list.
@@ -644,6 +1004,15 @@ func guestAccessDataToModel(
 		TemplateEngine:    rawString(data, "template_engine"),
 		VoucherCustomized: rawBool(data, "voucher_customized"),
 		VoucherEnabled:    rawBool(data, "voucher_enabled"),
+
+		Password:             rawString(data, "x_password"),
+		PasswordEnabled:      rawBool(data, "password_enabled"),
+		FacebookEnabled:      rawBool(data, "facebook_enabled"),
+		GoogleEnabled:        rawBool(data, "google_enabled"),
+		RadiusEnabled:        rawBool(data, "radius_enabled"),
+		WechatEnabled:        rawBool(data, "wechat_enabled"),
+		RestrictedDNSEnabled: rawBool(data, "restricted_dns_enabled"),
+		RestrictedDNSServers: rawStringList(data, "restricted_dns_servers"),
 	}
 
 	m.Redirect = types.ObjectNull(guestAccessRedirectAttrTypes)
@@ -696,6 +1065,74 @@ func guestAccessDataToModel(
 			})
 		diags.Append(d...)
 		m.PortalCustomization = obj
+	}
+
+	m.Facebook = types.ObjectNull(guestAccessFacebookAttrTypes)
+	if anyRawKey(data, "facebook_app_id", "x_facebook_app_secret", "facebook_scope_email") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessFacebookAttrTypes,
+			settingGuestAccessFacebookModel{
+				AppID:      rawString(data, "facebook_app_id"),
+				AppSecret:  rawString(data, "x_facebook_app_secret"),
+				ScopeEmail: rawBool(data, "facebook_scope_email"),
+			})
+		diags.Append(d...)
+		m.Facebook = obj
+	}
+
+	m.FacebookWifi = types.ObjectNull(guestAccessFacebookWifiAttrTypes)
+	if anyRawKey(data, "facebook_wifi_gw_id", "facebook_wifi_gw_name",
+		"x_facebook_wifi_gw_secret", "facebook_wifi_block_https") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessFacebookWifiAttrTypes,
+			settingGuestAccessFacebookWifiModel{
+				BlockHttps:    rawBool(data, "facebook_wifi_block_https"),
+				GatewayID:     rawString(data, "facebook_wifi_gw_id"),
+				GatewayName:   rawString(data, "facebook_wifi_gw_name"),
+				GatewaySecret: rawString(data, "x_facebook_wifi_gw_secret"),
+			})
+		diags.Append(d...)
+		m.FacebookWifi = obj
+	}
+
+	m.Google = types.ObjectNull(guestAccessGoogleAttrTypes)
+	if anyRawKey(data, "google_client_id", "x_google_client_secret",
+		"google_domain", "google_scope_email") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessGoogleAttrTypes,
+			settingGuestAccessGoogleModel{
+				ClientID:     rawString(data, "google_client_id"),
+				ClientSecret: rawString(data, "x_google_client_secret"),
+				Domain:       rawString(data, "google_domain"),
+				ScopeEmail:   rawBool(data, "google_scope_email"),
+			})
+		diags.Append(d...)
+		m.Google = obj
+	}
+
+	m.Radius = types.ObjectNull(guestAccessRadiusAttrTypes)
+	if anyRawKey(data, "radius_auth_type", "radiusprofile_id",
+		"radius_disconnect_enabled", "radius_disconnect_port") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessRadiusAttrTypes,
+			settingGuestAccessRadiusModel{
+				AuthType:          rawString(data, "radius_auth_type"),
+				DisconnectEnabled: rawBool(data, "radius_disconnect_enabled"),
+				DisconnectPort:    rawInt(data, "radius_disconnect_port"),
+				ProfileID:         rawString(data, "radiusprofile_id"),
+			})
+		diags.Append(d...)
+		m.Radius = obj
+	}
+
+	m.Wechat = types.ObjectNull(guestAccessWechatAttrTypes)
+	if anyRawKey(data, "wechat_app_id", "x_wechat_app_secret",
+		"x_wechat_secret_key", "wechat_shop_id") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessWechatAttrTypes,
+			settingGuestAccessWechatModel{
+				AppID:     rawString(data, "wechat_app_id"),
+				AppSecret: rawString(data, "x_wechat_app_secret"),
+				SecretKey: rawString(data, "x_wechat_secret_key"),
+				ShopID:    rawString(data, "wechat_shop_id"),
+			})
+		diags.Append(d...)
+		m.Wechat = obj
 	}
 
 	return m

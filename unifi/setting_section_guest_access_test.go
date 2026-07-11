@@ -85,6 +85,20 @@ func Test_guestAccessModelToData_core(t *testing.T) {
 		TemplateEngine:    types.StringNull(),
 		VoucherCustomized: types.BoolNull(),
 		VoucherEnabled:    types.BoolNull(),
+
+		Facebook:             types.ObjectNull(guestAccessFacebookAttrTypes),
+		FacebookEnabled:      types.BoolNull(),
+		FacebookWifi:         types.ObjectNull(guestAccessFacebookWifiAttrTypes),
+		Google:               types.ObjectNull(guestAccessGoogleAttrTypes),
+		GoogleEnabled:        types.BoolNull(),
+		Password:             types.StringNull(),
+		PasswordEnabled:      types.BoolNull(),
+		Radius:               types.ObjectNull(guestAccessRadiusAttrTypes),
+		RadiusEnabled:        types.BoolNull(),
+		RestrictedDNSEnabled: types.BoolNull(),
+		RestrictedDNSServers: types.ListNull(types.StringType),
+		Wechat:               types.ObjectNull(guestAccessWechatAttrTypes),
+		WechatEnabled:        types.BoolNull(),
 	})
 	if d.HasError() {
 		t.Fatal(d)
@@ -248,5 +262,129 @@ func Test_settingResource_Schema_guestAccess(t *testing.T) {
 	r.Schema(context.Background(), fwresource.SchemaRequest{}, &resp)
 	if _, ok := resp.Schema.Attributes["guest_access"]; !ok {
 		t.Fatal("schema is missing the guest_access section attribute")
+	}
+}
+
+func Test_guestAccessModelToData_authProviders(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	google, d := types.ObjectValueFrom(ctx, guestAccessGoogleAttrTypes,
+		settingGuestAccessGoogleModel{
+			ClientID:     types.StringValue("client-id"),
+			ClientSecret: types.StringValue("client-secret"),
+			Domain:       types.StringValue("example.com"),
+			ScopeEmail:   types.BoolValue(true),
+		})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	radius, d := types.ObjectValueFrom(ctx, guestAccessRadiusAttrTypes,
+		settingGuestAccessRadiusModel{
+			AuthType:          types.StringValue("chap"),
+			DisconnectEnabled: types.BoolValue(true),
+			DisconnectPort:    types.Int64Value(3799),
+			ProfileID:         types.StringValue("rp1"),
+		})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	dns, d := types.ListValueFrom(ctx, types.StringType, []string{"1.1.1.1", "8.8.8.8"})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+
+	m := &settingGuestAccessModel{
+		Password:             types.StringValue("guest-pass"),
+		PasswordEnabled:      types.BoolValue(true),
+		Google:               google,
+		GoogleEnabled:        types.BoolValue(true),
+		Radius:               radius,
+		RestrictedDNSServers: dns,
+		RestrictedDNSEnabled: types.BoolValue(true),
+		// All other blocks null.
+		Facebook:     types.ObjectNull(guestAccessFacebookAttrTypes),
+		FacebookWifi: types.ObjectNull(guestAccessFacebookWifiAttrTypes),
+		Wechat:       types.ObjectNull(guestAccessWechatAttrTypes),
+	}
+
+	data := map[string]any{"unmodeled_field": "keep"}
+	guestAccessModelToData(ctx, m, data, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+
+	if data["x_password"] != "guest-pass" || data["password_enabled"] != true {
+		t.Fatalf("password fields wrong: %v", data)
+	}
+	if data["google_client_id"] != "client-id" ||
+		data["x_google_client_secret"] != "client-secret" ||
+		data["google_domain"] != "example.com" ||
+		data["google_scope_email"] != true || data["google_enabled"] != true {
+		t.Fatalf("google fields wrong: %v", data)
+	}
+	if data["radius_auth_type"] != "chap" || data["radius_disconnect_enabled"] != true ||
+		data["radius_disconnect_port"] != int64(3799) || data["radiusprofile_id"] != "rp1" {
+		t.Fatalf("radius fields wrong: %v", data)
+	}
+	servers, ok := data["restricted_dns_servers"].([]string)
+	if !ok || len(servers) != 2 || data["restricted_dns_enabled"] != true {
+		t.Fatalf("restricted dns fields wrong: %v", data)
+	}
+	if _, present := data["facebook_app_id"]; present {
+		t.Fatal("null facebook block should not write keys")
+	}
+	if _, present := data["wechat_app_id"]; present {
+		t.Fatal("null wechat block should not write keys")
+	}
+	if data["unmodeled_field"] != "keep" {
+		t.Fatal("unmodeled_field was clobbered")
+	}
+}
+
+func Test_guestAccessDataToModel_authPresence(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	data := map[string]any{
+		"auth":                   "hotspot",
+		"password_enabled":       true,
+		"x_password":             "guest-pass",
+		"google_client_id":       "client-id",
+		"x_google_client_secret": "client-secret",
+		"radiusprofile_id":       "rp1",
+		"radius_disconnect_port": float64(3799),
+	}
+
+	m := guestAccessDataToModel(ctx, data, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+
+	if m.Password.ValueString() != "guest-pass" || !m.PasswordEnabled.ValueBool() {
+		t.Fatalf("password = %v enabled = %v", m.Password, m.PasswordEnabled)
+	}
+	if m.Google.IsNull() {
+		t.Fatal("google block should materialize")
+	}
+	var g settingGuestAccessGoogleModel
+	diags.Append(m.Google.As(ctx, &g, basetypes.ObjectAsOptions{})...)
+	if g.ClientID.ValueString() != "client-id" ||
+		g.ClientSecret.ValueString() != "client-secret" {
+		t.Fatalf("google = %+v", g)
+	}
+	if m.Radius.IsNull() {
+		t.Fatal("radius block should materialize")
+	}
+	var r settingGuestAccessRadiusModel
+	diags.Append(m.Radius.As(ctx, &r, basetypes.ObjectAsOptions{})...)
+	if r.ProfileID.ValueString() != "rp1" || r.DisconnectPort.ValueInt64() != 3799 {
+		t.Fatalf("radius = %+v", r)
+	}
+	if !m.Facebook.IsNull() || !m.FacebookWifi.IsNull() || !m.Wechat.IsNull() {
+		t.Fatal("absent provider blocks should stay null")
+	}
+	if !m.RestrictedDNSServers.IsNull() {
+		t.Fatal("absent restricted_dns_servers should stay null")
 	}
 }
