@@ -74,3 +74,49 @@ resource "unifi_setting" "globals" {
     timezone = "America/Vancouver"
   }
 }
+
+# Connectivity services: mDNS, Teleport, Site Magic VPN, traffic flows,
+# and Etherlighting
+resource "unifi_setting" "connectivity" {
+  site = "default"
+
+  mdns = {
+    mode                = "custom"
+    predefined_services = ["apple_airPlay", "google_chromecast", "printers"]
+    custom_services = [{
+      name    = "Home Assistant"
+      address = "_home-assistant._tcp"
+    }]
+  }
+
+  teleport = {
+    enabled = true
+    subnet  = "192.168.100.0/24"
+  }
+
+  # The controller generates and manages the WireGuard key pair;
+  # private_key/public_key never need to be set.
+  magic_site_to_site_vpn = {
+    enabled = true
+  }
+
+  traffic_flow = {
+    enabled_allowed_traffic         = true
+    gateway_dns_enabled             = true
+    unifi_device_management_enabled = false
+    unifi_services_enabled          = true
+  }
+
+  # Only declare colors that differ from the controller's built-in
+  # defaults — identical overrides are silently dropped by the controller.
+  ether_lighting = {
+    speed_overrides = [{
+      speed     = "GbE"
+      color_hex = "ff6c14"
+    }]
+    # network_overrides = [{
+    #   network_id = unifi_network.iot.id
+    #   color_hex  = "0544ff"
+    # }]
+  }
+}
