@@ -250,6 +250,7 @@ type settingResourceModel struct {
 	SslInspection      types.Object   `tfsdk:"ssl_inspection"`
 	GlobalNetwork      types.Object   `tfsdk:"global_network"`
 	UsgGeo             types.Object   `tfsdk:"usg_geo"`
+	Ipsec              types.Object   `tfsdk:"ipsec"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 

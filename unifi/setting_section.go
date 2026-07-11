@@ -48,6 +48,7 @@ var settingSections = []settingSection{
 	sslInspectionSection{},
 	globalNetworkSection{},
 	usgGeoSection{},
+	ipsecSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry
