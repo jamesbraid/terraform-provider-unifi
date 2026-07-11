@@ -120,3 +120,48 @@ resource "unifi_setting" "connectivity" {
     # }]
   }
 }
+
+# Monitoring & security settings. SNMP credentials are sensitive — source
+# them from variables, never literals.
+variable "snmp_community" {
+  type      = string
+  sensitive = true
+}
+
+resource "unifi_setting" "monitoring" {
+  site = "default"
+
+  snmp = {
+    enabled   = true
+    community = var.snmp_community
+  }
+
+  netflow = {
+    enabled = true
+    server  = "192.0.2.10"
+    port    = 2055
+    version = 10
+  }
+
+  ssl_inspection = {
+    state = "off"
+  }
+
+  # Requires a gateway-class controller (UDM/USG):
+  global_network = {
+    default_security_posture = "ALLOW_ALL"
+  }
+
+  usg_geo = {
+    ip_filtering = {
+      enabled           = true
+      action            = "block"
+      countries         = "KP"
+      traffic_direction = "both"
+    }
+  }
+
+  ipsec = {
+    ikev2_reauthentication_method = "make-before-break"
+  }
+}
