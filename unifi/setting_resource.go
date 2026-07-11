@@ -238,6 +238,7 @@ type settingResourceModel struct {
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
 	Locale        types.Object   `tfsdk:"locale"`
+	GlobalNat     types.Object   `tfsdk:"global_nat"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 

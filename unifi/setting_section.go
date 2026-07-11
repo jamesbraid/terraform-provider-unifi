@@ -36,6 +36,7 @@ type settingSection interface {
 // settingSections is the registry of sections using the raw-merge engine.
 var settingSections = []settingSection{
 	localeSection{},
+	globalNatSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry
