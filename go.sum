@@ -325,8 +325,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf h1:FtEj8sfIcaaBfAKrE1Cwb61YDtYq9JxChK1c7AKce7s=
 github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf/go.mod h1:yrqSXGoD/4EKfF26AOGzscPOgTTJcyAwM2rpixWT+t4=
-github.com/jamesbraid/go-unifi v1.34.0 h1:2SFdpsB+Dpl905XVY931xCsrq7NM7I31Lvrul9zrdrQ=
-github.com/jamesbraid/go-unifi v1.34.0/go.mod h1:QfZDUwKQmGJNNW4af3KHzb7f+VmiSvkyTqC4/D5aPWU=
+github.com/jamesbraid/go-unifi v1.34.1 h1:Melk5KYkqTYGu+HD8ll+cZ/xr1LL2JN1V8ErhWna4IY=
+github.com/jamesbraid/go-unifi v1.34.1/go.mod h1:5BzB50Sd1+7tHp6veqZrX0HPUTih5h/U9/PIk+deVN0=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
 github.com/jhump/protoreflect v1.17.0 h1:qOEr613fac2lOuTgWN4tPAtLL7fUSbuJL5X5XumQh94=
