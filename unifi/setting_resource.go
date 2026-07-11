@@ -252,6 +252,7 @@ type settingResourceModel struct {
 	UsgGeo             types.Object   `tfsdk:"usg_geo"`
 	Ipsec              types.Object   `tfsdk:"ipsec"`
 	Dashboard          types.Object   `tfsdk:"dashboard"`
+	RadioAi            types.Object   `tfsdk:"radio_ai"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
