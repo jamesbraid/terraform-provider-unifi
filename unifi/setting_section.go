@@ -51,6 +51,7 @@ var settingSections = []settingSection{
 	ipsecSection{},
 	dashboardSection{},
 	radioAiSection{},
+	guestAccessSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry
