@@ -150,19 +150,17 @@ func Test_settingResource_Schema_mdns(t *testing.T) {
 }
 
 func TestAccSettingResource_mdns(t *testing.T) {
-	// The demo controller rejects mode="all" combined with a non-empty
+	// The controller 400s mode="all" combined with a non-empty
 	// predefined_services/custom_services list in the same PUT payload
-	// (api.err.MdnsSettingInvalidServicesListException). The brief's step 2
-	// config keeps the same service lists across both steps, so the second
-	// apply 400s on the live demo controller regardless of provider code.
-	t.Skip("demo controller rejects mode=all with a non-empty services list " +
-		"(api.err.MdnsSettingInvalidServicesListException)")
+	// (api.err.MdnsSettingInvalidServicesListException) — "all" takes no
+	// custom list, so step 2 switches to mode=all with empty service lists,
+	// matching the state the controller actually accepts and returns.
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingConfig_mdns("custom"),
+				Config: testAccSettingConfig_mdns("custom", true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"unifi_setting.test", "mdns.mode", "custom",
@@ -176,16 +174,35 @@ func TestAccSettingResource_mdns(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingConfig_mdns("all"),
-				Check: resource.TestCheckResourceAttr(
-					"unifi_setting.test", "mdns.mode", "all",
+				Config: testAccSettingConfig_mdns("all", false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "mdns.mode", "all",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "mdns.predefined_services.#", "0",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "mdns.custom_services.#", "0",
+					),
 				),
 			},
 		},
 	})
 }
 
-func testAccSettingConfig_mdns(mode string) string {
+func testAccSettingConfig_mdns(mode string, withServices bool) string {
+	if !withServices {
+		return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode                = "` + mode + `"
+    predefined_services = []
+    custom_services     = []
+  }
+}
+`
+	}
 	return `
 resource "unifi_setting" "test" {
   mdns = {

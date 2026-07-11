@@ -82,15 +82,11 @@ func Test_settingResource_Schema_teleport(t *testing.T) {
 }
 
 func TestAccSettingResource_teleport(t *testing.T) {
-	// The demo controller silently resets subnet_cidr to "" when teleport is
-	// disabled (enabled=false), even though the same PUT payload still
-	// carries the previously-configured subnet. The refresh plan after step
-	// 2's apply then shows a non-empty diff (subnet "" -> configured value),
-	// which is genuine controller state-normalization behavior, not a
-	// provider defect: the resource's read faithfully reflects whatever
-	// subnet_cidr the controller returns.
-	t.Skip("demo controller resets teleport.subnet to \"\" when disabled, " +
-		"causing a non-empty refresh plan unrelated to provider logic")
+	// The controller resets subnet_cidr to "" as part of disabling Teleport
+	// (enabled=false), regardless of what subnet was previously configured.
+	// That's genuine controller state-normalization, not a provider defect,
+	// so step 2 asserts the post-disable state the controller actually
+	// returns: enabled=false, subnet="".
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -107,9 +103,14 @@ func TestAccSettingResource_teleport(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingConfig_teleport(false, "192.168.100.0/24"),
-				Check: resource.TestCheckResourceAttr(
-					"unifi_setting.test", "teleport.enabled", "false",
+				Config: testAccSettingConfig_teleport(false, ""),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "teleport.enabled", "false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "teleport.subnet", "",
+					),
 				),
 			},
 		},
