@@ -240,6 +240,7 @@ type settingResourceModel struct {
 	Locale        types.Object   `tfsdk:"locale"`
 	GlobalNat     types.Object   `tfsdk:"global_nat"`
 	GlobalSwitch  types.Object   `tfsdk:"global_switch"`
+	Mdns          types.Object   `tfsdk:"mdns"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
