@@ -19,6 +19,19 @@ func TestRawSettings_dataCopyIsDeep(t *testing.T) {
 	}
 }
 
+func TestRawSettings_dataCopyIsDeepThroughSliceOfMaps(t *testing.T) {
+	rs := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "x"},
+		Data:        map[string]any{"items": []any{map[string]any{"a": float64(1)}}},
+	}})
+	cp := rs.dataCopy("x")
+	cp["items"].([]any)[0].(map[string]any)["a"] = float64(2)
+	orig, _ := rs.section("x")
+	if orig.Data["items"].([]any)[0].(map[string]any)["a"] != float64(1) {
+		t.Fatalf("dataCopy must be deep through []any elements; snapshot was mutated")
+	}
+}
+
 func TestRawSettings_sectionAndHas(t *testing.T) {
 	rs := newRawSettings([]settings.RawSetting{
 		{
