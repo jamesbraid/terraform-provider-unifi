@@ -2,10 +2,12 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -129,4 +131,46 @@ func Test_globalSwitchSettingToModel(t *testing.T) {
 	if len(rules) != 1 || rules[0].SourceNetwork.ValueString() != "net1" {
 		t.Fatalf("acl_l3_isolation = %v", rules)
 	}
+}
+
+func TestAccSettingResource_globalSwitch(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalSwitch(true, "rstp"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "global_switch.jumboframe_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "global_switch.stp_version", "rstp",
+					),
+				),
+			},
+			{
+				Config: testAccSettingConfig_globalSwitch(false, "stp"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "global_switch.jumboframe_enabled", "false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "global_switch.stp_version", "stp",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalSwitch(jumbo bool, stp string) string {
+	return fmt.Sprintf(`
+resource "unifi_setting" "test" {
+  global_switch = {
+    jumboframe_enabled = %t
+    stp_version        = %q
+  }
+}
+`, jumbo, stp)
 }

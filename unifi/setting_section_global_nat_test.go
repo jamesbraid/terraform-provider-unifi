@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -76,4 +77,35 @@ func Test_globalNatSettingToModel(t *testing.T) {
 	if len(ids) != 1 || ids[0] != "abc123" {
 		t.Fatalf("ids = %v", ids)
 	}
+}
+
+func TestAccSettingResource_globalNat(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalNat("auto"),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "global_nat.mode", "auto",
+				),
+			},
+			{
+				Config: testAccSettingConfig_globalNat("off"),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "global_nat.mode", "off",
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalNat(mode string) string {
+	return `
+resource "unifi_setting" "test" {
+  global_nat = {
+    mode = "` + mode + `"
+  }
+}
+`
 }
