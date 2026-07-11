@@ -244,6 +244,7 @@ type settingResourceModel struct {
 	Teleport           types.Object   `tfsdk:"teleport"`
 	MagicSiteToSiteVpn types.Object   `tfsdk:"magic_site_to_site_vpn"`
 	TrafficFlow        types.Object   `tfsdk:"traffic_flow"`
+	EtherLighting      types.Object   `tfsdk:"ether_lighting"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
