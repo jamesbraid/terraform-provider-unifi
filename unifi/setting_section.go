@@ -50,6 +50,7 @@ var settingSections = []settingSection{
 	usgGeoSection{},
 	ipsecSection{},
 	dashboardSection{},
+	radioAiSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry
