@@ -165,3 +165,49 @@ resource "unifi_setting" "monitoring" {
     ikev2_reauthentication_method = "make-before-break"
   }
 }
+
+# Portal, radio optimization, and dashboard settings. Guest portal
+# credentials are sensitive — source them from variables, never literals.
+variable "guest_portal_password" {
+  type      = string
+  sensitive = true
+}
+
+resource "unifi_setting" "portal" {
+  site = "default"
+
+  guest_access = {
+    auth             = "hotspot"
+    password         = var.guest_portal_password
+    password_enabled = true
+    portal_enabled   = true
+
+    portal_customization = {
+      customized = true
+      title      = "Guest WiFi"
+      bg_color   = "#005ED9"
+    }
+  }
+
+  # Co-managed by the controller: only enabled/setting_preference are set
+  # here. Leave setting_preference = "auto" (the default) unless you need to
+  # pin specific channels — see the attribute's churn warning.
+  radio_ai = {
+    enabled = true
+  }
+
+  dashboard = {
+    layout_preference = "auto"
+  }
+
+  # Requires go-unifi PR 0 (settings.ProviderCapabilities). Not modeled by
+  # every controller — lightweight/simulated controllers (e.g. the demo
+  # container used in this provider's acceptance tests) reject this key
+  # outright with api.err.Invalid; it is intended for ISP-gateway-class
+  # deployments that report WAN capacity for utilization displays and Smart
+  # Queues sizing.
+  provider_capabilities = {
+    download = 1000000
+    upload   = 500000
+  }
+}
