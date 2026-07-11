@@ -2,10 +2,12 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
@@ -98,4 +100,46 @@ func Test_netflowSettingToModel(t *testing.T) {
 	if len(ids) != 1 || ids[0] != "net1" {
 		t.Fatalf("network_ids = %v", ids)
 	}
+}
+
+func TestAccSettingResource_netflow(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_netflow(2055),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "netflow.enabled", "false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "netflow.server", "192.0.2.10",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "netflow.port", "2055",
+					),
+				),
+			},
+			{
+				Config: testAccSettingConfig_netflow(2056),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "netflow.port", "2056",
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_netflow(port int) string {
+	return fmt.Sprintf(`
+resource "unifi_setting" "test" {
+  netflow = {
+    enabled = false
+    server  = "192.0.2.10"
+    port    = %d
+    version = 10
+  }
+}
+`, port)
 }
