@@ -1,4 +1,4 @@
-# PR-A: Settings Lifecycle Foundation — Implementation Plan (rev 4)
+# PR-A: Settings Lifecycle Foundation — Implementation Plan (rev 5)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -20,7 +20,7 @@
 - Deterministic order: the engine iterates sections sorted by `key()`.
 - Migration proof: request-level golden tests (Task 8) stay green through every migration task; the legacy converters are retained until the final cutover (Task 24c). Behavior not on the permitted-delta list must be byte-identical to `origin/main`.
 - Verification per task: `gofmt -w`, `go build ./...`, `go vet ./unifi/`, `go test ./unifi/...`, `git diff --check`. TF_ACC tests are demo-controller-only.
-- **Permitted deltas** (the ONLY behavior changes allowed in PR-A): (1) present-empty string/array round-trips instead of collapsing to null; (2) malformed remote scalar/list raises a diagnostic instead of truncating/dropping; (3) writes preserve all unmodeled controller keys; (4) one snapshot per op replaces per-section reads; (5) import populates `site` + hydrates all sections. Each golden that changes for delta (1) cites the delta in its commit.
+- **Permitted deltas** (the ONLY behavior changes allowed in PR-A): (1) present-empty string/array round-trips instead of collapsing to null; (2) malformed remote scalar/list raises a diagnostic instead of truncating/dropping; (3) writes preserve all unmodeled controller keys; (4) one snapshot per op replaces per-section reads; (5) import populates `site` + hydrates all sections; (6) a write-only secret with **null** config now omits the masked/stale secret from the PUT — the legacy typed converters could re-send `x_secret`/`x_ssh_password` from state (a masked value re-sent risks clearing the real secret); a configured value or explicit empty is unchanged. Each golden that changes for delta (1) or (6) cites the delta in its commit.
 
 ---
 
@@ -361,6 +361,10 @@ For each: cite the converter, port field-for-field, apply ownership, assert gold
 | 22 | `mgmt` (nested-list + secret, worked) | `settings.Mgmt` | 2110 / 1501–1524, 1792–1815 | `ssh_password`→ownerWriteOnlySecret; `x_mgmt_key`→ownerWriteOnlySecret (only if in schema); `ssh_keys` (public keys, ListNested)→ownerManaged; all other flags ownerManaged | nested-list + secret |
 
 **Worked tasks (16, 21, 22) show real `decode`/`overlay` code** using the nested/list codec helpers from Task 2 — Task 16 the list shape (`contents`), Task 21 the nested-object shape (`dns_verification` via `decodeObject`/`overlayObject`), Task 22 the nested-list shape (`ssh_keys` via `decodeObjectList`/`overlayObjectList`) plus the secret leaf (`ssh_password` preserved when config-null). Same-shape non-worked tasks reproduce the matching worked template with their table row's specifics.
+
+**Secret-section goldens (Tasks 20 `radius`, 22 `mgmt`) — two scenarios:**
+1. **secret set:** the golden PUT body is **byte-identical** to the legacy converter's (both send the configured secret).
+2. **secret null + masked/stale value present in the snapshot fixture:** the new overlay **omits** the key (permitted delta 6); this golden reflects the NEW behavior and its commit cites delta 6. The legacy converter would have re-sent the masked value here — that is exactly the leak this fixes. The fixture MUST include the masked secret key so the delete path is exercised (a fixture that omits the remote key would not catch a regression).
 
 **Secret tasks (20, 22) additionally test:** a null secret config preserves the prior-state secret (`decode` returns prior) and the secret never appears in the golden PUT body when config is null; a set secret is written. Only `ssh_password`/`x_secret`/`x_mgmt_key` are secret — **`ssh_keys` are public and are `ownerManaged`**.
 
