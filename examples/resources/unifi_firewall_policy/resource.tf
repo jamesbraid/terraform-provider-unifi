@@ -152,3 +152,21 @@ resource "unifi_firewall_policy" "block_web_domains" {
     web_domains     = ["facebook.com", "tiktok.com"]
   }
 }
+
+# Block specific DPI-classified applications from the LAN to the internet.
+# app_ids are the integer DPI application IDs from the UniFi application list.
+resource "unifi_firewall_policy" "block_apps" {
+  name   = "Block streaming apps"
+  action = "BLOCK"
+
+  source = {
+    zone_id         = unifi_firewall_zone.lan.id
+    matching_target = "ANY"
+  }
+
+  destination = {
+    zone_id         = unifi_firewall_zone.dmz.id
+    matching_target = "APP"
+    app_ids         = [589885]
+  }
+}
