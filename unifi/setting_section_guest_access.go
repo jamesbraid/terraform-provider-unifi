@@ -784,7 +784,118 @@ func guestAccessPortalCustomizationSchema() schema.SingleNestedAttribute {
 
 func (guestAccessSection) get(m *settingResourceModel) types.Object { return m.GuestAccess }
 
-func (guestAccessSection) set(m *settingResourceModel, obj types.Object) { m.GuestAccess = obj }
+// set installs a freshly-read guest_access object, carrying the six secret
+// fields forward from the prior state/plan when the controller didn't echo
+// them back (the x_-prefixed fields are often write-only). Evaluation-order
+// note: this must run before m.GuestAccess is overwritten — readSections
+// calls s.get(m) to capture prior *before* calling s.set(m, value), so
+// m.GuestAccess here is still the pre-read value when preserve reads it.
+func (guestAccessSection) set(m *settingResourceModel, obj types.Object) {
+	m.GuestAccess = preserveGuestAccessSecrets(m.GuestAccess, obj)
+}
+
+// preserveGuestAccessSecrets returns fresh with each of the six write-only
+// secret fields carried over from prior (the plan or prior state) wherever
+// the freshly-read value is null but prior is non-null. If the controller DID
+// echo a secret, the fresh (echoed) value wins — this only fills gaps left by
+// non-echoed reads, mirroring preserveSnmpPassword in
+// setting_section_snmp.go. Three fields live on the top-level object
+// (password, and the flattened nested blocks below); three live inside
+// nested objects (facebook.app_secret, facebook_wifi.gateway_secret,
+// google.client_secret, wechat.app_secret, wechat.secret_key) and require
+// descending into those objects to carry the value forward.
+func preserveGuestAccessSecrets(prior, fresh types.Object) types.Object {
+	if prior.IsNull() || prior.IsUnknown() || fresh.IsNull() || fresh.IsUnknown() {
+		return fresh
+	}
+
+	attrs := make(map[string]attr.Value, len(fresh.Attributes()))
+	for k, v := range fresh.Attributes() {
+		attrs[k] = v
+	}
+
+	attrs["password"] = preserveStringAttr(prior, fresh, "password")
+	attrs["facebook"] = preserveNestedSecretAttr(
+		prior, fresh, "facebook", guestAccessFacebookAttrTypes, "app_secret",
+	)
+	attrs["facebook_wifi"] = preserveNestedSecretAttr(
+		prior, fresh, "facebook_wifi", guestAccessFacebookWifiAttrTypes, "gateway_secret",
+	)
+	attrs["google"] = preserveNestedSecretAttr(
+		prior, fresh, "google", guestAccessGoogleAttrTypes, "client_secret",
+	)
+	attrs["wechat"] = preserveNestedSecretAttr(
+		prior, fresh, "wechat", guestAccessWechatAttrTypes, "app_secret", "secret_key",
+	)
+
+	merged, d := types.ObjectValue(guestAccessAttrTypes, attrs)
+	if d.HasError() {
+		return fresh
+	}
+	return merged
+}
+
+// preserveStringAttr returns the value of attrName on fresh, unless it is
+// null and prior's value is non-null, in which case prior's value is
+// carried forward.
+func preserveStringAttr(prior, fresh types.Object, attrName string) attr.Value {
+	fv, ok := fresh.Attributes()[attrName]
+	if !ok {
+		return fresh.Attributes()[attrName]
+	}
+	fs, ok := fv.(types.String)
+	if !ok || !fs.IsNull() {
+		return fv
+	}
+	pv, ok := prior.Attributes()[attrName]
+	if !ok || pv.IsNull() || pv.IsUnknown() {
+		return fv
+	}
+	return pv
+}
+
+// preserveNestedSecretAttr descends into the nested object attribute
+// blockName on both prior and fresh and carries forward each named secret
+// field (secretNames) that is null on fresh but non-null on prior. Returns
+// the (possibly merged) nested object to install back on the parent. If
+// either side's block is null/unknown, fresh's block is returned unchanged —
+// there is nothing to preserve or merge into.
+func preserveNestedSecretAttr(
+	prior, fresh types.Object,
+	blockName string,
+	blockAttrTypes map[string]attr.Type,
+	secretNames ...string,
+) attr.Value {
+	freshBlockVal, ok := fresh.Attributes()[blockName]
+	if !ok {
+		return freshBlockVal
+	}
+	freshBlock, ok := freshBlockVal.(types.Object)
+	if !ok || freshBlock.IsNull() || freshBlock.IsUnknown() {
+		return freshBlockVal
+	}
+	priorBlockVal, ok := prior.Attributes()[blockName]
+	if !ok {
+		return freshBlockVal
+	}
+	priorBlock, ok := priorBlockVal.(types.Object)
+	if !ok || priorBlock.IsNull() || priorBlock.IsUnknown() {
+		return freshBlockVal
+	}
+
+	blockAttrs := make(map[string]attr.Value, len(freshBlock.Attributes()))
+	for k, v := range freshBlock.Attributes() {
+		blockAttrs[k] = v
+	}
+	for _, secretName := range secretNames {
+		blockAttrs[secretName] = preserveStringAttr(priorBlock, freshBlock, secretName)
+	}
+	merged, d := types.ObjectValue(blockAttrTypes, blockAttrs)
+	if d.HasError() {
+		return freshBlockVal
+	}
+	return merged
+}
 
 func (guestAccessSection) overlay(
 	ctx context.Context,
