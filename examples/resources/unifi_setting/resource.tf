@@ -55,3 +55,22 @@ resource "unifi_setting" "radius_only" {
     auth_port          = 1812
   }
 }
+
+# Site-wide switching, NAT, and locale settings
+resource "unifi_setting" "globals" {
+  site = "default"
+
+  global_switch = {
+    stp_version        = "rstp"
+    jumboframe_enabled = false
+    dhcp_snoop         = true
+  }
+
+  global_nat = {
+    mode = "auto"
+  }
+
+  locale = {
+    timezone = "America/Vancouver"
+  }
+}

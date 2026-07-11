@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### ✨ Features
 
 - **`unifi_ap_group`: manage AP group membership.** Full CRUD, complementing the existing read-only data source. Which APs belong to a group was fixed in the controller UI: the data source could read a group, but nothing could create or edit one, so `unifi_wlan.ap_group_ids` could only reference groups built by hand. The resource writes membership through the v2 `apgroups` API. `device_macs` reuses the `unifi_client` MAC type, so `AA-BB-…` and `aa:bb:…` read back equal rather than churning the plan on every refresh. Import takes the group ID, or `site:id` for a non-default site (#359, go-unifi#52).
+- **`unifi_setting`: new `global_switch`, `global_nat`, and `locale` sections.** Site-wide switch behavior (STP mode, jumbo frames, flow control, DHCP snooping, 802.1X, device/L3 ACL isolation, switch exclusions), the global NAT mode with per-network exclusions, and the site timezone are now codifiable. Sections are applied with a raw read-modify-write merge: controller fields the SDK does not model (e.g. `link_debounce`) are preserved verbatim instead of being silently dropped, and a failed settings read aborts the apply before anything is written. `acl_device_isolation`, `acl_l3_isolation`, and `switch_exclusions` use the same attribute names as the filipowm provider for config portability.
 
 ### 🐛 Bug Fixes
 
