@@ -522,6 +522,26 @@ func TestOverlayInt64_writeOnlySecretSetValueWrites(t *testing.T) {
 	}
 }
 
+func TestOverlayInt64_writeOnlySecretUnknownDeletesKey(t *testing.T) {
+	out := map[string]any{"k": 1.0}
+	overlayInt64(out, "k", ownerWriteOnlySecret, types.Int64Unknown())
+	if _, ok := out["k"]; ok {
+		t.Fatalf("expected key deleted for unknown write-only-secret int64, still present: %v", out["k"])
+	}
+}
+
+func TestOverlayInt64_writeOnlySecretZeroValueWritesNotDeletes(t *testing.T) {
+	out := map[string]any{"k": "******"}
+	overlayInt64(out, "k", ownerWriteOnlySecret, types.Int64Value(0))
+	v, ok := out["k"]
+	if !ok {
+		t.Fatalf("expected key present after configured-zero write-only-secret int64 overlay (intentional write, not delete)")
+	}
+	if v != float64(0) {
+		t.Fatalf("expected 0.0 written, got %v", v)
+	}
+}
+
 func TestDecodeBool_writeOnlySecretPreservesPrior(t *testing.T) {
 	data := map[string]any{"k": false}
 	prior := types.BoolValue(true)
@@ -574,6 +594,26 @@ func TestOverlayBool_writeOnlySecretSetValueWrites(t *testing.T) {
 	overlayBool(out, "k", ownerWriteOnlySecret, types.BoolValue(false))
 	if out["k"] != false {
 		t.Fatalf("expected false written, got %v", out["k"])
+	}
+}
+
+func TestOverlayBool_writeOnlySecretUnknownDeletesKey(t *testing.T) {
+	out := map[string]any{"k": true}
+	overlayBool(out, "k", ownerWriteOnlySecret, types.BoolUnknown())
+	if _, ok := out["k"]; ok {
+		t.Fatalf("expected key deleted for unknown write-only-secret bool, still present: %v", out["k"])
+	}
+}
+
+func TestOverlayBool_writeOnlySecretFalseValueWritesNotDeletes(t *testing.T) {
+	out := map[string]any{"k": "******"}
+	overlayBool(out, "k", ownerWriteOnlySecret, types.BoolValue(false))
+	v, ok := out["k"]
+	if !ok {
+		t.Fatalf("expected key present after configured-false write-only-secret bool overlay (intentional write, not delete)")
+	}
+	if v != false {
+		t.Fatalf("expected false written, got %v", v)
 	}
 }
 
@@ -649,6 +689,55 @@ func TestOverlayStringList_writeOnlySecretNullDeletesKey(t *testing.T) {
 	}
 	if _, ok := out["k"]; ok {
 		t.Fatalf("expected key deleted for null write-only-secret list, still present: %v", out["k"])
+	}
+}
+
+func TestOverlayStringList_writeOnlySecretUnknownDeletesKey(t *testing.T) {
+	ctx := context.Background()
+	out := map[string]any{"k": []any{"masked"}}
+	overlayDiags := overlayStringList(ctx, out, "k", ownerWriteOnlySecret, types.ListUnknown(types.StringType))
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	if _, ok := out["k"]; ok {
+		t.Fatalf("expected key deleted for unknown write-only-secret list, still present: %v", out["k"])
+	}
+}
+
+func TestOverlayStringList_writeOnlySecretSetValueWrites(t *testing.T) {
+	ctx := context.Background()
+	out := map[string]any{"k": []any{"masked"}}
+	newList, diags := types.ListValue(types.StringType, []attr.Value{types.StringValue("new-a"), types.StringValue("new-b")})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+	overlayDiags := overlayStringList(ctx, out, "k", ownerWriteOnlySecret, newList)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	list, ok := out["k"].([]any)
+	if !ok || len(list) != 2 || list[0] != "new-a" || list[1] != "new-b" {
+		t.Fatalf("expected new list written, got %v", out["k"])
+	}
+}
+
+func TestOverlayStringList_writeOnlySecretEmptyValueWritesNotDeletes(t *testing.T) {
+	ctx := context.Background()
+	out := map[string]any{"k": []any{"masked"}}
+	empty, diags := types.ListValue(types.StringType, []attr.Value{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+	overlayDiags := overlayStringList(ctx, out, "k", ownerWriteOnlySecret, empty)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	list, ok := out["k"].([]any)
+	if !ok {
+		t.Fatalf("expected key present after configured-empty write-only-secret list overlay (intentional clear)")
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected empty list written, got %v", list)
 	}
 }
 
@@ -751,6 +840,43 @@ func TestOverlayObject_writesManagedChildAndDeletesSecretLeafOnNull(t *testing.T
 	}
 	if _, ok := nested["secret"]; ok {
 		t.Fatalf("expected secret leaf deleted on null config, still present: %v", nested["secret"])
+	}
+}
+
+func TestOverlayObject_writesManagedChildAndDeletesSecretLeafOnUnknown(t *testing.T) {
+	ctx := context.Background()
+	out := map[string]any{
+		"nested": map[string]any{
+			"name":   "orig-name",
+			"secret": "******",
+		},
+	}
+	childOwnership := map[string]ownershipClass{
+		"name":   ownerManaged,
+		"secret": ownerWriteOnlySecret,
+	}
+	attrTypes := nestedTestAttrTypes()
+	cfg, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"name":   types.StringValue("new-name"),
+		"secret": types.StringUnknown(),
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+
+	overlayDiags := overlayObject(ctx, out, "nested", childOwnership, cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	nested, ok := out["nested"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected nested map, got %v", out["nested"])
+	}
+	if nested["name"] != "new-name" {
+		t.Fatalf("expected name overwritten to new-name, got %v", nested["name"])
+	}
+	if _, ok := nested["secret"]; ok {
+		t.Fatalf("expected secret leaf deleted on unknown config, still present: %v", nested["secret"])
 	}
 }
 
@@ -897,6 +1023,51 @@ func TestOverlayObjectList_writesElementsAndDeletesSecretLeafOnNullElement(t *te
 	}
 	if _, ok := elem["password"]; ok {
 		t.Fatalf("expected password leaf deleted on null element config, still present: %v", elem["password"])
+	}
+}
+
+func TestOverlayObjectList_writesElementsAndDeletesSecretLeafOnUnknownElement(t *testing.T) {
+	ctx := context.Background()
+	out := map[string]any{
+		"keys": []any{
+			map[string]any{"name": "key-a", "password": "******"},
+		},
+	}
+	elemOwnership := map[string]ownershipClass{
+		"name":     ownerManaged,
+		"password": ownerWriteOnlySecret,
+	}
+	attrTypes := map[string]attr.Type{
+		"name":     types.StringType,
+		"password": types.StringType,
+	}
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+	cfgElem, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"name":     types.StringValue("key-a-renamed"),
+		"password": types.StringUnknown(),
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+	cfg, diags := types.ListValue(elemType, []attr.Value{cfgElem})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+
+	overlayDiags := overlayObjectList(ctx, out, "keys", elemOwnership, cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	list, ok := out["keys"].([]any)
+	if !ok || len(list) != 1 {
+		t.Fatalf("expected 1-element list, got %v", out["keys"])
+	}
+	elem := list[0].(map[string]any)
+	if elem["name"] != "key-a-renamed" {
+		t.Fatalf("expected name overwritten, got %v", elem["name"])
+	}
+	if _, ok := elem["password"]; ok {
+		t.Fatalf("expected password leaf deleted on unknown element config, still present: %v", elem["password"])
 	}
 }
 
