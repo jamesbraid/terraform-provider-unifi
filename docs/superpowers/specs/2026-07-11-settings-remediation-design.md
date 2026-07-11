@@ -1,7 +1,7 @@
 # Settings Expansion Remediation — Design
 
 Date: 2026-07-11
-Status: draft — revision 2 (addresses codex `spec-review` turn 1)
+Status: draft — revision 3 (addresses codex `spec-review` turns 1–2)
 
 ## Goal
 
@@ -78,9 +78,13 @@ regress it.
 ### C1. Field-ownership taxonomy — the value-semantics contract (gate 5)
 
 Every schema leaf is tagged with exactly one ownership class. The shared codec
-branches on class; no field carries ad-hoc null/empty/clearing logic. Settings
-singletons always hold a controller value for every known field, so "remote
-absent" means the *section/product* is unsupported, not the field.
+branches on class; no field carries ad-hoc null/empty/clearing logic.
+
+**Field absence vs section absence.** A key missing *within* a present section
+maps to Terraform null — a normal nullable/defaulted field, resolved per class
+below. A whole *section* missing from the snapshot is a capability question
+(C6), never silently treated as a set of null fields. "Remote absent" in the
+matrix below is always field-level.
 
 **Classes and their Terraform encoding:**
 
@@ -89,7 +93,7 @@ absent" means the *section/product* is unsupported, not the field.
 | `Managed` | Optional + Computed | user when set, controller when omitted | adopt remote |
 | `CoManaged` | Optional + Computed + UseStateForUnknown | user and controller (controller mutates out-of-band) | adopt remote; churn documented |
 | `Computed` | Computed | controller only | adopt remote |
-| `WriteOnlySecret` | Optional + Sensitive (not Computed) | user | never from API; preserve prior |
+| `WriteOnlySecret` | Optional + Sensitive (not Computed) | user | preserve prior; adopt only if field is `echoed` |
 | `GeneratedSecret` | Computed + Sensitive + UseStateForUnknown | controller | adopt once; never user-set |
 | `PreservedUnmanaged` | not in schema | controller | raw-merge preserved verbatim |
 
@@ -125,12 +129,19 @@ null" = attribute absent from configuration; "cfg empty" = present zero value.
   and separately tested.
 - **One raw codec** for every registry section — no hand-rolled per-section
   null/empty checks (retires the `locale`/`snmp` variants). (§3.3.)
+- **CoManaged drift:** a `CoManaged` field pinned in config re-asserts that
+  value on every apply (last-writer = the apply); if the controller changed it
+  out-of-band, refresh adopts the controller value into state and the next plan
+  shows drift against config — intended. `UseStateForUnknown` only suppresses
+  churn on *unrelated* edits, never on the field's own configured change.
 
 **Secret sub-cases (resolving §2.8):**
 
-- *Echoed vs masked:* `WriteOnlySecret` read inspects the remote value: a real
-  value is adopted (echoed API); an empty/masked placeholder preserves the
-  prior state value. Masking patterns are documented per field.
+- *Echoed vs masked:* by default a `WriteOnlySecret` never trusts the API and
+  preserves the prior state value. A field known to echo its value carries an
+  `echoed` annotation; only then is a real remote value adopted, while an
+  empty/masked placeholder still preserves prior. Masking patterns are
+  documented per field.
 - *Rotation:* a changed `WriteOnlySecret` config value is an ordinary write; no
   special path.
 - *Import without secret:* an imported resource has no prior state and the API
@@ -166,8 +177,12 @@ Orchestration (owned by the resource):
 1. **One snapshot.** A single `ListSettings` per Create/Update/Read is passed
    to every section. `guest_access` and `magic_site_to_site_vpn` decode the
    shared snapshot (their independent reads were unnecessary). **Snapshot
-   exception list: empty** — no section fetches independently. A future genuine
-   exception must be added to this list with justification. (§2.3.)
+   exception list: empty** — no section fetches independently for read/decode.
+   Capability probes are the one *named* exception to "no independent fetch"
+   (C6): they run in the pre-mutation capability stage, are enumerated
+   per-section (**currently empty**), and any probe failure occurs before the
+   first PUT. Any future read/probe exception is added to the relevant list
+   with justification. (§2.3.)
 2. **Reconcile before mutate.** All configured sections decode, validate, and
    produce candidate `RawSetting`s before the first PUT. Any conversion or
    validation error aborts before any controller write. (§2.2; §5.1 for
@@ -182,7 +197,13 @@ Orchestration (owned by the resource):
    per C1). Surface a section-qualified error diagnostic. State is always the
    post-operation truth, making retry idempotent: the next apply re-attempts
    `k..n` from real current state. `unifi_setting` is documented as
-   non-atomic.
+   non-atomic. **If the final `ListSettings` itself fails** after one or more
+   PUTs, state cannot be read back: write best-effort state = prior state with
+   each successfully-PUT section replaced by the candidate values that were
+   sent (secrets preserved per C1, unmodeled keys kept from prior), emit a
+   *distinct* diagnostic instructing a `terraform refresh`, and mark the
+   operation failed. The next refresh reconciles from a fresh snapshot; no
+   secret is cleared by this path (R2).
 5. **Post-mutation reconciliation source.** The final `ListSettings` after the
    PUT loop is canonical for state on both success and partial failure (also
    answers §5.2 for settings). No trusting of PUT response bodies.
@@ -220,8 +241,8 @@ One contract; exact syntax:
 | Resource | Import ID accepted | Persisted `id` | `site` | Change `site` |
 |----------|--------------------|----------------|--------|---------------|
 | `unifi_setting` | `<site>` (or `default`) | the site name | set from import | RequiresReplace |
-| `unifi_nat_rule` | `<id>` or `<site>:<id>` | the object id | from prefix, else provider default | RequiresReplace |
-| `unifi_content_filtering` | `<id>` or `<site>:<id>` | the object id | from prefix, else provider default | RequiresReplace |
+| `unifi_nat_rule` | `<id>` or `<site>:<id>` | canonical `<site>:<id>` | derived from `id` | RequiresReplace |
+| `unifi_content_filtering` | `<id>` or `<site>:<id>` | canonical `<site>:<id>` | derived from `id` | RequiresReplace |
 
 - `unifi_setting` import sets `site` and hydrates **every registered section**
   into Computed state; hydrated values are observed (Computed + UseStateFor
@@ -229,10 +250,16 @@ One contract; exact syntax:
   for them produces no diff. Adding config for a field opts it into management.
   This resolves both "import reads nothing" and "import silently manages
   observed config." (§2.7.)
-- `<id>` (no prefix) uses the provider default site and is provably equivalent
-  to `<default-site>:<id>`. Invalid/ambiguous input is a diagnostic, never a
-  silent default. A shared `resolveSite` helper is used by all three; Read
-  never rewrites identity.
+- For NAT and content filtering the persisted Terraform `id` is the canonical
+  `<site>:<id>`; `site` and the bare object id are computed from it. Every code
+  path — import, Read, Update, Delete, timeouts, state upgrade — consumes this
+  one composite identity, so no path can treat the object id as globally
+  unique. (§5.5.)
+- `<id>` (no prefix) on import uses the provider default site and is provably
+  equivalent to `<default-site>:<id>`; both normalize to the same persisted
+  `<site>:<id>`. Invalid/ambiguous input is a diagnostic, never a silent
+  default. A shared `resolveSite` helper is used by all three; Read never
+  rewrites identity.
 - Equivalence tests run under a provider configured with a **non-default**
   default site. (§5.5.)
 
@@ -269,10 +296,12 @@ One mechanism wherever valid children depend on another field (NAT `type`, NAT
 `capabilityState` ∈ {`Supported`, `Unsupported`, `Unmaterialized`,
 `Unauthorized`, `Unknown`}. Source of truth:
 
-- **Settings:** the snapshot's key presence. Section key present →
-  `Supported`/`Unmaterialized`; absent on a product/version that should have it
-  → `Unsupported`. An explicit endpoint probe is permitted only where the
-  snapshot cannot distinguish, and is documented per section.
+- **Settings:** the snapshot's key presence establishes only that the section
+  *exists*. Distinguishing `Supported` (present, real values) from
+  `Unmaterialized` (present, defaults only) is decided from the section's own
+  fields, or from an enumerated pre-mutation probe where the fields are
+  insufficient (the C2.1 named exception; currently empty). A key absent on a
+  product/version that should carry it → `Unsupported`.
 - **v2 resources:** typed API errors — NotFound (`Unmaterialized`/absent),
   method/endpoint unsupported (`Unsupported`), 401/403 (`Unauthorized`).
 
@@ -282,6 +311,9 @@ Behavior:
   (never silent-null). (§2.9.)
 - Not configured + `Unsupported` → omitted from state.
 - `Unmaterialized` → treated as defaults; configuring materializes it.
+- `Unknown` (capability indeterminate, e.g. a transient error): a *configured*
+  section fails closed with a retryable diagnostic; a non-configured section is
+  ignored.
 - Test outcomes: `Unsupported` → skip with reason; `Unauthorized`/transient →
   fail, not skip. Prechecks are non-mutating; where write capability is the
   thing under test, the mutation lives in the managed test lifecycle, not an
@@ -345,9 +377,11 @@ Self-contained; no dependency on V/D/E. Privacy scrub of
 A dedicated small PR introducing `unifi/v2_resource.go`: the shared v2
 lifecycle template (site resolution via C3, timeout preservation, conversion-
 halts-state per §5.1, NotFound, post-mutation reconcile convention per §5.2,
-identity) and `objectAsOptions`. **Both PR-D and PR-E depend only on PR-V, not
-on each other** — resolving the D/E coupling and the `objectAsOptions`-in-NAT
-defect. D and E are mergeable in either order once V is in.
+identity) and `objectAsOptions`. It also records the §5.9 list-resource
+eligibility rule that D and E each apply. **Both PR-D and PR-E depend only on
+PR-V, not on each other** — resolving the D/E coupling, the
+`objectAsOptions`-in-NAT defect, and the list-resource cross-dependency. D and
+E are mergeable in either order once V is in.
 
 ### PR-D · NAT resource — §4.2/§4.4/§5.2/§5.6/§5.9/§6.1
 
@@ -355,15 +389,16 @@ Rule types as distinct shapes (C4/§4.4), filter discriminator normalization
 (C4/§4.2), predefined/non-editable rules surfaced from existing SDK
 `attr_*`/`nat.NoEdit` flags with predictable Read/Update/Delete (§5.6),
 non-mutating capability precheck (C6/§6.1), site identity (C3), built on PR-V.
-Real DNAT/SNAT acceptance coverage, not MASQUERADE-only. List-resource decision
-per the cross-cutting rule below.
+Real DNAT/SNAT acceptance coverage, not MASQUERADE-only. Applies PR-V's
+recorded list-resource rule.
 
 ### PR-E · Content-filtering resource — §5.3/§5.4/§5.2/§5.9/§6.1
 
 Collection ownership per C1 (§5.3), enum compatibility policy (below, §5.4),
 client+network scope semantics documented from live behavior, capability (C6),
-site identity (C3), built on PR-V. Compiles and behaves identically whether or
-not PR-D is merged (both depend only on PR-V).
+site identity (C3), built on PR-V, applies PR-V's list-resource rule. Compiles
+and behaves identically whether or not PR-D is merged (both depend only on
+PR-V).
 
 ## Cross-cutting policies and resolved decisions
 
@@ -385,12 +420,12 @@ not PR-D is merged (both depend only on PR-V).
   (if any are found) accept any string and defer to the controller — decided
   per field in the owning plan, defaulting to `OneOf` for anything the
   controller strictly validates.
-- **List-resource decision (§5.9) — decided as a rule.** NAT and
-  content-filtering follow whatever the repository's existing v2 resources
-  (e.g. `firewall_policy`) do: if those expose a framework `ListResource`, NAT
-  and CF do too; if not, both are excluded under the same rule, stated in their
-  review guides. PR-D's first task audits the repo convention and applies it
-  uniformly to both.
+- **List-resource decision (§5.9) — decided as a rule, owned by PR-V.** PR-V
+  audits the repository's existing v2 resources (e.g. `firewall_policy`) and
+  records one eligibility rule: if those expose a framework `ListResource`, NAT
+  and content-filtering do too; if not, both are excluded under that rule. PR-D
+  and PR-E each apply the *already-recorded* rule independently, so neither
+  depends on the other.
 - **Collection semantics (§5.7).** Order-meaningful → list; set-membership →
   set. Equivalent selector families use the same type across resources.
 - **Changelog discipline (§F, §9.1).** One entry per PR, house style (what
@@ -502,7 +537,7 @@ call; does not block planning.*
 | §5.6 predefined NAT rules | existing SDK flags / PR-D |
 | §5.7 collection semantics | cross-cutting / PR-C, D, E |
 | §5.8 historical schemas | PR-C |
-| §5.9 list-resource decision | decided rule / PR-D, E |
+| §5.9 list-resource decision | rule owned by PR-V; applied by PR-D, E |
 | §5.10 objectAsOptions coupling | PR-V |
 | §5.11 v2 lifecycle drift | PR-V |
 | §6.1 non-mutating prechecks | C6 / PR-D, E |
