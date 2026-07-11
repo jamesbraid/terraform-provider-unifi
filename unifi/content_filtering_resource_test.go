@@ -2,11 +2,15 @@ package unifi
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
@@ -162,4 +166,141 @@ func TestNewContentFilteringResource(t *testing.T) {
 	if _, ok := got.(fwresource.ResourceWithImportState); !ok {
 		t.Error("NewContentFilteringResource() does not implement resource.ResourceWithImportState")
 	}
+}
+
+// testAccContentFilteringPreCheck skips when the controller lacks the v2
+// content-filtering API (the docker demo controller predates it). A plain
+// list is not sufficient: as with NAT (see testAccNatRulePreCheck), the
+// demo image's v2 GET endpoints can return 200 while POST (create) returns
+// a bare HTTP 500, so the probe also attempts a throwaway create — matching
+// the shape TestAccContentFiltering_basic itself submits — and deletes it
+// on success. Any failure in that round-trip means "unsupported here" and
+// skips the whole test.
+func testAccContentFilteringPreCheck(t *testing.T) {
+	preCheck(t)
+	ctx := context.Background()
+	apiClient, err := unifi.New(ctx, &unifi.Config{
+		BaseURL:       os.Getenv("UNIFI_API"),
+		Username:      os.Getenv("UNIFI_USERNAME"),
+		Password:      os.Getenv("UNIFI_PASSWORD"),
+		AllowInsecure: true,
+	})
+	if err != nil {
+		t.Fatalf("could not build probe client: %v", err)
+	}
+	c := &Client{ApiClient: apiClient, Site: "default"}
+	if _, err := c.ListContentFiltering(ctx, c.Site); err != nil {
+		t.Skipf("controller does not support the v2 content-filtering API: %v", err)
+	}
+
+	probe := &unifi.ContentFiltering{
+		Name:       "tf-acc-precheck-probe",
+		Enabled:    false,
+		Categories: []string{"ADVERTISEMENT"},
+		BlockList:  []string{"example.com"},
+		Schedule:   &unifi.ContentFilteringSchedule{Mode: "ALWAYS"},
+	}
+	created, err := c.CreateContentFiltering(ctx, c.Site, probe)
+	if err != nil {
+		t.Skipf("controller does not support creating v2 content-filtering policies: %v", err)
+	}
+	if err := c.DeleteContentFiltering(ctx, c.Site, created.ID); err != nil {
+		t.Logf(
+			"warning: failed to clean up precheck probe content-filtering policy %s: %v",
+			created.ID,
+			err,
+		)
+	}
+}
+
+func testAccContentFilteringCheckDestroy(s *terraform.State) error {
+	ctx := context.Background()
+	apiURL := os.Getenv("UNIFI_API")
+	if apiURL == "" {
+		return nil
+	}
+	apiClient, err := unifi.New(ctx, &unifi.Config{
+		BaseURL:       apiURL,
+		Username:      os.Getenv("UNIFI_USERNAME"),
+		Password:      os.Getenv("UNIFI_PASSWORD"),
+		AllowInsecure: true,
+	})
+	if err != nil {
+		return nil //nolint:nilerr // best-effort check; skip when no live client
+	}
+	c := &Client{ApiClient: apiClient, Site: "default"}
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "unifi_content_filtering" {
+			continue
+		}
+		site := rs.Primary.Attributes["site"]
+		if site == "" {
+			site = c.Site
+		}
+		_, err := c.GetContentFiltering(ctx, site, rs.Primary.ID)
+		if err == nil {
+			return fmt.Errorf("unifi_content_filtering %s still exists", rs.Primary.ID)
+		}
+		if _, ok := err.(*unifi.NotFoundError); !ok {
+			return err
+		}
+	}
+	return nil
+}
+
+func TestAccContentFiltering_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccContentFilteringPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccContentFilteringCheckDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccContentFilteringConfig("tf-acc-cf", true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_content_filtering.test", "id"),
+					resource.TestCheckResourceAttr(
+						"unifi_content_filtering.test", "name", "tf-acc-cf",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_content_filtering.test", "enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_content_filtering.test", "block_list.#", "1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_content_filtering.test", "schedule.mode", "ALWAYS",
+					),
+				),
+			},
+			// In-place update: rename and disable.
+			{
+				Config: testAccContentFilteringConfig("tf-acc-cf-2", false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_content_filtering.test", "name", "tf-acc-cf-2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_content_filtering.test", "enabled", "false",
+					),
+				),
+			},
+			// Import round-trip.
+			{
+				ResourceName:      "unifi_content_filtering.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccContentFilteringConfig(name string, enabled bool) string {
+	return fmt.Sprintf(`
+resource "unifi_content_filtering" "test" {
+  name       = %q
+  enabled    = %t
+  categories = ["ADVERTISEMENT"]
+  block_list = ["example.com"]
+}
+`, name, enabled)
 }
