@@ -253,6 +253,7 @@ type settingResourceModel struct {
 	Ipsec              types.Object   `tfsdk:"ipsec"`
 	Dashboard          types.Object   `tfsdk:"dashboard"`
 	RadioAi            types.Object   `tfsdk:"radio_ai"`
+	GuestAccess        types.Object   `tfsdk:"guest_access"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
