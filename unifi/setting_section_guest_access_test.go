@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
@@ -386,5 +387,278 @@ func Test_guestAccessDataToModel_authPresence(t *testing.T) {
 	}
 	if !m.RestrictedDNSServers.IsNull() {
 		t.Fatal("absent restricted_dns_servers should stay null")
+	}
+}
+
+// mkGuestAccessObj builds a minimal-but-complete guest_access object for the
+// preserve tests below: top-level password plus the three nested blocks that
+// carry secrets, with every other attribute null so ObjectValueFrom succeeds.
+func mkGuestAccessObj(t *testing.T, password, fbSecret, fwSecret, googleSecret, wechatSecret, wechatKey types.String) types.Object {
+	t.Helper()
+	ctx := context.Background()
+
+	facebook, d := types.ObjectValueFrom(ctx, guestAccessFacebookAttrTypes, settingGuestAccessFacebookModel{
+		AppID:      types.StringValue("fb-app-id"),
+		AppSecret:  fbSecret,
+		ScopeEmail: types.BoolNull(),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	facebookWifi, d := types.ObjectValueFrom(ctx, guestAccessFacebookWifiAttrTypes, settingGuestAccessFacebookWifiModel{
+		BlockHttps:    types.BoolNull(),
+		GatewayID:     types.StringValue("gw-id"),
+		GatewayName:   types.StringValue("gw-name"),
+		GatewaySecret: fwSecret,
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	google, d := types.ObjectValueFrom(ctx, guestAccessGoogleAttrTypes, settingGuestAccessGoogleModel{
+		ClientID:     types.StringValue("client-id"),
+		ClientSecret: googleSecret,
+		Domain:       types.StringNull(),
+		ScopeEmail:   types.BoolNull(),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	wechat, d := types.ObjectValueFrom(ctx, guestAccessWechatAttrTypes, settingGuestAccessWechatModel{
+		AppID:     types.StringValue("wechat-app-id"),
+		AppSecret: wechatSecret,
+		SecretKey: wechatKey,
+		ShopID:    types.StringNull(),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+
+	obj, d := types.ObjectValueFrom(ctx, guestAccessAttrTypes, settingGuestAccessModel{
+		AllowedSubnet:        types.StringNull(),
+		RestrictedSubnet:     types.StringNull(),
+		Auth:                 types.StringNull(),
+		AuthUrl:              types.StringNull(),
+		CustomIP:             types.StringNull(),
+		EcEnabled:            types.BoolNull(),
+		Expire:               types.Int64Null(),
+		ExpireNumber:         types.Int64Null(),
+		ExpireUnit:           types.Int64Null(),
+		PortalCustomization:  types.ObjectNull(guestAccessPortalCustomizationAttrTypes),
+		PortalEnabled:        types.BoolNull(),
+		PortalHostname:       types.StringNull(),
+		PortalUseHostname:    types.BoolNull(),
+		Redirect:             types.ObjectNull(guestAccessRedirectAttrTypes),
+		RedirectEnabled:      types.BoolNull(),
+		TemplateEngine:       types.StringNull(),
+		VoucherCustomized:    types.BoolNull(),
+		VoucherEnabled:       types.BoolNull(),
+		Facebook:             facebook,
+		FacebookEnabled:      types.BoolNull(),
+		FacebookWifi:         facebookWifi,
+		Google:               google,
+		GoogleEnabled:        types.BoolNull(),
+		Password:             password,
+		PasswordEnabled:      types.BoolNull(),
+		Radius:               types.ObjectNull(guestAccessRadiusAttrTypes),
+		RadiusEnabled:        types.BoolNull(),
+		RestrictedDNSEnabled: types.BoolNull(),
+		RestrictedDNSServers: types.ListNull(types.StringType),
+		Wechat:               wechat,
+		WechatEnabled:        types.BoolNull(),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	return obj
+}
+
+func Test_preserveGuestAccessSecrets_preservesWhenFreshNull(t *testing.T) {
+	prior := mkGuestAccessObj(t,
+		types.StringValue("prior-password"),
+		types.StringValue("prior-fb-secret"),
+		types.StringValue("prior-fw-secret"),
+		types.StringValue("prior-google-secret"),
+		types.StringValue("prior-wechat-secret"),
+		types.StringValue("prior-wechat-key"),
+	)
+	fresh := mkGuestAccessObj(t,
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+	)
+
+	merged := preserveGuestAccessSecrets(prior, fresh)
+	if merged.IsNull() || merged.IsUnknown() {
+		t.Fatal("merged object should not be null/unknown")
+	}
+
+	pw := merged.Attributes()["password"].(types.String)
+	if pw.ValueString() != "prior-password" {
+		t.Fatalf("password not preserved: %v", pw)
+	}
+
+	fb := merged.Attributes()["facebook"].(types.Object)
+	if fb.Attributes()["app_secret"].(types.String).ValueString() != "prior-fb-secret" {
+		t.Fatalf("facebook.app_secret not preserved: %v", fb.Attributes()["app_secret"])
+	}
+	if fb.Attributes()["app_id"].(types.String).ValueString() != "fb-app-id" {
+		t.Fatal("facebook.app_id should be untouched (fresh, non-secret)")
+	}
+
+	fw := merged.Attributes()["facebook_wifi"].(types.Object)
+	if fw.Attributes()["gateway_secret"].(types.String).ValueString() != "prior-fw-secret" {
+		t.Fatalf("facebook_wifi.gateway_secret not preserved: %v", fw.Attributes()["gateway_secret"])
+	}
+
+	g := merged.Attributes()["google"].(types.Object)
+	if g.Attributes()["client_secret"].(types.String).ValueString() != "prior-google-secret" {
+		t.Fatalf("google.client_secret not preserved: %v", g.Attributes()["client_secret"])
+	}
+
+	w := merged.Attributes()["wechat"].(types.Object)
+	if w.Attributes()["app_secret"].(types.String).ValueString() != "prior-wechat-secret" {
+		t.Fatalf("wechat.app_secret not preserved: %v", w.Attributes()["app_secret"])
+	}
+	if w.Attributes()["secret_key"].(types.String).ValueString() != "prior-wechat-key" {
+		t.Fatalf("wechat.secret_key not preserved: %v", w.Attributes()["secret_key"])
+	}
+}
+
+func Test_preserveGuestAccessSecrets_echoWinsWhenFreshSet(t *testing.T) {
+	prior := mkGuestAccessObj(t,
+		types.StringValue("prior-password"),
+		types.StringValue("prior-fb-secret"),
+		types.StringValue("prior-fw-secret"),
+		types.StringValue("prior-google-secret"),
+		types.StringValue("prior-wechat-secret"),
+		types.StringValue("prior-wechat-key"),
+	)
+	fresh := mkGuestAccessObj(t,
+		types.StringValue("echoed-password"),
+		types.StringValue("echoed-fb-secret"),
+		types.StringValue("echoed-fw-secret"),
+		types.StringValue("echoed-google-secret"),
+		types.StringValue("echoed-wechat-secret"),
+		types.StringValue("echoed-wechat-key"),
+	)
+
+	merged := preserveGuestAccessSecrets(prior, fresh)
+
+	pw := merged.Attributes()["password"].(types.String)
+	if pw.ValueString() != "echoed-password" {
+		t.Fatalf("echoed password should win, got %v", pw)
+	}
+	fb := merged.Attributes()["facebook"].(types.Object)
+	if fb.Attributes()["app_secret"].(types.String).ValueString() != "echoed-fb-secret" {
+		t.Fatalf("echoed facebook.app_secret should win, got %v", fb.Attributes()["app_secret"])
+	}
+	fw := merged.Attributes()["facebook_wifi"].(types.Object)
+	if fw.Attributes()["gateway_secret"].(types.String).ValueString() != "echoed-fw-secret" {
+		t.Fatalf("echoed facebook_wifi.gateway_secret should win, got %v", fw.Attributes()["gateway_secret"])
+	}
+	g := merged.Attributes()["google"].(types.Object)
+	if g.Attributes()["client_secret"].(types.String).ValueString() != "echoed-google-secret" {
+		t.Fatalf("echoed google.client_secret should win, got %v", g.Attributes()["client_secret"])
+	}
+	w := merged.Attributes()["wechat"].(types.Object)
+	if w.Attributes()["app_secret"].(types.String).ValueString() != "echoed-wechat-secret" {
+		t.Fatalf("echoed wechat.app_secret should win, got %v", w.Attributes()["app_secret"])
+	}
+	if w.Attributes()["secret_key"].(types.String).ValueString() != "echoed-wechat-key" {
+		t.Fatalf("echoed wechat.secret_key should win, got %v", w.Attributes()["secret_key"])
+	}
+}
+
+func Test_preserveGuestAccessSecrets_nullPriorPassthrough(t *testing.T) {
+	fresh := mkGuestAccessObj(t,
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+	)
+
+	// No prior object at all (e.g. first read on Create): fresh passes
+	// through untouched.
+	if got := preserveGuestAccessSecrets(types.ObjectNull(guestAccessAttrTypes), fresh); !got.Equal(fresh) {
+		t.Fatalf("null prior should pass fresh through, got %v", got)
+	}
+
+	// Prior present but every secret field null: nothing to preserve.
+	priorNoSecrets := mkGuestAccessObj(t,
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+	)
+	if got := preserveGuestAccessSecrets(priorNoSecrets, fresh); !got.Equal(fresh) {
+		t.Fatalf("secretless prior should pass fresh through, got %v", got)
+	}
+
+	// Unknown prior (e.g. during Create planning): fresh passes through.
+	unknownPrior := types.ObjectUnknown(guestAccessAttrTypes)
+	if got := preserveGuestAccessSecrets(unknownPrior, fresh); !got.Equal(fresh) {
+		t.Fatalf("unknown prior should pass fresh through, got %v", got)
+	}
+}
+
+func Test_settingResource_Schema_guestAccess_sensitive(t *testing.T) {
+	r := &settingResource{}
+	var resp fwresource.SchemaResponse
+	r.Schema(context.Background(), fwresource.SchemaRequest{}, &resp)
+
+	attrRaw, ok := resp.Schema.Attributes["guest_access"]
+	if !ok {
+		t.Fatal("schema is missing the guest_access section attribute")
+	}
+	guestAccess, ok := attrRaw.(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("guest_access attribute is %T, want SingleNestedAttribute", attrRaw)
+	}
+
+	// Top-level password must be Sensitive.
+	pw, ok := guestAccess.Attributes["password"].(schema.StringAttribute)
+	if !ok || !pw.Sensitive {
+		t.Fatal("guest_access.password must be a Sensitive string attribute")
+	}
+
+	nestedSensitive := map[string][]string{
+		"facebook":      {"app_secret"},
+		"facebook_wifi": {"gateway_secret"},
+		"google":        {"client_secret"},
+		"wechat":        {"app_secret", "secret_key"},
+	}
+	for blockName, secretNames := range nestedSensitive {
+		blockRaw, ok := guestAccess.Attributes[blockName]
+		if !ok {
+			t.Fatalf("guest_access.%s attribute missing", blockName)
+		}
+		block, ok := blockRaw.(schema.SingleNestedAttribute)
+		if !ok {
+			t.Fatalf("guest_access.%s is %T, want SingleNestedAttribute", blockName, blockRaw)
+		}
+		for _, secretName := range secretNames {
+			a, ok := block.Attributes[secretName].(schema.StringAttribute)
+			if !ok || !a.Sensitive {
+				t.Fatalf("guest_access.%s.%s must be a Sensitive string attribute", blockName, secretName)
+			}
+		}
+	}
+
+	// google.client_id is deliberately NOT sensitive: OAuth client IDs are
+	// not secrets.
+	googleBlock := guestAccess.Attributes["google"].(schema.SingleNestedAttribute)
+	clientID, ok := googleBlock.Attributes["client_id"].(schema.StringAttribute)
+	if !ok {
+		t.Fatal("guest_access.google.client_id attribute missing")
+	}
+	if clientID.Sensitive {
+		t.Fatal("guest_access.google.client_id must NOT be Sensitive (OAuth client IDs aren't secrets)")
 	}
 }
