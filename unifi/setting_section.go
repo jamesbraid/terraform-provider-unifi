@@ -40,6 +40,7 @@ var settingSections = []settingSection{
 	globalSwitchSection{},
 	mdnsSection{},
 	teleportSection{},
+	magicSiteToSiteVpnSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry
