@@ -66,7 +66,11 @@ func (magicSiteToSiteVpnSection) schemaAttribute() schema.SingleNestedAttribute 
 			},
 			"private_key": schema.StringAttribute{
 				MarkdownDescription: "WireGuard private key. Controller-" +
-					"generated unless explicitly set; never required.",
+					"generated unless explicitly set; never required. " +
+					"The key persists in Terraform state and is resent " +
+					"to the controller on subsequent applies (a " +
+					"controller no-op); protect your state file " +
+					"accordingly.",
 				Optional:  true,
 				Computed:  true,
 				Sensitive: true,
