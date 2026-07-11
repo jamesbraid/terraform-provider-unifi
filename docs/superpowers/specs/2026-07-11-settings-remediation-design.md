@@ -1,7 +1,7 @@
 # Settings Expansion Remediation — Design
 
 Date: 2026-07-11
-Status: draft — revision 3 (addresses codex `spec-review` turns 1–2)
+Status: codex-approved (`spec-review` turn 3) — pending maintainer review
 
 ## Goal
 
@@ -345,6 +345,10 @@ modifiers/capability types) with no new user sections. Migrates the 13 existing
 sections under golden + permitted-delta + coverage-inventory tests. No
 user-facing schema change → no state migration. Production-safe tip: existing
 sections behave identically except for the named permitted deltas.
+*Verification item (codex spec-review):* confirm the plugin-framework retains
+the best-effort state written alongside an `Update` error diagnostic; if the
+framework discards state on error, achieve the same C2.4 recovery semantics via
+its partial-state API.
 
 ### PR-B · Settings tranches (adopt the foundation) — gates 6, 8, 9 per section
 
