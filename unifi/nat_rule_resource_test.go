@@ -2,11 +2,15 @@ package unifi
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
@@ -252,4 +256,138 @@ func TestNewNatRuleResource(t *testing.T) {
 	if _, ok := got.(fwresource.ResourceWithImportState); !ok {
 		t.Error("NewNatRuleResource() does not implement resource.ResourceWithImportState")
 	}
+}
+
+// testAccNatRulePreCheck skips when the controller does not support the v2
+// NAT API (the docker demo controller predates or only partially implements
+// it). A plain list is not sufficient: on the jacobalberty/unifi demo image
+// the v2 NAT GET endpoint returns 200 but POST (create) returns a bare HTTP
+// 500 (not an api.err.* validation error), so the probe also attempts a
+// throwaway create — matching the shape TestAccNatRule_basic itself submits —
+// and deletes it on success. Any failure in that round-trip means "unsupported
+// here" and skips the whole test.
+func testAccNatRulePreCheck(t *testing.T) {
+	preCheck(t)
+	ctx := context.Background()
+	apiClient, err := unifi.New(ctx, &unifi.Config{
+		BaseURL:       os.Getenv("UNIFI_API"),
+		Username:      os.Getenv("UNIFI_USERNAME"),
+		Password:      os.Getenv("UNIFI_PASSWORD"),
+		AllowInsecure: true,
+	})
+	if err != nil {
+		t.Fatalf("could not build probe client: %v", err)
+	}
+	c := &Client{ApiClient: apiClient, Site: "default"}
+	if _, err := c.ListNat(ctx, c.Site); err != nil {
+		t.Skipf("controller does not support the v2 NAT API: %v", err)
+	}
+
+	probe := &unifi.Nat{
+		Type:         "MASQUERADE",
+		OutInterface: "eth8",
+		Description:  "tf-acc-precheck-probe",
+		Enabled:      false,
+	}
+	created, err := c.CreateNat(ctx, c.Site, probe)
+	if err != nil {
+		t.Skipf("controller does not support creating v2 NAT rules: %v", err)
+	}
+	if err := c.DeleteNat(ctx, c.Site, created.ID); err != nil {
+		t.Logf(
+			"warning: failed to clean up precheck probe NAT rule %s: %v",
+			created.ID,
+			err,
+		)
+	}
+}
+
+// testAccNatRuleCheckDestroy verifies every unifi_nat_rule in state is gone.
+func testAccNatRuleCheckDestroy(s *terraform.State) error {
+	ctx := context.Background()
+	apiURL := os.Getenv("UNIFI_API")
+	if apiURL == "" {
+		return nil
+	}
+	apiClient, err := unifi.New(ctx, &unifi.Config{
+		BaseURL:       apiURL,
+		Username:      os.Getenv("UNIFI_USERNAME"),
+		Password:      os.Getenv("UNIFI_PASSWORD"),
+		AllowInsecure: true,
+	})
+	if err != nil {
+		return nil //nolint:nilerr // best-effort check; skip when no live client
+	}
+	c := &Client{ApiClient: apiClient, Site: "default"}
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "unifi_nat_rule" {
+			continue
+		}
+		site := rs.Primary.Attributes["site"]
+		if site == "" {
+			site = c.Site
+		}
+		_, err := c.GetNat(ctx, site, rs.Primary.ID)
+		if err == nil {
+			return fmt.Errorf("unifi_nat_rule %s still exists", rs.Primary.ID)
+		}
+		if _, ok := err.(*unifi.NotFoundError); !ok {
+			return err
+		}
+	}
+	return nil
+}
+
+func TestAccNatRule_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccNatRulePreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccNatRuleCheckDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNatRuleConfig("tf-acc masquerade", false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_nat_rule.test", "id"),
+					resource.TestCheckResourceAttr(
+						"unifi_nat_rule.test", "type", "MASQUERADE",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_nat_rule.test", "description", "tf-acc masquerade",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_nat_rule.test", "enabled", "false",
+					),
+				),
+			},
+			// In-place update: description and enabled.
+			{
+				Config: testAccNatRuleConfig("tf-acc masquerade v2", true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_nat_rule.test", "description", "tf-acc masquerade v2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_nat_rule.test", "enabled", "true",
+					),
+				),
+			},
+			// Import round-trip.
+			{
+				ResourceName:      "unifi_nat_rule.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func testAccNatRuleConfig(description string, enabled bool) string {
+	return fmt.Sprintf(`
+resource "unifi_nat_rule" "test" {
+  type          = "MASQUERADE"
+  description   = %q
+  enabled       = %t
+  out_interface = "eth8"
+}
+`, description, enabled)
 }
