@@ -241,6 +241,7 @@ type settingResourceModel struct {
 	GlobalNat     types.Object   `tfsdk:"global_nat"`
 	GlobalSwitch  types.Object   `tfsdk:"global_switch"`
 	Mdns          types.Object   `tfsdk:"mdns"`
+	Teleport      types.Object   `tfsdk:"teleport"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
