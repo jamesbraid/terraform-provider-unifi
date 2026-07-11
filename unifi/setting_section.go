@@ -39,6 +39,7 @@ var settingSections = []settingSection{
 	globalNatSection{},
 	globalSwitchSection{},
 	mdnsSection{},
+	teleportSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry
