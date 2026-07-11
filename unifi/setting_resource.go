@@ -237,6 +237,7 @@ type settingResourceModel struct {
 	Radius        types.Object   `tfsdk:"radius"`
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
+	Locale        types.Object   `tfsdk:"locale"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -1267,6 +1268,10 @@ func (r *settingResource) Schema(
 			),
 		},
 	}
+
+	for _, s := range settingSections {
+		resp.Schema.Attributes[s.key()] = s.schemaAttribute()
+	}
 }
 
 // UpgradeState migrates v0 state to v1: radius.interim_update_interval and the
@@ -1591,6 +1596,11 @@ func (r *settingResource) Create(
 		}
 	}
 
+	resp.Diagnostics.Append(r.applySections(ctx, site, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Read back the settings
 	r.readSettings(ctx, site, &data, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -1878,6 +1888,11 @@ func (r *settingResource) Update(
 			resp.Diagnostics.AddError("Error Updating IGMP Snooping Setting", err.Error())
 			return
 		}
+	}
+
+	resp.Diagnostics.Append(r.applySections(ctx, site, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Read back the settings
@@ -2295,6 +2310,8 @@ func (r *settingResource) readSettings(
 	} else {
 		data.IgmpSnooping = types.ObjectNull(igmpSnoopingAttrTypes)
 	}
+
+	r.readSections(ctx, site, data, diags)
 }
 
 // Mgmt conversion functions.
