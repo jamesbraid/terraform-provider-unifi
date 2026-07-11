@@ -488,9 +488,9 @@ manual step:** `tofu plan` (read-mostly) against the real UDM via
 `~/ansible/infra/unifi`, expecting a no-op or exactly the intended drift, with
 deliberate `apply` at the maintainer's discretion. Gates: after **A+B**
 (settings core) and after **V+D+E** (gateway resources, which the demo
-controller cannot exercise). *Open: whether a non-production UDM/test site is
-available, or live validation is plan-first against production — maintainer's
-call; does not block planning.*
+controller cannot exercise). *Target (TBC): a cloud UniFi controller wired up
+as a dedicated non-production test bed; because it is non-production, applies —
+not only plans — can run there. Does not block planning.*
 
 ## Review process for this cycle
 
@@ -553,6 +553,10 @@ call; does not block planning.*
 
 ## Remaining open items (non-blocking for planning)
 
-- Whether the `codex-review` bridge is committed to the branch or kept as local
-  tooling (maintainer preference).
-- Live-validation target (non-production UDM vs plan-first against production).
+- **codex-review bridge — decided:** kept as local tooling for now, not
+  committed to the branch (excluded via `.git/info/exclude`).
+- **Live-validation target — TBC:** a cloud UniFi controller will be wired up as
+  a dedicated test bed (maintainer has a cloud key to connect). Because it is a
+  proper non-production target, live *applies* — not just plans — can run there.
+  Until it exists, live validation is deferred; automated tests remain
+  demo-controller-only regardless.
