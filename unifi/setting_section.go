@@ -44,6 +44,7 @@ var settingSections = []settingSection{
 	trafficFlowSection{},
 	etherLightingSection{},
 	snmpSection{},
+	netflowSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry

@@ -246,6 +246,7 @@ type settingResourceModel struct {
 	TrafficFlow        types.Object   `tfsdk:"traffic_flow"`
 	EtherLighting      types.Object   `tfsdk:"ether_lighting"`
 	Snmp               types.Object   `tfsdk:"snmp"`
+	Netflow            types.Object   `tfsdk:"netflow"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
