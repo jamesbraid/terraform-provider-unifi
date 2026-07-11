@@ -100,6 +100,15 @@ func Test_guestAccessModelToData_core(t *testing.T) {
 		RestrictedDNSServers: types.ListNull(types.StringType),
 		Wechat:               types.ObjectNull(guestAccessWechatAttrTypes),
 		WechatEnabled:        types.BoolNull(),
+
+		Authorize:       types.ObjectNull(guestAccessAuthorizeAttrTypes),
+		IPpay:           types.ObjectNull(guestAccessIPpayAttrTypes),
+		MerchantWarrior: types.ObjectNull(guestAccessMerchantWarriorAttrTypes),
+		PaymentEnabled:  types.BoolNull(),
+		PaymentGateway:  types.StringNull(),
+		Paypal:          types.ObjectNull(guestAccessPaypalAttrTypes),
+		Quickpay:        types.ObjectNull(guestAccessQuickpayAttrTypes),
+		Stripe:          types.ObjectNull(guestAccessStripeAttrTypes),
 	})
 	if d.HasError() {
 		t.Fatal(d)
@@ -465,6 +474,88 @@ func mkGuestAccessObj(t *testing.T, password, fbSecret, fwSecret, googleSecret, 
 		RestrictedDNSServers: types.ListNull(types.StringType),
 		Wechat:               wechat,
 		WechatEnabled:        types.BoolNull(),
+
+		Authorize:       types.ObjectNull(guestAccessAuthorizeAttrTypes),
+		IPpay:           types.ObjectNull(guestAccessIPpayAttrTypes),
+		MerchantWarrior: types.ObjectNull(guestAccessMerchantWarriorAttrTypes),
+		PaymentEnabled:  types.BoolNull(),
+		PaymentGateway:  types.StringNull(),
+		Paypal:          types.ObjectNull(guestAccessPaypalAttrTypes),
+		Quickpay:        types.ObjectNull(guestAccessQuickpayAttrTypes),
+		Stripe:          types.ObjectNull(guestAccessStripeAttrTypes),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	return obj
+}
+
+// mkGuestAccessObjWithPayment builds a minimal-but-complete guest_access
+// object like mkGuestAccessObj, but with the stripe and paypal payment
+// gateway blocks populated instead of the auth-provider blocks — covering
+// the preserve extension over gateway credentials (Task 5's obligation
+// beyond the brief).
+func mkGuestAccessObjWithPayment(t *testing.T, stripeKey, paypalUsername, paypalPassword, paypalSignature types.String) types.Object {
+	t.Helper()
+	ctx := context.Background()
+
+	stripe, d := types.ObjectValueFrom(ctx, guestAccessStripeAttrTypes, settingGuestAccessStripeModel{
+		APIKey: stripeKey,
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	paypal, d := types.ObjectValueFrom(ctx, guestAccessPaypalAttrTypes, settingGuestAccessPaypalModel{
+		Username:   paypalUsername,
+		Password:   paypalPassword,
+		Signature:  paypalSignature,
+		UseSandbox: types.BoolNull(),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+
+	obj, d := types.ObjectValueFrom(ctx, guestAccessAttrTypes, settingGuestAccessModel{
+		AllowedSubnet:        types.StringNull(),
+		RestrictedSubnet:     types.StringNull(),
+		Auth:                 types.StringNull(),
+		AuthUrl:              types.StringNull(),
+		CustomIP:             types.StringNull(),
+		EcEnabled:            types.BoolNull(),
+		Expire:               types.Int64Null(),
+		ExpireNumber:         types.Int64Null(),
+		ExpireUnit:           types.Int64Null(),
+		PortalCustomization:  types.ObjectNull(guestAccessPortalCustomizationAttrTypes),
+		PortalEnabled:        types.BoolNull(),
+		PortalHostname:       types.StringNull(),
+		PortalUseHostname:    types.BoolNull(),
+		Redirect:             types.ObjectNull(guestAccessRedirectAttrTypes),
+		RedirectEnabled:      types.BoolNull(),
+		TemplateEngine:       types.StringNull(),
+		VoucherCustomized:    types.BoolNull(),
+		VoucherEnabled:       types.BoolNull(),
+		Facebook:             types.ObjectNull(guestAccessFacebookAttrTypes),
+		FacebookEnabled:      types.BoolNull(),
+		FacebookWifi:         types.ObjectNull(guestAccessFacebookWifiAttrTypes),
+		Google:               types.ObjectNull(guestAccessGoogleAttrTypes),
+		GoogleEnabled:        types.BoolNull(),
+		Password:             types.StringNull(),
+		PasswordEnabled:      types.BoolNull(),
+		Radius:               types.ObjectNull(guestAccessRadiusAttrTypes),
+		RadiusEnabled:        types.BoolNull(),
+		RestrictedDNSEnabled: types.BoolNull(),
+		RestrictedDNSServers: types.ListNull(types.StringType),
+		Wechat:               types.ObjectNull(guestAccessWechatAttrTypes),
+		WechatEnabled:        types.BoolNull(),
+
+		Authorize:       types.ObjectNull(guestAccessAuthorizeAttrTypes),
+		IPpay:           types.ObjectNull(guestAccessIPpayAttrTypes),
+		MerchantWarrior: types.ObjectNull(guestAccessMerchantWarriorAttrTypes),
+		PaymentEnabled:  types.BoolNull(),
+		PaymentGateway:  types.StringNull(),
+		Paypal:          paypal,
+		Quickpay:        types.ObjectNull(guestAccessQuickpayAttrTypes),
+		Stripe:          stripe,
 	})
 	if d.HasError() {
 		t.Fatal(d)
@@ -608,6 +699,80 @@ func Test_preserveGuestAccessSecrets_nullPriorPassthrough(t *testing.T) {
 	}
 }
 
+// Test_preserveGuestAccessSecrets_paymentGateways_preservesWhenFreshNull
+// covers the preserve extension added on top of the brief for Task 5: the
+// stripe and paypal payment gateway credentials are write-only, exactly
+// like the auth-provider secrets covered above, and must be carried forward
+// from prior state when a controller read doesn't echo them back.
+func Test_preserveGuestAccessSecrets_paymentGateways_preservesWhenFreshNull(t *testing.T) {
+	prior := mkGuestAccessObjWithPayment(t,
+		types.StringValue("prior-stripe-key"),
+		types.StringValue("prior-paypal-user"),
+		types.StringValue("prior-paypal-pass"),
+		types.StringValue("prior-paypal-sig"),
+	)
+	fresh := mkGuestAccessObjWithPayment(t,
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+		types.StringNull(),
+	)
+
+	merged := preserveGuestAccessSecrets(prior, fresh)
+	if merged.IsNull() || merged.IsUnknown() {
+		t.Fatal("merged object should not be null/unknown")
+	}
+
+	stripe := merged.Attributes()["stripe"].(types.Object)
+	if stripe.Attributes()["api_key"].(types.String).ValueString() != "prior-stripe-key" {
+		t.Fatalf("stripe.api_key not preserved: %v", stripe.Attributes()["api_key"])
+	}
+
+	paypal := merged.Attributes()["paypal"].(types.Object)
+	if paypal.Attributes()["username"].(types.String).ValueString() != "prior-paypal-user" {
+		t.Fatalf("paypal.username not preserved: %v", paypal.Attributes()["username"])
+	}
+	if paypal.Attributes()["password"].(types.String).ValueString() != "prior-paypal-pass" {
+		t.Fatalf("paypal.password not preserved: %v", paypal.Attributes()["password"])
+	}
+	if paypal.Attributes()["signature"].(types.String).ValueString() != "prior-paypal-sig" {
+		t.Fatalf("paypal.signature not preserved: %v", paypal.Attributes()["signature"])
+	}
+}
+
+func Test_preserveGuestAccessSecrets_paymentGateways_echoWinsWhenFreshSet(t *testing.T) {
+	prior := mkGuestAccessObjWithPayment(t,
+		types.StringValue("prior-stripe-key"),
+		types.StringValue("prior-paypal-user"),
+		types.StringValue("prior-paypal-pass"),
+		types.StringValue("prior-paypal-sig"),
+	)
+	fresh := mkGuestAccessObjWithPayment(t,
+		types.StringValue("echoed-stripe-key"),
+		types.StringValue("echoed-paypal-user"),
+		types.StringValue("echoed-paypal-pass"),
+		types.StringValue("echoed-paypal-sig"),
+	)
+
+	merged := preserveGuestAccessSecrets(prior, fresh)
+
+	stripe := merged.Attributes()["stripe"].(types.Object)
+	if stripe.Attributes()["api_key"].(types.String).ValueString() != "echoed-stripe-key" {
+		t.Fatalf("echoed stripe.api_key should win, got %v", stripe.Attributes()["api_key"])
+	}
+
+	paypal := merged.Attributes()["paypal"].(types.Object)
+	if paypal.Attributes()["username"].(types.String).ValueString() != "echoed-paypal-user" {
+		t.Fatalf("echoed paypal.username should win, got %v", paypal.Attributes()["username"])
+	}
+	if paypal.Attributes()["password"].(types.String).ValueString() != "echoed-paypal-pass" {
+		t.Fatalf("echoed paypal.password should win, got %v", paypal.Attributes()["password"])
+	}
+	if paypal.Attributes()["signature"].(types.String).ValueString() != "echoed-paypal-sig" {
+		t.Fatalf("echoed paypal.signature should win, got %v", paypal.Attributes()["signature"])
+	}
+}
+
 func Test_settingResource_Schema_guestAccess_sensitive(t *testing.T) {
 	r := &settingResource{}
 	var resp fwresource.SchemaResponse
@@ -660,5 +825,141 @@ func Test_settingResource_Schema_guestAccess_sensitive(t *testing.T) {
 	}
 	if clientID.Sensitive {
 		t.Fatal("guest_access.google.client_id must NOT be Sensitive (OAuth client IDs aren't secrets)")
+	}
+
+	// Payment gateway credentials must all be Sensitive.
+	paymentSensitive := map[string][]string{
+		"authorize":        {"login_id", "transaction_key"},
+		"ippay":            {"terminal_id"},
+		"merchant_warrior": {"api_key", "api_passphrase", "merchant_uuid"},
+		"paypal":           {"username", "password", "signature"},
+		"quickpay":         {"agreement_id", "api_key", "merchant_id"},
+		"stripe":           {"api_key"},
+	}
+	for blockName, secretNames := range paymentSensitive {
+		blockRaw, ok := guestAccess.Attributes[blockName]
+		if !ok {
+			t.Fatalf("guest_access.%s attribute missing", blockName)
+		}
+		block, ok := blockRaw.(schema.SingleNestedAttribute)
+		if !ok {
+			t.Fatalf("guest_access.%s is %T, want SingleNestedAttribute", blockName, blockRaw)
+		}
+		for _, secretName := range secretNames {
+			a, ok := block.Attributes[secretName].(schema.StringAttribute)
+			if !ok || !a.Sensitive {
+				t.Fatalf("guest_access.%s.%s must be a Sensitive string attribute", blockName, secretName)
+			}
+		}
+	}
+
+	// use_sandbox flags are not secrets.
+	for _, blockName := range []string{"authorize", "ippay", "merchant_warrior", "paypal", "quickpay"} {
+		block := guestAccess.Attributes[blockName].(schema.SingleNestedAttribute)
+		useSandbox, ok := block.Attributes["use_sandbox"].(schema.BoolAttribute)
+		if !ok {
+			t.Fatalf("guest_access.%s.use_sandbox attribute missing", blockName)
+		}
+		if useSandbox.Sensitive {
+			t.Fatalf("guest_access.%s.use_sandbox must NOT be Sensitive", blockName)
+		}
+	}
+}
+
+func Test_guestAccessModelToData_paymentGateways(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	paypal, d := types.ObjectValueFrom(ctx, guestAccessPaypalAttrTypes,
+		settingGuestAccessPaypalModel{
+			Username:   types.StringValue("merchant@example.com"),
+			Password:   types.StringValue("paypal-pass"),
+			Signature:  types.StringValue("paypal-sig"),
+			UseSandbox: types.BoolValue(true),
+		})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	quickpay, d := types.ObjectValueFrom(ctx, guestAccessQuickpayAttrTypes,
+		settingGuestAccessQuickpayModel{
+			AgreementID: types.StringValue("agreement"),
+			APIKey:      types.StringValue("qp-key"),
+			MerchantID:  types.StringValue("merchant"),
+			UseSandbox:  types.BoolValue(true),
+		})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+
+	m := &settingGuestAccessModel{
+		PaymentEnabled: types.BoolValue(true),
+		PaymentGateway: types.StringValue("paypal"),
+		Paypal:         paypal,
+		Quickpay:       quickpay,
+		Authorize:      types.ObjectNull(guestAccessAuthorizeAttrTypes),
+		IPpay:          types.ObjectNull(guestAccessIPpayAttrTypes),
+		MerchantWarrior: types.ObjectNull(
+			guestAccessMerchantWarriorAttrTypes),
+		Stripe: types.ObjectNull(guestAccessStripeAttrTypes),
+	}
+
+	data := map[string]any{"unmodeled_field": "keep"}
+	guestAccessModelToData(ctx, m, data, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+
+	if data["payment_enabled"] != true || data["gateway"] != "paypal" {
+		t.Fatalf("payment fields wrong: %v", data)
+	}
+	if data["x_paypal_username"] != "merchant@example.com" ||
+		data["x_paypal_password"] != "paypal-pass" ||
+		data["x_paypal_signature"] != "paypal-sig" ||
+		data["paypal_use_sandbox"] != true {
+		t.Fatalf("paypal fields wrong: %v", data)
+	}
+	if data["x_quickpay_agreementid"] != "agreement" ||
+		data["x_quickpay_apikey"] != "qp-key" ||
+		data["x_quickpay_merchantid"] != "merchant" ||
+		data["quickpay_testmode"] != true {
+		t.Fatalf("quickpay fields wrong: %v", data)
+	}
+	if _, present := data["x_stripe_api_key"]; present {
+		t.Fatal("null stripe block should not write keys")
+	}
+	if data["unmodeled_field"] != "keep" {
+		t.Fatal("unmodeled_field was clobbered")
+	}
+}
+
+func Test_guestAccessDataToModel_paymentPresence(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	data := map[string]any{
+		"payment_enabled":  true,
+		"gateway":          "stripe",
+		"x_stripe_api_key": "stripe-key",
+	}
+
+	m := guestAccessDataToModel(ctx, data, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+
+	if !m.PaymentEnabled.ValueBool() || m.PaymentGateway.ValueString() != "stripe" {
+		t.Fatalf("payment = %v gateway = %v", m.PaymentEnabled, m.PaymentGateway)
+	}
+	if m.Stripe.IsNull() {
+		t.Fatal("stripe block should materialize")
+	}
+	var s settingGuestAccessStripeModel
+	diags.Append(m.Stripe.As(ctx, &s, basetypes.ObjectAsOptions{})...)
+	if s.APIKey.ValueString() != "stripe-key" {
+		t.Fatalf("stripe = %+v", s)
+	}
+	if !m.Paypal.IsNull() || !m.Quickpay.IsNull() || !m.Authorize.IsNull() ||
+		!m.IPpay.IsNull() || !m.MerchantWarrior.IsNull() {
+		t.Fatal("absent gateway blocks should stay null")
 	}
 }

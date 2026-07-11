@@ -56,6 +56,15 @@ type settingGuestAccessModel struct {
 	RestrictedDNSServers types.List   `tfsdk:"restricted_dns_servers"`
 	Wechat               types.Object `tfsdk:"wechat"`
 	WechatEnabled        types.Bool   `tfsdk:"wechat_enabled"`
+
+	Authorize       types.Object `tfsdk:"authorize"`
+	IPpay           types.Object `tfsdk:"ippay"`
+	MerchantWarrior types.Object `tfsdk:"merchant_warrior"`
+	PaymentEnabled  types.Bool   `tfsdk:"payment_enabled"`
+	PaymentGateway  types.String `tfsdk:"payment_gateway"`
+	Paypal          types.Object `tfsdk:"paypal"`
+	Quickpay        types.Object `tfsdk:"quickpay"`
+	Stripe          types.Object `tfsdk:"stripe"`
 }
 
 type settingGuestAccessRedirectModel struct {
@@ -132,6 +141,42 @@ type settingGuestAccessWechatModel struct {
 	ShopID    types.String `tfsdk:"shop_id"`
 }
 
+type settingGuestAccessAuthorizeModel struct {
+	LoginID        types.String `tfsdk:"login_id"`
+	TransactionKey types.String `tfsdk:"transaction_key"`
+	UseSandbox     types.Bool   `tfsdk:"use_sandbox"`
+}
+
+type settingGuestAccessIPpayModel struct {
+	TerminalID types.String `tfsdk:"terminal_id"`
+	UseSandbox types.Bool   `tfsdk:"use_sandbox"`
+}
+
+type settingGuestAccessMerchantWarriorModel struct {
+	APIKey        types.String `tfsdk:"api_key"`
+	APIPassphrase types.String `tfsdk:"api_passphrase"`
+	MerchantUUID  types.String `tfsdk:"merchant_uuid"`
+	UseSandbox    types.Bool   `tfsdk:"use_sandbox"`
+}
+
+type settingGuestAccessPaypalModel struct {
+	Password   types.String `tfsdk:"password"`
+	Signature  types.String `tfsdk:"signature"`
+	UseSandbox types.Bool   `tfsdk:"use_sandbox"`
+	Username   types.String `tfsdk:"username"`
+}
+
+type settingGuestAccessQuickpayModel struct {
+	AgreementID types.String `tfsdk:"agreement_id"`
+	APIKey      types.String `tfsdk:"api_key"`
+	MerchantID  types.String `tfsdk:"merchant_id"`
+	UseSandbox  types.Bool   `tfsdk:"use_sandbox"`
+}
+
+type settingGuestAccessStripeModel struct {
+	APIKey types.String `tfsdk:"api_key"`
+}
+
 var (
 	guestAccessRedirectAttrTypes = map[string]attr.Type{
 		"to_https":  types.BoolType,
@@ -200,6 +245,36 @@ var (
 		"secret_key": types.StringType,
 		"shop_id":    types.StringType,
 	}
+	guestAccessAuthorizeAttrTypes = map[string]attr.Type{
+		"login_id":        types.StringType,
+		"transaction_key": types.StringType,
+		"use_sandbox":     types.BoolType,
+	}
+	guestAccessIPpayAttrTypes = map[string]attr.Type{
+		"terminal_id": types.StringType,
+		"use_sandbox": types.BoolType,
+	}
+	guestAccessMerchantWarriorAttrTypes = map[string]attr.Type{
+		"api_key":        types.StringType,
+		"api_passphrase": types.StringType,
+		"merchant_uuid":  types.StringType,
+		"use_sandbox":    types.BoolType,
+	}
+	guestAccessPaypalAttrTypes = map[string]attr.Type{
+		"password":    types.StringType,
+		"signature":   types.StringType,
+		"use_sandbox": types.BoolType,
+		"username":    types.StringType,
+	}
+	guestAccessQuickpayAttrTypes = map[string]attr.Type{
+		"agreement_id": types.StringType,
+		"api_key":      types.StringType,
+		"merchant_id":  types.StringType,
+		"use_sandbox":  types.BoolType,
+	}
+	guestAccessStripeAttrTypes = map[string]attr.Type{
+		"api_key": types.StringType,
+	}
 	guestAccessAttrTypes = map[string]attr.Type{
 		"allowed_subnet":    types.StringType,
 		"restricted_subnet": types.StringType,
@@ -235,6 +310,15 @@ var (
 		"restricted_dns_servers": types.ListType{ElemType: types.StringType},
 		"wechat":                 types.ObjectType{AttrTypes: guestAccessWechatAttrTypes},
 		"wechat_enabled":         types.BoolType,
+
+		"authorize":        types.ObjectType{AttrTypes: guestAccessAuthorizeAttrTypes},
+		"ippay":            types.ObjectType{AttrTypes: guestAccessIPpayAttrTypes},
+		"merchant_warrior": types.ObjectType{AttrTypes: guestAccessMerchantWarriorAttrTypes},
+		"payment_enabled":  types.BoolType,
+		"payment_gateway":  types.StringType,
+		"paypal":           types.ObjectType{AttrTypes: guestAccessPaypalAttrTypes},
+		"quickpay":         types.ObjectType{AttrTypes: guestAccessQuickpayAttrTypes},
+		"stripe":           types.ObjectType{AttrTypes: guestAccessStripeAttrTypes},
 	}
 )
 
@@ -579,6 +663,182 @@ func (guestAccessSection) schemaAttribute() schema.SingleNestedAttribute {
 				Optional:            true,
 				Computed:            true,
 			},
+			"authorize": schema.SingleNestedAttribute{
+				MarkdownDescription: "Authorize.net payment settings.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"login_id": schema.StringAttribute{
+						MarkdownDescription: "Authorize.net login ID.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"transaction_key": schema.StringAttribute{
+						MarkdownDescription: "Authorize.net transaction key.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"use_sandbox": schema.BoolAttribute{
+						MarkdownDescription: "Use sandbox mode.",
+						Optional:            true,
+						Computed:            true,
+					},
+				},
+			},
+			"ippay": schema.SingleNestedAttribute{
+				MarkdownDescription: "IPpay payment settings.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"terminal_id": schema.StringAttribute{
+						MarkdownDescription: "IPpay terminal ID.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"use_sandbox": schema.BoolAttribute{
+						MarkdownDescription: "Use sandbox mode.",
+						Optional:            true,
+						Computed:            true,
+					},
+				},
+			},
+			"merchant_warrior": schema.SingleNestedAttribute{
+				MarkdownDescription: "MerchantWarrior payment settings.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"api_key": schema.StringAttribute{
+						MarkdownDescription: "MerchantWarrior API key.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"api_passphrase": schema.StringAttribute{
+						MarkdownDescription: "MerchantWarrior API passphrase.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"merchant_uuid": schema.StringAttribute{
+						MarkdownDescription: "MerchantWarrior merchant UUID.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"use_sandbox": schema.BoolAttribute{
+						MarkdownDescription: "Use sandbox mode.",
+						Optional:            true,
+						Computed:            true,
+					},
+				},
+			},
+			"payment_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable paid guest access (requires `auth = \"hotspot\"`).",
+				Optional:            true,
+				Computed:            true,
+			},
+			"payment_gateway": schema.StringAttribute{
+				MarkdownDescription: "Payment gateway: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.",
+				Optional:            true,
+				Computed:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("paypal", "stripe", "authorize", "quickpay", "merchantwarrior", "ippay"),
+				},
+			},
+			"paypal": schema.SingleNestedAttribute{
+				MarkdownDescription: "PayPal payment settings.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"password": schema.StringAttribute{
+						MarkdownDescription: "PayPal API password.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"signature": schema.StringAttribute{
+						MarkdownDescription: "PayPal API signature.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"use_sandbox": schema.BoolAttribute{
+						MarkdownDescription: "Use sandbox mode.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"username": schema.StringAttribute{
+						MarkdownDescription: "PayPal API username.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+				},
+			},
+			"quickpay": schema.SingleNestedAttribute{
+				MarkdownDescription: "QuickPay payment settings.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"agreement_id": schema.StringAttribute{
+						MarkdownDescription: "QuickPay agreement ID.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"api_key": schema.StringAttribute{
+						MarkdownDescription: "QuickPay API key.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"merchant_id": schema.StringAttribute{
+						MarkdownDescription: "QuickPay merchant ID.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+					"use_sandbox": schema.BoolAttribute{
+						MarkdownDescription: "Use test mode (`quickpay_testmode`).",
+						Optional:            true,
+						Computed:            true,
+					},
+				},
+			},
+			"stripe": schema.SingleNestedAttribute{
+				MarkdownDescription: "Stripe payment settings.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"api_key": schema.StringAttribute{
+						MarkdownDescription: "Stripe API key.",
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+					},
+				},
+			},
 		},
 	}
 }
@@ -784,7 +1044,7 @@ func guestAccessPortalCustomizationSchema() schema.SingleNestedAttribute {
 
 func (guestAccessSection) get(m *settingResourceModel) types.Object { return m.GuestAccess }
 
-// set installs a freshly-read guest_access object, carrying the six secret
+// set installs a freshly-read guest_access object, carrying write-only secret
 // fields forward from the prior state/plan when the controller didn't echo
 // them back (the x_-prefixed fields are often write-only). Evaluation-order
 // note: this must run before m.GuestAccess is overwritten — readSections
@@ -794,15 +1054,19 @@ func (guestAccessSection) set(m *settingResourceModel, obj types.Object) {
 	m.GuestAccess = preserveGuestAccessSecrets(m.GuestAccess, obj)
 }
 
-// preserveGuestAccessSecrets returns fresh with each of the six write-only
-// secret fields carried over from prior (the plan or prior state) wherever
-// the freshly-read value is null but prior is non-null. If the controller DID
+// preserveGuestAccessSecrets returns fresh with each write-only secret field
+// carried over from prior (the plan or prior state) wherever the
+// freshly-read value is null but prior is non-null. If the controller DID
 // echo a secret, the fresh (echoed) value wins — this only fills gaps left by
 // non-echoed reads, mirroring preserveSnmpPassword in
-// setting_section_snmp.go. Three fields live on the top-level object
-// (password, and the flattened nested blocks below); three live inside
-// nested objects (facebook.app_secret, facebook_wifi.gateway_secret,
-// google.client_secret, wechat.app_secret, wechat.secret_key) and require
+// setting_section_snmp.go. One field lives on the top-level object
+// (password); the rest live inside nested objects (facebook.app_secret,
+// facebook_wifi.gateway_secret, google.client_secret, wechat.app_secret,
+// wechat.secret_key, and the six payment gateway blocks'
+// credentials — authorize.{login_id,transaction_key}, ippay.terminal_id,
+// merchant_warrior.{api_key,api_passphrase,merchant_uuid},
+// paypal.{username,password,signature},
+// quickpay.{agreement_id,api_key,merchant_id}, stripe.api_key) and require
 // descending into those objects to carry the value forward.
 func preserveGuestAccessSecrets(prior, fresh types.Object) types.Object {
 	if prior.IsNull() || prior.IsUnknown() || fresh.IsNull() || fresh.IsUnknown() {
@@ -826,6 +1090,26 @@ func preserveGuestAccessSecrets(prior, fresh types.Object) types.Object {
 	)
 	attrs["wechat"] = preserveNestedSecretAttr(
 		prior, fresh, "wechat", guestAccessWechatAttrTypes, "app_secret", "secret_key",
+	)
+	attrs["authorize"] = preserveNestedSecretAttr(
+		prior, fresh, "authorize", guestAccessAuthorizeAttrTypes, "login_id", "transaction_key",
+	)
+	attrs["ippay"] = preserveNestedSecretAttr(
+		prior, fresh, "ippay", guestAccessIPpayAttrTypes, "terminal_id",
+	)
+	attrs["merchant_warrior"] = preserveNestedSecretAttr(
+		prior, fresh, "merchant_warrior", guestAccessMerchantWarriorAttrTypes,
+		"api_key", "api_passphrase", "merchant_uuid",
+	)
+	attrs["paypal"] = preserveNestedSecretAttr(
+		prior, fresh, "paypal", guestAccessPaypalAttrTypes, "username", "password", "signature",
+	)
+	attrs["quickpay"] = preserveNestedSecretAttr(
+		prior, fresh, "quickpay", guestAccessQuickpayAttrTypes,
+		"agreement_id", "api_key", "merchant_id",
+	)
+	attrs["stripe"] = preserveNestedSecretAttr(
+		prior, fresh, "stripe", guestAccessStripeAttrTypes, "api_key",
 	)
 
 	merged, d := types.ObjectValue(guestAccessAttrTypes, attrs)
@@ -1060,6 +1344,70 @@ func guestAccessModelToData(
 		setRawString(data, "x_wechat_secret_key", w.SecretKey)
 		setRawString(data, "wechat_shop_id", w.ShopID)
 	}
+
+	setRawBool(data, "payment_enabled", m.PaymentEnabled)
+	setRawString(data, "gateway", m.PaymentGateway)
+
+	if !m.Authorize.IsNull() && !m.Authorize.IsUnknown() {
+		var a settingGuestAccessAuthorizeModel
+		diags.Append(m.Authorize.As(ctx, &a, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "x_authorize_loginid", a.LoginID)
+		setRawString(data, "x_authorize_transactionkey", a.TransactionKey)
+		setRawBool(data, "authorize_use_sandbox", a.UseSandbox)
+	}
+	if !m.IPpay.IsNull() && !m.IPpay.IsUnknown() {
+		var p settingGuestAccessIPpayModel
+		diags.Append(m.IPpay.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "x_ippay_terminalid", p.TerminalID)
+		setRawBool(data, "ippay_use_sandbox", p.UseSandbox)
+	}
+	if !m.MerchantWarrior.IsNull() && !m.MerchantWarrior.IsUnknown() {
+		var mw settingGuestAccessMerchantWarriorModel
+		diags.Append(m.MerchantWarrior.As(ctx, &mw, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "x_merchantwarrior_apikey", mw.APIKey)
+		setRawString(data, "x_merchantwarrior_apipassphrase", mw.APIPassphrase)
+		setRawString(data, "x_merchantwarrior_merchantuuid", mw.MerchantUUID)
+		setRawBool(data, "merchantwarrior_use_sandbox", mw.UseSandbox)
+	}
+	if !m.Paypal.IsNull() && !m.Paypal.IsUnknown() {
+		var p settingGuestAccessPaypalModel
+		diags.Append(m.Paypal.As(ctx, &p, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "x_paypal_username", p.Username)
+		setRawString(data, "x_paypal_password", p.Password)
+		setRawString(data, "x_paypal_signature", p.Signature)
+		setRawBool(data, "paypal_use_sandbox", p.UseSandbox)
+	}
+	if !m.Quickpay.IsNull() && !m.Quickpay.IsUnknown() {
+		var q settingGuestAccessQuickpayModel
+		diags.Append(m.Quickpay.As(ctx, &q, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "x_quickpay_agreementid", q.AgreementID)
+		setRawString(data, "x_quickpay_apikey", q.APIKey)
+		setRawString(data, "x_quickpay_merchantid", q.MerchantID)
+		setRawBool(data, "quickpay_testmode", q.UseSandbox)
+	}
+	if !m.Stripe.IsNull() && !m.Stripe.IsUnknown() {
+		var s settingGuestAccessStripeModel
+		diags.Append(m.Stripe.As(ctx, &s, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return
+		}
+		setRawString(data, "x_stripe_api_key", s.APIKey)
+	}
 }
 
 // read pulls the guest_access section out of the raw settings list.
@@ -1124,6 +1472,9 @@ func guestAccessDataToModel(
 		WechatEnabled:        rawBool(data, "wechat_enabled"),
 		RestrictedDNSEnabled: rawBool(data, "restricted_dns_enabled"),
 		RestrictedDNSServers: rawStringList(data, "restricted_dns_servers"),
+
+		PaymentEnabled: rawBool(data, "payment_enabled"),
+		PaymentGateway: rawString(data, "gateway"),
 	}
 
 	m.Redirect = types.ObjectNull(guestAccessRedirectAttrTypes)
@@ -1244,6 +1595,81 @@ func guestAccessDataToModel(
 			})
 		diags.Append(d...)
 		m.Wechat = obj
+	}
+
+	m.Authorize = types.ObjectNull(guestAccessAuthorizeAttrTypes)
+	if anyRawKey(data, "x_authorize_loginid", "x_authorize_transactionkey", "authorize_use_sandbox") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessAuthorizeAttrTypes,
+			settingGuestAccessAuthorizeModel{
+				LoginID:        rawString(data, "x_authorize_loginid"),
+				TransactionKey: rawString(data, "x_authorize_transactionkey"),
+				UseSandbox:     rawBool(data, "authorize_use_sandbox"),
+			})
+		diags.Append(d...)
+		m.Authorize = obj
+	}
+
+	m.IPpay = types.ObjectNull(guestAccessIPpayAttrTypes)
+	if anyRawKey(data, "x_ippay_terminalid", "ippay_use_sandbox") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessIPpayAttrTypes,
+			settingGuestAccessIPpayModel{
+				TerminalID: rawString(data, "x_ippay_terminalid"),
+				UseSandbox: rawBool(data, "ippay_use_sandbox"),
+			})
+		diags.Append(d...)
+		m.IPpay = obj
+	}
+
+	m.MerchantWarrior = types.ObjectNull(guestAccessMerchantWarriorAttrTypes)
+	if anyRawKey(data, "x_merchantwarrior_apikey", "x_merchantwarrior_apipassphrase",
+		"x_merchantwarrior_merchantuuid", "merchantwarrior_use_sandbox") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessMerchantWarriorAttrTypes,
+			settingGuestAccessMerchantWarriorModel{
+				APIKey:        rawString(data, "x_merchantwarrior_apikey"),
+				APIPassphrase: rawString(data, "x_merchantwarrior_apipassphrase"),
+				MerchantUUID:  rawString(data, "x_merchantwarrior_merchantuuid"),
+				UseSandbox:    rawBool(data, "merchantwarrior_use_sandbox"),
+			})
+		diags.Append(d...)
+		m.MerchantWarrior = obj
+	}
+
+	m.Paypal = types.ObjectNull(guestAccessPaypalAttrTypes)
+	if anyRawKey(data, "x_paypal_username", "x_paypal_password",
+		"x_paypal_signature", "paypal_use_sandbox") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessPaypalAttrTypes,
+			settingGuestAccessPaypalModel{
+				Password:   rawString(data, "x_paypal_password"),
+				Signature:  rawString(data, "x_paypal_signature"),
+				UseSandbox: rawBool(data, "paypal_use_sandbox"),
+				Username:   rawString(data, "x_paypal_username"),
+			})
+		diags.Append(d...)
+		m.Paypal = obj
+	}
+
+	m.Quickpay = types.ObjectNull(guestAccessQuickpayAttrTypes)
+	if anyRawKey(data, "x_quickpay_agreementid", "x_quickpay_apikey",
+		"x_quickpay_merchantid", "quickpay_testmode") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessQuickpayAttrTypes,
+			settingGuestAccessQuickpayModel{
+				AgreementID: rawString(data, "x_quickpay_agreementid"),
+				APIKey:      rawString(data, "x_quickpay_apikey"),
+				MerchantID:  rawString(data, "x_quickpay_merchantid"),
+				UseSandbox:  rawBool(data, "quickpay_testmode"),
+			})
+		diags.Append(d...)
+		m.Quickpay = obj
+	}
+
+	m.Stripe = types.ObjectNull(guestAccessStripeAttrTypes)
+	if anyRawKey(data, "x_stripe_api_key") {
+		obj, d := types.ObjectValueFrom(ctx, guestAccessStripeAttrTypes,
+			settingGuestAccessStripeModel{
+				APIKey: rawString(data, "x_stripe_api_key"),
+			})
+		diags.Append(d...)
+		m.Stripe = obj
 	}
 
 	return m
