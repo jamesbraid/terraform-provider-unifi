@@ -989,6 +989,9 @@ func (r *settingResource) Schema(
 				MarkdownDescription: "RADIUS settings.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
 				Attributes: map[string]schema.Attribute{
 					"accounting_enabled": schema.BoolAttribute{
 						MarkdownDescription: "Enable RADIUS accounting.",
@@ -1037,6 +1040,9 @@ func (r *settingResource) Schema(
 				MarkdownDescription: "USG settings.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
 				Attributes: map[string]schema.Attribute{
 					"broadcast_ping": schema.BoolAttribute{
 						MarkdownDescription: "Enable broadcast ping.",

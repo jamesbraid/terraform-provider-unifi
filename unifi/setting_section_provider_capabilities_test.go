@@ -2,11 +2,13 @@ package unifi
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -58,4 +60,43 @@ func Test_settingResource_Schema_providerCapabilities(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["provider_capabilities"]; !ok {
 		t.Fatal("schema is missing the provider_capabilities section attribute")
 	}
+}
+
+func TestAccSettingResource_providerCapabilities(t *testing.T) {
+	// provider_capabilities requires a real ISP-gateway/UDM-class controller;
+	// the demo/simulation controller doesn't carry this setting key at all
+	// (absent from GET /rest/setting) and rejects any PUT to it — even a
+	// field-free {"key":"provider_capabilities"} payload — with
+	// api.err.Invalid (400). Verified with a throwaway probe against the
+	// demo container: GET returned 29 settings, none keyed
+	// "provider_capabilities"; PUT with no fields and PUT with only
+	// "download" both got the same 400, ruling out a field-validation issue.
+	if os.Getenv("UNIFI_SKIP_CONTAINER") == "" {
+		t.Skip("provider_capabilities requires a real controller; set UNIFI_SKIP_CONTAINER to run")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "unifi_setting" "test" {
+  provider_capabilities = {
+    download = 1000000
+    upload   = 500000
+  }
+}
+`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "provider_capabilities.download", "1000000",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "provider_capabilities.upload", "500000",
+					),
+				),
+			},
+		},
+	})
 }

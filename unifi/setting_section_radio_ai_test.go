@@ -2,11 +2,13 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
@@ -154,4 +156,41 @@ func Test_settingResource_Schema_radioAi(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["radio_ai"]; !ok {
 		t.Fatal("schema is missing the radio_ai section attribute")
 	}
+}
+
+func TestAccSettingResource_radioAi(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_radioAi(true, "manual"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "radio_ai.enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "radio_ai.setting_preference", "manual",
+					),
+				),
+			},
+			{
+				Config: testAccSettingConfig_radioAi(true, "auto"),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "radio_ai.setting_preference", "auto",
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_radioAi(enabled bool, pref string) string {
+	return fmt.Sprintf(`
+resource "unifi_setting" "test" {
+  radio_ai = {
+    enabled            = %t
+    setting_preference = %q
+  }
+}
+`, enabled, pref)
 }
