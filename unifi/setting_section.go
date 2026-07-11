@@ -37,6 +37,7 @@ type settingSection interface {
 var settingSections = []settingSection{
 	localeSection{},
 	globalNatSection{},
+	globalSwitchSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry
