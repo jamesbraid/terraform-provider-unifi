@@ -2,11 +2,13 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -163,4 +165,46 @@ func Test_settingResource_Schema_snmp(t *testing.T) {
 	if user, ok := nested.Attributes["username"].(schema.StringAttribute); !ok || user.Sensitive {
 		t.Fatal("snmp.username must exist and not be Sensitive")
 	}
+}
+
+func TestAccSettingResource_snmp(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_snmp(true, "tfacc-ro"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "snmp.enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "snmp.community", "tfacc-ro",
+					),
+				),
+			},
+			{
+				Config: testAccSettingConfig_snmp(false, "tfacc-ro2"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "snmp.enabled", "false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "snmp.community", "tfacc-ro2",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_snmp(enabled bool, community string) string {
+	return fmt.Sprintf(`
+resource "unifi_setting" "test" {
+  snmp = {
+    enabled   = %t
+    community = %q
+  }
+}
+`, enabled, community)
 }

@@ -2,12 +2,14 @@ package unifi
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -108,4 +110,45 @@ func Test_settingResource_Schema_usgGeo(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["usg_geo"]; !ok {
 		t.Fatal("schema is missing the usg_geo section attribute")
 	}
+}
+
+func TestAccSettingResource_usgGeo(t *testing.T) {
+	// usg_geo requires a real gateway-class controller; the demo/simulation
+	// controller rejects the section. Verified directly: GET returns an
+	// empty {} document (unlike e.g. netflow, which is fully populated),
+	// and PUT with a minimal payload (with or without "key") fails
+	// identically with api.err.Invalid (400) — not a payload-shape bug in
+	// this test's config.
+	if os.Getenv("UNIFI_SKIP_CONTAINER") == "" {
+		t.Skip("usg_geo requires a real controller; set UNIFI_SKIP_CONTAINER to run")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "unifi_setting" "test" {
+  usg_geo = {
+    ip_filtering = {
+      enabled           = false
+      action            = "block"
+      countries         = "NZ"
+      traffic_direction = "both"
+    }
+  }
+}
+`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "usg_geo.ip_filtering.enabled", "false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "usg_geo.ip_filtering.countries", "NZ",
+					),
+				),
+			},
+		},
+	})
 }

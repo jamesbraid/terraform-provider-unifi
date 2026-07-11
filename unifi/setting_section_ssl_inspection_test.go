@@ -6,6 +6,7 @@ import (
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -60,4 +61,35 @@ func Test_settingResource_Schema_sslInspection(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["ssl_inspection"]; !ok {
 		t.Fatal("schema is missing the ssl_inspection section attribute")
 	}
+}
+
+func TestAccSettingResource_sslInspection(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_sslInspection("off"),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "ssl_inspection.state", "off",
+				),
+			},
+			{
+				Config: testAccSettingConfig_sslInspection("simple"),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "ssl_inspection.state", "simple",
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_sslInspection(state string) string {
+	return `
+resource "unifi_setting" "test" {
+  ssl_inspection = {
+    state = "` + state + `"
+  }
+}
+`
 }
