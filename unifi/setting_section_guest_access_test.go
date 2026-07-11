@@ -2,6 +2,7 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -9,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func Test_guestAccessModelToData_core(t *testing.T) {
@@ -962,4 +964,55 @@ func Test_guestAccessDataToModel_paymentPresence(t *testing.T) {
 		!m.IPpay.IsNull() || !m.MerchantWarrior.IsNull() {
 		t.Fatal("absent gateway blocks should stay null")
 	}
+}
+
+func TestAccSettingResource_guestAccess(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_guestAccess("hotspot", "tfacc-guest-pass"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.auth", "hotspot",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.password", "tfacc-guest-pass",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.password_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customization.title", "Guest WiFi",
+					),
+				),
+			},
+			{
+				Config: testAccSettingConfig_guestAccess("none", "tfacc-guest-pass2"),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "guest_access.auth", "none",
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_guestAccess(auth, password string) string {
+	return fmt.Sprintf(`
+resource "unifi_setting" "test" {
+  guest_access = {
+    auth              = %q
+    password          = %q
+    password_enabled  = true
+    portal_enabled    = true
+
+    portal_customization = {
+      customized = true
+      title      = "Guest WiFi"
+      bg_color   = "#005ED9"
+    }
+  }
+}
+`, auth, password)
 }
