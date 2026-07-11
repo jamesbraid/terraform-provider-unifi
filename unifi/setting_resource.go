@@ -251,6 +251,7 @@ type settingResourceModel struct {
 	GlobalNetwork      types.Object   `tfsdk:"global_network"`
 	UsgGeo             types.Object   `tfsdk:"usg_geo"`
 	Ipsec              types.Object   `tfsdk:"ipsec"`
+	Dashboard          types.Object   `tfsdk:"dashboard"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
