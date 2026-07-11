@@ -7,8 +7,8 @@ import (
 )
 
 // capabilityState classifies whether a given settings section is usable on
-// the current controller. The engine (unifi/setting_resource.go) consults
-// this per section before attempting to read or write it.
+// the current controller. The settings engine consults this per section
+// before attempting to read or write it.
 type capabilityState int
 
 const (
