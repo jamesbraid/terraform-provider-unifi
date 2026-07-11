@@ -18,7 +18,7 @@
 - Malformed remote data raises a diagnostic and aborts; never silently normalized. Present-empty ≠ absent.
 - The engine functions take `(sections []settingSection, client settingsClient, ...)` — no global mutable registry is read inside the engine, so tests never race on global state.
 - Deterministic order: the engine iterates sections sorted by `key()`.
-- Migration proof: request-level golden tests (Task 8) stay green through every migration task; the legacy converters are retained until the final cutover (Task 24c). Behavior not on the permitted-delta list must be byte-identical to `origin/main`.
+- Migration proof: request-level golden tests (Task 9) stay green through every migration task; the legacy converters are retained until the final cutover (Task 24c). Behavior not on the permitted-delta list must be byte-identical to `origin/main`.
 - Verification per task: `gofmt -w`, `go build ./...`, `go vet ./unifi/`, `go test ./unifi/...`, `git diff --check`. TF_ACC tests are demo-controller-only.
 - **Permitted deltas** (the ONLY behavior changes allowed in PR-A): (1) present-empty string/array round-trips instead of collapsing to null; (2) malformed remote scalar/list raises a diagnostic instead of truncating/dropping; (3) writes preserve all unmodeled controller keys; (4) one snapshot per op replaces per-section reads; (5) import populates `site` + hydrates all sections; (6) a write-only secret with **null** config now omits the masked/stale secret from the PUT — the legacy typed converters could re-send `x_secret`/`x_ssh_password` from state (a masked value re-sent risks clearing the real secret); a configured value or explicit empty is unchanged. Each golden that changes for delta (1) or (6) cites the delta in its commit.
 
