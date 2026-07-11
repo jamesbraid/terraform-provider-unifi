@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -308,12 +309,20 @@ func (r *natRuleResource) Schema(
 			"source_filter": schema.SingleNestedAttribute{
 				MarkdownDescription: "Filter on the traffic source.",
 				Optional:            true,
-				Attributes:          filterAttrs,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: filterAttrs,
 			},
 			"destination_filter": schema.SingleNestedAttribute{
 				MarkdownDescription: "Filter on the traffic destination.",
 				Optional:            true,
-				Attributes:          filterAttrs,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: filterAttrs,
 			},
 			"timeouts": timeouts.Attributes(
 				ctx,

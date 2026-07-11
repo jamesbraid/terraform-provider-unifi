@@ -239,6 +239,33 @@ func Test_natRuleResource_Schema(t *testing.T) {
 			t.Errorf("source_filter missing attribute %q", name)
 		}
 	}
+
+	// source_filter and destination_filter must be Optional+Computed with
+	// UseStateForUnknown, matching content_filtering's schedule attribute:
+	// if the controller echoes a default filter object when the user
+	// omitted one, an Optional-only attribute would produce an
+	// "inconsistent result after apply" error.
+	dst, ok := resp.Schema.Attributes["destination_filter"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatal("destination_filter is not a SingleNestedAttribute")
+	}
+	for _, nested := range []struct {
+		name string
+		attr schema.SingleNestedAttribute
+	}{
+		{"source_filter", src},
+		{"destination_filter", dst},
+	} {
+		if !nested.attr.Optional {
+			t.Errorf("%s: Optional = false, want true", nested.name)
+		}
+		if !nested.attr.Computed {
+			t.Errorf("%s: Computed = false, want true", nested.name)
+		}
+		if len(nested.attr.PlanModifiers) != 1 {
+			t.Errorf("%s: PlanModifiers = %v, want exactly one UseStateForUnknown modifier", nested.name, nested.attr.PlanModifiers)
+		}
+	}
 }
 
 func Test_natRuleResource_Metadata(t *testing.T) {
