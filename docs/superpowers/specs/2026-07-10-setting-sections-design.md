@@ -64,12 +64,26 @@ controller alongside `auto_speedtest`).
 
 ## go-unifi prerequisite
 
-`ubiquiti-community/go-unifi` lacks structs for `global_network`, `ipsec`,
-`usg_geo`, `provider_capabilities`. One PR adds them, hand-written in the
-style of `unifi/settings/igmp_snooping.go`, fields derived from live UDM
-payloads. The provider bumps `go.mod` after merge; the four gated sections
-ride in whichever themed provider PR is open when the bump lands, or a small
-trailing PR.
+`ubiquiti-community/go-unifi` (local clone: `/Users/jamesb/projects/go-unifi`)
+needs one PR covering:
+
+- setting structs for `global_network`, `ipsec`, `usg_geo`,
+  `provider_capabilities` (fields from the captured live payloads);
+- exported NAT CRUD — `nat.generated.go` has the full client but lowercase
+  (`listNat`, `createNat`, …);
+- a content-filtering client for `v2/api/site/<site>/content-filtering`
+  (absent entirely);
+- `APP`/`APP_CATEGORY` in the firewall-policy `matching_target` enums plus
+  the `app_ids`/`app_category_ids` fields.
+
+The provider bumps `go.mod` after merge (a local `replace` directive is fine
+during development, dropped before release); gated sections/resources ride in
+whichever themed provider PR is open when the bump lands, or a small trailing
+PR.
+
+Captured live payloads (this session, read-only, scratchpad — contain
+secrets, never copy values into committed docs): `udm-settings.json` (all 42
+sections), `udm-content-filtering.json`, `udm-firewall-policies.json`.
 
 ## New resource shapes
 
@@ -114,6 +128,13 @@ posted publicly (provider repo or go-unifi) until James reviews it.**
 
 Anything still gated on go-unifi after PR 4 gets a small trailing PR rather
 than blocking the train.
+
+**Release flow:** all work is implemented and merged on James's fork first
+(the existing `registry.terraform.io/jamesbraid/unifi` temporary-fork
+pipeline), built, and live-tested against the UDM via `~/ansible/infra/unifi`
+before any upstream PRs to ubiquiti-community are opened. The merge/PR
+strategy (stacking, collapsing, ordering) is decided after implementation,
+looking at the real diffs.
 
 ## Prior-art notes (research summary)
 
