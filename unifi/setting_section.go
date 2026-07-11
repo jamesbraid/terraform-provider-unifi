@@ -43,6 +43,7 @@ var settingSections = []settingSection{
 	magicSiteToSiteVpnSection{},
 	trafficFlowSection{},
 	etherLightingSection{},
+	snmpSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry
