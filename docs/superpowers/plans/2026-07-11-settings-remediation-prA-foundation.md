@@ -1,4 +1,4 @@
-# PR-A: Settings Lifecycle Foundation — Implementation Plan (rev 3)
+# PR-A: Settings Lifecycle Foundation — Implementation Plan (rev 4)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -77,11 +77,16 @@ func TestOwnershipClassPolicy(t *testing.T) {
 - Low-level setters (write present incl. empty, skip null/unknown): `putString/putInt64/putBool(out, key, v)`, `putStringList(ctx, out, key, v) diags`.
 - **Ownership-aware layer** (the C1 encoding):
   - `decodeString(data, key, class, prior types.String) (types.String, diag.Diagnostics)` — if `!class.readsFromAPI()` return `prior` (preserve write-only secret); else `codecString`. Analogous `decodeInt64/decodeBool/decodeStringList`.
-  - `overlayString(out, key, class, v types.String)` — if `class.writesToPUT()` then `putString`; else no-op. Analogous `overlayInt64/overlayBool/overlayStringList`.
+  - `overlayString(out, key, class, v types.String)` — branch on class:
+    - **write-only secret** (`class == ownerWriteOnlySecret`, i.e. `!readsFromAPI()`): if `v` is null/unknown, **`delete(out, key)`** — the copied snapshot holds a masked/stale secret that must NOT be re-sent; omitting it makes the controller keep its stored value. If `v` is a value (incl. empty) it is written (a configured empty is an intentional clear/rotate-to-empty).
+    - **Managed/CoManaged:** write `v` if present (incl. empty); if null/unknown, leave the copied snapshot value in place (preserve the controller value).
+    - **Computed/GeneratedSecret/Preserved (`!writesToPUT()`):** no write and no delete — the snapshot's own value is left as-is (these are controller-owned and read-back, so the base value is the truth).
+    - Analogous `overlayInt64/overlayBool/overlayStringList/overlayObject/overlayObjectList` apply the same branching. **The delete-on-null write-only-secret rule is the ONE place overlay removes a key from the copied base** — Task 20/22 MUST test it with a masked/empty secret value present in the snapshot and null config, asserting the key is absent from the PUT body.
   - **Nested shapes** (for `SingleNestedAttribute`/`ListNestedAttribute` sections — usg, mgmt, ips lists, doh):
     - `decodeObject(ctx, data map[string]any, key string, childOwnership map[string]ownershipClass, prior types.Object, attrTypes map[string]attr.Type) (types.Object, diag.Diagnostics)` — reads the nested map, recursing each child per its class (a nested `WriteOnlySecret` is preserved from `prior`'s object); `overlayObject(ctx, out, key, childOwnership, cfg types.Object) diags` writes children whose class `writesToPUT()`.
-    - `decodeObjectList(ctx, data, key string, elemOwnership map[string]ownershipClass, elemType attr.Type) (types.List, diag.Diagnostics)` / `overlayObjectList(...)` — element order follows the API; per-element secret leaves follow their class.
-    - **Duration/number:** a field the schema exposes as int seconds uses `decodeInt64`/`overlayInt64`; a field the existing converter parses from/to a duration string is ported verbatim from the cited converter (see the migration table's converter-lines column).
+    - `decodeObjectList(ctx, data, key string, elemOwnership map[string]ownershipClass, prior types.List, elemType attr.Type) (types.List, diag.Diagnostics)` / `overlayObjectList(...)` — element order follows the API; a per-element write-only-secret leaf is preserved from the matching prior element (hence the `prior` param), and its overlay applies the same delete-on-null rule as above.
+    - **Duration/number:** a field the schema exposes as int seconds uses `decodeInt64`/`overlayInt64`; a field the existing converter parses from/to a duration string is ported verbatim from the cited converter (see the migration table's converter column).
+    - **Echoed secrets:** PR-A has no echoing secret (mgmt/radius secrets are write-only/masked → always preserve prior). The spec's `echoed` opt-in is a per-field annotation added by the first section that actually echoes (PR-B); adding it to PR-A now would be unused surface (YAGNI). `decodeString` for a write-only secret therefore always returns `prior`.
 
 - [ ] **Step 1: Failing tests** — the contract AND the ownership layer:
   - `codecString({"k":""})` → StringValue("") not null; `codecString({})` → null.
@@ -304,7 +309,7 @@ Implement `readSections`, `listSnapshot`, and `bestEffortState` in full per the 
 
 This task is a **regression guard** that pins that behavior so a future framework bump cannot silently break C2.4.
 
-- [ ] **Step 1: Write the failing test** — a throwaway framework resource whose `Update` sets a known state value AND appends an error diagnostic; drive it through the `fwserver` (or `resource.Test` with `ExpectError`) and assert the returned/persisted `NewState` equals the value set despite the error.
+- [ ] **Step 1: Write the failing test** — an **end-to-end** `resource.Test`: a throwaway resource whose `Update` sets a known state value AND appends an error diagnostic; the mutating step uses `ExpectError`, and a follow-up step (or `RefreshState` + a plan assertion) asserts the **persisted** state contains the value set during the errored apply — proving Terraform Core (not merely the framework's `NewState` return) persists it. (The `server_updateresource.go:154` reading is the mechanism; this test is the Core-level proof.)
 - [ ] **Step 2: Run** → PASS (documents current framework behavior).
 - [ ] **Step 3:** N/A (assertion of existing behavior).
 - [ ] **Step 4:** If this test ever fails on a framework upgrade, **STOP and escalate to the maintainer** — converting the failed apply to a warning would flip "failed" to "success" and is a spec change, not an implementation choice.
@@ -330,7 +335,7 @@ Each task ADDS a `settingSection` implementation and registers it, WITHOUT delet
 
 **Structural templates** (fully worked with real code; reused by same-shape tasks): Task 10 (`auto_speedtest`) = **scalar**; Task 16 (`syslog`) = **list**; Task 21 (`usg`) = **nested-object** (`dns_verification`); Task 22 (`mgmt`) = **nested-list** (`ssh_keys`) **+ secret** (`ssh_password`). Each other task states its shape and follows the matching worked template.
 
-The **converter-lines** column cites the authoritative field↔raw-key mapping in the current `setting_resource.go` (decode line / overlay line ranges). Port those fields verbatim; the golden (Task 9) is the exactness oracle — if `overlay`'s body ≠ the golden, a field was missed.
+The **converter** column cites the current `setting_resource.go` read (decode) and overlay (write) call sites, which name the `<attr>ModelToSetting` / `<attr>SettingToModel` converter methods and the go-unifi type each section uses. Locate those converter methods by name — they hold the field↔raw-key mapping — and port each field onto `decode`/`overlay`. The golden (Task 9) is the **hard exactness oracle**: if `overlay`'s body ≠ the golden byte-for-byte, a field was missed. This makes the mapping fully verifiable without transcribing all 13 field lists into the plan.
 
 ### Task 10 (scalar template): `auto_speedtest`
 - Files: `unifi/setting_section_auto_speedtest.go` (+ test). Legacy converter authority: `setting_resource.go` (auto_speedtest converters). Ownership: `enabled`→ownerManaged, `cron_expr`→ownerManaged.
@@ -383,6 +388,7 @@ Create `unifi/site.go` (+ test): `resolveSite(configured, def) string`; `parseSi
 - **First, capture the legacy schema fixture (before rewiring):** add `normalizeSchemaAttr(ctx, name string, a schema.Attribute) normAttr` capturing name, type string, Required/Optional/Computed/Sensitive, the concrete default value rendered (if any), and each validator's and plan-modifier's `.Description(ctx)` (validators/plan-modifiers are not reflect-comparable — their descriptions are). Run the CURRENT (legacy) `Schema()` and snapshot the 13 sections' normalized form to a checked-in golden `unifi/testdata/setting_schema_legacy.json`.
 - Modify `setting_resource.go`: `Schema` builds section attrs from `orderedSections(settingSections)`; Create/Update/Read call `applySections`/`readSections` with `settingSections` + `realSettingsClient{r.client}` + `resolveSite`. **Legacy converters remain** (unused by the new path but still compiled for goldens).
 - Test `TestSettingSchema_equivalence`: normalize the NEW registry-built schema and assert it equals the `setting_schema_legacy.json` golden — so the comparison stays executable after the legacy `Schema` code is deleted in 24c.
+- **Behavioral schema tests (stronger than description comparison):** for each section that carries them, add a focused test — a value a validator must reject (e.g. an invalid enum/cron), a default that must apply when config omits the field, and a plan-modifier no-churn case (`UseStateForUnknown` leaves a prior value unchanged on an unrelated edit). Description equality alone does not prove validator/modifier behavior.
 - Commit `refactor(setting): drive lifecycle through the section engine; schema-equivalence golden (legacy retained)`.
 
 ### Task 24b: Site-aware import + hydration
@@ -411,5 +417,7 @@ Annotate SDK-gap raw mappings `// TODO(go-unifi): <retirement condition>`; recor
 3. **Type consistency:** interface methods `key/attrName/schemaAttribute/ownership/decode(prior)/overlay/capability` consistent across Tasks 6,7,10–24. `ownershipClass` predicates (`writesToPUT/readsFromAPI/isSecret/usesStateForUnknown`) consistent across 1,2,10–22. `settingsClient` (`ListSettings/UpdateRawSetting`), engine signatures with explicit `sections []settingSection`, and `rawSettings`/`dataCopy` consistent throughout.
 
 **Resolved from codex prA-plan-review turn 1:** C1 encoded in codec + `ownership()`; `bestEffortState` corrected + tested; goldens retained until 24c; ownership maps + templates + ssh fix; framework-state verification; deterministic ordered registry + sections-as-param; PUT-body transport test; Task 24 split + schema-equivalence; deep-copy snapshot.
+
+**Resolved from turn 3:** NEW BLOCKING (null write-only secret leaking from the copied snapshot into the PUT) fixed — `overlayString` for a write-only secret now `delete`s the key on null config (the one place overlay removes a key), configured-empty still clears; Task 20/22 test it with a masked secret present in the snapshot. `decodeObjectList` gained a `prior` param for nested-secret preservation. Echoed-secret opt-in scoped out of PR-A (no echoing secret; YAGNI, deferred to first consumer). Converter citations reframed to name the `<attr>ModelToSetting` methods with the golden as the hard oracle. Task 8 tightened to an end-to-end `resource.Test` proving Core persistence. Schema-equivalence gains focused behavioral tests (validator reject / default applies / plan-modifier no-churn).
 
 **Resolved from turn 2:** (2) `bestEffortState` secret rule fixed — a PUT section's *rotated* secret is retained, a null secret falls back to prior, non-PUT sections keep prior. (5) Framework state-on-error settled from source (`server_updateresource.go:154` sets NewState unconditionally) → op stays failed AND best-effort state persists; no warning fallback, no spec change; Task 8 is now a regression guard that escalates on framework change. (1) nested-object/nested-list/duration ownership-aware codec helpers added (Task 2); usg + mgmt worked with real code. (4) converter decode/overlay line citations added per section; golden is the exactness oracle. httptest adapter test added (Task 5). Import hydration marker specified (all-null attrs, no flag). Schema-equivalence uses a pre-cutover normalized golden. Template task-number references corrected (10 scalar, 16 list, 21 nested-object, 22 nested-list).
