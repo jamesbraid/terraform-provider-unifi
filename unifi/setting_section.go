@@ -46,6 +46,7 @@ var settingSections = []settingSection{
 	snmpSection{},
 	netflowSection{},
 	sslInspectionSection{},
+	globalNetworkSection{},
 }
 
 // applySections performs the read-modify-write for every configured registry

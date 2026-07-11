@@ -248,6 +248,7 @@ type settingResourceModel struct {
 	Snmp               types.Object   `tfsdk:"snmp"`
 	Netflow            types.Object   `tfsdk:"netflow"`
 	SslInspection      types.Object   `tfsdk:"ssl_inspection"`
+	GlobalNetwork      types.Object   `tfsdk:"global_network"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
