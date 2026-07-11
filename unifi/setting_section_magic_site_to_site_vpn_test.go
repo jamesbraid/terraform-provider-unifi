@@ -2,11 +2,13 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func Test_magicSiteToSiteVpnModelToData(t *testing.T) {
@@ -115,4 +117,35 @@ func Test_settingResource_Schema_magicSiteToSiteVpn(t *testing.T) {
 	if pub.Optional || pub.Required || !pub.Computed {
 		t.Fatal("public_key must be Computed-only")
 	}
+}
+
+func TestAccSettingResource_magicSiteToSiteVpn(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_magicSiteToSiteVpn(true),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "magic_site_to_site_vpn.enabled", "true",
+				),
+			},
+			{
+				Config: testAccSettingConfig_magicSiteToSiteVpn(false),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "magic_site_to_site_vpn.enabled", "false",
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_magicSiteToSiteVpn(enabled bool) string {
+	return fmt.Sprintf(`
+resource "unifi_setting" "test" {
+  magic_site_to_site_vpn = {
+    enabled = %t
+  }
+}
+`, enabled)
 }

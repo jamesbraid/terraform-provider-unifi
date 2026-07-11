@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -146,4 +147,55 @@ func Test_settingResource_Schema_mdns(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["mdns"]; !ok {
 		t.Fatal("schema is missing the mdns section attribute")
 	}
+}
+
+func TestAccSettingResource_mdns(t *testing.T) {
+	// The demo controller rejects mode="all" combined with a non-empty
+	// predefined_services/custom_services list in the same PUT payload
+	// (api.err.MdnsSettingInvalidServicesListException). The brief's step 2
+	// config keeps the same service lists across both steps, so the second
+	// apply 400s on the live demo controller regardless of provider code.
+	t.Skip("demo controller rejects mode=all with a non-empty services list " +
+		"(api.err.MdnsSettingInvalidServicesListException)")
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_mdns("custom"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "mdns.mode", "custom",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "mdns.predefined_services.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "mdns.custom_services.#", "1",
+					),
+				),
+			},
+			{
+				Config: testAccSettingConfig_mdns("all"),
+				Check: resource.TestCheckResourceAttr(
+					"unifi_setting.test", "mdns.mode", "all",
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_mdns(mode string) string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode                = "` + mode + `"
+    predefined_services = ["apple_airPlay", "google_chromecast"]
+    custom_services = [{
+      name    = "Home Assistant"
+      address = "_home-assistant._tcp"
+    }]
+  }
+}
+`
 }

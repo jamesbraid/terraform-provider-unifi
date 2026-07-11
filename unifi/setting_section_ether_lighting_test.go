@@ -2,11 +2,13 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -170,4 +172,48 @@ func Test_settingResource_Schema_etherLighting(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["ether_lighting"]; !ok {
 		t.Fatal("schema is missing the ether_lighting section attribute")
 	}
+}
+
+func TestAccSettingResource_etherLighting(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				// Colors deliberately differ from the controller's built-in
+				// defaults: the controller silently drops an override equal
+				// to the default, which would fail the round-trip check.
+				Config: testAccSettingConfig_etherLighting("ff6c14"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "ether_lighting.speed_overrides.#", "1",
+					),
+					resource.TestCheckTypeSetElemNestedAttrs(
+						"unifi_setting.test", "ether_lighting.speed_overrides.*",
+						map[string]string{"speed": "GbE", "color_hex": "ff6c14"},
+					),
+				),
+			},
+			{
+				Config: testAccSettingConfig_etherLighting("0544aa"),
+				Check: resource.TestCheckTypeSetElemNestedAttrs(
+					"unifi_setting.test", "ether_lighting.speed_overrides.*",
+					map[string]string{"speed": "GbE", "color_hex": "0544aa"},
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_etherLighting(color string) string {
+	return fmt.Sprintf(`
+resource "unifi_setting" "test" {
+  ether_lighting = {
+    speed_overrides = [{
+      speed     = "GbE"
+      color_hex = %q
+    }]
+  }
+}
+`, color)
 }
