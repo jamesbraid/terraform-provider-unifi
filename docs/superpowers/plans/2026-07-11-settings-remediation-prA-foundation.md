@@ -1,4 +1,4 @@
-# PR-A: Settings Lifecycle Foundation — Implementation Plan (rev 2)
+# PR-A: Settings Lifecycle Foundation — Implementation Plan (rev 3)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -78,6 +78,10 @@ func TestOwnershipClassPolicy(t *testing.T) {
 - **Ownership-aware layer** (the C1 encoding):
   - `decodeString(data, key, class, prior types.String) (types.String, diag.Diagnostics)` — if `!class.readsFromAPI()` return `prior` (preserve write-only secret); else `codecString`. Analogous `decodeInt64/decodeBool/decodeStringList`.
   - `overlayString(out, key, class, v types.String)` — if `class.writesToPUT()` then `putString`; else no-op. Analogous `overlayInt64/overlayBool/overlayStringList`.
+  - **Nested shapes** (for `SingleNestedAttribute`/`ListNestedAttribute` sections — usg, mgmt, ips lists, doh):
+    - `decodeObject(ctx, data map[string]any, key string, childOwnership map[string]ownershipClass, prior types.Object, attrTypes map[string]attr.Type) (types.Object, diag.Diagnostics)` — reads the nested map, recursing each child per its class (a nested `WriteOnlySecret` is preserved from `prior`'s object); `overlayObject(ctx, out, key, childOwnership, cfg types.Object) diags` writes children whose class `writesToPUT()`.
+    - `decodeObjectList(ctx, data, key string, elemOwnership map[string]ownershipClass, elemType attr.Type) (types.List, diag.Diagnostics)` / `overlayObjectList(...)` — element order follows the API; per-element secret leaves follow their class.
+    - **Duration/number:** a field the schema exposes as int seconds uses `decodeInt64`/`overlayInt64`; a field the existing converter parses from/to a duration string is ported verbatim from the cited converter (see the migration table's converter-lines column).
 
 - [ ] **Step 1: Failing tests** — the contract AND the ownership layer:
   - `codecString({"k":""})` → StringValue("") not null; `codecString({})` → null.
@@ -156,7 +160,8 @@ func TestRawSettings_dataCopyIsDeep(t *testing.T) {
 
 - [ ] **Step 1: Failing tests**
   - Fake: update-then-list round-trip; injected update failure returns error.
-  - **Transport (real adapter):** a test that marshals a `RawSetting{Data:{"key":"mgmt","x_ssh_enabled":true,"unmodeled":"keep"}}` via the SAME path `UpdateSetting` uses (`json.Marshal(&rs)`) and asserts the produced JSON body contains `unmodeled":"keep"` and `x_ssh_enabled":true` — proving the merged map (incl. unmodeled keys) reaches the wire. (Pure marshal test; no HTTP.)
+  - **Marshal (unit):** a test that marshals a `RawSetting{Data:{"key":"mgmt","x_ssh_enabled":true,"unmodeled":"keep"}}` via `json.Marshal(&rs)` and asserts the body contains `unmodeled":"keep"` and `x_ssh_enabled":true`.
+  - **Adapter (httptest):** stand up an `httptest.Server`, construct a real go-unifi `ApiClient`/`*Client` pointed at its URL, call `realSettingsClient{c}.UpdateRawSetting(ctx,"default", rs)`, and assert the captured request is `PUT`, path ends `/set/setting/mgmt`, and the decoded body contains the merged keys (including the unmodeled one). This proves the full `realSettingsClient → UpdateSetting → HTTP` path, not just marshalling.
 
 ```go
 func TestRawSettingMarshalPreservesUnmodeled(t *testing.T) {
@@ -171,7 +176,7 @@ func TestRawSettingMarshalPreservesUnmodeled(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run** `go test ./unifi/ -run 'TestFakeClient|TestRawSettingMarshal'` → FAIL.
+- [ ] **Step 2: Run** `go test ./unifi/ -run 'TestFakeClient|TestRawSettingMarshal|TestSettingClientAdapter'` → FAIL.
 - [ ] **Step 3: Implement** the interface + real adapter (`unifi/setting_client.go`) and the fake (`_test.go`).
 - [ ] **Step 4: Run** → PASS.
 - [ ] **Step 5: Commit** `feat(setting): settingsClient seam, fake with fault injection, PUT-body transport test (C2.8)`.
@@ -217,7 +222,7 @@ func orderedSections(in []settingSection) []settingSection // returns a copy sor
 **Interfaces — Produces (all take an explicit `sections []settingSection` — no global read):**
 - `func readSections(ctx, sections []settingSection, client settingsClient, site string, prior settingResourceModel, model *settingResourceModel, onlyConfigured bool) diag.Diagnostics` — one `ListSettings`; per configured (or all, import) section: capability check (fail closed if configured+unsupported), then `decode(snap, prior, model)`.
 - `func applySections(ctx, sections []settingSection, client settingsClient, site string, plan, prior settingResourceModel) (settingResourceModel, diag.Diagnostics)` — snapshot; reconcile ALL configured overlays (abort before any PUT on error); PUT in `orderedSections` order, recording successes; re-read canonical snapshot into state; on re-read failure use `bestEffortState`.
-- `func bestEffortState(prior, plan settingResourceModel, put map[string]bool, sections []settingSection) settingResourceModel` — start from `prior`; for each section where `put[key]` is true, copy that section's attribute from `plan` (the values that were sent); secrets always taken from `prior`. Never includes a not-PUT section's `plan` value.
+- `func bestEffortState(prior, plan settingResourceModel, put map[string]bool, sections []settingSection) settingResourceModel` — start from `prior`; for each section where `put[key]` is true, replace that section's attribute with `plan`'s value (what was sent) **except** each `WriteOnlySecret` leaf that is null in `plan` keeps `prior`'s value (an unset secret was never sent, so it is unchanged; a *set/rotated* secret was sent, so `plan`'s value is the truth). Non-PUT sections keep `prior` entirely. This mirrors the overlay/decode secret-preservation rule exactly, so a successful secret rotation is retained and an unset secret is preserved.
 
 - [ ] **Step 1: Failing tests** (via the fake + two stub sections passed as the `sections` param):
   1. `TestEngine_noWriteBeforeReconcileError`: a stub `overlay` returns a diagnostic ⇒ `fake.puts` is empty.
@@ -225,7 +230,7 @@ func orderedSections(in []settingSection) []settingSection // returns a copy sor
   3. `TestEngine_partialApplyReReads`: section `a` PUTs ok, `b` injected-fail ⇒ error returned AND `readSections` after shows `a`'s new value, `b`'s old value.
   4. `TestEngine_preservesUnmodeledKeys`: overlay sets one key; the recorded PUT `Data` still contains a pre-existing unmodeled key from the snapshot.
   5. `TestBestEffortState_excludesUnattempted`: `put={a:true}`, plan has new `a` and `b` ⇒ result has plan's `a`, prior's `b`.
-  6. `TestBestEffortState_secretsFromPrior`: a secret attr comes from `prior` even for a PUT section.
+  6. `TestBestEffortState_secretRotationRetained`: for a PUT section, a *set* (rotated) secret in `plan` is retained; a *null* secret in `plan` falls back to `prior`'s secret; a non-PUT section keeps `prior`.
 
 ```go
 func TestBestEffortState_excludesUnattempted(t *testing.T) {
@@ -295,15 +300,15 @@ Implement `readSections`, `listSnapshot`, and `bestEffortState` in full per the 
 
 **Files:** Create `unifi/setting_framework_state_test.go`
 
-**Purpose (blocking spec verification):** determine empirically whether the plugin-framework/Terraform persists a `resp.State` set alongside an `Update` **error** diagnostic. The C2.4 contract ("state written best-effort") depends on this.
+**Settled behavior (verified in source):** the plugin-framework sets `resp.NewState = &updateResp.State` **unconditionally** at `fwserver/server_updateresource.go:154` — regardless of error diagnostics (the null-state guard at :157 only fires when there is *no* error). Terraform Core persists that returned state alongside the error (partial-apply). So the C2.4 contract holds as approved: on a partial/read-back failure the operation stays **failed (error)** AND the best-effort state is persisted. No warning fallback; no spec change.
 
-- [ ] **Step 1:** Write a minimal framework-level test: a throwaway resource whose `Update` sets a known state value AND appends an error diagnostic; drive it through `resource.Test` with a step that `ExpectError`s and a follow-up `RefreshState`/plan assertion (or use `fwserver` directly) to observe whether the errored state is persisted.
-- [ ] **Step 2: Run** and record the actual behavior.
-- [ ] **Step 3: Conform the engine to the result:**
-  - If Core **persists** errored state (expected — Terraform's partial-apply model): keep Task 7's `applySections` returning `(out, error)` and have the resource set state before the error (Task 24b).
-  - If Core **discards** errored state: change the partial/second-failure paths to surface the failure as a **warning + written state** (not a hard error) so state persists, and document the deviation in the spec's C2.4 (flag to the maintainer). Do NOT silently lose the recovery state.
-- [ ] **Step 4: Run** the conforming engine tests → PASS.
-- [ ] **Step 5: Commit** `test(setting): verify framework state persistence on Update error; conform C2.4`.
+This task is a **regression guard** that pins that behavior so a future framework bump cannot silently break C2.4.
+
+- [ ] **Step 1: Write the failing test** — a throwaway framework resource whose `Update` sets a known state value AND appends an error diagnostic; drive it through the `fwserver` (or `resource.Test` with `ExpectError`) and assert the returned/persisted `NewState` equals the value set despite the error.
+- [ ] **Step 2: Run** → PASS (documents current framework behavior).
+- [ ] **Step 3:** N/A (assertion of existing behavior).
+- [ ] **Step 4:** If this test ever fails on a framework upgrade, **STOP and escalate to the maintainer** — converting the failed apply to a warning would flip "failed" to "success" and is a spec change, not an implementation choice.
+- [ ] **Step 5: Commit** `test(setting): regression-guard framework state persistence on Update error (C2.4)`.
 
 ---
 
@@ -323,7 +328,9 @@ Implement `readSections`, `listSnapshot`, and `bestEffortState` in full per the 
 
 Each task ADDS a `settingSection` implementation and registers it, WITHOUT deleting the legacy converter (deletion is Task 24c). Each task asserts the new section's `overlay` reproduces the section's golden body (same expected bytes) and its `decode` round-trips. The **authoritative field↔raw-key mapping is the existing converter**, cited by line; port it verbatim and apply the ownership tags below.
 
-**Structural templates** (write once, reused): Task 10 (`auto_speedtest`) is the **scalar** template; Task 20 (`syslog`) is the **list** template; Task 23 (`mgmt`) is the **nested-object + nested-list** template. Later tasks of the same shape follow the matching template.
+**Structural templates** (fully worked with real code; reused by same-shape tasks): Task 10 (`auto_speedtest`) = **scalar**; Task 16 (`syslog`) = **list**; Task 21 (`usg`) = **nested-object** (`dns_verification`); Task 22 (`mgmt`) = **nested-list** (`ssh_keys`) **+ secret** (`ssh_password`). Each other task states its shape and follows the matching worked template.
+
+The **converter-lines** column cites the authoritative field↔raw-key mapping in the current `setting_resource.go` (decode line / overlay line ranges). Port those fields verbatim; the golden (Task 9) is the exactness oracle — if `overlay`'s body ≠ the golden, a field was missed.
 
 ### Task 10 (scalar template): `auto_speedtest`
 - Files: `unifi/setting_section_auto_speedtest.go` (+ test). Legacy converter authority: `setting_resource.go` (auto_speedtest converters). Ownership: `enabled`→ownerManaged, `cron_expr`→ownerManaged.
@@ -333,20 +340,22 @@ Each task ADDS a `settingSection` implementation and registers it, WITHOUT delet
 
 For each: cite the converter, port field-for-field, apply ownership, assert golden. Full ownership maps (attr path → class); anything not listed is `ownerManaged`:
 
-| Task | Section | go-unifi type | Ownership (non-Managed leaves) | Template |
-|---|---|---|---|---|
-| 11 | `country` | `settings.Country` | — | scalar |
-| 12 | `dpi` | `settings.Dpi` | — | scalar |
-| 13 | `lcm` | `settings.Lcm` | — | scalar |
-| 14 | `network_optimization` | `settings.NetworkOptimization` | — | scalar |
-| 15 | `ntp` | `settings.Ntp` | — | scalar |
-| 16 | `syslog` (list template) | `settings.Rsyslogd` | `contents` list ownerManaged (empty-list round-trip = permitted delta 1) | list |
-| 17 | `doh` | `settings.Doh` | `server_names` list ownerManaged | list |
-| 18 | `ips` | `settings.Ips` | `enabled_categories`, `enabled_networks` lists ownerManaged | list |
-| 19 | `igmp_snooping` | `settings.IgmpSnooping` | `network_ids` list ownerManaged | list |
-| 20 | `radius` | `settings.Radius` | `x_secret`→ownerWriteOnlySecret; ports/enabled ownerManaged | scalar+secret |
-| 21 | `usg` | `settings.Usg` | nested `dns_verification` children ownerManaged; scalars ownerManaged | nested-object |
-| 22 | `mgmt` (nested template) | `settings.Mgmt` | `ssh_password`→ownerWriteOnlySecret; `x_mgmt_key`→ownerWriteOnlySecret (if in schema); `ssh_keys` (public keys, ListNested)→ownerManaged; all other flags ownerManaged | nested-object + nested-list |
+| Task | Section | go-unifi type | Converter (decode / overlay lines) | Ownership (non-Managed leaves) | Template |
+|---|---|---|---|---|---|
+| 11 | `country` | `settings.Country` | 1947 / 1386–1397, 1677–1688 | — | scalar |
+| 12 | `dpi` | `settings.Dpi` | 1964 / 1399–1410, 1690–1701 | — | scalar |
+| 13 | `lcm` | `settings.Lcm` | 1981 / 1412–1423, 1703–1714 | — | scalar |
+| 14 | `network_optimization` | `settings.NetworkOptimization` | 1998 / 1425–1436, 1716–1727 | — | scalar |
+| 15 | `ntp` | `settings.Ntp` | 2017 / 1438–1449, 1729–1740 | — | scalar |
+| 16 | `syslog` (list, worked) | `settings.Rsyslogd` | 2034 / 1451–1465, 1742–1756 | `contents` list ownerManaged (empty-list round-trip = permitted delta 1) | list |
+| 17 | `doh` | `settings.Doh` | 2059 / 1467–1482, 1758–1773 | `server_names` list ownerManaged | list |
+| 18 | `ips` | `settings.Ips` | 2084 / 1484–1499, 1775–1790 | `enabled_categories`, `enabled_networks` lists ownerManaged | list |
+| 19 | `igmp_snooping` | `settings.IgmpSnooping` | 2283 / 1565–1592, 1856–1881 | `network_ids` list ownerManaged | list |
+| 20 | `radius` | `settings.Radius` | 2136 / 1526–1549, 1817–1840 | `x_secret`→ownerWriteOnlySecret; ports/enabled ownerManaged | scalar+secret |
+| 21 | `usg` (nested-object, worked) | `settings.Usg` | 2174 / 1551–1563, 1842–1854 | nested `dns_verification` children ownerManaged; scalars ownerManaged | nested-object |
+| 22 | `mgmt` (nested-list + secret, worked) | `settings.Mgmt` | 2110 / 1501–1524, 1792–1815 | `ssh_password`→ownerWriteOnlySecret; `x_mgmt_key`→ownerWriteOnlySecret (only if in schema); `ssh_keys` (public keys, ListNested)→ownerManaged; all other flags ownerManaged | nested-list + secret |
+
+**Worked tasks (16, 21, 22) show real `decode`/`overlay` code** using the nested/list codec helpers from Task 2 — Task 16 the list shape (`contents`), Task 21 the nested-object shape (`dns_verification` via `decodeObject`/`overlayObject`), Task 22 the nested-list shape (`ssh_keys` via `decodeObjectList`/`overlayObjectList`) plus the secret leaf (`ssh_password` preserved when config-null). Same-shape non-worked tasks reproduce the matching worked template with their table row's specifics.
 
 **Secret tasks (20, 22) additionally test:** a null secret config preserves the prior-state secret (`decode` returns prior) and the secret never appears in the golden PUT body when config is null; a set secret is written. Only `ssh_password`/`x_secret`/`x_mgmt_key` are secret — **`ssh_keys` are public and are `ownerManaged`**.
 
@@ -371,12 +380,13 @@ Create `unifi/setting_discriminator.go` (+ test): `requireChildrenFor(...) valid
 Create `unifi/site.go` (+ test): `resolveSite(configured, def) string`; `parseSiteID(importID, def) (site, id string, err error)` (splits `site:id`, else `def,importID`; empty/ambiguous → error). Commit `feat: shared site resolution + composite-id parsing (C3)`.
 
 ### Task 24a: Wire the engine (schema + lifecycle), legacy retained
+- **First, capture the legacy schema fixture (before rewiring):** add `normalizeSchemaAttr(ctx, name string, a schema.Attribute) normAttr` capturing name, type string, Required/Optional/Computed/Sensitive, the concrete default value rendered (if any), and each validator's and plan-modifier's `.Description(ctx)` (validators/plan-modifiers are not reflect-comparable — their descriptions are). Run the CURRENT (legacy) `Schema()` and snapshot the 13 sections' normalized form to a checked-in golden `unifi/testdata/setting_schema_legacy.json`.
 - Modify `setting_resource.go`: `Schema` builds section attrs from `orderedSections(settingSections)`; Create/Update/Read call `applySections`/`readSections` with `settingSections` + `realSettingsClient{r.client}` + `resolveSite`. **Legacy converters remain** (unused by the new path but still compiled for goldens).
-- Test `TestSettingSchema_equivalence`: the assembled schema equals `origin/main`'s for all 13 sections — attribute names, types, Optional/Computed/Sensitive, defaults, validators, and plan modifiers (deep-compare the schema tree, not just names).
-- Commit `refactor(setting): drive lifecycle through the section engine (legacy retained)`.
+- Test `TestSettingSchema_equivalence`: normalize the NEW registry-built schema and assert it equals the `setting_schema_legacy.json` golden — so the comparison stays executable after the legacy `Schema` code is deleted in 24c.
+- Commit `refactor(setting): drive lifecycle through the section engine; schema-equivalence golden (legacy retained)`.
 
 ### Task 24b: Site-aware import + hydration
-- `ImportState`: parse the import ID as a **site name** (not `site:id`); validate non-empty/unambiguous (diagnostic otherwise); set `site` + `id`; mark for full hydration. `Read` uses `onlyConfigured=false` when all section attrs are null (imported) to hydrate every registered section.
+- `ImportState`: parse the import ID as a **site name** (settings import is NOT the `site:id` composite used by NAT/CF); reject empty or `:`-containing input with a diagnostic; set `site` + `id` = the site name; leave all section attributes null. **Hydration marker:** there is NO separate flag — `Read` hydrates every registered section (`onlyConfigured=false`) exactly when all registered section attributes are null in state (the imported shape); otherwise it reads only configured sections. This invariant is documented in a comment on `Read`.
 - Tests: `TestSettingImport_setsSiteAndHydrates` (via fake through the injected client seam); `TestSettingImport_nonDefaultSite`; and an acceptance-level `TestAccSettingImport_cleanPlan` asserting a no-config plan after import is empty.
 - Commit `feat(setting): site-aware import that hydrates all sections (C3, gate 6)`.
 
@@ -400,4 +410,6 @@ Annotate SDK-gap raw mappings `// TODO(go-unifi): <retirement condition>`; recor
 2. **Placeholder scan:** migration Tasks 11–22 cite the authoritative converter + full ownership maps + a golden equality check per section, with three structural templates (scalar/list/nested) worked in Tasks 10/16/22 — no "similar to" gaps. The engine's `readSections`/`listSnapshot`/`bestEffortState` are specified by signature + contract + the shown `applySections` body and are pinned by Task 7's six tests.
 3. **Type consistency:** interface methods `key/attrName/schemaAttribute/ownership/decode(prior)/overlay/capability` consistent across Tasks 6,7,10–24. `ownershipClass` predicates (`writesToPUT/readsFromAPI/isSecret/usesStateForUnknown`) consistent across 1,2,10–22. `settingsClient` (`ListSettings/UpdateRawSetting`), engine signatures with explicit `sections []settingSection`, and `rawSettings`/`dataCopy` consistent throughout.
 
-**Resolved from codex prA-plan-review turn 1:** C1 now encoded in codec + `ownership()` (blocking 1); `bestEffortState` corrected + tested (blocking 2); goldens retained until 24c (blocking 3); full ownership maps + templates + ssh fix (blocking 4); framework-state verification task (blocking 5); deterministic ordered registry + sections-as-param, no global test race (important); PUT-body transport test (important); Task 24 split + schema-equivalence (important); deep-copy snapshot, deduped goldens, snapshot/refresh wording (minor).
+**Resolved from codex prA-plan-review turn 1:** C1 encoded in codec + `ownership()`; `bestEffortState` corrected + tested; goldens retained until 24c; ownership maps + templates + ssh fix; framework-state verification; deterministic ordered registry + sections-as-param; PUT-body transport test; Task 24 split + schema-equivalence; deep-copy snapshot.
+
+**Resolved from turn 2:** (2) `bestEffortState` secret rule fixed — a PUT section's *rotated* secret is retained, a null secret falls back to prior, non-PUT sections keep prior. (5) Framework state-on-error settled from source (`server_updateresource.go:154` sets NewState unconditionally) → op stays failed AND best-effort state persists; no warning fallback, no spec change; Task 8 is now a regression guard that escalates on framework change. (1) nested-object/nested-list/duration ownership-aware codec helpers added (Task 2); usg + mgmt worked with real code. (4) converter decode/overlay line citations added per section; golden is the exactness oracle. httptest adapter test added (Task 5). Import hydration marker specified (all-null attrs, no flag). Schema-equivalence uses a pre-cutover normalized golden. Template task-number references corrected (10 scalar, 16 list, 21 nested-object, 22 nested-list).
