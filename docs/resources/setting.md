@@ -378,7 +378,7 @@ Optional:
 Optional:
 
 - `enabled` (Boolean) Whether the Site Magic site-to-site VPN is enabled.
-- `private_key` (String, Sensitive) WireGuard private key. Controller-generated unless explicitly set; never required.
+- `private_key` (String, Sensitive) WireGuard private key. Controller-generated unless explicitly set; never required. The key persists in Terraform state and is resent to the controller on subsequent applies (a controller no-op); protect your state file accordingly.
 
 Read-Only:
 
