@@ -243,6 +243,7 @@ type settingResourceModel struct {
 	Mdns               types.Object   `tfsdk:"mdns"`
 	Teleport           types.Object   `tfsdk:"teleport"`
 	MagicSiteToSiteVpn types.Object   `tfsdk:"magic_site_to_site_vpn"`
+	TrafficFlow        types.Object   `tfsdk:"traffic_flow"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
