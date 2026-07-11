@@ -249,6 +249,7 @@ type settingResourceModel struct {
 	Netflow            types.Object   `tfsdk:"netflow"`
 	SslInspection      types.Object   `tfsdk:"ssl_inspection"`
 	GlobalNetwork      types.Object   `tfsdk:"global_network"`
+	UsgGeo             types.Object   `tfsdk:"usg_geo"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
