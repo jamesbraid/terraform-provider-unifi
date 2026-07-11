@@ -403,6 +403,8 @@ func Test_firewallPolicyEndpointModel_AttributeTypes(t *testing.T) {
 				"client_macs":          types.ListType{ElemType: types.StringType},
 				"ips":                  types.ListType{ElemType: types.StringType},
 				"web_domains":          types.ListType{ElemType: types.StringType},
+				"app_ids":              types.SetType{ElemType: types.Int64Type},
+				"app_category_ids":     types.SetType{ElemType: types.Int64Type},
 				"port":                 types.StringType,
 				"port_group_id":        types.StringType,
 				"ip_group_id":          types.StringType,
@@ -625,6 +627,8 @@ func Test_modelToFirewallPolicy(t *testing.T) {
 						ClientMACs:         types.ListNull(types.StringType),
 						IPs:                types.ListNull(types.StringType),
 						WebDomains:         types.ListNull(types.StringType),
+						AppIDs:             types.SetNull(types.Int64Type),
+						AppCategoryIDs:     types.SetNull(types.Int64Type),
 						Port:               types.StringNull(),
 						PortGroupID:        types.StringNull(),
 						PortMatchingType:   types.StringValue("ANY"),
@@ -642,6 +646,8 @@ func Test_modelToFirewallPolicy(t *testing.T) {
 						ClientMACs:         types.ListNull(types.StringType),
 						IPs:                types.ListNull(types.StringType),
 						WebDomains:         types.ListNull(types.StringType),
+						AppIDs:             types.SetNull(types.Int64Type),
+						AppCategoryIDs:     types.SetNull(types.Int64Type),
 						Port:               types.StringNull(),
 						PortGroupID:        types.StringNull(),
 						PortMatchingType:   types.StringValue("ANY"),
@@ -721,6 +727,8 @@ func TestFirewallPolicyIndexNotSent(t *testing.T) {
 				ClientMACs:         types.ListNull(types.StringType),
 				IPs:                types.ListNull(types.StringType),
 				WebDomains:         types.ListNull(types.StringType),
+				AppIDs:             types.SetNull(types.Int64Type),
+				AppCategoryIDs:     types.SetNull(types.Int64Type),
 				Port:               types.StringNull(),
 				PortGroupID:        types.StringNull(),
 				PortMatchingType:   types.StringValue("ANY"),
@@ -1191,6 +1199,8 @@ func Test_apiSourceToEndpointModel(t *testing.T) {
 				networkIDs, _ := types.ListValueFrom(ctx, types.StringType, ([]string)(nil))
 				clientMACs, _ := types.ListValueFrom(ctx, types.StringType, ([]string)(nil))
 				webDomains, _ := types.ListValueFrom(ctx, types.StringType, ([]string)(nil))
+				appIDs, _ := types.SetValueFrom(ctx, types.Int64Type, ([]int64)(nil))
+				appCategoryIDs, _ := types.SetValueFrom(ctx, types.Int64Type, ([]int64)(nil))
 				return firewallPolicyEndpointModel{
 					ZoneID:             types.StringValue("z1"),
 					MatchingTarget:     types.StringValue("IP"),
@@ -1199,6 +1209,8 @@ func Test_apiSourceToEndpointModel(t *testing.T) {
 					NetworkIDs:         networkIDs,
 					ClientMACs:         clientMACs,
 					WebDomains:         webDomains,
+					AppIDs:             appIDs,
+					AppCategoryIDs:     appCategoryIDs,
 					Port:               types.StringValue("443"),
 					PortGroupID:        types.StringValue(""),
 					IPGroupID:          types.StringValue(""),
@@ -1253,6 +1265,8 @@ func Test_apiDestinationToEndpointModel(t *testing.T) {
 				networkIDs, _ := types.ListValueFrom(ctx, types.StringType, ([]string)(nil))
 				clientMACs, _ := types.ListValueFrom(ctx, types.StringType, ([]string)(nil))
 				webDomains, _ := types.ListValueFrom(ctx, types.StringType, ([]string)(nil))
+				appIDs, _ := types.SetValueFrom(ctx, types.Int64Type, ([]int64)(nil))
+				appCategoryIDs, _ := types.SetValueFrom(ctx, types.Int64Type, ([]int64)(nil))
 				return firewallPolicyEndpointModel{
 					ZoneID:             types.StringValue("z2"),
 					MatchingTarget:     types.StringValue("ANY"),
@@ -1261,6 +1275,8 @@ func Test_apiDestinationToEndpointModel(t *testing.T) {
 					NetworkIDs:         networkIDs,
 					ClientMACs:         clientMACs,
 					WebDomains:         webDomains,
+					AppIDs:             appIDs,
+					AppCategoryIDs:     appCategoryIDs,
 					Port:               types.StringValue("8080"),
 					PortGroupID:        types.StringValue(""),
 					IPGroupID:          types.StringValue(""),
@@ -1408,6 +1424,13 @@ func TestFirewallPolicyMatchingTargetType(t *testing.T) {
 		// has no cross-field validation either way; pinned as documentation).
 		{"ANY", "", "gid1", "OBJECT"},
 		{"NETWORK", "", "gid1", "OBJECT"},
+		// APP/APP_CATEGORY matches carry no matching_target_type on the wire
+		// (observed live: the "block shield DNS" APP policy has none), so the
+		// helper must never inject SPECIFIC and must clear stale values.
+		{"APP", "", "", ""},
+		{"APP", "SPECIFIC", "", ""},
+		{"APP_CATEGORY", "", "", ""},
+		{"APP_CATEGORY", "ANY", "", ""},
 	}
 	for _, c := range cases {
 		got := firewallPolicyMatchingTargetType(c.matchingTarget, c.current, c.ipGroupID)
@@ -1458,6 +1481,8 @@ func TestFirewallPolicyPreserveMatchingTargetType(t *testing.T) {
 		ClientMACs:         types.ListNull(types.StringType),
 		IPs:                types.ListNull(types.StringType),
 		WebDomains:         types.ListNull(types.StringType),
+		AppIDs:             types.SetNull(types.Int64Type),
+		AppCategoryIDs:     types.SetNull(types.Int64Type),
 		Port:               types.StringValue("443"),
 		PortGroupID:        types.StringNull(),
 		PortMatchingType:   types.StringValue("SPECIFIC"),
@@ -1577,6 +1602,99 @@ func TestFirewallPolicyEndpointListsUseStateForUnknown(t *testing.T) {
 			if len(la.PlanModifiers) == 0 {
 				t.Errorf("%s.%s must have a plan modifier (UseStateForUnknown) (#338)", ep, key)
 			}
+		}
+	}
+}
+
+// TestFirewallPolicyAppMatchingRoundTrip covers APP/APP_CATEGORY matching:
+// integer DPI app ids survive model -> API -> model, matching_target is
+// preserved, and no matching_target_type is emitted for app matches.
+func TestFirewallPolicyAppMatchingRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	appIDs, d := types.SetValueFrom(ctx, types.Int64Type, []int64{589885, 1310919})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+
+	m := firewallPolicyEndpointModel{
+		ZoneID:             types.StringValue("z1"),
+		MatchingTarget:     types.StringValue("APP"),
+		AppIDs:             appIDs,
+		AppCategoryIDs:     types.SetNull(types.Int64Type),
+		NetworkIDs:         types.ListNull(types.StringType),
+		ClientMACs:         types.ListNull(types.StringType),
+		IPs:                types.ListNull(types.StringType),
+		WebDomains:         types.ListNull(types.StringType),
+		Port:               types.StringNull(),
+		PortGroupID:        types.StringNull(),
+		PortMatchingType:   types.StringValue("ANY"),
+		MatchingTargetType: types.StringNull(),
+	}
+
+	dst := endpointModelToDestination(ctx, m, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	if dst.MatchingTarget != "APP" {
+		t.Fatalf("MatchingTarget = %q, want APP", dst.MatchingTarget)
+	}
+	if dst.MatchingTargetType != "" {
+		t.Fatalf("APP match must not carry matching_target_type, got %q",
+			dst.MatchingTargetType)
+	}
+	if len(dst.AppIDs) != 2 {
+		t.Fatalf("AppIDs = %v, want 2 ids", dst.AppIDs)
+	}
+
+	back := apiDestinationToEndpointModel(ctx, dst, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	var ids []int64
+	diags.Append(back.AppIDs.ElementsAs(ctx, &ids, false)...)
+	if len(ids) != 2 {
+		t.Fatalf("round-trip AppIDs = %v", ids)
+	}
+
+	// Category variant on the source side.
+	catIDs, d := types.SetValueFrom(ctx, types.Int64Type, []int64{7})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	m.MatchingTarget = types.StringValue("APP_CATEGORY")
+	m.AppIDs = types.SetNull(types.Int64Type)
+	m.AppCategoryIDs = catIDs
+	src := endpointModelToSource(ctx, m, &diags)
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	if src.MatchingTarget != "APP_CATEGORY" || len(src.AppCategoryIDs) != 1 {
+		t.Fatalf("source category match wrong: %+v", src)
+	}
+	if src.MatchingTargetType != "" {
+		t.Fatalf("APP_CATEGORY match must not carry matching_target_type, got %q",
+			src.MatchingTargetType)
+	}
+}
+
+// Test_firewallPolicyResource_Schema_appMatching asserts the endpoint blocks
+// expose the app matching attributes.
+func Test_firewallPolicyResource_Schema_appMatching(t *testing.T) {
+	r := &firewallPolicyResource{}
+	var resp fwresource.SchemaResponse
+	r.Schema(context.Background(), fwresource.SchemaRequest{}, &resp)
+	for _, key := range []string{"source", "destination"} {
+		nested, ok := resp.Schema.Attributes[key].(schema.SingleNestedAttribute)
+		if !ok {
+			t.Fatalf("%s is not a SingleNestedAttribute", key)
+		}
+		if _, ok := nested.Attributes["app_ids"]; !ok {
+			t.Errorf("%s missing app_ids", key)
+		}
+		if _, ok := nested.Attributes["app_category_ids"]; !ok {
+			t.Errorf("%s missing app_category_ids", key)
 		}
 	}
 }

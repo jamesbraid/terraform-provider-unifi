@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -101,6 +102,8 @@ type firewallPolicyEndpointModel struct {
 	ClientMACs       types.List   `tfsdk:"client_macs"`
 	IPs              types.List   `tfsdk:"ips"`
 	WebDomains       types.List   `tfsdk:"web_domains"`
+	AppIDs           types.Set    `tfsdk:"app_ids"`
+	AppCategoryIDs   types.Set    `tfsdk:"app_category_ids"`
 	Port             types.String `tfsdk:"port"`
 	PortGroupID      types.String `tfsdk:"port_group_id"`
 	IPGroupID        types.String `tfsdk:"ip_group_id"`
@@ -118,6 +121,8 @@ func (m firewallPolicyEndpointModel) AttributeTypes() map[string]attr.Type {
 		"client_macs":          types.ListType{ElemType: types.StringType},
 		"ips":                  types.ListType{ElemType: types.StringType},
 		"web_domains":          types.ListType{ElemType: types.StringType},
+		"app_ids":              types.SetType{ElemType: types.Int64Type},
+		"app_category_ids":     types.SetType{ElemType: types.Int64Type},
 		"port":                 types.StringType,
 		"port_group_id":        types.StringType,
 		"ip_group_id":          types.StringType,
@@ -160,10 +165,13 @@ func (r *firewallPolicyResource) Schema(
 			Required:            true,
 		},
 		"matching_target": schema.StringAttribute{
-			MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
+			MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, `WEB` (domains/FQDN), `APP` (DPI applications), or `APP_CATEGORY` (DPI application categories).",
 			Required:            true,
 			Validators: []validator.String{
-				stringvalidator.OneOf("ANY", "NETWORK", "CLIENT", "IP", "DEVICE", "MAC", "WEB"),
+				stringvalidator.OneOf(
+					"ANY", "NETWORK", "CLIENT", "IP", "DEVICE", "MAC", "WEB",
+					"APP", "APP_CATEGORY",
+				),
 			},
 		},
 		"network_ids": schema.ListAttribute{
@@ -200,6 +208,24 @@ func (r *firewallPolicyResource) Schema(
 			ElementType:         types.StringType,
 			PlanModifiers: []planmodifier.List{
 				listplanmodifier.UseStateForUnknown(),
+			},
+		},
+		"app_ids": schema.SetAttribute{
+			MarkdownDescription: "DPI application IDs to match (integers, e.g. from the UniFi application list). Used when `matching_target` is `APP`.",
+			Optional:            true,
+			Computed:            true,
+			ElementType:         types.Int64Type,
+			PlanModifiers: []planmodifier.Set{
+				setplanmodifier.UseStateForUnknown(),
+			},
+		},
+		"app_category_ids": schema.SetAttribute{
+			MarkdownDescription: "DPI application category IDs to match. Used when `matching_target` is `APP_CATEGORY`.",
+			Optional:            true,
+			Computed:            true,
+			ElementType:         types.Int64Type,
+			PlanModifiers: []planmodifier.Set{
+				setplanmodifier.UseStateForUnknown(),
 			},
 		},
 		"port": schema.StringAttribute{
@@ -680,6 +706,10 @@ func (r *firewallPolicyResource) UpgradeState(
 			attrs[k] = v
 		}
 		attrs["port"] = schema.Int64Attribute{Optional: true, Computed: true}
+		// v0 predates APP/APP_CATEGORY matching; its stored state has no
+		// app fields, so the prior schema must not declare them.
+		delete(attrs, "app_ids")
+		delete(attrs, "app_category_ids")
 		nested.Attributes = attrs
 		priorSchema.Attributes[key] = nested
 	}
@@ -749,6 +779,8 @@ func upgradeFirewallPolicyEndpointV0(
 		ClientMACs:         v0.ClientMACs,
 		IPs:                v0.IPs,
 		WebDomains:         v0.WebDomains,
+		AppIDs:             types.SetNull(types.Int64Type),
+		AppCategoryIDs:     types.SetNull(types.Int64Type),
 		Port:               port,
 		PortGroupID:        v0.PortGroupID,
 		IPGroupID:          v0.IPGroupID,
@@ -836,8 +868,16 @@ func modelToFirewallPolicy(
 // create the type is never controller-assigned, so a group reference derives
 // "OBJECT" — overriding a stale ""/"ANY"/"SPECIFIC" from state (e.g. when a
 // policy is switched from literal ips to a group). A controller-assigned
-// "OBJECT"/"LIST" is preserved.
+// "OBJECT"/"LIST" is preserved. APP/APP_CATEGORY matches carry no type at all.
 func firewallPolicyMatchingTargetType(matchingTarget, currentType, ipGroupID string) string {
+	// APP and APP_CATEGORY matches carry no matching_target_type on the wire
+	// (observed live: an APP-matched destination has no such key at all).
+	// Returning "" lets omitempty drop it from the PUT and clears any stale
+	// type left over from a previous non-APP matching_target.
+	switch matchingTarget {
+	case "APP", "APP_CATEGORY":
+		return ""
+	}
 	if ipGroupID != "" && currentType != "OBJECT" && currentType != "LIST" {
 		return "OBJECT"
 	}
@@ -877,6 +917,12 @@ func endpointModelToSource(
 	if !m.WebDomains.IsNull() && !m.WebDomains.IsUnknown() {
 		diags.Append(m.WebDomains.ElementsAs(ctx, &ep.WebDomains, false)...)
 	}
+	if !m.AppIDs.IsNull() && !m.AppIDs.IsUnknown() {
+		diags.Append(m.AppIDs.ElementsAs(ctx, &ep.AppIDs, false)...)
+	}
+	if !m.AppCategoryIDs.IsNull() && !m.AppCategoryIDs.IsUnknown() {
+		diags.Append(m.AppCategoryIDs.ElementsAs(ctx, &ep.AppCategoryIDs, false)...)
+	}
 	return ep
 }
 
@@ -908,6 +954,12 @@ func endpointModelToDestination(
 	}
 	if !m.WebDomains.IsNull() && !m.WebDomains.IsUnknown() {
 		diags.Append(m.WebDomains.ElementsAs(ctx, &ep.WebDomains, false)...)
+	}
+	if !m.AppIDs.IsNull() && !m.AppIDs.IsUnknown() {
+		diags.Append(m.AppIDs.ElementsAs(ctx, &ep.AppIDs, false)...)
+	}
+	if !m.AppCategoryIDs.IsNull() && !m.AppCategoryIDs.IsUnknown() {
+		diags.Append(m.AppCategoryIDs.ElementsAs(ctx, &ep.AppCategoryIDs, false)...)
 	}
 	return ep
 }
@@ -1032,6 +1084,14 @@ func apiSourceToEndpointModel(
 	diags.Append(wd...)
 	m.WebDomains = webDomains
 
+	appIDs, ad := types.SetValueFrom(ctx, types.Int64Type, src.AppIDs)
+	diags.Append(ad...)
+	m.AppIDs = appIDs
+
+	appCategoryIDs, acd := types.SetValueFrom(ctx, types.Int64Type, src.AppCategoryIDs)
+	diags.Append(acd...)
+	m.AppCategoryIDs = appCategoryIDs
+
 	return m
 }
 
@@ -1064,6 +1124,14 @@ func apiDestinationToEndpointModel(
 	webDomains, wd := types.ListValueFrom(ctx, types.StringType, dst.WebDomains)
 	diags.Append(wd...)
 	m.WebDomains = webDomains
+
+	appIDs, ad := types.SetValueFrom(ctx, types.Int64Type, dst.AppIDs)
+	diags.Append(ad...)
+	m.AppIDs = appIDs
+
+	appCategoryIDs, acd := types.SetValueFrom(ctx, types.Int64Type, dst.AppCategoryIDs)
+	diags.Append(acd...)
+	m.AppCategoryIDs = appCategoryIDs
 
 	return m
 }
