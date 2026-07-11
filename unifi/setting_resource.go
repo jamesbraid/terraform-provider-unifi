@@ -222,27 +222,28 @@ type settingIpsModel struct {
 }
 
 type settingResourceModel struct {
-	ID            types.String   `tfsdk:"id"`
-	Site          types.String   `tfsdk:"site"`
-	AutoSpeedtest types.Object   `tfsdk:"auto_speedtest"`
-	Country       types.Object   `tfsdk:"country"`
-	Dpi           types.Object   `tfsdk:"dpi"`
-	Lcm           types.Object   `tfsdk:"lcm"`
-	NetworkOpt    types.Object   `tfsdk:"network_optimization"`
-	Ntp           types.Object   `tfsdk:"ntp"`
-	Syslog        types.Object   `tfsdk:"syslog"`
-	Doh           types.Object   `tfsdk:"doh"`
-	Ips           types.Object   `tfsdk:"ips"`
-	Mgmt          types.Object   `tfsdk:"mgmt"`
-	Radius        types.Object   `tfsdk:"radius"`
-	USG           types.Object   `tfsdk:"usg"`
-	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
-	Locale        types.Object   `tfsdk:"locale"`
-	GlobalNat     types.Object   `tfsdk:"global_nat"`
-	GlobalSwitch  types.Object   `tfsdk:"global_switch"`
-	Mdns          types.Object   `tfsdk:"mdns"`
-	Teleport      types.Object   `tfsdk:"teleport"`
-	Timeouts      timeouts.Value `tfsdk:"timeouts"`
+	ID                 types.String   `tfsdk:"id"`
+	Site               types.String   `tfsdk:"site"`
+	AutoSpeedtest      types.Object   `tfsdk:"auto_speedtest"`
+	Country            types.Object   `tfsdk:"country"`
+	Dpi                types.Object   `tfsdk:"dpi"`
+	Lcm                types.Object   `tfsdk:"lcm"`
+	NetworkOpt         types.Object   `tfsdk:"network_optimization"`
+	Ntp                types.Object   `tfsdk:"ntp"`
+	Syslog             types.Object   `tfsdk:"syslog"`
+	Doh                types.Object   `tfsdk:"doh"`
+	Ips                types.Object   `tfsdk:"ips"`
+	Mgmt               types.Object   `tfsdk:"mgmt"`
+	Radius             types.Object   `tfsdk:"radius"`
+	USG                types.Object   `tfsdk:"usg"`
+	IgmpSnooping       types.Object   `tfsdk:"igmp_snooping"`
+	Locale             types.Object   `tfsdk:"locale"`
+	GlobalNat          types.Object   `tfsdk:"global_nat"`
+	GlobalSwitch       types.Object   `tfsdk:"global_switch"`
+	Mdns               types.Object   `tfsdk:"mdns"`
+	Teleport           types.Object   `tfsdk:"teleport"`
+	MagicSiteToSiteVpn types.Object   `tfsdk:"magic_site_to_site_vpn"`
+	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
