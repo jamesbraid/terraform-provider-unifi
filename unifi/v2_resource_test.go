@@ -274,13 +274,37 @@ func TestV2SetIdentityAndState(t *testing.T) {
 
 func TestV2FinishRead(t *testing.T) {
 	t.Run("NotFoundError removes resource from state and returns true", func(t *testing.T) {
+		// Seed State.Raw as a NON-null object (real id/site values) so that
+		// asserting State.Raw.IsNull() afterward is a meaningful check of
+		// v2FinishRead's RemoveResource call, not a vacuous one: if
+		// newV2TestReadResponse's all-null root were used instead, the state
+		// would already be null before v2FinishRead ever ran, and this test
+		// would pass even if the RemoveResource call were deleted.
+		ctx := context.Background()
 		resp := newV2TestReadResponse(t)
-		handled := v2FinishRead(context.Background(), resp, &unifi.NotFoundError{}, "Error Reading Thing")
+		type model struct {
+			ID   types.String `tfsdk:"id"`
+			Site types.String `tfsdk:"site"`
+		}
+		if diags := resp.State.Set(ctx, &model{
+			ID:   types.StringValue("obj-1"),
+			Site: types.StringValue("default"),
+		}); diags.HasError() {
+			t.Fatalf("setup: seeding non-null state: %v", diags)
+		}
+		if resp.State.Raw.IsNull() {
+			t.Fatal("setup: State.Raw is null before v2FinishRead runs, want non-null")
+		}
+
+		handled := v2FinishRead(ctx, resp, &unifi.NotFoundError{}, "Error Reading Thing")
 		if !handled {
 			t.Error("v2FinishRead() = false, want true (NotFound should be handled)")
 		}
 		if resp.Diagnostics.HasError() {
 			t.Errorf("NotFound must not produce an error diagnostic, got: %v", resp.Diagnostics)
+		}
+		if !resp.State.Raw.IsNull() {
+			t.Error("State.Raw is not null after a NotFound v2FinishRead, want null (resource removed from state)")
 		}
 	})
 
@@ -431,6 +455,34 @@ func TestObjectAsOptions(t *testing.T) {
 			t.Errorf("got %+v, want zero value %+v", got, zero)
 		}
 	})
+
+	t.Run("incompatible target type surfaces diagnostics instead of discarding the error", func(t *testing.T) {
+		// sampleEndpoint's "port" attribute is a string (types.String), but
+		// incompatibleEndpoint declares the same "port" tfsdk tag as an
+		// Int64 field, so obj.As cannot decode it. This proves the decode
+		// error reaches the caller via the returned diagnostics rather than
+		// being silently swallowed.
+		obj, diags := types.ObjectValueFrom(ctx, sampleEndpointAttrTypes(), sampleEndpoint{
+			Zone: types.StringValue("zone-a"),
+			Port: types.StringValue("443"),
+		})
+		if diags.HasError() {
+			t.Fatalf("setup: %v", diags)
+		}
+
+		_, diags = objectAsOptions[incompatibleEndpoint](ctx, obj)
+		if !diags.HasError() {
+			t.Fatal("expected diagnostics for an incompatible target type, got none")
+		}
+	})
+}
+
+// incompatibleEndpoint shares sampleEndpointAttrTypes' attribute names but
+// gives "port" a type (Int64) that a string attribute cannot decode into,
+// for exercising objectAsOptions'/objectListAsOptions' error path.
+type incompatibleEndpoint struct {
+	Zone types.String `tfsdk:"zone"`
+	Port types.Int64  `tfsdk:"port"`
 }
 
 func TestObjectListAsOptions(t *testing.T) {
@@ -465,6 +517,40 @@ func TestObjectListAsOptions(t *testing.T) {
 		}
 		if got != nil {
 			t.Errorf("got %+v, want nil", got)
+		}
+	})
+
+	t.Run("unknown list decodes to nil with no diagnostics", func(t *testing.T) {
+		// objectListAsOptions explicitly treats IsUnknown() the same as
+		// IsNull() (v2_resource.go ~308) rather than falling through to
+		// ElementsAs, which would error on an unknown list. Assert that
+		// contract directly, not just the null case.
+		list := types.ListUnknown(types.ObjectType{AttrTypes: sampleEndpointAttrTypes()})
+		got, diags := objectListAsOptions[sampleEndpoint](ctx, list)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		if got != nil {
+			t.Errorf("got %+v, want nil", got)
+		}
+	})
+
+	t.Run("incompatible target type surfaces diagnostics instead of discarding the error", func(t *testing.T) {
+		obj, diags := types.ObjectValueFrom(ctx, sampleEndpointAttrTypes(), sampleEndpoint{
+			Zone: types.StringValue("zone-a"),
+			Port: types.StringValue("443"),
+		})
+		if diags.HasError() {
+			t.Fatalf("setup: %v", diags)
+		}
+		list, diags := types.ListValue(types.ObjectType{AttrTypes: sampleEndpointAttrTypes()}, []attr.Value{obj})
+		if diags.HasError() {
+			t.Fatalf("setup: %v", diags)
+		}
+
+		_, diags = objectListAsOptions[incompatibleEndpoint](ctx, list)
+		if !diags.HasError() {
+			t.Fatal("expected diagnostics for an incompatible target element type, got none")
 		}
 	})
 }
