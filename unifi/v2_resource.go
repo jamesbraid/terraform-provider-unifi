@@ -1,3 +1,36 @@
+// Package unifi's v2_resource.go provides shared lifecycle infrastructure for
+// v2 (terraform-plugin-framework resource.Resource) resources: site
+// resolution, timeout extraction, NotFound handling, import parsing, the
+// identity+state write tail, and object/list conversion helpers.
+//
+// List-resource eligibility (design doc §5.9, parent spec
+// docs/superpowers/specs/2026-07-11-settings-remediation-design.md): an
+// audit of every v2 CRUD resource in this package (grep -rn "ListResource"
+// unifi/*.go, cross-checked against provider.go's ListResources()
+// registration) found that every audited *collection-shaped* resource —
+// including the reference resource named by the parent design,
+// firewall_policy_resource.go — implements list.ListResource. This is not a
+// universal rule: bgpResource (unifi/bgp_resource.go) is a registered CRUD
+// resource.Resource with full Create/Read/Update/Delete/ImportState, but it
+// is a per-site singleton (one BGP config per site, no collection
+// semantics) and is absent from ListResources(), the same shape as
+// unifi_setting. Singleton resources correctly have no list resource
+// because there is nothing to list.
+//
+// The rule this PR records for PR-D (unifi_nat_rule) and PR-E
+// (unifi_content_filtering) to apply independently is therefore: every
+// audited collection-shaped resource implements list.ListResource;
+// singleton resources (BGP, unifi_setting) do not. NAT and
+// content-filtering are both collection-shaped, site-scoped resources like
+// every other collection-shaped resource in this package, so both MUST
+// implement list.ListResource (config schema with site + filter blocks, a
+// List method, and registration in provider.go's ListResources()) —
+// consistent with firewall_policy_resource.go, firewall_zone_resource.go,
+// port_forward_resource.go, dns_record_resource.go, and the rest — not
+// because "every v2 resource does this" (bgpResource disproves that) but
+// because the collection-shaped rule unambiguously covers them. Neither
+// PR-D nor PR-E needs to re-run this audit or coordinate with the other
+// before applying it.
 package unifi
 
 import (
