@@ -320,7 +320,16 @@ func (s mgmtSection) overlay(ctx context.Context, model, prior settingResourceMo
 	if diags.HasError() {
 		return settings.RawSetting{}, false, diags
 	}
-	blankSSHKeyControllerMetadata(base)
+	// Only blank date/fingerprint when ssh_keys is actually being replaced
+	// (configured and known) this apply. When ssh_keys is omitted
+	// (null/unknown), overlayObjectList above already left base's
+	// "x_ssh_keys" untouched — blanking unconditionally would still zero out
+	// the existing keys' controller-assigned metadata even though nothing
+	// about ssh_keys changed (codex re-review finding 5). Legacy preserved
+	// omitted ssh_keys verbatim, including their metadata.
+	if !m.SSHKeys.IsNull() && !m.SSHKeys.IsUnknown() {
+		blankSSHKeyControllerMetadata(base)
+	}
 
 	rs := settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: s.key()},
@@ -330,16 +339,22 @@ func (s mgmtSection) overlay(ctx context.Context, model, prior settingResourceMo
 }
 
 // blankSSHKeyControllerMetadata sets "date" and "fingerprint" to "" on every
-// element of base["x_ssh_keys"], if present. These two wire fields are
-// controller-computed metadata (assigned when a key is added/rotated) that
-// the schema does not model or echo back. overlayObjectList builds each
-// element fresh from the model's leaves, so it never carries these fields
-// forward from the base by list position — deliberately, because doing so
-// by position mis-attaches one key's metadata onto a different key across a
-// reorder or replace (codex whole-branch review finding 3). Blanking here
-// matches legacy byte-for-byte: the legacy client always sent freshly
-// constructed SettingMgmtSSHKeys structs whose date/fingerprint serialize as
-// "" (see goldenMgmt's "date":"","fingerprint":"").
+// element of base["x_ssh_keys"], if present. Its caller (overlay) invokes it
+// only when ssh_keys is actually configured (non-null/known) in the model —
+// i.e. only when this apply is actually replacing the list — so an omitted
+// ssh_keys block leaves the snapshot's existing elements, metadata included,
+// untouched (codex re-review finding 5; legacy parity on omit).
+//
+// These two wire fields are controller-computed metadata (assigned when a
+// key is added/rotated) that the schema does not model or echo back.
+// overlayObjectList builds each element fresh from the model's leaves, so it
+// never carries these fields forward from the base by list position —
+// deliberately, because doing so by position mis-attaches one key's metadata
+// onto a different key across a reorder or replace (codex whole-branch
+// review finding 3). Blanking here matches legacy byte-for-byte: the legacy
+// client always sent freshly constructed SettingMgmtSSHKeys structs whose
+// date/fingerprint serialize as "" (see goldenMgmt's
+// "date":"","fingerprint":"").
 func blankSSHKeyControllerMetadata(base map[string]any) {
 	items, ok := base["x_ssh_keys"].([]any)
 	if !ok {

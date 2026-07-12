@@ -508,12 +508,21 @@ func (r *settingResource) Create(
 	ctx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
+	var config settingResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	client := realSettingsClient{r.client}
 	site := resolveSite(data.Site.ValueString(), r.client.Site)
 
 	// Nothing exists yet: the prior state for the engine's reconcile is a
 	// zero model, so every configured section in data is treated as new.
-	newModel, applyDiags := applySections(ctx, settingSections, client, site, data, settingResourceModel{})
+	// The section SET passed to applySections is derived from CONFIG (the
+	// authoritative user-configured signal), not plan — see
+	// configuredSections. plan is still used for the payload VALUES.
+	newModel, applyDiags := applySections(ctx, configuredSections(config), client, site, data, settingResourceModel{})
 
 	// applySections/readSections only populate the 13 section fields. id,
 	// site, and timeouts are resource-level, not section fields, so they
@@ -547,6 +556,27 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
 		m.IgmpSnooping.IsNull()
+}
+
+// configuredSections returns the registered sections the user configured in
+// m (its object attribute is non-null and known) — used by Create/Update to
+// scope applySections to the WRITE path's authoritative signal. Callers must
+// pass the CONFIG model here, not plan: after a site-name import, Read
+// hydrates every supported section as Computed and UseStateForUnknown fills
+// the plan with those hydrated blocks even though the user never configured
+// them in HCL, so isConfigured(plan) would over-select. Config has no such
+// fill — a section the user omitted stays null in config regardless of what
+// Read hydrated into state/plan. Read's own state-based filter is unrelated
+// and unchanged: Read OBSERVES all sections in state, only the WRITE path
+// (Create/Update) must be config-scoped.
+func configuredSections(m settingResourceModel) []settingSection {
+	out := make([]settingSection, 0, len(settingSections))
+	for _, s := range settingSections {
+		if s.isConfigured(m) {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func (r *settingResource) Read(
@@ -626,6 +656,12 @@ func (r *settingResource) Update(
 		return
 	}
 
+	var config settingResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, 20*time.Minute)
 	resp.Diagnostics.Append(timeoutDiags...)
 	if resp.Diagnostics.HasError() {
@@ -637,7 +673,15 @@ func (r *settingResource) Update(
 	client := realSettingsClient{r.client}
 	site := resolveSite(state.Site.ValueString(), r.client.Site)
 
-	newModel, applyDiags := applySections(ctx, settingSections, client, site, plan, state)
+	// The section SET passed to applySections is derived from CONFIG (the
+	// authoritative user-configured signal), not plan: after a site-name
+	// import, Read hydrates every supported section as Computed and
+	// UseStateForUnknown fills the plan with those hydrated blocks even
+	// though the user never configured them in HCL. Scoping to config keeps
+	// an update from over-managing (re-PUTting, or fail-closing on) sections
+	// the user never wrote — see configuredSections. plan is still used for
+	// the payload VALUES within each configured section.
+	newModel, applyDiags := applySections(ctx, configuredSections(config), client, site, plan, state)
 
 	// applySections/readSections only populate the 13 section fields. id,
 	// site, and timeouts are resource-level, not section fields, so they
