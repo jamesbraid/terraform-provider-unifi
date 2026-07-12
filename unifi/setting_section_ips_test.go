@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
@@ -446,6 +447,59 @@ func TestIpsSection_SuppressionPreserved(t *testing.T) {
 	}
 	if got, ok := sup["x"]; !ok || got != "keep" {
 		t.Errorf("suppression[%q] = %v (ok=%v), want %q", "x", got, ok, "keep")
+	}
+}
+
+// TestIpsSection_SuppressionTypeDrift proves that when the snapshot's
+// "suppression" key is PRESENT but not a map (remote type drift, e.g. the
+// controller returns "suppression": "broken"), decode() warns and retains
+// the prior suppression_alerts/suppression_whitelist values rather than
+// silently clearing them to null.
+func TestIpsSection_SuppressionTypeDrift(t *testing.T) {
+	ctx := context.Background()
+	sec := ipsSection{}
+
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "ips"},
+		Data: map[string]any{
+			"ips_mode":    "ips",
+			"suppression": "broken",
+		},
+	}})
+
+	priorObj := buildIpsGoldenModel(t, ctx)
+	var priorModel settingIpsModel
+	if diags := priorObj.As(ctx, &priorModel, basetypes.ObjectAsOptions{}); diags.HasError() {
+		t.Fatalf("extracting prior settingIpsModel: %v", diags)
+	}
+
+	prior := settingResourceModel{Ips: priorObj}
+	model := settingResourceModel{}
+
+	diags := sec.decode(ctx, snap, prior, &model)
+	if diags.HasError() {
+		t.Fatalf("decode diagnostics: %v", diags)
+	}
+	found := false
+	for _, d := range diags {
+		if d.Severity() == diag.SeverityWarning && d.Summary() == "Settings value type drift" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("decode diagnostics = %v, want a %q warning", diags, "Settings value type drift")
+	}
+
+	var got settingIpsModel
+	if diags := model.Ips.As(ctx, &got, basetypes.ObjectAsOptions{}); diags.HasError() {
+		t.Fatalf("extracting settingIpsModel: %v", diags)
+	}
+
+	if !got.SuppressionAlerts.Equal(priorModel.SuppressionAlerts) {
+		t.Errorf("SuppressionAlerts = %v, want prior value %v", got.SuppressionAlerts, priorModel.SuppressionAlerts)
+	}
+	if !got.SuppressionWhitelist.Equal(priorModel.SuppressionWhitelist) {
+		t.Errorf("SuppressionWhitelist = %v, want prior value %v", got.SuppressionWhitelist, priorModel.SuppressionWhitelist)
 	}
 }
 

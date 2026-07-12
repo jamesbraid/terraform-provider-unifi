@@ -2,6 +2,7 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -283,14 +284,37 @@ func (s ipsSection) decode(ctx context.Context, snap rawSettings, prior settingR
 	diags.Append(d...)
 
 	// ⚠️ Wire wrapper: the controller nests suppression_alerts/
-	// suppression_whitelist under a "suppression" object. A nil/absent
-	// suppression map is safe here: decodeObjectList reads a nil map's
-	// missing key as absent and returns ListNull.
-	suppression, _ := data["suppression"].(map[string]any)
-	alerts, d := decodeObjectList(ctx, suppression, "alerts", priorModel.SuppressionAlerts, ipsAlertElemType)
-	diags.Append(d...)
-	whitelist, d := decodeObjectList(ctx, suppression, "whitelist", priorModel.SuppressionWhitelist, ipsWhitelistElemType)
-	diags.Append(d...)
+	// suppression_whitelist under a "suppression" object. Absent key or
+	// explicit JSON null decodes both lists normally through a nil map
+	// (decodeObjectList reads a nil map's missing key as absent and returns
+	// ListNull). A present "suppression" that is NOT a map is remote type
+	// drift: a WARNING (not error), retaining both prior lists wholesale
+	// rather than letting the nil-map path silently clear them.
+	var alerts, whitelist types.List
+	rawSuppression, hasSuppression := data["suppression"]
+	if hasSuppression && rawSuppression != nil {
+		suppressionMap, ok := rawSuppression.(map[string]any)
+		if !ok {
+			diags.AddWarning(
+				"Settings value type drift",
+				fmt.Sprintf("field %q: expected object, got %T; retaining last-known suppression lists", "suppression", rawSuppression),
+			)
+			alerts = priorModel.SuppressionAlerts
+			whitelist = priorModel.SuppressionWhitelist
+		} else {
+			var d diag.Diagnostics
+			alerts, d = decodeObjectList(ctx, suppressionMap, "alerts", priorModel.SuppressionAlerts, ipsAlertElemType)
+			diags.Append(d...)
+			whitelist, d = decodeObjectList(ctx, suppressionMap, "whitelist", priorModel.SuppressionWhitelist, ipsWhitelistElemType)
+			diags.Append(d...)
+		}
+	} else {
+		var d diag.Diagnostics
+		alerts, d = decodeObjectList(ctx, nil, "alerts", priorModel.SuppressionAlerts, ipsAlertElemType)
+		diags.Append(d...)
+		whitelist, d = decodeObjectList(ctx, nil, "whitelist", priorModel.SuppressionWhitelist, ipsWhitelistElemType)
+		diags.Append(d...)
+	}
 
 	if diags.HasError() {
 		return diags
