@@ -319,6 +319,7 @@ type settingResourceModel struct {
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
 	Locale        types.Object   `tfsdk:"locale"`
+	GlobalNat     types.Object   `tfsdk:"global_nat"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -326,6 +327,14 @@ type settingResourceModel struct {
 // section (settingResourceModel.Locale): the site's configured timezone.
 type settingLocaleModel struct {
 	Timezone types.String `tfsdk:"timezone"`
+}
+
+// settingGlobalNatModel is the Terraform model for the "global_nat"
+// settings section (settingResourceModel.GlobalNat): site-wide NAT mode
+// and any networks excluded from it.
+type settingGlobalNatModel struct {
+	ExcludedNetworkIDs types.List   `tfsdk:"excluded_network_ids"`
+	Mode               types.String `tfsdk:"mode"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -464,6 +473,10 @@ var (
 	}
 	localeAttrTypes = map[string]attr.Type{
 		"timezone": types.StringType,
+	}
+	globalNatAttrTypes = map[string]attr.Type{
+		"excluded_network_ids": types.ListType{ElemType: types.StringType},
+		"mode":                 types.StringType,
 	}
 )
 
@@ -671,7 +684,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull() && m.Locale.IsNull()
+		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in

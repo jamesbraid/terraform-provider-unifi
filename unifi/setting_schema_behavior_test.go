@@ -134,6 +134,37 @@ func TestSettingSchemaBehavior_ipsModeRejectsInvalid(t *testing.T) {
 	}
 }
 
+func TestSettingSchemaBehavior_globalNatModeRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "global_nat", "mode")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("global_nat.mode is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("global_nat.mode has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"auto is valid", "auto", false},
+		{"custom is valid", "custom", false},
+		{"off is valid", "off", false},
+		{"garbage is invalid", "bridge", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("global_nat").AtName("mode"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
 func TestSettingSchemaBehavior_radiusSecretRejectsTooLong(t *testing.T) {
 	ctx := context.Background()
 	attrs := builtSchema(t)
