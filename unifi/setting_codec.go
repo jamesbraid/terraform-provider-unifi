@@ -419,7 +419,7 @@ func decodeObjectFields(
 				attrs[childKey] = childVal
 				continue
 			}
-			// GoDuration is deliberately NOT dispatched here: every Task 19b
+			// GoDuration is deliberately NOT dispatched here: every
 			// duration leaf (radius/usg) is a top-level scalar, so section
 			// converters call decodeGoDuration directly. A future nested
 			// duration leaf would correctly fail loudly on this guard.
@@ -524,7 +524,7 @@ func overlayObjectFields(
 				diags.Append(listDiags...)
 				continue
 			}
-			// GoDuration is deliberately NOT dispatched here: every Task 19b
+			// GoDuration is deliberately NOT dispatched here: every
 			// duration leaf (radius/usg) is a top-level scalar, so section
 			// converters call overlayGoDuration directly. A future nested
 			// duration leaf would correctly fail loudly on this guard.
@@ -628,9 +628,9 @@ func decodeObjectList(
 // a stable identity for an element — reordering or replacing an element
 // shifts every later index — so seeding elemOut from out[key][i] would
 // silently re-attach whatever unmodeled, controller-owned fields lived at
-// that base index onto a DIFFERENT logical element (codex whole-branch
-// review finding 3: mgmt.ssh_keys' controller-assigned date/fingerprint
-// were mis-attached to the wrong key on reorder). A section that needs an
+// that base index onto a DIFFERENT logical element (mgmt.ssh_keys is the
+// concrete case: the controller-assigned date/fingerprint would end up
+// mis-attached to the wrong key on reorder). A section that needs an
 // unmodeled per-element field preserved (e.g. mgmt.ssh_keys' date/
 // fingerprint) must do so explicitly and deliberately in its own overlay()
 // — see setting_section_mgmt.go — not rely on a codec-level positional

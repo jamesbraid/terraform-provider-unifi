@@ -45,12 +45,12 @@ func TestAccSettingResource_mgmt(t *testing.T) {
 	})
 }
 
-// TestAccSettingImport_cleanPlan covers the acceptance-level half of the C3 /
-// gate-6 contract: importing unifi_setting by a bare site name (via
-// ImportStateId, exercising the real "terraform import <addr> <site>" flow)
-// must hydrate every section, so re-applying the SAME config that produced
-// the original resource is a clean, empty plan — no drift from sections the
-// config never touched but the import hydrated as Computed.
+// TestAccSettingImport_cleanPlan covers the acceptance-level import
+// contract: importing unifi_setting by a bare site name (via ImportStateId,
+// exercising the real "terraform import <addr> <site>" flow) must hydrate
+// every section, so re-applying the SAME config that produced the original
+// resource is a clean, empty plan — no drift from sections the config never
+// touched but the import hydrated as Computed.
 func TestAccSettingImport_cleanPlan(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },

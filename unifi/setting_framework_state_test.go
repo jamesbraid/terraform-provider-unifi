@@ -3,7 +3,7 @@ package unifi
 // REGRESSION GUARD — read before "fixing" a failure here.
 //
 // This file pins a terraform-plugin-framework / Terraform Core contract that
-// the settings engine's C2.4 second-failure recovery depends on: when a
+// the settings engine's best-effort state recovery depends on: when a
 // resource's Update writes new state into resp.State AND also appends an
 // error diagnostic, Terraform Core still PERSISTS that partial state
 // alongside the error, rather than discarding it or rolling back to the
@@ -30,9 +30,9 @@ package unifi
 // If this test ever FAILS after a dependency bump: STOP. Do not "fix" it by
 // loosening the assertion, and do not go "fix" the engine by turning its
 // failed-apply-with-partial-state path into a warning/success. That would be
-// a spec change (C2.4 requires the operation stay failed while best-effort
-// state is preserved), not an implementation detail. Escalate to the
-// maintainer with the diff in framework behavior.
+// a spec change (the read-back-failure recovery path requires the operation
+// stay failed while best-effort state is preserved), not an implementation
+// detail. Escalate to the maintainer with the diff in framework behavior.
 
 import (
 	"context"
@@ -198,13 +198,13 @@ func (r *stateProbeResource) Update(
 	// Write the new planned value into state FIRST...
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
-	// ...THEN fail. This mirrors the settings engine's C2.4 scenario: a
-	// mutation partially lands (state reflects it) but the operation as a
-	// whole must still be reported as failed.
+	// ...THEN fail. This mirrors the settings engine's read-back-failure
+	// scenario: a mutation partially lands (state reflects it) but the
+	// operation as a whole must still be reported as failed.
 	resp.Diagnostics.AddError(
 		"Simulated Partial Update Failure",
 		"stateProbeResource.Update intentionally fails after writing state, "+
-			"to pin the framework/Core partial-state-on-error contract (C2.4).",
+			"to pin the framework/Core partial-state-on-error contract.",
 	)
 }
 
@@ -224,8 +224,9 @@ var stateProbeProviderFactories = map[string]func() (tfprotov6.ProviderServer, e
 
 // TestFrameworkPartialStateOnUpdateError_C2_4 is an end-to-end regression
 // guard (NOT a unifi-provider test) pinning the Terraform Core contract that
-// the settings engine's C2.4 recovery path relies on. See the file-level
-// comment for full context and the escalation rule if this ever fails.
+// the settings engine's best-effort recovery path relies on. See the
+// file-level comment for full context and the escalation rule if this ever
+// fails.
 //
 // This uses its own minimal provider/resource and factory
 // (stateProbeProviderFactories) — deliberately NOT

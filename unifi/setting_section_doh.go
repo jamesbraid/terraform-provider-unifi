@@ -17,11 +17,10 @@ import (
 )
 
 // dohSection is the settingSection implementation for the "doh" (Encrypted
-// DNS / DNS-over-HTTPS) settings section. It is the nested-list worked
-// template (Task 17): a scalar leaf (state), a plain string list
-// (server_names), and a ListNested with a bool leaf (custom_servers),
-// decoded/overlaid through the generalized nested codec
-// (decodeObjectList/overlayObjectList, Task 16b).
+// DNS / DNS-over-HTTPS) settings section. It combines a scalar leaf (state),
+// a plain string list (server_names), and a ListNested with a bool leaf
+// (custom_servers), decoded/overlaid through the generalized nested codec
+// (decodeObjectList/overlayObjectList).
 //
 // Unlike syslog, there is no wire-key remap here: the controller stores
 // this section under "doh" and the Terraform attribute is also "doh", so

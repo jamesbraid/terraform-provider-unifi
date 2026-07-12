@@ -14,7 +14,7 @@ import (
 // setting_engine.go ties the whole settings machine together: one
 // ListSettings snapshot per read, presence-gated per-section decode
 // (readSections); reconcile-before-mutate, deterministic-order PUT, and
-// C2.4 best-effort recovery on a failed post-apply read-back
+// best-effort state recovery when the post-apply read-back itself fails
 // (applySections); and the bestEffortState/carrySecretObject helpers that
 // implement that recovery. No caller outside this file drives a
 // settingsClient directly.
@@ -80,7 +80,7 @@ func readSections(ctx context.Context, sections []settingSection, client setting
 // writes at all), PUTs each section that needs writing in deterministic
 // (orderedSections) order, and re-reads canonical state afterward. If the
 // re-read itself fails, state is assembled best-effort from what is known
-// to have been successfully PUT (C2.4).
+// to have been successfully PUT.
 func applySections(ctx context.Context, sections []settingSection, client settingsClient, site string, plan, prior settingResourceModel) (settingResourceModel, diag.Diagnostics) {
 	var d diag.Diagnostics
 	ordered := orderedSections(sections)
@@ -137,15 +137,15 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 	rd := readSections(ctx, sections, client, site, plan, &out, false)
 	if rd.HasError() {
 		var bd diag.Diagnostics
-		out, bd = bestEffortState(prior, plan, put, sections) // C2.4 second failure
+		out, bd = bestEffortState(prior, plan, put, sections) // read-back failed after apply: recover state best-effort
 		d.Append(bd...)
 		// rd holds ERROR diagnostics from the failed read-back. Do NOT
 		// d.Append(rd...) here: that would make d.HasError() true and flip
-		// this from a warning into a hard failure, breaking C2.4 (the
-		// operation must stay successful-with-warning, with best-effort
-		// state persisted). Instead fold rd's per-section messages into the
-		// warning's detail text so practitioners see which section/field
-		// failed to decode, without rd's severity propagating.
+		// this from a warning into a hard failure, when the operation must
+		// stay successful-with-warning, with best-effort state persisted.
+		// Instead fold rd's per-section messages into the warning's detail
+		// text so practitioners see which section/field failed to decode,
+		// without rd's severity propagating.
 		d.AddWarning("settings read-back failed after apply",
 			"state written best-effort from applied values; run `terraform refresh`.\n"+
 				"read-back errors: "+joinDiagMessages(rd))
@@ -160,8 +160,8 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 
 // joinDiagMessages renders diags as a semicolon-separated "Summary: Detail"
 // list, for folding a Diagnostics value's specifics into another
-// diagnostic's detail text (e.g. C2.4's read-back-failure warning) without
-// appending diags itself and propagating its severity.
+// diagnostic's detail text (e.g. the apply path's read-back-failure warning)
+// without appending diags itself and propagating its severity.
 func joinDiagMessages(diags diag.Diagnostics) string {
 	msgs := make([]string, 0, len(diags))
 	for _, dg := range diags {
@@ -174,9 +174,9 @@ func joinDiagMessages(diags diag.Diagnostics) string {
 	return strings.Join(msgs, "; ")
 }
 
-// bestEffortState assembles a settingResourceModel for the C2.4
-// second-failure path: the canonical post-apply read-back itself failed, so
-// state cannot be read from the controller. It starts from prior (the only
+// bestEffortState assembles a settingResourceModel for the case where the
+// canonical post-apply read-back itself failed, so state cannot be read
+// from the controller. It starts from prior (the only
 // state known to be true before this apply) and, for each section that was
 // successfully PUT this apply (put[key] == true), asks that section to
 // carry its own best-effort value onto the result via carryBestEffort. dst
@@ -200,7 +200,7 @@ func bestEffortState(prior, plan settingResourceModel, put map[string]bool, sect
 // leaf when plan's is null/unknown (write-only secrets are never in the
 // controller read-back). Every non-secret leaf comes from plan.
 //
-// Codex-validated traps this function must honor:
+// Traps this function must honor:
 //  1. IsUnknown() is treated exactly like IsNull() for the secret leaf:
 //     retain prior's value for both, matching overlay's own delete-on-either
 //     behavior for write-only secrets.

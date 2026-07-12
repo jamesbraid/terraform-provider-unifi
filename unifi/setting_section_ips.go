@@ -18,8 +18,8 @@ import (
 // ipsSection is the settingSection implementation for the "ips" (Intrusion
 // Prevention System / IDS/IPS and threat management) settings section. It is
 // the deepest section in the resource: it drives the generalized nested
-// codec (decodeObjectList/overlayObjectList, Task 16b) for three object
-// lists (honeypot, suppression_alerts, suppression_whitelist), one of which
+// codec (decodeObjectList/overlayObjectList) for three object lists
+// (honeypot, suppression_alerts, suppression_whitelist), one of which
 // (suppression_alerts) has a further-nested object list of its own
 // (tracking) that the codec recurses into automatically.
 //

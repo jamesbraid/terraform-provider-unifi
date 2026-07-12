@@ -569,7 +569,7 @@ func TestBestEffortState_secretRotationRetained(t *testing.T) {
 
 // ---------------------------------------------------------------------------
 // TestCarrySecretObject_secretLeafMatrix: direct unit test of the shared
-// helper, covering all 4 codex-validated traps.
+// helper, covering all 4 traps documented on carrySecretObject.
 // ---------------------------------------------------------------------------
 
 func TestCarrySecretObject_secretLeafMatrix(t *testing.T) {

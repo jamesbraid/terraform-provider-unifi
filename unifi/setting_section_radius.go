@@ -33,7 +33,7 @@ var radiusAttrTypes = map[string]attr.Type{
 // radiusSection is the settingSection implementation for the "radius"
 // settings section. It combines several features seen individually in
 // earlier sections plus one new one: a GoDuration leaf
-// (interim_update_interval, Task 19b codec), read-modify-write preservation
+// (interim_update_interval), read-modify-write preservation
 // of unmodeled controller fields (configure_whole_network, tunneled_reply,
 // enabled — like igmp_snooping), and a write-only secret leaf (secret): the
 // model's tfsdk name is "secret" but the controller's wire key for it is
@@ -206,7 +206,7 @@ func (s radiusSection) overlay(ctx context.Context, model, prior settingResource
 
 // carryBestEffort copies the plan's radius value onto dst via
 // carrySecretObject: this section holds a write-only secret leaf (secret),
-// so a straight plan copy would be wrong when a C2.4 second-failure recovery
+// so a straight plan copy would be wrong when best-effort state recovery
 // needs to fall back to prior's secret for a null/unknown plan secret.
 // carrySecretObject copies every other (non-secret) leaf from plan verbatim
 // and, for secret specifically, keeps prior's value (read off dst, which

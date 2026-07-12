@@ -8,21 +8,20 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
-// setting_engine_capability_scope_test.go regression-tests codex Findings 1
-// & 2 (fix-A-brief.md): the settings engine must scope its capability
-// fail-closed handling to the sections the user actually CONFIGURED, both on
-// the read path (Read/readSections) and the write path
-// (applySections). Before the fix:
+// setting_engine_capability_scope_test.go regression-tests two fail-closed
+// scoping bugs: the settings engine must scope its fail-closed handling to
+// the sections the user actually CONFIGURED, both on the read path
+// (Read/readSections) and the write path (applySections). Before the fix:
 //
-//   - Finding 1: Read passed the full 13-section registry to
+//   - Bug 1: Read passed the full 13-section registry to
 //     readSections(..., onlyConfigured=true), which fails closed on every
 //     section absent from the snapshot, so a controller missing any section
 //     (e.g. radius/usg on a gateway-less UDM) broke refresh even for
 //     sections the user never configured.
-//   - Finding 2: applySections overlaid + PUT every configured section
-//     without a presence check, so a configured-but-unsupported section
-//     was only caught by the controller AFTER other sections had already
-//     been written (partial apply) instead of a clean pre-mutation abort.
+//   - Bug 2: applySections overlaid + PUT every configured section without
+//     a presence check, so a configured-but-unsupported section was only
+//     caught by the controller AFTER other sections had already been
+//     written (partial apply) instead of a clean pre-mutation abort.
 //
 // These 4 tests drive the fake seam directly (readSections/applySections),
 // mirroring setting_engine_lifecycle_test.go's use of realSections() and the
@@ -112,7 +111,7 @@ func TestCapabilityScope_ReadConfiguredOnly_FailsClosedWhenConfiguredSectionAbse
 // ---------------------------------------------------------------------------
 // 3. applySections with one supported-configured (dpi) + one absent-configured
 //    (radius) section returns an error diagnostic AND records ZERO puts
-//    (reconcile-before-mutate, now also gated on capability).
+//    (reconcile-before-mutate, now also gated on section presence).
 // ---------------------------------------------------------------------------
 
 func TestCapabilityScope_ApplySections_ZeroPutsWhenConfiguredSectionUnsupported(t *testing.T) {

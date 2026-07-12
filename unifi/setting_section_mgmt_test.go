@@ -358,12 +358,11 @@ func TestMgmtSection_CarryBestEffortSecretMatrix(t *testing.T) {
 // TestMgmtSection_SshKeysBlanksControllerMetadata proves the CORRECT
 // per-element behavior for ssh_keys (replacing the old same-index
 // preservation behavior, which mis-attached controller metadata on
-// reorder/replace — codex whole-branch review finding 3): overlaying a
-// 1-element model onto a base whose same-index element carries unmodeled
-// date/fingerprint fields does NOT carry those base values into the output;
-// mgmt explicitly blanks date/fingerprint to "" on every output element
-// (matching legacy, which always sent fresh structs with empty date/
-// fingerprint — see goldenMgmt).
+// reorder/replace): overlaying a 1-element model onto a base whose
+// same-index element carries unmodeled date/fingerprint fields does NOT
+// carry those base values into the output; mgmt explicitly blanks
+// date/fingerprint to "" on every output element (matching legacy, which
+// always sent fresh structs with empty date/fingerprint — see goldenMgmt).
 func TestMgmtSection_SshKeysBlanksControllerMetadata(t *testing.T) {
 	ctx := context.Background()
 	sec := mgmtSection{}
@@ -438,7 +437,7 @@ func TestMgmtSection_SshKeysBlanksControllerMetadata(t *testing.T) {
 	// date/fingerprint are controller-computed metadata the provider does not
 	// model or echo. They must be blanked to "", NOT carried from the base by
 	// list position — carrying them by position is exactly the corruption bug
-	// (codex finding 3) this fix removes.
+	// this fix removes.
 	if elem["date"] != "" {
 		t.Errorf("x_ssh_keys[0][date] = %v, want \"\" (blanked, not carried from base)", elem["date"])
 	}
@@ -448,11 +447,12 @@ func TestMgmtSection_SshKeysBlanksControllerMetadata(t *testing.T) {
 }
 
 // TestMgmtSection_SshKeysReorderDoesNotCrossAttachMetadata is the TDD
-// regression test for codex whole-branch review finding 3: overlayObjectList
-// used to seed each output element from the base's SAME-INDEX element, so
-// reordering ssh_keys mis-attached controller-assigned date/fingerprint from
-// one key to a different key. Base has two elements (KA at index 0, KB at
-// index 1); the model reorders them to [KB, KA]. With the old same-index
+// regression test for the same-index metadata cross-attachment bug:
+// overlayObjectList used to seed each output element from the base's
+// SAME-INDEX element, so reordering ssh_keys mis-attached
+// controller-assigned date/fingerprint from one key to a different key.
+// Base has two elements (KA at index 0, KB at index 1); the model reorders
+// them to [KB, KA]. With the old same-index
 // bug, output index 0 (key=KB) would inherit KA's date/fingerprint ("DA"/
 // "FA") and output index 1 (key=KA) would inherit KB's ("DB"/"FB") — a
 // cross-attachment corrupting controller metadata onto the wrong key. The

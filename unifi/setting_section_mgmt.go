@@ -20,16 +20,16 @@ import (
 // two new ones together in a single section:
 //
 //   - A write-only secret leaf (ssh_password, wire key x_ssh_password) —
-//     same handling as radius's secret/x_secret (Task 20): decode always
-//     preserves prior state for this leaf rather than reading the masked
-//     wire value, and overlay deletes x_ssh_password from the PUT body when
-//     the config value is null/unknown rather than ever re-sending a masked
-//     value; a configured value (including an explicit empty string) is
-//     written verbatim.
+//     same handling as radius's secret/x_secret: decode always preserves
+//     prior state for this leaf rather than reading the masked wire value,
+//     and overlay deletes x_ssh_password from the PUT body when the config
+//     value is null/unknown rather than ever re-sending a masked value; a
+//     configured value (including an explicit empty string) is written
+//     verbatim.
 //
 //   - A nested object-list leaf (ssh_keys, wire key x_ssh_keys) of PUBLIC
 //     keys, decoded/overlaid through the generalized nested codec
-//     (decodeObjectList/overlayObjectList, Task 16b).
+//     (decodeObjectList/overlayObjectList).
 //
 //   - Many ssh_*->x_ssh_* wire-key remaps: the model's tfsdk names are
 //     ssh_enabled/ssh_username/ssh_password/ssh_keys/
@@ -61,9 +61,8 @@ import (
 //     fingerprint to "" on every element (blankSSHKeyControllerMetadata),
 //     matching legacy byte-for-byte. Preserving them by list index would
 //     mis-attach one key's metadata onto a different key across a reorder
-//     or replace (codex whole-branch review finding 3) — the ssh "key"
-//     value is not a durable identity to match on either, since rotation
-//     changes it.
+//     or replace — the ssh "key" value is not a durable identity to match
+//     on either, since rotation changes it.
 type mgmtSection struct{}
 
 func init() {
@@ -297,8 +296,8 @@ func (s mgmtSection) overlay(ctx context.Context, model, prior settingResourceMo
 	// (null/unknown), overlayObjectList above already left base's
 	// "x_ssh_keys" untouched — blanking unconditionally would still zero out
 	// the existing keys' controller-assigned metadata even though nothing
-	// about ssh_keys changed (codex re-review finding 5). Legacy preserved
-	// omitted ssh_keys verbatim, including their metadata.
+	// about ssh_keys changed. Legacy preserved omitted ssh_keys verbatim,
+	// including their metadata.
 	if !m.SSHKeys.IsNull() && !m.SSHKeys.IsUnknown() {
 		blankSSHKeyControllerMetadata(base)
 	}
@@ -315,18 +314,17 @@ func (s mgmtSection) overlay(ctx context.Context, model, prior settingResourceMo
 // only when ssh_keys is actually configured (non-null/known) in the model —
 // i.e. only when this apply is actually replacing the list — so an omitted
 // ssh_keys block leaves the snapshot's existing elements, metadata included,
-// untouched (codex re-review finding 5; legacy parity on omit).
+// untouched (legacy parity on omit).
 //
 // These two wire fields are controller-computed metadata (assigned when a
 // key is added/rotated) that the schema does not model or echo back.
 // overlayObjectList builds each element fresh from the model's leaves, so it
 // never carries these fields forward from the base by list position —
 // deliberately, because doing so by position mis-attaches one key's metadata
-// onto a different key across a reorder or replace (codex whole-branch
-// review finding 3). Blanking here matches legacy byte-for-byte: the legacy
-// client always sent freshly constructed SettingMgmtSSHKeys structs whose
-// date/fingerprint serialize as "" (see goldenMgmt's
-// "date":"","fingerprint":"").
+// onto a different key across a reorder or replace. Blanking here matches
+// legacy byte-for-byte: the legacy client always sent freshly constructed
+// SettingMgmtSSHKeys structs whose date/fingerprint serialize as "" (see
+// goldenMgmt's "date":"","fingerprint":"").
 func blankSSHKeyControllerMetadata(base map[string]any) {
 	items, ok := base["x_ssh_keys"].([]any)
 	if !ok {
@@ -344,9 +342,9 @@ func blankSSHKeyControllerMetadata(base map[string]any) {
 
 // carryBestEffort copies the plan's mgmt value onto dst via
 // carrySecretObject: this section holds a write-only secret leaf
-// (ssh_password), so a straight plan copy would be wrong when a C2.4
-// second-failure recovery needs to fall back to prior's secret for a
-// null/unknown plan secret. carrySecretObject copies every other
+// (ssh_password), so a straight plan copy would be wrong when best-effort
+// state recovery needs to fall back to prior's secret for a null/unknown
+// plan secret. carrySecretObject copies every other
 // (non-secret) leaf from plan verbatim — including the ssh_keys list — and,
 // for ssh_password specifically, keeps prior's value (read off dst, which
 // bestEffortState seeds as prior) when plan's is null/unknown, and keeps

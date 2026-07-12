@@ -36,17 +36,17 @@ type settingSection interface {
 
 	// carryBestEffort copies this section's own field from plan (or, for the
 	// mgmt/radius write-only secret leaf, a plan/prior choice via
-	// carrySecretObject reading prior off dst) onto dst, for C2.4
-	// second-failure recovery after a partial apply whose canonical re-read
-	// also failed. Implementations touch only their own field on dst.
+	// carrySecretObject reading prior off dst) onto dst, for best-effort
+	// state recovery after a partial apply whose canonical re-read also
+	// failed. Implementations touch only their own field on dst.
 	carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics
 
 	// isConfigured reports whether the user configured this section in m —
 	// its object attribute is neither null nor unknown. Unknown is NOT
 	// configured (matches legacy lifecycle: an unknown block is treated as
-	// unconfigured). The engine uses this to scope capability/fail-closed
-	// handling (Read, applySections) to only the sections the user actually
-	// configured.
+	// unconfigured). The engine uses this to scope which sections it visits
+	// and fail-closes on (Read, applySections) to only the sections the
+	// user actually configured.
 	isConfigured(m settingResourceModel) bool
 }
 

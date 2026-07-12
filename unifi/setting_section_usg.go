@@ -83,10 +83,10 @@ var usgAttrTypes = map[string]attr.Type{
 // the snapshot's existing section data, matching the igmp_snooping/radius
 // RMW pattern. It is the nested-object (SingleNestedAttribute) worked
 // template: dns_verification is decoded/overlaid via the generalized
-// decodeObject/overlayObject codec helpers (Task 16b), and the 12 conntrack
-// timeout leaves use the GoDuration codec helpers (Task 19b) with unit =
-// time.Second. All wire keys equal their tfsdk names (no remaps); the
-// section has no secret leaves, so carryBestEffort is a trivial plan copy.
+// decodeObject/overlayObject codec helpers, and the 12 conntrack timeout
+// leaves use the GoDuration codec helpers with unit = time.Second. All wire
+// keys equal their tfsdk names (no remaps); the section has no secret
+// leaves, so carryBestEffort is a trivial plan copy.
 type usgSection struct{}
 
 func init() {

@@ -768,13 +768,12 @@ func TestOverlayObjectList_nullConfigIsNoop(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Task 16b: generalized nested codec — typed leaves + recursion.
+// Generalized nested codec: typed leaves + recursion.
 // ---------------------------------------------------------------------------
 
 // testTrackingAttrTypes/testSuppressionAlertAttrTypes/testDohCustomServerAttrTypes model
-// the ips/doh schema shapes described in Task 16b's brief: double nesting
-// (suppression_alerts.tracking), int64 leaves (gid/id), and a bool leaf
-// (custom_servers.enabled).
+// the ips/doh schema shapes: double nesting (suppression_alerts.tracking),
+// int64 leaves (gid/id), and a bool leaf (custom_servers.enabled).
 
 func testTrackingAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
@@ -1089,8 +1088,8 @@ func TestOverlayObjectList_freshElementDropsBaseFieldOmittedFromConfig(t *testin
 }
 
 // TestOverlayObjectList_reorderDoesNotCrossAttachBaseFields is the general
-// (non-mgmt) regression test for codex whole-branch review finding 3:
-// reordering/removing elements must never let an unmodeled base field
+// (non-mgmt) regression test for the same-index metadata cross-attachment
+// bug: reordering/removing elements must never let an unmodeled base field
 // belonging to one logical element land on a different element solely
 // because of list position. Base has 3 elements; config reorders to just
 // [orig-c, orig-a] (element "orig-b" removed, order changed). Every output
@@ -1453,7 +1452,7 @@ func TestDecodeObjectList_ipsSuppressionAlertsRoundTripWithMultipleTrackingEntri
 }
 
 // ---------------------------------------------------------------------------
-// Task 19b: GoDuration <-> integer-seconds codec.
+// GoDuration <-> integer-seconds codec.
 // ---------------------------------------------------------------------------
 
 // --- ownership-aware layer: decodeGoDuration ---
@@ -1528,7 +1527,7 @@ func TestOverlayGoDuration_writesKnownValue(t *testing.T) {
 	}
 }
 
-// TestOverlayGoDuration_writesKnownZero proves the codex-flagged
+// TestOverlayGoDuration_writesKnownZero proves the intentional
 // zero-emission behavior non-vacuously: it seeds out["t"] with a sentinel
 // (float64(999)) distinct from both the input (0) and the zero-value of the
 // map lookup, so a passing assertion can only mean putGoDuration actually

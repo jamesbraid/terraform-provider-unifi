@@ -8,9 +8,9 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
-// setting_fix_c_regression_test.go regression-tests codex Findings 4 & 5
-// (fix-C-brief.md): two lifecycle-correctness bugs surfaced by interactions
-// between earlier fixes and import-hydration / omitted-list preservation.
+// setting_fix_c_regression_test.go regression-tests two lifecycle-correctness
+// bugs (Findings 4 & 5) surfaced by interactions between earlier fixes and
+// import-hydration / omitted-list preservation.
 //
 //   - Finding 4: Create/Update must derive the "configured sections" set
 //     passed to applySections from req.Config (the authoritative

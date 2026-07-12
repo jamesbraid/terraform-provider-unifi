@@ -542,8 +542,8 @@ func TestLifecycle_explicitClearVsStopManaging(t *testing.T) {
 // they never abort with an error diagnostic, and refresh/apply keep
 // succeeding through a single drifted field. A subsequent apply with a VALID
 // configured value for that same leaf still overwrites the malformed prior
-// remote (overlay always writes the plan's own valid value for an
-// ownerManaged leaf, independent of decode).
+// remote (overlay always writes the plan's own valid value for a
+// plan-managed leaf, independent of decode).
 func TestLifecycle_malformedRemoteTolerated(t *testing.T) {
 	ctx := context.Background()
 
