@@ -318,7 +318,14 @@ type settingResourceModel struct {
 	Radius        types.Object   `tfsdk:"radius"`
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
+	Locale        types.Object   `tfsdk:"locale"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
+}
+
+// settingLocaleModel is the Terraform model for the "locale" settings
+// section (settingResourceModel.Locale): the site's configured timezone.
+type settingLocaleModel struct {
+	Timezone types.String `tfsdk:"timezone"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -454,6 +461,9 @@ var (
 	igmpSnoopingAttrTypes = map[string]attr.Type{
 		"enabled":     types.BoolType,
 		"network_ids": types.ListType{ElemType: types.StringType},
+	}
+	localeAttrTypes = map[string]attr.Type{
+		"timezone": types.StringType,
 	}
 )
 
@@ -661,7 +671,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull()
+		m.IgmpSnooping.IsNull() && m.Locale.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in
