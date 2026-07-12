@@ -165,6 +165,37 @@ func TestSettingSchemaBehavior_globalNatModeRejectsInvalid(t *testing.T) {
 	}
 }
 
+func TestSettingSchemaBehavior_sslInspectionStateRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "ssl_inspection", "state")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("ssl_inspection.state is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("ssl_inspection.state has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"off is valid", "off", false},
+		{"simple is valid", "simple", false},
+		{"advanced is valid", "advanced", false},
+		{"garbage is invalid", "full", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("ssl_inspection").AtName("state"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
 func TestSettingSchemaBehavior_radiusSecretRejectsTooLong(t *testing.T) {
 	ctx := context.Background()
 	attrs := builtSchema(t)

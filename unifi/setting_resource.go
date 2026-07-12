@@ -321,6 +321,7 @@ type settingResourceModel struct {
 	Locale        types.Object   `tfsdk:"locale"`
 	GlobalNat     types.Object   `tfsdk:"global_nat"`
 	TrafficFlow   types.Object   `tfsdk:"traffic_flow"`
+	SslInspection types.Object   `tfsdk:"ssl_inspection"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -346,6 +347,13 @@ type settingTrafficFlowModel struct {
 	GatewayDNSEnabled            types.Bool `tfsdk:"gateway_dns_enabled"`
 	UnifiDeviceManagementEnabled types.Bool `tfsdk:"unifi_device_management_enabled"`
 	UnifiServicesEnabled         types.Bool `tfsdk:"unifi_services_enabled"`
+}
+
+// settingSslInspectionModel is the Terraform model for the
+// "ssl_inspection" settings section (settingResourceModel.SslInspection):
+// the gateway's SSL/TLS inspection mode.
+type settingSslInspectionModel struct {
+	State types.String `tfsdk:"state"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -494,6 +502,9 @@ var (
 		"gateway_dns_enabled":             types.BoolType,
 		"unifi_device_management_enabled": types.BoolType,
 		"unifi_services_enabled":          types.BoolType,
+	}
+	sslInspectionAttrTypes = map[string]attr.Type{
+		"state": types.StringType,
 	}
 )
 
@@ -702,7 +713,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
 		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull() &&
-		m.TrafficFlow.IsNull()
+		m.TrafficFlow.IsNull() && m.SslInspection.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in
