@@ -390,6 +390,77 @@ func TestSettingSchemaBehavior_dashboardWidgetNameRejectsInvalid(t *testing.T) {
 	}
 }
 
+func TestSettingSchemaBehavior_etherLightingSpeedOverrideKeyRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedListElementAttr(t, attrs, "ether_lighting", "speed_overrides", "key")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("ether_lighting.speed_overrides[].key is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("ether_lighting.speed_overrides[].key has no validators")
+	}
+
+	p := path.Root("ether_lighting").AtName("speed_overrides").AtListIndex(0).AtName("key")
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"FE is valid", "FE", false},
+		{"GbE is valid", "GbE", false},
+		{"2.5GbE is valid", "2.5GbE", false},
+		{"100GbE is valid", "100GbE", false},
+		{"1GbE is invalid (not a real token)", "1GbE", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, p, tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_etherLightingRawColorHexRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+
+	for _, list := range []string{"network_overrides", "speed_overrides"} {
+		t.Run(list, func(t *testing.T) {
+			a := nestedListElementAttr(t, attrs, "ether_lighting", list, "raw_color_hex")
+			sa, ok := a.(schema.StringAttribute)
+			if !ok {
+				t.Fatalf("ether_lighting.%s[].raw_color_hex is %T, want schema.StringAttribute", list, a)
+			}
+			if len(sa.Validators) == 0 {
+				t.Fatalf("ether_lighting.%s[].raw_color_hex has no validators", list)
+			}
+
+			p := path.Root("ether_lighting").AtName(list).AtListIndex(0).AtName("raw_color_hex")
+			for _, tc := range []struct {
+				name    string
+				value   string
+				wantErr bool
+			}{
+				{"00ff88 is valid", "00ff88", false},
+				{"0088FF is valid (uppercase hex ok)", "0088FF", false},
+				{"leading # is invalid", "#00ff88", true},
+				{"too short is invalid", "00ff8", true},
+				{"non-hex char is invalid", "00ff8g", true},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					diags := validateStringAll(ctx, sa.Validators, p, tc.value)
+					if got := diags.HasError(); got != tc.wantErr {
+						t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestSettingSchemaBehavior_radiusSecretRejectsTooLong(t *testing.T) {
 	ctx := context.Background()
 	attrs := builtSchema(t)

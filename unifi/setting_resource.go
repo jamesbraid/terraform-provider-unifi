@@ -324,6 +324,7 @@ type settingResourceModel struct {
 	SslInspection types.Object   `tfsdk:"ssl_inspection"`
 	Netflow       types.Object   `tfsdk:"netflow"`
 	Dashboard     types.Object   `tfsdk:"dashboard"`
+	EtherLighting types.Object   `tfsdk:"ether_lighting"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -389,6 +390,33 @@ type settingDashboardWidgetModel struct {
 type settingDashboardModel struct {
 	LayoutPreference types.String `tfsdk:"layout_preference"`
 	Widgets          types.List   `tfsdk:"widgets"`
+}
+
+// settingEtherLightingNetworkOverrideModel is the nested per-entry element
+// of settingEtherLightingModel.NetworkOverrides
+// (ether_lighting.network_overrides): a per-network port LED color
+// override.
+type settingEtherLightingNetworkOverrideModel struct {
+	Key         types.String `tfsdk:"key"`
+	RawColorHex types.String `tfsdk:"raw_color_hex"`
+}
+
+// settingEtherLightingSpeedOverrideModel is the nested per-entry element
+// of settingEtherLightingModel.SpeedOverrides
+// (ether_lighting.speed_overrides): a per-link-speed port LED color
+// override.
+type settingEtherLightingSpeedOverrideModel struct {
+	Key         types.String `tfsdk:"key"`
+	RawColorHex types.String `tfsdk:"raw_color_hex"`
+}
+
+// settingEtherLightingModel is the Terraform model for the
+// "ether_lighting" settings section (settingResourceModel.EtherLighting):
+// per-network and per-speed port LED color overrides on supported
+// switches.
+type settingEtherLightingModel struct {
+	NetworkOverrides types.List `tfsdk:"network_overrides"`
+	SpeedOverrides   types.List `tfsdk:"speed_overrides"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -561,6 +589,18 @@ var (
 	dashboardAttrTypes = map[string]attr.Type{
 		"layout_preference": types.StringType,
 		"widgets":           types.ListType{ElemType: types.ObjectType{AttrTypes: dashboardWidgetAttrTypes}},
+	}
+	etherLightingNetworkOverrideAttrTypes = map[string]attr.Type{
+		"key":           types.StringType,
+		"raw_color_hex": types.StringType,
+	}
+	etherLightingSpeedOverrideAttrTypes = map[string]attr.Type{
+		"key":           types.StringType,
+		"raw_color_hex": types.StringType,
+	}
+	etherLightingAttrTypes = map[string]attr.Type{
+		"network_overrides": types.ListType{ElemType: types.ObjectType{AttrTypes: etherLightingNetworkOverrideAttrTypes}},
+		"speed_overrides":   types.ListType{ElemType: types.ObjectType{AttrTypes: etherLightingSpeedOverrideAttrTypes}},
 	}
 )
 
@@ -770,7 +810,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
 		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull() &&
 		m.TrafficFlow.IsNull() && m.SslInspection.IsNull() && m.Netflow.IsNull() &&
-		m.Dashboard.IsNull()
+		m.Dashboard.IsNull() && m.EtherLighting.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in
