@@ -322,6 +322,7 @@ type settingResourceModel struct {
 	GlobalNat     types.Object   `tfsdk:"global_nat"`
 	TrafficFlow   types.Object   `tfsdk:"traffic_flow"`
 	SslInspection types.Object   `tfsdk:"ssl_inspection"`
+	Netflow       types.Object   `tfsdk:"netflow"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -354,6 +355,23 @@ type settingTrafficFlowModel struct {
 // the gateway's SSL/TLS inspection mode.
 type settingSslInspectionModel struct {
 	State types.String `tfsdk:"state"`
+}
+
+// settingNetflowModel is the Terraform model for the "netflow" settings
+// section (settingResourceModel.Netflow): NetFlow/IPFIX exporter
+// configuration.
+type settingNetflowModel struct {
+	AutoEngineIDEnabled types.Bool   `tfsdk:"auto_engine_id_enabled"`
+	Enabled             types.Bool   `tfsdk:"enabled"`
+	EngineID            types.Int64  `tfsdk:"engine_id"`
+	ExportFrequency     types.Int64  `tfsdk:"export_frequency"`
+	NetworkIDs          types.List   `tfsdk:"network_ids"`
+	Port                types.Int64  `tfsdk:"port"`
+	RefreshRate         types.Int64  `tfsdk:"refresh_rate"`
+	SamplingMode        types.String `tfsdk:"sampling_mode"`
+	SamplingRate        types.Int64  `tfsdk:"sampling_rate"`
+	Server              types.String `tfsdk:"server"`
+	Version             types.Int64  `tfsdk:"version"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -505,6 +523,19 @@ var (
 	}
 	sslInspectionAttrTypes = map[string]attr.Type{
 		"state": types.StringType,
+	}
+	netflowAttrTypes = map[string]attr.Type{
+		"auto_engine_id_enabled": types.BoolType,
+		"enabled":                types.BoolType,
+		"engine_id":              types.Int64Type,
+		"export_frequency":       types.Int64Type,
+		"network_ids":            types.ListType{ElemType: types.StringType},
+		"port":                   types.Int64Type,
+		"refresh_rate":           types.Int64Type,
+		"sampling_mode":          types.StringType,
+		"sampling_rate":          types.Int64Type,
+		"server":                 types.StringType,
+		"version":                types.Int64Type,
 	}
 )
 
@@ -713,7 +744,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
 		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull() &&
-		m.TrafficFlow.IsNull() && m.SslInspection.IsNull()
+		m.TrafficFlow.IsNull() && m.SslInspection.IsNull() && m.Netflow.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in

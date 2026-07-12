@@ -196,6 +196,114 @@ func TestSettingSchemaBehavior_sslInspectionStateRejectsInvalid(t *testing.T) {
 	}
 }
 
+// validateInt64All runs every validator in vs against value at p, returning
+// the accumulated diagnostics.
+func validateInt64All(ctx context.Context, vs []validator.Int64, p path.Path, value int64) diag.Diagnostics {
+	var diags diag.Diagnostics
+	for _, v := range vs {
+		req := validator.Int64Request{Path: p, ConfigValue: types.Int64Value(value)}
+		var resp validator.Int64Response
+		v.ValidateInt64(ctx, req, &resp)
+		diags.Append(resp.Diagnostics...)
+	}
+	return diags
+}
+
+func TestSettingSchemaBehavior_netflowSamplingModeRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "netflow", "sampling_mode")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("netflow.sampling_mode is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("netflow.sampling_mode has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"off is valid", "off", false},
+		{"hash is valid", "hash", false},
+		{"random is valid", "random", false},
+		{"deterministic is valid", "deterministic", false},
+		{"garbage is invalid", "always", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("netflow").AtName("sampling_mode"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_netflowVersionRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "netflow", "version")
+	ia, ok := a.(schema.Int64Attribute)
+	if !ok {
+		t.Fatalf("netflow.version is %T, want schema.Int64Attribute", a)
+	}
+	if len(ia.Validators) == 0 {
+		t.Fatal("netflow.version has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   int64
+		wantErr bool
+	}{
+		{"5 is valid", 5, false},
+		{"9 is valid", 9, false},
+		{"10 is valid", 10, false},
+		{"7 is invalid", 7, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateInt64All(ctx, ia.Validators, path.Root("netflow").AtName("version"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %d: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_netflowPortRejectsOutOfRange(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "netflow", "port")
+	ia, ok := a.(schema.Int64Attribute)
+	if !ok {
+		t.Fatalf("netflow.port is %T, want schema.Int64Attribute", a)
+	}
+	if len(ia.Validators) == 0 {
+		t.Fatal("netflow.port has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   int64
+		wantErr bool
+	}{
+		{"1024 (lower bound) is valid", 1024, false},
+		{"65535 (upper bound) is valid", 65535, false},
+		{"2055 is valid", 2055, false},
+		{"1023 is too low", 1023, true},
+		{"65536 is too high", 65536, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateInt64All(ctx, ia.Validators, path.Root("netflow").AtName("port"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %d: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
 func TestSettingSchemaBehavior_radiusSecretRejectsTooLong(t *testing.T) {
 	ctx := context.Background()
 	attrs := builtSchema(t)
