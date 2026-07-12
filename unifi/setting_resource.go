@@ -24,6 +24,8 @@ var (
 	_ resource.ResourceWithUpgradeState = &settingResource{}
 )
 
+// NewSettingResource returns a new instance of the unifi_setting resource,
+// which manages settings for a UniFi site.
 func NewSettingResource() resource.Resource {
 	return &settingResource{}
 }
