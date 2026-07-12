@@ -371,11 +371,11 @@ For each: cite the converter, port field-for-field, apply ownership, assert gold
 | 14 | `network_optimization` | `settings.NetworkOptimization` | 1998 / 1425–1436, 1716–1727 | — | scalar |
 | 15 | `ntp` | `settings.Ntp` | 2017 / 1438–1449, 1729–1740 | — | scalar |
 | 16 | `syslog` (list, worked) | `settings.Rsyslogd` | 2034 / 1451–1465, 1742–1756 | `contents` list ownerManaged (empty-list round-trip = permitted delta 1) | list |
-| 17 | `doh` | `settings.Doh` | 2059 / 1467–1482, 1758–1773 | `server_names` list ownerManaged | list |
-| 18 | `ips` | `settings.Ips` | 2084 / 1484–1499, 1775–1790 | `enabled_categories`, `enabled_networks` lists ownerManaged | list |
+| 17 | `doh` | `settings.Doh` | 2059 / 1467–1482, 1758–1773 | `server_names` list ownerManaged; `custom_servers.*` (enabled Bool, sdns_stamp/server_name Str) all ownerManaged | nested-list (needs Task 16b codec) |
+| 18 | `ips` | `settings.Ips` | 2084 / 1484–1499, 1775–1790 | `enabled_categories`/`enabled_networks` lists; `honeypot.*`, `suppression_whitelist.*`, `suppression_alerts.*` (incl int64 gid/id) and `suppression_alerts.tracking.*` (double-nested) — all ownerManaged | nested-list, double-nested (needs Task 16b codec) |
 | 19 | `igmp_snooping` | `settings.IgmpSnooping` | 2283 / 1565–1592, 1856–1881 | `network_ids` list ownerManaged | list |
-| 20 | `radius` | `settings.Radius` | 2136 / 1526–1549, 1817–1840 | `x_secret`→ownerWriteOnlySecret; ports/enabled ownerManaged | scalar+secret |
-| 21 | `usg` (nested-object, worked) | `settings.Usg` | 2174 / 1551–1563, 1842–1854 | nested `dns_verification` children ownerManaged; scalars ownerManaged | nested-object |
+| 20 | `radius` | `settings.Radius` | 2136 / 1526–1549, 1817–1840 | `secret`→wire `x_secret`, ownerWriteOnlySecret; ports/enabled ownerManaged; RMW-preserved configure_whole_network/tunneled_reply | scalar+secret+GoDuration (needs Task 19b); `interim_update_interval` is GoDuration↔int-seconds |
+| 21 | `usg` (nested-object, worked) | `settings.Usg` | 2174 / 1551–1563, 1842–1854 | nested `dns_verification` children ownerManaged; ~40 scalars ownerManaged; **~13 GoDuration conntrack timeouts** (icmp/other/tcp_*/udp_*) ownerManaged | nested-object + GoDuration (needs Task 19b) |
 | 22 | `mgmt` (nested-list + secret, worked) | `settings.Mgmt` | 2110 / 1501–1524, 1792–1815 | `ssh_password`→ownerWriteOnlySecret; `x_mgmt_key`→ownerWriteOnlySecret (only if in schema); `ssh_keys` (public keys, ListNested)→ownerManaged; all other flags ownerManaged | nested-list + secret |
 
 **Worked tasks (16, 21, 22) show real `decode`/`overlay` code** using the nested/list codec helpers from Task 2 — Task 16 the list shape (`contents`), Task 21 the nested-object shape (`dns_verification` via `decodeObject`/`overlayObject`), Task 22 the nested-list shape (`ssh_keys` via `decodeObjectList`/`overlayObjectList`) plus the secret leaf (`ssh_password` preserved when config-null). Same-shape non-worked tasks reproduce the matching worked template with their table row's specifics.
@@ -387,6 +387,136 @@ For each: cite the converter, port field-for-field, apply ownership, assert gold
 **Secret tasks (20, 22) additionally test:** a null secret config preserves the prior-state secret (`decode` returns prior) and the secret never appears in the golden PUT body when config is null; a set secret is written. Only `ssh_password`/`x_secret`/`x_mgmt_key` are secret — **`ssh_keys` are public and are `ownerManaged`**.
 
 Each task's commit: `refactor(setting): migrate <section> onto the engine`, citing a permitted delta if a golden changed.
+
+---
+
+## Task 16b: Generalize the nested-object codec (type-dispatch + path-prefix recursion)
+
+**Discovered during execution (2026-07-11):** the Task-2 nested-object codec
+(`decodeObjectFields`/`overlayObjectFields`) only supports **string** leaves and
+does not recurse into nested lists. Two remaining sections need more:
+`doh.custom_servers` has a **Bool** leaf (`enabled`); `ips.suppression_alerts` has
+**Int64** leaves (`gid`, `id`) **and** a nested-object-list child (`tracking`,
+double nesting). The plan's original "list" label for doh/ips was wrong. James
+approved keeping PR-A whole by generalizing the codec first (Option 1). The design
+below is **codex-validated** (conversation `codec-nested-generalization`, Design 3).
+
+**Files:** Modify `unifi/setting_codec.go`; update `unifi/setting_codec_test.go`
+(the only current callers of the nested helpers — no section calls them yet).
+
+**Interfaces (Produces):** the generalized `decodeObject`/`decodeObjectList`/
+`overlayObject`/`overlayObjectList` used by Tasks 17 (doh), 18 (ips), 21 (usg),
+22 (mgmt).
+
+**Design (Design 3 — path-prefix lookup against the section's full ownership map):**
+`ownership()` is *already* full-path-keyed by dotted leaf path (the gate-10
+coverage test `leafPaths` in `setting_section_test.go` recurses SingleNested/
+ListNested to `parent.child`/`a.b.c` and asserts every leaf is present). The codec
+consumes that same map.
+
+- Change `decodeObjectFields`/`overlayObjectFields` (and the `decodeObject`/
+  `decodeObjectList`/`overlayObject`/`overlayObjectList` wrappers) to take
+  `(own map[string]ownershipClass, pathPrefix string)` instead of a pre-stripped
+  direct-child ownership map.
+- For each child named `child`, the leaf path is `child` when `pathPrefix==""`
+  else `pathPrefix + "." + child`.
+- **Look up ownership only for scalar / string-list leaves**, and do it with the
+  comma-ok form: `class, ok := own[path]`. **On `!ok`, emit a diagnostic and
+  abort — never fall through to Go's zero-value `ownershipClass` (which is
+  `ownerManaged`, iota 0); a silently-defaulted class would mis-handle a missing
+  entry.** Object-list containers are structural (not leaves) — do not look them
+  up in `own`.
+- Type-dispatch on the child's `attr.Type`:
+  `types.StringType`→`decodeString`/`overlayString`;
+  `types.BoolType`→`decodeBool`/`overlayBool`;
+  `types.Int64Type`→`decodeInt64`/`overlayInt64`;
+  `types.ListType{ElemType: types.StringType}`→`decodeStringList`/`overlayStringList`;
+  `types.ListType{ElemType: types.ObjectType{...}}`→`decodeObjectList`/
+  `overlayObjectList`, **recursing** with `pathPrefix = path`.
+- List elements share one leaf path (no `[i]` index) — matches `leafPaths`.
+- No derive-all-`ownerManaged` and no secret-guard hack: the declared class is
+  used at every depth, so a future nested write-only-secret leaf is honored
+  automatically (decode preserves prior; overlay deletes on null/unknown).
+
+**Known limitation to document in code:** `bestEffortObject`
+(`setting_engine.go:169`) remains direct-child-only (`own[name]`). This is correct
+for PR-A because **no nested-list leaf is a secret** anywhere in the resource. If
+a future PR introduces a nested write-only-secret leaf, `bestEffortObject` must
+also become path-prefix-recursive. Add a short comment there noting this.
+
+**Tests (TDD; all in `setting_codec_test.go`):**
+- Double-nested path lookup: prove `suppression_alerts.tracking.direction`'s class
+  is looked up under that exact dotted path (not `direction` or `tracking.direction`).
+- Type coverage: bool `false`, int64 `0`, int64 emitted into the map as `float64`.
+- List semantics: null/unknown list is a decode/overlay no-op (base untouched);
+  a known **empty** list decodes to an empty (non-null) list and overlays as `[]`;
+  a known-empty nested `tracking` clears that element's tracking.
+- Ordering: API-response order decodes intact; config order overlays intact;
+  same-index base-preservation (element `i` keeps its base fields when config
+  omits them) including under reorder/insert/remove.
+- No snapshot mutation: overlay onto a `dataCopy` base does not mutate the source
+  snapshot maps/slices (deep copy honored through recursion).
+- Malformed shapes (outer not-array, inner not-object, wrong scalar type,
+  fractional int) → diagnostics, not partial output.
+- **Missing-ownership-entry → diagnostic**, not silent `ownerManaged`.
+- Nested write-only-secret (future-proofing, synthetic): with a full dotted
+  ownership map declaring `some_list.token: ownerWriteOnlySecret`, decode
+  preserves prior and overlay deletes the key on **null and on unknown** config.
+- Round trips: one DoH custom server with `enabled=false`; two IPS alerts with
+  distinct `gid`/`id` and multiple `tracking` entries — assert full nested output
+  and ordering.
+
+Commit: `feat(setting): generalize nested codec for typed + recursive leaves`.
+
+---
+
+## Task 19b: Codec support for GoDuration↔integer-seconds leaves
+
+**Discovered during execution (2026-07-11):** `radius.interim_update_interval` (1
+field) and `usg`'s ~13 conntrack timeouts (`icmp_timeout`, `other_timeout`,
+`tcp_*_timeout`, `udp_*_timeout`) are `timetypes.GoDuration` in the model but an
+**integer count of seconds on the wire** (go-unifi `int64`/`*int64`, json omitempty).
+The codec (String/Bool/Int64/StringList/ObjectList) can't express this. The usg
+golden (`goldenUSG`) includes these as bare ints, so they must be reproduced. Same
+"extend codec, keep PR-A whole" decision as Task 16b. Design is **codex-validated**
+(conversation `codec-goduration`).
+
+**Files:** Modify `unifi/setting_codec.go`; update `unifi/setting_codec_test.go`.
+Consumes `unifi/util/timetypes.go` (`DurationValue`, `DurationUnits`).
+
+**Design (mirror `decodeInt64`/`overlayInt64` + a unit conversion):**
+- `codecGoDuration(data, key, unit)` — mirror `codecInt64` exactly: absent/nil →
+  `timetypes.NewGoDurationNull()`; non-`float64` → diagnostic + Unknown; fractional
+  (`math.Trunc(f) != f`) → diagnostic + Unknown; else `util.DurationValue(int64(f), unit)`.
+- `decodeGoDuration(data, key, class, prior timetypes.GoDuration, unit) (timetypes.GoDuration, diag.Diagnostics)`
+  — `if !class.readsFromAPI() { return prior }`; else `codecGoDuration(data, key, unit)`.
+- `putGoDuration(out, key, v, unit)` — `if v.IsNull() || v.IsUnknown() { return }`;
+  else `out[key] = float64(util.DurationUnits(v, unit))`. **Emit `0` when the value
+  is a known `0s`** (do NOT special-case zero — consistent with `putInt64`; omitempty
+  is a struct concern, not the map-PUT contract).
+- `overlayGoDuration(out, key, class, v timetypes.GoDuration, unit)` — secret branch
+  (`ownerWriteOnlySecret`: delete on null/unknown, else `putGoDuration`); else
+  `if class.writesToPUT() { putGoDuration(...) }`. (No PR-A duration leaf is a secret,
+  but keep the branch for symmetry.)
+
+**Scope note — no object-codec change needed for PR-A:** every GoDuration field is a
+**top-level** scalar (radius `interim_update_interval`; usg conntrack timeouts). usg's
+only nested object (`dns_verification`) is string-only. So sections call
+`decodeGoDuration`/`overlayGoDuration` **directly** for their duration leaves; the
+generalized object codec (`decodeObjectFields`/`overlayObjectFields`) does NOT need a
+`GoDurationType` dispatch case. A future nested duration leaf would already fail loudly
+on the existing "Unsupported nested attribute type" guard — leave a one-line comment
+there noting GoDuration is deliberately not dispatched (no nested duration leaves exist).
+
+**Tests (TDD, in `setting_codec_test.go`):** decode int-seconds → GoDuration (e.g.
+`3600` → `1h0m0s`) for a managed leaf; decode absent → null; decode fractional/non-
+number → diagnostic; `!readsFromAPI` (write-only-secret-class) decode returns prior;
+overlay a known GoDuration → `float64` seconds in the map (e.g. `1h` → `3600`);
+overlay known `0s` → emits `float64(0)` (NOT omitted); overlay null/unknown → no-op
+(base untouched); overlay secret-class null → delete key; round-trip
+`int-seconds → GoDuration → int-seconds` for a representative value.
+
+Commit: `feat(setting): codec support for GoDuration leaves`.
 
 ---
 
