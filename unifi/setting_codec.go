@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // setting_codec.go is the ONE place that translates between the controller's
@@ -100,6 +103,36 @@ func codecInt64(data map[string]any, key string) (types.Int64, diag.Diagnostics)
 	return types.Int64Value(int64(f)), diags
 }
 
+// codecGoDuration reads an integer-count-of-unit field from data and
+// converts it to a GoDuration value (e.g. unit=time.Second, wire value 3600
+// -> "1h0m0s"). JSON numbers decode to float64 in Go; a fractional value is
+// malformed for an integer-seconds field and raises a diagnostic instead of
+// being silently truncated, matching codecInt64. Absent key or explicit JSON
+// null decodes to timetypes.NewGoDurationNull().
+func codecGoDuration(data map[string]any, key string, unit time.Duration) (timetypes.GoDuration, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	raw, ok := data[key]
+	if !ok || raw == nil {
+		return timetypes.NewGoDurationNull(), diags
+	}
+	f, ok := raw.(float64)
+	if !ok {
+		diags.AddError(
+			"Malformed settings value",
+			fmt.Sprintf("field %q: expected number, got %T", key, raw),
+		)
+		return timetypes.NewGoDurationUnknown(), diags
+	}
+	if math.Trunc(f) != f {
+		diags.AddError(
+			"Malformed settings value",
+			fmt.Sprintf("field %q: expected integer, got fractional value %v", key, f),
+		)
+		return timetypes.NewGoDurationUnknown(), diags
+	}
+	return util.DurationValue(int64(f), unit), diags
+}
+
 // codecStringList reads a list-of-string field from data. Absent/null
 // decodes to types.ListNull(); present-empty ([]) decodes to an empty
 // ListValue, not null. A present value that is not a []any, or an element
@@ -155,6 +188,16 @@ func putInt64(out map[string]any, key string, v types.Int64) {
 		return
 	}
 	out[key] = float64(v.ValueInt64())
+}
+
+// putGoDuration writes v into out[key] as an integer count of unit when
+// known (including a known 0s — an intentional configured value, not a
+// signal to omit the field); skips null/unknown. Mirrors putInt64.
+func putGoDuration(out map[string]any, key string, v timetypes.GoDuration, unit time.Duration) {
+	if v.IsNull() || v.IsUnknown() {
+		return
+	}
+	out[key] = float64(util.DurationUnits(v, unit))
 }
 
 // putBool writes v into out[key] when known (including false); skips
@@ -216,6 +259,17 @@ func decodeInt64(data map[string]any, key string, class ownershipClass, prior ty
 	return codecInt64(data, key)
 }
 
+// decodeGoDuration is the GoDuration analogue of decodeInt64, for fields
+// whose wire form is an integer count of unit (e.g. whole seconds). A field
+// that does not read from the API (ownerWriteOnlySecret) preserves prior
+// state unconditionally and never inspects data, matching decodeString.
+func decodeGoDuration(data map[string]any, key string, class ownershipClass, prior timetypes.GoDuration, unit time.Duration) (timetypes.GoDuration, diag.Diagnostics) {
+	if !class.readsFromAPI() {
+		return prior, nil
+	}
+	return codecGoDuration(data, key, unit)
+}
+
 // decodeBool is the bool analogue of decodeString.
 func decodeBool(data map[string]any, key string, class ownershipClass, prior types.Bool) (types.Bool, diag.Diagnostics) {
 	if !class.readsFromAPI() {
@@ -275,6 +329,25 @@ func overlayInt64(out map[string]any, key string, class ownershipClass, v types.
 	}
 	if class.writesToPUT() {
 		putInt64(out, key, v)
+	}
+}
+
+// overlayGoDuration is the GoDuration analogue of overlayInt64, applying the
+// same C1 write policy (including delete-on-null for a write-only-secret
+// leaf) for fields whose wire form is an integer count of unit. No PR-A
+// duration leaf is actually a secret; this branch exists for symmetry with
+// overlayInt64/overlayString and to be correct if one ever is.
+func overlayGoDuration(out map[string]any, key string, class ownershipClass, v timetypes.GoDuration, unit time.Duration) {
+	if class == ownerWriteOnlySecret {
+		if v.IsNull() || v.IsUnknown() {
+			delete(out, key)
+			return
+		}
+		putGoDuration(out, key, v, unit)
+		return
+	}
+	if class.writesToPUT() {
+		putGoDuration(out, key, v, unit)
 	}
 }
 
@@ -481,6 +554,10 @@ func decodeObjectFields(
 				attrs[childKey] = childVal
 				continue
 			}
+			// GoDuration is deliberately NOT dispatched here: every Task 19b
+			// duration leaf (radius/usg) is a top-level scalar, so section
+			// converters call decodeGoDuration directly. A future nested
+			// duration leaf would correctly fail loudly on this guard.
 			diags.AddError(
 				"Unsupported nested attribute type",
 				fmt.Sprintf("field %q: unsupported nested attribute type %T", childDiagPath, childType),
@@ -598,6 +675,10 @@ func overlayObjectFields(
 				diags.Append(listDiags...)
 				continue
 			}
+			// GoDuration is deliberately NOT dispatched here: every Task 19b
+			// duration leaf (radius/usg) is a top-level scalar, so section
+			// converters call overlayGoDuration directly. A future nested
+			// duration leaf would correctly fail loudly on this guard.
 			diags.AddError(
 				"Unsupported nested attribute type",
 				fmt.Sprintf("field %q: unsupported nested attribute type %T", childDiagPath, childType),

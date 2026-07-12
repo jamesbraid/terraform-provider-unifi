@@ -4,10 +4,13 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // --- low-level codec: codecString ---
@@ -2012,6 +2015,137 @@ func TestDecodeObjectList_ipsSuppressionAlertsRoundTripWithMultipleTrackingEntri
 	}
 	if e1Tracking[0].(map[string]any)["direction"] != "both" || e1Tracking[1].(map[string]any)["direction"] != "egress" {
 		t.Fatalf("expected element 1 tracking order preserved on overlay, got %v", e1Tracking)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Task 19b: GoDuration <-> integer-seconds codec.
+// ---------------------------------------------------------------------------
+
+// --- ownership-aware layer: decodeGoDuration ---
+
+func TestDecodeGoDuration_managedReadsFromData(t *testing.T) {
+	data := map[string]any{"t": float64(3600)}
+	v, diags := decodeGoDuration(data, "t", ownerManaged, timetypes.NewGoDurationNull(), time.Second)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	dur, durDiags := v.ValueGoDuration()
+	if durDiags.HasError() {
+		t.Fatalf("unexpected diagnostics reading duration: %v", durDiags)
+	}
+	if dur != time.Hour {
+		t.Fatalf("expected 1h0m0s, got %v", dur)
+	}
+}
+
+func TestDecodeGoDuration_absentIsNull(t *testing.T) {
+	v, diags := decodeGoDuration(map[string]any{}, "t", ownerManaged, timetypes.NewGoDurationNull(), time.Second)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if !v.IsNull() {
+		t.Fatalf("expected null for absent key, got %v", v)
+	}
+}
+
+func TestCodecGoDuration_fractionalIsDiagnostic(t *testing.T) {
+	_, diags := codecGoDuration(map[string]any{"t": 1.5}, "t", time.Second)
+	if !diags.HasError() {
+		t.Fatalf("expected diagnostic for fractional value, got none")
+	}
+}
+
+func TestCodecGoDuration_wrongTypeIsDiagnostic(t *testing.T) {
+	_, diags := codecGoDuration(map[string]any{"t": "nope"}, "t", time.Second)
+	if !diags.HasError() {
+		t.Fatalf("expected diagnostic for wrong type, got none")
+	}
+}
+
+func TestDecodeGoDuration_writeOnlySecretPreservesPriorAndNeverTouchesData(t *testing.T) {
+	data := map[string]any{"t": float64(99)}
+	prior := util.DurationValue(5, time.Second)
+	v, diags := decodeGoDuration(data, "t", ownerWriteOnlySecret, prior, time.Second)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	dur, durDiags := v.ValueGoDuration()
+	if durDiags.HasError() {
+		t.Fatalf("unexpected diagnostics reading duration: %v", durDiags)
+	}
+	if dur != 5*time.Second {
+		t.Fatalf("expected prior 5s preserved, got %v", dur)
+	}
+	if data["t"] != float64(99) {
+		t.Fatalf("expected data map untouched, got %v", data["t"])
+	}
+}
+
+// --- ownership-aware layer: overlayGoDuration ---
+
+func TestOverlayGoDuration_managedWritesKnownValue(t *testing.T) {
+	out := map[string]any{"t": float64(1)}
+	overlayGoDuration(out, "t", ownerManaged, util.DurationValue(3600, time.Second), time.Second)
+	if out["t"] != float64(3600) {
+		t.Fatalf("expected 3600.0 written, got %v", out["t"])
+	}
+}
+
+// TestOverlayGoDuration_managedWritesKnownZero proves the codex-flagged
+// zero-emission behavior non-vacuously: it seeds out["t"] with a sentinel
+// (float64(999)) distinct from both the input (0) and the zero-value of the
+// map lookup, so a passing assertion can only mean putGoDuration actually
+// executed the write rather than the key coincidentally already being 0 or
+// absent.
+func TestOverlayGoDuration_managedWritesKnownZero(t *testing.T) {
+	out := map[string]any{"t": float64(999)}
+	overlayGoDuration(out, "t", ownerManaged, util.DurationValue(0, time.Second), time.Second)
+	v, ok := out["t"]
+	if !ok {
+		t.Fatalf("expected key present after configured-zero GoDuration overlay (intentional write, not omission)")
+	}
+	if v != float64(0) {
+		t.Fatalf("expected 0.0 written (not omitted, not left at sentinel 999), got %v", v)
+	}
+}
+
+func TestOverlayGoDuration_nullPreservesSnapshot(t *testing.T) {
+	out := map[string]any{"t": float64(42)}
+	overlayGoDuration(out, "t", ownerManaged, timetypes.NewGoDurationNull(), time.Second)
+	if out["t"] != float64(42) {
+		t.Fatalf("expected snapshot value preserved on null, got %v", out["t"])
+	}
+}
+
+func TestOverlayGoDuration_writeOnlySecretNullDeletesKey(t *testing.T) {
+	out := map[string]any{"t": float64(5)}
+	overlayGoDuration(out, "t", ownerWriteOnlySecret, timetypes.NewGoDurationNull(), time.Second)
+	if _, ok := out["t"]; ok {
+		t.Fatalf("expected key deleted for null write-only-secret GoDuration, still present: %v", out["t"])
+	}
+}
+
+// --- round-trip ---
+
+func TestGoDuration_roundTripDecodeOverlay(t *testing.T) {
+	data := map[string]any{"t": float64(1800)}
+	decoded, decodeDiags := decodeGoDuration(data, "t", ownerManaged, timetypes.NewGoDurationNull(), time.Second)
+	if decodeDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", decodeDiags)
+	}
+	dur, durDiags := decoded.ValueGoDuration()
+	if durDiags.HasError() {
+		t.Fatalf("unexpected diagnostics reading duration: %v", durDiags)
+	}
+	if dur != 30*time.Minute {
+		t.Fatalf("expected 30m0s, got %v", dur)
+	}
+
+	out := map[string]any{}
+	overlayGoDuration(out, "t", ownerManaged, decoded, time.Second)
+	if out["t"] != float64(1800) {
+		t.Fatalf("expected round-trip to 1800.0, got %v", out["t"])
 	}
 }
 
