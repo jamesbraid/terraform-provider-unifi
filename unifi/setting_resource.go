@@ -320,6 +320,7 @@ type settingResourceModel struct {
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
 	Locale        types.Object   `tfsdk:"locale"`
 	GlobalNat     types.Object   `tfsdk:"global_nat"`
+	TrafficFlow   types.Object   `tfsdk:"traffic_flow"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -335,6 +336,16 @@ type settingLocaleModel struct {
 type settingGlobalNatModel struct {
 	ExcludedNetworkIDs types.List   `tfsdk:"excluded_network_ids"`
 	Mode               types.String `tfsdk:"mode"`
+}
+
+// settingTrafficFlowModel is the Terraform model for the "traffic_flow"
+// settings section (settingResourceModel.TrafficFlow): toggles for which
+// traffic classes the gateway allows/manages.
+type settingTrafficFlowModel struct {
+	EnabledAllowedTraffic        types.Bool `tfsdk:"enabled_allowed_traffic"`
+	GatewayDNSEnabled            types.Bool `tfsdk:"gateway_dns_enabled"`
+	UnifiDeviceManagementEnabled types.Bool `tfsdk:"unifi_device_management_enabled"`
+	UnifiServicesEnabled         types.Bool `tfsdk:"unifi_services_enabled"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -477,6 +488,12 @@ var (
 	globalNatAttrTypes = map[string]attr.Type{
 		"excluded_network_ids": types.ListType{ElemType: types.StringType},
 		"mode":                 types.StringType,
+	}
+	trafficFlowAttrTypes = map[string]attr.Type{
+		"enabled_allowed_traffic":         types.BoolType,
+		"gateway_dns_enabled":             types.BoolType,
+		"unifi_device_management_enabled": types.BoolType,
+		"unifi_services_enabled":          types.BoolType,
 	}
 )
 
@@ -684,7 +701,8 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull()
+		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull() &&
+		m.TrafficFlow.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in
