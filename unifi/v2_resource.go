@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
@@ -197,4 +198,85 @@ func v2FinishRead(
 	}
 	resp.Diagnostics.AddError(errSummary, err.Error())
 	return true
+}
+
+// v2ImportState implements the shared "<id>" / "<site>:<id>" import grammar
+// for a v2 resource whose schema has top-level "site" and "id" attributes.
+// It delegates parsing to parseSiteID (unifi/site.go) — the same grammar
+// unifi_nat_rule and unifi_content_filtering use for their own composite
+// identity — so a v2 resource's ImportState body reduces to:
+//
+//	func (r *fooResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+//	    v2ImportState(ctx, req, resp, r.client.Site)
+//	}
+//
+// An empty id, or an id with more than one ":"-separated site prefix, is an
+// error diagnostic (never a silent default) — matching parseSiteID's
+// existing contract.
+func v2ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+	providerDefault string,
+) {
+	site, id, err := parseSiteID(req.ID, providerDefault)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid Import ID", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), site)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), id)...)
+}
+
+// objectAsOptions decodes obj into a new value of type T using the
+// framework's standard (zero-value) basetypes.ObjectAsOptions, replacing the
+// repeated
+//
+//	var m someModel
+//	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+//
+// call-site pattern found throughout unifi/*.go. On non-empty diagnostics,
+// callers MUST append them and return BEFORE any API request, any
+// model→API conversion use of the returned value, or any State.Set —
+// objectAsOptions does not itself decide whether a conversion failure halts
+// the caller's operation, matching every existing modelToX conversion
+// function's contract. Canonical call site:
+//
+//	m, diags := objectAsOptions[fooModel](ctx, model.Foo)
+//	resp.Diagnostics.Append(diags...)
+//	if resp.Diagnostics.HasError() {
+//	    return
+//	}
+//	// ... use m in an API request, conversion, or resp.State.Set ...
+//
+// obj.IsNull() or obj.IsUnknown() both decode to T's zero value with no
+// diagnostics. This is a deliberate new helper semantic: the framework's
+// own zero-value basetypes.ObjectAsOptions errors when a null or unknown
+// value can't be represented in T, and objectAsOptions intentionally
+// preempts that error by short-circuiting to the zero value first, so every
+// caller gets consistent null/unknown handling for free.
+func objectAsOptions[T any](ctx context.Context, obj types.Object) (T, diag.Diagnostics) {
+	var out T
+	if obj.IsNull() || obj.IsUnknown() {
+		return out, nil
+	}
+	diags := obj.As(ctx, &out, basetypes.ObjectAsOptions{})
+	return out, diags
+}
+
+// objectListAsOptions is the ListNestedAttribute analogue of objectAsOptions:
+// it decodes every element of list into []T using ElementsAs under the same
+// options contract. list.IsNull() or list.IsUnknown() both decode to a nil
+// slice with no diagnostics — the same deliberate preemption of the
+// framework's null/unknown error behavior that objectAsOptions applies. On
+// non-empty diagnostics, callers MUST append them and return BEFORE any API
+// request, any model→API conversion use of the returned slice, or any
+// State.Set, for the same reason as objectAsOptions.
+func objectListAsOptions[T any](ctx context.Context, list types.List) ([]T, diag.Diagnostics) {
+	if list.IsNull() || list.IsUnknown() {
+		return nil, nil
+	}
+	var out []T
+	diags := list.ElementsAs(ctx, &out, false)
+	return out, diags
 }

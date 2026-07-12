@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -302,6 +303,168 @@ func TestV2FinishRead(t *testing.T) {
 		}
 		if resp.Diagnostics.HasError() {
 			t.Errorf("nil error must not produce a diagnostic, got: %v", resp.Diagnostics)
+		}
+	})
+}
+
+func TestV2ImportState(t *testing.T) {
+	const def = "default-site"
+
+	t.Run("site:id sets both site and id", func(t *testing.T) {
+		req := resource.ImportStateRequest{ID: "site-a:obj-1"}
+		resp := newV2TestImportStateResponse(t)
+		v2ImportState(context.Background(), req, resp, def)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
+		}
+
+		var gotSite, gotID types.String
+		if diags := resp.State.GetAttribute(context.Background(), path.Root("site"), &gotSite); diags.HasError() {
+			t.Fatalf("reading back site: %v", diags)
+		}
+		if diags := resp.State.GetAttribute(context.Background(), path.Root("id"), &gotID); diags.HasError() {
+			t.Fatalf("reading back id: %v", diags)
+		}
+		if gotSite.ValueString() != "site-a" {
+			t.Errorf("site = %q, want %q", gotSite.ValueString(), "site-a")
+		}
+		if gotID.ValueString() != "obj-1" {
+			t.Errorf("id = %q, want %q", gotID.ValueString(), "obj-1")
+		}
+	})
+
+	t.Run("bare id uses default site", func(t *testing.T) {
+		req := resource.ImportStateRequest{ID: "obj-1"}
+		resp := newV2TestImportStateResponse(t)
+		v2ImportState(context.Background(), req, resp, def)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
+		}
+
+		var gotSite, gotID types.String
+		if diags := resp.State.GetAttribute(context.Background(), path.Root("site"), &gotSite); diags.HasError() {
+			t.Fatalf("reading back site: %v", diags)
+		}
+		if diags := resp.State.GetAttribute(context.Background(), path.Root("id"), &gotID); diags.HasError() {
+			t.Fatalf("reading back id: %v", diags)
+		}
+		if gotSite.ValueString() != def {
+			t.Errorf("site = %q, want %q", gotSite.ValueString(), def)
+		}
+		if gotID.ValueString() != "obj-1" {
+			t.Errorf("id = %q, want %q", gotID.ValueString(), "obj-1")
+		}
+	})
+
+	t.Run("empty id is an error diagnostic", func(t *testing.T) {
+		req := resource.ImportStateRequest{ID: ""}
+		resp := newV2TestImportStateResponse(t)
+		v2ImportState(context.Background(), req, resp, def)
+		if !resp.Diagnostics.HasError() {
+			t.Fatal("expected an error diagnostic for empty import ID")
+		}
+	})
+
+	t.Run("too many colons is an error diagnostic", func(t *testing.T) {
+		req := resource.ImportStateRequest{ID: "a:b:c"}
+		resp := newV2TestImportStateResponse(t)
+		v2ImportState(context.Background(), req, resp, def)
+		if !resp.Diagnostics.HasError() {
+			t.Fatal("expected an error diagnostic for a malformed multi-colon import ID")
+		}
+	})
+}
+
+type sampleEndpoint struct {
+	Zone types.String `tfsdk:"zone"`
+	Port types.String `tfsdk:"port"`
+}
+
+func sampleEndpointAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"zone": types.StringType,
+		"port": types.StringType,
+	}
+}
+
+func TestObjectAsOptions(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("decodes a populated object", func(t *testing.T) {
+		obj, diags := types.ObjectValueFrom(ctx, sampleEndpointAttrTypes(), sampleEndpoint{
+			Zone: types.StringValue("zone-a"),
+			Port: types.StringValue("443"),
+		})
+		if diags.HasError() {
+			t.Fatalf("setup: %v", diags)
+		}
+
+		got, diags := objectAsOptions[sampleEndpoint](ctx, obj)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		if got.Zone.ValueString() != "zone-a" || got.Port.ValueString() != "443" {
+			t.Errorf("got %+v, want zone=zone-a port=443", got)
+		}
+	})
+
+	t.Run("null object decodes to zero value with no diagnostics", func(t *testing.T) {
+		obj := types.ObjectNull(sampleEndpointAttrTypes())
+		got, diags := objectAsOptions[sampleEndpoint](ctx, obj)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		var zero sampleEndpoint
+		if got != zero {
+			t.Errorf("got %+v, want zero value %+v", got, zero)
+		}
+	})
+
+	t.Run("unknown object decodes to zero value with no diagnostics", func(t *testing.T) {
+		obj := types.ObjectUnknown(sampleEndpointAttrTypes())
+		got, diags := objectAsOptions[sampleEndpoint](ctx, obj)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		var zero sampleEndpoint
+		if got != zero {
+			t.Errorf("got %+v, want zero value %+v", got, zero)
+		}
+	})
+}
+
+func TestObjectListAsOptions(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("decodes a populated list", func(t *testing.T) {
+		obj1, _ := types.ObjectValueFrom(ctx, sampleEndpointAttrTypes(), sampleEndpoint{
+			Zone: types.StringValue("zone-a"), Port: types.StringValue("443"),
+		})
+		obj2, _ := types.ObjectValueFrom(ctx, sampleEndpointAttrTypes(), sampleEndpoint{
+			Zone: types.StringValue("zone-b"), Port: types.StringValue("80"),
+		})
+		list, diags := types.ListValue(types.ObjectType{AttrTypes: sampleEndpointAttrTypes()}, []attr.Value{obj1, obj2})
+		if diags.HasError() {
+			t.Fatalf("setup: %v", diags)
+		}
+
+		got, diags := objectListAsOptions[sampleEndpoint](ctx, list)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		if len(got) != 2 || got[0].Zone.ValueString() != "zone-a" || got[1].Zone.ValueString() != "zone-b" {
+			t.Errorf("got %+v", got)
+		}
+	})
+
+	t.Run("null list decodes to nil with no diagnostics", func(t *testing.T) {
+		list := types.ListNull(types.ObjectType{AttrTypes: sampleEndpointAttrTypes()})
+		got, diags := objectListAsOptions[sampleEndpoint](ctx, list)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		if got != nil {
+			t.Errorf("got %+v, want nil", got)
 		}
 	})
 }
