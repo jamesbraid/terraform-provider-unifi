@@ -42,7 +42,7 @@ func (s rawSettings) has(key string) bool {
 // so a caller can always overlay onto the result without a nil-map check.
 //
 // TODO(go-unifi): every section's overlay() starts here rather than from a
-// go-unifi typed settings struct (settings.SettingRadius, SettingMgmt, ...),
+// go-unifi typed settings struct (settings.Radius, Mgmt, ...),
 // even though go-unifi already models each section's fields. PERMANENT: the
 // raw map[string]any is the read-modify-write base specifically so fields
 // the Terraform schema does not expose (e.g. mgmt's alert_enabled/

@@ -3,9 +3,11 @@ package unifi
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
@@ -625,6 +627,32 @@ func TestLifecycle_malformedRemoteAborts(t *testing.T) {
 		}
 		if !out.Dpi.IsNull() {
 			t.Errorf("out.Dpi = %v, want null (best-effort state: dpi was never configured this apply, so it carries prior)", out.Dpi)
+		}
+
+		// The op stays warn-not-error (asserted above via !diags.HasError()),
+		// but the warning's DETAIL must now surface rd's specific decode
+		// diagnostics (which field/section was malformed) rather than only
+		// the generic "run terraform refresh" text — see setting_engine.go's
+		// C2.4 comment on why rd itself is never d.Append()-ed.
+		var readBackWarning diag.Diagnostic
+		for _, dg := range diags {
+			if dg.Summary() == "settings read-back failed after apply" {
+				readBackWarning = dg
+				break
+			}
+		}
+		if readBackWarning == nil {
+			t.Fatalf("expected a %q warning diagnostic, got: %v", "settings read-back failed after apply", diags)
+		}
+		if readBackWarning.Severity() != diag.SeverityWarning {
+			t.Errorf("read-back diagnostic severity = %v, want SeverityWarning (must not flip C2.4 into a hard failure)", readBackWarning.Severity())
+		}
+		detail := readBackWarning.Detail()
+		if !strings.Contains(detail, "run `terraform refresh`") {
+			t.Errorf("warning detail = %q, want it to still contain the original best-effort-state guidance", detail)
+		}
+		if !strings.Contains(detail, `field "enabled"`) || !strings.Contains(detail, "expected bool") {
+			t.Errorf("warning detail = %q, want it to name the offending dpi.enabled decode failure (rd's specific diagnostic folded in)", detail)
 		}
 	})
 }

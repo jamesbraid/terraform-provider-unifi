@@ -34,7 +34,7 @@ import (
 // ownership lookups).
 //
 // TODO(go-unifi): the "suppression" nesting is unwrapped by hand from the
-// raw map rather than via settings.SettingIps.Suppression
+// raw map rather than via settings.Ips.Suppression
 // (*SettingIpsSuppression, already correctly nested in go-unifi). PERMANENT:
 // the nested object is the controller's own wire shape, not a go-unifi
 // modeling gap — the Terraform-schema flattening (a deliberate UX choice)

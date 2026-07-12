@@ -3,6 +3,7 @@ package unifi
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -98,6 +99,16 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 	}
 	var todo []pending
 	for _, s := range ordered {
+		// Both callers (setting_resource.go) already pass a config-filtered
+		// sections slice (configuredSections(config)), so this plan-based
+		// isConfigured check is now a redundant second gate for a genuinely
+		// configured section: plan only diverges from config additively
+		// (Computed/UseStateForUnknown attributes), so isConfigured(plan)
+		// is always true whenever isConfigured(config) already was. Kept
+		// anyway — it's the defensive check that keeps applySections
+		// correct if it's ever called with an unfiltered sections set (e.g.
+		// from a test), so it stays even though it's a no-op in the two
+		// current call paths.
 		if !s.isConfigured(plan) {
 			continue // not user-configured — never checked, never written
 		}
@@ -128,13 +139,37 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 		var bd diag.Diagnostics
 		out, bd = bestEffortState(prior, plan, put, sections) // C2.4 second failure
 		d.Append(bd...)
+		// rd holds ERROR diagnostics from the failed read-back. Do NOT
+		// d.Append(rd...) here: that would make d.HasError() true and flip
+		// this from a warning into a hard failure, breaking C2.4 (the
+		// operation must stay successful-with-warning, with best-effort
+		// state persisted). Instead fold rd's per-section messages into the
+		// warning's detail text so practitioners see which section/field
+		// failed to decode, without rd's severity propagating.
 		d.AddWarning("settings read-back failed after apply",
-			"state written best-effort from applied values; run `terraform refresh`")
+			"state written best-effort from applied values; run `terraform refresh`.\n"+
+				"read-back errors: "+joinDiagMessages(rd))
 	}
 	if putErr != nil {
 		d.AddError("settings apply failed", putErr.Error())
 	}
 	return out, d
+}
+
+// joinDiagMessages renders diags as a semicolon-separated "Summary: Detail"
+// list, for folding a Diagnostics value's specifics into another
+// diagnostic's detail text (e.g. C2.4's read-back-failure warning) without
+// appending diags itself and propagating its severity.
+func joinDiagMessages(diags diag.Diagnostics) string {
+	msgs := make([]string, 0, len(diags))
+	for _, dg := range diags {
+		msg := dg.Summary()
+		if detail := dg.Detail(); detail != "" {
+			msg += ": " + detail
+		}
+		msgs = append(msgs, msg)
+	}
+	return strings.Join(msgs, "; ")
 }
 
 // bestEffortState assembles a settingResourceModel for the C2.4

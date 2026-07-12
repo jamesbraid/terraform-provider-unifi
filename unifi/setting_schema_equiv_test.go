@@ -30,35 +30,41 @@ import (
 // .Description(ctx) strings stand in as the stable signal that two
 // attributes carry equivalent validation/plan-modification behavior.
 type normAttr struct {
-	Name          string     `json:"name"`
-	Type          string     `json:"type"`
-	Required      bool       `json:"required"`
-	Optional      bool       `json:"optional"`
-	Computed      bool       `json:"computed"`
-	Sensitive     bool       `json:"sensitive"`
-	Default       string     `json:"default,omitempty"`
-	Validators    []string   `json:"validators,omitempty"`
-	PlanModifiers []string   `json:"plan_modifiers,omitempty"`
-	Attributes    []normAttr `json:"attributes,omitempty"`    // SingleNestedAttribute children, sorted by Name
-	NestedObject  *normAttr  `json:"nested_object,omitempty"` // ListNestedAttribute's per-element object, itself carrying .Attributes
+	Name                string     `json:"name"`
+	Type                string     `json:"type"`
+	Required            bool       `json:"required"`
+	Optional            bool       `json:"optional"`
+	Computed            bool       `json:"computed"`
+	Sensitive           bool       `json:"sensitive"`
+	Default             string     `json:"default,omitempty"`
+	MarkdownDescription string     `json:"markdown_description,omitempty"`
+	Validators          []string   `json:"validators,omitempty"`
+	PlanModifiers       []string   `json:"plan_modifiers,omitempty"`
+	Attributes          []normAttr `json:"attributes,omitempty"`    // SingleNestedAttribute children, sorted by Name
+	NestedObject        *normAttr  `json:"nested_object,omitempty"` // ListNestedAttribute's per-element object, itself carrying .Attributes
 }
 
 // normalizeSchemaAttr captures name, type, Required/Optional/Computed/
-// Sensitive, the rendered default's description (if any), and each
-// validator's/plan-modifier's Description(ctx) for a schema.Attribute,
-// recursing into SingleNestedAttribute.Attributes and
-// ListNestedAttribute.NestedObject.Attributes. The result sorts
-// non-deterministic map iteration (nested Attributes) by name so two
-// structurally-equal schemas normalize identically regardless of Go map
-// iteration order.
+// Sensitive, the rendered default's description (if any), the attribute's
+// MarkdownDescription (via GetMarkdownDescription(), part of every
+// schema.Attribute's common fwschema.Attribute interface — so a user-facing
+// doc-text change is caught here too, not just structural/behavioral
+// changes), and each validator's/plan-modifier's Description(ctx) for a
+// schema.Attribute, recursing into SingleNestedAttribute.Attributes and
+// ListNestedAttribute.NestedObject.Attributes (each nested attribute's own
+// MarkdownDescription is captured too, since normalizeSchemaAttr recurses
+// through normalizeAttributeMap). The result sorts non-deterministic map
+// iteration (nested Attributes) by name so two structurally-equal schemas
+// normalize identically regardless of Go map iteration order.
 func normalizeSchemaAttr(ctx context.Context, name string, a schema.Attribute) normAttr {
 	out := normAttr{
-		Name:      name,
-		Type:      a.GetType().String(),
-		Required:  a.IsRequired(),
-		Optional:  a.IsOptional(),
-		Computed:  a.IsComputed(),
-		Sensitive: a.IsSensitive(),
+		Name:                name,
+		Type:                a.GetType().String(),
+		Required:            a.IsRequired(),
+		Optional:            a.IsOptional(),
+		Computed:            a.IsComputed(),
+		Sensitive:           a.IsSensitive(),
+		MarkdownDescription: a.GetMarkdownDescription(),
 	}
 
 	switch v := a.(type) {

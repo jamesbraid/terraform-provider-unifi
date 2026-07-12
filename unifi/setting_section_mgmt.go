@@ -39,7 +39,7 @@ import (
 //     the ownership() class lookup — exactly like radius's secret->x_secret.
 //
 //     TODO(go-unifi): these read/write raw "x_ssh_*" map keys rather than
-//     settings.SettingMgmt's SSHEnabled/SSHUsername/SSHPassword/SSHKeys
+//     settings.Mgmt's SSHEnabled/SSHUsername/SSHPassword/SSHKeys
 //     fields (already correctly tagged `json:"x_ssh_*"` in go-unifi).
 //     PERMANENT: "x_ssh_" is the controller's own wire naming, not a
 //     go-unifi gap — the tfsdk-name-to-wire-key remap table here would be
