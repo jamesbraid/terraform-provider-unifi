@@ -112,6 +112,8 @@ func (countrySection) carryBestEffort(dst *settingResourceModel, plan settingRes
 	return nil
 }
 
+// isConfigured reports whether m.Country is set (non-null, non-unknown),
+// gating whether Create/Update push this section to the controller at all.
 func (countrySection) isConfigured(m settingResourceModel) bool {
 	return !m.Country.IsNull() && !m.Country.IsUnknown()
 }

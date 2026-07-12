@@ -136,6 +136,9 @@ func (igmpSnoopingSection) carryBestEffort(dst *settingResourceModel, plan setti
 	return nil
 }
 
+// isConfigured reports whether m.IgmpSnooping is set (non-null,
+// non-unknown), gating whether Create/Update push this section to the
+// controller at all.
 func (igmpSnoopingSection) isConfigured(m settingResourceModel) bool {
 	return !m.IgmpSnooping.IsNull() && !m.IgmpSnooping.IsUnknown()
 }

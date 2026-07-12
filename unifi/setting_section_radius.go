@@ -218,6 +218,9 @@ func (radiusSection) carryBestEffort(dst *settingResourceModel, plan settingReso
 	return diags
 }
 
+// isConfigured reports whether m.Radius is set (non-null, non-unknown),
+// gating whether Create/Update push this section — including the
+// write-only secret leaf — to the controller at all.
 func (radiusSection) isConfigured(m settingResourceModel) bool {
 	return !m.Radius.IsNull() && !m.Radius.IsUnknown()
 }

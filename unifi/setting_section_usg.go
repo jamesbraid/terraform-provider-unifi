@@ -559,6 +559,9 @@ func (usgSection) carryBestEffort(dst *settingResourceModel, plan settingResourc
 	return nil
 }
 
+// isConfigured reports whether m.USG is set (non-null, non-unknown), gating
+// whether Create/Update push this section — all 37 leaves — to the
+// controller at all.
 func (usgSection) isConfigured(m settingResourceModel) bool {
 	return !m.USG.IsNull() && !m.USG.IsUnknown()
 }

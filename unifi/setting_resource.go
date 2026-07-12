@@ -30,10 +30,19 @@ func NewSettingResource() resource.Resource {
 	return &settingResource{}
 }
 
+// settingResource implements the unifi_setting Terraform resource. It holds
+// only the provider client; all section-specific behavior (schema, decode,
+// overlay) is delegated to the registered settingSections rather than kept
+// here, so adding a settings section does not require touching this struct.
 type settingResource struct {
 	client *Client
 }
 
+// sshKeyModel is the nested per-key element of settingMgmtModel.SSHKeys
+// (mgmt.ssh_keys). It models only the public-key fields a user configures;
+// the controller-assigned date/fingerprint metadata on each wire element is
+// deliberately not modeled and is blanked on every apply rather than carried
+// by list position (see blankSSHKeyControllerMetadata).
 type sshKeyModel struct {
 	Name    types.String `tfsdk:"name"`
 	Type    types.String `tfsdk:"type"`
@@ -41,6 +50,10 @@ type sshKeyModel struct {
 	Comment types.String `tfsdk:"comment"`
 }
 
+// settingMgmtModel is the Terraform model for the "mgmt" section
+// (settingResourceModel.Mgmt). SSHPassword is write-only: the controller
+// never echoes secret values back, so decode always carries the prior
+// state's value forward instead of reading the wire's masked placeholder.
 type settingMgmtModel struct {
 	AutoUpgrade            types.Bool   `tfsdk:"auto_upgrade"`
 	AutoUpgradeHour        types.Int64  `tfsdk:"auto_upgrade_hour"`
@@ -56,6 +69,11 @@ type settingMgmtModel struct {
 	SSHAuthPasswordEnabled types.Bool   `tfsdk:"ssh_auth_password_enabled"`
 }
 
+// settingRadiusModel is the Terraform model for the "radius" section
+// (settingResourceModel.Radius). Secret is write-only, carried forward from
+// prior state on decode rather than read from the controller's masked wire
+// value, and InterimUpdateInterval is a GoDuration string (seconds on the
+// wire) so v0->v1 state upgrades convert it via UpgradeState.
 type settingRadiusModel struct {
 	AccountingEnabled     types.Bool           `tfsdk:"accounting_enabled"`
 	AcctPort              types.Int64          `tfsdk:"acct_port"`
@@ -64,6 +82,9 @@ type settingRadiusModel struct {
 	Secret                types.String         `tfsdk:"secret"`
 }
 
+// dnsVerificationModel is the nested "dns_verification" child object of
+// settingUSGModel, decoded/overlaid through the generalized single-object
+// codec (decodeObject/overlayObject) rather than by hand.
 type dnsVerificationModel struct {
 	Domain             types.String `tfsdk:"domain"`
 	PrimaryDNSServer   types.String `tfsdk:"primary_dns_server"`
@@ -71,6 +92,11 @@ type dnsVerificationModel struct {
 	SettingPreference  types.String `tfsdk:"setting_preference"`
 }
 
+// settingUSGModel is the Terraform model for the "usg" section
+// (settingResourceModel.USG), the largest section: 37 leaves including 12
+// conntrack timeouts stored as GoDuration strings (seconds on the wire, so
+// v0->v1 state upgrades convert them via UpgradeState) and one nested
+// dns_verification object. All other leaves map 1:1 to their wire keys.
 type settingUSGModel struct {
 	BroadcastPing                  types.Bool           `tfsdk:"broadcast_ping"`
 	DNSVerification                types.Object         `tfsdk:"dns_verification"`
@@ -111,26 +137,43 @@ type settingUSGModel struct {
 	UPnPWANInterface               types.String         `tfsdk:"upnp_wan_interface"`
 }
 
+// settingDohCustomServerModel is the nested per-server element of
+// settingDohModel.CustomServers (doh.custom_servers), one custom resolver
+// specified via a DNS stamp (sdns://).
 type settingDohCustomServerModel struct {
 	Enabled    types.Bool   `tfsdk:"enabled"`
 	SDNSStamp  types.String `tfsdk:"sdns_stamp"`
 	ServerName types.String `tfsdk:"server_name"`
 }
 
+// settingAutoSpeedtestModel is the Terraform model for the "auto_speedtest"
+// section (settingResourceModel.AutoSpeedtest): a flat scalar-only section
+// with no nested objects/lists and no secrets, used as the section template
+// other flat sections copy.
 type settingAutoSpeedtestModel struct {
 	Enabled  types.Bool   `tfsdk:"enabled"`
 	CronExpr types.String `tfsdk:"cron_expr"`
 }
 
+// settingCountryModel is the Terraform model for the "country" section
+// (settingResourceModel.Country): a single required regulatory country code
+// (ISO 3166-1 numeric).
 type settingCountryModel struct {
 	Code types.Int64 `tfsdk:"code"`
 }
 
+// settingDpiModel is the Terraform model for the "dpi" section
+// (settingResourceModel.Dpi). FingerprintingEnabled's wire key is the
+// camelCase "fingerprintingEnabled" (go-unifi's settings.Dpi json tag),
+// unlike its snake_case tfsdk name, so decode/overlay must remap it by hand.
 type settingDpiModel struct {
 	Enabled               types.Bool `tfsdk:"enabled"`
 	FingerprintingEnabled types.Bool `tfsdk:"fingerprinting_enabled"`
 }
 
+// settingLcmModel is the Terraform model for the "lcm" section
+// (settingResourceModel.Lcm): device LCD/display settings, a flat
+// scalar-only section with no nested objects/lists and no secrets.
 type settingLcmModel struct {
 	Enabled     types.Bool  `tfsdk:"enabled"`
 	Brightness  types.Int64 `tfsdk:"brightness"`
@@ -139,10 +182,17 @@ type settingLcmModel struct {
 	TouchEvent  types.Bool  `tfsdk:"touch_event"`
 }
 
+// settingNetworkOptimizationModel is the Terraform model for the
+// "network_optimization" section (settingResourceModel.NetworkOpt): a single
+// managed toggle, no nested objects/lists and no secrets.
 type settingNetworkOptimizationModel struct {
 	Enabled types.Bool `tfsdk:"enabled"`
 }
 
+// settingNtpModel is the Terraform model for the "ntp" section
+// (settingResourceModel.Ntp): up to four time-server addresses plus a mode
+// preference, all plain strings with no nested objects/lists and no
+// secrets.
 type settingNtpModel struct {
 	NtpServer1        types.String `tfsdk:"ntp_server_1"`
 	NtpServer2        types.String `tfsdk:"ntp_server_2"`
@@ -151,6 +201,10 @@ type settingNtpModel struct {
 	SettingPreference types.String `tfsdk:"setting_preference"`
 }
 
+// settingSyslogModel is the Terraform model for the "syslog" section
+// (settingResourceModel.Syslog). The controller stores this section under
+// the wire key "rsyslogd" while the Terraform attribute is "syslog" — the
+// only section where key() and attrName() diverge.
 type settingSyslogModel struct {
 	Enabled                     types.Bool   `tfsdk:"enabled"`
 	Contents                    types.List   `tfsdk:"contents"`
@@ -165,30 +219,53 @@ type settingSyslogModel struct {
 	ThisControllerEncryptedOnly types.Bool   `tfsdk:"this_controller_encrypted_only"`
 }
 
+// settingDohModel is the Terraform model for the "doh" (Encrypted DNS /
+// DNS-over-HTTPS) section (settingResourceModel.Doh). CustomServers is
+// decoded/overlaid through the generalized nested-object-list codec
+// (decodeObjectList/overlayObjectList).
 type settingDohModel struct {
 	CustomServers types.List   `tfsdk:"custom_servers"`
 	ServerNames   types.List   `tfsdk:"server_names"`
 	State         types.String `tfsdk:"state"`
 }
 
+// settingIpsHoneypotModel is the nested per-entry element of
+// settingIpsModel.Honeypot (ips.honeypot): one IP address, on one network,
+// used as an IPS honeypot to detect internal port scans.
 type settingIpsHoneypotModel struct {
 	IPAddress types.String `tfsdk:"ip_address"`
 	NetworkID types.String `tfsdk:"network_id"`
 	Version   types.String `tfsdk:"version"`
 }
 
+// settingIpsWhitelistModel is the nested per-entry element of
+// settingIpsModel.SuppressionWhitelist (ips.suppression_whitelist), a
+// source/destination excluded from IPS inspection entirely. On the wire it
+// is unwrapped by hand from the controller's "suppression.whitelist" object
+// (see ipsSection's decode/overlay).
 type settingIpsWhitelistModel struct {
 	Direction types.String `tfsdk:"direction"`
 	Mode      types.String `tfsdk:"mode"`
 	Value     types.String `tfsdk:"value"`
 }
 
+// settingIpsTrackingModel is the nested per-entry element of
+// settingIpsAlertModel.Tracking (ips.suppression_alerts[].tracking), a
+// source/destination match used when the parent alert's Type is "track".
+// The generalized nested codec recurses into this list automatically since
+// it is nested inside settingIpsAlertModel.
 type settingIpsTrackingModel struct {
 	Direction types.String `tfsdk:"direction"`
 	Mode      types.String `tfsdk:"mode"`
 	Value     types.String `tfsdk:"value"`
 }
 
+// settingIpsAlertModel is the nested per-entry element of
+// settingIpsModel.SuppressionAlerts (ips.suppression_alerts), one signature
+// or category suppressed either everywhere (Type "all") or only for the
+// sources/destinations listed in Tracking (Type "track"). On the wire it is
+// unwrapped by hand from the controller's "suppression.alerts" object (see
+// ipsSection's decode/overlay).
 type settingIpsAlertModel struct {
 	Category  types.String `tfsdk:"category"`
 	Gid       types.Int64  `tfsdk:"gid"`
@@ -198,6 +275,14 @@ type settingIpsAlertModel struct {
 	Tracking  types.List   `tfsdk:"tracking"`
 }
 
+// settingIpsModel is the Terraform model for the "ips" (Intrusion Prevention
+// System) section (settingResourceModel.Ips), the deepest section: three
+// object lists (Honeypot, SuppressionAlerts, SuppressionWhitelist), one of
+// which (SuppressionAlerts) nests a further object list (Tracking) of its
+// own. SuppressionAlerts/SuppressionWhitelist are flattened to top-level
+// attributes here even though the controller wire nests both under a
+// "suppression" object — ipsSection's decode/overlay glue that wrapper by
+// hand.
 type settingIpsModel struct {
 	AdvancedFilteringPreference         types.String `tfsdk:"advanced_filtering_preference"`
 	ContentFilteringBlockingPageEnabled types.Bool   `tfsdk:"content_filtering_blocking_page_enabled"`
@@ -212,6 +297,11 @@ type settingIpsModel struct {
 	SuppressionAlerts                   types.List   `tfsdk:"suppression_alerts"`
 }
 
+// settingResourceModel is the top-level Terraform state model for
+// unifi_setting. Each section field (AutoSpeedtest, Country, ...) is a
+// types.Object that is null when the user has not configured that section
+// in HCL; settingSection.isConfigured reads that null/unknown state to
+// decide whether Create/Update pushes the section to the controller at all.
 type settingResourceModel struct {
 	ID            types.String   `tfsdk:"id"`
 	Site          types.String   `tfsdk:"site"`
@@ -367,6 +457,7 @@ var (
 	}
 )
 
+// Metadata sets the resource's Terraform type name to "<provider>_setting".
 func (r *settingResource) Metadata(
 	ctx context.Context,
 	req resource.MetadataRequest,
@@ -375,6 +466,10 @@ func (r *settingResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_setting"
 }
 
+// Schema builds the resource schema by combining the fixed id/site/timeouts
+// attributes with one attribute per registered settingSection, in
+// registration order (orderedSections). Adding a new section therefore
+// extends the schema automatically without an edit here.
 func (r *settingResource) Schema(
 	ctx context.Context,
 	req resource.SchemaRequest,
@@ -466,6 +561,9 @@ func (r *settingResource) UpgradeState(
 	}
 }
 
+// Configure wires the provider's shared *Client into the resource. It is a
+// no-op when ProviderData is nil (the resource is being validated without a
+// configured provider) and errors if ProviderData is not a *Client.
 func (r *settingResource) Configure(
 	ctx context.Context,
 	req resource.ConfigureRequest,
@@ -490,6 +588,12 @@ func (r *settingResource) Configure(
 	r.client = client
 }
 
+// Create applies every section configured in req.Config against a zero
+// prior model — since nothing exists yet, each configured section is
+// treated as new. It scopes the write to configuredSections(config) rather
+// than plan (see configuredSections for why) and persists the best-effort
+// resulting state before appending any apply diagnostics, so a partial
+// failure still leaves Terraform with the best-known state.
 func (r *settingResource) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
@@ -581,6 +685,13 @@ func configuredSections(m settingResourceModel) []settingSection {
 	return out
 }
 
+// Read re-fetches the raw settings snapshot and overlays it onto state. If
+// state has every section attribute null (the shape ImportState produces),
+// it hydrates every registered section as Computed so a freshly imported
+// resource gets a full picture; otherwise it refreshes only the sections
+// the user has configured, matching legacy behavior and avoiding a
+// fail-closed error for a section absent on this controller that the user
+// never asked for.
 func (r *settingResource) Read(
 	ctx context.Context,
 	req resource.ReadRequest,
@@ -644,6 +755,11 @@ func (r *settingResource) Read(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// Update applies every section configured in req.Config, scoped the same
+// way as Create (configuredSections(config), not plan — see
+// configuredSections), using plan for the payload values and state as the
+// prior model for read-modify-write merges. Like Create, it persists the
+// best-effort resulting state before appending any apply diagnostics.
 func (r *settingResource) Update(
 	ctx context.Context,
 	req resource.UpdateRequest,
@@ -700,6 +816,8 @@ func (r *settingResource) Update(
 	resp.Diagnostics.Append(applyDiags...)
 }
 
+// Delete only removes the resource from Terraform state. Settings cannot be
+// deleted on the controller, only reset to defaults, so no API call is made.
 func (r *settingResource) Delete(
 	ctx context.Context,
 	req resource.DeleteRequest,

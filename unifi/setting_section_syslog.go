@@ -228,6 +228,9 @@ func (syslogSection) carryBestEffort(dst *settingResourceModel, plan settingReso
 	return nil
 }
 
+// isConfigured reports whether m.Syslog is set (non-null, non-unknown),
+// gating whether Create/Update push this section to the controller
+// (wire key "rsyslogd") at all.
 func (syslogSection) isConfigured(m settingResourceModel) bool {
 	return !m.Syslog.IsNull() && !m.Syslog.IsUnknown()
 }

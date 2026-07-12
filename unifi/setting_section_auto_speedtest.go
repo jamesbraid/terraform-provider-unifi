@@ -126,6 +126,9 @@ func (autoSpeedtestSection) carryBestEffort(dst *settingResourceModel, plan sett
 	return nil
 }
 
+// isConfigured reports whether m.AutoSpeedtest is set (non-null,
+// non-unknown), gating whether Create/Update push this section to the
+// controller at all.
 func (autoSpeedtestSection) isConfigured(m settingResourceModel) bool {
 	return !m.AutoSpeedtest.IsNull() && !m.AutoSpeedtest.IsUnknown()
 }

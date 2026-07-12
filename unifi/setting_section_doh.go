@@ -170,6 +170,8 @@ func (dohSection) carryBestEffort(dst *settingResourceModel, plan settingResourc
 	return nil
 }
 
+// isConfigured reports whether m.Doh is set (non-null, non-unknown), gating
+// whether Create/Update push this section to the controller at all.
 func (dohSection) isConfigured(m settingResourceModel) bool {
 	return !m.Doh.IsNull() && !m.Doh.IsUnknown()
 }

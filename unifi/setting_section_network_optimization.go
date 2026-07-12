@@ -117,6 +117,8 @@ func (networkOptimizationSection) carryBestEffort(dst *settingResourceModel, pla
 	return nil
 }
 
+// isConfigured reports whether m.NetworkOpt is set (non-null, non-unknown),
+// gating whether Create/Update push this section to the controller at all.
 func (networkOptimizationSection) isConfigured(m settingResourceModel) bool {
 	return !m.NetworkOpt.IsNull() && !m.NetworkOpt.IsUnknown()
 }

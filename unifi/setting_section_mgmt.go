@@ -355,6 +355,9 @@ func (mgmtSection) carryBestEffort(dst *settingResourceModel, plan settingResour
 	return diags
 }
 
+// isConfigured reports whether m.Mgmt is set (non-null, non-unknown), gating
+// whether Create/Update push this section — including the write-only
+// ssh_password secret and ssh_keys list — to the controller at all.
 func (mgmtSection) isConfigured(m settingResourceModel) bool {
 	return !m.Mgmt.IsNull() && !m.Mgmt.IsUnknown()
 }

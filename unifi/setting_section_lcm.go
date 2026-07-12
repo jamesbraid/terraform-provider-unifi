@@ -156,6 +156,8 @@ func (lcmSection) carryBestEffort(dst *settingResourceModel, plan settingResourc
 	return nil
 }
 
+// isConfigured reports whether m.Lcm is set (non-null, non-unknown), gating
+// whether Create/Update push this section to the controller at all.
 func (lcmSection) isConfigured(m settingResourceModel) bool {
 	return !m.Lcm.IsNull() && !m.Lcm.IsUnknown()
 }

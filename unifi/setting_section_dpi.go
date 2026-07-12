@@ -134,6 +134,8 @@ func (dpiSection) carryBestEffort(dst *settingResourceModel, plan settingResourc
 	return nil
 }
 
+// isConfigured reports whether m.Dpi is set (non-null, non-unknown), gating
+// whether Create/Update push this section to the controller at all.
 func (dpiSection) isConfigured(m settingResourceModel) bool {
 	return !m.Dpi.IsNull() && !m.Dpi.IsUnknown()
 }

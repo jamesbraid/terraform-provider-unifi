@@ -414,6 +414,9 @@ func (ipsSection) carryBestEffort(dst *settingResourceModel, plan settingResourc
 	return nil
 }
 
+// isConfigured reports whether m.Ips is set (non-null, non-unknown), gating
+// whether Create/Update push this section — including the hand-glued
+// suppression wrapper — to the controller at all.
 func (ipsSection) isConfigured(m settingResourceModel) bool {
 	return !m.Ips.IsNull() && !m.Ips.IsUnknown()
 }

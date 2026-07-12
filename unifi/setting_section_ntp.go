@@ -153,6 +153,8 @@ func (ntpSection) carryBestEffort(dst *settingResourceModel, plan settingResourc
 	return nil
 }
 
+// isConfigured reports whether m.Ntp is set (non-null, non-unknown), gating
+// whether Create/Update push this section to the controller at all.
 func (ntpSection) isConfigured(m settingResourceModel) bool {
 	return !m.Ntp.IsNull() && !m.Ntp.IsUnknown()
 }
