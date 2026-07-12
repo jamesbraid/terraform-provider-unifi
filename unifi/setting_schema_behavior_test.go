@@ -304,6 +304,92 @@ func TestSettingSchemaBehavior_netflowPortRejectsOutOfRange(t *testing.T) {
 	}
 }
 
+// nestedListElementAttr looks up a leaf attribute inside a
+// ListNestedAttribute's NestedObject, e.g.
+// nestedListElementAttr(t, attrs, "dashboard", "widgets", "name").
+func nestedListElementAttr(t *testing.T, attrs map[string]schema.Attribute, top string, list string, leaf string) schema.Attribute {
+	t.Helper()
+	a, ok := attrs[top]
+	if !ok {
+		t.Fatalf("schema missing top-level attribute %q", top)
+	}
+	sn, ok := a.(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("attribute %q is %T, want schema.SingleNestedAttribute", top, a)
+	}
+	la, ok := sn.Attributes[list].(schema.ListNestedAttribute)
+	if !ok {
+		t.Fatalf("attribute %q.%q is %T, want schema.ListNestedAttribute", top, list, sn.Attributes[list])
+	}
+	child, ok := la.NestedObject.Attributes[leaf]
+	if !ok {
+		t.Fatalf("attribute %q.%q has no child %q", top, list, leaf)
+	}
+	return child
+}
+
+func TestSettingSchemaBehavior_dashboardLayoutPreferenceRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "dashboard", "layout_preference")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("dashboard.layout_preference is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("dashboard.layout_preference has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"auto is valid", "auto", false},
+		{"manual is valid", "manual", false},
+		{"garbage is invalid", "custom", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("dashboard").AtName("layout_preference"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_dashboardWidgetNameRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedListElementAttr(t, attrs, "dashboard", "widgets", "name")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("dashboard.widgets[].name is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("dashboard.widgets[].name has no validators")
+	}
+
+	p := path.Root("dashboard").AtName("widgets").AtListIndex(0).AtName("name")
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"wifi_channels is valid", "wifi_channels", false},
+		{"wan_activity is valid", "wan_activity", false},
+		{"most_active_apps_aps_clients is valid", "most_active_apps_aps_clients", false},
+		{"garbage is invalid", "some_future_widget", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, p, tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
 func TestSettingSchemaBehavior_radiusSecretRejectsTooLong(t *testing.T) {
 	ctx := context.Background()
 	attrs := builtSchema(t)

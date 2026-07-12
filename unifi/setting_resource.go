@@ -323,6 +323,7 @@ type settingResourceModel struct {
 	TrafficFlow   types.Object   `tfsdk:"traffic_flow"`
 	SslInspection types.Object   `tfsdk:"ssl_inspection"`
 	Netflow       types.Object   `tfsdk:"netflow"`
+	Dashboard     types.Object   `tfsdk:"dashboard"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -372,6 +373,22 @@ type settingNetflowModel struct {
 	SamplingRate        types.Int64  `tfsdk:"sampling_rate"`
 	Server              types.String `tfsdk:"server"`
 	Version             types.Int64  `tfsdk:"version"`
+}
+
+// settingDashboardWidgetModel is the nested per-entry element of
+// settingDashboardModel.Widgets (dashboard.widgets): one dashboard widget's
+// enabled state and identifier.
+type settingDashboardWidgetModel struct {
+	Enabled types.Bool   `tfsdk:"enabled"`
+	Name    types.String `tfsdk:"name"`
+}
+
+// settingDashboardModel is the Terraform model for the "dashboard"
+// settings section (settingResourceModel.Dashboard): dashboard layout
+// preference and per-widget visibility.
+type settingDashboardModel struct {
+	LayoutPreference types.String `tfsdk:"layout_preference"`
+	Widgets          types.List   `tfsdk:"widgets"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -536,6 +553,14 @@ var (
 		"sampling_rate":          types.Int64Type,
 		"server":                 types.StringType,
 		"version":                types.Int64Type,
+	}
+	dashboardWidgetAttrTypes = map[string]attr.Type{
+		"enabled": types.BoolType,
+		"name":    types.StringType,
+	}
+	dashboardAttrTypes = map[string]attr.Type{
+		"layout_preference": types.StringType,
+		"widgets":           types.ListType{ElemType: types.ObjectType{AttrTypes: dashboardWidgetAttrTypes}},
 	}
 )
 
@@ -744,7 +769,8 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
 		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull() &&
-		m.TrafficFlow.IsNull() && m.SslInspection.IsNull() && m.Netflow.IsNull()
+		m.TrafficFlow.IsNull() && m.SslInspection.IsNull() && m.Netflow.IsNull() &&
+		m.Dashboard.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in
