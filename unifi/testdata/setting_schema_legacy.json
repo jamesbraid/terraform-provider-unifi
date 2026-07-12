@@ -1,0 +1,1292 @@
+{
+  "auto_speedtest": {
+    "name": "auto_speedtest",
+    "type": "types.ObjectType[\"cron_expr\":basetypes.StringType, \"enabled\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "cron_expr",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      }
+    ]
+  },
+  "country": {
+    "name": "country",
+    "type": "types.ObjectType[\"code\":basetypes.Int64Type]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "code",
+        "type": "basetypes.Int64Type",
+        "required": true,
+        "optional": false,
+        "computed": false,
+        "sensitive": false
+      }
+    ]
+  },
+  "doh": {
+    "name": "doh",
+    "type": "types.ObjectType[\"custom_servers\":types.ListType[types.ObjectType[\"enabled\":basetypes.BoolType, \"sdns_stamp\":basetypes.StringType, \"server_name\":basetypes.StringType]], \"server_names\":types.ListType[basetypes.StringType], \"state\":basetypes.StringType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "custom_servers",
+        "type": "types.ListType[types.ObjectType[\"enabled\":basetypes.BoolType, \"sdns_stamp\":basetypes.StringType, \"server_name\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "enabled",
+              "type": "basetypes.BoolType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "default": "value defaults to true"
+            },
+            {
+              "name": "sdns_stamp",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false
+            },
+            {
+              "name": "server_name",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false
+            }
+          ]
+        }
+      },
+      {
+        "name": "server_names",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      },
+      {
+        "name": "state",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be one of: [\"off\" \"auto\" \"manual\" \"custom\"]"
+        ]
+      }
+    ]
+  },
+  "dpi": {
+    "name": "dpi",
+    "type": "types.ObjectType[\"enabled\":basetypes.BoolType, \"fingerprinting_enabled\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      },
+      {
+        "name": "fingerprinting_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      }
+    ]
+  },
+  "igmp_snooping": {
+    "name": "igmp_snooping",
+    "type": "types.ObjectType[\"enabled\":basetypes.BoolType, \"network_ids\":types.ListType[basetypes.StringType]]",
+    "required": false,
+    "optional": true,
+    "computed": false,
+    "sensitive": false,
+    "attributes": [
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "network_ids",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      }
+    ]
+  },
+  "ips": {
+    "name": "ips",
+    "type": "types.ObjectType[\"advanced_filtering_preference\":basetypes.StringType, \"content_filtering_blocking_page_enabled\":basetypes.BoolType, \"enabled_categories\":types.ListType[basetypes.StringType], \"enabled_networks\":types.ListType[basetypes.StringType], \"honeypot\":types.ListType[types.ObjectType[\"ip_address\":basetypes.StringType, \"network_id\":basetypes.StringType, \"version\":basetypes.StringType]], \"honeypot_enabled\":basetypes.BoolType, \"ips_mode\":basetypes.StringType, \"memory_optimized\":basetypes.BoolType, \"restrict_torrents\":basetypes.BoolType, \"suppression_alerts\":types.ListType[types.ObjectType[\"category\":basetypes.StringType, \"gid\":basetypes.Int64Type, \"id\":basetypes.Int64Type, \"signature\":basetypes.StringType, \"tracking\":types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]], \"type\":basetypes.StringType]], \"suppression_whitelist\":types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]]]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "advanced_filtering_preference",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be one of: [\"manual\" \"disabled\"]"
+        ]
+      },
+      {
+        "name": "content_filtering_blocking_page_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "enabled_categories",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      },
+      {
+        "name": "enabled_networks",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      },
+      {
+        "name": "honeypot",
+        "type": "types.ListType[types.ObjectType[\"ip_address\":basetypes.StringType, \"network_id\":basetypes.StringType, \"version\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "ip_address",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false
+            },
+            {
+              "name": "network_id",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false
+            },
+            {
+              "name": "version",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "validators": [
+                "value must be one of: [\"v4\" \"v6\"]"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "honeypot_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "ips_mode",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be one of: [\"ids\" \"ips\" \"ipsInline\" \"disabled\"]"
+        ]
+      },
+      {
+        "name": "memory_optimized",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "restrict_torrents",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "suppression_alerts",
+        "type": "types.ListType[types.ObjectType[\"category\":basetypes.StringType, \"gid\":basetypes.Int64Type, \"id\":basetypes.Int64Type, \"signature\":basetypes.StringType, \"tracking\":types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]], \"type\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "category",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false
+            },
+            {
+              "name": "gid",
+              "type": "basetypes.Int64Type",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false
+            },
+            {
+              "name": "id",
+              "type": "basetypes.Int64Type",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false
+            },
+            {
+              "name": "signature",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false
+            },
+            {
+              "name": "tracking",
+              "type": "types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]]",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "nested_object": {
+                "name": "",
+                "type": "",
+                "required": false,
+                "optional": false,
+                "computed": false,
+                "sensitive": false,
+                "attributes": [
+                  {
+                    "name": "direction",
+                    "type": "basetypes.StringType",
+                    "required": true,
+                    "optional": false,
+                    "computed": false,
+                    "sensitive": false,
+                    "validators": [
+                      "value must be one of: [\"both\" \"src\" \"dest\"]"
+                    ]
+                  },
+                  {
+                    "name": "mode",
+                    "type": "basetypes.StringType",
+                    "required": true,
+                    "optional": false,
+                    "computed": false,
+                    "sensitive": false,
+                    "validators": [
+                      "value must be one of: [\"ip\" \"subnet\" \"network\"]"
+                    ]
+                  },
+                  {
+                    "name": "value",
+                    "type": "basetypes.StringType",
+                    "required": true,
+                    "optional": false,
+                    "computed": false,
+                    "sensitive": false
+                  }
+                ]
+              }
+            },
+            {
+              "name": "type",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "validators": [
+                "value must be one of: [\"all\" \"track\"]"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "suppression_whitelist",
+        "type": "types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "direction",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "validators": [
+                "value must be one of: [\"both\" \"src\" \"dest\"]"
+              ]
+            },
+            {
+              "name": "mode",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "validators": [
+                "value must be one of: [\"ip\" \"subnet\" \"network\"]"
+              ]
+            },
+            {
+              "name": "value",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "lcm": {
+    "name": "lcm",
+    "type": "types.ObjectType[\"brightness\":basetypes.Int64Type, \"enabled\":basetypes.BoolType, \"idle_timeout\":basetypes.Int64Type, \"sync\":basetypes.BoolType, \"touch_event\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "brightness",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be between 1 and 100"
+        ]
+      },
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to true"
+      },
+      {
+        "name": "idle_timeout",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be between 10 and 3600"
+        ]
+      },
+      {
+        "name": "sync",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      },
+      {
+        "name": "touch_event",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to true"
+      }
+    ]
+  },
+  "mgmt": {
+    "name": "mgmt",
+    "type": "types.ObjectType[\"advanced_feature_enabled\":basetypes.BoolType, \"auto_upgrade\":basetypes.BoolType, \"auto_upgrade_hour\":basetypes.Int64Type, \"debug_tools_enabled\":basetypes.BoolType, \"direct_connect_enabled\":basetypes.BoolType, \"ssh_auth_password_enabled\":basetypes.BoolType, \"ssh_enabled\":basetypes.BoolType, \"ssh_keys\":types.ListType[types.ObjectType[\"comment\":basetypes.StringType, \"key\":basetypes.StringType, \"name\":basetypes.StringType, \"type\":basetypes.StringType]], \"ssh_password\":basetypes.StringType, \"ssh_username\":basetypes.StringType, \"unifi_idp_enabled\":basetypes.BoolType, \"wifiman_enabled\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "advanced_feature_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "auto_upgrade",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "auto_upgrade_hour",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be between 0 and 23"
+        ]
+      },
+      {
+        "name": "debug_tools_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "direct_connect_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "ssh_auth_password_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "ssh_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "ssh_keys",
+        "type": "types.ListType[types.ObjectType[\"comment\":basetypes.StringType, \"key\":basetypes.StringType, \"name\":basetypes.StringType, \"type\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "comment",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false
+            },
+            {
+              "name": "key",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false
+            },
+            {
+              "name": "name",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false
+            },
+            {
+              "name": "type",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false
+            }
+          ]
+        }
+      },
+      {
+        "name": "ssh_password",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": false,
+        "sensitive": true
+      },
+      {
+        "name": "ssh_username",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "unifi_idp_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "wifiman_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      }
+    ]
+  },
+  "network_optimization": {
+    "name": "network_optimization",
+    "type": "types.ObjectType[\"enabled\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      }
+    ]
+  },
+  "ntp": {
+    "name": "ntp",
+    "type": "types.ObjectType[\"ntp_server_1\":basetypes.StringType, \"ntp_server_2\":basetypes.StringType, \"ntp_server_3\":basetypes.StringType, \"ntp_server_4\":basetypes.StringType, \"setting_preference\":basetypes.StringType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "ntp_server_1",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "ntp_server_2",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "ntp_server_3",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "ntp_server_4",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "setting_preference",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be one of: [\"auto\" \"manual\"]"
+        ]
+      }
+    ]
+  },
+  "radius": {
+    "name": "radius",
+    "type": "types.ObjectType[\"accounting_enabled\":basetypes.BoolType, \"acct_port\":basetypes.Int64Type, \"auth_port\":basetypes.Int64Type, \"interim_update_interval\":timetypes.GoDurationType, \"secret\":basetypes.StringType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "attributes": [
+      {
+        "name": "accounting_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "acct_port",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be between 1 and 65535"
+        ]
+      },
+      {
+        "name": "auth_port",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be between 1 and 65535"
+        ]
+      },
+      {
+        "name": "interim_update_interval",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "secret",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": true,
+        "validators": [
+          "string length must be between 1 and 48",
+          "must not contain backslashes, spaces, single quotes, or double quotes"
+        ]
+      }
+    ]
+  },
+  "syslog": {
+    "name": "syslog",
+    "type": "types.ObjectType[\"contents\":types.ListType[basetypes.StringType], \"debug\":basetypes.BoolType, \"enabled\":basetypes.BoolType, \"ip\":basetypes.StringType, \"log_all_contents\":basetypes.BoolType, \"netconsole_enabled\":basetypes.BoolType, \"netconsole_host\":basetypes.StringType, \"netconsole_port\":basetypes.Int64Type, \"port\":basetypes.Int64Type, \"this_controller\":basetypes.BoolType, \"this_controller_encrypted_only\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "contents",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      },
+      {
+        "name": "debug",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      },
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      },
+      {
+        "name": "ip",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "log_all_contents",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      },
+      {
+        "name": "netconsole_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      },
+      {
+        "name": "netconsole_host",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "netconsole_port",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be between 1 and 65535"
+        ]
+      },
+      {
+        "name": "port",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "validators": [
+          "value must be between 1 and 65535"
+        ]
+      },
+      {
+        "name": "this_controller",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      },
+      {
+        "name": "this_controller_encrypted_only",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false"
+      }
+    ]
+  },
+  "usg": {
+    "name": "usg",
+    "type": "types.ObjectType[\"broadcast_ping\":basetypes.BoolType, \"dns_verification\":types.ObjectType[\"domain\":basetypes.StringType, \"primary_dns_server\":basetypes.StringType, \"secondary_dns_server\":basetypes.StringType, \"setting_preference\":basetypes.StringType], \"ftp_module\":basetypes.BoolType, \"geo_ip_filtering_block\":basetypes.StringType, \"geo_ip_filtering_countries\":basetypes.StringType, \"geo_ip_filtering_enabled\":basetypes.BoolType, \"geo_ip_filtering_traffic_direction\":basetypes.StringType, \"gre_module\":basetypes.BoolType, \"h323_module\":basetypes.BoolType, \"icmp_timeout\":timetypes.GoDurationType, \"mss_clamp\":basetypes.StringType, \"offload_accounting\":basetypes.BoolType, \"offload_l2_blocking\":basetypes.BoolType, \"offload_sch\":basetypes.BoolType, \"other_timeout\":timetypes.GoDurationType, \"pptp_module\":basetypes.BoolType, \"receive_redirects\":basetypes.BoolType, \"send_redirects\":basetypes.BoolType, \"sip_module\":basetypes.BoolType, \"syn_cookies\":basetypes.BoolType, \"tcp_close_timeout\":timetypes.GoDurationType, \"tcp_close_wait_timeout\":timetypes.GoDurationType, \"tcp_established_timeout\":timetypes.GoDurationType, \"tcp_fin_wait_timeout\":timetypes.GoDurationType, \"tcp_last_ack_timeout\":timetypes.GoDurationType, \"tcp_syn_recv_timeout\":timetypes.GoDurationType, \"tcp_syn_sent_timeout\":timetypes.GoDurationType, \"tcp_time_wait_timeout\":timetypes.GoDurationType, \"tftp_module\":basetypes.BoolType, \"timeout_setting_preference\":basetypes.StringType, \"udp_other_timeout\":timetypes.GoDurationType, \"udp_stream_timeout\":timetypes.GoDurationType, \"unbind_wan_monitors\":basetypes.BoolType, \"upnp_enabled\":basetypes.BoolType, \"upnp_nat_pmp_enabled\":basetypes.BoolType, \"upnp_secure_mode\":basetypes.BoolType, \"upnp_wan_interface\":basetypes.StringType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "attributes": [
+      {
+        "name": "broadcast_ping",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "dns_verification",
+        "type": "types.ObjectType[\"domain\":basetypes.StringType, \"primary_dns_server\":basetypes.StringType, \"secondary_dns_server\":basetypes.StringType, \"setting_preference\":basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "attributes": [
+          {
+            "name": "domain",
+            "type": "basetypes.StringType",
+            "required": false,
+            "optional": true,
+            "computed": true,
+            "sensitive": false
+          },
+          {
+            "name": "primary_dns_server",
+            "type": "basetypes.StringType",
+            "required": false,
+            "optional": true,
+            "computed": true,
+            "sensitive": false
+          },
+          {
+            "name": "secondary_dns_server",
+            "type": "basetypes.StringType",
+            "required": false,
+            "optional": true,
+            "computed": true,
+            "sensitive": false
+          },
+          {
+            "name": "setting_preference",
+            "type": "basetypes.StringType",
+            "required": false,
+            "optional": true,
+            "computed": true,
+            "sensitive": false
+          }
+        ]
+      },
+      {
+        "name": "ftp_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "geo_ip_filtering_block",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "geo_ip_filtering_countries",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "geo_ip_filtering_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "geo_ip_filtering_traffic_direction",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "gre_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "h323_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "icmp_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "mss_clamp",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "offload_accounting",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "offload_l2_blocking",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "offload_sch",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "other_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "pptp_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "receive_redirects",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "send_redirects",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "sip_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "syn_cookies",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tcp_close_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tcp_close_wait_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tcp_established_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tcp_fin_wait_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tcp_last_ack_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tcp_syn_recv_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tcp_syn_sent_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tcp_time_wait_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "tftp_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "timeout_setting_preference",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "udp_other_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "udp_stream_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "unbind_wan_monitors",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "upnp_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "upnp_nat_pmp_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "upnp_secure_mode",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      },
+      {
+        "name": "upnp_wan_interface",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false
+      }
+    ]
+  }
+}
