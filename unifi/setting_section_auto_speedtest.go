@@ -15,7 +15,7 @@ import (
 
 // autoSpeedtestSection is the settingSection implementation for the
 // "auto_speedtest" settings section. It is the scalar template that Tasks
-// 11-15 copy: a flat SingleNestedAttribute with only ownerManaged scalar
+// 11-15 copy: a flat SingleNestedAttribute with only managed scalar
 // leaves, no nested objects/lists and no secrets.
 type autoSpeedtestSection struct{}
 
@@ -53,21 +53,10 @@ func (autoSpeedtestSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (autoSpeedtestSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"enabled":   ownerManaged,
-		"cron_expr": ownerManaged,
-	}
-}
-
 // decode populates model.AutoSpeedtest from snap's "auto_speedtest" section
-// data, falling back to prior.AutoSpeedtest's matching leaf for any field
-// whose ownership class does not read from the API (none, here - both
-// leaves are ownerManaged).
+// data.
 func (autoSpeedtestSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := autoSpeedtestSection{}.ownership()
 
 	var priorModel settingAutoSpeedtestModel
 	if !prior.AutoSpeedtest.IsNull() && !prior.AutoSpeedtest.IsUnknown() {
@@ -77,9 +66,9 @@ func (autoSpeedtestSection) decode(ctx context.Context, snap rawSettings, prior 
 	sec, _ := snap.section("auto_speedtest")
 	data := sec.Data
 
-	enabled, d := decodeBool(data, "enabled", own["enabled"], priorModel.Enabled)
+	enabled, d := decodeBool(data, "enabled", priorModel.Enabled)
 	diags.Append(d...)
-	cronExpr, d := decodeString(data, "cron_expr", own["cron_expr"], priorModel.CronExpr)
+	cronExpr, d := decodeString(data, "cron_expr", priorModel.CronExpr)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -112,8 +101,6 @@ func (autoSpeedtestSection) overlay(ctx context.Context, model, prior settingRes
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := autoSpeedtestSection{}.ownership()
-
 	var m settingAutoSpeedtestModel
 	diags.Append(model.AutoSpeedtest.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -121,8 +108,8 @@ func (autoSpeedtestSection) overlay(ctx context.Context, model, prior settingRes
 	}
 
 	base := snap.dataCopy("auto_speedtest")
-	overlayBool(base, "enabled", own["enabled"], m.Enabled)
-	overlayString(base, "cron_expr", own["cron_expr"], m.CronExpr)
+	overlayBool(base, "enabled", m.Enabled)
+	overlayString(base, "cron_expr", m.CronExpr)
 
 	rs := settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: "auto_speedtest"},
@@ -138,7 +125,7 @@ func (autoSpeedtestSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's auto_speedtest value onto dst. This
 // section holds no secret leaves, so it is a straight copy with no
 // per-leaf plan/prior choice needed.
-func (autoSpeedtestSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (autoSpeedtestSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.AutoSpeedtest = plan.AutoSpeedtest
 	return nil
 }

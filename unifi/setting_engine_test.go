@@ -20,9 +20,8 @@ import (
 // round-tripping a single string leaf already present in that section's real
 // schema/attribute-type map (cron_expr, ntp_server_1). mgmtSecretStubSection
 // is the secret-matrix stub, bound to the real Mgmt field, with one normal
-// sibling leaf (ssh_username) and one ownerWriteOnlySecret leaf
-// (ssh_password) — mirroring the real mgmt section shape described in the
-// task brief.
+// sibling leaf (ssh_username) and one write-only secret leaf (ssh_password)
+// — mirroring the real mgmt section shape described in the task brief.
 //
 // modelWith/setSection/sectionVal/testSections (below) are the brief's
 // placeholders, grounded against these stub sections and the real model.
@@ -52,19 +51,12 @@ func (s simpleStubSection) attrName() string { return s.k }
 func (s simpleStubSection) schemaAttribute() schema.Attribute {
 	return schema.SingleNestedAttribute{Attributes: map[string]schema.Attribute{}}
 }
-func (s simpleStubSection) ownership() map[string]ownershipClass {
-	own := map[string]ownershipClass{}
-	for k := range s.attrTypes {
-		own[k] = ownerManaged
-	}
-	return own
-}
 
 func (s simpleStubSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	data := snap.dataCopy(s.k)
 	priorObj := s.get(prior)
-	leafVal, d := decodeString(data, s.leaf, ownerManaged, types.StringNull())
+	leafVal, d := decodeString(data, s.leaf, types.StringNull())
 	diags.Append(d...)
 
 	attrs := map[string]attr.Value{}
@@ -99,7 +91,7 @@ func (s simpleStubSection) overlay(ctx context.Context, model, prior settingReso
 	obj := s.get(model)
 	if !obj.IsNull() && !obj.IsUnknown() {
 		if lv, ok := obj.Attributes()[s.leaf].(types.String); ok {
-			overlayString(out, s.leaf, ownerManaged, lv)
+			overlayString(out, s.leaf, lv)
 		}
 	}
 	out["key"] = s.k
@@ -114,7 +106,7 @@ func (s simpleStubSection) capability(snap rawSettings) capabilityState {
 	return sectionCapability(snap, s.k)
 }
 
-func (s simpleStubSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (s simpleStubSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	s.set(dst, s.get(plan))
 	return nil
 }
@@ -146,20 +138,15 @@ func ntpStub() simpleStubSection {
 
 // mgmtSecretAttrTypes is a deliberately small mgmt-shaped attribute-type map
 // (one normal leaf, one write-only-secret leaf) used only by
-// mgmtSecretStubSection — enough to exercise bestEffortObject's secret-leaf
+// mgmtSecretStubSection — enough to exercise carrySecretObject's secret-leaf
 // matrix without dragging in the full real mgmt schema (ssh_keys list etc).
 var mgmtSecretAttrTypes = map[string]attr.Type{
 	"ssh_username": types.StringType,
 	"ssh_password": types.StringType,
 }
 
-var mgmtSecretOwnership = map[string]ownershipClass{
-	"ssh_username": ownerManaged,
-	"ssh_password": ownerWriteOnlySecret,
-}
-
 // mgmtSecretStubSection is the secret-matrix stub bound to the real Mgmt
-// field, whose carryBestEffort delegates to bestEffortObject per the
+// field, whose carryBestEffort delegates to carrySecretObject per the
 // brief's contract for secret sections.
 type mgmtSecretStubSection struct {
 	k string
@@ -170,15 +157,13 @@ func (s mgmtSecretStubSection) attrName() string { return s.k }
 func (s mgmtSecretStubSection) schemaAttribute() schema.Attribute {
 	return schema.SingleNestedAttribute{Attributes: map[string]schema.Attribute{}}
 }
-func (s mgmtSecretStubSection) ownership() map[string]ownershipClass { return mgmtSecretOwnership }
 
 func (s mgmtSecretStubSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	data := snap.dataCopy(s.k)
-	userVal, d := decodeString(data, "ssh_username", ownerManaged, types.StringNull())
+	userVal, d := decodeString(data, "ssh_username", types.StringNull())
 	diags.Append(d...)
-	// ssh_password is ownerWriteOnlySecret: never read from API, preserve
-	// prior.
+	// ssh_password is write-only: never read from API, preserve prior.
 	priorObj := prior.Mgmt
 	pwVal := types.StringNull()
 	if !priorObj.IsNull() && !priorObj.IsUnknown() {
@@ -201,10 +186,14 @@ func (s mgmtSecretStubSection) overlay(ctx context.Context, model, prior setting
 	obj := model.Mgmt
 	if !obj.IsNull() && !obj.IsUnknown() {
 		if uv, ok := obj.Attributes()["ssh_username"].(types.String); ok {
-			overlayString(out, "ssh_username", ownerManaged, uv)
+			overlayString(out, "ssh_username", uv)
 		}
 		if pv, ok := obj.Attributes()["ssh_password"].(types.String); ok {
-			overlayString(out, "ssh_password", ownerWriteOnlySecret, pv)
+			if !pv.IsNull() && !pv.IsUnknown() {
+				out["ssh_password"] = pv.ValueString()
+			} else {
+				delete(out, "ssh_password")
+			}
 		}
 	}
 	out["key"] = s.k
@@ -219,8 +208,8 @@ func (s mgmtSecretStubSection) capability(snap rawSettings) capabilityState {
 	return sectionCapability(snap, s.k)
 }
 
-func (s mgmtSecretStubSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
-	obj, diags := bestEffortObject(plan.Mgmt, prior.Mgmt, s.ownership())
+func (s mgmtSecretStubSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
+	obj, diags := carrySecretObject(plan.Mgmt, dst.Mgmt, "ssh_password")
 	dst.Mgmt = obj
 	return diags
 }
@@ -587,11 +576,11 @@ func TestBestEffortState_secretRotationRetained(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// TestBestEffortObject_secretLeafMatrix: direct unit test of the shared
+// TestCarrySecretObject_secretLeafMatrix: direct unit test of the shared
 // helper, covering all 4 codex-validated traps.
 // ---------------------------------------------------------------------------
 
-func TestBestEffortObject_secretLeafMatrix(t *testing.T) {
+func TestCarrySecretObject_secretLeafMatrix(t *testing.T) {
 	priorObj, diags := types.ObjectValue(mgmtSecretAttrTypes, map[string]attr.Value{
 		"ssh_username": types.StringValue("prior-user"),
 		"ssh_password": types.StringValue("prior-secret"),
@@ -608,7 +597,7 @@ func TestBestEffortObject_secretLeafMatrix(t *testing.T) {
 		if diags.HasError() {
 			t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 		}
-		got, gotDiags := bestEffortObject(planObj, priorObj, mgmtSecretOwnership)
+		got, gotDiags := carrySecretObject(planObj, priorObj, "ssh_password")
 		if gotDiags.HasError() {
 			t.Fatalf("unexpected diagnostics: %v", gotDiags)
 		}
@@ -626,7 +615,7 @@ func TestBestEffortObject_secretLeafMatrix(t *testing.T) {
 		if diags.HasError() {
 			t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 		}
-		got, gotDiags := bestEffortObject(planObj, priorObj, mgmtSecretOwnership)
+		got, gotDiags := carrySecretObject(planObj, priorObj, "ssh_password")
 		if gotDiags.HasError() {
 			t.Fatalf("unexpected diagnostics: %v", gotDiags)
 		}
@@ -646,7 +635,7 @@ func TestBestEffortObject_secretLeafMatrix(t *testing.T) {
 		if diags.HasError() {
 			t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 		}
-		got, gotDiags := bestEffortObject(planObj, priorObj, mgmtSecretOwnership)
+		got, gotDiags := carrySecretObject(planObj, priorObj, "ssh_password")
 		if gotDiags.HasError() {
 			t.Fatalf("unexpected diagnostics: %v", gotDiags)
 		}
@@ -669,7 +658,7 @@ func TestBestEffortObject_secretLeafMatrix(t *testing.T) {
 		if diags.HasError() {
 			t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 		}
-		got, gotDiags := bestEffortObject(planObj, priorObj, mgmtSecretOwnership)
+		got, gotDiags := carrySecretObject(planObj, priorObj, "ssh_password")
 		if gotDiags.HasError() {
 			t.Fatalf("unexpected diagnostics: %v", gotDiags)
 		}
@@ -687,7 +676,7 @@ func TestBestEffortObject_secretLeafMatrix(t *testing.T) {
 		if diags.HasError() {
 			t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 		}
-		got, gotDiags := bestEffortObject(planObj, priorObj, mgmtSecretOwnership)
+		got, gotDiags := carrySecretObject(planObj, priorObj, "ssh_password")
 		if gotDiags.HasError() {
 			t.Fatalf("unexpected diagnostics: %v", gotDiags)
 		}
@@ -701,7 +690,7 @@ func TestBestEffortObject_secretLeafMatrix(t *testing.T) {
 	// never manufacture a known object from a null section.
 	t.Run("null parent object returns prior unchanged", func(t *testing.T) {
 		nullPlan := types.ObjectNull(mgmtSecretAttrTypes)
-		got, gotDiags := bestEffortObject(nullPlan, priorObj, mgmtSecretOwnership)
+		got, gotDiags := carrySecretObject(nullPlan, priorObj, "ssh_password")
 		if gotDiags.HasError() {
 			t.Fatalf("unexpected diagnostics: %v", gotDiags)
 		}
@@ -712,7 +701,7 @@ func TestBestEffortObject_secretLeafMatrix(t *testing.T) {
 
 	t.Run("unknown parent object returns prior unchanged", func(t *testing.T) {
 		unknownPlan := types.ObjectUnknown(mgmtSecretAttrTypes)
-		got, gotDiags := bestEffortObject(unknownPlan, priorObj, mgmtSecretOwnership)
+		got, gotDiags := carrySecretObject(unknownPlan, priorObj, "ssh_password")
 		if gotDiags.HasError() {
 			t.Fatalf("unexpected diagnostics: %v", gotDiags)
 		}

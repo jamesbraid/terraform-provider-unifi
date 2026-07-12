@@ -15,7 +15,7 @@ import (
 // ListSettings snapshot per read, capability-gated per-section decode
 // (readSections); reconcile-before-mutate, deterministic-order PUT, and
 // C2.4 best-effort recovery on a failed post-apply read-back
-// (applySections); and the bestEffortState/bestEffortObject helpers that
+// (applySections); and the bestEffortState/carrySecretObject helpers that
 // implement that recovery. No caller outside this file drives a
 // settingsClient directly.
 
@@ -180,9 +180,11 @@ func joinDiagMessages(diags diag.Diagnostics) string {
 // state cannot be read from the controller. It starts from prior (the only
 // state known to be true before this apply) and, for each section that was
 // successfully PUT this apply (put[key] == true), asks that section to
-// carry its own best-effort value onto the result via carryBestEffort. A
-// section that was NOT PUT this apply is left entirely as prior — it was
-// never touched, so prior is already correct for it.
+// carry its own best-effort value onto the result via carryBestEffort. dst
+// (out) is seeded from prior before the loop, so a secret section's
+// carryBestEffort can read its own prior secret straight off dst. A section
+// that was NOT PUT this apply is left entirely as prior — it was never
+// touched, so prior is already correct for it.
 func bestEffortState(prior, plan settingResourceModel, put map[string]bool, sections []settingSection) (settingResourceModel, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := prior
@@ -190,51 +192,44 @@ func bestEffortState(prior, plan settingResourceModel, put map[string]bool, sect
 		if !put[s.key()] {
 			continue
 		}
-		diags.Append(s.carryBestEffort(&out, plan, prior)...)
+		diags.Append(s.carryBestEffort(&out, plan)...)
 	}
 	return out, diags
 }
 
-// bestEffortObject rebuilds a types.Object from planObj's attribute types
-// and values, replacing ONLY each leaf classed ownerWriteOnlySecret in own
-// with priorObj's value for that leaf WHEN the leaf is null OR unknown in
-// planObj. Every other leaf (non-secret, or a secret leaf that IS set in
-// planObj, including an explicit empty string) comes from planObj verbatim.
+// carrySecretObject rebuilds plan's section object but keeps prior's secret
+// leaf when plan's is null/unknown (write-only secrets are never in the
+// controller read-back). Every non-secret leaf comes from plan.
 //
 // Codex-validated traps this function must honor:
-//  1. IsUnknown() is treated exactly like IsNull() for a secret leaf: retain
-//     priorObj's value for both, matching overlay's own delete-on-either
+//  1. IsUnknown() is treated exactly like IsNull() for the secret leaf:
+//     retain prior's value for both, matching overlay's own delete-on-either
 //     behavior for write-only secrets.
 //  2. A configured EMPTY STRING secret (types.StringValue("")) is a
-//     rotate-to-empty that WAS sent this apply: it is kept from planObj,
-//     never replaced by priorObj.
-//  3. If planObj itself is null or unknown, priorObj is returned unchanged
-//     — a known object is never manufactured from a null/unknown section.
+//     rotate-to-empty that WAS sent this apply: it is kept from plan, never
+//     replaced by prior.
+//  3. If plan itself is null or unknown, prior is returned unchanged — a
+//     known object is never manufactured from a null/unknown section.
 //  4. Diagnostics are threaded out of the helper even though, structurally,
 //     rebuilding a same-schema object cannot fail in practice.
-func bestEffortObject(planObj, priorObj types.Object, own map[string]ownershipClass) (types.Object, diag.Diagnostics) {
+func carrySecretObject(plan, prior types.Object, secretLeaf string) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	if planObj.IsNull() || planObj.IsUnknown() {
-		return priorObj, diags
+	if plan.IsNull() || plan.IsUnknown() {
+		return prior, diags
 	}
 
-	attrTypes := planObj.AttributeTypes(context.Background())
-	planAttrs := planObj.Attributes()
+	attrTypes := plan.AttributeTypes(context.Background())
+	planAttrs := plan.Attributes()
 
 	var priorAttrs map[string]attr.Value
-	if !priorObj.IsNull() && !priorObj.IsUnknown() {
-		priorAttrs = priorObj.Attributes()
+	if !prior.IsNull() && !prior.IsUnknown() {
+		priorAttrs = prior.Attributes()
 	}
 
 	out := make(map[string]attr.Value, len(planAttrs))
 	for name, planVal := range planAttrs {
-		// own[name] is direct-child-only (unlike setting_codec.go's
-		// decodeObjectFields/overlayObjectFields, which look up own by full
-		// dotted path per Task 16b). Correct for PR-A: no nested-list leaf
-		// is ownerWriteOnlySecret anywhere in the resource. If a future PR
-		// introduces one, this lookup must become path-prefix-aware too.
-		if own[name] == ownerWriteOnlySecret {
+		if name == secretLeaf {
 			if sv, ok := planVal.(types.String); ok && (sv.IsNull() || sv.IsUnknown()) {
 				if priorAttrs != nil {
 					if pv, ok := priorAttrs[name]; ok {

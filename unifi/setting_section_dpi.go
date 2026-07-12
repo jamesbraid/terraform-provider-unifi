@@ -14,14 +14,14 @@ import (
 )
 
 // dpiSection is the settingSection implementation for the "dpi" settings
-// section: a flat SingleNestedAttribute with only ownerManaged scalar
+// section: a flat SingleNestedAttribute with only managed scalar
 // leaves, no nested objects/lists and no secrets.
 //
 // Note: the FingerprintingEnabled leaf's raw controller wire key is
 // "fingerprintingEnabled" (camelCase, per go-unifi's settings.Dpi json tag),
 // while its schema/tfsdk leaf name is "fingerprinting_enabled" (snake_case).
-// ownership() is keyed by schema leaf names; decode/overlay operate on the
-// raw data map and must use the camelCase wire key.
+// decode/overlay operate on the raw data map and must use the camelCase
+// wire key.
 type dpiSection struct{}
 
 func init() {
@@ -59,22 +59,11 @@ func (dpiSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (dpiSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"enabled":                ownerManaged,
-		"fingerprinting_enabled": ownerManaged,
-	}
-}
-
-// decode populates model.Dpi from snap's "dpi" section data, falling back to
-// prior.Dpi's matching leaf for any field whose ownership class does not
-// read from the API (none, here - both leaves are ownerManaged). The raw
-// data map is keyed by go-unifi's json tags, so FingerprintingEnabled is
-// read from "fingerprintingEnabled" (camelCase), not the schema leaf name.
+// decode populates model.Dpi from snap's "dpi" section data. The raw data
+// map is keyed by go-unifi's json tags, so FingerprintingEnabled is read
+// from "fingerprintingEnabled" (camelCase), not the schema leaf name.
 func (dpiSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := dpiSection{}.ownership()
 
 	var priorModel settingDpiModel
 	if !prior.Dpi.IsNull() && !prior.Dpi.IsUnknown() {
@@ -84,9 +73,9 @@ func (dpiSection) decode(ctx context.Context, snap rawSettings, prior settingRes
 	sec, _ := snap.section("dpi")
 	data := sec.Data
 
-	enabled, d := decodeBool(data, "enabled", own["enabled"], priorModel.Enabled)
+	enabled, d := decodeBool(data, "enabled", priorModel.Enabled)
 	diags.Append(d...)
-	fingerprintingEnabled, d := decodeBool(data, "fingerprintingEnabled", own["fingerprinting_enabled"], priorModel.FingerprintingEnabled)
+	fingerprintingEnabled, d := decodeBool(data, "fingerprintingEnabled", priorModel.FingerprintingEnabled)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -120,8 +109,6 @@ func (dpiSection) overlay(ctx context.Context, model, prior settingResourceModel
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := dpiSection{}.ownership()
-
 	var m settingDpiModel
 	diags.Append(model.Dpi.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -129,8 +116,8 @@ func (dpiSection) overlay(ctx context.Context, model, prior settingResourceModel
 	}
 
 	base := snap.dataCopy("dpi")
-	overlayBool(base, "enabled", own["enabled"], m.Enabled)
-	overlayBool(base, "fingerprintingEnabled", own["fingerprinting_enabled"], m.FingerprintingEnabled)
+	overlayBool(base, "enabled", m.Enabled)
+	overlayBool(base, "fingerprintingEnabled", m.FingerprintingEnabled)
 
 	rs := settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: "dpi"},
@@ -146,7 +133,7 @@ func (dpiSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's dpi value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.
-func (dpiSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (dpiSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.Dpi = plan.Dpi
 	return nil
 }

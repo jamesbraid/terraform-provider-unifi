@@ -57,21 +57,12 @@ func (igmpSnoopingSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (igmpSnoopingSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"enabled":     ownerManaged,
-		"network_ids": ownerManaged,
-	}
-}
-
 // decode populates model.IgmpSnooping from snap's "igmp_snooping" section
 // data. Only the two modeled leaves (enabled, network_ids) are read; the
 // unmodeled fields the controller may also store there (querier_mode,
 // switches, ...) are simply not decoded because they are not in the model.
 func (s igmpSnoopingSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := s.ownership()
 
 	var priorModel settingIgmpSnoopingModel
 	if !prior.IgmpSnooping.IsNull() && !prior.IgmpSnooping.IsUnknown() {
@@ -81,9 +72,9 @@ func (s igmpSnoopingSection) decode(ctx context.Context, snap rawSettings, prior
 	sec, _ := snap.section(s.key())
 	data := sec.Data
 
-	enabled, d := decodeBool(data, "enabled", own["enabled"], priorModel.Enabled)
+	enabled, d := decodeBool(data, "enabled", priorModel.Enabled)
 	diags.Append(d...)
-	networkIDs, d := decodeStringList(ctx, data, "network_ids", own["network_ids"], priorModel.NetworkIDs)
+	networkIDs, d := decodeStringList(ctx, data, "network_ids", priorModel.NetworkIDs)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -117,8 +108,6 @@ func (s igmpSnoopingSection) overlay(ctx context.Context, model, prior settingRe
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := s.ownership()
-
 	var m settingIgmpSnoopingModel
 	diags.Append(model.IgmpSnooping.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -126,8 +115,8 @@ func (s igmpSnoopingSection) overlay(ctx context.Context, model, prior settingRe
 	}
 
 	base := snap.dataCopy(s.key())
-	overlayBool(base, "enabled", own["enabled"], m.Enabled)
-	diags.Append(overlayStringList(ctx, base, "network_ids", own["network_ids"], m.NetworkIDs)...)
+	overlayBool(base, "enabled", m.Enabled)
+	diags.Append(overlayStringList(ctx, base, "network_ids", m.NetworkIDs)...)
 	if diags.HasError() {
 		return settings.RawSetting{}, false, diags
 	}
@@ -146,7 +135,7 @@ func (s igmpSnoopingSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's igmp_snooping value onto dst. This
 // section holds no secret leaves, so it is a straight copy with no per-leaf
 // plan/prior choice needed.
-func (igmpSnoopingSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (igmpSnoopingSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.IgmpSnooping = plan.IgmpSnooping
 	return nil
 }

@@ -271,7 +271,7 @@ func TestMgmtSection_SecretOverlay(t *testing.T) {
 	})
 }
 
-// TestMgmtSection_CarryBestEffortSecretMatrix pins bestEffortObject's
+// TestMgmtSection_CarryBestEffortSecretMatrix pins carrySecretObject's
 // per-leaf plan/prior choice for the mgmt object's secret matrix: plan's
 // ssh_password null or unknown falls back to prior's; a set plan password
 // (including an intentional empty-string rotate-to-empty) is kept from plan.
@@ -321,10 +321,12 @@ func TestMgmtSection_CarryBestEffortSecretMatrix(t *testing.T) {
 			planObj := newMgmt(t, "plan-user", tc.planPassword)
 
 			plan := settingResourceModel{Mgmt: planObj}
-			prior := settingResourceModel{Mgmt: priorObj}
-			dst := settingResourceModel{}
+			// carryBestEffort's new signature reads prior's secret off dst
+			// (bestEffortState seeds dst := prior before calling), so dst
+			// starts pre-seeded with the prior object here too.
+			dst := settingResourceModel{Mgmt: priorObj}
 
-			diags := sec.carryBestEffort(&dst, plan, prior)
+			diags := sec.carryBestEffort(&dst, plan)
 			if diags.HasError() {
 				t.Fatalf("carryBestEffort diagnostics: %v", diags)
 			}

@@ -15,7 +15,7 @@ import (
 )
 
 // ntpSection is the settingSection implementation for the "ntp" settings
-// section: a flat SingleNestedAttribute with five ownerManaged scalar string
+// section: a flat SingleNestedAttribute with five managed scalar string
 // leaves, no nested objects/lists and no secrets.
 type ntpSection struct{}
 
@@ -70,23 +70,9 @@ func (ntpSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (ntpSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"setting_preference": ownerManaged,
-		"ntp_server_1":       ownerManaged,
-		"ntp_server_2":       ownerManaged,
-		"ntp_server_3":       ownerManaged,
-		"ntp_server_4":       ownerManaged,
-	}
-}
-
-// decode populates model.Ntp from snap's "ntp" section data, falling back to
-// prior.Ntp's matching leaf for any field whose ownership class does not
-// read from the API (none, here - all five leaves are ownerManaged).
+// decode populates model.Ntp from snap's "ntp" section data.
 func (ntpSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := ntpSection{}.ownership()
 
 	var priorModel settingNtpModel
 	if !prior.Ntp.IsNull() && !prior.Ntp.IsUnknown() {
@@ -96,15 +82,15 @@ func (ntpSection) decode(ctx context.Context, snap rawSettings, prior settingRes
 	sec, _ := snap.section("ntp")
 	data := sec.Data
 
-	settingPreference, d := decodeString(data, "setting_preference", own["setting_preference"], priorModel.SettingPreference)
+	settingPreference, d := decodeString(data, "setting_preference", priorModel.SettingPreference)
 	diags.Append(d...)
-	ntpServer1, d := decodeString(data, "ntp_server_1", own["ntp_server_1"], priorModel.NtpServer1)
+	ntpServer1, d := decodeString(data, "ntp_server_1", priorModel.NtpServer1)
 	diags.Append(d...)
-	ntpServer2, d := decodeString(data, "ntp_server_2", own["ntp_server_2"], priorModel.NtpServer2)
+	ntpServer2, d := decodeString(data, "ntp_server_2", priorModel.NtpServer2)
 	diags.Append(d...)
-	ntpServer3, d := decodeString(data, "ntp_server_3", own["ntp_server_3"], priorModel.NtpServer3)
+	ntpServer3, d := decodeString(data, "ntp_server_3", priorModel.NtpServer3)
 	diags.Append(d...)
-	ntpServer4, d := decodeString(data, "ntp_server_4", own["ntp_server_4"], priorModel.NtpServer4)
+	ntpServer4, d := decodeString(data, "ntp_server_4", priorModel.NtpServer4)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -139,8 +125,6 @@ func (ntpSection) overlay(ctx context.Context, model, prior settingResourceModel
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := ntpSection{}.ownership()
-
 	var m settingNtpModel
 	diags.Append(model.Ntp.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -148,11 +132,11 @@ func (ntpSection) overlay(ctx context.Context, model, prior settingResourceModel
 	}
 
 	base := snap.dataCopy("ntp")
-	overlayString(base, "setting_preference", own["setting_preference"], m.SettingPreference)
-	overlayString(base, "ntp_server_1", own["ntp_server_1"], m.NtpServer1)
-	overlayString(base, "ntp_server_2", own["ntp_server_2"], m.NtpServer2)
-	overlayString(base, "ntp_server_3", own["ntp_server_3"], m.NtpServer3)
-	overlayString(base, "ntp_server_4", own["ntp_server_4"], m.NtpServer4)
+	overlayString(base, "setting_preference", m.SettingPreference)
+	overlayString(base, "ntp_server_1", m.NtpServer1)
+	overlayString(base, "ntp_server_2", m.NtpServer2)
+	overlayString(base, "ntp_server_3", m.NtpServer3)
+	overlayString(base, "ntp_server_4", m.NtpServer4)
 
 	rs := settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: "ntp"},
@@ -168,7 +152,7 @@ func (ntpSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's ntp value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.
-func (ntpSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (ntpSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.Ntp = plan.Ntp
 	return nil
 }

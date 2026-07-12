@@ -15,7 +15,7 @@ import (
 
 // networkOptimizationSection is the settingSection implementation for the
 // "network_optimization" settings section: a flat SingleNestedAttribute
-// with a single ownerManaged scalar leaf, no nested objects/lists and no
+// with a single managed scalar leaf, no nested objects/lists and no
 // secrets.
 type networkOptimizationSection struct{}
 
@@ -48,20 +48,10 @@ func (networkOptimizationSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (networkOptimizationSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"enabled": ownerManaged,
-	}
-}
-
 // decode populates model.NetworkOpt from snap's "network_optimization"
-// section data, falling back to prior.NetworkOpt's matching leaf for any
-// field whose ownership class does not read from the API (none, here - the
-// only leaf is ownerManaged).
+// section data.
 func (networkOptimizationSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := networkOptimizationSection{}.ownership()
 
 	var priorModel settingNetworkOptimizationModel
 	if !prior.NetworkOpt.IsNull() && !prior.NetworkOpt.IsUnknown() {
@@ -71,7 +61,7 @@ func (networkOptimizationSection) decode(ctx context.Context, snap rawSettings, 
 	sec, _ := snap.section("network_optimization")
 	data := sec.Data
 
-	enabled, d := decodeBool(data, "enabled", own["enabled"], priorModel.Enabled)
+	enabled, d := decodeBool(data, "enabled", priorModel.Enabled)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -103,8 +93,6 @@ func (networkOptimizationSection) overlay(ctx context.Context, model, prior sett
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := networkOptimizationSection{}.ownership()
-
 	var m settingNetworkOptimizationModel
 	diags.Append(model.NetworkOpt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -112,7 +100,7 @@ func (networkOptimizationSection) overlay(ctx context.Context, model, prior sett
 	}
 
 	base := snap.dataCopy("network_optimization")
-	overlayBool(base, "enabled", own["enabled"], m.Enabled)
+	overlayBool(base, "enabled", m.Enabled)
 
 	rs := settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: "network_optimization"},
@@ -128,7 +116,7 @@ func (networkOptimizationSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's network_optimization value onto dst.
 // This section holds no secret leaves, so it is a straight copy with no
 // per-leaf plan/prior choice needed.
-func (networkOptimizationSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (networkOptimizationSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.NetworkOpt = plan.NetworkOpt
 	return nil
 }

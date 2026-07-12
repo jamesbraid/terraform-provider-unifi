@@ -21,15 +21,18 @@ import (
 //
 // Two layers:
 //
-//   - Low-level codec* / put* functions are ownership-agnostic typed
-//     accessors. They encode the raw-data contract: present-empty is a real
-//     value (not absent/null), absent or explicit JSON null is TF-null, and a
-//     wrong or fractional type is a diagnostic rather than a silent
-//     normalization.
+//   - Low-level codec* / put* functions are the typed accessors. They encode
+//     the raw-data contract: present-empty is a real value (not absent/null),
+//     absent or explicit JSON null is TF-null, and a wrong or fractional type
+//     is a diagnostic rather than a silent normalization.
 //
-//   - Ownership-aware decode* / overlay* wrappers apply the C1 field-ownership
-//     policy (unifi/setting_ownership.go) on top of the low-level codec by
-//     branching on ownershipClass. Section converters call ONLY this layer.
+//   - decode* / overlay* wrappers are thin, class-free adapters over the
+//     low-level codec: decode* passes prior straight through to the matching
+//     codec* reader, and overlay* always writes the managed path (put*).
+//     Every field in this resource is managed-by-default; the two write-only
+//     secret leaves (mgmt.ssh_password, radius.secret) are handled inline in
+//     their own sections rather than through a field-ownership taxonomy.
+//     Section converters call ONLY this layer.
 
 // ---------------------------------------------------------------------------
 // Low-level codec: map[string]any -> types.X
@@ -243,223 +246,86 @@ func putStringList(ctx context.Context, out map[string]any, key string, v types.
 }
 
 // ---------------------------------------------------------------------------
-// Ownership-aware layer: decode (data -> state) and overlay (config -> PUT
-// body), branching on ownershipClass per the C1 policy in
-// unifi/setting_ownership.go.
+// decode/overlay layer: class-free, thin adapters over the low-level codec.
+// Every field is managed by default (decode reads from data, overlay always
+// writes). The two write-only secret leaves in this resource (mgmt.
+// ssh_password, radius.secret) do not go through this layer at all — their
+// sections read/write them inline (see setting_section_mgmt.go /
+// setting_section_radius.go).
 // ---------------------------------------------------------------------------
 
-// decodeString reads key's value into state per class. A field that does
-// not read from the API (ownerWriteOnlySecret) preserves prior state
-// unconditionally and never inspects data — the controller does not return
-// secret values, so anything present in data for that key is a mask, not
-// truth.
-func decodeString(data map[string]any, key string, class ownershipClass, prior types.String) (types.String, diag.Diagnostics) {
-	if !class.readsFromAPI() {
-		return prior, nil
-	}
+// decodeString reads key's value into state, passing prior straight through
+// to codecString for its type-drift-retains-prior behavior.
+func decodeString(data map[string]any, key string, prior types.String) (types.String, diag.Diagnostics) {
 	return codecString(data, key, prior)
 }
 
 // decodeInt64 is the int64 analogue of decodeString.
-func decodeInt64(data map[string]any, key string, class ownershipClass, prior types.Int64) (types.Int64, diag.Diagnostics) {
-	if !class.readsFromAPI() {
-		return prior, nil
-	}
+func decodeInt64(data map[string]any, key string, prior types.Int64) (types.Int64, diag.Diagnostics) {
 	return codecInt64(data, key, prior)
 }
 
 // decodeGoDuration is the GoDuration analogue of decodeInt64, for fields
-// whose wire form is an integer count of unit (e.g. whole seconds). A field
-// that does not read from the API (ownerWriteOnlySecret) preserves prior
-// state unconditionally and never inspects data, matching decodeString.
-func decodeGoDuration(data map[string]any, key string, class ownershipClass, prior timetypes.GoDuration, unit time.Duration) (timetypes.GoDuration, diag.Diagnostics) {
-	if !class.readsFromAPI() {
-		return prior, nil
-	}
+// whose wire form is an integer count of unit (e.g. whole seconds).
+func decodeGoDuration(data map[string]any, key string, prior timetypes.GoDuration, unit time.Duration) (timetypes.GoDuration, diag.Diagnostics) {
 	return codecGoDuration(data, key, prior, unit)
 }
 
 // decodeBool is the bool analogue of decodeString.
-func decodeBool(data map[string]any, key string, class ownershipClass, prior types.Bool) (types.Bool, diag.Diagnostics) {
-	if !class.readsFromAPI() {
-		return prior, nil
-	}
+func decodeBool(data map[string]any, key string, prior types.Bool) (types.Bool, diag.Diagnostics) {
 	return codecBool(data, key, prior)
 }
 
 // decodeStringList is the string-list analogue of decodeString.
-func decodeStringList(ctx context.Context, data map[string]any, key string, class ownershipClass, prior types.List) (types.List, diag.Diagnostics) {
-	if !class.readsFromAPI() {
-		return prior, nil
-	}
+func decodeStringList(ctx context.Context, data map[string]any, key string, prior types.List) (types.List, diag.Diagnostics) {
 	return codecStringList(ctx, data, key, prior)
 }
 
-// overlayString applies v onto out[key] per the C1 write policy:
-//
-//   - write-only secret (class == ownerWriteOnlySecret): a null or unknown
-//     config value means "not being changed this apply" — but the copied
-//     base snapshot may hold a masked/stale secret from the read-back
-//     (e.g. "******"), and that must NEVER be re-sent to the controller.
-//     So the key is deleted from out entirely, omitting it from the PUT
-//     body (the controller keeps its stored value for an omitted key). A
-//     configured value, including an explicit empty string, IS written —
-//     that is an intentional clear/rotate-to-empty.
-//   - managed/co-managed (writesToPUT() true, not the secret class): write
-//     v when present (including empty); a null/unknown config leaves the
-//     snapshot's copied value in out untouched, preserving the controller
-//     value across this apply.
-//   - computed/generated-secret/preserved (writesToPUT() false): no write,
-//     no delete — the snapshot value already in out is the truth for these
-//     controller-owned, read-back fields.
-func overlayString(out map[string]any, key string, class ownershipClass, v types.String) {
-	if class == ownerWriteOnlySecret {
-		if v.IsNull() || v.IsUnknown() {
-			delete(out, key)
-			return
-		}
-		putString(out, key, v)
-		return
-	}
-	if class.writesToPUT() {
-		putString(out, key, v)
-	}
+// overlayString writes v onto out[key]: known (including empty) writes;
+// null/unknown leaves the snapshot's copied value in out untouched,
+// preserving the controller value across this apply.
+func overlayString(out map[string]any, key string, v types.String) {
+	putString(out, key, v)
 }
 
 // overlayInt64 is the int64 analogue of overlayString.
-func overlayInt64(out map[string]any, key string, class ownershipClass, v types.Int64) {
-	if class == ownerWriteOnlySecret {
-		if v.IsNull() || v.IsUnknown() {
-			delete(out, key)
-			return
-		}
-		putInt64(out, key, v)
-		return
-	}
-	if class.writesToPUT() {
-		putInt64(out, key, v)
-	}
+func overlayInt64(out map[string]any, key string, v types.Int64) {
+	putInt64(out, key, v)
 }
 
-// overlayGoDuration is the GoDuration analogue of overlayInt64, applying the
-// same C1 write policy (including delete-on-null for a write-only-secret
-// leaf) for fields whose wire form is an integer count of unit. No PR-A
-// duration leaf is actually a secret; this branch exists for symmetry with
-// overlayInt64/overlayString and to be correct if one ever is.
-func overlayGoDuration(out map[string]any, key string, class ownershipClass, v timetypes.GoDuration, unit time.Duration) {
-	if class == ownerWriteOnlySecret {
-		if v.IsNull() || v.IsUnknown() {
-			delete(out, key)
-			return
-		}
-		putGoDuration(out, key, v, unit)
-		return
-	}
-	if class.writesToPUT() {
-		putGoDuration(out, key, v, unit)
-	}
+// overlayGoDuration is the GoDuration analogue of overlayInt64, for fields
+// whose wire form is an integer count of unit.
+func overlayGoDuration(out map[string]any, key string, v timetypes.GoDuration, unit time.Duration) {
+	putGoDuration(out, key, v, unit)
 }
 
 // overlayBool is the bool analogue of overlayString.
-func overlayBool(out map[string]any, key string, class ownershipClass, v types.Bool) {
-	if class == ownerWriteOnlySecret {
-		if v.IsNull() || v.IsUnknown() {
-			delete(out, key)
-			return
-		}
-		putBool(out, key, v)
-		return
-	}
-	if class.writesToPUT() {
-		putBool(out, key, v)
-	}
+func overlayBool(out map[string]any, key string, v types.Bool) {
+	putBool(out, key, v)
 }
 
 // overlayStringList is the string-list analogue of overlayString.
-func overlayStringList(ctx context.Context, out map[string]any, key string, class ownershipClass, v types.List) diag.Diagnostics {
-	if class == ownerWriteOnlySecret {
-		if v.IsNull() || v.IsUnknown() {
-			delete(out, key)
-			return nil
-		}
-		return putStringList(ctx, out, key, v)
-	}
-	if class.writesToPUT() {
-		return putStringList(ctx, out, key, v)
-	}
-	return nil
+func overlayStringList(ctx context.Context, out map[string]any, key string, v types.List) diag.Diagnostics {
+	return putStringList(ctx, out, key, v)
 }
 
 // ---------------------------------------------------------------------------
 // Nested shapes: SingleNestedAttribute (object) and ListNestedAttribute
-// (object list), each child/leaf keyed by its own ownershipClass, looked up
-// by its FULL dotted path in the section's ownership() map.
-//
-// Design (Task 16b, codex-validated "Design 3"): a settingSection's
-// ownership() map is already keyed by the schema's full dotted leaf path
-// (see setting_section_test.go's leafPaths / the gate-10 coverage test) —
-// e.g. "custom_servers.enabled" or "suppression_alerts.tracking.direction".
-// List elements share ONE path with no "[i]" index, because ownership is a
-// property of the schema shape, not of any one API response's element
-// count. So instead of a caller pre-stripping a per-call child-only
-// ownership map, these helpers take the section's FULL ownership map (own)
-// plus ownPrefix: the dotted, index-free path of the object/list currently
-// being decoded/overlaid within that map. A leaf child's lookup path is
-// computed as ownPrefix+"."+child (or just child at the section's
-// top-level, where ownPrefix is the top-level attribute name already).
-//
-// THE CRITICAL SPLIT this design depends on: ownPrefix (index-free, used
-// ONLY for own[...] lookups) is a different string from diagPath (may
-// include "[i]", used ONLY in diagnostic messages). Conflating them would
-// make every list-element lookup miss (own has no "custom_servers[0]..."
-// entry) and silently fall through to the zero-value ownershipClass
-// (ownerManaged) if the missing-entry guard below were skipped — which is
-// exactly why that guard is comma-ok and fails loud instead of defaulting.
+// (object list). Every leaf is managed by default (see the decode/overlay
+// layer doc comment above); no nested leaf in this resource is a secret, so
+// this layer type-dispatches each child directly with no per-field class
+// lookup.
 // ---------------------------------------------------------------------------
 
-// ownershipFor looks up path in own using the mandatory comma-ok form: a
-// missing entry is a diagnostic, NEVER a silent fall-through to Go's
-// zero-value ownershipClass (ownerManaged, iota 0). diagPath is used only
-// in the error message so a caller can surface the indexed ("foo[2].bar")
-// form to a human while path (index-free) is what was actually looked up.
-func ownershipFor(own map[string]ownershipClass, path, diagPath string) (ownershipClass, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	class, ok := own[path]
-	if !ok {
-		diags.AddError(
-			"Missing ownership entry",
-			fmt.Sprintf("field %q has no ownership() entry (looked up as %q)", diagPath, path),
-		)
-		return ownerManaged, diags
-	}
-	return class, diags
-}
-
-// leafPath joins prefix and child into a dotted ownership-lookup path,
-// matching leafPaths' convention in setting_section_test.go: a top-level
-// leaf's path is its own name; a nested leaf is "prefix.child".
-func leafPath(prefix, child string) string {
-	if prefix == "" {
-		return child
-	}
-	return prefix + "." + child
-}
-
 // decodeObject reads a nested object field from data, recursing into each
-// child leaf per its ownershipClass looked up from own by full dotted path
-// (ownPrefix+"."+child). A child that does not read from the API (e.g. a
-// nested write-only secret) is preserved from the corresponding attribute
-// of prior. Absent key or explicit JSON null decodes to a null object of
-// attrTypes. ownPrefix is this object's own dotted path within own (e.g.
-// "dns_verification"); at a section's top level that is the attribute name.
-// A present non-map value is remote type drift: a WARNING (not error),
-// retaining the prior object wholesale rather than partially decoding.
+// child leaf. Absent key or explicit JSON null decodes to a null object of
+// attrTypes. A present non-map value is remote type drift: a WARNING (not
+// error), retaining the prior object wholesale rather than partially
+// decoding.
 func decodeObject(
 	ctx context.Context,
 	data map[string]any,
 	key string,
-	own map[string]ownershipClass,
-	ownPrefix string,
 	prior types.Object,
 	attrTypes map[string]attr.Type,
 ) (types.Object, diag.Diagnostics) {
@@ -478,22 +344,17 @@ func decodeObject(
 		return prior, diags
 	}
 
-	return decodeObjectFields(ctx, nested, ownPrefix, key, own, prior, attrTypes)
+	return decodeObjectFields(ctx, nested, key, prior, attrTypes)
 }
 
 // decodeObjectFields decodes attrTypes' children directly out of nested
 // (already unwrapped from its parent key), type-dispatching each child and
-// recursing into nested object-lists. ownPrefix is the index-free dotted
-// path of this object within own (used for ownership lookups only);
-// diagPath is the possibly-indexed path used only in diagnostic messages —
-// see the package-level doc comment above for why these must not be
-// conflated.
+// recursing into nested object-lists. diagPath is the possibly-indexed path
+// used only in diagnostic messages.
 func decodeObjectFields(
 	ctx context.Context,
 	nested map[string]any,
-	ownPrefix string,
 	diagPath string,
-	own map[string]ownershipClass,
 	prior types.Object,
 	attrTypes map[string]attr.Type,
 ) (types.Object, diag.Diagnostics) {
@@ -506,8 +367,7 @@ func decodeObjectFields(
 
 	attrs := make(map[string]attr.Value, len(attrTypes))
 	for childKey, childType := range attrTypes {
-		path := leafPath(ownPrefix, childKey)
-		childDiagPath := leafPath(diagPath, childKey)
+		childDiagPath := diagPath + "." + childKey
 
 		switch t := childType.(type) {
 		case types.ListType:
@@ -516,17 +376,11 @@ func decodeObjectFields(
 				if pv, ok := priorAttrs[childKey].(types.List); ok {
 					priorChild = pv
 				}
-				childVal, childDiags := decodeObjectList(ctx, nested, childKey, own, path, priorChild, t.ElemType)
+				childVal, childDiags := decodeObjectList(ctx, nested, childKey, priorChild, t.ElemType)
 				diags.Append(childDiags...)
 				attrs[childKey] = childVal
 				continue
 			}
-		}
-
-		class, classDiags := ownershipFor(own, path, childDiagPath)
-		diags.Append(classDiags...)
-		if classDiags.HasError() {
-			continue
 		}
 
 		switch childType {
@@ -535,7 +389,7 @@ func decodeObjectFields(
 			if pv, ok := priorAttrs[childKey].(types.String); ok {
 				priorChild = pv
 			}
-			childVal, childDiags := decodeString(nested, childKey, class, priorChild)
+			childVal, childDiags := decodeString(nested, childKey, priorChild)
 			diags.Append(childDiags...)
 			attrs[childKey] = childVal
 		case types.BoolType:
@@ -543,7 +397,7 @@ func decodeObjectFields(
 			if pv, ok := priorAttrs[childKey].(types.Bool); ok {
 				priorChild = pv
 			}
-			childVal, childDiags := decodeBool(nested, childKey, class, priorChild)
+			childVal, childDiags := decodeBool(nested, childKey, priorChild)
 			diags.Append(childDiags...)
 			attrs[childKey] = childVal
 		case types.Int64Type:
@@ -551,7 +405,7 @@ func decodeObjectFields(
 			if pv, ok := priorAttrs[childKey].(types.Int64); ok {
 				priorChild = pv
 			}
-			childVal, childDiags := decodeInt64(nested, childKey, class, priorChild)
+			childVal, childDiags := decodeInt64(nested, childKey, priorChild)
 			diags.Append(childDiags...)
 			attrs[childKey] = childVal
 		default:
@@ -560,7 +414,7 @@ func decodeObjectFields(
 				if pv, ok := priorAttrs[childKey].(types.List); ok {
 					priorChild = pv
 				}
-				childVal, childDiags := decodeStringList(ctx, nested, childKey, class, priorChild)
+				childVal, childDiags := decodeStringList(ctx, nested, childKey, priorChild)
 				diags.Append(childDiags...)
 				attrs[childKey] = childVal
 				continue
@@ -584,18 +438,12 @@ func decodeObjectFields(
 	return obj, diags
 }
 
-// overlayObject writes cfg's children onto out[key]'s nested map per each
-// child's ownershipClass looked up from own by full dotted path, following
-// the same per-class branching as overlayString (including delete-on-null
-// for a nested write-only-secret leaf). A null/unknown cfg is a no-op: the
-// snapshot's nested map is left untouched. ownPrefix is this object's own
-// dotted path within own, matching decodeObject's.
+// overlayObject writes cfg's children onto out[key]'s nested map. A
+// null/unknown cfg is a no-op: the snapshot's nested map is left untouched.
 func overlayObject(
 	ctx context.Context,
 	out map[string]any,
 	key string,
-	own map[string]ownershipClass,
-	ownPrefix string,
 	cfg types.Object,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -610,22 +458,19 @@ func overlayObject(
 		out[key] = nested
 	}
 
-	diags.Append(overlayObjectFields(ctx, nested, ownPrefix, key, own, cfg)...)
+	diags.Append(overlayObjectFields(ctx, nested, key, cfg)...)
 	return diags
 }
 
 // overlayObjectFields applies cfg's children directly onto nested (already
 // unwrapped from its parent key), type-dispatching each child (from cfg's
 // own attribute types, so overlay dispatches structurally identically to
-// decodeObjectFields) and recursing into nested object-lists. ownPrefix is
-// the index-free dotted path of this object within own (ownership lookups
-// only); diagPath is the possibly-indexed path used only in diagnostics.
+// decodeObjectFields) and recursing into nested object-lists. diagPath is
+// the possibly-indexed path used only in diagnostics.
 func overlayObjectFields(
 	ctx context.Context,
 	nested map[string]any,
-	ownPrefix string,
 	diagPath string,
-	own map[string]ownershipClass,
 	cfg types.Object,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -634,8 +479,7 @@ func overlayObjectFields(
 	cfgAttrs := cfg.Attributes()
 
 	for childKey, childType := range attrTypes {
-		path := leafPath(ownPrefix, childKey)
-		childDiagPath := leafPath(diagPath, childKey)
+		childDiagPath := diagPath + "." + childKey
 		childAttr := cfgAttrs[childKey]
 
 		switch t := childType.(type) {
@@ -645,16 +489,10 @@ func overlayObjectFields(
 				if !ok {
 					lv = types.ListNull(t.ElemType)
 				}
-				childDiags := overlayObjectList(ctx, nested, childKey, own, path, lv)
+				childDiags := overlayObjectList(ctx, nested, childKey, lv)
 				diags.Append(childDiags...)
 				continue
 			}
-		}
-
-		class, classDiags := ownershipFor(own, path, childDiagPath)
-		diags.Append(classDiags...)
-		if classDiags.HasError() {
-			continue
 		}
 
 		switch childType {
@@ -663,26 +501,26 @@ func overlayObjectFields(
 			if !ok {
 				sv = types.StringUnknown()
 			}
-			overlayString(nested, childKey, class, sv)
+			overlayString(nested, childKey, sv)
 		case types.BoolType:
 			bv, ok := childAttr.(types.Bool)
 			if !ok {
 				bv = types.BoolUnknown()
 			}
-			overlayBool(nested, childKey, class, bv)
+			overlayBool(nested, childKey, bv)
 		case types.Int64Type:
 			iv, ok := childAttr.(types.Int64)
 			if !ok {
 				iv = types.Int64Unknown()
 			}
-			overlayInt64(nested, childKey, class, iv)
+			overlayInt64(nested, childKey, iv)
 		default:
 			if lt, ok := childType.(types.ListType); ok && lt.ElemType == types.StringType {
 				lv, ok := childAttr.(types.List)
 				if !ok {
 					lv = types.ListUnknown(types.StringType)
 				}
-				listDiags := overlayStringList(ctx, nested, childKey, class, lv)
+				listDiags := overlayStringList(ctx, nested, childKey, lv)
 				diags.Append(listDiags...)
 				continue
 			}
@@ -700,26 +538,18 @@ func overlayObjectFields(
 	return diags
 }
 
-// decodeObjectList reads a nested list-of-object field from data,
-// recursing each element's children per own (looked up by ownPrefix, the
-// list's own index-free dotted path — every element shares this same
-// prefix, matching leafPaths' convention that list elements have no "[i]"
-// in their ownership key). Element order follows the API response. A
-// per-element write-only-secret leaf is preserved from the matching
-// (same-index) element of prior; if prior has no element at that index,
-// the leaf decodes via decodeString's normal preserve-from-null-prior
-// behavior (StringNull()). Absent key or explicit JSON null decodes to a
-// null list of elemType. A present non-array value, or a non-object
-// element, is remote type drift: a WARNING (not error), retaining the
-// prior list wholesale — never a partially-decoded list. An elemType that
-// is not an ObjectType is a provider/schema defect (a decodeObjectList
-// call site bug, not remote drift), so it stays a hard error.
+// decodeObjectList reads a nested list-of-object field from data, recursing
+// each element's children. Element order follows the API response. Absent
+// key or explicit JSON null decodes to a null list of elemType. A present
+// non-array value, or a non-object element, is remote type drift: a WARNING
+// (not error), retaining the prior list wholesale — never a
+// partially-decoded list. An elemType that is not an ObjectType is a
+// provider/schema defect (a decodeObjectList call site bug, not remote
+// drift), so it stays a hard error.
 func decodeObjectList(
 	ctx context.Context,
 	data map[string]any,
 	key string,
-	own map[string]ownershipClass,
-	ownPrefix string,
 	prior types.List,
 	elemType attr.Type,
 ) (types.List, diag.Diagnostics) {
@@ -771,9 +601,7 @@ func decodeObjectList(
 		elemVal, elemDiags := decodeObjectFields(
 			ctx,
 			elemMap,
-			ownPrefix,
 			fmt.Sprintf("%s[%d]", key, i),
-			own,
 			priorElem,
 			objType.AttrTypes,
 		)
@@ -789,13 +617,11 @@ func decodeObjectList(
 	return list, diags
 }
 
-// overlayObjectList writes cfg's elements onto out[key] as a list of
-// nested maps, applying overlayObjectFields' per-child branching (including
-// delete-on-null for a per-element write-only-secret leaf, and recursion
-// into any further-nested object-list child) to each element, all sharing
-// ownPrefix (the list's own index-free dotted path in own). Element order
-// follows cfg. A null/unknown cfg is a no-op: the snapshot's list is left
-// untouched.
+// overlayObjectList writes cfg's elements onto out[key] as a list of nested
+// maps, applying overlayObjectFields' per-child dispatch (including
+// recursion into any further-nested object-list child) to each element.
+// Element order follows cfg. A null/unknown cfg is a no-op: the snapshot's
+// list is left untouched.
 //
 // Each output element is built FRESH (starting from an empty map), never
 // seeded from the base snapshot's same-index element. List position is not
@@ -815,8 +641,6 @@ func overlayObjectList(
 	ctx context.Context,
 	out map[string]any,
 	key string,
-	own map[string]ownershipClass,
-	ownPrefix string,
 	cfg types.List,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -838,7 +662,7 @@ func overlayObjectList(
 		}
 
 		elemOut := map[string]any{}
-		elemDiags := overlayObjectFields(ctx, elemOut, ownPrefix, fmt.Sprintf("%s[%d]", key, i), own, cfgObj)
+		elemDiags := overlayObjectFields(ctx, elemOut, fmt.Sprintf("%s[%d]", key, i), cfgObj)
 		diags.Append(elemDiags...)
 		items = append(items, elemOut)
 	}

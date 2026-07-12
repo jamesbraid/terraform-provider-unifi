@@ -117,29 +117,9 @@ func (syslogSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (syslogSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"enabled":                        ownerManaged,
-		"contents":                       ownerManaged,
-		"debug":                          ownerManaged,
-		"ip":                             ownerManaged,
-		"port":                           ownerManaged,
-		"log_all_contents":               ownerManaged,
-		"netconsole_enabled":             ownerManaged,
-		"netconsole_host":                ownerManaged,
-		"netconsole_port":                ownerManaged,
-		"this_controller":                ownerManaged,
-		"this_controller_encrypted_only": ownerManaged,
-	}
-}
-
-// decode populates model.Syslog from snap's "rsyslogd" section data, falling
-// back to prior.Syslog's matching leaf for any field whose ownership class
-// does not read from the API (none, here - all 11 leaves are ownerManaged).
+// decode populates model.Syslog from snap's "rsyslogd" section data.
 func (s syslogSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := s.ownership()
 
 	var priorModel settingSyslogModel
 	if !prior.Syslog.IsNull() && !prior.Syslog.IsUnknown() {
@@ -149,27 +129,27 @@ func (s syslogSection) decode(ctx context.Context, snap rawSettings, prior setti
 	sec, _ := snap.section(s.key())
 	data := sec.Data
 
-	enabled, d := decodeBool(data, "enabled", own["enabled"], priorModel.Enabled)
+	enabled, d := decodeBool(data, "enabled", priorModel.Enabled)
 	diags.Append(d...)
-	contents, d := decodeStringList(ctx, data, "contents", own["contents"], priorModel.Contents)
+	contents, d := decodeStringList(ctx, data, "contents", priorModel.Contents)
 	diags.Append(d...)
-	debug, d := decodeBool(data, "debug", own["debug"], priorModel.Debug)
+	debug, d := decodeBool(data, "debug", priorModel.Debug)
 	diags.Append(d...)
-	ip, d := decodeString(data, "ip", own["ip"], priorModel.IP)
+	ip, d := decodeString(data, "ip", priorModel.IP)
 	diags.Append(d...)
-	port, d := decodeInt64(data, "port", own["port"], priorModel.Port)
+	port, d := decodeInt64(data, "port", priorModel.Port)
 	diags.Append(d...)
-	logAllContents, d := decodeBool(data, "log_all_contents", own["log_all_contents"], priorModel.LogAllContents)
+	logAllContents, d := decodeBool(data, "log_all_contents", priorModel.LogAllContents)
 	diags.Append(d...)
-	netconsoleEnabled, d := decodeBool(data, "netconsole_enabled", own["netconsole_enabled"], priorModel.NetconsoleEnabled)
+	netconsoleEnabled, d := decodeBool(data, "netconsole_enabled", priorModel.NetconsoleEnabled)
 	diags.Append(d...)
-	netconsoleHost, d := decodeString(data, "netconsole_host", own["netconsole_host"], priorModel.NetconsoleHost)
+	netconsoleHost, d := decodeString(data, "netconsole_host", priorModel.NetconsoleHost)
 	diags.Append(d...)
-	netconsolePort, d := decodeInt64(data, "netconsole_port", own["netconsole_port"], priorModel.NetconsolePort)
+	netconsolePort, d := decodeInt64(data, "netconsole_port", priorModel.NetconsolePort)
 	diags.Append(d...)
-	thisController, d := decodeBool(data, "this_controller", own["this_controller"], priorModel.ThisController)
+	thisController, d := decodeBool(data, "this_controller", priorModel.ThisController)
 	diags.Append(d...)
-	thisControllerEncryptedOnly, d := decodeBool(data, "this_controller_encrypted_only", own["this_controller_encrypted_only"], priorModel.ThisControllerEncryptedOnly)
+	thisControllerEncryptedOnly, d := decodeBool(data, "this_controller_encrypted_only", priorModel.ThisControllerEncryptedOnly)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -211,8 +191,6 @@ func (s syslogSection) overlay(ctx context.Context, model, prior settingResource
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := s.ownership()
-
 	var m settingSyslogModel
 	diags.Append(model.Syslog.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -220,17 +198,17 @@ func (s syslogSection) overlay(ctx context.Context, model, prior settingResource
 	}
 
 	base := snap.dataCopy(s.key())
-	overlayBool(base, "enabled", own["enabled"], m.Enabled)
-	diags.Append(overlayStringList(ctx, base, "contents", own["contents"], m.Contents)...)
-	overlayBool(base, "debug", own["debug"], m.Debug)
-	overlayString(base, "ip", own["ip"], m.IP)
-	overlayInt64(base, "port", own["port"], m.Port)
-	overlayBool(base, "log_all_contents", own["log_all_contents"], m.LogAllContents)
-	overlayBool(base, "netconsole_enabled", own["netconsole_enabled"], m.NetconsoleEnabled)
-	overlayString(base, "netconsole_host", own["netconsole_host"], m.NetconsoleHost)
-	overlayInt64(base, "netconsole_port", own["netconsole_port"], m.NetconsolePort)
-	overlayBool(base, "this_controller", own["this_controller"], m.ThisController)
-	overlayBool(base, "this_controller_encrypted_only", own["this_controller_encrypted_only"], m.ThisControllerEncryptedOnly)
+	overlayBool(base, "enabled", m.Enabled)
+	diags.Append(overlayStringList(ctx, base, "contents", m.Contents)...)
+	overlayBool(base, "debug", m.Debug)
+	overlayString(base, "ip", m.IP)
+	overlayInt64(base, "port", m.Port)
+	overlayBool(base, "log_all_contents", m.LogAllContents)
+	overlayBool(base, "netconsole_enabled", m.NetconsoleEnabled)
+	overlayString(base, "netconsole_host", m.NetconsoleHost)
+	overlayInt64(base, "netconsole_port", m.NetconsolePort)
+	overlayBool(base, "this_controller", m.ThisController)
+	overlayBool(base, "this_controller_encrypted_only", m.ThisControllerEncryptedOnly)
 	if diags.HasError() {
 		return settings.RawSetting{}, false, diags
 	}
@@ -249,7 +227,7 @@ func (s syslogSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's syslog value onto dst. This section
 // holds no secret leaves, so it is a straight copy with no per-leaf
 // plan/prior choice needed.
-func (syslogSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (syslogSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.Syslog = plan.Syslog
 	return nil
 }

@@ -25,28 +25,24 @@ type settingSection interface {
 	// nested under attrName() on the setting resource.
 	schemaAttribute() schema.Attribute
 
-	// ownership maps each leaf attribute path in schemaAttribute() to its
-	// ownershipClass: attr path -> class; every schema leaf present.
-	ownership() map[string]ownershipClass
-
-	// decode populates model from snap (and, where a field's ownership
-	// falls back to prior state, from prior).
+	// decode populates model from snap, falling back to prior state for the
+	// mgmt/radius write-only secret leaf (never read from the API).
 	decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics
 
 	// overlay computes this section's write payload from model (falling
-	// back to prior/snap per ownership), returning the RawSetting to PUT
-	// and whether a write is needed at all.
+	// back to prior/snap for RMW-preserved and write-only-secret fields),
+	// returning the RawSetting to PUT and whether a write is needed at all.
 	overlay(ctx context.Context, model, prior settingResourceModel, snap rawSettings) (settings.RawSetting, bool, diag.Diagnostics)
 
 	// capability classifies whether this section is usable against snap.
 	capability(snap rawSettings) capabilityState
 
-	// carryBestEffort copies this section's own field from plan (or, for a
-	// leaf classed ownerWriteOnlySecret, a per-leaf plan/prior choice via
-	// bestEffortObject) onto dst, for C2.4 second-failure recovery after a
-	// partial apply whose canonical re-read also failed. Implementations
-	// touch only their own field on dst.
-	carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics
+	// carryBestEffort copies this section's own field from plan (or, for the
+	// mgmt/radius write-only secret leaf, a plan/prior choice via
+	// carrySecretObject reading prior off dst) onto dst, for C2.4
+	// second-failure recovery after a partial apply whose canonical re-read
+	// also failed. Implementations touch only their own field on dst.
+	carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics
 
 	// isConfigured reports whether the user configured this section in m —
 	// its object attribute is neither null nor unknown. Unknown is NOT

@@ -35,14 +35,14 @@ var radiusAttrTypes = map[string]attr.Type{
 // earlier sections plus one new one: a GoDuration leaf
 // (interim_update_interval, Task 19b codec), read-modify-write preservation
 // of unmodeled controller fields (configure_whole_network, tunneled_reply,
-// enabled — like igmp_snooping), and the FIRST write-only secret leaf
-// (secret): the model's tfsdk name is "secret" but the controller's wire
-// key for it is "x_secret". Because secret is classed ownerWriteOnlySecret,
-// decode never reads the masked x_secret from the API (it always preserves
-// prior state for that leaf), and overlay deletes x_secret from the PUT
-// body entirely when the config value is null/unknown rather than ever
-// re-sending a masked value; a configured value (including an explicit
-// empty string) is written verbatim.
+// enabled — like igmp_snooping), and a write-only secret leaf (secret): the
+// model's tfsdk name is "secret" but the controller's wire key for it is
+// "x_secret". decode reads secret inline from priorModel.Secret — never from
+// the API, since the controller never returns secret values, only a mask —
+// and overlay deletes x_secret from the PUT body entirely when the config
+// value is null/unknown rather than ever re-sending a masked value; a
+// configured value (including an explicit empty string) is written
+// verbatim.
 type radiusSection struct{}
 
 func init() {
@@ -106,20 +106,10 @@ func (radiusSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (radiusSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"accounting_enabled":      ownerManaged,
-		"acct_port":               ownerManaged,
-		"auth_port":               ownerManaged,
-		"interim_update_interval": ownerManaged,
-		"secret":                  ownerWriteOnlySecret,
-	}
-}
-
 // decode populates model.Radius from snap's "radius" section data. The
-// secret leaf reads from priorModel.Secret unconditionally (ownership()
-// classes it ownerWriteOnlySecret, so decodeString never inspects the
-// masked "x_secret" wire value present in data).
+// secret leaf reads from priorModel.Secret unconditionally — the controller
+// never returns secret values (only a mask), so "x_secret" in data is never
+// inspected.
 //
 // TODO(go-unifi): "x_secret" is read/written as a raw map key rather than
 // through settings.Radius.Secret (go-unifi already tags it
@@ -130,8 +120,6 @@ func (radiusSection) ownership() map[string]ownershipClass {
 func (s radiusSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	own := s.ownership()
-
 	var priorModel settingRadiusModel
 	if !prior.Radius.IsNull() && !prior.Radius.IsUnknown() {
 		diags.Append(prior.Radius.As(ctx, &priorModel, basetypes.ObjectAsOptions{})...)
@@ -140,16 +128,17 @@ func (s radiusSection) decode(ctx context.Context, snap rawSettings, prior setti
 	sec, _ := snap.section(s.key())
 	data := sec.Data
 
-	accountingEnabled, d := decodeBool(data, "accounting_enabled", own["accounting_enabled"], priorModel.AccountingEnabled)
+	accountingEnabled, d := decodeBool(data, "accounting_enabled", priorModel.AccountingEnabled)
 	diags.Append(d...)
-	acctPort, d := decodeInt64(data, "acct_port", own["acct_port"], priorModel.AcctPort)
+	acctPort, d := decodeInt64(data, "acct_port", priorModel.AcctPort)
 	diags.Append(d...)
-	authPort, d := decodeInt64(data, "auth_port", own["auth_port"], priorModel.AuthPort)
+	authPort, d := decodeInt64(data, "auth_port", priorModel.AuthPort)
 	diags.Append(d...)
-	interimUpdateInterval, d := decodeGoDuration(data, "interim_update_interval", own["interim_update_interval"], priorModel.InterimUpdateInterval, time.Second)
+	interimUpdateInterval, d := decodeGoDuration(data, "interim_update_interval", priorModel.InterimUpdateInterval, time.Second)
 	diags.Append(d...)
-	secret, d := decodeString(data, "x_secret", own["secret"], priorModel.Secret)
-	diags.Append(d...)
+	// secret (wire x_secret) is write-only: the controller never returns it,
+	// so decode always preserves prior instead of reading data.
+	secret := priorModel.Secret
 	if diags.HasError() {
 		return diags
 	}
@@ -176,19 +165,17 @@ func (s radiusSection) decode(ctx context.Context, snap rawSettings, prior setti
 // deep copy of the snapshot's current section data so any unmodeled key
 // already present on the controller (configure_whole_network,
 // tunneled_reply, enabled) is preserved (RMW). The secret leaf writes to
-// wire key "x_secret": overlayString's ownerWriteOnlySecret branch deletes
-// x_secret from base when the config value is null/unknown (never re-sends
-// a masked value) and writes it when set, including an explicit empty
-// string. Returns configured == false (no write) when the section is not
-// configured (null/unknown) in model.
+// wire key "x_secret" inline: a null/unknown config value deletes x_secret
+// from base (never re-sends a masked value); a configured value, including
+// an explicit empty string, is written verbatim. Returns configured ==
+// false (no write) when the section is not configured (null/unknown) in
+// model.
 func (s radiusSection) overlay(ctx context.Context, model, prior settingResourceModel, snap rawSettings) (settings.RawSetting, bool, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if model.Radius.IsNull() || model.Radius.IsUnknown() {
 		return settings.RawSetting{}, false, diags
 	}
-
-	own := s.ownership()
 
 	var m settingRadiusModel
 	diags.Append(model.Radius.As(ctx, &m, basetypes.ObjectAsOptions{})...)
@@ -197,11 +184,15 @@ func (s radiusSection) overlay(ctx context.Context, model, prior settingResource
 	}
 
 	base := snap.dataCopy(s.key())
-	overlayBool(base, "accounting_enabled", own["accounting_enabled"], m.AccountingEnabled)
-	overlayInt64(base, "acct_port", own["acct_port"], m.AcctPort)
-	overlayInt64(base, "auth_port", own["auth_port"], m.AuthPort)
-	overlayGoDuration(base, "interim_update_interval", own["interim_update_interval"], m.InterimUpdateInterval, time.Second)
-	overlayString(base, "x_secret", own["secret"], m.Secret)
+	overlayBool(base, "accounting_enabled", m.AccountingEnabled)
+	overlayInt64(base, "acct_port", m.AcctPort)
+	overlayInt64(base, "auth_port", m.AuthPort)
+	overlayGoDuration(base, "interim_update_interval", m.InterimUpdateInterval, time.Second)
+	if !m.Secret.IsNull() && !m.Secret.IsUnknown() {
+		base["x_secret"] = m.Secret.ValueString()
+	} else {
+		delete(base, "x_secret") // never replay a read-back mask
+	}
 	if diags.HasError() {
 		return settings.RawSetting{}, false, diags
 	}
@@ -218,15 +209,15 @@ func (s radiusSection) capability(snap rawSettings) capabilityState {
 }
 
 // carryBestEffort copies the plan's radius value onto dst via
-// bestEffortObject: this section holds a write-only secret leaf (secret),
+// carrySecretObject: this section holds a write-only secret leaf (secret),
 // so a straight plan copy would be wrong when a C2.4 second-failure recovery
 // needs to fall back to prior's secret for a null/unknown plan secret.
-// bestEffortObject copies every other (non-secret) leaf from plan verbatim
-// and, for secret specifically, keeps prior's value when plan's is
-// null/unknown and keeps plan's value (including an explicit empty string)
-// when set.
-func (radiusSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
-	obj, diags := bestEffortObject(plan.Radius, prior.Radius, radiusSection{}.ownership())
+// carrySecretObject copies every other (non-secret) leaf from plan verbatim
+// and, for secret specifically, keeps prior's value (read off dst, which
+// bestEffortState seeds as prior) when plan's is null/unknown, and keeps
+// plan's value (including an explicit empty string) when set.
+func (radiusSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
+	obj, diags := carrySecretObject(plan.Radius, dst.Radius, "secret")
 	dst.Radius = obj
 	return diags
 }

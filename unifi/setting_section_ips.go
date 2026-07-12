@@ -27,11 +27,10 @@ import (
 // suppression_alerts/suppression_whitelist to top-level attributes, but the
 // controller wire nests them under a "suppression": {"alerts": [...],
 // "whitelist": [...]} object. Every other ips field maps 1:1 (wire key ==
-// schema name). The section glues this wrapper by hand in decode/overlay,
-// using the generalized codec's separation of the wire/data key ("alerts"/
-// "whitelist", used for map lookups) from the ownership path
-// ("suppression_alerts"/"suppression_whitelist", used for schema-name
-// ownership lookups).
+// schema name). The section glues this wrapper by hand in decode/overlay:
+// it unwraps/rewraps the "suppression" submap itself and calls
+// decodeObjectList/overlayObjectList with the inner wire key ("alerts"/
+// "whitelist") directly.
 //
 // TODO(go-unifi): the "suppression" nesting is unwrapped by hand from the
 // raw map rather than via settings.Ips.Suppression
@@ -242,60 +241,19 @@ func (ipsSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-// ownership is the FULL dotted-path map: all 22 leaves, ALL ownerManaged,
-// using schema names (suppression_alerts.tracking.direction etc.), NOT the
-// wire "suppression" wrapper. honeypot/suppression_alerts/
-// suppression_alerts.tracking/suppression_whitelist are containers, not
-// leaves, so they have no entry here - the gate-10 leafPaths walker only
-// produces the dotted child paths, and an extra bare container key would
-// fail the coverage test.
-func (ipsSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"advanced_filtering_preference":           ownerManaged,
-		"content_filtering_blocking_page_enabled": ownerManaged,
-		"enabled_categories":                      ownerManaged,
-		"enabled_networks":                        ownerManaged,
-		"honeypot_enabled":                        ownerManaged,
-		"ips_mode":                                ownerManaged,
-		"memory_optimized":                        ownerManaged,
-		"restrict_torrents":                       ownerManaged,
-
-		"honeypot.ip_address": ownerManaged,
-		"honeypot.network_id": ownerManaged,
-		"honeypot.version":    ownerManaged,
-
-		"suppression_alerts.category":           ownerManaged,
-		"suppression_alerts.gid":                ownerManaged,
-		"suppression_alerts.id":                 ownerManaged,
-		"suppression_alerts.signature":          ownerManaged,
-		"suppression_alerts.type":               ownerManaged,
-		"suppression_alerts.tracking.direction": ownerManaged,
-		"suppression_alerts.tracking.mode":      ownerManaged,
-		"suppression_alerts.tracking.value":     ownerManaged,
-
-		"suppression_whitelist.direction": ownerManaged,
-		"suppression_whitelist.mode":      ownerManaged,
-		"suppression_whitelist.value":     ownerManaged,
-	}
-}
-
 var (
 	ipsHoneypotElemType  = types.ObjectType{AttrTypes: ipsHoneypotAttrTypes}
 	ipsWhitelistElemType = types.ObjectType{AttrTypes: ipsWhitelistAttrTypes}
 	ipsAlertElemType     = types.ObjectType{AttrTypes: ipsAlertAttrTypes}
 )
 
-// decode populates model.Ips from snap's "ips" section data, falling back to
-// prior.Ips's matching leaf for any field whose ownership class does not
-// read from the API (none, here - all leaves are ownerManaged).
+// decode populates model.Ips from snap's "ips" section data.
 // suppression_alerts/suppression_whitelist are unwrapped from the wire's
 // "suppression" object by hand (the only remap in this section); every
 // other field, including honeypot and the alert's nested tracking list, maps
 // 1:1 through the generalized nested codec (decodeObjectList).
 func (s ipsSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := s.ownership()
 
 	var priorModel settingIpsModel
 	if !prior.Ips.IsNull() && !prior.Ips.IsUnknown() {
@@ -305,23 +263,23 @@ func (s ipsSection) decode(ctx context.Context, snap rawSettings, prior settingR
 	sec, _ := snap.section(s.key())
 	data := sec.Data
 
-	ipsMode, d := decodeString(data, "ips_mode", own["ips_mode"], priorModel.IPSMode)
+	ipsMode, d := decodeString(data, "ips_mode", priorModel.IPSMode)
 	diags.Append(d...)
-	advancedFilteringPreference, d := decodeString(data, "advanced_filtering_preference", own["advanced_filtering_preference"], priorModel.AdvancedFilteringPreference)
+	advancedFilteringPreference, d := decodeString(data, "advanced_filtering_preference", priorModel.AdvancedFilteringPreference)
 	diags.Append(d...)
-	honeypotEnabled, d := decodeBool(data, "honeypot_enabled", own["honeypot_enabled"], priorModel.HoneypotEnabled)
+	honeypotEnabled, d := decodeBool(data, "honeypot_enabled", priorModel.HoneypotEnabled)
 	diags.Append(d...)
-	restrictTorrents, d := decodeBool(data, "restrict_torrents", own["restrict_torrents"], priorModel.RestrictTorrents)
+	restrictTorrents, d := decodeBool(data, "restrict_torrents", priorModel.RestrictTorrents)
 	diags.Append(d...)
-	contentFilteringBlockingPageEnabled, d := decodeBool(data, "content_filtering_blocking_page_enabled", own["content_filtering_blocking_page_enabled"], priorModel.ContentFilteringBlockingPageEnabled)
+	contentFilteringBlockingPageEnabled, d := decodeBool(data, "content_filtering_blocking_page_enabled", priorModel.ContentFilteringBlockingPageEnabled)
 	diags.Append(d...)
-	memoryOptimized, d := decodeBool(data, "memory_optimized", own["memory_optimized"], priorModel.MemoryOptimized)
+	memoryOptimized, d := decodeBool(data, "memory_optimized", priorModel.MemoryOptimized)
 	diags.Append(d...)
-	enabledCategories, d := decodeStringList(ctx, data, "enabled_categories", own["enabled_categories"], priorModel.EnabledCategories)
+	enabledCategories, d := decodeStringList(ctx, data, "enabled_categories", priorModel.EnabledCategories)
 	diags.Append(d...)
-	enabledNetworks, d := decodeStringList(ctx, data, "enabled_networks", own["enabled_networks"], priorModel.EnabledNetworks)
+	enabledNetworks, d := decodeStringList(ctx, data, "enabled_networks", priorModel.EnabledNetworks)
 	diags.Append(d...)
-	honeypot, d := decodeObjectList(ctx, data, "honeypot", own, "honeypot", priorModel.Honeypot, ipsHoneypotElemType)
+	honeypot, d := decodeObjectList(ctx, data, "honeypot", priorModel.Honeypot, ipsHoneypotElemType)
 	diags.Append(d...)
 
 	// ⚠️ Wire wrapper: the controller nests suppression_alerts/
@@ -329,9 +287,9 @@ func (s ipsSection) decode(ctx context.Context, snap rawSettings, prior settingR
 	// suppression map is safe here: decodeObjectList reads a nil map's
 	// missing key as absent and returns ListNull.
 	suppression, _ := data["suppression"].(map[string]any)
-	alerts, d := decodeObjectList(ctx, suppression, "alerts", own, "suppression_alerts", priorModel.SuppressionAlerts, ipsAlertElemType)
+	alerts, d := decodeObjectList(ctx, suppression, "alerts", priorModel.SuppressionAlerts, ipsAlertElemType)
 	diags.Append(d...)
-	whitelist, d := decodeObjectList(ctx, suppression, "whitelist", own, "suppression_whitelist", priorModel.SuppressionWhitelist, ipsWhitelistElemType)
+	whitelist, d := decodeObjectList(ctx, suppression, "whitelist", priorModel.SuppressionWhitelist, ipsWhitelistElemType)
 	diags.Append(d...)
 
 	if diags.HasError() {
@@ -384,8 +342,6 @@ func (s ipsSection) overlay(ctx context.Context, model, prior settingResourceMod
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := s.ownership()
-
 	var m settingIpsModel
 	diags.Append(model.Ips.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -393,15 +349,15 @@ func (s ipsSection) overlay(ctx context.Context, model, prior settingResourceMod
 	}
 
 	base := snap.dataCopy(s.key())
-	overlayString(base, "ips_mode", own["ips_mode"], m.IPSMode)
-	overlayString(base, "advanced_filtering_preference", own["advanced_filtering_preference"], m.AdvancedFilteringPreference)
-	overlayBool(base, "honeypot_enabled", own["honeypot_enabled"], m.HoneypotEnabled)
-	overlayBool(base, "restrict_torrents", own["restrict_torrents"], m.RestrictTorrents)
-	overlayBool(base, "content_filtering_blocking_page_enabled", own["content_filtering_blocking_page_enabled"], m.ContentFilteringBlockingPageEnabled)
-	overlayBool(base, "memory_optimized", own["memory_optimized"], m.MemoryOptimized)
-	diags.Append(overlayStringList(ctx, base, "enabled_categories", own["enabled_categories"], m.EnabledCategories)...)
-	diags.Append(overlayStringList(ctx, base, "enabled_networks", own["enabled_networks"], m.EnabledNetworks)...)
-	diags.Append(overlayObjectList(ctx, base, "honeypot", own, "honeypot", m.Honeypot)...)
+	overlayString(base, "ips_mode", m.IPSMode)
+	overlayString(base, "advanced_filtering_preference", m.AdvancedFilteringPreference)
+	overlayBool(base, "honeypot_enabled", m.HoneypotEnabled)
+	overlayBool(base, "restrict_torrents", m.RestrictTorrents)
+	overlayBool(base, "content_filtering_blocking_page_enabled", m.ContentFilteringBlockingPageEnabled)
+	overlayBool(base, "memory_optimized", m.MemoryOptimized)
+	diags.Append(overlayStringList(ctx, base, "enabled_categories", m.EnabledCategories)...)
+	diags.Append(overlayStringList(ctx, base, "enabled_networks", m.EnabledNetworks)...)
+	diags.Append(overlayObjectList(ctx, base, "honeypot", m.Honeypot)...)
 
 	// ⚠️ Wire wrapper: glue suppression_alerts/suppression_whitelist into
 	// the "suppression" submap by hand.
@@ -409,8 +365,8 @@ func (s ipsSection) overlay(ctx context.Context, model, prior settingResourceMod
 	if !had {
 		sup = map[string]any{}
 	}
-	diags.Append(overlayObjectList(ctx, sup, "whitelist", own, "suppression_whitelist", m.SuppressionWhitelist)...)
-	diags.Append(overlayObjectList(ctx, sup, "alerts", own, "suppression_alerts", m.SuppressionAlerts)...)
+	diags.Append(overlayObjectList(ctx, sup, "whitelist", m.SuppressionWhitelist)...)
+	diags.Append(overlayObjectList(ctx, sup, "alerts", m.SuppressionAlerts)...)
 	if had || len(sup) > 0 {
 		base["suppression"] = sup
 	}
@@ -433,7 +389,7 @@ func (s ipsSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's ips value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.
-func (ipsSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (ipsSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.Ips = plan.Ips
 	return nil
 }

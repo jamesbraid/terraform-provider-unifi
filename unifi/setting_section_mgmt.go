@@ -34,9 +34,7 @@ import (
 //   - Many ssh_*->x_ssh_* wire-key remaps: the model's tfsdk names are
 //     ssh_enabled/ssh_username/ssh_password/ssh_keys/
 //     ssh_auth_password_enabled, but the controller's wire keys for all five
-//     are x_ssh_-prefixed. Every other leaf is 1:1. The WIRE key is used for
-//     data/base access; the OWNERSHIP key (schema tfsdk name) is used for
-//     the ownership() class lookup — exactly like radius's secret->x_secret.
+//     are x_ssh_-prefixed. Every other leaf is 1:1.
 //
 //     TODO(go-unifi): these read/write raw "x_ssh_*" map keys rather than
 //     settings.Mgmt's SSHEnabled/SSHUsername/SSHPassword/SSHKeys
@@ -174,45 +172,16 @@ func (mgmtSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-// ownership is the 15 dotted leaf paths: 10 top-level scalars (all
-// ownerManaged except ssh_password, which is ownerWriteOnlySecret) plus the
-// 4 ssh_keys element children (public keys, ownerManaged). There is no bare
-// "ssh_keys" container key — it is a list, not a leaf, matching doh's
-// custom_servers convention. Keys here are the SCHEMA tfsdk names
-// (ssh_password, ssh_keys.name), NOT the wire x_ssh_* names.
-func (mgmtSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"auto_upgrade":              ownerManaged,
-		"auto_upgrade_hour":         ownerManaged,
-		"ssh_enabled":               ownerManaged,
-		"advanced_feature_enabled":  ownerManaged,
-		"debug_tools_enabled":       ownerManaged,
-		"direct_connect_enabled":    ownerManaged,
-		"unifi_idp_enabled":         ownerManaged,
-		"wifiman_enabled":           ownerManaged,
-		"ssh_username":              ownerManaged,
-		"ssh_auth_password_enabled": ownerManaged,
-		"ssh_password":              ownerWriteOnlySecret,
-		"ssh_keys.name":             ownerManaged,
-		"ssh_keys.type":             ownerManaged,
-		"ssh_keys.key":              ownerManaged,
-		"ssh_keys.comment":          ownerManaged,
-	}
-}
-
 // decode populates model.Mgmt from snap's "mgmt" section data. Every ssh_*
 // leaf reads from its x_ssh_*-prefixed wire key; every other leaf is 1:1.
 // The write-only secret leaf (SSHPassword) reads from priorModel.SSHPassword
-// unconditionally (ownership() classes it ownerWriteOnlySecret, so
-// decodeString never inspects the masked "x_ssh_password" wire value present
-// in data). ssh_keys is decoded through the generalized nested-object-list
-// codec (decodeObjectList), whose per-element children (name/type/key/
-// comment) are 1:1; the wire's extra date/fingerprint per element are
-// unmodeled and not decoded.
+// unconditionally — the controller never returns secret values, only a
+// mask, so "x_ssh_password" in data is never inspected. ssh_keys is decoded
+// through the generalized nested-object-list codec (decodeObjectList),
+// whose per-element children (name/type/key/comment) are 1:1; the wire's
+// extra date/fingerprint per element are unmodeled and not decoded.
 func (s mgmtSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := s.ownership()
 
 	var priorModel settingMgmtModel
 	if !prior.Mgmt.IsNull() && !prior.Mgmt.IsUnknown() {
@@ -222,29 +191,30 @@ func (s mgmtSection) decode(ctx context.Context, snap rawSettings, prior setting
 	sec, _ := snap.section(s.key())
 	data := sec.Data
 
-	autoUpgrade, d := decodeBool(data, "auto_upgrade", own["auto_upgrade"], priorModel.AutoUpgrade)
+	autoUpgrade, d := decodeBool(data, "auto_upgrade", priorModel.AutoUpgrade)
 	diags.Append(d...)
-	autoUpgradeHour, d := decodeInt64(data, "auto_upgrade_hour", own["auto_upgrade_hour"], priorModel.AutoUpgradeHour)
+	autoUpgradeHour, d := decodeInt64(data, "auto_upgrade_hour", priorModel.AutoUpgradeHour)
 	diags.Append(d...)
-	advancedFeatureEnabled, d := decodeBool(data, "advanced_feature_enabled", own["advanced_feature_enabled"], priorModel.AdvancedFeatureEnabled)
+	advancedFeatureEnabled, d := decodeBool(data, "advanced_feature_enabled", priorModel.AdvancedFeatureEnabled)
 	diags.Append(d...)
-	debugToolsEnabled, d := decodeBool(data, "debug_tools_enabled", own["debug_tools_enabled"], priorModel.DebugToolsEnabled)
+	debugToolsEnabled, d := decodeBool(data, "debug_tools_enabled", priorModel.DebugToolsEnabled)
 	diags.Append(d...)
-	directConnectEnabled, d := decodeBool(data, "direct_connect_enabled", own["direct_connect_enabled"], priorModel.DirectConnectEnabled)
+	directConnectEnabled, d := decodeBool(data, "direct_connect_enabled", priorModel.DirectConnectEnabled)
 	diags.Append(d...)
-	unifiIdpEnabled, d := decodeBool(data, "unifi_idp_enabled", own["unifi_idp_enabled"], priorModel.UnifiIdpEnabled)
+	unifiIdpEnabled, d := decodeBool(data, "unifi_idp_enabled", priorModel.UnifiIdpEnabled)
 	diags.Append(d...)
-	wifimanEnabled, d := decodeBool(data, "wifiman_enabled", own["wifiman_enabled"], priorModel.WifimanEnabled)
+	wifimanEnabled, d := decodeBool(data, "wifiman_enabled", priorModel.WifimanEnabled)
 	diags.Append(d...)
-	sshEnabled, d := decodeBool(data, "x_ssh_enabled", own["ssh_enabled"], priorModel.SSHEnabled)
+	sshEnabled, d := decodeBool(data, "x_ssh_enabled", priorModel.SSHEnabled)
 	diags.Append(d...)
-	sshAuthPasswordEnabled, d := decodeBool(data, "x_ssh_auth_password_enabled", own["ssh_auth_password_enabled"], priorModel.SSHAuthPasswordEnabled)
+	sshAuthPasswordEnabled, d := decodeBool(data, "x_ssh_auth_password_enabled", priorModel.SSHAuthPasswordEnabled)
 	diags.Append(d...)
-	sshUsername, d := decodeString(data, "x_ssh_username", own["ssh_username"], priorModel.SSHUsername)
+	sshUsername, d := decodeString(data, "x_ssh_username", priorModel.SSHUsername)
 	diags.Append(d...)
-	sshPassword, d := decodeString(data, "x_ssh_password", own["ssh_password"], priorModel.SSHPassword)
-	diags.Append(d...)
-	sshKeys, d := decodeObjectList(ctx, data, "x_ssh_keys", own, "ssh_keys", priorModel.SSHKeys, types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes})
+	// ssh_password (wire x_ssh_password) is write-only: the controller never
+	// returns it, so decode always preserves prior instead of reading data.
+	sshPassword := priorModel.SSHPassword
+	sshKeys, d := decodeObjectList(ctx, data, "x_ssh_keys", priorModel.SSHKeys, types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes})
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -296,8 +266,6 @@ func (s mgmtSection) overlay(ctx context.Context, model, prior settingResourceMo
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := s.ownership()
-
 	var m settingMgmtModel
 	diags.Append(model.Mgmt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -305,18 +273,22 @@ func (s mgmtSection) overlay(ctx context.Context, model, prior settingResourceMo
 	}
 
 	base := snap.dataCopy(s.key())
-	overlayBool(base, "auto_upgrade", own["auto_upgrade"], m.AutoUpgrade)
-	overlayInt64(base, "auto_upgrade_hour", own["auto_upgrade_hour"], m.AutoUpgradeHour)
-	overlayBool(base, "advanced_feature_enabled", own["advanced_feature_enabled"], m.AdvancedFeatureEnabled)
-	overlayBool(base, "debug_tools_enabled", own["debug_tools_enabled"], m.DebugToolsEnabled)
-	overlayBool(base, "direct_connect_enabled", own["direct_connect_enabled"], m.DirectConnectEnabled)
-	overlayBool(base, "unifi_idp_enabled", own["unifi_idp_enabled"], m.UnifiIdpEnabled)
-	overlayBool(base, "wifiman_enabled", own["wifiman_enabled"], m.WifimanEnabled)
-	overlayBool(base, "x_ssh_enabled", own["ssh_enabled"], m.SSHEnabled)
-	overlayBool(base, "x_ssh_auth_password_enabled", own["ssh_auth_password_enabled"], m.SSHAuthPasswordEnabled)
-	overlayString(base, "x_ssh_username", own["ssh_username"], m.SSHUsername)
-	overlayString(base, "x_ssh_password", own["ssh_password"], m.SSHPassword)
-	diags.Append(overlayObjectList(ctx, base, "x_ssh_keys", own, "ssh_keys", m.SSHKeys)...)
+	overlayBool(base, "auto_upgrade", m.AutoUpgrade)
+	overlayInt64(base, "auto_upgrade_hour", m.AutoUpgradeHour)
+	overlayBool(base, "advanced_feature_enabled", m.AdvancedFeatureEnabled)
+	overlayBool(base, "debug_tools_enabled", m.DebugToolsEnabled)
+	overlayBool(base, "direct_connect_enabled", m.DirectConnectEnabled)
+	overlayBool(base, "unifi_idp_enabled", m.UnifiIdpEnabled)
+	overlayBool(base, "wifiman_enabled", m.WifimanEnabled)
+	overlayBool(base, "x_ssh_enabled", m.SSHEnabled)
+	overlayBool(base, "x_ssh_auth_password_enabled", m.SSHAuthPasswordEnabled)
+	overlayString(base, "x_ssh_username", m.SSHUsername)
+	if !m.SSHPassword.IsNull() && !m.SSHPassword.IsUnknown() {
+		base["x_ssh_password"] = m.SSHPassword.ValueString()
+	} else {
+		delete(base, "x_ssh_password") // never replay a read-back mask
+	}
+	diags.Append(overlayObjectList(ctx, base, "x_ssh_keys", m.SSHKeys)...)
 	if diags.HasError() {
 		return settings.RawSetting{}, false, diags
 	}
@@ -374,16 +346,17 @@ func (s mgmtSection) capability(snap rawSettings) capabilityState {
 	return sectionCapability(snap, s.key())
 }
 
-// carryBestEffort copies the plan's mgmt value onto dst via bestEffortObject:
-// this section holds a write-only secret leaf (ssh_password), so a straight
-// plan copy would be wrong when a C2.4 second-failure recovery needs to fall
-// back to prior's secret for a null/unknown plan secret. bestEffortObject
-// copies every other (non-secret) leaf from plan verbatim — including the
-// ssh_keys list — and, for ssh_password specifically, keeps prior's value
-// when plan's is null/unknown and keeps plan's value (including an explicit
-// empty string) when set.
-func (mgmtSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
-	obj, diags := bestEffortObject(plan.Mgmt, prior.Mgmt, mgmtSection{}.ownership())
+// carryBestEffort copies the plan's mgmt value onto dst via
+// carrySecretObject: this section holds a write-only secret leaf
+// (ssh_password), so a straight plan copy would be wrong when a C2.4
+// second-failure recovery needs to fall back to prior's secret for a
+// null/unknown plan secret. carrySecretObject copies every other
+// (non-secret) leaf from plan verbatim — including the ssh_keys list — and,
+// for ssh_password specifically, keeps prior's value (read off dst, which
+// bestEffortState seeds as prior) when plan's is null/unknown, and keeps
+// plan's value (including an explicit empty string) when set.
+func (mgmtSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
+	obj, diags := carrySecretObject(plan.Mgmt, dst.Mgmt, "ssh_password")
 	dst.Mgmt = obj
 	return diags
 }

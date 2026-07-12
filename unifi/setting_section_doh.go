@@ -91,31 +91,11 @@ func (dohSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-// ownership is the FULL dotted-path map: state, server_names, and each
-// custom_servers leaf. custom_servers itself is a container, not a leaf, so
-// it has no entry here - the gate-10 leafPaths walker only produces the
-// dotted child paths, and an extra bare "custom_servers" key would fail the
-// coverage test.
-func (dohSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"state":                      ownerManaged,
-		"server_names":               ownerManaged,
-		"custom_servers.enabled":     ownerManaged,
-		"custom_servers.sdns_stamp":  ownerManaged,
-		"custom_servers.server_name": ownerManaged,
-	}
-}
-
-// decode populates model.Doh from snap's "doh" section data, falling back
-// to prior.Doh's matching leaf for any field whose ownership class does not
-// read from the API (none, here - all leaves are ownerManaged).
-// custom_servers is decoded through the generalized nested-object-list
-// codec (decodeObjectList), which type-dispatches its bool/string leaves
-// and looks up ownership by dotted path under the "custom_servers" prefix.
+// decode populates model.Doh from snap's "doh" section data. custom_servers
+// is decoded through the generalized nested-object-list codec
+// (decodeObjectList), which type-dispatches its bool/string leaves.
 func (s dohSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := s.ownership()
 
 	var priorModel settingDohModel
 	if !prior.Doh.IsNull() && !prior.Doh.IsUnknown() {
@@ -125,11 +105,11 @@ func (s dohSection) decode(ctx context.Context, snap rawSettings, prior settingR
 	sec, _ := snap.section(s.key())
 	data := sec.Data
 
-	state, d := decodeString(data, "state", own["state"], priorModel.State)
+	state, d := decodeString(data, "state", priorModel.State)
 	diags.Append(d...)
-	serverNames, d := decodeStringList(ctx, data, "server_names", own["server_names"], priorModel.ServerNames)
+	serverNames, d := decodeStringList(ctx, data, "server_names", priorModel.ServerNames)
 	diags.Append(d...)
-	customServers, d := decodeObjectList(ctx, data, "custom_servers", own, "custom_servers", priorModel.CustomServers, types.ObjectType{AttrTypes: dohCustomServerAttrTypes})
+	customServers, d := decodeObjectList(ctx, data, "custom_servers", priorModel.CustomServers, types.ObjectType{AttrTypes: dohCustomServerAttrTypes})
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -162,8 +142,6 @@ func (s dohSection) overlay(ctx context.Context, model, prior settingResourceMod
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := s.ownership()
-
 	var m settingDohModel
 	diags.Append(model.Doh.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -171,9 +149,9 @@ func (s dohSection) overlay(ctx context.Context, model, prior settingResourceMod
 	}
 
 	base := snap.dataCopy(s.key())
-	overlayString(base, "state", own["state"], m.State)
-	diags.Append(overlayStringList(ctx, base, "server_names", own["server_names"], m.ServerNames)...)
-	diags.Append(overlayObjectList(ctx, base, "custom_servers", own, "custom_servers", m.CustomServers)...)
+	overlayString(base, "state", m.State)
+	diags.Append(overlayStringList(ctx, base, "server_names", m.ServerNames)...)
+	diags.Append(overlayObjectList(ctx, base, "custom_servers", m.CustomServers)...)
 	if diags.HasError() {
 		return settings.RawSetting{}, false, diags
 	}
@@ -192,7 +170,7 @@ func (s dohSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's doh value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.
-func (dohSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (dohSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.Doh = plan.Doh
 	return nil
 }

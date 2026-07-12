@@ -16,7 +16,7 @@ import (
 )
 
 // lcmSection is the settingSection implementation for the "lcm" settings
-// section: a flat SingleNestedAttribute with only ownerManaged scalar
+// section: a flat SingleNestedAttribute with only managed scalar
 // leaves, no nested objects/lists and no secrets.
 type lcmSection struct{}
 
@@ -73,23 +73,9 @@ func (lcmSection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (lcmSection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"enabled":      ownerManaged,
-		"brightness":   ownerManaged,
-		"idle_timeout": ownerManaged,
-		"sync":         ownerManaged,
-		"touch_event":  ownerManaged,
-	}
-}
-
-// decode populates model.Lcm from snap's "lcm" section data, falling back
-// to prior.Lcm's matching leaf for any field whose ownership class does
-// not read from the API (none, here - all five leaves are ownerManaged).
+// decode populates model.Lcm from snap's "lcm" section data.
 func (lcmSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := lcmSection{}.ownership()
 
 	var priorModel settingLcmModel
 	if !prior.Lcm.IsNull() && !prior.Lcm.IsUnknown() {
@@ -99,15 +85,15 @@ func (lcmSection) decode(ctx context.Context, snap rawSettings, prior settingRes
 	sec, _ := snap.section("lcm")
 	data := sec.Data
 
-	enabled, d := decodeBool(data, "enabled", own["enabled"], priorModel.Enabled)
+	enabled, d := decodeBool(data, "enabled", priorModel.Enabled)
 	diags.Append(d...)
-	brightness, d := decodeInt64(data, "brightness", own["brightness"], priorModel.Brightness)
+	brightness, d := decodeInt64(data, "brightness", priorModel.Brightness)
 	diags.Append(d...)
-	idleTimeout, d := decodeInt64(data, "idle_timeout", own["idle_timeout"], priorModel.IdleTimeout)
+	idleTimeout, d := decodeInt64(data, "idle_timeout", priorModel.IdleTimeout)
 	diags.Append(d...)
-	sync, d := decodeBool(data, "sync", own["sync"], priorModel.Sync)
+	sync, d := decodeBool(data, "sync", priorModel.Sync)
 	diags.Append(d...)
-	touchEvent, d := decodeBool(data, "touch_event", own["touch_event"], priorModel.TouchEvent)
+	touchEvent, d := decodeBool(data, "touch_event", priorModel.TouchEvent)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -142,8 +128,6 @@ func (lcmSection) overlay(ctx context.Context, model, prior settingResourceModel
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := lcmSection{}.ownership()
-
 	var m settingLcmModel
 	diags.Append(model.Lcm.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -151,11 +135,11 @@ func (lcmSection) overlay(ctx context.Context, model, prior settingResourceModel
 	}
 
 	base := snap.dataCopy("lcm")
-	overlayBool(base, "enabled", own["enabled"], m.Enabled)
-	overlayInt64(base, "brightness", own["brightness"], m.Brightness)
-	overlayInt64(base, "idle_timeout", own["idle_timeout"], m.IdleTimeout)
-	overlayBool(base, "sync", own["sync"], m.Sync)
-	overlayBool(base, "touch_event", own["touch_event"], m.TouchEvent)
+	overlayBool(base, "enabled", m.Enabled)
+	overlayInt64(base, "brightness", m.Brightness)
+	overlayInt64(base, "idle_timeout", m.IdleTimeout)
+	overlayBool(base, "sync", m.Sync)
+	overlayBool(base, "touch_event", m.TouchEvent)
 
 	rs := settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: "lcm"},
@@ -171,7 +155,7 @@ func (lcmSection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's lcm value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.
-func (lcmSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (lcmSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.Lcm = plan.Lcm
 	return nil
 }

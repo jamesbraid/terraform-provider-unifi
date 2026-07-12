@@ -14,7 +14,7 @@ import (
 
 // countrySection is the settingSection implementation for the "country"
 // settings section: a flat SingleNestedAttribute with a single
-// ownerManaged scalar leaf, no nested objects/lists and no secrets.
+// managed scalar leaf, no nested objects/lists and no secrets.
 type countrySection struct{}
 
 func init() {
@@ -44,20 +44,9 @@ func (countrySection) schemaAttribute() schema.Attribute {
 	}
 }
 
-func (countrySection) ownership() map[string]ownershipClass {
-	return map[string]ownershipClass{
-		"code": ownerManaged,
-	}
-}
-
-// decode populates model.Country from snap's "country" section data,
-// falling back to prior.Country's matching leaf for any field whose
-// ownership class does not read from the API (none, here - the only leaf
-// is ownerManaged).
+// decode populates model.Country from snap's "country" section data.
 func (countrySection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-
-	own := countrySection{}.ownership()
 
 	var priorModel settingCountryModel
 	if !prior.Country.IsNull() && !prior.Country.IsUnknown() {
@@ -67,7 +56,7 @@ func (countrySection) decode(ctx context.Context, snap rawSettings, prior settin
 	sec, _ := snap.section("country")
 	data := sec.Data
 
-	code, d := decodeInt64(data, "code", own["code"], priorModel.Code)
+	code, d := decodeInt64(data, "code", priorModel.Code)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -99,8 +88,6 @@ func (countrySection) overlay(ctx context.Context, model, prior settingResourceM
 		return settings.RawSetting{}, false, diags
 	}
 
-	own := countrySection{}.ownership()
-
 	var m settingCountryModel
 	diags.Append(model.Country.As(ctx, &m, basetypes.ObjectAsOptions{})...)
 	if diags.HasError() {
@@ -108,7 +95,7 @@ func (countrySection) overlay(ctx context.Context, model, prior settingResourceM
 	}
 
 	base := snap.dataCopy("country")
-	overlayInt64(base, "code", own["code"], m.Code)
+	overlayInt64(base, "code", m.Code)
 
 	rs := settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: "country"},
@@ -124,7 +111,7 @@ func (countrySection) capability(snap rawSettings) capabilityState {
 // carryBestEffort copies the plan's country value onto dst. This section
 // holds no secret leaves, so it is a straight copy with no per-leaf
 // plan/prior choice needed.
-func (countrySection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
+func (countrySection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	dst.Country = plan.Country
 	return nil
 }

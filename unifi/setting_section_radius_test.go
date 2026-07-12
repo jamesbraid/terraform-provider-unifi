@@ -201,7 +201,7 @@ func TestRadiusSection_SecretOverlay(t *testing.T) {
 	})
 }
 
-// TestRadiusSection_CarryBestEffortSecretMatrix pins bestEffortObject's
+// TestRadiusSection_CarryBestEffortSecretMatrix pins carrySecretObject's
 // per-leaf plan/prior choice for the radius object's secret matrix: plan's
 // secret null or unknown falls back to prior's secret; a set plan secret
 // (including an intentional empty-string rotate-to-empty) is kept from
@@ -253,10 +253,12 @@ func TestRadiusSection_CarryBestEffortSecretMatrix(t *testing.T) {
 			planObj := newRadius(t, true, tc.planSecret)
 
 			plan := settingResourceModel{Radius: planObj}
-			prior := settingResourceModel{Radius: priorObj}
-			dst := settingResourceModel{}
+			// carryBestEffort's new signature reads prior's secret off dst
+			// (bestEffortState seeds dst := prior before calling), so dst
+			// starts pre-seeded with the prior object here too.
+			dst := settingResourceModel{Radius: priorObj}
 
-			diags := sec.carryBestEffort(&dst, plan, prior)
+			diags := sec.carryBestEffort(&dst, plan)
 			if diags.HasError() {
 				t.Fatalf("carryBestEffort diagnostics: %v", diags)
 			}
