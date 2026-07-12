@@ -3,6 +3,7 @@ package unifi
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -533,6 +534,25 @@ func (r *settingResource) Create(
 	resp.Diagnostics.Append(applyDiags...)
 }
 
+// allSectionAttrsNull reports whether every registered section attribute is
+// null in m — the shape produced by ImportState (before the first Read
+// hydrates them). When true, Read hydrates ALL sections (onlyConfigured=
+// false) so an imported resource observes every section as Computed
+// (UseStateForUnknown keeps them stable -> a subsequent no-config plan is
+// clean). Otherwise Read refreshes only the configured sections.
+//
+// This is an explicit 13-field check, not derived from the section registry
+// — if a 14th section is ever added, it must be updated here too (acceptable
+// for PR-A's fixed 13; a future refactor could derive it from the registry
+// if a section gains a model-field accessor).
+func allSectionAttrsNull(m settingResourceModel) bool {
+	return m.AutoSpeedtest.IsNull() && m.Country.IsNull() && m.Dpi.IsNull() &&
+		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
+		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
+		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
+		m.IgmpSnooping.IsNull()
+}
+
 func (r *settingResource) Read(
 	ctx context.Context,
 	req resource.ReadRequest,
@@ -556,11 +576,16 @@ func (r *settingResource) Read(
 	client := realSettingsClient{r.client}
 	site := resolveSite(data.Site.ValueString(), r.client.Site)
 
-	// onlyConfigured=true: refresh only the sections already configured in
-	// state, matching legacy readSettings' behavior. Task 24b adds the
-	// import-hydration gate (onlyConfigured=false when every section attr
-	// is null, e.g. right after ImportState) — not yet wired here.
-	resp.Diagnostics.Append(readSections(ctx, settingSections, client, site, data, &data, true)...)
+	// Hydration gate: state with every section attribute null is exactly the
+	// shape ImportState produces (a bare site name, no configured sections
+	// yet) — in that case hydrate ALL registered sections as Computed
+	// (onlyConfigured=false) so the imported resource observes every section
+	// UseStateForUnknown can then hold stable, giving a clean subsequent
+	// no-config plan. Any other state (at least one section already
+	// populated, i.e. normal steady-state refresh) refreshes only the
+	// sections already configured, matching legacy readSettings' behavior.
+	onlyConfigured := !allSectionAttrsNull(data)
+	resp.Diagnostics.Append(readSections(ctx, settingSections, client, site, data, &data, onlyConfigured)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -625,17 +650,34 @@ func (r *settingResource) Delete(
 	// Just remove from state
 }
 
+// ImportState accepts a bare site name (e.g. "default"), NOT the "site:id"
+// composite ImportStatePassthroughID (and the NAT/CF resources) use —
+// unifi_setting is site-level, so the site name alone fully identifies it.
+// id and site are both set to that name; all 13 section attributes are left
+// null (the imported shape), and the first Read hydrates them in full — see
+// the hydration gate in Read and allSectionAttrsNull below.
 func (r *settingResource) ImportState(
 	ctx context.Context,
 	req resource.ImportStateRequest,
 	resp *resource.ImportStateResponse,
 ) {
-	resource.ImportStatePassthroughID(
-		ctx,
-		path.Root("id"),
-		req,
-		resp,
-	)
+	siteName := strings.TrimSpace(req.ID)
+	if siteName == "" || strings.Contains(siteName, ":") {
+		resp.Diagnostics.AddError(
+			"Invalid import ID",
+			fmt.Sprintf(
+				"unifi_setting import ID must be a bare site name (e.g. %q), not a composite %q — settings are site-level.",
+				"default",
+				req.ID,
+			),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), siteName)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), siteName)...)
+	// All 13 section attributes are left null (the imported shape); the first
+	// Read hydrates them (see the Read hydration gate above).
 }
 
 func (r *settingResource) readSettings(

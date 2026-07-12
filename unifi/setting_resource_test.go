@@ -8,7 +8,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
@@ -42,6 +44,46 @@ func TestAccSettingResource_mgmt(t *testing.T) {
 					"mgmt.auto_upgrade",
 					"mgmt.ssh_enabled",
 				},
+			},
+		},
+	})
+}
+
+// TestAccSettingImport_cleanPlan covers the acceptance-level half of the C3 /
+// gate-6 contract: importing unifi_setting by a bare site name (via
+// ImportStateId, exercising the real "terraform import <addr> <site>" flow)
+// must hydrate every section, so re-applying the SAME config that produced
+// the original resource is a clean, empty plan — no drift from sections the
+// config never touched but the import hydrated as Computed.
+func TestAccSettingImport_cleanPlan(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_mgmt(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mgmt.auto_upgrade",
+						"true",
+					),
+				),
+			},
+			{
+				// Bare site name import (C3: not the "site:id" composite).
+				ResourceName:       "unifi_setting.test",
+				ImportState:        true,
+				ImportStateId:      "default",
+				ImportStatePersist: true,
+			},
+			{
+				// Re-applying the identical config against the imported state
+				// must be a no-op plan: the hydration gate populated every
+				// other section as Computed, and UseStateForUnknown holds
+				// them stable across this plan.
+				Config:   testAccSettingConfig_mgmt(),
+				PlanOnly: true,
 			},
 		},
 	})
@@ -695,10 +737,118 @@ func Test_settingResource_Configure(t *testing.T) {
 	}
 }
 
-func Test_settingResource_ImportState(t *testing.T) {
-	t.Skip(
-		"ImportState delegates to ImportStatePassthroughID which requires full state schema setup",
-	)
+// newImportStateTestResponse builds an ImportStateResponse whose State is
+// wired to the real settingResource schema, seeded with an all-null root
+// object — mirroring the empty state Terraform hands ImportState before any
+// attributes are set. This lets tests drive resp.State.SetAttribute (what
+// ImportState actually calls) instead of stubbing it out.
+func newImportStateTestResponse(t *testing.T) (*settingResource, *fwresource.ImportStateResponse) {
+	t.Helper()
+	ctx := context.Background()
+	r := &settingResource{}
+	var schemaResp fwresource.SchemaResponse
+	r.Schema(ctx, fwresource.SchemaRequest{}, &schemaResp)
+	if schemaResp.Diagnostics.HasError() {
+		t.Fatalf("Schema() produced errors: %v", schemaResp.Diagnostics)
+	}
+	nullRoot := tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil)
+	return r, &fwresource.ImportStateResponse{
+		State: tfsdk.State{
+			Raw:    nullRoot,
+			Schema: schemaResp.Schema,
+		},
+	}
+}
+
+// TestSettingImport_setsSiteAndHydrates covers ImportState's half of the
+// contract: given a bare site name, it must set both id and site to that
+// name and leave every section attribute null (the shape Read's hydration
+// gate then detects and hydrates in full). The Read-hydrates-all half is
+// covered directly against the engine in
+// setting_engine_lifecycle_test.go's TestLifecycle_importHydratesAll_thenCleanRePlan
+// (readSections is the same call Read makes; onlyConfigured=false there is
+// exactly the value allSectionAttrsNull produces for this imported shape).
+func TestSettingImport_setsSiteAndHydrates(t *testing.T) {
+	ctx := context.Background()
+	r, resp := newImportStateTestResponse(t)
+
+	r.ImportState(ctx, fwresource.ImportStateRequest{ID: "default"}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("ImportState produced diagnostics: %v", resp.Diagnostics)
+	}
+
+	var got settingResourceModel
+	if diags := resp.State.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("reading back imported state: %v", diags)
+	}
+
+	if got.ID.ValueString() != "default" {
+		t.Errorf("id = %q, want %q", got.ID.ValueString(), "default")
+	}
+	if got.Site.ValueString() != "default" {
+		t.Errorf("site = %q, want %q", got.Site.ValueString(), "default")
+	}
+	if !allSectionAttrsNull(got) {
+		t.Errorf("imported model has a non-null section attribute, want all 13 null: %+v", got)
+	}
+}
+
+// TestSettingImport_nonDefaultSite proves the import ID is not hardcoded to
+// "default": any bare site name is accepted and persisted verbatim to both
+// id and site.
+func TestSettingImport_nonDefaultSite(t *testing.T) {
+	ctx := context.Background()
+	r, resp := newImportStateTestResponse(t)
+
+	r.ImportState(ctx, fwresource.ImportStateRequest{ID: "branch-office"}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("ImportState produced diagnostics: %v", resp.Diagnostics)
+	}
+
+	var got settingResourceModel
+	if diags := resp.State.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("reading back imported state: %v", diags)
+	}
+	if got.ID.ValueString() != "branch-office" {
+		t.Errorf("id = %q, want %q", got.ID.ValueString(), "branch-office")
+	}
+	if got.Site.ValueString() != "branch-office" {
+		t.Errorf("site = %q, want %q", got.Site.ValueString(), "branch-office")
+	}
+}
+
+// TestSettingImport_rejectsComposite guards the C3 contract: unifi_setting's
+// import ID is a bare site name, NOT the "site:id" composite used by NAT/CF
+// resources. Both an empty ID and a composite-shaped ID must produce an
+// error diagnostic rather than silently defaulting or mis-parsing.
+func TestSettingImport_rejectsComposite(t *testing.T) {
+	for _, id := range []string{"", "default:abc123", "site:id"} {
+		t.Run(id, func(t *testing.T) {
+			ctx := context.Background()
+			r, resp := newImportStateTestResponse(t)
+
+			r.ImportState(ctx, fwresource.ImportStateRequest{ID: id}, resp)
+			if !resp.Diagnostics.HasError() {
+				t.Fatalf("ImportState(%q): expected an error diagnostic, got none", id)
+			}
+		})
+	}
+}
+
+// TestAllSectionAttrsNull_gate exercises the helper Read's hydration gate
+// depends on directly: true for the freshly-imported all-null shape, false
+// as soon as any single section attribute is populated.
+func TestAllSectionAttrsNull_gate(t *testing.T) {
+	if !allSectionAttrsNull(allSectionsNullModel()) {
+		t.Error("allSectionAttrsNull(all-null model) = false, want true")
+	}
+
+	ctx := context.Background()
+	partial := allSectionsNullModel()
+	partial.Dpi = dpiObject(t, ctx, true, false)
+	if allSectionAttrsNull(partial) {
+		t.Error("allSectionAttrsNull(model with Dpi configured) = true, want false")
+	}
 }
 
 func Test_settingResource_mgmtModelToSetting(t *testing.T) {
