@@ -531,50 +531,26 @@ func TestLifecycle_explicitClearVsStopManaging(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 8. TestLifecycle_malformedRemoteAborts
+// 8. TestLifecycle_malformedRemoteTolerated
 // ---------------------------------------------------------------------------
 
-// TestLifecycle_malformedRemoteAborts covers the brief's §8 item 8 for
-// readSections exactly as specified: a malformed remote value for a
-// CONFIGURED section is a decode error that aborts with a diagnostic.
-//
-// ⚠️ Engine-vs-brief mismatch (reported per the task instructions rather than
-// papered over): the brief also expects applySections to "produce a
-// diagnostic and abort" for the same malformed-remote-value fixture. Verified
-// against the real engine, that is NOT what applySections does when the
-// PLAN configures (overwrites) the malformed leaf:
-//
-//  1. reconcile-before-mutate's overlay() phase never DECODES the snapshot's
-//     existing value for an ownerManaged leaf — overlayBool's non-secret
-//     branch unconditionally calls putBool(out, key, v) with the PLAN's own
-//     (valid) value, clobbering the malformed remote value in the write
-//     body. No decode ever happens for a leaf the plan is overwriting, so no
-//     error can be raised from it.
-//  2. The PUT therefore succeeds and stores the corrected value back into
-//     the fake, so applySections' post-apply readSections(onlyConfigured=
-//     false) re-read decodes the NOW-VALID value cleanly. diags is entirely
-//     empty (verified: not even a warning).
-//  3. Even in the fixture where the malformed section is NOT configured this
-//     apply (so it survives untouched and the post-apply full-registry
-//     re-read attempts to decode the still-malformed value), the resulting
-//     decode error is caught by `if rd := readSections(...); rd.HasError()`
-//     but rd itself is discarded — only rd.HasError() is consulted as a
-//     bool, and the branch replaces it with a WARNING ("settings read-back
-//     failed after apply") via bestEffortState, not an error. HasError() is
-//     false; diags.HasError() never becomes true from a post-apply decode
-//     failure alone. This is deliberate C2.4 best-effort-recovery design
-//     (a successful write should not be reported as a failed apply merely
-//     because the read-back glitched), not a bug — but it does mean
-//     applySections structurally cannot satisfy the brief's "aborts with an
-//     error diagnostic" for ANY malformed-remote-value fixture, configured
-//     or not. Both variants are asserted below as verified, not as the
-//     brief's original (incorrect for applySections) expectation.
-func TestLifecycle_malformedRemoteAborts(t *testing.T) {
+// TestLifecycle_malformedRemoteTolerated supersedes the old
+// TestLifecycle_malformedRemoteAborts (Task 1: remote type drift is now
+// tolerated at read time, not a hard failure). A malformed remote value
+// (string where dpi.enabled expects a bool) is remote type drift: readSections
+// and applySections both now WARN and retain the field's prior typed value —
+// they never abort with an error diagnostic, and refresh/apply keep
+// succeeding through a single drifted field. A subsequent apply with a VALID
+// configured value for that same leaf still overwrites the malformed prior
+// remote (overlay always writes the plan's own valid value for an
+// ownerManaged leaf, independent of decode).
+func TestLifecycle_malformedRemoteTolerated(t *testing.T) {
 	ctx := context.Background()
 
 	plan := allSectionsNullModel()
 	plan.Dpi = dpiObject(t, ctx, true, false)
 	prior := allSectionsNullModel()
+	prior.Dpi = dpiObject(t, ctx, false, false) // prior typed value the field must retain on drift
 
 	malformedClient := func() *fakeSettingsClient {
 		c := newFakeSettingsClient()
@@ -585,18 +561,32 @@ func TestLifecycle_malformedRemoteAborts(t *testing.T) {
 		return c
 	}
 
-	t.Run("readSections aborts with a diagnostic (brief §8 item 8, as specified)", func(t *testing.T) {
-		var model settingResourceModel
-		diags := readSections(ctx, realSections(), malformedClient(), "default", prior, &model, true)
-		if !diags.HasError() {
-			t.Fatalf("expected error diagnostics from malformed remote dpi.enabled, got none")
+	t.Run("readSections warns and retains prior on a malformed remote field, refresh still succeeds", func(t *testing.T) {
+		// onlyConfigured=false: matches a refresh/import pass over the full
+		// registry (malformedClient() only seeds dpi, so every other
+		// section is legitimately unsupported-and-skipped here, not
+		// configured-but-missing).
+		model := prior
+		diags := readSections(ctx, realSections(), malformedClient(), "default", prior, &model, false)
+		if diags.HasError() {
+			t.Fatalf("malformed remote dpi.enabled must not be an error, got: %v", diags)
+		}
+		if !hasWarning(diags) {
+			t.Fatalf("malformed remote dpi.enabled must produce a warning, got: %v", diags)
+		}
+		var got settingDpiModel
+		if d := model.Dpi.As(ctx, &got, basetypes.ObjectAsOptions{}); d.HasError() {
+			t.Fatalf("extracting dpi: %v", d)
+		}
+		if got.Enabled.ValueBool() {
+			t.Errorf("Dpi.Enabled = %v, want false (prior's typed value retained through the drifted leaf)", got.Enabled)
 		}
 	})
 
-	t.Run("applySections self-heals when the plan overwrites the malformed leaf (verified, not brief's expectation)", func(t *testing.T) {
+	t.Run("applySections: valid configured value still overwrites a malformed prior remote", func(t *testing.T) {
 		out, diags := applySections(ctx, realSections(), malformedClient(), "default", plan, prior)
 		if diags.HasError() {
-			t.Fatalf("unexpected error diagnostics: %v (see doc comment: overlay overwrites the malformed leaf before any decode occurs)", diags)
+			t.Fatalf("unexpected error diagnostics: %v", diags)
 		}
 		var got settingDpiModel
 		if d := out.Dpi.As(ctx, &got, basetypes.ObjectAsOptions{}); d.HasError() {
@@ -607,52 +597,45 @@ func TestLifecycle_malformedRemoteAborts(t *testing.T) {
 		}
 	})
 
-	t.Run("applySections degrades to a warning (not an error) when the malformed section is left unconfigured", func(t *testing.T) {
+	t.Run("applySections: post-apply re-read surfaces a type-drift warning (not silently dropped) when the malformed section is left unconfigured", func(t *testing.T) {
 		planWithoutDpi := allSectionsNullModel()
 		planWithoutDpi.Country = countryObject(t, ctx, 840) // configure something else this apply
 
 		// This subtest's client also models a controller that supports
 		// country (materialized row), since the capability preflight in
-		// applySections now fails closed on a configured section absent
-		// from the snapshot; malformedClient() alone only seeds dpi.
+		// applySections fails closed on a configured section absent from
+		// the snapshot; malformedClient() alone only seeds dpi.
 		client := malformedClient()
 		client.sections["country"] = rawSection("country", map[string]any{"code": float64(0)})
 
 		out, diags := applySections(ctx, realSections(), client, "default", planWithoutDpi, prior)
 		if diags.HasError() {
-			t.Fatalf("unexpected ERROR diagnostics (expected a warning, not an error — see doc comment): %v", diags)
+			t.Fatalf("unexpected ERROR diagnostics (expected a warning, not an error): %v", diags)
 		}
-		if len(diags) == 0 {
-			t.Fatalf("expected at least a warning diagnostic from the post-apply re-read's decode failure, got none")
+		if !hasWarning(diags) {
+			t.Fatalf("expected a type-drift warning surfaced from the post-apply re-read (setting_engine.go's applySections else branch), got: %v", diags)
 		}
-		if !out.Dpi.IsNull() {
-			t.Errorf("out.Dpi = %v, want null (best-effort state: dpi was never configured this apply, so it carries prior)", out.Dpi)
+		var got settingDpiModel
+		if d := out.Dpi.As(ctx, &got, basetypes.ObjectAsOptions{}); d.HasError() {
+			t.Fatalf("extracting dpi: %v", d)
+		}
+		if got.Enabled.ValueBool() {
+			t.Errorf("Dpi.Enabled = %v, want false (prior's typed value retained: dpi was never configured this apply, and its remote leaf is drifted)", got.Enabled)
 		}
 
-		// The op stays warn-not-error (asserted above via !diags.HasError()),
-		// but the warning's DETAIL must now surface rd's specific decode
-		// diagnostics (which field/section was malformed) rather than only
-		// the generic "run terraform refresh" text — see setting_engine.go's
-		// C2.4 comment on why rd itself is never d.Append()-ed.
-		var readBackWarning diag.Diagnostic
+		var driftWarning diag.Diagnostic
 		for _, dg := range diags {
-			if dg.Summary() == "settings read-back failed after apply" {
-				readBackWarning = dg
+			if dg.Severity() == diag.SeverityWarning && dg.Summary() == "Settings value type drift" {
+				driftWarning = dg
 				break
 			}
 		}
-		if readBackWarning == nil {
-			t.Fatalf("expected a %q warning diagnostic, got: %v", "settings read-back failed after apply", diags)
+		if driftWarning == nil {
+			t.Fatalf("expected a %q warning diagnostic, got: %v", "Settings value type drift", diags)
 		}
-		if readBackWarning.Severity() != diag.SeverityWarning {
-			t.Errorf("read-back diagnostic severity = %v, want SeverityWarning (must not flip C2.4 into a hard failure)", readBackWarning.Severity())
-		}
-		detail := readBackWarning.Detail()
-		if !strings.Contains(detail, "run `terraform refresh`") {
-			t.Errorf("warning detail = %q, want it to still contain the original best-effort-state guidance", detail)
-		}
+		detail := driftWarning.Detail()
 		if !strings.Contains(detail, `field "enabled"`) || !strings.Contains(detail, "expected bool") {
-			t.Errorf("warning detail = %q, want it to name the offending dpi.enabled decode failure (rd's specific diagnostic folded in)", detail)
+			t.Errorf("warning detail = %q, want it to name the offending dpi.enabled decode drift", detail)
 		}
 	})
 }

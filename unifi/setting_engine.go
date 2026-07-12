@@ -135,7 +135,8 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 		put[p.s.key()] = true
 	}
 	out := plan
-	if rd := readSections(ctx, sections, client, site, plan, &out, false); rd.HasError() {
+	rd := readSections(ctx, sections, client, site, plan, &out, false)
+	if rd.HasError() {
 		var bd diag.Diagnostics
 		out, bd = bestEffortState(prior, plan, put, sections) // C2.4 second failure
 		d.Append(bd...)
@@ -149,6 +150,8 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 		d.AddWarning("settings read-back failed after apply",
 			"state written best-effort from applied values; run `terraform refresh`.\n"+
 				"read-back errors: "+joinDiagMessages(rd))
+	} else {
+		d.Append(rd...) // surface type-drift warnings from the post-apply read
 	}
 	if putErr != nil {
 		d.AddError("settings apply failed", putErr.Error())

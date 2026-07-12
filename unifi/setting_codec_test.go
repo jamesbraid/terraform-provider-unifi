@@ -8,15 +8,28 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
+// hasWarning reports whether diags contains at least one SeverityWarning
+// diagnostic, mirroring diag.Diagnostics.HasError()'s shape for the warning
+// severity that remote type-drift tolerance (Task 1) relies on.
+func hasWarning(diags diag.Diagnostics) bool {
+	for _, d := range diags {
+		if d.Severity() == diag.SeverityWarning {
+			return true
+		}
+	}
+	return false
+}
+
 // --- low-level codec: codecString ---
 
 func TestCodecString_presentEmptyIsValueNotNull(t *testing.T) {
-	v, diags := codecString(map[string]any{"k": ""}, "k")
+	v, diags := codecString(map[string]any{"k": ""}, "k", types.StringNull())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -29,7 +42,7 @@ func TestCodecString_presentEmptyIsValueNotNull(t *testing.T) {
 }
 
 func TestCodecString_absentIsNull(t *testing.T) {
-	v, diags := codecString(map[string]any{}, "k")
+	v, diags := codecString(map[string]any{}, "k", types.StringNull())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -39,7 +52,7 @@ func TestCodecString_absentIsNull(t *testing.T) {
 }
 
 func TestCodecString_explicitNullIsNull(t *testing.T) {
-	v, diags := codecString(map[string]any{"k": nil}, "k")
+	v, diags := codecString(map[string]any{"k": nil}, "k", types.StringNull())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -48,15 +61,29 @@ func TestCodecString_explicitNullIsNull(t *testing.T) {
 	}
 }
 
-func TestCodecString_wrongTypeIsDiagnostic(t *testing.T) {
-	_, diags := codecString(map[string]any{"k": 42.0}, "k")
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for wrong type, got none")
+func TestCodecString_typeDriftWarnsAndRetainsPrior(t *testing.T) {
+	prior := types.StringValue("prior-value")
+	v, diags := codecString(map[string]any{"k": 42.0}, "k", prior)
+	if diags.HasError() {
+		t.Fatalf("type drift must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("type drift must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("type drift must retain prior %v, got %v", prior, v)
+	}
+}
+
+func TestCodecString_absenceYieldsNullNotPrior(t *testing.T) {
+	v, diags := codecString(map[string]any{}, "k", types.StringValue("prior-value"))
+	if diags.HasError() || !v.IsNull() {
+		t.Fatalf("absence must clear to null (not retain prior); got %v %v", v, diags)
 	}
 }
 
 func TestCodecString_presentValue(t *testing.T) {
-	v, diags := codecString(map[string]any{"k": "hello"}, "k")
+	v, diags := codecString(map[string]any{"k": "hello"}, "k", types.StringNull())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -68,7 +95,7 @@ func TestCodecString_presentValue(t *testing.T) {
 // --- low-level codec: codecBool ---
 
 func TestCodecBool_presentValue(t *testing.T) {
-	v, diags := codecBool(map[string]any{"k": true}, "k")
+	v, diags := codecBool(map[string]any{"k": true}, "k", types.BoolNull())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -78,7 +105,7 @@ func TestCodecBool_presentValue(t *testing.T) {
 }
 
 func TestCodecBool_absentIsNull(t *testing.T) {
-	v, diags := codecBool(map[string]any{}, "k")
+	v, diags := codecBool(map[string]any{}, "k", types.BoolNull())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -87,17 +114,40 @@ func TestCodecBool_absentIsNull(t *testing.T) {
 	}
 }
 
-func TestCodecBool_wrongTypeIsDiagnostic(t *testing.T) {
-	_, diags := codecBool(map[string]any{"k": "not-a-bool"}, "k")
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for wrong type, got none")
+func TestCodecBool_typeDriftWarnsAndRetainsPrior(t *testing.T) {
+	data := map[string]any{"enabled": "true"} // controller returned a STRING for a bool field
+	prior := types.BoolValue(true)
+	got, diags := codecBool(data, "enabled", prior)
+	if diags.HasError() {
+		t.Fatalf("type drift must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("type drift must produce a warning")
+	}
+	if !got.Equal(prior) {
+		t.Fatalf("type drift must retain prior %v, got %v", prior, got)
+	}
+}
+
+func TestCodecBool_typeDriftNullPriorYieldsNull(t *testing.T) {
+	data := map[string]any{"enabled": "true"}
+	got, diags := codecBool(data, "enabled", types.BoolNull()) // import: no prior
+	if diags.HasError() || !got.IsNull() {
+		t.Fatalf("type drift with null prior must yield null, no error; got %v %v", got, diags)
+	}
+}
+
+func TestCodecBool_absenceYieldsNullNotPrior(t *testing.T) {
+	got, diags := codecBool(map[string]any{}, "enabled", types.BoolValue(true)) // key absent
+	if diags.HasError() || !got.IsNull() {
+		t.Fatalf("absence must clear to null (not retain prior); got %v %v", got, diags)
 	}
 }
 
 // --- low-level codec: codecInt64 ---
 
 func TestCodecInt64_presentValue(t *testing.T) {
-	v, diags := codecInt64(map[string]any{"k": 42.0}, "k")
+	v, diags := codecInt64(map[string]any{"k": 42.0}, "k", types.Int64Null())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -107,7 +157,7 @@ func TestCodecInt64_presentValue(t *testing.T) {
 }
 
 func TestCodecInt64_absentIsNull(t *testing.T) {
-	v, diags := codecInt64(map[string]any{}, "k")
+	v, diags := codecInt64(map[string]any{}, "k", types.Int64Null())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -116,17 +166,38 @@ func TestCodecInt64_absentIsNull(t *testing.T) {
 	}
 }
 
-func TestCodecInt64_fractionalIsDiagnostic(t *testing.T) {
-	_, diags := codecInt64(map[string]any{"k": 1.9}, "k")
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for fractional value, got none")
+func TestCodecInt64_fractionalWarnsAndRetainsPrior(t *testing.T) {
+	prior := types.Int64Value(3)
+	v, diags := codecInt64(map[string]any{"k": 1.9}, "k", prior)
+	if diags.HasError() {
+		t.Fatalf("fractional value must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("fractional value must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("fractional value must retain prior %v, got %v (must not silently truncate)", prior, v)
 	}
 }
 
-func TestCodecInt64_wrongTypeIsDiagnostic(t *testing.T) {
-	_, diags := codecInt64(map[string]any{"k": "nope"}, "k")
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for wrong type, got none")
+func TestCodecInt64_typeDriftWarnsAndRetainsPrior(t *testing.T) {
+	prior := types.Int64Value(3)
+	v, diags := codecInt64(map[string]any{"k": "nope"}, "k", prior)
+	if diags.HasError() {
+		t.Fatalf("type drift must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("type drift must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("type drift must retain prior %v, got %v", prior, v)
+	}
+}
+
+func TestCodecInt64_absenceYieldsNullNotPrior(t *testing.T) {
+	v, diags := codecInt64(map[string]any{}, "k", types.Int64Value(3))
+	if diags.HasError() || !v.IsNull() {
+		t.Fatalf("absence must clear to null (not retain prior); got %v %v", v, diags)
 	}
 }
 
@@ -134,7 +205,7 @@ func TestCodecInt64_wrongTypeIsDiagnostic(t *testing.T) {
 
 func TestCodecStringList_presentEmptyIsValueNotNull(t *testing.T) {
 	ctx := context.Background()
-	v, diags := codecStringList(ctx, map[string]any{"k": []any{}}, "k")
+	v, diags := codecStringList(ctx, map[string]any{"k": []any{}}, "k", types.ListNull(types.StringType))
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -148,7 +219,7 @@ func TestCodecStringList_presentEmptyIsValueNotNull(t *testing.T) {
 
 func TestCodecStringList_absentIsNull(t *testing.T) {
 	ctx := context.Background()
-	v, diags := codecStringList(ctx, map[string]any{}, "k")
+	v, diags := codecStringList(ctx, map[string]any{}, "k", types.ListNull(types.StringType))
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -159,7 +230,7 @@ func TestCodecStringList_absentIsNull(t *testing.T) {
 
 func TestCodecStringList_presentValues(t *testing.T) {
 	ctx := context.Background()
-	v, diags := codecStringList(ctx, map[string]any{"k": []any{"a", "b"}}, "k")
+	v, diags := codecStringList(ctx, map[string]any{"k": []any{"a", "b"}}, "k", types.ListNull(types.StringType))
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -169,19 +240,51 @@ func TestCodecStringList_presentValues(t *testing.T) {
 	}
 }
 
-func TestCodecStringList_wrongElementTypeIsDiagnostic(t *testing.T) {
+func TestCodecStringList_wrongElementTypeWarnsAndRetainsPrior(t *testing.T) {
 	ctx := context.Background()
-	_, diags := codecStringList(ctx, map[string]any{"k": []any{"a", 5.0}}, "k")
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for wrong element type, got none")
+	prior, priorDiags := types.ListValue(types.StringType, []attr.Value{types.StringValue("prior")})
+	if priorDiags.HasError() {
+		t.Fatalf("unexpected diagnostics building prior: %v", priorDiags)
+	}
+	v, diags := codecStringList(ctx, map[string]any{"k": []any{"a", 5.0}}, "k", prior)
+	if diags.HasError() {
+		t.Fatalf("wrong element type must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("wrong element type must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("wrong element type must retain prior %v, got %v", prior, v)
 	}
 }
 
-func TestCodecStringList_wrongTypeIsDiagnostic(t *testing.T) {
+func TestCodecStringList_wrongTypeWarnsAndRetainsPrior(t *testing.T) {
 	ctx := context.Background()
-	_, diags := codecStringList(ctx, map[string]any{"k": "not-a-list"}, "k")
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for wrong type, got none")
+	prior, priorDiags := types.ListValue(types.StringType, []attr.Value{types.StringValue("prior")})
+	if priorDiags.HasError() {
+		t.Fatalf("unexpected diagnostics building prior: %v", priorDiags)
+	}
+	v, diags := codecStringList(ctx, map[string]any{"k": "not-a-list"}, "k", prior)
+	if diags.HasError() {
+		t.Fatalf("wrong type must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("wrong type must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("wrong type must retain prior %v, got %v", prior, v)
+	}
+}
+
+func TestCodecStringList_absenceYieldsNullNotPrior(t *testing.T) {
+	ctx := context.Background()
+	prior, priorDiags := types.ListValue(types.StringType, []attr.Value{types.StringValue("prior")})
+	if priorDiags.HasError() {
+		t.Fatalf("unexpected diagnostics building prior: %v", priorDiags)
+	}
+	v, diags := codecStringList(ctx, map[string]any{}, "k", prior)
+	if diags.HasError() || !v.IsNull() {
+		t.Fatalf("absence must clear to null (not retain prior); got %v %v", v, diags)
 	}
 }
 
@@ -1629,44 +1732,68 @@ func TestOverlayObjectList_doesNotMutateSourceSnapshot(t *testing.T) {
 	}
 }
 
-// --- 6. Malformed shapes -> diagnostics ---
+// --- 6. Malformed shapes -> warning + retain prior (Task 1: remote type drift) ---
 
-func TestDecodeObjectList_outerNotArrayIsDiagnostic(t *testing.T) {
+func TestDecodeObjectList_outerNotArrayWarnsAndRetainsPrior(t *testing.T) {
 	ctx := context.Background()
 	own := map[string]ownershipClass{"items.name": ownerManaged}
 	attrTypes := map[string]attr.Type{"name": types.StringType}
 	elemType := types.ObjectType{AttrTypes: attrTypes}
+	priorElem := mustObjectValue(t, attrTypes, map[string]attr.Value{"name": types.StringValue("prior")})
+	prior := mustListValue(t, elemType, []attr.Value{priorElem})
 	data := map[string]any{"items": "not-an-array"}
-	_, diags := decodeObjectList(ctx, data, "items", own, "items", types.ListNull(elemType), elemType)
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for non-array outer value, got none")
+	v, diags := decodeObjectList(ctx, data, "items", own, "items", prior, elemType)
+	if diags.HasError() {
+		t.Fatalf("non-array outer value must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("non-array outer value must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("non-array outer value must retain prior list %v, got %v", prior, v)
 	}
 }
 
-func TestDecodeObjectList_elementNotObjectIsDiagnostic(t *testing.T) {
+func TestDecodeObjectList_elementNotObjectWarnsAndRetainsPrior(t *testing.T) {
 	ctx := context.Background()
 	own := map[string]ownershipClass{"items.name": ownerManaged}
 	attrTypes := map[string]attr.Type{"name": types.StringType}
 	elemType := types.ObjectType{AttrTypes: attrTypes}
+	priorElem := mustObjectValue(t, attrTypes, map[string]attr.Value{"name": types.StringValue("prior")})
+	prior := mustListValue(t, elemType, []attr.Value{priorElem})
 	data := map[string]any{"items": []any{"not-an-object"}}
-	_, diags := decodeObjectList(ctx, data, "items", own, "items", types.ListNull(elemType), elemType)
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for non-object element, got none")
+	v, diags := decodeObjectList(ctx, data, "items", own, "items", prior, elemType)
+	if diags.HasError() {
+		t.Fatalf("non-object element must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("non-object element must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("non-object element must retain prior list %v, got %v", prior, v)
 	}
 }
 
-func TestDecodeObjectFields_boolLeafWithStringRawValueIsDiagnostic(t *testing.T) {
+func TestDecodeObjectFields_boolLeafWithStringRawValueWarnsAndRetainsPrior(t *testing.T) {
 	ctx := context.Background()
 	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
 	attrTypes := testDohCustomServerAttrTypes()
 	nested := map[string]any{"enabled": "not-a-bool"}
-	_, diags := decodeObjectFields(ctx, nested, "custom_servers", "custom_servers", own, types.ObjectNull(attrTypes), attrTypes)
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for bool leaf with string raw value, got none")
+	prior := mustObjectValue(t, attrTypes, map[string]attr.Value{"enabled": types.BoolValue(true)})
+	v, diags := decodeObjectFields(ctx, nested, "custom_servers", "custom_servers", own, prior, attrTypes)
+	if diags.HasError() {
+		t.Fatalf("bool leaf type drift must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("bool leaf type drift must produce a warning")
+	}
+	got, ok := v.Attributes()["enabled"].(types.Bool)
+	if !ok || !got.ValueBool() {
+		t.Fatalf("expected enabled to retain prior true, got %v", v.Attributes()["enabled"])
 	}
 }
 
-func TestDecodeObjectFields_int64LeafWithFractionalValueIsDiagnostic(t *testing.T) {
+func TestDecodeObjectFields_int64LeafWithFractionalValueWarnsAndRetainsPrior(t *testing.T) {
 	ctx := context.Background()
 	own := map[string]ownershipClass{
 		"suppression_alerts.gid":                ownerManaged,
@@ -1679,23 +1806,39 @@ func TestDecodeObjectFields_int64LeafWithFractionalValueIsDiagnostic(t *testing.
 		"id":       2.0,
 		"tracking": []any{},
 	}
-	_, diags := decodeObjectFields(ctx, nested, "suppression_alerts", "suppression_alerts", own, types.ObjectNull(attrTypes), attrTypes)
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for fractional int64 leaf, got none")
+	prior := mustObjectValue(t, attrTypes, map[string]attr.Value{
+		"gid":      types.Int64Value(7),
+		"id":       types.Int64Value(8),
+		"tracking": types.ListNull(types.ObjectType{AttrTypes: testTrackingAttrTypes()}),
+	})
+	v, diags := decodeObjectFields(ctx, nested, "suppression_alerts", "suppression_alerts", own, prior, attrTypes)
+	if diags.HasError() {
+		t.Fatalf("fractional int64 leaf must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("fractional int64 leaf must produce a warning")
+	}
+	got, ok := v.Attributes()["gid"].(types.Int64)
+	if !ok || got.ValueInt64() != 7 {
+		t.Fatalf("expected gid to retain prior 7 (not silently truncate 1.9), got %v", v.Attributes()["gid"])
 	}
 }
 
-func TestDecodeObjectFields_malformedLeafYieldsDiagnosticNotPartialOutput(t *testing.T) {
+func TestDecodeObjectFields_malformedLeafYieldsWarningNotPartialOutput(t *testing.T) {
 	ctx := context.Background()
 	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
 	attrTypes := testDohCustomServerAttrTypes()
 	nested := map[string]any{"enabled": "not-a-bool"}
-	v, diags := decodeObjectFields(ctx, nested, "custom_servers", "custom_servers", own, types.ObjectNull(attrTypes), attrTypes)
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic, got none")
+	prior := mustObjectValue(t, attrTypes, map[string]attr.Value{"enabled": types.BoolValue(false)})
+	v, diags := decodeObjectFields(ctx, nested, "custom_servers", "custom_servers", own, prior, attrTypes)
+	if diags.HasError() {
+		t.Fatalf("malformed leaf must not be an error, got: %v", diags)
 	}
-	if !v.IsUnknown() {
-		t.Fatalf("expected Unknown object (no partial output) on malformed leaf, got %v", v)
+	if !hasWarning(diags) {
+		t.Fatalf("malformed leaf must produce a warning")
+	}
+	if v.IsUnknown() {
+		t.Fatalf("expected a known object built from prior/valid leaves (not Unknown) on a warning-only leaf, got %v", v)
 	}
 }
 
@@ -2067,17 +2210,38 @@ func TestDecodeGoDuration_absentIsNull(t *testing.T) {
 	}
 }
 
-func TestCodecGoDuration_fractionalIsDiagnostic(t *testing.T) {
-	_, diags := codecGoDuration(map[string]any{"t": 1.5}, "t", time.Second)
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for fractional value, got none")
+func TestCodecGoDuration_fractionalWarnsAndRetainsPrior(t *testing.T) {
+	prior := util.DurationValue(5, time.Second)
+	v, diags := codecGoDuration(map[string]any{"t": 1.5}, "t", prior, time.Second)
+	if diags.HasError() {
+		t.Fatalf("fractional value must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("fractional value must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("fractional value must retain prior %v, got %v (must not silently truncate)", prior, v)
 	}
 }
 
-func TestCodecGoDuration_wrongTypeIsDiagnostic(t *testing.T) {
-	_, diags := codecGoDuration(map[string]any{"t": "nope"}, "t", time.Second)
-	if !diags.HasError() {
-		t.Fatalf("expected diagnostic for wrong type, got none")
+func TestCodecGoDuration_typeDriftWarnsAndRetainsPrior(t *testing.T) {
+	prior := util.DurationValue(5, time.Second)
+	v, diags := codecGoDuration(map[string]any{"t": "nope"}, "t", prior, time.Second)
+	if diags.HasError() {
+		t.Fatalf("type drift must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("type drift must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("type drift must retain prior %v, got %v", prior, v)
+	}
+}
+
+func TestCodecGoDuration_absenceYieldsNullNotPrior(t *testing.T) {
+	v, diags := codecGoDuration(map[string]any{}, "t", util.DurationValue(5, time.Second), time.Second)
+	if diags.HasError() || !v.IsNull() {
+		t.Fatalf("absence must clear to null (not retain prior); got %v %v", v, diags)
 	}
 }
 

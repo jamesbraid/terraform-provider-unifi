@@ -36,10 +36,12 @@ import (
 // ---------------------------------------------------------------------------
 
 // codecString reads a string field from data. Absent key or explicit JSON
-// null decodes to types.StringNull(); present-empty ("") decodes to
-// StringValue(""), never collapsed to null. A present value of any other Go
-// type is a diagnostic, not a silent conversion.
-func codecString(data map[string]any, key string) (types.String, diag.Diagnostics) {
+// null decodes to types.StringNull() (a controller clearing a managed field
+// must clear state); present-empty ("") decodes to StringValue(""), never
+// collapsed to null. A present value of any other Go type is remote type
+// drift: a WARNING (not error), retaining prior so a single drifted field
+// never fails refresh.
+func codecString(data map[string]any, key string, prior types.String) (types.String, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	raw, ok := data[key]
 	if !ok || raw == nil {
@@ -47,18 +49,20 @@ func codecString(data map[string]any, key string) (types.String, diag.Diagnostic
 	}
 	s, ok := raw.(string)
 	if !ok {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected string, got %T", key, raw),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected string, got %T; retaining last-known value", key, raw),
 		)
-		return types.StringUnknown(), diags
+		return prior, diags
 	}
 	return types.StringValue(s), diags
 }
 
-// codecBool reads a bool field from data. Absent/null decodes to
-// types.BoolNull(); a present value of any other Go type is a diagnostic.
-func codecBool(data map[string]any, key string) (types.Bool, diag.Diagnostics) {
+// codecBool reads a bool field. Absent or JSON null -> Terraform null (a
+// controller clearing a managed field must clear state). A present value of a
+// non-bool type is remote type drift: a WARNING (not error), retaining prior
+// so a single drifted field never fails refresh.
+func codecBool(data map[string]any, key string, prior types.Bool) (types.Bool, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	raw, ok := data[key]
 	if !ok || raw == nil {
@@ -66,20 +70,22 @@ func codecBool(data map[string]any, key string) (types.Bool, diag.Diagnostics) {
 	}
 	b, ok := raw.(bool)
 	if !ok {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected bool, got %T", key, raw),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected bool, got %T; retaining last-known value", key, raw),
 		)
-		return types.BoolUnknown(), diags
+		return prior, diags
 	}
 	return types.BoolValue(b), diags
 }
 
 // codecInt64 reads an int64 field from data. JSON numbers decode to
 // float64 in Go; a fractional value (e.g. 1.9) is malformed for an int64
-// field and raises a diagnostic instead of being silently truncated. Absent
-// key or explicit JSON null decodes to types.Int64Null().
-func codecInt64(data map[string]any, key string) (types.Int64, diag.Diagnostics) {
+// field and warns-and-retains prior instead of being silently truncated.
+// Absent key or explicit JSON null decodes to types.Int64Null(). A present
+// value of any other Go type is remote type drift: a WARNING (not error),
+// retaining prior so a single drifted field never fails refresh.
+func codecInt64(data map[string]any, key string, prior types.Int64) (types.Int64, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	raw, ok := data[key]
 	if !ok || raw == nil {
@@ -87,18 +93,18 @@ func codecInt64(data map[string]any, key string) (types.Int64, diag.Diagnostics)
 	}
 	f, ok := raw.(float64)
 	if !ok {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected number, got %T", key, raw),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected number, got %T; retaining last-known value", key, raw),
 		)
-		return types.Int64Unknown(), diags
+		return prior, diags
 	}
 	if math.Trunc(f) != f {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected integer, got fractional value %v", key, f),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected integer, got fractional value %v; retaining last-known value", key, f),
 		)
-		return types.Int64Unknown(), diags
+		return prior, diags
 	}
 	return types.Int64Value(int64(f)), diags
 }
@@ -106,10 +112,12 @@ func codecInt64(data map[string]any, key string) (types.Int64, diag.Diagnostics)
 // codecGoDuration reads an integer-count-of-unit field from data and
 // converts it to a GoDuration value (e.g. unit=time.Second, wire value 3600
 // -> "1h0m0s"). JSON numbers decode to float64 in Go; a fractional value is
-// malformed for an integer-seconds field and raises a diagnostic instead of
-// being silently truncated, matching codecInt64. Absent key or explicit JSON
-// null decodes to timetypes.NewGoDurationNull().
-func codecGoDuration(data map[string]any, key string, unit time.Duration) (timetypes.GoDuration, diag.Diagnostics) {
+// malformed for an integer-seconds field and warns-and-retains prior instead
+// of being silently truncated, matching codecInt64. Absent key or explicit
+// JSON null decodes to timetypes.NewGoDurationNull(). A present value of any
+// other Go type is remote type drift: a WARNING (not error), retaining prior
+// so a single drifted field never fails refresh.
+func codecGoDuration(data map[string]any, key string, prior timetypes.GoDuration, unit time.Duration) (timetypes.GoDuration, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	raw, ok := data[key]
 	if !ok || raw == nil {
@@ -117,18 +125,18 @@ func codecGoDuration(data map[string]any, key string, unit time.Duration) (timet
 	}
 	f, ok := raw.(float64)
 	if !ok {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected number, got %T", key, raw),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected number, got %T; retaining last-known value", key, raw),
 		)
-		return timetypes.NewGoDurationUnknown(), diags
+		return prior, diags
 	}
 	if math.Trunc(f) != f {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected integer, got fractional value %v", key, f),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected integer, got fractional value %v; retaining last-known value", key, f),
 		)
-		return timetypes.NewGoDurationUnknown(), diags
+		return prior, diags
 	}
 	return util.DurationValue(int64(f), unit), diags
 }
@@ -136,8 +144,9 @@ func codecGoDuration(data map[string]any, key string, unit time.Duration) (timet
 // codecStringList reads a list-of-string field from data. Absent/null
 // decodes to types.ListNull(); present-empty ([]) decodes to an empty
 // ListValue, not null. A present value that is not a []any, or an element
-// that is not a string, is a diagnostic.
-func codecStringList(ctx context.Context, data map[string]any, key string) (types.List, diag.Diagnostics) {
+// that is not a string, is remote type drift: a WARNING (not error),
+// retaining prior so a single drifted field never fails refresh.
+func codecStringList(ctx context.Context, data map[string]any, key string, prior types.List) (types.List, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	raw, ok := data[key]
 	if !ok || raw == nil {
@@ -145,21 +154,21 @@ func codecStringList(ctx context.Context, data map[string]any, key string) (type
 	}
 	items, ok := raw.([]any)
 	if !ok {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected array, got %T", key, raw),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected array, got %T; retaining last-known value", key, raw),
 		)
-		return types.ListUnknown(types.StringType), diags
+		return prior, diags
 	}
 	elems := make([]attr.Value, 0, len(items))
 	for i, item := range items {
 		s, ok := item.(string)
 		if !ok {
-			diags.AddError(
-				"Malformed settings value",
-				fmt.Sprintf("field %q: element %d: expected string, got %T", key, i, item),
+			diags.AddWarning(
+				"Settings value type drift",
+				fmt.Sprintf("field %q: element %d: expected string, got %T; retaining last-known value", key, i, item),
 			)
-			return types.ListUnknown(types.StringType), diags
+			return prior, diags
 		}
 		elems = append(elems, types.StringValue(s))
 	}
@@ -248,7 +257,7 @@ func decodeString(data map[string]any, key string, class ownershipClass, prior t
 	if !class.readsFromAPI() {
 		return prior, nil
 	}
-	return codecString(data, key)
+	return codecString(data, key, prior)
 }
 
 // decodeInt64 is the int64 analogue of decodeString.
@@ -256,7 +265,7 @@ func decodeInt64(data map[string]any, key string, class ownershipClass, prior ty
 	if !class.readsFromAPI() {
 		return prior, nil
 	}
-	return codecInt64(data, key)
+	return codecInt64(data, key, prior)
 }
 
 // decodeGoDuration is the GoDuration analogue of decodeInt64, for fields
@@ -267,7 +276,7 @@ func decodeGoDuration(data map[string]any, key string, class ownershipClass, pri
 	if !class.readsFromAPI() {
 		return prior, nil
 	}
-	return codecGoDuration(data, key, unit)
+	return codecGoDuration(data, key, prior, unit)
 }
 
 // decodeBool is the bool analogue of decodeString.
@@ -275,7 +284,7 @@ func decodeBool(data map[string]any, key string, class ownershipClass, prior typ
 	if !class.readsFromAPI() {
 		return prior, nil
 	}
-	return codecBool(data, key)
+	return codecBool(data, key, prior)
 }
 
 // decodeStringList is the string-list analogue of decodeString.
@@ -283,7 +292,7 @@ func decodeStringList(ctx context.Context, data map[string]any, key string, clas
 	if !class.readsFromAPI() {
 		return prior, nil
 	}
-	return codecStringList(ctx, data, key)
+	return codecStringList(ctx, data, key, prior)
 }
 
 // overlayString applies v onto out[key] per the C1 write policy:
@@ -443,6 +452,8 @@ func leafPath(prefix, child string) string {
 // of prior. Absent key or explicit JSON null decodes to a null object of
 // attrTypes. ownPrefix is this object's own dotted path within own (e.g.
 // "dns_verification"); at a section's top level that is the attribute name.
+// A present non-map value is remote type drift: a WARNING (not error),
+// retaining the prior object wholesale rather than partially decoding.
 func decodeObject(
 	ctx context.Context,
 	data map[string]any,
@@ -460,11 +471,11 @@ func decodeObject(
 	}
 	nested, ok := raw.(map[string]any)
 	if !ok {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected object, got %T", key, raw),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected object, got %T; retaining last-known value", key, raw),
 		)
-		return types.ObjectUnknown(attrTypes), diags
+		return prior, diags
 	}
 
 	return decodeObjectFields(ctx, nested, ownPrefix, key, own, prior, attrTypes)
@@ -698,7 +709,11 @@ func overlayObjectFields(
 // (same-index) element of prior; if prior has no element at that index,
 // the leaf decodes via decodeString's normal preserve-from-null-prior
 // behavior (StringNull()). Absent key or explicit JSON null decodes to a
-// null list of elemType.
+// null list of elemType. A present non-array value, or a non-object
+// element, is remote type drift: a WARNING (not error), retaining the
+// prior list wholesale — never a partially-decoded list. An elemType that
+// is not an ObjectType is a provider/schema defect (a decodeObjectList
+// call site bug, not remote drift), so it stays a hard error.
 func decodeObjectList(
 	ctx context.Context,
 	data map[string]any,
@@ -725,11 +740,11 @@ func decodeObjectList(
 	}
 	items, ok := raw.([]any)
 	if !ok {
-		diags.AddError(
-			"Malformed settings value",
-			fmt.Sprintf("field %q: expected array, got %T", key, raw),
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected array, got %T; retaining last-known value", key, raw),
 		)
-		return types.ListUnknown(elemType), diags
+		return prior, diags
 	}
 
 	var priorElems []attr.Value
@@ -741,11 +756,11 @@ func decodeObjectList(
 	for i, item := range items {
 		elemMap, ok := item.(map[string]any)
 		if !ok {
-			diags.AddError(
-				"Malformed settings value",
-				fmt.Sprintf("field %q: element %d: expected object, got %T", key, i, item),
+			diags.AddWarning(
+				"Settings value type drift",
+				fmt.Sprintf("field %q: element %d: expected object, got %T; retaining last-known value", key, i, item),
 			)
-			continue
+			return prior, diags
 		}
 		priorElem := types.ObjectNull(objType.AttrTypes)
 		if i < len(priorElems) {
