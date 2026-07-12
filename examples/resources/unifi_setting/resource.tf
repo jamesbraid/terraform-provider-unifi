@@ -44,6 +44,21 @@ resource "unifi_setting" "combined" {
       primary_dns_server = "1.1.1.1"
     }
   }
+
+  locale = {
+    timezone = "Etc/UTC"
+  }
+
+  traffic_flow = {
+    enabled_allowed_traffic = true
+    gateway_dns_enabled     = true
+  }
+
+  netflow = {
+    enabled = true
+    server  = "netflow-collector.example.com"
+    port    = 2055
+  }
 }
 
 # Configure only RADIUS settings

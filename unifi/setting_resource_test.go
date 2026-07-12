@@ -7,6 +7,7 @@ import (
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -833,16 +834,185 @@ func TestSettingImport_rejectsComposite(t *testing.T) {
 
 // TestAllSectionAttrsNull_gate exercises the helper Read's hydration gate
 // depends on directly: true for the freshly-imported all-null shape, false
-// as soon as any single section attribute is populated.
+// as soon as ANY single section attribute is populated — checked
+// independently for every registered section, including all 8 PR-B1
+// sections, not just the legacy Dpi case. A field missing from this list
+// would not be caught by allSectionAttrsNull's own logic (it would just
+// silently continue treating that field as always-null for gating
+// purposes), so this test is the mechanism that actually catches a
+// forgotten `&& m.<Field>.IsNull()` clause.
 func TestAllSectionAttrsNull_gate(t *testing.T) {
 	if !allSectionAttrsNull(allSectionsNullModel()) {
 		t.Error("allSectionAttrsNull(all-null model) = false, want true")
 	}
 
 	ctx := context.Background()
-	partial := allSectionsNullModel()
-	partial.Dpi = dpiObject(t, ctx, true, false)
-	if allSectionAttrsNull(partial) {
-		t.Error("allSectionAttrsNull(model with Dpi configured) = true, want false")
+
+	t.Run("Dpi", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		partial.Dpi = dpiObject(t, ctx, true, false)
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with Dpi configured) = true, want false")
+		}
+	})
+
+	t.Run("Locale", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, localeAttrTypes, settingLocaleModel{Timezone: types.StringValue("Etc/UTC")})
+		if diags.HasError() {
+			t.Fatalf("building locale object: %v", diags)
+		}
+		partial.Locale = obj
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with Locale configured) = true, want false")
+		}
+	})
+
+	t.Run("GlobalSwitch", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, globalSwitchAttrTypes, settingGlobalSwitchModel{
+			AclDeviceIsolation: types.ListNull(types.StringType),
+			AclL3Isolation:     types.ListNull(types.ObjectType{AttrTypes: globalSwitchAclL3IsolationAttrTypes}),
+			DHCPSnoop:          types.BoolValue(true),
+			SwitchExclusions:   types.ListNull(types.StringType),
+		})
+		if diags.HasError() {
+			t.Fatalf("building global_switch object: %v", diags)
+		}
+		partial.GlobalSwitch = obj
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with GlobalSwitch configured) = true, want false")
+		}
+	})
+
+	t.Run("GlobalNat", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, globalNatAttrTypes, settingGlobalNatModel{
+			ExcludedNetworkIDs: types.ListNull(types.StringType),
+			Mode:               types.StringValue("auto"),
+		})
+		if diags.HasError() {
+			t.Fatalf("building global_nat object: %v", diags)
+		}
+		partial.GlobalNat = obj
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with GlobalNat configured) = true, want false")
+		}
+	})
+
+	t.Run("Dashboard", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, dashboardAttrTypes, settingDashboardModel{
+			LayoutPreference: types.StringValue("manual"),
+			Widgets:          types.ListNull(types.ObjectType{AttrTypes: dashboardWidgetAttrTypes}),
+		})
+		if diags.HasError() {
+			t.Fatalf("building dashboard object: %v", diags)
+		}
+		partial.Dashboard = obj
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with Dashboard configured) = true, want false")
+		}
+	})
+
+	t.Run("TrafficFlow", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, trafficFlowAttrTypes, settingTrafficFlowModel{
+			EnabledAllowedTraffic:        types.BoolValue(true),
+			GatewayDNSEnabled:            types.BoolValue(false),
+			UnifiDeviceManagementEnabled: types.BoolValue(false),
+			UnifiServicesEnabled:         types.BoolValue(false),
+		})
+		if diags.HasError() {
+			t.Fatalf("building traffic_flow object: %v", diags)
+		}
+		partial.TrafficFlow = obj
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with TrafficFlow configured) = true, want false")
+		}
+	})
+
+	t.Run("EtherLighting", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, etherLightingAttrTypes, settingEtherLightingModel{
+			NetworkOverrides: types.ListNull(types.ObjectType{AttrTypes: etherLightingNetworkOverrideAttrTypes}),
+			SpeedOverrides:   types.ListNull(types.ObjectType{AttrTypes: etherLightingSpeedOverrideAttrTypes}),
+		})
+		if diags.HasError() {
+			t.Fatalf("building ether_lighting object: %v", diags)
+		}
+		partial.EtherLighting = obj
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with EtherLighting configured) = true, want false")
+		}
+	})
+
+	t.Run("Netflow", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, netflowAttrTypes, settingNetflowModel{
+			AutoEngineIDEnabled: types.BoolValue(false),
+			Enabled:             types.BoolValue(true),
+			EngineID:            types.Int64Null(),
+			ExportFrequency:     types.Int64Null(),
+			NetworkIDs:          types.ListNull(types.StringType),
+			Port:                types.Int64Null(),
+			RefreshRate:         types.Int64Null(),
+			SamplingMode:        types.StringNull(),
+			SamplingRate:        types.Int64Null(),
+			Server:              types.StringNull(),
+			Version:             types.Int64Null(),
+		})
+		if diags.HasError() {
+			t.Fatalf("building netflow object: %v", diags)
+		}
+		partial.Netflow = obj
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with Netflow configured) = true, want false")
+		}
+	})
+
+	t.Run("SslInspection", func(t *testing.T) {
+		partial := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, sslInspectionAttrTypes, settingSslInspectionModel{State: types.StringValue("simple")})
+		if diags.HasError() {
+			t.Fatalf("building ssl_inspection object: %v", diags)
+		}
+		partial.SslInspection = obj
+		if allSectionAttrsNull(partial) {
+			t.Error("allSectionAttrsNull(model with SslInspection configured) = true, want false")
+		}
+	})
+}
+
+// TestPRB1Sections_AllRegistered proves all 8 PR-B1 sections are present
+// in the settingSections registry with key()==attrName()==their expected
+// name, and that Schema() would expose all 8 as top-level attributes (via
+// orderedSections, which setting_resource.go's Schema() already loops
+// over generically — this test only needs to confirm registration, not
+// re-test Schema() plumbing).
+//
+// The key()==attrName() invariant is checked only for these 8 sections,
+// not the whole registry: legacy section syslog has key()="rsyslogd" !=
+// attrName()="syslog" (a pre-existing PR-A divergence, out of scope here).
+func TestPRB1Sections_AllRegistered(t *testing.T) {
+	want := []string{
+		"locale", "global_switch", "global_nat", "dashboard",
+		"traffic_flow", "ether_lighting", "netflow", "ssl_inspection",
+	}
+
+	registered := make(map[string]settingSection, len(settingSections))
+	for _, s := range settingSections {
+		registered[s.key()] = s
+	}
+
+	for _, name := range want {
+		s, ok := registered[name]
+		if !ok {
+			t.Errorf("PR-B1 section %q not found in settingSections registry", name)
+			continue
+		}
+		if s.key() != s.attrName() {
+			t.Errorf("section key()=%q attrName()=%q: PR-B1 sections must have key()==attrName()", s.key(), s.attrName())
+		}
 	}
 }
