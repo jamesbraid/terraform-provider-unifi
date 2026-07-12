@@ -15,12 +15,12 @@ import (
 // (applySections). Before the fix:
 //
 //   - Finding 1: Read passed the full 13-section registry to
-//     readSections(..., onlyConfigured=true), which fails closed
-//     (configuredError) on every section, so a controller missing any
-//     section (e.g. radius/usg on a gateway-less UDM) broke refresh even for
+//     readSections(..., onlyConfigured=true), which fails closed on every
+//     section absent from the snapshot, so a controller missing any section
+//     (e.g. radius/usg on a gateway-less UDM) broke refresh even for
 //     sections the user never configured.
 //   - Finding 2: applySections overlaid + PUT every configured section
-//     without a capability check, so a configured-but-unsupported section
+//     without a presence check, so a configured-but-unsupported section
 //     was only caught by the controller AFTER other sections had already
 //     been written (partial apply) instead of a clean pre-mutation abort.
 //
@@ -39,7 +39,7 @@ func TestCapabilityScope_ReadConfiguredOnly_SucceedsWhenUnconfiguredSectionAbsen
 	ctx := context.Background()
 	client := newFakeSettingsClient()
 	// Only dpi is present on the controller snapshot. radius and every other
-	// section are absent (capUnsupported) -- but since only dpi is
+	// section are absent from the snapshot -- but since only dpi is
 	// configured in prior, only dpi should be checked/decoded.
 	client.sections["dpi"] = rawSection("dpi", map[string]any{
 		"enabled":               true,

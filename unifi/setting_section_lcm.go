@@ -148,10 +148,6 @@ func (lcmSection) overlay(ctx context.Context, model, prior settingResourceModel
 	return rs, true, diags
 }
 
-func (lcmSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, "lcm")
-}
-
 // carryBestEffort copies the plan's lcm value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.

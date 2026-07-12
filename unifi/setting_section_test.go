@@ -29,7 +29,6 @@ func (f fakeSection) decode(ctx context.Context, snap rawSettings, prior setting
 func (f fakeSection) overlay(ctx context.Context, model, prior settingResourceModel, snap rawSettings) (settings.RawSetting, bool, diag.Diagnostics) {
 	return settings.RawSetting{}, false, nil
 }
-func (f fakeSection) capability(snap rawSettings) capabilityState { return capUnknown }
 func (f fakeSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	return nil
 }

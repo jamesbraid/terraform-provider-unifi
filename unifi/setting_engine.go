@@ -12,7 +12,7 @@ import (
 )
 
 // setting_engine.go ties the whole settings machine together: one
-// ListSettings snapshot per read, capability-gated per-section decode
+// ListSettings snapshot per read, presence-gated per-section decode
 // (readSections); reconcile-before-mutate, deterministic-order PUT, and
 // C2.4 best-effort recovery on a failed post-apply read-back
 // (applySections); and the bestEffortState/carrySecretObject helpers that
@@ -30,21 +30,20 @@ func listSnapshot(ctx context.Context, client settingsClient, site string) (rawS
 }
 
 // readSections performs exactly one ListSettings call, then for each section
-// in sections runs a fail-closed capability check before decoding.
+// in sections runs a fail-closed presence check before decoding.
 //
 // The settingSection interface has no "is this configured in plan"
 // predicate, so readSections relies on its caller to have already filtered
 // sections down to the relevant set (e.g. applySections passes only the
 // sections it just PUT or the plan's configured set; an import/refresh
-// caller passes the full registry). onlyConfigured selects which capability
+// caller passes the full registry). onlyConfigured selects which presence
 // policy applies to every section in that set:
 //
-//   - true: the caller asserts the user configured each section here, so an
-//     unsupported/unauthorized/unknown capability is a hard error
-//     (capabilityState.configuredError), fail closed.
+//   - true: the caller asserts the user configured each section here, so a
+//     section missing from the snapshot is a hard error, fail closed.
 //   - false: the caller is doing a best-effort pass over a broader set (e.g.
 //     applySections' post-apply re-read, or import), so a section this
-//     controller doesn't support is silently skipped rather than erroring.
+//     controller doesn't expose is silently skipped rather than erroring.
 func readSections(ctx context.Context, sections []settingSection, client settingsClient, site string, prior settingResourceModel, model *settingResourceModel, onlyConfigured bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -55,21 +54,18 @@ func readSections(ctx context.Context, sections []settingSection, client setting
 	}
 
 	for _, s := range sections {
-		sc := s.capability(snap)
-		if onlyConfigured {
-			capDiags := sc.configuredError(s.key())
-			diags.Append(capDiags...)
-			if capDiags.HasError() {
-				// Fail closed for this section only: an unsupported
-				// section the caller asserted was configured is reported,
-				// but does not block decoding of the remaining sections.
-				continue
+		if !snap.has(s.key()) {
+			if onlyConfigured {
+				diags.AddError(
+					"Settings section not supported",
+					fmt.Sprintf("section %q is not present on this controller", s.key()),
+				)
 			}
-		} else if sc != capSupported && sc != capUnmaterialized {
-			// Best-effort pass over the full registry: a section this
-			// controller doesn't support is silently left untouched
-			// rather than erroring, since the caller did not assert the
-			// user configured it.
+			// Fail closed for this section only when configured: reported,
+			// but does not block decoding of the remaining sections. When
+			// not configured, a section this controller doesn't expose is
+			// silently left untouched rather than erroring, since the
+			// caller did not assert the user configured it.
 			continue
 		}
 		diags.Append(s.decode(ctx, snap, prior, model)...)
@@ -112,8 +108,11 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 		if !s.isConfigured(plan) {
 			continue // not user-configured — never checked, never written
 		}
-		if capDiags := s.capability(snap).configuredError(s.key()); capDiags.HasError() {
-			d.Append(capDiags...)
+		if !snap.has(s.key()) {
+			d.AddError(
+				"Settings section not supported",
+				fmt.Sprintf("section %q is not present on this controller", s.key()),
+			)
 			continue // record the fail-closed diagnostic; the aggregate HasError() gate below aborts before any PUT
 		}
 		rs, configured, sd := s.overlay(ctx, plan, prior, snap)

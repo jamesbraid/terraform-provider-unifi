@@ -204,10 +204,6 @@ func (s radiusSection) overlay(ctx context.Context, model, prior settingResource
 	return rs, true, diags
 }
 
-func (s radiusSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, s.key())
-}
-
 // carryBestEffort copies the plan's radius value onto dst via
 // carrySecretObject: this section holds a write-only secret leaf (secret),
 // so a straight plan copy would be wrong when a C2.4 second-failure recovery

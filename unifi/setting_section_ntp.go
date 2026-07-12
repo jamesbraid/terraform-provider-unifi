@@ -145,10 +145,6 @@ func (ntpSection) overlay(ctx context.Context, model, prior settingResourceModel
 	return rs, true, diags
 }
 
-func (ntpSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, "ntp")
-}
-
 // carryBestEffort copies the plan's ntp value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.

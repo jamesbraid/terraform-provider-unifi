@@ -34,9 +34,6 @@ type settingSection interface {
 	// returning the RawSetting to PUT and whether a write is needed at all.
 	overlay(ctx context.Context, model, prior settingResourceModel, snap rawSettings) (settings.RawSetting, bool, diag.Diagnostics)
 
-	// capability classifies whether this section is usable against snap.
-	capability(snap rawSettings) capabilityState
-
 	// carryBestEffort copies this section's own field from plan (or, for the
 	// mgmt/radius write-only secret leaf, a plan/prior choice via
 	// carrySecretObject reading prior off dst) onto dst, for C2.4

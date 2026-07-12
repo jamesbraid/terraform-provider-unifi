@@ -126,10 +126,6 @@ func (dpiSection) overlay(ctx context.Context, model, prior settingResourceModel
 	return rs, true, diags
 }
 
-func (dpiSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, "dpi")
-}
-
 // carryBestEffort copies the plan's dpi value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.

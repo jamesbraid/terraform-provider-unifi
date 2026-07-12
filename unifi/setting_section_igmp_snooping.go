@@ -128,10 +128,6 @@ func (s igmpSnoopingSection) overlay(ctx context.Context, model, prior settingRe
 	return rs, true, diags
 }
 
-func (s igmpSnoopingSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, s.key())
-}
-
 // carryBestEffort copies the plan's igmp_snooping value onto dst. This
 // section holds no secret leaves, so it is a straight copy with no per-leaf
 // plan/prior choice needed.

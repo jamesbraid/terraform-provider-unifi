@@ -163,10 +163,6 @@ func (s dohSection) overlay(ctx context.Context, model, prior settingResourceMod
 	return rs, true, diags
 }
 
-func (s dohSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, s.key())
-}
-
 // carryBestEffort copies the plan's doh value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.

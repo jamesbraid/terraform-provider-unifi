@@ -551,10 +551,6 @@ func (s usgSection) overlay(ctx context.Context, model, prior settingResourceMod
 	return rs, true, diags
 }
 
-func (s usgSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, s.key())
-}
-
 // carryBestEffort copies the plan's usg value onto dst. This section holds
 // no secret leaves, so it is a straight copy with no per-leaf plan/prior
 // choice needed.

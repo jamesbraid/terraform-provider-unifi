@@ -102,10 +102,6 @@ func (s simpleStubSection) overlay(ctx context.Context, model, prior settingReso
 	return rs, true, diags
 }
 
-func (s simpleStubSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, s.k)
-}
-
 func (s simpleStubSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
 	s.set(dst, s.get(plan))
 	return nil
@@ -202,10 +198,6 @@ func (s mgmtSecretStubSection) overlay(ctx context.Context, model, prior setting
 		Data:        out,
 	}
 	return rs, true, diags
-}
-
-func (s mgmtSecretStubSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, s.k)
 }
 
 func (s mgmtSecretStubSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
@@ -309,7 +301,7 @@ func TestEngine_noWriteBeforeReconcileError(t *testing.T) {
 
 	// ntp must be configured (not just present on the controller) so its
 	// injected overlay error is actually reached: applySections only
-	// capability-checks/overlays sections the plan configures.
+	// presence-checks/overlays sections the plan configures.
 	prior := modelWith("auto_speedtest", "old")
 	prior = setSection(prior, "ntp", "old")
 	plan := modelWith("auto_speedtest", "new")
@@ -364,17 +356,17 @@ func (c *countingSettingsClient) UpdateRawSetting(ctx context.Context, site stri
 }
 
 // TestEngine_readSectionsCapabilityErrorDoesNotBlockLaterSections is a
-// regression test: a capability error (onlyConfigured=true) for one section
+// regression test: a presence error (onlyConfigured=true) for one section
 // must be reported without preventing decode() of a later, perfectly fine
 // section in the same sections slice. An earlier buggy implementation
 // checked the accumulated diags.HasError() (which is sticky once any prior
-// section errors) instead of that section's own capability diagnostics,
-// silently starving every section after the first failure.
+// section errors) instead of that section's own presence check, silently
+// starving every section after the first failure.
 func TestEngine_readSectionsCapabilityErrorDoesNotBlockLaterSections(t *testing.T) {
 	ctx := context.Background()
 	client := newFakeSettingsClient()
-	// auto_speedtest is deliberately absent from the controller snapshot
-	// (capUnsupported); ntp is present and must still decode.
+	// auto_speedtest is deliberately absent from the controller snapshot;
+	// ntp is present and must still decode.
 	client.sections["ntp"] = settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: "ntp"},
 		Data:        map[string]any{"key": "ntp", "ntp_server_1": "from-api"},
@@ -387,10 +379,10 @@ func TestEngine_readSectionsCapabilityErrorDoesNotBlockLaterSections(t *testing.
 
 	diags := readSections(ctx, sections, client, "default", prior, &model, true)
 	if !diags.HasError() {
-		t.Fatalf("expected a capability error for unsupported auto_speedtest, got none")
+		t.Fatalf("expected a presence error for unsupported auto_speedtest, got none")
 	}
 	if sectionVal(model, "ntp") != "from-api" {
-		t.Fatalf("ntp (a later, supported section) was not decoded after an earlier section's capability error: got %q, want from-api", sectionVal(model, "ntp"))
+		t.Fatalf("ntp (a later, supported section) was not decoded after an earlier section's presence error: got %q, want from-api", sectionVal(model, "ntp"))
 	}
 }
 

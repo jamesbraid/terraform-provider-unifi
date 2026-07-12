@@ -172,7 +172,7 @@ func TestLifecycle_multipleSectionsOneOp(t *testing.T) {
 	client := newFakeSettingsClient()
 	// Model a controller that supports these sections: ListSettings returns
 	// their default materialized rows before the provider updates them (the
-	// capability preflight in applySections fails closed on a configured
+	// presence preflight in applySections fails closed on a configured
 	// section absent from the snapshot, so every section this test
 	// configures must be seeded here).
 	client.sections["dpi"] = rawSection("dpi", map[string]any{"enabled": false, "fingerprintingEnabled": false})
@@ -242,7 +242,7 @@ func TestLifecycle_onlyConfiguredWritten(t *testing.T) {
 	ctx := context.Background()
 	client := newFakeSettingsClient()
 	// Model a controller that supports dpi: ListSettings returns its default
-	// materialized row before the provider updates it (the capability
+	// materialized row before the provider updates it (the presence
 	// preflight in applySections fails closed on a configured section absent
 	// from the snapshot).
 	client.sections["dpi"] = rawSection("dpi", map[string]any{"enabled": false, "fingerprintingEnabled": false})
@@ -602,7 +602,7 @@ func TestLifecycle_malformedRemoteTolerated(t *testing.T) {
 		planWithoutDpi.Country = countryObject(t, ctx, 840) // configure something else this apply
 
 		// This subtest's client also models a controller that supports
-		// country (materialized row), since the capability preflight in
+		// country (materialized row), since the presence preflight in
 		// applySections fails closed on a configured section absent from
 		// the snapshot; malformedClient() alone only seeds dpi.
 		client := malformedClient()
@@ -768,9 +768,8 @@ func TestLifecycle_importHydratesAll_thenCleanRePlan(t *testing.T) {
 		t.Error("hydrated.Syslog is null, want populated from the fake's seeded rsyslogd section")
 	}
 	// A section with NO fake entry at all must remain null even on a
-	// best-effort (onlyConfigured=false) hydration pass, since
-	// sectionCapability treats an absent key as capUnsupported and that
-	// branch is skipped rather than decoded.
+	// best-effort (onlyConfigured=false) hydration pass, since a key absent
+	// from the snapshot is skipped rather than decoded.
 	if !hydrated.Radius.IsNull() {
 		t.Error("hydrated.Radius should remain null: no fake entry seeded for radius")
 	}
@@ -782,13 +781,13 @@ func TestLifecycle_importHydratesAll_thenCleanRePlan(t *testing.T) {
 	//
 	// readSections' onlyConfigured=true contract (setting_engine.go) requires
 	// the caller to have already filtered sections down to the configured
-	// set: it fails closed (hard error) on any unsupported/absent section in
-	// that set, by design, since the caller is asserting the user configured
-	// it. A real Terraform Read only re-reads sections present in prior
-	// state, so this pass filters to exactly the 3 sections this test
-	// hydrated (dpi, country, rsyslogd/syslog) — not the full 13-section
-	// registry, which would spuriously fail closed on the 10 sections this
-	// fake never seeded (radius, mgmt, ips, etc., all absent -> capUnsupported).
+	// set: it fails closed (hard error) on any absent section in that set,
+	// by design, since the caller is asserting the user configured it. A
+	// real Terraform Read only re-reads sections present in prior state, so
+	// this pass filters to exactly the 3 sections this test hydrated (dpi,
+	// country, rsyslogd/syslog) — not the full 13-section registry, which
+	// would spuriously fail closed on the 10 sections this fake never seeded
+	// (radius, mgmt, ips, etc., all absent from the snapshot).
 	configuredSections := []settingSection{}
 	for _, s := range realSections() {
 		if s.key() == "dpi" || s.key() == "country" || s.key() == "rsyslogd" {

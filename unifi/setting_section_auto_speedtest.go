@@ -118,10 +118,6 @@ func (autoSpeedtestSection) overlay(ctx context.Context, model, prior settingRes
 	return rs, true, diags
 }
 
-func (autoSpeedtestSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, "auto_speedtest")
-}
-
 // carryBestEffort copies the plan's auto_speedtest value onto dst. This
 // section holds no secret leaves, so it is a straight copy with no
 // per-leaf plan/prior choice needed.

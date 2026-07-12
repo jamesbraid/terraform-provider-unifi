@@ -342,10 +342,6 @@ func blankSSHKeyControllerMetadata(base map[string]any) {
 	}
 }
 
-func (s mgmtSection) capability(snap rawSettings) capabilityState {
-	return sectionCapability(snap, s.key())
-}
-
 // carryBestEffort copies the plan's mgmt value onto dst via
 // carrySecretObject: this section holds a write-only secret leaf
 // (ssh_password), so a straight plan copy would be wrong when a C2.4

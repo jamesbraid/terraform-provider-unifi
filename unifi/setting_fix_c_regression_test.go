@@ -60,7 +60,7 @@ func TestApplySections_UsesConfigFilteredSet_NotPlan(t *testing.T) {
 	// Only mgmt is present/supported on this controller. dpi/country ARE
 	// supported (seeded) to prove they're skipped for being unconfigured
 	// (not merely absent); radius is absent entirely, which would fail
-	// closed (capUnsupported) if the engine mistakenly tried to manage it.
+	// closed if the engine mistakenly tried to manage it.
 	client.sections["mgmt"] = rawSection("mgmt", map[string]any{})
 	client.sections["dpi"] = rawSection("dpi", map[string]any{"enabled": false, "fingerprintingEnabled": false})
 	client.sections["country"] = rawSection("country", map[string]any{"code": float64(0)})
@@ -100,10 +100,10 @@ func TestApplySections_UsesConfigFilteredSet_NotPlan(t *testing.T) {
 	// The decisive assertion is the PUT count/keys above: dpi/country/radius
 	// were hydrated in plan (as UseStateForUnknown would do post-import) but
 	// absent from config, so applySections must never have checked their
-	// capability or overlaid/PUT them — radius in particular is entirely
-	// absent from the fake controller, which would fail closed
-	// (capUnsupported) had it been included in the config-filtered set. The
-	// single mgmt PUT above already proves that. out itself starts from plan
+	// presence or overlaid/PUT them — radius in particular is entirely
+	// absent from the fake controller, which would fail closed had it been
+	// included in the config-filtered set. The single mgmt PUT above already
+	// proves that. out itself starts from plan
 	// (applySections' `out := plan`) and only the sections actually passed
 	// (mgmt) get freshly overwritten by the post-apply read — so out.Dpi/
 	// out.Radius simply passing through plan's hydrated values here is
