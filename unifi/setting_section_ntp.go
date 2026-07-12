@@ -172,3 +172,7 @@ func (ntpSection) carryBestEffort(dst *settingResourceModel, plan, prior setting
 	dst.Ntp = plan.Ntp
 	return nil
 }
+
+func (ntpSection) isConfigured(m settingResourceModel) bool {
+	return !m.Ntp.IsNull() && !m.Ntp.IsUnknown()
+}

@@ -167,7 +167,17 @@ func realSections() []settingSection {
 
 func TestLifecycle_multipleSectionsOneOp(t *testing.T) {
 	ctx := context.Background()
-	client := newFakeSettingsClient() // empty fake: nothing on the controller yet
+	client := newFakeSettingsClient()
+	// Model a controller that supports these sections: ListSettings returns
+	// their default materialized rows before the provider updates them (the
+	// capability preflight in applySections fails closed on a configured
+	// section absent from the snapshot, so every section this test
+	// configures must be seeded here).
+	client.sections["dpi"] = rawSection("dpi", map[string]any{"enabled": false, "fingerprintingEnabled": false})
+	client.sections["country"] = rawSection("country", map[string]any{"code": float64(0)})
+	client.sections["rsyslogd"] = rawSection("rsyslogd", map[string]any{"enabled": false})
+	client.sections["ips"] = rawSection("ips", map[string]any{"ips_mode": "disabled"})
+	client.sections["radius"] = rawSection("radius", map[string]any{"accounting_enabled": false})
 
 	plan := allSectionsNullModel()
 	plan.Dpi = dpiObject(t, ctx, true, false)
@@ -229,6 +239,11 @@ func TestLifecycle_multipleSectionsOneOp(t *testing.T) {
 func TestLifecycle_onlyConfiguredWritten(t *testing.T) {
 	ctx := context.Background()
 	client := newFakeSettingsClient()
+	// Model a controller that supports dpi: ListSettings returns its default
+	// materialized row before the provider updates it (the capability
+	// preflight in applySections fails closed on a configured section absent
+	// from the snapshot).
+	client.sections["dpi"] = rawSection("dpi", map[string]any{"enabled": false, "fingerprintingEnabled": false})
 
 	plan := allSectionsNullModel()
 	plan.Dpi = dpiObject(t, ctx, true, true)
@@ -593,7 +608,15 @@ func TestLifecycle_malformedRemoteAborts(t *testing.T) {
 	t.Run("applySections degrades to a warning (not an error) when the malformed section is left unconfigured", func(t *testing.T) {
 		planWithoutDpi := allSectionsNullModel()
 		planWithoutDpi.Country = countryObject(t, ctx, 840) // configure something else this apply
-		out, diags := applySections(ctx, realSections(), malformedClient(), "default", planWithoutDpi, prior)
+
+		// This subtest's client also models a controller that supports
+		// country (materialized row), since the capability preflight in
+		// applySections now fails closed on a configured section absent
+		// from the snapshot; malformedClient() alone only seeds dpi.
+		client := malformedClient()
+		client.sections["country"] = rawSection("country", map[string]any{"code": float64(0)})
+
+		out, diags := applySections(ctx, realSections(), client, "default", planWithoutDpi, prior)
 		if diags.HasError() {
 			t.Fatalf("unexpected ERROR diagnostics (expected a warning, not an error — see doc comment): %v", diags)
 		}

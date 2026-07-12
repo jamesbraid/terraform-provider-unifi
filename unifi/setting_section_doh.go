@@ -196,3 +196,7 @@ func (dohSection) carryBestEffort(dst *settingResourceModel, plan, prior setting
 	dst.Doh = plan.Doh
 	return nil
 }
+
+func (dohSection) isConfigured(m settingResourceModel) bool {
+	return !m.Doh.IsNull() && !m.Doh.IsUnknown()
+}

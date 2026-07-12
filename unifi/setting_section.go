@@ -47,6 +47,14 @@ type settingSection interface {
 	// partial apply whose canonical re-read also failed. Implementations
 	// touch only their own field on dst.
 	carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics
+
+	// isConfigured reports whether the user configured this section in m —
+	// its object attribute is neither null nor unknown. Unknown is NOT
+	// configured (matches legacy lifecycle: an unknown block is treated as
+	// unconfigured). The engine uses this to scope capability/fail-closed
+	// handling (Read, applySections) to only the sections the user actually
+	// configured.
+	isConfigured(m settingResourceModel) bool
 }
 
 // settingSections is the registry of all migrated settings sections. Tasks

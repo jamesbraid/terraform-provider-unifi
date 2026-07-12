@@ -142,3 +142,7 @@ func (autoSpeedtestSection) carryBestEffort(dst *settingResourceModel, plan, pri
 	dst.AutoSpeedtest = plan.AutoSpeedtest
 	return nil
 }
+
+func (autoSpeedtestSection) isConfigured(m settingResourceModel) bool {
+	return !m.AutoSpeedtest.IsNull() && !m.AutoSpeedtest.IsUnknown()
+}

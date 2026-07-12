@@ -337,3 +337,7 @@ func (mgmtSection) carryBestEffort(dst *settingResourceModel, plan, prior settin
 	dst.Mgmt = obj
 	return diags
 }
+
+func (mgmtSection) isConfigured(m settingResourceModel) bool {
+	return !m.Mgmt.IsNull() && !m.Mgmt.IsUnknown()
+}

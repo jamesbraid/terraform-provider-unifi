@@ -437,3 +437,7 @@ func (ipsSection) carryBestEffort(dst *settingResourceModel, plan, prior setting
 	dst.Ips = plan.Ips
 	return nil
 }
+
+func (ipsSection) isConfigured(m settingResourceModel) bool {
+	return !m.Ips.IsNull() && !m.Ips.IsUnknown()
+}

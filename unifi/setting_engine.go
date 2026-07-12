@@ -98,6 +98,13 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 	}
 	var todo []pending
 	for _, s := range ordered {
+		if !s.isConfigured(plan) {
+			continue // not user-configured — never checked, never written
+		}
+		if capDiags := s.capability(snap).configuredError(s.key()); capDiags.HasError() {
+			d.Append(capDiags...)
+			continue // record the fail-closed diagnostic; the aggregate HasError() gate below aborts before any PUT
+		}
 		rs, configured, sd := s.overlay(ctx, plan, prior, snap)
 		d.Append(sd...)
 		if configured {
@@ -105,7 +112,7 @@ func applySections(ctx context.Context, sections []settingSection, client settin
 		}
 	}
 	if d.HasError() {
-		return prior, d // reconcile-before-mutate: nothing written
+		return prior, d // reconcile-before-mutate: nothing written (now also covers a configured-but-unsupported section)
 	}
 	put := map[string]bool{}
 	var putErr error

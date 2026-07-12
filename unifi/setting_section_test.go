@@ -35,6 +35,7 @@ func (f fakeSection) capability(snap rawSettings) capabilityState { return capUn
 func (f fakeSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
 	return nil
 }
+func (f fakeSection) isConfigured(m settingResourceModel) bool { return false }
 
 func TestOrderedSectionsDeterministic(t *testing.T) {
 	in := []settingSection{
@@ -279,3 +280,4 @@ func (f coverageFakeSection) capability(snap rawSettings) capabilityState { retu
 func (f coverageFakeSection) carryBestEffort(dst *settingResourceModel, plan, prior settingResourceModel) diag.Diagnostics {
 	return nil
 }
+func (f coverageFakeSection) isConfigured(m settingResourceModel) bool { return false }

@@ -150,3 +150,7 @@ func (dpiSection) carryBestEffort(dst *settingResourceModel, plan, prior setting
 	dst.Dpi = plan.Dpi
 	return nil
 }
+
+func (dpiSection) isConfigured(m settingResourceModel) bool {
+	return !m.Dpi.IsNull() && !m.Dpi.IsUnknown()
+}

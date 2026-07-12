@@ -119,6 +119,11 @@ func (s simpleStubSection) carryBestEffort(dst *settingResourceModel, plan, prio
 	return nil
 }
 
+func (s simpleStubSection) isConfigured(m settingResourceModel) bool {
+	obj := s.get(m)
+	return !obj.IsNull() && !obj.IsUnknown()
+}
+
 func autoSpeedtestStub() simpleStubSection {
 	return simpleStubSection{
 		k:         "auto_speedtest",
@@ -220,6 +225,10 @@ func (s mgmtSecretStubSection) carryBestEffort(dst *settingResourceModel, plan, 
 	return diags
 }
 
+func (s mgmtSecretStubSection) isConfigured(m settingResourceModel) bool {
+	return !m.Mgmt.IsNull() && !m.Mgmt.IsUnknown()
+}
+
 // testSections is the sections slice used across the engine tests that need
 // a plain two-section (non-secret) fixture (bestEffortState exclusion test).
 var testSections = []settingSection{autoSpeedtestStub(), ntpStub()}
@@ -309,8 +318,13 @@ func TestEngine_noWriteBeforeReconcileError(t *testing.T) {
 	badNtp.overlayErr = true
 	sections := []settingSection{autoSpeedtestStub(), badNtp}
 
+	// ntp must be configured (not just present on the controller) so its
+	// injected overlay error is actually reached: applySections only
+	// capability-checks/overlays sections the plan configures.
 	prior := modelWith("auto_speedtest", "old")
+	prior = setSection(prior, "ntp", "old")
 	plan := modelWith("auto_speedtest", "new")
+	plan = setSection(plan, "ntp", "new")
 
 	_, diags := applySections(ctx, sections, client, "default", plan, prior)
 	if !diags.HasError() {

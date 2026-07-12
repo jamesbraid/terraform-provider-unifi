@@ -150,3 +150,7 @@ func (igmpSnoopingSection) carryBestEffort(dst *settingResourceModel, plan, prio
 	dst.IgmpSnooping = plan.IgmpSnooping
 	return nil
 }
+
+func (igmpSnoopingSection) isConfigured(m settingResourceModel) bool {
+	return !m.IgmpSnooping.IsNull() && !m.IgmpSnooping.IsUnknown()
+}

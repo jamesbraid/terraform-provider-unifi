@@ -230,3 +230,7 @@ func (radiusSection) carryBestEffort(dst *settingResourceModel, plan, prior sett
 	dst.Radius = obj
 	return diags
 }
+
+func (radiusSection) isConfigured(m settingResourceModel) bool {
+	return !m.Radius.IsNull() && !m.Radius.IsUnknown()
+}

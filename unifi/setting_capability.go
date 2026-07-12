@@ -43,7 +43,12 @@ const (
 // capSupported, and anything absent is capUnsupported. Distinguishing
 // capUnmaterialized and capUnauthorized from a plain absence — and any real
 // detection of capUnknown — requires per-section probing that is out of
-// scope here and deferred to a later PR.
+// scope here and deferred to a later PR. Until that probing exists, an
+// absent snapshot row is conservatively treated as unsupported by both the
+// read path (readSections) and the write path (applySections' capability
+// preflight, scoped to configured sections) — so any fixture that applies a
+// configured, controller-supported section must seed that section's
+// materialized row in the fake snapshot.
 func sectionCapability(snap rawSettings, key string) capabilityState {
 	if snap.has(key) {
 		return capSupported

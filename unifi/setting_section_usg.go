@@ -617,3 +617,7 @@ func (usgSection) carryBestEffort(dst *settingResourceModel, plan, prior setting
 	dst.USG = plan.USG
 	return nil
 }
+
+func (usgSection) isConfigured(m settingResourceModel) bool {
+	return !m.USG.IsNull() && !m.USG.IsUnknown()
+}

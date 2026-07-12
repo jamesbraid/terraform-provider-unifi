@@ -175,3 +175,7 @@ func (lcmSection) carryBestEffort(dst *settingResourceModel, plan, prior setting
 	dst.Lcm = plan.Lcm
 	return nil
 }
+
+func (lcmSection) isConfigured(m settingResourceModel) bool {
+	return !m.Lcm.IsNull() && !m.Lcm.IsUnknown()
+}

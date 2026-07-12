@@ -575,13 +575,30 @@ func (r *settingResource) Read(
 	// Hydration gate: state with every section attribute null is exactly the
 	// shape ImportState produces (a bare site name, no configured sections
 	// yet) — in that case hydrate ALL registered sections as Computed
-	// (onlyConfigured=false) so the imported resource observes every section
-	// UseStateForUnknown can then hold stable, giving a clean subsequent
-	// no-config plan. Any other state (at least one section already
-	// populated, i.e. normal steady-state refresh) refreshes only the
-	// sections already configured, matching legacy readSettings' behavior.
-	onlyConfigured := !allSectionAttrsNull(data)
-	resp.Diagnostics.Append(readSections(ctx, settingSections, client, site, data, &data, onlyConfigured)...)
+	// (onlyConfigured=false); that path already skips any section this
+	// controller doesn't support rather than erroring, so it hydrates
+	// whatever is actually available. UseStateForUnknown then holds every
+	// hydrated section stable, giving a clean subsequent no-config plan.
+	//
+	// Any other state (at least one section already populated, i.e. normal
+	// steady-state refresh) refreshes only the sections the user actually
+	// configured (isConfigured), matching legacy readSettings' behavior and
+	// avoiding a spurious fail-closed error for a section the user never
+	// configured that happens to be absent from this controller (e.g.
+	// radius/usg on a gateway-less UDM). A configured-but-absent section
+	// stays in that filtered set, so it still fails closed — the user
+	// asserted it should exist.
+	if allSectionAttrsNull(data) {
+		resp.Diagnostics.Append(readSections(ctx, settingSections, client, site, data, &data, false)...)
+	} else {
+		configured := make([]settingSection, 0, len(settingSections))
+		for _, s := range settingSections {
+			if s.isConfigured(data) {
+				configured = append(configured, s)
+			}
+		}
+		resp.Diagnostics.Append(readSections(ctx, configured, client, site, data, &data, true)...)
+	}
 	if resp.Diagnostics.HasError() {
 		return
 	}

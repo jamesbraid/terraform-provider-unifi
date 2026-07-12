@@ -128,3 +128,7 @@ func (countrySection) carryBestEffort(dst *settingResourceModel, plan, prior set
 	dst.Country = plan.Country
 	return nil
 }
+
+func (countrySection) isConfigured(m settingResourceModel) bool {
+	return !m.Country.IsNull() && !m.Country.IsUnknown()
+}

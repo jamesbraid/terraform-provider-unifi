@@ -132,3 +132,7 @@ func (networkOptimizationSection) carryBestEffort(dst *settingResourceModel, pla
 	dst.NetworkOpt = plan.NetworkOpt
 	return nil
 }
+
+func (networkOptimizationSection) isConfigured(m settingResourceModel) bool {
+	return !m.NetworkOpt.IsNull() && !m.NetworkOpt.IsUnknown()
+}

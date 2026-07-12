@@ -253,3 +253,7 @@ func (syslogSection) carryBestEffort(dst *settingResourceModel, plan, prior sett
 	dst.Syslog = plan.Syslog
 	return nil
 }
+
+func (syslogSection) isConfigured(m settingResourceModel) bool {
+	return !m.Syslog.IsNull() && !m.Syslog.IsUnknown()
+}
