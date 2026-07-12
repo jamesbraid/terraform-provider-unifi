@@ -184,6 +184,11 @@ func bestEffortObject(planObj, priorObj types.Object, own map[string]ownershipCl
 
 	out := make(map[string]attr.Value, len(planAttrs))
 	for name, planVal := range planAttrs {
+		// own[name] is direct-child-only (unlike setting_codec.go's
+		// decodeObjectFields/overlayObjectFields, which look up own by full
+		// dotted path per Task 16b). Correct for PR-A: no nested-list leaf
+		// is ownerWriteOnlySecret anywhere in the resource. If a future PR
+		// introduces one, this lookup must become path-prefix-aware too.
 		if own[name] == ownerWriteOnlySecret {
 			if sv, ok := planVal.(types.String); ok && (sv.IsNull() || sv.IsUnknown()) {
 				if priorAttrs != nil {

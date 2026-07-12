@@ -2,10 +2,12 @@ package unifi
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
 // --- low-level codec: codecString ---
@@ -758,9 +760,9 @@ func TestDecodeObject_readsManagedChildrenAndPreservesSecretLeafFromPrior(t *tes
 			"secret": "******",
 		},
 	}
-	childOwnership := map[string]ownershipClass{
-		"name":   ownerManaged,
-		"secret": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"nested.name":   ownerManaged,
+		"nested.secret": ownerWriteOnlySecret,
 	}
 	attrTypes := nestedTestAttrTypes()
 	priorObj, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
@@ -771,7 +773,7 @@ func TestDecodeObject_readsManagedChildrenAndPreservesSecretLeafFromPrior(t *tes
 		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 	}
 
-	v, decodeDiags := decodeObject(ctx, data, "nested", childOwnership, priorObj, attrTypes)
+	v, decodeDiags := decodeObject(ctx, data, "nested", own, "nested", priorObj, attrTypes)
 	if decodeDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", decodeDiags)
 	}
@@ -792,12 +794,12 @@ func TestDecodeObject_readsManagedChildrenAndPreservesSecretLeafFromPrior(t *tes
 func TestDecodeObject_absentKeyIsNullObject(t *testing.T) {
 	ctx := context.Background()
 	data := map[string]any{}
-	childOwnership := map[string]ownershipClass{
-		"name":   ownerManaged,
-		"secret": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"nested.name":   ownerManaged,
+		"nested.secret": ownerWriteOnlySecret,
 	}
 	attrTypes := nestedTestAttrTypes()
-	v, diags := decodeObject(ctx, data, "nested", childOwnership, types.ObjectNull(attrTypes), attrTypes)
+	v, diags := decodeObject(ctx, data, "nested", own, "nested", types.ObjectNull(attrTypes), attrTypes)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -814,9 +816,9 @@ func TestOverlayObject_writesManagedChildAndDeletesSecretLeafOnNull(t *testing.T
 			"secret": "******",
 		},
 	}
-	childOwnership := map[string]ownershipClass{
-		"name":   ownerManaged,
-		"secret": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"nested.name":   ownerManaged,
+		"nested.secret": ownerWriteOnlySecret,
 	}
 	attrTypes := nestedTestAttrTypes()
 	cfg, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
@@ -827,7 +829,7 @@ func TestOverlayObject_writesManagedChildAndDeletesSecretLeafOnNull(t *testing.T
 		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 	}
 
-	overlayDiags := overlayObject(ctx, out, "nested", childOwnership, cfg)
+	overlayDiags := overlayObject(ctx, out, "nested", own, "nested", cfg)
 	if overlayDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
 	}
@@ -851,9 +853,9 @@ func TestOverlayObject_writesManagedChildAndDeletesSecretLeafOnUnknown(t *testin
 			"secret": "******",
 		},
 	}
-	childOwnership := map[string]ownershipClass{
-		"name":   ownerManaged,
-		"secret": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"nested.name":   ownerManaged,
+		"nested.secret": ownerWriteOnlySecret,
 	}
 	attrTypes := nestedTestAttrTypes()
 	cfg, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
@@ -864,7 +866,7 @@ func TestOverlayObject_writesManagedChildAndDeletesSecretLeafOnUnknown(t *testin
 		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 	}
 
-	overlayDiags := overlayObject(ctx, out, "nested", childOwnership, cfg)
+	overlayDiags := overlayObject(ctx, out, "nested", own, "nested", cfg)
 	if overlayDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
 	}
@@ -888,12 +890,12 @@ func TestOverlayObject_nullConfigIsNoop(t *testing.T) {
 			"secret": "******",
 		},
 	}
-	childOwnership := map[string]ownershipClass{
-		"name":   ownerManaged,
-		"secret": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"nested.name":   ownerManaged,
+		"nested.secret": ownerWriteOnlySecret,
 	}
 	attrTypes := nestedTestAttrTypes()
-	overlayDiags := overlayObject(ctx, out, "nested", childOwnership, types.ObjectNull(attrTypes))
+	overlayDiags := overlayObject(ctx, out, "nested", own, "nested", types.ObjectNull(attrTypes))
 	if overlayDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
 	}
@@ -916,9 +918,9 @@ func TestDecodeObjectList_readsElementsAndPreservesSecretLeafFromMatchingPriorEl
 			map[string]any{"name": "key-b", "password": "******"},
 		},
 	}
-	elemOwnership := map[string]ownershipClass{
-		"name":     ownerManaged,
-		"password": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"keys.name":     ownerManaged,
+		"keys.password": ownerWriteOnlySecret,
 	}
 	attrTypes := map[string]attr.Type{
 		"name":     types.StringType,
@@ -945,7 +947,7 @@ func TestDecodeObjectList_readsElementsAndPreservesSecretLeafFromMatchingPriorEl
 		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 	}
 
-	v, decodeDiags := decodeObjectList(ctx, data, "keys", elemOwnership, prior, elemType)
+	v, decodeDiags := decodeObjectList(ctx, data, "keys", own, "keys", prior, elemType)
 	if decodeDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", decodeDiags)
 	}
@@ -969,10 +971,10 @@ func TestDecodeObjectList_readsElementsAndPreservesSecretLeafFromMatchingPriorEl
 func TestDecodeObjectList_absentKeyIsNullList(t *testing.T) {
 	ctx := context.Background()
 	data := map[string]any{}
-	elemOwnership := map[string]ownershipClass{"name": ownerManaged}
+	own := map[string]ownershipClass{"keys.name": ownerManaged}
 	attrTypes := map[string]attr.Type{"name": types.StringType}
 	elemType := types.ObjectType{AttrTypes: attrTypes}
-	v, diags := decodeObjectList(ctx, data, "keys", elemOwnership, types.ListNull(elemType), elemType)
+	v, diags := decodeObjectList(ctx, data, "keys", own, "keys", types.ListNull(elemType), elemType)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -988,9 +990,9 @@ func TestOverlayObjectList_writesElementsAndDeletesSecretLeafOnNullElement(t *te
 			map[string]any{"name": "key-a", "password": "******"},
 		},
 	}
-	elemOwnership := map[string]ownershipClass{
-		"name":     ownerManaged,
-		"password": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"keys.name":     ownerManaged,
+		"keys.password": ownerWriteOnlySecret,
 	}
 	attrTypes := map[string]attr.Type{
 		"name":     types.StringType,
@@ -1009,7 +1011,7 @@ func TestOverlayObjectList_writesElementsAndDeletesSecretLeafOnNullElement(t *te
 		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 	}
 
-	overlayDiags := overlayObjectList(ctx, out, "keys", elemOwnership, cfg)
+	overlayDiags := overlayObjectList(ctx, out, "keys", own, "keys", cfg)
 	if overlayDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
 	}
@@ -1033,9 +1035,9 @@ func TestOverlayObjectList_writesElementsAndDeletesSecretLeafOnUnknownElement(t 
 			map[string]any{"name": "key-a", "password": "******"},
 		},
 	}
-	elemOwnership := map[string]ownershipClass{
-		"name":     ownerManaged,
-		"password": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"keys.name":     ownerManaged,
+		"keys.password": ownerWriteOnlySecret,
 	}
 	attrTypes := map[string]attr.Type{
 		"name":     types.StringType,
@@ -1054,7 +1056,7 @@ func TestOverlayObjectList_writesElementsAndDeletesSecretLeafOnUnknownElement(t 
 		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
 	}
 
-	overlayDiags := overlayObjectList(ctx, out, "keys", elemOwnership, cfg)
+	overlayDiags := overlayObjectList(ctx, out, "keys", own, "keys", cfg)
 	if overlayDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
 	}
@@ -1078,16 +1080,16 @@ func TestOverlayObjectList_nullConfigIsNoop(t *testing.T) {
 			map[string]any{"name": "key-a", "password": "******"},
 		},
 	}
-	elemOwnership := map[string]ownershipClass{
-		"name":     ownerManaged,
-		"password": ownerWriteOnlySecret,
+	own := map[string]ownershipClass{
+		"keys.name":     ownerManaged,
+		"keys.password": ownerWriteOnlySecret,
 	}
 	attrTypes := map[string]attr.Type{
 		"name":     types.StringType,
 		"password": types.StringType,
 	}
 	elemType := types.ObjectType{AttrTypes: attrTypes}
-	overlayDiags := overlayObjectList(ctx, out, "keys", elemOwnership, types.ListNull(elemType))
+	overlayDiags := overlayObjectList(ctx, out, "keys", own, "keys", types.ListNull(elemType))
 	if overlayDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
 	}
@@ -1096,4 +1098,846 @@ func TestOverlayObjectList_nullConfigIsNoop(t *testing.T) {
 	if elem["name"] != "key-a" || elem["password"] != "******" {
 		t.Fatalf("expected snapshot untouched on null list config, got %v", elem)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Task 16b: generalized nested codec — typed leaves + path-prefix recursion.
+// ---------------------------------------------------------------------------
+
+// testTrackingAttrTypes/testSuppressionAlertAttrTypes/testDohCustomServerAttrTypes model
+// the ips/doh schema shapes described in Task 16b's brief: double nesting
+// (suppression_alerts.tracking), int64 leaves (gid/id), and a bool leaf
+// (custom_servers.enabled).
+
+func testTrackingAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"direction": types.StringType,
+	}
+}
+
+func testSuppressionAlertAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"gid":      types.Int64Type,
+		"id":       types.Int64Type,
+		"tracking": types.ListType{ElemType: types.ObjectType{AttrTypes: testTrackingAttrTypes()}},
+	}
+}
+
+func testDohCustomServerAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"enabled": types.BoolType,
+	}
+}
+
+// --- 1. Double-nested path lookup ---
+
+// TestDecodeObjectFields_doubleNestedPathLookupUsesFullDottedPath proves the
+// tracking leaf's class is looked up under the full dotted path
+// "suppression_alerts.tracking.direction", not "direction" or
+// "tracking.direction". A distinctive class (ownerWriteOnlySecret) is given
+// ONLY to that full path; its delete-on-null behavior must fire, proving the
+// lookup used the full path rather than a short/partial one.
+func TestDecodeObjectFields_doubleNestedPathLookupUsesFullDottedPath(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"suppression_alerts.gid":                ownerManaged,
+		"suppression_alerts.id":                 ownerManaged,
+		"suppression_alerts.tracking.direction": ownerWriteOnlySecret,
+	}
+	attrTypes := testSuppressionAlertAttrTypes()
+	prior, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"gid": types.Int64Value(1),
+		"id":  types.Int64Value(2),
+		"tracking": mustListValue(t, types.ObjectType{AttrTypes: testTrackingAttrTypes()}, []attr.Value{
+			mustObjectValue(t, testTrackingAttrTypes(), map[string]attr.Value{
+				"direction": types.StringValue("prior-direction"),
+			}),
+		}),
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+
+	nested := map[string]any{
+		"gid": 1.0,
+		"id":  2.0,
+		"tracking": []any{
+			map[string]any{"direction": "from-api"},
+		},
+	}
+
+	v, decodeDiags := decodeObjectFields(ctx, nested, "suppression_alerts", "suppression_alerts", own, prior, attrTypes)
+	if decodeDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", decodeDiags)
+	}
+	tracking := v.Attributes()["tracking"].(types.List).Elements()
+	if len(tracking) != 1 {
+		t.Fatalf("expected 1 tracking element, got %d", len(tracking))
+	}
+	direction := tracking[0].(types.Object).Attributes()["direction"].(types.String)
+	if direction.ValueString() != "prior-direction" {
+		t.Fatalf("expected tracking.direction preserved from prior (write-only-secret), got %v", direction)
+	}
+}
+
+// TestDecodeObjectFields_shortKeyOwnershipDoesNotApply proves that an
+// ownership map keyed by the SHORT leaf name ("direction") instead of the
+// full dotted path does NOT satisfy the lookup for a nested leaf: it must
+// hit the missing-ownership-entry diagnostic, not silently apply.
+func TestDecodeObjectFields_shortKeyOwnershipDoesNotApply(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"suppression_alerts.gid": ownerManaged,
+		"suppression_alerts.id":  ownerManaged,
+		// Deliberately wrong: short key instead of the full dotted path.
+		"direction": ownerWriteOnlySecret,
+	}
+	attrTypes := testSuppressionAlertAttrTypes()
+	nested := map[string]any{
+		"gid": 1.0,
+		"id":  2.0,
+		"tracking": []any{
+			map[string]any{"direction": "from-api"},
+		},
+	}
+
+	_, decodeDiags := decodeObjectFields(ctx, nested, "suppression_alerts", "suppression_alerts", own, types.ObjectNull(attrTypes), attrTypes)
+	if !decodeDiags.HasError() {
+		t.Fatalf("expected missing-ownership-entry diagnostic for short-keyed map, got none")
+	}
+}
+
+// --- 2. Type coverage: bool false, int64 0 round-trip ---
+
+func TestDecodeObjectFields_boolFalseAndInt64ZeroAreNotDropped(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"custom_servers.enabled": ownerManaged,
+	}
+	attrTypes := testDohCustomServerAttrTypes()
+	nested := map[string]any{"enabled": false}
+
+	v, diags := decodeObjectFields(ctx, nested, "custom_servers", "custom_servers", own, types.ObjectNull(attrTypes), attrTypes)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	enabled, ok := v.Attributes()["enabled"].(types.Bool)
+	if !ok || enabled.IsNull() {
+		t.Fatalf("expected bool false to decode as a value, got %v", v.Attributes()["enabled"])
+	}
+	if enabled.ValueBool() != false {
+		t.Fatalf("expected enabled=false, got %v", enabled.ValueBool())
+	}
+}
+
+func TestOverlayObjectFields_boolFalseIsWrittenNotDropped(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"custom_servers.enabled": ownerManaged,
+	}
+	attrTypes := testDohCustomServerAttrTypes()
+	cfg, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"enabled": types.BoolValue(false),
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+
+	nested := map[string]any{}
+	overlayDiags := overlayObjectFields(ctx, nested, "custom_servers", "custom_servers", own, cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	v, ok := nested["enabled"].(bool)
+	if !ok {
+		t.Fatalf("expected enabled key written as bool, got %v (%T)", nested["enabled"], nested["enabled"])
+	}
+	if v != false {
+		t.Fatalf("expected enabled=false written, got %v", v)
+	}
+}
+
+func TestDecodeObjectFields_int64ZeroIsNotDropped(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"suppression_alerts.gid":                ownerManaged,
+		"suppression_alerts.id":                 ownerManaged,
+		"suppression_alerts.tracking.direction": ownerManaged,
+	}
+	attrTypes := testSuppressionAlertAttrTypes()
+	nested := map[string]any{
+		"gid":      0.0,
+		"id":       0.0,
+		"tracking": []any{},
+	}
+
+	v, diags := decodeObjectFields(ctx, nested, "suppression_alerts", "suppression_alerts", own, types.ObjectNull(attrTypes), attrTypes)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	gid, ok := v.Attributes()["gid"].(types.Int64)
+	if !ok || gid.IsNull() {
+		t.Fatalf("expected int64 0 to decode as a value, got %v", v.Attributes()["gid"])
+	}
+	if gid.ValueInt64() != 0 {
+		t.Fatalf("expected gid=0, got %v", gid.ValueInt64())
+	}
+}
+
+func TestOverlayObjectFields_int64ZeroLandsAsFloat64(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"suppression_alerts.gid":                ownerManaged,
+		"suppression_alerts.id":                 ownerManaged,
+		"suppression_alerts.tracking.direction": ownerManaged,
+	}
+	attrTypes := testSuppressionAlertAttrTypes()
+	cfg, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"gid":      types.Int64Value(0),
+		"id":       types.Int64Value(5),
+		"tracking": types.ListNull(types.ObjectType{AttrTypes: testTrackingAttrTypes()}),
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+
+	nested := map[string]any{}
+	overlayDiags := overlayObjectFields(ctx, nested, "suppression_alerts", "suppression_alerts", own, cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	gid, ok := nested["gid"].(float64)
+	if !ok {
+		t.Fatalf("expected gid written as float64 (per putInt64), got %v (%T)", nested["gid"], nested["gid"])
+	}
+	if gid != 0 {
+		t.Fatalf("expected gid=0, got %v", gid)
+	}
+	id, ok := nested["id"].(float64)
+	if !ok || id != 5 {
+		t.Fatalf("expected id=5 as float64, got %v (%T)", nested["id"], nested["id"])
+	}
+}
+
+// --- 3. List semantics: null/unknown, known-empty, nested known-empty ---
+
+func TestDecodeObjectList_nullListDecodesToNullList(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
+	elemType := types.ObjectType{AttrTypes: testDohCustomServerAttrTypes()}
+	v, diags := decodeObjectList(ctx, map[string]any{}, "custom_servers", own, "custom_servers", types.ListNull(elemType), elemType)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if !v.IsNull() {
+		t.Fatalf("expected null list for absent key, got %v", v)
+	}
+}
+
+func TestOverlayObjectList_unknownConfigIsNoop(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
+	elemType := types.ObjectType{AttrTypes: testDohCustomServerAttrTypes()}
+	out := map[string]any{
+		"custom_servers": []any{
+			map[string]any{"enabled": true},
+		},
+	}
+	overlayDiags := overlayObjectList(ctx, out, "custom_servers", own, "custom_servers", types.ListUnknown(elemType))
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	list := out["custom_servers"].([]any)
+	elem := list[0].(map[string]any)
+	if elem["enabled"] != true {
+		t.Fatalf("expected base untouched on unknown list config, got %v", elem)
+	}
+}
+
+func TestDecodeObjectList_knownEmptyDecodesToEmptyNonNullList(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
+	elemType := types.ObjectType{AttrTypes: testDohCustomServerAttrTypes()}
+	data := map[string]any{"custom_servers": []any{}}
+	v, diags := decodeObjectList(ctx, data, "custom_servers", own, "custom_servers", types.ListNull(elemType), elemType)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if v.IsNull() {
+		t.Fatalf("expected non-null empty list for a known-empty array, got null")
+	}
+	if len(v.Elements()) != 0 {
+		t.Fatalf("expected 0 elements, got %d", len(v.Elements()))
+	}
+}
+
+func TestOverlayObjectList_knownEmptyOverlaysAsEmptyArray(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
+	elemType := types.ObjectType{AttrTypes: testDohCustomServerAttrTypes()}
+	cfg, diags := types.ListValue(elemType, []attr.Value{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+	out := map[string]any{
+		"custom_servers": []any{
+			map[string]any{"enabled": true},
+		},
+	}
+	overlayDiags := overlayObjectList(ctx, out, "custom_servers", own, "custom_servers", cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	list, ok := out["custom_servers"].([]any)
+	if !ok {
+		t.Fatalf("expected custom_servers to remain a []any, got %T", out["custom_servers"])
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected empty array overlay, got %v", list)
+	}
+}
+
+func TestOverlayObjectFields_knownEmptyNestedTrackingClearsElementTracking(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"suppression_alerts.gid":                ownerManaged,
+		"suppression_alerts.id":                 ownerManaged,
+		"suppression_alerts.tracking.direction": ownerManaged,
+	}
+	attrTypes := testSuppressionAlertAttrTypes()
+	trackingElemType := types.ObjectType{AttrTypes: testTrackingAttrTypes()}
+	emptyTracking, diags := types.ListValue(trackingElemType, []attr.Value{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+	cfg, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"gid":      types.Int64Value(1),
+		"id":       types.Int64Value(2),
+		"tracking": emptyTracking,
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+
+	nested := map[string]any{
+		"gid": 1.0,
+		"id":  2.0,
+		"tracking": []any{
+			map[string]any{"direction": "stale"},
+		},
+	}
+	overlayDiags := overlayObjectFields(ctx, nested, "suppression_alerts", "suppression_alerts", own, cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	tracking, ok := nested["tracking"].([]any)
+	if !ok {
+		t.Fatalf("expected tracking to remain a []any, got %T", nested["tracking"])
+	}
+	if len(tracking) != 0 {
+		t.Fatalf("expected tracking cleared to empty, got %v", tracking)
+	}
+}
+
+// --- 4. Ordering + same-index preservation ---
+
+func TestOverlayObjectList_sameIndexElementRetainsBaseFieldOmittedFromConfig(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"items.name":  ownerManaged,
+		"items.extra": ownerPreservedUnmanaged,
+	}
+	attrTypes := map[string]attr.Type{"name": types.StringType}
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+
+	out := map[string]any{
+		"items": []any{
+			map[string]any{"name": "orig-a", "extra": "keep-me-a"},
+			map[string]any{"name": "orig-b", "extra": "keep-me-b"},
+		},
+	}
+	cfgElemA := mustObjectValue(t, attrTypes, map[string]attr.Value{"name": types.StringValue("new-a")})
+	cfgElemB := mustObjectValue(t, attrTypes, map[string]attr.Value{"name": types.StringValue("new-b")})
+	cfg := mustListValue(t, elemType, []attr.Value{cfgElemA, cfgElemB})
+
+	overlayDiags := overlayObjectList(ctx, out, "items", own, "items", cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	list := out["items"].([]any)
+	if len(list) != 2 {
+		t.Fatalf("expected 2 elements, got %d", len(list))
+	}
+	elemA := list[0].(map[string]any)
+	if elemA["name"] != "new-a" {
+		t.Fatalf("expected element 0 name overwritten, got %v", elemA["name"])
+	}
+	if elemA["extra"] != "keep-me-a" {
+		t.Fatalf("expected element 0 to retain base 'extra' field omitted from config, got %v", elemA["extra"])
+	}
+	elemB := list[1].(map[string]any)
+	if elemB["extra"] != "keep-me-b" {
+		t.Fatalf("expected element 1 to retain base 'extra' field omitted from config, got %v", elemB["extra"])
+	}
+}
+
+func TestOverlayObjectList_reorderRemoveIsPositionalNotKeyMatched(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"items.name":  ownerManaged,
+		"items.extra": ownerPreservedUnmanaged,
+	}
+	attrTypes := map[string]attr.Type{"name": types.StringType}
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+
+	// Base has 3 elements; config has only 1 (a removal). Positional
+	// semantics: the single config element lands at index 0 and inherits
+	// index 0's base "extra", NOT the base element it shares a "name" with.
+	out := map[string]any{
+		"items": []any{
+			map[string]any{"name": "orig-a", "extra": "extra-a"},
+			map[string]any{"name": "orig-b", "extra": "extra-b"},
+			map[string]any{"name": "orig-c", "extra": "extra-c"},
+		},
+	}
+	cfgElem := mustObjectValue(t, attrTypes, map[string]attr.Value{"name": types.StringValue("orig-c")})
+	cfg := mustListValue(t, elemType, []attr.Value{cfgElem})
+
+	overlayDiags := overlayObjectList(ctx, out, "items", own, "items", cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	list := out["items"].([]any)
+	if len(list) != 1 {
+		t.Fatalf("expected 1 element after removal, got %d", len(list))
+	}
+	elem := list[0].(map[string]any)
+	if elem["name"] != "orig-c" {
+		t.Fatalf("expected name=orig-c from config, got %v", elem["name"])
+	}
+	if elem["extra"] != "extra-a" {
+		t.Fatalf("expected positional (index-0) base preservation to pull 'extra-a', got %v — same-index semantics violated", elem["extra"])
+	}
+}
+
+func TestDecodeObjectList_apiResponseOrderPreserved(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"items.name": ownerManaged}
+	attrTypes := map[string]attr.Type{"name": types.StringType}
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+	data := map[string]any{
+		"items": []any{
+			map[string]any{"name": "third"},
+			map[string]any{"name": "first"},
+			map[string]any{"name": "second"},
+		},
+	}
+	v, diags := decodeObjectList(ctx, data, "items", own, "items", types.ListNull(elemType), elemType)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	elems := v.Elements()
+	want := []string{"third", "first", "second"}
+	for i, w := range want {
+		got := elems[i].(types.Object).Attributes()["name"].(types.String).ValueString()
+		if got != w {
+			t.Fatalf("element %d: expected %q (API order preserved), got %q", i, w, got)
+		}
+	}
+}
+
+// --- 5. No snapshot mutation ---
+
+func TestOverlayObjectList_doesNotMutateSourceSnapshot(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"suppression_alerts.gid":                ownerManaged,
+		"suppression_alerts.id":                 ownerManaged,
+		"suppression_alerts.tracking.direction": ownerManaged,
+	}
+	attrTypes := testSuppressionAlertAttrTypes()
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+
+	rawData := map[string]any{
+		"suppression_alerts": []any{
+			map[string]any{
+				"gid": 1.0,
+				"id":  2.0,
+				"tracking": []any{
+					map[string]any{"direction": "both"},
+				},
+			},
+		},
+	}
+	snap := newRawSettings([]settings.RawSetting{
+		{BaseSetting: settings.BaseSetting{Key: "ips"}, Data: rawData},
+	})
+
+	// Snapshot the original Data (deep copy) before any overlay to compare
+	// against afterward.
+	originalData := deepCopyAny(rawData).(map[string]any)
+
+	base := snap.dataCopy("ips")
+	cfgElem := mustObjectValue(t, attrTypes, map[string]attr.Value{
+		"gid": types.Int64Value(99),
+		"id":  types.Int64Value(100),
+		"tracking": mustListValue(t, types.ObjectType{AttrTypes: testTrackingAttrTypes()}, []attr.Value{
+			mustObjectValue(t, testTrackingAttrTypes(), map[string]attr.Value{"direction": types.StringValue("egress")}),
+		}),
+	})
+	cfg := mustListValue(t, elemType, []attr.Value{cfgElem})
+
+	overlayDiags := overlayObjectList(ctx, base, "suppression_alerts", own, "suppression_alerts", cfg)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+
+	// The overlay must have actually changed `base` (sanity: prove the test
+	// isn't vacuously true because overlay no-oped).
+	if reflect.DeepEqual(base["suppression_alerts"], originalData["suppression_alerts"]) {
+		t.Fatalf("test fixture invalid: overlay did not change base at all")
+	}
+
+	afterSec, ok := snap.section("ips")
+	if !ok {
+		t.Fatalf("expected ips section present in snapshot")
+	}
+	afterData := afterSec.Data
+	if !reflect.DeepEqual(afterData, originalData) {
+		t.Fatalf("overlay mutated the source snapshot's Data.\nbefore: %#v\nafter:  %#v", originalData, afterData)
+	}
+}
+
+// --- 6. Malformed shapes -> diagnostics ---
+
+func TestDecodeObjectList_outerNotArrayIsDiagnostic(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"items.name": ownerManaged}
+	attrTypes := map[string]attr.Type{"name": types.StringType}
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+	data := map[string]any{"items": "not-an-array"}
+	_, diags := decodeObjectList(ctx, data, "items", own, "items", types.ListNull(elemType), elemType)
+	if !diags.HasError() {
+		t.Fatalf("expected diagnostic for non-array outer value, got none")
+	}
+}
+
+func TestDecodeObjectList_elementNotObjectIsDiagnostic(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"items.name": ownerManaged}
+	attrTypes := map[string]attr.Type{"name": types.StringType}
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+	data := map[string]any{"items": []any{"not-an-object"}}
+	_, diags := decodeObjectList(ctx, data, "items", own, "items", types.ListNull(elemType), elemType)
+	if !diags.HasError() {
+		t.Fatalf("expected diagnostic for non-object element, got none")
+	}
+}
+
+func TestDecodeObjectFields_boolLeafWithStringRawValueIsDiagnostic(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
+	attrTypes := testDohCustomServerAttrTypes()
+	nested := map[string]any{"enabled": "not-a-bool"}
+	_, diags := decodeObjectFields(ctx, nested, "custom_servers", "custom_servers", own, types.ObjectNull(attrTypes), attrTypes)
+	if !diags.HasError() {
+		t.Fatalf("expected diagnostic for bool leaf with string raw value, got none")
+	}
+}
+
+func TestDecodeObjectFields_int64LeafWithFractionalValueIsDiagnostic(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"suppression_alerts.gid":                ownerManaged,
+		"suppression_alerts.id":                 ownerManaged,
+		"suppression_alerts.tracking.direction": ownerManaged,
+	}
+	attrTypes := testSuppressionAlertAttrTypes()
+	nested := map[string]any{
+		"gid":      1.9,
+		"id":       2.0,
+		"tracking": []any{},
+	}
+	_, diags := decodeObjectFields(ctx, nested, "suppression_alerts", "suppression_alerts", own, types.ObjectNull(attrTypes), attrTypes)
+	if !diags.HasError() {
+		t.Fatalf("expected diagnostic for fractional int64 leaf, got none")
+	}
+}
+
+func TestDecodeObjectFields_malformedLeafYieldsDiagnosticNotPartialOutput(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
+	attrTypes := testDohCustomServerAttrTypes()
+	nested := map[string]any{"enabled": "not-a-bool"}
+	v, diags := decodeObjectFields(ctx, nested, "custom_servers", "custom_servers", own, types.ObjectNull(attrTypes), attrTypes)
+	if !diags.HasError() {
+		t.Fatalf("expected diagnostic, got none")
+	}
+	if !v.IsUnknown() {
+		t.Fatalf("expected Unknown object (no partial output) on malformed leaf, got %v", v)
+	}
+}
+
+// --- 7. Missing-ownership-entry -> diagnostic ---
+
+func TestDecodeObjectFields_missingOwnershipEntryIsDiagnosticNotSilentManaged(t *testing.T) {
+	ctx := context.Background()
+	// "custom_servers.enabled" is deliberately absent from own.
+	own := map[string]ownershipClass{}
+	attrTypes := testDohCustomServerAttrTypes()
+	nested := map[string]any{"enabled": true}
+	_, diags := decodeObjectFields(ctx, nested, "custom_servers", "custom_servers", own, types.ObjectNull(attrTypes), attrTypes)
+	if !diags.HasError() {
+		t.Fatalf("expected missing-ownership-entry diagnostic, got none (would silently default to ownerManaged)")
+	}
+}
+
+func TestOverlayObjectFields_missingOwnershipEntryIsDiagnosticNotSilentManaged(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{}
+	attrTypes := testDohCustomServerAttrTypes()
+	cfg := mustObjectValue(t, attrTypes, map[string]attr.Value{"enabled": types.BoolValue(true)})
+	nested := map[string]any{}
+	diags := overlayObjectFields(ctx, nested, "custom_servers", "custom_servers", own, cfg)
+	if !diags.HasError() {
+		t.Fatalf("expected missing-ownership-entry diagnostic, got none")
+	}
+	if _, ok := nested["enabled"]; ok {
+		t.Fatalf("expected no write to occur when ownership lookup fails, got %v", nested["enabled"])
+	}
+}
+
+// --- 8. Nested write-only-secret (future-proofing) ---
+
+func TestDecodeObjectList_nestedWriteOnlySecretPreservesPriorNeverReadsData(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"some_list.token": ownerWriteOnlySecret,
+	}
+	attrTypes := map[string]attr.Type{"token": types.StringType}
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+	priorElem := mustObjectValue(t, attrTypes, map[string]attr.Value{"token": types.StringValue("prior-token")})
+	prior := mustListValue(t, elemType, []attr.Value{priorElem})
+
+	data := map[string]any{
+		"some_list": []any{
+			map[string]any{"token": "masked-value-from-api"},
+		},
+	}
+	v, diags := decodeObjectList(ctx, data, "some_list", own, "some_list", prior, elemType)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	token := v.Elements()[0].(types.Object).Attributes()["token"].(types.String)
+	if token.ValueString() != "prior-token" {
+		t.Fatalf("expected token preserved from prior (never read masked API value), got %v", token)
+	}
+}
+
+func TestOverlayObjectList_nestedWriteOnlySecretDeletesOnNullAndUnknownWritesOnSet(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"some_list.token": ownerWriteOnlySecret,
+	}
+	attrTypes := map[string]attr.Type{"token": types.StringType}
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+
+	t.Run("null deletes", func(t *testing.T) {
+		out := map[string]any{
+			"some_list": []any{
+				map[string]any{"token": "stale-masked"},
+			},
+		}
+		cfgElem := mustObjectValue(t, attrTypes, map[string]attr.Value{"token": types.StringNull()})
+		cfg := mustListValue(t, elemType, []attr.Value{cfgElem})
+		diags := overlayObjectList(ctx, out, "some_list", own, "some_list", cfg)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		elem := out["some_list"].([]any)[0].(map[string]any)
+		if _, ok := elem["token"]; ok {
+			t.Fatalf("expected token deleted on null config, still present: %v", elem["token"])
+		}
+	})
+
+	t.Run("unknown deletes", func(t *testing.T) {
+		out := map[string]any{
+			"some_list": []any{
+				map[string]any{"token": "stale-masked"},
+			},
+		}
+		cfgElem := mustObjectValue(t, attrTypes, map[string]attr.Value{"token": types.StringUnknown()})
+		cfg := mustListValue(t, elemType, []attr.Value{cfgElem})
+		diags := overlayObjectList(ctx, out, "some_list", own, "some_list", cfg)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		elem := out["some_list"].([]any)[0].(map[string]any)
+		if _, ok := elem["token"]; ok {
+			t.Fatalf("expected token deleted on unknown config, still present: %v", elem["token"])
+		}
+	})
+
+	t.Run("set value writes", func(t *testing.T) {
+		out := map[string]any{
+			"some_list": []any{
+				map[string]any{"token": "stale-masked"},
+			},
+		}
+		cfgElem := mustObjectValue(t, attrTypes, map[string]attr.Value{"token": types.StringValue("new-token")})
+		cfg := mustListValue(t, elemType, []attr.Value{cfgElem})
+		diags := overlayObjectList(ctx, out, "some_list", own, "some_list", cfg)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		elem := out["some_list"].([]any)[0].(map[string]any)
+		if elem["token"] != "new-token" {
+			t.Fatalf("expected token written for set config value, got %v", elem["token"])
+		}
+	})
+}
+
+// --- 9. Round trips ---
+
+func TestDecodeObjectList_dohCustomServerRoundTripWithFalseEnabled(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{"custom_servers.enabled": ownerManaged}
+	attrTypes := testDohCustomServerAttrTypes()
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+	data := map[string]any{
+		"custom_servers": []any{
+			map[string]any{"enabled": false},
+		},
+	}
+	v, diags := decodeObjectList(ctx, data, "custom_servers", own, "custom_servers", types.ListNull(elemType), elemType)
+	if diags.HasError() {
+		t.Fatalf("unexpected decode diagnostics: %v", diags)
+	}
+	elems := v.Elements()
+	if len(elems) != 1 {
+		t.Fatalf("expected 1 element, got %d", len(elems))
+	}
+	enabled := elems[0].(types.Object).Attributes()["enabled"].(types.Bool)
+	if enabled.IsNull() || enabled.ValueBool() != false {
+		t.Fatalf("expected enabled=false decoded, got %v", enabled)
+	}
+
+	out := map[string]any{}
+	overlayDiags := overlayObjectList(ctx, out, "custom_servers", own, "custom_servers", v)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected overlay diagnostics: %v", overlayDiags)
+	}
+	list := out["custom_servers"].([]any)
+	elem := list[0].(map[string]any)
+	if b, ok := elem["enabled"].(bool); !ok || b != false {
+		t.Fatalf("expected enabled=false overlaid, got %v (%T)", elem["enabled"], elem["enabled"])
+	}
+}
+
+func TestDecodeObjectList_ipsSuppressionAlertsRoundTripWithMultipleTrackingEntries(t *testing.T) {
+	ctx := context.Background()
+	own := map[string]ownershipClass{
+		"suppression_alerts.gid":                ownerManaged,
+		"suppression_alerts.id":                 ownerManaged,
+		"suppression_alerts.tracking.direction": ownerManaged,
+	}
+	attrTypes := testSuppressionAlertAttrTypes()
+	elemType := types.ObjectType{AttrTypes: attrTypes}
+	data := map[string]any{
+		"suppression_alerts": []any{
+			map[string]any{
+				"gid": 1.0,
+				"id":  100.0,
+				"tracking": []any{
+					map[string]any{"direction": "ingress"},
+					map[string]any{"direction": "egress"},
+				},
+			},
+			map[string]any{
+				"gid": 2.0,
+				"id":  200.0,
+				"tracking": []any{
+					map[string]any{"direction": "both"},
+				},
+			},
+		},
+	}
+
+	v, diags := decodeObjectList(ctx, data, "suppression_alerts", own, "suppression_alerts", types.ListNull(elemType), elemType)
+	if diags.HasError() {
+		t.Fatalf("unexpected decode diagnostics: %v", diags)
+	}
+	elems := v.Elements()
+	if len(elems) != 2 {
+		t.Fatalf("expected 2 alert elements, got %d", len(elems))
+	}
+
+	first := elems[0].(types.Object).Attributes()
+	if first["gid"].(types.Int64).ValueInt64() != 1 || first["id"].(types.Int64).ValueInt64() != 100 {
+		t.Fatalf("expected first alert gid=1/id=100, got gid=%v id=%v", first["gid"], first["id"])
+	}
+	firstTracking := first["tracking"].(types.List).Elements()
+	if len(firstTracking) != 2 {
+		t.Fatalf("expected first alert to have 2 tracking entries, got %d", len(firstTracking))
+	}
+	if firstTracking[0].(types.Object).Attributes()["direction"].(types.String).ValueString() != "ingress" {
+		t.Fatalf("expected first tracking entry order preserved (ingress first), got %v", firstTracking[0])
+	}
+	if firstTracking[1].(types.Object).Attributes()["direction"].(types.String).ValueString() != "egress" {
+		t.Fatalf("expected second tracking entry order preserved (egress second), got %v", firstTracking[1])
+	}
+
+	second := elems[1].(types.Object).Attributes()
+	if second["gid"].(types.Int64).ValueInt64() != 2 || second["id"].(types.Int64).ValueInt64() != 200 {
+		t.Fatalf("expected second alert gid=2/id=200, got gid=%v id=%v", second["gid"], second["id"])
+	}
+	secondTracking := second["tracking"].(types.List).Elements()
+	if len(secondTracking) != 1 {
+		t.Fatalf("expected second alert to have 1 tracking entry, got %d", len(secondTracking))
+	}
+
+	out := map[string]any{}
+	overlayDiags := overlayObjectList(ctx, out, "suppression_alerts", own, "suppression_alerts", v)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected overlay diagnostics: %v", overlayDiags)
+	}
+	list := out["suppression_alerts"].([]any)
+	if len(list) != 2 {
+		t.Fatalf("expected 2 elements overlaid, got %d", len(list))
+	}
+	e0 := list[0].(map[string]any)
+	if e0["gid"] != float64(1) || e0["id"] != float64(100) {
+		t.Fatalf("expected element 0 gid=1/id=100 as float64, got gid=%v id=%v", e0["gid"], e0["id"])
+	}
+	e0Tracking := e0["tracking"].([]any)
+	if len(e0Tracking) != 2 {
+		t.Fatalf("expected element 0 tracking to have 2 entries after overlay, got %d", len(e0Tracking))
+	}
+	if e0Tracking[0].(map[string]any)["direction"] != "ingress" || e0Tracking[1].(map[string]any)["direction"] != "egress" {
+		t.Fatalf("expected element 0 tracking order preserved on overlay, got %v", e0Tracking)
+	}
+	e1 := list[1].(map[string]any)
+	if e1["gid"] != float64(2) || e1["id"] != float64(200) {
+		t.Fatalf("expected element 1 gid=2/id=200 as float64, got gid=%v id=%v", e1["gid"], e1["id"])
+	}
+}
+
+// --- test helpers ---
+
+func mustObjectValue(t *testing.T, attrTypes map[string]attr.Type, attrs map[string]attr.Value) types.Object {
+	t.Helper()
+	v, diags := types.ObjectValue(attrTypes, attrs)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building object fixture: %v", diags)
+	}
+	return v
+}
+
+func mustListValue(t *testing.T, elemType attr.Type, elems []attr.Value) types.List {
+	t.Helper()
+	v, diags := types.ListValue(elemType, elems)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building list fixture: %v", diags)
+	}
+	return v
 }

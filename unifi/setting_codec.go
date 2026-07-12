@@ -310,24 +310,72 @@ func overlayStringList(ctx context.Context, out map[string]any, key string, clas
 
 // ---------------------------------------------------------------------------
 // Nested shapes: SingleNestedAttribute (object) and ListNestedAttribute
-// (object list), each child/leaf keyed by its own ownershipClass.
+// (object list), each child/leaf keyed by its own ownershipClass, looked up
+// by its FULL dotted path in the section's ownership() map.
+//
+// Design (Task 16b, codex-validated "Design 3"): a settingSection's
+// ownership() map is already keyed by the schema's full dotted leaf path
+// (see setting_section_test.go's leafPaths / the gate-10 coverage test) —
+// e.g. "custom_servers.enabled" or "suppression_alerts.tracking.direction".
+// List elements share ONE path with no "[i]" index, because ownership is a
+// property of the schema shape, not of any one API response's element
+// count. So instead of a caller pre-stripping a per-call child-only
+// ownership map, these helpers take the section's FULL ownership map (own)
+// plus ownPrefix: the dotted, index-free path of the object/list currently
+// being decoded/overlaid within that map. A leaf child's lookup path is
+// computed as ownPrefix+"."+child (or just child at the section's
+// top-level, where ownPrefix is the top-level attribute name already).
+//
+// THE CRITICAL SPLIT this design depends on: ownPrefix (index-free, used
+// ONLY for own[...] lookups) is a different string from diagPath (may
+// include "[i]", used ONLY in diagnostic messages). Conflating them would
+// make every list-element lookup miss (own has no "custom_servers[0]..."
+// entry) and silently fall through to the zero-value ownershipClass
+// (ownerManaged) if the missing-entry guard below were skipped — which is
+// exactly why that guard is comma-ok and fails loud instead of defaulting.
 // ---------------------------------------------------------------------------
 
+// ownershipFor looks up path in own using the mandatory comma-ok form: a
+// missing entry is a diagnostic, NEVER a silent fall-through to Go's
+// zero-value ownershipClass (ownerManaged, iota 0). diagPath is used only
+// in the error message so a caller can surface the indexed ("foo[2].bar")
+// form to a human while path (index-free) is what was actually looked up.
+func ownershipFor(own map[string]ownershipClass, path, diagPath string) (ownershipClass, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	class, ok := own[path]
+	if !ok {
+		diags.AddError(
+			"Missing ownership entry",
+			fmt.Sprintf("field %q has no ownership() entry (looked up as %q)", diagPath, path),
+		)
+		return ownerManaged, diags
+	}
+	return class, diags
+}
+
+// leafPath joins prefix and child into a dotted ownership-lookup path,
+// matching leafPaths' convention in setting_section_test.go: a top-level
+// leaf's path is its own name; a nested leaf is "prefix.child".
+func leafPath(prefix, child string) string {
+	if prefix == "" {
+		return child
+	}
+	return prefix + "." + child
+}
+
 // decodeObject reads a nested object field from data, recursing into each
-// child string leaf per its ownershipClass in childOwnership. A child that
-// does not read from the API (e.g. a nested write-only secret) is preserved
-// from the corresponding attribute of prior. Absent key or explicit JSON
-// null decodes to a null object of attrTypes.
-//
-// PR-A's nested sections (usg's dns_verification, mgmt's ssh_keys elements)
-// have only string leaves, so this operates on string children. A future
-// PR that needs bool/int64 nested leaves can extend this without changing
-// the signature's contract.
+// child leaf per its ownershipClass looked up from own by full dotted path
+// (ownPrefix+"."+child). A child that does not read from the API (e.g. a
+// nested write-only secret) is preserved from the corresponding attribute
+// of prior. Absent key or explicit JSON null decodes to a null object of
+// attrTypes. ownPrefix is this object's own dotted path within own (e.g.
+// "dns_verification"); at a section's top level that is the attribute name.
 func decodeObject(
 	ctx context.Context,
 	data map[string]any,
 	key string,
-	childOwnership map[string]ownershipClass,
+	own map[string]ownershipClass,
+	ownPrefix string,
 	prior types.Object,
 	attrTypes map[string]attr.Type,
 ) (types.Object, diag.Diagnostics) {
@@ -346,16 +394,22 @@ func decodeObject(
 		return types.ObjectUnknown(attrTypes), diags
 	}
 
-	return decodeObjectFields(nested, key, childOwnership, prior, attrTypes)
+	return decodeObjectFields(ctx, nested, ownPrefix, key, own, prior, attrTypes)
 }
 
 // decodeObjectFields decodes attrTypes' children directly out of nested
-// (already unwrapped from its parent key), recursing each child per its
-// ownershipClass. path is used only for diagnostic messages.
+// (already unwrapped from its parent key), type-dispatching each child and
+// recursing into nested object-lists. ownPrefix is the index-free dotted
+// path of this object within own (used for ownership lookups only);
+// diagPath is the possibly-indexed path used only in diagnostic messages —
+// see the package-level doc comment above for why these must not be
+// conflated.
 func decodeObjectFields(
+	ctx context.Context,
 	nested map[string]any,
-	path string,
-	childOwnership map[string]ownershipClass,
+	ownPrefix string,
+	diagPath string,
+	own map[string]ownershipClass,
 	prior types.Object,
 	attrTypes map[string]attr.Type,
 ) (types.Object, diag.Diagnostics) {
@@ -368,21 +422,70 @@ func decodeObjectFields(
 
 	attrs := make(map[string]attr.Value, len(attrTypes))
 	for childKey, childType := range attrTypes {
-		if childType != types.StringType {
-			diags.AddError(
-				"Unsupported nested attribute type",
-				fmt.Sprintf("field %q.%q: decodeObject only supports string leaves, got %T", path, childKey, childType),
-			)
+		path := leafPath(ownPrefix, childKey)
+		childDiagPath := leafPath(diagPath, childKey)
+
+		switch t := childType.(type) {
+		case types.ListType:
+			if _, isObjElem := t.ElemType.(types.ObjectType); isObjElem {
+				priorChild := types.ListNull(t.ElemType)
+				if pv, ok := priorAttrs[childKey].(types.List); ok {
+					priorChild = pv
+				}
+				childVal, childDiags := decodeObjectList(ctx, nested, childKey, own, path, priorChild, t.ElemType)
+				diags.Append(childDiags...)
+				attrs[childKey] = childVal
+				continue
+			}
+		}
+
+		class, classDiags := ownershipFor(own, path, childDiagPath)
+		diags.Append(classDiags...)
+		if classDiags.HasError() {
 			continue
 		}
-		class := childOwnership[childKey]
-		priorChild := types.StringNull()
-		if pv, ok := priorAttrs[childKey].(types.String); ok {
-			priorChild = pv
+
+		switch childType {
+		case types.StringType:
+			priorChild := types.StringNull()
+			if pv, ok := priorAttrs[childKey].(types.String); ok {
+				priorChild = pv
+			}
+			childVal, childDiags := decodeString(nested, childKey, class, priorChild)
+			diags.Append(childDiags...)
+			attrs[childKey] = childVal
+		case types.BoolType:
+			priorChild := types.BoolNull()
+			if pv, ok := priorAttrs[childKey].(types.Bool); ok {
+				priorChild = pv
+			}
+			childVal, childDiags := decodeBool(nested, childKey, class, priorChild)
+			diags.Append(childDiags...)
+			attrs[childKey] = childVal
+		case types.Int64Type:
+			priorChild := types.Int64Null()
+			if pv, ok := priorAttrs[childKey].(types.Int64); ok {
+				priorChild = pv
+			}
+			childVal, childDiags := decodeInt64(nested, childKey, class, priorChild)
+			diags.Append(childDiags...)
+			attrs[childKey] = childVal
+		default:
+			if lt, ok := childType.(types.ListType); ok && lt.ElemType == types.StringType {
+				priorChild := types.ListNull(types.StringType)
+				if pv, ok := priorAttrs[childKey].(types.List); ok {
+					priorChild = pv
+				}
+				childVal, childDiags := decodeStringList(ctx, nested, childKey, class, priorChild)
+				diags.Append(childDiags...)
+				attrs[childKey] = childVal
+				continue
+			}
+			diags.AddError(
+				"Unsupported nested attribute type",
+				fmt.Sprintf("field %q: unsupported nested attribute type %T", childDiagPath, childType),
+			)
 		}
-		childVal, childDiags := decodeString(nested, childKey, class, priorChild)
-		diags.Append(childDiags...)
-		attrs[childKey] = childVal
 	}
 	if diags.HasError() {
 		return types.ObjectUnknown(attrTypes), diags
@@ -394,15 +497,17 @@ func decodeObjectFields(
 }
 
 // overlayObject writes cfg's children onto out[key]'s nested map per each
-// child's ownershipClass, following the same per-class branching as
-// overlayString (including delete-on-null for a nested write-only-secret
-// leaf). A null/unknown cfg is a no-op: the snapshot's nested map is left
-// untouched.
+// child's ownershipClass looked up from own by full dotted path, following
+// the same per-class branching as overlayString (including delete-on-null
+// for a nested write-only-secret leaf). A null/unknown cfg is a no-op: the
+// snapshot's nested map is left untouched. ownPrefix is this object's own
+// dotted path within own, matching decodeObject's.
 func overlayObject(
 	ctx context.Context,
 	out map[string]any,
 	key string,
-	childOwnership map[string]ownershipClass,
+	own map[string]ownershipClass,
+	ownPrefix string,
 	cfg types.Object,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -417,49 +522,108 @@ func overlayObject(
 		out[key] = nested
 	}
 
-	diags.Append(overlayObjectFields(nested, key, childOwnership, cfg)...)
+	diags.Append(overlayObjectFields(ctx, nested, ownPrefix, key, own, cfg)...)
 	return diags
 }
 
 // overlayObjectFields applies cfg's children directly onto nested (already
-// unwrapped from its parent key), following overlayString's per-class
-// branching for each child. path is used only for diagnostic messages.
+// unwrapped from its parent key), type-dispatching each child (from cfg's
+// own attribute types, so overlay dispatches structurally identically to
+// decodeObjectFields) and recursing into nested object-lists. ownPrefix is
+// the index-free dotted path of this object within own (ownership lookups
+// only); diagPath is the possibly-indexed path used only in diagnostics.
 func overlayObjectFields(
+	ctx context.Context,
 	nested map[string]any,
-	path string,
-	childOwnership map[string]ownershipClass,
+	ownPrefix string,
+	diagPath string,
+	own map[string]ownershipClass,
 	cfg types.Object,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	for childKey, childAttr := range cfg.Attributes() {
-		class := childOwnership[childKey]
-		sv, ok := childAttr.(types.String)
-		if !ok {
-			diags.AddError(
-				"Unsupported nested attribute type",
-				fmt.Sprintf("field %q.%q: overlayObject only supports string leaves, got %T", path, childKey, childAttr),
-			)
+	attrTypes := cfg.AttributeTypes(ctx)
+	cfgAttrs := cfg.Attributes()
+
+	for childKey, childType := range attrTypes {
+		path := leafPath(ownPrefix, childKey)
+		childDiagPath := leafPath(diagPath, childKey)
+		childAttr := cfgAttrs[childKey]
+
+		switch t := childType.(type) {
+		case types.ListType:
+			if _, isObjElem := t.ElemType.(types.ObjectType); isObjElem {
+				lv, ok := childAttr.(types.List)
+				if !ok {
+					lv = types.ListNull(t.ElemType)
+				}
+				childDiags := overlayObjectList(ctx, nested, childKey, own, path, lv)
+				diags.Append(childDiags...)
+				continue
+			}
+		}
+
+		class, classDiags := ownershipFor(own, path, childDiagPath)
+		diags.Append(classDiags...)
+		if classDiags.HasError() {
 			continue
 		}
-		overlayString(nested, childKey, class, sv)
+
+		switch childType {
+		case types.StringType:
+			sv, ok := childAttr.(types.String)
+			if !ok {
+				sv = types.StringUnknown()
+			}
+			overlayString(nested, childKey, class, sv)
+		case types.BoolType:
+			bv, ok := childAttr.(types.Bool)
+			if !ok {
+				bv = types.BoolUnknown()
+			}
+			overlayBool(nested, childKey, class, bv)
+		case types.Int64Type:
+			iv, ok := childAttr.(types.Int64)
+			if !ok {
+				iv = types.Int64Unknown()
+			}
+			overlayInt64(nested, childKey, class, iv)
+		default:
+			if lt, ok := childType.(types.ListType); ok && lt.ElemType == types.StringType {
+				lv, ok := childAttr.(types.List)
+				if !ok {
+					lv = types.ListUnknown(types.StringType)
+				}
+				listDiags := overlayStringList(ctx, nested, childKey, class, lv)
+				diags.Append(listDiags...)
+				continue
+			}
+			diags.AddError(
+				"Unsupported nested attribute type",
+				fmt.Sprintf("field %q: unsupported nested attribute type %T", childDiagPath, childType),
+			)
+		}
 	}
 
 	return diags
 }
 
 // decodeObjectList reads a nested list-of-object field from data,
-// recursing each element's children per elemOwnership. Element order
-// follows the API response. A per-element write-only-secret leaf is
-// preserved from the matching (same-index) element of prior; if prior has
-// no element at that index, the leaf decodes via decodeString's normal
-// preserve-from-null-prior behavior (StringNull()). Absent key or explicit
-// JSON null decodes to a null list of elemType.
+// recursing each element's children per own (looked up by ownPrefix, the
+// list's own index-free dotted path — every element shares this same
+// prefix, matching leafPaths' convention that list elements have no "[i]"
+// in their ownership key). Element order follows the API response. A
+// per-element write-only-secret leaf is preserved from the matching
+// (same-index) element of prior; if prior has no element at that index,
+// the leaf decodes via decodeString's normal preserve-from-null-prior
+// behavior (StringNull()). Absent key or explicit JSON null decodes to a
+// null list of elemType.
 func decodeObjectList(
 	ctx context.Context,
 	data map[string]any,
 	key string,
-	elemOwnership map[string]ownershipClass,
+	own map[string]ownershipClass,
+	ownPrefix string,
 	prior types.List,
 	elemType attr.Type,
 ) (types.List, diag.Diagnostics) {
@@ -509,9 +673,11 @@ func decodeObjectList(
 			}
 		}
 		elemVal, elemDiags := decodeObjectFields(
+			ctx,
 			elemMap,
+			ownPrefix,
 			fmt.Sprintf("%s[%d]", key, i),
-			elemOwnership,
+			own,
 			priorElem,
 			objType.AttrTypes,
 		)
@@ -528,18 +694,28 @@ func decodeObjectList(
 }
 
 // overlayObjectList writes cfg's elements onto out[key] as a list of
-// nested maps, applying overlayObject's per-child branching (including
-// delete-on-null for a per-element write-only-secret leaf) to each
-// element. Element order follows cfg. Each element starts from the
-// snapshot's same-index element (if any) so that a leaf omitted from cfg's
-// element retains the snapshot's value for that element, exactly as
-// overlayObject preserves untouched leaves within a single object. A
-// null/unknown cfg is a no-op: the snapshot's list is left untouched.
+// nested maps, applying overlayObjectFields' per-child branching (including
+// delete-on-null for a per-element write-only-secret leaf, and recursion
+// into any further-nested object-list child) to each element, all sharing
+// ownPrefix (the list's own index-free dotted path in own). Element order
+// follows cfg. Each element starts from the snapshot's same-index element
+// (if any) so that a leaf omitted from cfg's element retains the
+// snapshot's value for that element, exactly as overlayObject preserves
+// untouched leaves within a single object. A null/unknown cfg is a no-op:
+// the snapshot's list is left untouched.
+//
+// elemOut is seeded from the base snapshot's same-index element map
+// (elemOut = m) rather than a copy of it: this is safe only because every
+// caller's out originates from a rawSettings.dataCopy(...), which deep-
+// copies the whole section tree up front, so mutating elemOut in place
+// mutates that already-independent copy, never the snapshot itself. Do not
+// call this with an out that isn't already a deep, private copy.
 func overlayObjectList(
 	ctx context.Context,
 	out map[string]any,
 	key string,
-	elemOwnership map[string]ownershipClass,
+	own map[string]ownershipClass,
+	ownPrefix string,
 	cfg types.List,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -572,7 +748,7 @@ func overlayObjectList(
 			}
 		}
 
-		elemDiags := overlayObjectFields(elemOut, fmt.Sprintf("%s[%d]", key, i), elemOwnership, cfgObj)
+		elemDiags := overlayObjectFields(ctx, elemOut, ownPrefix, fmt.Sprintf("%s[%d]", key, i), own, cfgObj)
 		diags.Append(elemDiags...)
 		items = append(items, elemOut)
 	}
