@@ -2,89 +2,56 @@ package unifi
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // This file is the MIGRATION ORACLE for the settings-expansion project
-// (PR-A Task 9). For each of the 13 legacy settings sections it captures the
-// exact JSON PUT body the CURRENT legacy converter (unifi/setting_resource.go,
-// methods named "<attr>ModelToSetting") produces for a representative model,
-// as a checked-in golden string.
+// (PR-A Task 9). For each of the 13 legacy settings sections it pins the exact
+// JSON PUT body a representative model must produce, as a checked-in golden
+// string constant.
 //
-// Tasks 10-22 migrate each section onto the new settingSection engine (whose
-// overlay() returns a settings.RawSetting, a map-based type). Each of those
-// tasks must assert its new overlay reproduces the SAME golden body captured
-// here. If a field is dropped, renamed, or defaulted differently during
-// migration, the golden catches it byte-for-byte.
+// Task 24c cut over the SOLE PRODUCER of those bodies from the (now-deleted)
+// legacy per-section converters to each section's settingSection.overlay().
+// The golden CONSTANTS are immutable — they remain the expected bodies; the
+// section overlays are now their only producer. Every TestGolden_<section>
+// below drives its section's overlay() and asserts the result matches the
+// constant via assertPUTBodyMatchesGolden (which strips the routing "key"
+// field: overlay() sets RawSetting.Key=<section> while the legacy constants
+// carry "key":"").
 //
-// The legacy converters remain in unifi/setting_resource.go until Task 24c;
-// this file only calls them, it does not modify them.
-
-// mustMarshal marshals v and fails the test on error. Kept trivial and local
-// to this file since every golden capture needs it.
-func mustMarshal(t *testing.T, v any) []byte {
-	t.Helper()
-	b, err := json.Marshal(v)
-	if err != nil {
-		t.Fatalf("json.Marshal: %v", err)
-	}
-	return b
-}
-
-// normalizeSettingJSON is the cross-form comparison oracle shared by this
-// file and by Tasks 10-22.
-//
-// The legacy converters return TYPED structs (e.g. *settings.Mgmt), whose
-// json.Marshal emits object keys in Go struct-field-declaration order. The
-// new migrated sections (Tasks 10-22) produce a map-based
-// settings.RawSetting, whose MarshalJSON emits keys ALPHABETICALLY (Go's
-// encoding/json sorts map keys). A naive byte-for-byte comparison of the two
-// forms would fail on key ORDER alone even when the two bodies are
-// semantically identical, making the golden useless as a migration oracle.
-//
-// normalizeSettingJSON removes that ordering difference: it unmarshals b
-// into a map[string]any and re-marshals it, so both the legacy typed-struct
-// output and the new RawSetting output normalize to the same canonical,
-// alphabetically-keyed string. Golden constants in this file are stored in
-// that normalized form; Tasks 10-22 must call normalizeSettingJSON on their
-// overlay()'s marshaled RawSetting before comparing against these goldens.
-func normalizeSettingJSON(t *testing.T, b []byte) string {
-	t.Helper()
-	var m map[string]any
-	if err := json.Unmarshal(b, &m); err != nil {
-		t.Fatalf("normalizeSettingJSON: unmarshal: %v (input: %s)", err, string(b))
-	}
-	out, err := json.Marshal(m)
-	if err != nil {
-		t.Fatalf("normalizeSettingJSON: remarshal: %v", err)
-	}
-	return string(out)
-}
+// After the 24c repoint each TestGolden_<section> is essentially identical to
+// the section's own Test<Xxx>Section_GoldenReproduction (in
+// setting_section_<x>_test.go), from which its representative model / seeded
+// RMW snapshot base was copied. This centralized golden file remains the
+// oracle and TestMigrationInventoryCoversAllSections enforces (via go/parser)
+// that a TestGolden_<section> exists for every one of the 13 sections — so
+// these funcs must not be deleted, only kept in sync with their constants.
 
 // --- auto_speedtest (scalar) ---
 
 const goldenAutoSpeedtest = `{"cron_expr":"0 0 * * *","enabled":true,"key":""}`
 
 func TestGolden_auto_speedtest(t *testing.T) {
-	r := &settingResource{}
-	model := &settingAutoSpeedtestModel{
+	ctx := context.Background()
+	m := settingAutoSpeedtestModel{
 		Enabled:  types.BoolValue(true),
 		CronExpr: types.StringValue("0 0 * * *"),
 	}
-
-	got := normalizeSettingJSON(t, mustMarshal(t, r.autoSpeedtestModelToSetting(model)))
-	if got != goldenAutoSpeedtest {
-		t.Errorf("auto_speedtest golden mismatch:\n got:  %s\n want: %s", got, goldenAutoSpeedtest)
+	obj, diags := types.ObjectValueFrom(ctx, autoSpeedtestAttrTypes, m)
+	if diags.HasError() {
+		t.Fatalf("building auto_speedtest object: %v", diags)
 	}
+	rs, _, oDiags := autoSpeedtestSection{}.overlay(ctx, settingResourceModel{AutoSpeedtest: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
+	}
+	assertPUTBodyMatchesGolden(t, rs, goldenAutoSpeedtest)
 }
 
 // --- country (scalar) ---
@@ -92,15 +59,19 @@ func TestGolden_auto_speedtest(t *testing.T) {
 const goldenCountry = `{"code":840,"key":""}`
 
 func TestGolden_country(t *testing.T) {
-	r := &settingResource{}
-	model := &settingCountryModel{
+	ctx := context.Background()
+	m := settingCountryModel{
 		Code: types.Int64Value(840), // ISO 3166-1 numeric for US; neutral example code
 	}
-
-	got := normalizeSettingJSON(t, mustMarshal(t, r.countryModelToSetting(model)))
-	if got != goldenCountry {
-		t.Errorf("country golden mismatch:\n got:  %s\n want: %s", got, goldenCountry)
+	obj, diags := types.ObjectValueFrom(ctx, countryAttrTypes, m)
+	if diags.HasError() {
+		t.Fatalf("building country object: %v", diags)
 	}
+	rs, _, oDiags := countrySection{}.overlay(ctx, settingResourceModel{Country: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
+	}
+	assertPUTBodyMatchesGolden(t, rs, goldenCountry)
 }
 
 // --- dpi (scalar) ---
@@ -108,16 +79,20 @@ func TestGolden_country(t *testing.T) {
 const goldenDpi = `{"enabled":true,"fingerprintingEnabled":false,"key":""}`
 
 func TestGolden_dpi(t *testing.T) {
-	r := &settingResource{}
-	model := &settingDpiModel{
+	ctx := context.Background()
+	m := settingDpiModel{
 		Enabled:               types.BoolValue(true),
 		FingerprintingEnabled: types.BoolValue(false),
 	}
-
-	got := normalizeSettingJSON(t, mustMarshal(t, r.dpiModelToSetting(model)))
-	if got != goldenDpi {
-		t.Errorf("dpi golden mismatch:\n got:  %s\n want: %s", got, goldenDpi)
+	obj, diags := types.ObjectValueFrom(ctx, dpiAttrTypes, m)
+	if diags.HasError() {
+		t.Fatalf("building dpi object: %v", diags)
 	}
+	rs, _, oDiags := dpiSection{}.overlay(ctx, settingResourceModel{Dpi: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
+	}
+	assertPUTBodyMatchesGolden(t, rs, goldenDpi)
 }
 
 // --- lcm (scalar, with optional int pointers) ---
@@ -125,19 +100,23 @@ func TestGolden_dpi(t *testing.T) {
 const goldenLcm = `{"brightness":50,"enabled":true,"idle_timeout":300,"key":"","sync":true,"touch_event":false}`
 
 func TestGolden_lcm(t *testing.T) {
-	r := &settingResource{}
-	model := &settingLcmModel{
+	ctx := context.Background()
+	m := settingLcmModel{
 		Enabled:     types.BoolValue(true),
 		Brightness:  types.Int64Value(50),
 		IdleTimeout: types.Int64Value(300),
 		Sync:        types.BoolValue(true),
 		TouchEvent:  types.BoolValue(false),
 	}
-
-	got := normalizeSettingJSON(t, mustMarshal(t, r.lcmModelToSetting(model)))
-	if got != goldenLcm {
-		t.Errorf("lcm golden mismatch:\n got:  %s\n want: %s", got, goldenLcm)
+	obj, diags := types.ObjectValueFrom(ctx, lcmAttrTypes, m)
+	if diags.HasError() {
+		t.Fatalf("building lcm object: %v", diags)
 	}
+	rs, _, oDiags := lcmSection{}.overlay(ctx, settingResourceModel{Lcm: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
+	}
+	assertPUTBodyMatchesGolden(t, rs, goldenLcm)
 }
 
 // --- network_optimization (scalar) ---
@@ -145,15 +124,19 @@ func TestGolden_lcm(t *testing.T) {
 const goldenNetworkOptimization = `{"enabled":true,"key":""}`
 
 func TestGolden_network_optimization(t *testing.T) {
-	r := &settingResource{}
-	model := &settingNetworkOptimizationModel{
+	ctx := context.Background()
+	m := settingNetworkOptimizationModel{
 		Enabled: types.BoolValue(true),
 	}
-
-	got := normalizeSettingJSON(t, mustMarshal(t, r.networkOptimizationModelToSetting(model)))
-	if got != goldenNetworkOptimization {
-		t.Errorf("network_optimization golden mismatch:\n got:  %s\n want: %s", got, goldenNetworkOptimization)
+	obj, diags := types.ObjectValueFrom(ctx, networkOptimizationAttrTypes, m)
+	if diags.HasError() {
+		t.Fatalf("building network_optimization object: %v", diags)
 	}
+	rs, _, oDiags := networkOptimizationSection{}.overlay(ctx, settingResourceModel{NetworkOpt: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
+	}
+	assertPUTBodyMatchesGolden(t, rs, goldenNetworkOptimization)
 }
 
 // --- ntp (scalar) ---
@@ -161,19 +144,23 @@ func TestGolden_network_optimization(t *testing.T) {
 const goldenNtp = `{"key":"","ntp_server_1":"ntp1.example.com","ntp_server_2":"ntp2.example.com","setting_preference":"manual"}`
 
 func TestGolden_ntp(t *testing.T) {
-	r := &settingResource{}
-	model := &settingNtpModel{
+	ctx := context.Background()
+	m := settingNtpModel{
 		NtpServer1:        types.StringValue("ntp1.example.com"),
 		NtpServer2:        types.StringValue("ntp2.example.com"),
-		NtpServer3:        types.StringValue(""),
-		NtpServer4:        types.StringValue(""),
+		NtpServer3:        types.StringNull(),
+		NtpServer4:        types.StringNull(),
 		SettingPreference: types.StringValue("manual"),
 	}
-
-	got := normalizeSettingJSON(t, mustMarshal(t, r.ntpModelToSetting(model)))
-	if got != goldenNtp {
-		t.Errorf("ntp golden mismatch:\n got:  %s\n want: %s", got, goldenNtp)
+	obj, diags := types.ObjectValueFrom(ctx, ntpAttrTypes, m)
+	if diags.HasError() {
+		t.Fatalf("building ntp object: %v", diags)
 	}
+	rs, _, oDiags := ntpSection{}.overlay(ctx, settingResourceModel{Ntp: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
+	}
+	assertPUTBodyMatchesGolden(t, rs, goldenNtp)
 }
 
 // --- syslog (list shape: contents []string) ---
@@ -182,14 +169,13 @@ const goldenSyslog = `{"contents":["device","client"],"debug":false,"enabled":tr
 
 func TestGolden_syslog(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
 
 	contents, diags := types.ListValueFrom(ctx, types.StringType, []string{"device", "client"})
 	if diags.HasError() {
 		t.Fatalf("building contents list: %v", diags)
 	}
 
-	model := &settingSyslogModel{
+	m := settingSyslogModel{
 		Enabled:                     types.BoolValue(true),
 		Contents:                    contents,
 		Debug:                       types.BoolValue(false),
@@ -197,20 +183,20 @@ func TestGolden_syslog(t *testing.T) {
 		Port:                        types.Int64Value(514),
 		LogAllContents:              types.BoolValue(false),
 		NetconsoleEnabled:           types.BoolValue(false),
-		NetconsoleHost:              types.StringValue(""),
+		NetconsoleHost:              types.StringNull(),
 		NetconsolePort:              types.Int64Value(6514),
 		ThisController:              types.BoolValue(true),
 		ThisControllerEncryptedOnly: types.BoolValue(false),
 	}
-
-	var d diag.Diagnostics
-	got := normalizeSettingJSON(t, mustMarshal(t, r.syslogModelToSetting(ctx, model, &d)))
-	if d.HasError() {
-		t.Fatalf("syslogModelToSetting diagnostics: %v", d)
+	obj, objDiags := types.ObjectValueFrom(ctx, syslogAttrTypes, m)
+	if objDiags.HasError() {
+		t.Fatalf("building syslog object: %v", objDiags)
 	}
-	if got != goldenSyslog {
-		t.Errorf("syslog golden mismatch:\n got:  %s\n want: %s", got, goldenSyslog)
+	rs, _, oDiags := syslogSection{}.overlay(ctx, settingResourceModel{Syslog: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
 	}
+	assertPUTBodyMatchesGolden(t, rs, goldenSyslog)
 }
 
 // --- doh (list shape: server_names []string, custom_servers []object) ---
@@ -219,7 +205,6 @@ const goldenDoh = `{"custom_servers":[{"enabled":true,"sdns_stamp":"sdns://AQ","
 
 func TestGolden_doh(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
 
 	serverNames, diags := types.ListValueFrom(ctx, types.StringType, []string{"cloudflare", "google"})
 	if diags.HasError() {
@@ -235,20 +220,20 @@ func TestGolden_doh(t *testing.T) {
 		t.Fatalf("building custom_servers list: %v", diags)
 	}
 
-	model := &settingDohModel{
+	m := settingDohModel{
 		State:         types.StringValue("custom"),
 		ServerNames:   serverNames,
 		CustomServers: customServers,
 	}
-
-	var d diag.Diagnostics
-	got := normalizeSettingJSON(t, mustMarshal(t, r.dohModelToSetting(ctx, model, &d)))
-	if d.HasError() {
-		t.Fatalf("dohModelToSetting diagnostics: %v", d)
+	obj, objDiags := types.ObjectValueFrom(ctx, dohAttrTypes, m)
+	if objDiags.HasError() {
+		t.Fatalf("building doh object: %v", objDiags)
 	}
-	if got != goldenDoh {
-		t.Errorf("doh golden mismatch:\n got:  %s\n want: %s", got, goldenDoh)
+	rs, _, oDiags := dohSection{}.overlay(ctx, settingResourceModel{Doh: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
 	}
+	assertPUTBodyMatchesGolden(t, rs, goldenDoh)
 }
 
 // --- ips (list shape, with nested honeypot/suppression) ---
@@ -257,7 +242,6 @@ const goldenIps = `{"advanced_filtering_preference":"manual","content_filtering_
 
 func TestGolden_ips(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
 
 	enabledCategories, diags := types.ListValueFrom(ctx, types.StringType, []string{"botcc", "tor"})
 	if diags.HasError() {
@@ -307,7 +291,7 @@ func TestGolden_ips(t *testing.T) {
 		t.Fatalf("building suppression_whitelist: %v", diags)
 	}
 
-	model := &settingIpsModel{
+	m := settingIpsModel{
 		AdvancedFilteringPreference:         types.StringValue("manual"),
 		ContentFilteringBlockingPageEnabled: types.BoolValue(true),
 		EnabledCategories:                   enabledCategories,
@@ -320,31 +304,30 @@ func TestGolden_ips(t *testing.T) {
 		SuppressionWhitelist:                whitelist,
 		SuppressionAlerts:                   alerts,
 	}
-
-	var d diag.Diagnostics
-	got := normalizeSettingJSON(t, mustMarshal(t, r.ipsModelToSetting(ctx, model, &d)))
-	if d.HasError() {
-		t.Fatalf("ipsModelToSetting diagnostics: %v", d)
+	obj, objDiags := types.ObjectValueFrom(ctx, ipsAttrTypes, m)
+	if objDiags.HasError() {
+		t.Fatalf("building ips object: %v", objDiags)
 	}
-	if got != goldenIps {
-		t.Errorf("ips golden mismatch:\n got:  %s\n want: %s", got, goldenIps)
+	rs, _, oDiags := ipsSection{}.overlay(ctx, settingResourceModel{Ips: obj}, settingResourceModel{}, newRawSettings(nil))
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
 	}
+	assertPUTBodyMatchesGolden(t, rs, goldenIps)
 }
 
 // --- mgmt (nested-list ssh_keys + secret ssh_password; RMW) ---
 //
-// RMW preservation: base carries AlertEnabled=true and BootSound=true, two
-// fields the mgmt model does not expose at all (no schema attribute), plus
-// LedEnabled=true, which the model also never sets in this representative
-// case. Because mgmtModelToSetting starts from base and only overwrites
-// fields the model explicitly sets, those three fields must survive
-// unchanged into the golden — proving the legacy RMW-preservation behavior
-// that Task 22 must reproduce.
+// RMW preservation: the seeded snapshot base carries alert_enabled=true and
+// boot_sound=true, two fields the mgmt model does not expose at all (no schema
+// attribute), plus led_enabled=true, which the model also never sets in this
+// representative case. Because overlay() starts from the snapshot and only
+// overwrites fields the model explicitly sets, those three fields must survive
+// unchanged into the golden — proving the RMW-preservation behavior. The
+// snapshot base mirrors TestMgmtSection_GoldenReproduction.
 const goldenMgmt = `{"advanced_feature_enabled":true,"alert_enabled":true,"auto_upgrade":true,"auto_upgrade_hour":3,"boot_sound":true,"debug_tools_enabled":false,"direct_connect_enabled":false,"key":"","led_enabled":true,"outdoor_mode_enabled":false,"unifi_idp_enabled":false,"wifiman_enabled":false,"x_ssh_auth_password_enabled":true,"x_ssh_bind_wildcard":false,"x_ssh_enabled":true,"x_ssh_keys":[{"comment":"test key","date":"","fingerprint":"","key":"ssh-ed25519 AAAATESTKEYMATERIAL test-key","name":"test-ssh-key","type":"ssh-ed25519"}],"x_ssh_password":"test-password","x_ssh_username":"testadmin"}`
 
 func TestGolden_mgmt(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
 
 	sshKeys, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes},
 		[]sshKeyModel{{
@@ -357,7 +340,7 @@ func TestGolden_mgmt(t *testing.T) {
 		t.Fatalf("building ssh_keys: %v", diags)
 	}
 
-	model := &settingMgmtModel{
+	m := settingMgmtModel{
 		AutoUpgrade:            types.BoolValue(true),
 		AutoUpgradeHour:        types.Int64Value(3),
 		SSHEnabled:             types.BoolValue(true),
@@ -371,36 +354,49 @@ func TestGolden_mgmt(t *testing.T) {
 		SSHPassword:            types.StringValue("test-password"),
 		SSHAuthPasswordEnabled: types.BoolValue(true),
 	}
-
-	// base/current carries fields the model never sets (no schema attribute
-	// for alert_enabled/boot_sound; led_enabled left unset by this model) so
-	// the golden proves they are preserved through the RMW merge.
-	base := &settings.Mgmt{
-		AlertEnabled: true,
-		BootSound:    true,
-		LedEnabled:   true,
+	obj, objDiags := types.ObjectValueFrom(ctx, mgmtAttrTypes, m)
+	if objDiags.HasError() {
+		t.Fatalf("building mgmt object: %v", objDiags)
 	}
 
-	got := normalizeSettingJSON(t, mustMarshal(t, r.mgmtModelToSetting(ctx, model, base)))
-	if got != goldenMgmt {
-		t.Errorf("mgmt golden mismatch:\n got:  %s\n want: %s", got, goldenMgmt)
+	// Seeded snapshot base carries fields the model never sets (no schema
+	// attribute for alert_enabled/boot_sound; led_enabled left unset by this
+	// model) so the golden proves they are preserved through the RMW merge.
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "mgmt"},
+		Data: map[string]any{
+			"alert_enabled":        true,
+			"boot_sound":           true,
+			"led_enabled":          true,
+			"outdoor_mode_enabled": false,
+			"x_ssh_bind_wildcard":  false,
+			"x_ssh_keys": []any{
+				map[string]any{"date": "", "fingerprint": ""},
+			},
+		},
+	}})
+
+	rs, _, oDiags := mgmtSection{}.overlay(ctx, settingResourceModel{Mgmt: obj}, settingResourceModel{}, snap)
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
 	}
+	assertPUTBodyMatchesGolden(t, rs, goldenMgmt)
 }
 
 // --- radius (scalar shape; RMW) ---
 //
-// RMW preservation: base carries ConfigureWholeNetwork=true and
-// TunneledReply=true, two fields the radius model does not expose at all.
-// The model only sets accounting_enabled/acct_port/secret, leaving
-// auth_port and interim_update_interval null/zero on base too — so the
-// golden shows both the model's overrides AND the preserved base fields.
+// RMW preservation: the seeded snapshot base carries configure_whole_network=
+// true and tunneled_reply=true, two fields the radius model does not expose at
+// all. The model only sets accounting_enabled/acct_port/secret, leaving
+// auth_port and interim_update_interval null on the model — so the golden shows
+// both the model's overrides AND the preserved base fields. Snapshot base
+// mirrors TestRadiusSection_GoldenReproduction.
 const goldenRadius = `{"accounting_enabled":true,"acct_port":1813,"configure_whole_network":true,"enabled":false,"key":"","tunneled_reply":true,"x_secret":"test-radius-secret"}`
 
 func TestGolden_radius(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
 
-	model := &settingRadiusModel{
+	m := settingRadiusModel{
 		AccountingEnabled: types.BoolValue(true),
 		AcctPort:          types.Int64Value(1813),
 		Secret:            types.StringValue("test-radius-secret"),
@@ -409,27 +405,35 @@ func TestGolden_radius(t *testing.T) {
 		AuthPort:              types.Int64Null(),
 		InterimUpdateInterval: timetypes.NewGoDurationNull(),
 	}
-
-	base := &settings.Radius{
-		ConfigureWholeNetwork: true,
-		TunneledReply:         true,
+	obj, diags := types.ObjectValueFrom(ctx, radiusAttrTypes, m)
+	if diags.HasError() {
+		t.Fatalf("building radius object: %v", diags)
 	}
 
-	got := normalizeSettingJSON(t, mustMarshal(t, r.radiusModelToSetting(ctx, model, base)))
-	if got != goldenRadius {
-		t.Errorf("radius golden mismatch:\n got:  %s\n want: %s", got, goldenRadius)
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "radius"},
+		Data: map[string]any{
+			"configure_whole_network": true,
+			"tunneled_reply":          true,
+			"enabled":                 false,
+		},
+	}})
+
+	rs, _, oDiags := radiusSection{}.overlay(ctx, settingResourceModel{Radius: obj}, settingResourceModel{}, snap)
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
 	}
+	assertPUTBodyMatchesGolden(t, rs, goldenRadius)
 }
 
-// --- usg (nested-object dns_verification) ---
+// --- usg (nested-object dns_verification; RMW) ---
 
 const goldenUSG = `{"broadcast_ping":false,"dhcp_relay_agents_packets":"","dhcp_relay_server_1":"","dhcp_relay_server_2":"","dhcp_relay_server_3":"","dhcp_relay_server_4":"","dhcp_relay_server_5":"","dhcpd_hostfile_update":false,"dhcpd_use_dnsmasq":false,"dns_verification":{"domain":"example.com","primary_dns_server":"192.0.2.53","secondary_dns_server":"192.0.2.54","setting_preference":"manual"},"dnsmasq_all_servers":false,"ftp_module":true,"geo_ip_filtering_block":"block","geo_ip_filtering_countries":"US","geo_ip_filtering_enabled":true,"geo_ip_filtering_traffic_direction":"both","gre_module":false,"h323_module":false,"icmp_timeout":30,"key":"","lldp_enable_all":false,"mdns_enabled":false,"mss_clamp":"auto","offload_accounting":false,"offload_l2_blocking":false,"offload_sch":true,"other_timeout":600,"pptp_module":false,"receive_redirects":false,"send_redirects":true,"sip_module":true,"syn_cookies":true,"tcp_close_timeout":10,"tcp_close_wait_timeout":20,"tcp_established_timeout":3600,"tcp_fin_wait_timeout":120,"tcp_last_ack_timeout":30,"tcp_syn_recv_timeout":60,"tcp_syn_sent_timeout":120,"tcp_time_wait_timeout":120,"tftp_module":true,"timeout_setting_preference":"auto","udp_other_timeout":30,"udp_stream_timeout":180,"unbind_wan_monitors":false,"upnp_enabled":true,"upnp_nat_pmp_enabled":false,"upnp_secure_mode":true,"upnp_wan_interface":"WAN"}`
 
 func TestGolden_usg(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
 
-	dnsVerif, diags := types.ObjectValueFrom(ctx, dnsVerificationAttrTypes(), dnsVerificationModel{
+	dnsVerif, diags := types.ObjectValueFrom(ctx, usgDNSVerificationAttrTypes, dnsVerificationModel{
 		Domain:             types.StringValue("example.com"),
 		PrimaryDNSServer:   types.StringValue("192.0.2.53"),
 		SecondaryDNSServer: types.StringValue("192.0.2.54"),
@@ -439,7 +443,7 @@ func TestGolden_usg(t *testing.T) {
 		t.Fatalf("building dns_verification: %v", diags)
 	}
 
-	model := &settingUSGModel{
+	m := settingUSGModel{
 		BroadcastPing:                  types.BoolValue(false),
 		DNSVerification:                dnsVerif,
 		FtpModule:                      types.BoolValue(true),
@@ -478,60 +482,77 @@ func TestGolden_usg(t *testing.T) {
 		UPnPSecureMode:                 types.BoolValue(true),
 		UPnPWANInterface:               types.StringValue("WAN"),
 	}
-
-	got := normalizeSettingJSON(t, mustMarshal(t, r.usgModelToSetting(ctx, model)))
-	if got != goldenUSG {
-		t.Errorf("usg golden mismatch:\n got:  %s\n want: %s", got, goldenUSG)
+	obj, objDiags := types.ObjectValueFrom(ctx, usgAttrTypes, m)
+	if objDiags.HasError() {
+		t.Fatalf("building usg object: %v", objDiags)
 	}
+
+	// Seeded snapshot base carries the always-emitted-but-unmodeled scalar
+	// fields (dhcp relay / dnsmasq / lldp / mdns) the golden expects, mirroring
+	// TestUsgSection_GoldenReproduction.
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "usg"},
+		Data: map[string]any{
+			"dhcp_relay_agents_packets": "",
+			"dhcp_relay_server_1":       "",
+			"dhcp_relay_server_2":       "",
+			"dhcp_relay_server_3":       "",
+			"dhcp_relay_server_4":       "",
+			"dhcp_relay_server_5":       "",
+			"dhcpd_hostfile_update":     false,
+			"dhcpd_use_dnsmasq":         false,
+			"dnsmasq_all_servers":       false,
+			"lldp_enable_all":           false,
+			"mdns_enabled":              false,
+		},
+	}})
+
+	rs, _, oDiags := usgSection{}.overlay(ctx, settingResourceModel{USG: obj}, settingResourceModel{}, snap)
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
+	}
+	assertPUTBodyMatchesGolden(t, rs, goldenUSG)
 }
 
 // --- igmp_snooping (list shape; RMW) ---
 //
-// RMW preservation: base carries QuerierMode="auto" and Switches populated,
-// two fields the igmp_snooping model does not expose at all (advanced
-// querier/flood fields are intentionally out of schema scope per the model's
-// doc comment). The golden shows them surviving the merge untouched.
+// RMW preservation: the seeded snapshot base carries querier_mode="auto" and
+// switches populated, two fields the igmp_snooping model does not expose at all
+// (advanced querier/flood fields are intentionally out of schema scope per the
+// model's doc comment). The golden shows them surviving the merge untouched.
+// Snapshot base mirrors TestIgmpSnoopingSection_GoldenReproduction.
 const goldenIgmpSnooping = `{"enabled":true,"flood_known_protocols":false,"forward_unknown_mcast_router_ports":false,"key":"","network_ids":["net-a","net-b"],"querier_mode":"auto","switches":["switch-1"]}`
 
 func TestGolden_igmp_snooping(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
 
 	networkIDs, diags := types.ListValueFrom(ctx, types.StringType, []string{"net-a", "net-b"})
 	if diags.HasError() {
 		t.Fatalf("building network_ids: %v", diags)
 	}
 
-	model := &settingIgmpSnoopingModel{
+	m := settingIgmpSnoopingModel{
 		Enabled:    types.BoolValue(true),
 		NetworkIDs: networkIDs,
 	}
-
-	base := &settings.IgmpSnooping{
-		QuerierMode: "auto",
-		Switches:    []string{"switch-1"},
+	obj, objDiags := types.ObjectValueFrom(ctx, igmpSnoopingAttrTypes, m)
+	if objDiags.HasError() {
+		t.Fatalf("building igmp_snooping object: %v", objDiags)
 	}
 
-	var d diag.Diagnostics
-	got := normalizeSettingJSON(t, mustMarshal(t, r.igmpSnoopingModelToSetting(ctx, model, base, &d)))
-	if d.HasError() {
-		t.Fatalf("igmpSnoopingModelToSetting diagnostics: %v", d)
-	}
-	if got != goldenIgmpSnooping {
-		t.Errorf("igmp_snooping golden mismatch:\n got:  %s\n want: %s", got, goldenIgmpSnooping)
-	}
-}
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "igmp_snooping"},
+		Data: map[string]any{
+			"querier_mode":                       "auto",
+			"switches":                           []any{"switch-1"},
+			"flood_known_protocols":              false,
+			"forward_unknown_mcast_router_ports": false,
+		},
+	}})
 
-// dnsVerificationAttrTypes mirrors the attr.Type map readSettings (see
-// unifi/setting_resource.go's usgSettingToModel call site) uses for the
-// usg.dns_verification nested object. Duplicated here (rather than reusing a
-// package-level var) because the production code builds this map inline at
-// its two call sites instead of exporting a shared package-level map.
-func dnsVerificationAttrTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"domain":               types.StringType,
-		"primary_dns_server":   types.StringType,
-		"secondary_dns_server": types.StringType,
-		"setting_preference":   types.StringType,
+	rs, _, oDiags := igmpSnoopingSection{}.overlay(ctx, settingResourceModel{IgmpSnooping: obj}, settingResourceModel{}, snap)
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
 	}
+	assertPUTBodyMatchesGolden(t, rs, goldenIgmpSnooping)
 }
