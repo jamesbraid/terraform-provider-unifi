@@ -1,0 +1,1428 @@
+{
+  "auto_speedtest": {
+    "name": "auto_speedtest",
+    "type": "types.ObjectType[\"cron_expr\":basetypes.StringType, \"enabled\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "Periodic automated internet speed test settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "cron_expr",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Cron expression controlling when the speed test runs (e.g. `0 * * * *`)."
+      },
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Whether periodic automated speed tests are enabled."
+      }
+    ]
+  },
+  "country": {
+    "name": "country",
+    "type": "types.ObjectType[\"code\":basetypes.Int64Type]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "Regulatory country settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "code",
+        "type": "basetypes.Int64Type",
+        "required": true,
+        "optional": false,
+        "computed": false,
+        "sensitive": false,
+        "markdown_description": "Regulatory country code (ISO 3166-1 numeric)."
+      }
+    ]
+  },
+  "doh": {
+    "name": "doh",
+    "type": "types.ObjectType[\"custom_servers\":types.ListType[types.ObjectType[\"enabled\":basetypes.BoolType, \"sdns_stamp\":basetypes.StringType, \"server_name\":basetypes.StringType]], \"server_names\":types.ListType[basetypes.StringType], \"state\":basetypes.StringType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "Encrypted DNS (DNS-over-HTTPS) settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "custom_servers",
+        "type": "types.ListType[types.ObjectType[\"enabled\":basetypes.BoolType, \"sdns_stamp\":basetypes.StringType, \"server_name\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Custom DNS servers specified via DNS stamp.",
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "enabled",
+              "type": "basetypes.BoolType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "default": "value defaults to true",
+              "markdown_description": "Enable this custom server. Defaults to true."
+            },
+            {
+              "name": "sdns_stamp",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "DNS stamp (sdns://) for the custom resolver."
+            },
+            {
+              "name": "server_name",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "Human-readable name for this custom server."
+            }
+          ]
+        }
+      },
+      {
+        "name": "server_names",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Predefined DNS provider names (e.g. \"cloudflare\", \"google\").",
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      },
+      {
+        "name": "state",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Encrypted DNS state: off, auto, manual, or custom.",
+        "validators": [
+          "value must be one of: [\"off\" \"auto\" \"manual\" \"custom\"]"
+        ]
+      }
+    ]
+  },
+  "dpi": {
+    "name": "dpi",
+    "type": "types.ObjectType[\"enabled\":basetypes.BoolType, \"fingerprinting_enabled\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "Deep Packet Inspection (DPI) settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Whether DPI is enabled."
+      },
+      {
+        "name": "fingerprinting_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Whether device fingerprinting is enabled."
+      }
+    ]
+  },
+  "igmp_snooping": {
+    "name": "igmp_snooping",
+    "type": "types.ObjectType[\"enabled\":basetypes.BoolType, \"network_ids\":types.ListType[basetypes.StringType]]",
+    "required": false,
+    "optional": true,
+    "computed": false,
+    "sensitive": false,
+    "markdown_description": "Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates.",
+    "attributes": [
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Whether IGMP snooping is enabled for the site."
+      },
+      {
+        "name": "network_ids",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "IDs of the networks IGMP snooping applies to.",
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      }
+    ]
+  },
+  "ips": {
+    "name": "ips",
+    "type": "types.ObjectType[\"advanced_filtering_preference\":basetypes.StringType, \"content_filtering_blocking_page_enabled\":basetypes.BoolType, \"enabled_categories\":types.ListType[basetypes.StringType], \"enabled_networks\":types.ListType[basetypes.StringType], \"honeypot\":types.ListType[types.ObjectType[\"ip_address\":basetypes.StringType, \"network_id\":basetypes.StringType, \"version\":basetypes.StringType]], \"honeypot_enabled\":basetypes.BoolType, \"ips_mode\":basetypes.StringType, \"memory_optimized\":basetypes.BoolType, \"restrict_torrents\":basetypes.BoolType, \"suppression_alerts\":types.ListType[types.ObjectType[\"category\":basetypes.StringType, \"gid\":basetypes.Int64Type, \"id\":basetypes.Int64Type, \"signature\":basetypes.StringType, \"tracking\":types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]], \"type\":basetypes.StringType]], \"suppression_whitelist\":types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]]]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "advanced_filtering_preference",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Advanced filtering mode: manual or disabled.",
+        "validators": [
+          "value must be one of: [\"manual\" \"disabled\"]"
+        ]
+      },
+      {
+        "name": "content_filtering_blocking_page_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Show a blocking page when content filtering blocks a request."
+      },
+      {
+        "name": "enabled_categories",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Emerging Threats ruleset categories to enable (e.g. \"emerging-malware\", \"tor\", \"phishing\").",
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      },
+      {
+        "name": "enabled_networks",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Network IDs to apply IPS inspection to.",
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      },
+      {
+        "name": "honeypot",
+        "type": "types.ListType[types.ObjectType[\"ip_address\":basetypes.StringType, \"network_id\":basetypes.StringType, \"version\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Honeypot IP addresses per network.",
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "ip_address",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "IP address to use as a honeypot."
+            },
+            {
+              "name": "network_id",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "Network ID this honeypot IP belongs to."
+            },
+            {
+              "name": "version",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "IP version: v4 or v6.",
+              "validators": [
+                "value must be one of: [\"v4\" \"v6\"]"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "honeypot_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable honeypot to detect internal port scans."
+      },
+      {
+        "name": "ips_mode",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "IPS operating mode: ids (detect only), ips (detect and block), ipsInline, or disabled.",
+        "validators": [
+          "value must be one of: [\"ids\" \"ips\" \"ipsInline\" \"disabled\"]"
+        ]
+      },
+      {
+        "name": "memory_optimized",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Use memory-optimized IPS ruleset (reduced rule set for low-memory devices)."
+      },
+      {
+        "name": "restrict_torrents",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Block BitTorrent traffic."
+      },
+      {
+        "name": "suppression_alerts",
+        "type": "types.ListType[types.ObjectType[\"category\":basetypes.StringType, \"gid\":basetypes.Int64Type, \"id\":basetypes.Int64Type, \"signature\":basetypes.StringType, \"tracking\":types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]], \"type\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "IPS signature alert suppression entries — silence specific signatures or categories.",
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "category",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "markdown_description": "Alert suppression signature category."
+            },
+            {
+              "name": "gid",
+              "type": "basetypes.Int64Type",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "markdown_description": "Signature Generator ID (GID)."
+            },
+            {
+              "name": "id",
+              "type": "basetypes.Int64Type",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "markdown_description": "Signature ID."
+            },
+            {
+              "name": "signature",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "markdown_description": "Suppression signature name."
+            },
+            {
+              "name": "tracking",
+              "type": "types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]]",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "markdown_description": "Tracking specifications (used when `type` is `track`).",
+              "nested_object": {
+                "name": "",
+                "type": "",
+                "required": false,
+                "optional": false,
+                "computed": false,
+                "sensitive": false,
+                "attributes": [
+                  {
+                    "name": "direction",
+                    "type": "basetypes.StringType",
+                    "required": true,
+                    "optional": false,
+                    "computed": false,
+                    "sensitive": false,
+                    "markdown_description": "Match direction: both, src, or dest.",
+                    "validators": [
+                      "value must be one of: [\"both\" \"src\" \"dest\"]"
+                    ]
+                  },
+                  {
+                    "name": "mode",
+                    "type": "basetypes.StringType",
+                    "required": true,
+                    "optional": false,
+                    "computed": false,
+                    "sensitive": false,
+                    "markdown_description": "Match mode: ip, subnet, or network.",
+                    "validators": [
+                      "value must be one of: [\"ip\" \"subnet\" \"network\"]"
+                    ]
+                  },
+                  {
+                    "name": "value",
+                    "type": "basetypes.StringType",
+                    "required": true,
+                    "optional": false,
+                    "computed": false,
+                    "sensitive": false,
+                    "markdown_description": "IP address, CIDR subnet, or network ID to match."
+                  }
+                ]
+              }
+            },
+            {
+              "name": "type",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "markdown_description": "Suppression type: `all` (everywhere) or `track` (only the tracked sources/destinations).",
+              "validators": [
+                "value must be one of: [\"all\" \"track\"]"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "suppression_whitelist",
+        "type": "types.ListType[types.ObjectType[\"direction\":basetypes.StringType, \"mode\":basetypes.StringType, \"value\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "IPS suppression whitelist entries — sources/destinations to exclude from inspection.",
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "direction",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "Match direction: both, src, or dest.",
+              "validators": [
+                "value must be one of: [\"both\" \"src\" \"dest\"]"
+              ]
+            },
+            {
+              "name": "mode",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "Match mode: ip, subnet, or network.",
+              "validators": [
+                "value must be one of: [\"ip\" \"subnet\" \"network\"]"
+              ]
+            },
+            {
+              "name": "value",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "IP address, CIDR subnet, or network ID to whitelist."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "lcm": {
+    "name": "lcm",
+    "type": "types.ObjectType[\"brightness\":basetypes.Int64Type, \"enabled\":basetypes.BoolType, \"idle_timeout\":basetypes.Int64Type, \"sync\":basetypes.BoolType, \"touch_event\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "LCD/display (LCM) settings for devices with a screen.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "brightness",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Display brightness (1-100).",
+        "validators": [
+          "value must be between 1 and 100"
+        ]
+      },
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to true",
+        "markdown_description": "Whether the device display is enabled."
+      },
+      {
+        "name": "idle_timeout",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Seconds of inactivity before the display turns off (10-3600).",
+        "validators": [
+          "value must be between 10 and 3600"
+        ]
+      },
+      {
+        "name": "sync",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Sync display settings across devices."
+      },
+      {
+        "name": "touch_event",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to true",
+        "markdown_description": "Whether touch events on the display are enabled."
+      }
+    ]
+  },
+  "mgmt": {
+    "name": "mgmt",
+    "type": "types.ObjectType[\"advanced_feature_enabled\":basetypes.BoolType, \"auto_upgrade\":basetypes.BoolType, \"auto_upgrade_hour\":basetypes.Int64Type, \"debug_tools_enabled\":basetypes.BoolType, \"direct_connect_enabled\":basetypes.BoolType, \"ssh_auth_password_enabled\":basetypes.BoolType, \"ssh_enabled\":basetypes.BoolType, \"ssh_keys\":types.ListType[types.ObjectType[\"comment\":basetypes.StringType, \"key\":basetypes.StringType, \"name\":basetypes.StringType, \"type\":basetypes.StringType]], \"ssh_password\":basetypes.StringType, \"ssh_username\":basetypes.StringType, \"unifi_idp_enabled\":basetypes.BoolType, \"wifiman_enabled\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "Management settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "advanced_feature_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable advanced features."
+      },
+      {
+        "name": "auto_upgrade",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Automatically upgrade device firmware."
+      },
+      {
+        "name": "auto_upgrade_hour",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Hour of day (0-23) for automatic firmware upgrades.",
+        "validators": [
+          "value must be between 0 and 23"
+        ]
+      },
+      {
+        "name": "debug_tools_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable debug tools."
+      },
+      {
+        "name": "direct_connect_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable Direct Connect (remote access)."
+      },
+      {
+        "name": "ssh_auth_password_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Allow SSH password authentication (in addition to keys)."
+      },
+      {
+        "name": "ssh_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable SSH authentication."
+      },
+      {
+        "name": "ssh_keys",
+        "type": "types.ListType[types.ObjectType[\"comment\":basetypes.StringType, \"key\":basetypes.StringType, \"name\":basetypes.StringType, \"type\":basetypes.StringType]]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "SSH keys.",
+        "nested_object": {
+          "name": "",
+          "type": "",
+          "required": false,
+          "optional": false,
+          "computed": false,
+          "sensitive": false,
+          "attributes": [
+            {
+              "name": "comment",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "markdown_description": "Comment."
+            },
+            {
+              "name": "key",
+              "type": "basetypes.StringType",
+              "required": false,
+              "optional": true,
+              "computed": true,
+              "sensitive": false,
+              "markdown_description": "Public SSH key."
+            },
+            {
+              "name": "name",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "Name of SSH key."
+            },
+            {
+              "name": "type",
+              "type": "basetypes.StringType",
+              "required": true,
+              "optional": false,
+              "computed": false,
+              "sensitive": false,
+              "markdown_description": "Type of SSH key, e.g. ssh-rsa."
+            }
+          ]
+        }
+      },
+      {
+        "name": "ssh_password",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": false,
+        "sensitive": true,
+        "markdown_description": "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back."
+      },
+      {
+        "name": "ssh_username",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "SSH username for device access."
+      },
+      {
+        "name": "unifi_idp_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable the UniFi Identity Provider."
+      },
+      {
+        "name": "wifiman_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable WiFiman."
+      }
+    ]
+  },
+  "network_optimization": {
+    "name": "network_optimization",
+    "type": "types.ObjectType[\"enabled\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "Automated network optimization settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Whether automated network optimization is enabled."
+      }
+    ]
+  },
+  "ntp": {
+    "name": "ntp",
+    "type": "types.ObjectType[\"ntp_server_1\":basetypes.StringType, \"ntp_server_2\":basetypes.StringType, \"ntp_server_3\":basetypes.StringType, \"ntp_server_4\":basetypes.StringType, \"setting_preference\":basetypes.StringType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "NTP (time server) settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "ntp_server_1",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Primary NTP server."
+      },
+      {
+        "name": "ntp_server_2",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Second NTP server."
+      },
+      {
+        "name": "ntp_server_3",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Third NTP server."
+      },
+      {
+        "name": "ntp_server_4",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Fourth NTP server."
+      },
+      {
+        "name": "setting_preference",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Configuration mode: `auto` or `manual`.",
+        "validators": [
+          "value must be one of: [\"auto\" \"manual\"]"
+        ]
+      }
+    ]
+  },
+  "radius": {
+    "name": "radius",
+    "type": "types.ObjectType[\"accounting_enabled\":basetypes.BoolType, \"acct_port\":basetypes.Int64Type, \"auth_port\":basetypes.Int64Type, \"interim_update_interval\":timetypes.GoDurationType, \"secret\":basetypes.StringType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "RADIUS settings.",
+    "attributes": [
+      {
+        "name": "accounting_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable RADIUS accounting."
+      },
+      {
+        "name": "acct_port",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "RADIUS accounting port.",
+        "validators": [
+          "value must be between 1 and 65535"
+        ]
+      },
+      {
+        "name": "auth_port",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "RADIUS authentication port.",
+        "validators": [
+          "value must be between 1 and 65535"
+        ]
+      },
+      {
+        "name": "interim_update_interval",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Interim update interval, as a Go duration string (e.g. `1h`, `3600s`)."
+      },
+      {
+        "name": "secret",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": true,
+        "markdown_description": "RADIUS shared secret.",
+        "validators": [
+          "string length must be between 1 and 48",
+          "must not contain backslashes, spaces, single quotes, or double quotes"
+        ]
+      }
+    ]
+  },
+  "syslog": {
+    "name": "syslog",
+    "type": "types.ObjectType[\"contents\":types.ListType[basetypes.StringType], \"debug\":basetypes.BoolType, \"enabled\":basetypes.BoolType, \"ip\":basetypes.StringType, \"log_all_contents\":basetypes.BoolType, \"netconsole_enabled\":basetypes.BoolType, \"netconsole_host\":basetypes.StringType, \"netconsole_port\":basetypes.Int64Type, \"port\":basetypes.Int64Type, \"this_controller\":basetypes.BoolType, \"this_controller_encrypted_only\":basetypes.BoolType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "Remote syslog (rsyslogd) settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
+    "attributes": [
+      {
+        "name": "contents",
+        "type": "types.ListType[basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Logged facilities (e.g. `device`, `client`, `firewall_default_policy`, `triggers`, `updates`, `admin_activity`, `critical`, `security_detections`, `vpn`).",
+        "plan_modifiers": [
+          "Once set, the value of this attribute in state will not change."
+        ]
+      },
+      {
+        "name": "debug",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Enable debug logging."
+      },
+      {
+        "name": "enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Whether remote syslog is enabled."
+      },
+      {
+        "name": "ip",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Remote syslog server IP address."
+      },
+      {
+        "name": "log_all_contents",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Log all available facilities."
+      },
+      {
+        "name": "netconsole_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Whether netconsole logging is enabled."
+      },
+      {
+        "name": "netconsole_host",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Netconsole host."
+      },
+      {
+        "name": "netconsole_port",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Netconsole port (1-65535).",
+        "validators": [
+          "value must be between 1 and 65535"
+        ]
+      },
+      {
+        "name": "port",
+        "type": "basetypes.Int64Type",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Remote syslog server port (1-65535).",
+        "validators": [
+          "value must be between 1 and 65535"
+        ]
+      },
+      {
+        "name": "this_controller",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Also log this controller's events."
+      },
+      {
+        "name": "this_controller_encrypted_only",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "default": "value defaults to false",
+        "markdown_description": "Only send this controller's logs over an encrypted channel."
+      }
+    ]
+  },
+  "usg": {
+    "name": "usg",
+    "type": "types.ObjectType[\"broadcast_ping\":basetypes.BoolType, \"dns_verification\":types.ObjectType[\"domain\":basetypes.StringType, \"primary_dns_server\":basetypes.StringType, \"secondary_dns_server\":basetypes.StringType, \"setting_preference\":basetypes.StringType], \"ftp_module\":basetypes.BoolType, \"geo_ip_filtering_block\":basetypes.StringType, \"geo_ip_filtering_countries\":basetypes.StringType, \"geo_ip_filtering_enabled\":basetypes.BoolType, \"geo_ip_filtering_traffic_direction\":basetypes.StringType, \"gre_module\":basetypes.BoolType, \"h323_module\":basetypes.BoolType, \"icmp_timeout\":timetypes.GoDurationType, \"mss_clamp\":basetypes.StringType, \"offload_accounting\":basetypes.BoolType, \"offload_l2_blocking\":basetypes.BoolType, \"offload_sch\":basetypes.BoolType, \"other_timeout\":timetypes.GoDurationType, \"pptp_module\":basetypes.BoolType, \"receive_redirects\":basetypes.BoolType, \"send_redirects\":basetypes.BoolType, \"sip_module\":basetypes.BoolType, \"syn_cookies\":basetypes.BoolType, \"tcp_close_timeout\":timetypes.GoDurationType, \"tcp_close_wait_timeout\":timetypes.GoDurationType, \"tcp_established_timeout\":timetypes.GoDurationType, \"tcp_fin_wait_timeout\":timetypes.GoDurationType, \"tcp_last_ack_timeout\":timetypes.GoDurationType, \"tcp_syn_recv_timeout\":timetypes.GoDurationType, \"tcp_syn_sent_timeout\":timetypes.GoDurationType, \"tcp_time_wait_timeout\":timetypes.GoDurationType, \"tftp_module\":basetypes.BoolType, \"timeout_setting_preference\":basetypes.StringType, \"udp_other_timeout\":timetypes.GoDurationType, \"udp_stream_timeout\":timetypes.GoDurationType, \"unbind_wan_monitors\":basetypes.BoolType, \"upnp_enabled\":basetypes.BoolType, \"upnp_nat_pmp_enabled\":basetypes.BoolType, \"upnp_secure_mode\":basetypes.BoolType, \"upnp_wan_interface\":basetypes.StringType]",
+    "required": false,
+    "optional": true,
+    "computed": true,
+    "sensitive": false,
+    "markdown_description": "USG settings.",
+    "attributes": [
+      {
+        "name": "broadcast_ping",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable broadcast ping."
+      },
+      {
+        "name": "dns_verification",
+        "type": "types.ObjectType[\"domain\":basetypes.StringType, \"primary_dns_server\":basetypes.StringType, \"secondary_dns_server\":basetypes.StringType, \"setting_preference\":basetypes.StringType]",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "DNS verification settings.",
+        "attributes": [
+          {
+            "name": "domain",
+            "type": "basetypes.StringType",
+            "required": false,
+            "optional": true,
+            "computed": true,
+            "sensitive": false,
+            "markdown_description": "Domain for DNS verification."
+          },
+          {
+            "name": "primary_dns_server",
+            "type": "basetypes.StringType",
+            "required": false,
+            "optional": true,
+            "computed": true,
+            "sensitive": false,
+            "markdown_description": "Primary DNS server."
+          },
+          {
+            "name": "secondary_dns_server",
+            "type": "basetypes.StringType",
+            "required": false,
+            "optional": true,
+            "computed": true,
+            "sensitive": false,
+            "markdown_description": "Secondary DNS server."
+          },
+          {
+            "name": "setting_preference",
+            "type": "basetypes.StringType",
+            "required": false,
+            "optional": true,
+            "computed": true,
+            "sensitive": false,
+            "markdown_description": "Setting preference: auto or manual."
+          }
+        ]
+      },
+      {
+        "name": "ftp_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable FTP module."
+      },
+      {
+        "name": "geo_ip_filtering_block",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Geo IP filtering action: block or allow."
+      },
+      {
+        "name": "geo_ip_filtering_countries",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Comma-separated list of country codes for geo IP filtering."
+      },
+      {
+        "name": "geo_ip_filtering_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable geo IP filtering."
+      },
+      {
+        "name": "geo_ip_filtering_traffic_direction",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Geo IP filtering traffic direction: both, ingress, or egress."
+      },
+      {
+        "name": "gre_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable GRE module."
+      },
+      {
+        "name": "h323_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable H.323 module."
+      },
+      {
+        "name": "icmp_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "ICMP connection timeout, as a Go duration string (e.g. `30s`, `1m`)."
+      },
+      {
+        "name": "mss_clamp",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "MSS clamping mode: auto, custom, or disabled."
+      },
+      {
+        "name": "offload_accounting",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable hardware offload for accounting."
+      },
+      {
+        "name": "offload_l2_blocking",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable hardware offload for L2 blocking."
+      },
+      {
+        "name": "offload_sch",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable hardware offload for scheduling."
+      },
+      {
+        "name": "other_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Other connections timeout, as a Go duration string (e.g. `600s`, `10m`)."
+      },
+      {
+        "name": "pptp_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable PPTP module."
+      },
+      {
+        "name": "receive_redirects",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Accept ICMP redirects."
+      },
+      {
+        "name": "send_redirects",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Send ICMP redirects."
+      },
+      {
+        "name": "sip_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable SIP module."
+      },
+      {
+        "name": "syn_cookies",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable SYN cookies."
+      },
+      {
+        "name": "tcp_close_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "TCP close timeout, as a Go duration string (e.g. `10s`)."
+      },
+      {
+        "name": "tcp_close_wait_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "TCP close wait timeout, as a Go duration string (e.g. `60s`, `1m`)."
+      },
+      {
+        "name": "tcp_established_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "TCP established connection timeout, as a Go duration string (e.g. `7440s`, `2h4m`)."
+      },
+      {
+        "name": "tcp_fin_wait_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "TCP fin wait timeout, as a Go duration string (e.g. `120s`, `2m`)."
+      },
+      {
+        "name": "tcp_last_ack_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "TCP last ACK timeout, as a Go duration string (e.g. `30s`)."
+      },
+      {
+        "name": "tcp_syn_recv_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "TCP SYN received timeout, as a Go duration string (e.g. `60s`, `1m`)."
+      },
+      {
+        "name": "tcp_syn_sent_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "TCP SYN sent timeout, as a Go duration string (e.g. `120s`, `2m`)."
+      },
+      {
+        "name": "tcp_time_wait_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "TCP time wait timeout, as a Go duration string (e.g. `120s`, `2m`)."
+      },
+      {
+        "name": "tftp_module",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable TFTP module."
+      },
+      {
+        "name": "timeout_setting_preference",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Timeout setting preference: auto or manual."
+      },
+      {
+        "name": "udp_other_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "UDP other timeout, as a Go duration string (e.g. `30s`)."
+      },
+      {
+        "name": "udp_stream_timeout",
+        "type": "timetypes.GoDurationType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "UDP stream timeout, as a Go duration string (e.g. `180s`, `3m`)."
+      },
+      {
+        "name": "unbind_wan_monitors",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Unbind WAN monitors."
+      },
+      {
+        "name": "upnp_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable UPnP."
+      },
+      {
+        "name": "upnp_nat_pmp_enabled",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable UPnP NAT-PMP."
+      },
+      {
+        "name": "upnp_secure_mode",
+        "type": "basetypes.BoolType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "Enable UPnP secure mode."
+      },
+      {
+        "name": "upnp_wan_interface",
+        "type": "basetypes.StringType",
+        "required": false,
+        "optional": true,
+        "computed": true,
+        "sensitive": false,
+        "markdown_description": "UPnP WAN interface (e.g., WAN, WAN2)."
+      }
+    ]
+  }
+}
