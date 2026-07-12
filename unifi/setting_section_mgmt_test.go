@@ -353,12 +353,16 @@ func TestMgmtSection_CarryBestEffortSecretMatrix(t *testing.T) {
 	}
 }
 
-// TestMgmtSection_SshKeysPerElementPreservation proves the per-element RMW
-// behavior specific to ssh_keys: overlaying a 1-element model onto a base
-// whose same-index element carries unmodeled date/fingerprint fields
-// preserves those fields in the output element alongside the model's
-// updated name/type/key/comment.
-func TestMgmtSection_SshKeysPerElementPreservation(t *testing.T) {
+// TestMgmtSection_SshKeysBlanksControllerMetadata proves the CORRECT
+// per-element behavior for ssh_keys (replacing the old same-index
+// preservation behavior, which mis-attached controller metadata on
+// reorder/replace — codex whole-branch review finding 3): overlaying a
+// 1-element model onto a base whose same-index element carries unmodeled
+// date/fingerprint fields does NOT carry those base values into the output;
+// mgmt explicitly blanks date/fingerprint to "" on every output element
+// (matching legacy, which always sent fresh structs with empty date/
+// fingerprint — see goldenMgmt).
+func TestMgmtSection_SshKeysBlanksControllerMetadata(t *testing.T) {
 	ctx := context.Background()
 	sec := mgmtSection{}
 
@@ -371,8 +375,8 @@ func TestMgmtSection_SshKeysPerElementPreservation(t *testing.T) {
 					"type":        "ssh-rsa",
 					"key":         "old-key-material",
 					"comment":     "old comment",
-					"date":        "D",
-					"fingerprint": "F",
+					"date":        "D6",
+					"fingerprint": "F6",
 				},
 			},
 		},
@@ -429,13 +433,121 @@ func TestMgmtSection_SshKeysPerElementPreservation(t *testing.T) {
 	if elem["comment"] != "new comment" {
 		t.Errorf("x_ssh_keys[0][comment] = %v, want %q", elem["comment"], "new comment")
 	}
-	// Per-element RMW: unmodeled date/fingerprint from the same-index base
-	// element must survive untouched.
-	if elem["date"] != "D" {
-		t.Errorf("x_ssh_keys[0][date] = %v, want %q (preserved from base)", elem["date"], "D")
+	// date/fingerprint are controller-computed metadata the provider does not
+	// model or echo. They must be blanked to "", NOT carried from the base by
+	// list position — carrying them by position is exactly the corruption bug
+	// (codex finding 3) this fix removes.
+	if elem["date"] != "" {
+		t.Errorf("x_ssh_keys[0][date] = %v, want \"\" (blanked, not carried from base)", elem["date"])
 	}
-	if elem["fingerprint"] != "F" {
-		t.Errorf("x_ssh_keys[0][fingerprint] = %v, want %q (preserved from base)", elem["fingerprint"], "F")
+	if elem["fingerprint"] != "" {
+		t.Errorf("x_ssh_keys[0][fingerprint] = %v, want \"\" (blanked, not carried from base)", elem["fingerprint"])
+	}
+}
+
+// TestMgmtSection_SshKeysReorderDoesNotCrossAttachMetadata is the TDD
+// regression test for codex whole-branch review finding 3: overlayObjectList
+// used to seed each output element from the base's SAME-INDEX element, so
+// reordering ssh_keys mis-attached controller-assigned date/fingerprint from
+// one key to a different key. Base has two elements (KA at index 0, KB at
+// index 1); the model reorders them to [KB, KA]. With the old same-index
+// bug, output index 0 (key=KB) would inherit KA's date/fingerprint ("DA"/
+// "FA") and output index 1 (key=KA) would inherit KB's ("DB"/"FB") — a
+// cross-attachment corrupting controller metadata onto the wrong key. The
+// correct behavior (this fix): every output element's date/fingerprint is
+// blanked to "" regardless of position, so no cross-attachment is possible.
+func TestMgmtSection_SshKeysReorderDoesNotCrossAttachMetadata(t *testing.T) {
+	ctx := context.Background()
+	sec := mgmtSection{}
+
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "mgmt"},
+		Data: map[string]any{
+			"x_ssh_keys": []any{
+				map[string]any{
+					"name":        "key-a",
+					"type":        "ssh-rsa",
+					"key":         "KA",
+					"comment":     "a",
+					"date":        "DA",
+					"fingerprint": "FA",
+				},
+				map[string]any{
+					"name":        "key-b",
+					"type":        "ssh-rsa",
+					"key":         "KB",
+					"comment":     "b",
+					"date":        "DB",
+					"fingerprint": "FB",
+				},
+			},
+		},
+	}})
+
+	// Model reorders the keys: KB now at index 0, KA now at index 1.
+	sshKeys, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes},
+		[]sshKeyModel{
+			{
+				Name:    types.StringValue("key-b"),
+				Type:    types.StringValue("ssh-rsa"),
+				Key:     types.StringValue("KB"),
+				Comment: types.StringValue("b"),
+			},
+			{
+				Name:    types.StringValue("key-a"),
+				Type:    types.StringValue("ssh-rsa"),
+				Key:     types.StringValue("KA"),
+				Comment: types.StringValue("a"),
+			},
+		})
+	if diags.HasError() {
+		t.Fatalf("building ssh_keys list: %v", diags)
+	}
+
+	m := settingMgmtModel{SSHKeys: sshKeys}
+	obj, objDiags := types.ObjectValueFrom(ctx, mgmtAttrTypes, m)
+	if objDiags.HasError() {
+		t.Fatalf("building mgmt object: %v", objDiags)
+	}
+
+	model := settingResourceModel{Mgmt: obj}
+	prior := settingResourceModel{}
+
+	rs, configured, oDiags := sec.overlay(ctx, model, prior, snap)
+	if oDiags.HasError() {
+		t.Fatalf("overlay diagnostics: %v", oDiags)
+	}
+	if !configured {
+		t.Fatalf("overlay configured = false, want true")
+	}
+
+	rawKeys, ok := rs.Data["x_ssh_keys"].([]any)
+	if !ok || len(rawKeys) != 2 {
+		t.Fatalf("rs.Data[%q] = %v, want 2-element []any", "x_ssh_keys", rs.Data["x_ssh_keys"])
+	}
+
+	elem0, ok := rawKeys[0].(map[string]any)
+	if !ok {
+		t.Fatalf("x_ssh_keys[0] = %v, want map[string]any", rawKeys[0])
+	}
+	if elem0["key"] != "KB" {
+		t.Fatalf("x_ssh_keys[0][key] = %v, want %q (reordered model order)", elem0["key"], "KB")
+	}
+	if elem0["date"] != "" || elem0["fingerprint"] != "" {
+		t.Errorf("x_ssh_keys[0] (key=KB) date/fingerprint = %v/%v, want \"\"/\"\" — NOT cross-attached from base index 0 (key-a's DA/FA)",
+			elem0["date"], elem0["fingerprint"])
+	}
+
+	elem1, ok := rawKeys[1].(map[string]any)
+	if !ok {
+		t.Fatalf("x_ssh_keys[1] = %v, want map[string]any", rawKeys[1])
+	}
+	if elem1["key"] != "KA" {
+		t.Fatalf("x_ssh_keys[1][key] = %v, want %q (reordered model order)", elem1["key"], "KA")
+	}
+	if elem1["date"] != "" || elem1["fingerprint"] != "" {
+		t.Errorf("x_ssh_keys[1] (key=KA) date/fingerprint = %v/%v, want \"\"/\"\" — NOT cross-attached from base index 1 (key-b's DB/FB)",
+			elem1["date"], elem1["fingerprint"])
 	}
 }
 

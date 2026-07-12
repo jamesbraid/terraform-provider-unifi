@@ -54,12 +54,18 @@ import (
 //     current section data so those unmodeled fields survive the merge
 //     untouched.
 //
-//   - PER-ELEMENT RMW inside ssh_keys: each wire element also carries
-//     unmodeled date/fingerprint fields (assigned by the controller when a
-//     key is added) that are not part of the model's ssh_keys schema at
-//     all. overlayObjectList's same-index base-element seeding preserves
-//     those two fields on each element across the merge, exactly as the
-//     top-level RMW preserves alert_enabled et al.
+//   - Per-element controller metadata inside ssh_keys: each wire element
+//     also carries unmodeled date/fingerprint fields (assigned by the
+//     controller when a key is added) that are not part of the model's
+//     ssh_keys schema at all. Unlike the top-level RMW above, these are NOT
+//     preserved by position: overlayObjectList builds each element fresh
+//     from the model's leaves, and overlay() explicitly blanks date/
+//     fingerprint to "" on every element (blankSSHKeyControllerMetadata),
+//     matching legacy byte-for-byte. Preserving them by list index would
+//     mis-attach one key's metadata onto a different key across a reorder
+//     or replace (codex whole-branch review finding 3) — the ssh "key"
+//     value is not a durable identity to match on either, since rotation
+//     changes it.
 type mgmtSection struct{}
 
 func init() {
@@ -277,10 +283,12 @@ func (s mgmtSection) decode(ctx context.Context, snap rawSettings, prior setting
 // (x_ssh_password) deletes from base when the config value is null/unknown
 // (never re-sends a masked value) and writes it when set, including an
 // explicit empty string. ssh_keys is overlaid through the generalized
-// nested-object-list codec (overlayObjectList), whose same-index base-
-// element seeding preserves each element's unmodeled date/fingerprint
-// fields across the merge (per-element RMW). Returns configured == false
-// (no write) when the section is not configured (null/unknown) in model.
+// nested-object-list codec (overlayObjectList), which now builds every
+// output element fresh from the model's leaves (no positional carry from
+// the base); this section then explicitly blanks each element's date/
+// fingerprint (see the blankSSHKeyControllerMetadata call below). Returns
+// configured == false (no write) when the section is not configured
+// (null/unknown) in model.
 func (s mgmtSection) overlay(ctx context.Context, model, prior settingResourceModel, snap rawSettings) (settings.RawSetting, bool, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -312,12 +320,39 @@ func (s mgmtSection) overlay(ctx context.Context, model, prior settingResourceMo
 	if diags.HasError() {
 		return settings.RawSetting{}, false, diags
 	}
+	blankSSHKeyControllerMetadata(base)
 
 	rs := settings.RawSetting{
 		BaseSetting: settings.BaseSetting{Key: s.key()},
 		Data:        base,
 	}
 	return rs, true, diags
+}
+
+// blankSSHKeyControllerMetadata sets "date" and "fingerprint" to "" on every
+// element of base["x_ssh_keys"], if present. These two wire fields are
+// controller-computed metadata (assigned when a key is added/rotated) that
+// the schema does not model or echo back. overlayObjectList builds each
+// element fresh from the model's leaves, so it never carries these fields
+// forward from the base by list position — deliberately, because doing so
+// by position mis-attaches one key's metadata onto a different key across a
+// reorder or replace (codex whole-branch review finding 3). Blanking here
+// matches legacy byte-for-byte: the legacy client always sent freshly
+// constructed SettingMgmtSSHKeys structs whose date/fingerprint serialize as
+// "" (see goldenMgmt's "date":"","fingerprint":"").
+func blankSSHKeyControllerMetadata(base map[string]any) {
+	items, ok := base["x_ssh_keys"].([]any)
+	if !ok {
+		return
+	}
+	for _, item := range items {
+		elem, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		elem["date"] = ""
+		elem["fingerprint"] = ""
+	}
 }
 
 func (s mgmtSection) capability(snap rawSettings) capabilityState {

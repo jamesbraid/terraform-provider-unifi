@@ -1442,13 +1442,19 @@ func TestOverlayObjectFields_knownEmptyNestedTrackingClearsElementTracking(t *te
 	}
 }
 
-// --- 4. Ordering + same-index preservation ---
+// --- 4. Ordering + fresh-element build (no positional carry) ---
 
-func TestOverlayObjectList_sameIndexElementRetainsBaseFieldOmittedFromConfig(t *testing.T) {
+// TestOverlayObjectList_freshElementDropsBaseFieldOmittedFromConfig proves
+// each output element is built FRESH from cfg's modeled leaves: a field
+// present on the base's same-index element but absent from cfg's attrTypes
+// (e.g. an unmodeled field a section hasn't opted into re-adding) is simply
+// not present in the output — it is never carried over by list position.
+// This replaces the old same-index-preservation test: same-index seeding
+// was the bug (codex whole-branch review finding 3), not a feature to pin.
+func TestOverlayObjectList_freshElementDropsBaseFieldOmittedFromConfig(t *testing.T) {
 	ctx := context.Background()
 	own := map[string]ownershipClass{
-		"items.name":  ownerManaged,
-		"items.extra": ownerPreservedUnmanaged,
+		"items.name": ownerManaged,
 	}
 	attrTypes := map[string]attr.Type{"name": types.StringType}
 	elemType := types.ObjectType{AttrTypes: attrTypes}
@@ -1475,27 +1481,31 @@ func TestOverlayObjectList_sameIndexElementRetainsBaseFieldOmittedFromConfig(t *
 	if elemA["name"] != "new-a" {
 		t.Fatalf("expected element 0 name overwritten, got %v", elemA["name"])
 	}
-	if elemA["extra"] != "keep-me-a" {
-		t.Fatalf("expected element 0 to retain base 'extra' field omitted from config, got %v", elemA["extra"])
+	if _, ok := elemA["extra"]; ok {
+		t.Fatalf("expected element 0 to be built fresh (no base 'extra' carried by position), got %v", elemA["extra"])
 	}
 	elemB := list[1].(map[string]any)
-	if elemB["extra"] != "keep-me-b" {
-		t.Fatalf("expected element 1 to retain base 'extra' field omitted from config, got %v", elemB["extra"])
+	if _, ok := elemB["extra"]; ok {
+		t.Fatalf("expected element 1 to be built fresh (no base 'extra' carried by position), got %v", elemB["extra"])
 	}
 }
 
-func TestOverlayObjectList_reorderRemoveIsPositionalNotKeyMatched(t *testing.T) {
+// TestOverlayObjectList_reorderDoesNotCrossAttachBaseFields is the general
+// (non-mgmt) regression test for codex whole-branch review finding 3:
+// reordering/removing elements must never let an unmodeled base field
+// belonging to one logical element land on a different element solely
+// because of list position. Base has 3 elements; config reorders to just
+// [orig-c, orig-a] (element "orig-b" removed, order changed). Every output
+// element must be a fresh build — none of them may pick up ANY base
+// "extra" value, regardless of what position they land at.
+func TestOverlayObjectList_reorderDoesNotCrossAttachBaseFields(t *testing.T) {
 	ctx := context.Background()
 	own := map[string]ownershipClass{
-		"items.name":  ownerManaged,
-		"items.extra": ownerPreservedUnmanaged,
+		"items.name": ownerManaged,
 	}
 	attrTypes := map[string]attr.Type{"name": types.StringType}
 	elemType := types.ObjectType{AttrTypes: attrTypes}
 
-	// Base has 3 elements; config has only 1 (a removal). Positional
-	// semantics: the single config element lands at index 0 and inherits
-	// index 0's base "extra", NOT the base element it shares a "name" with.
 	out := map[string]any{
 		"items": []any{
 			map[string]any{"name": "orig-a", "extra": "extra-a"},
@@ -1503,23 +1513,31 @@ func TestOverlayObjectList_reorderRemoveIsPositionalNotKeyMatched(t *testing.T) 
 			map[string]any{"name": "orig-c", "extra": "extra-c"},
 		},
 	}
-	cfgElem := mustObjectValue(t, attrTypes, map[string]attr.Value{"name": types.StringValue("orig-c")})
-	cfg := mustListValue(t, elemType, []attr.Value{cfgElem})
+	cfgElem0 := mustObjectValue(t, attrTypes, map[string]attr.Value{"name": types.StringValue("orig-c")})
+	cfgElem1 := mustObjectValue(t, attrTypes, map[string]attr.Value{"name": types.StringValue("orig-a")})
+	cfg := mustListValue(t, elemType, []attr.Value{cfgElem0, cfgElem1})
 
 	overlayDiags := overlayObjectList(ctx, out, "items", own, "items", cfg)
 	if overlayDiags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
 	}
 	list := out["items"].([]any)
-	if len(list) != 1 {
-		t.Fatalf("expected 1 element after removal, got %d", len(list))
+	if len(list) != 2 {
+		t.Fatalf("expected 2 elements after reorder+removal, got %d", len(list))
 	}
-	elem := list[0].(map[string]any)
-	if elem["name"] != "orig-c" {
-		t.Fatalf("expected name=orig-c from config, got %v", elem["name"])
+	elem0 := list[0].(map[string]any)
+	if elem0["name"] != "orig-c" {
+		t.Fatalf("expected element 0 name=orig-c from config, got %v", elem0["name"])
 	}
-	if elem["extra"] != "extra-a" {
-		t.Fatalf("expected positional (index-0) base preservation to pull 'extra-a', got %v — same-index semantics violated", elem["extra"])
+	if v, ok := elem0["extra"]; ok {
+		t.Fatalf("element 0 (orig-c) must not cross-attach any base 'extra' value by position, got %v", v)
+	}
+	elem1 := list[1].(map[string]any)
+	if elem1["name"] != "orig-a" {
+		t.Fatalf("expected element 1 name=orig-a from config, got %v", elem1["name"])
+	}
+	if v, ok := elem1["extra"]; ok {
+		t.Fatalf("element 1 (orig-a) must not cross-attach any base 'extra' value by position, got %v", v)
 	}
 }
 

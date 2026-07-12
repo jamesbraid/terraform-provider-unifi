@@ -779,18 +779,23 @@ func decodeObjectList(
 // delete-on-null for a per-element write-only-secret leaf, and recursion
 // into any further-nested object-list child) to each element, all sharing
 // ownPrefix (the list's own index-free dotted path in own). Element order
-// follows cfg. Each element starts from the snapshot's same-index element
-// (if any) so that a leaf omitted from cfg's element retains the
-// snapshot's value for that element, exactly as overlayObject preserves
-// untouched leaves within a single object. A null/unknown cfg is a no-op:
-// the snapshot's list is left untouched.
+// follows cfg. A null/unknown cfg is a no-op: the snapshot's list is left
+// untouched.
 //
-// elemOut is seeded from the base snapshot's same-index element map
-// (elemOut = m) rather than a copy of it: this is safe only because every
-// caller's out originates from a rawSettings.dataCopy(...), which deep-
-// copies the whole section tree up front, so mutating elemOut in place
-// mutates that already-independent copy, never the snapshot itself. Do not
-// call this with an out that isn't already a deep, private copy.
+// Each output element is built FRESH (starting from an empty map), never
+// seeded from the base snapshot's same-index element. List position is not
+// a stable identity for an element — reordering or replacing an element
+// shifts every later index — so seeding elemOut from out[key][i] would
+// silently re-attach whatever unmodeled, controller-owned fields lived at
+// that base index onto a DIFFERENT logical element (codex whole-branch
+// review finding 3: mgmt.ssh_keys' controller-assigned date/fingerprint
+// were mis-attached to the wrong key on reorder). A section that needs an
+// unmodeled per-element field preserved (e.g. mgmt.ssh_keys' date/
+// fingerprint) must do so explicitly and deliberately in its own overlay()
+// — see setting_section_mgmt.go — not rely on a codec-level positional
+// default. This also means overlayObjectList never aliases or mutates any
+// base element map: each elemOut is a brand-new map, so the no-source-
+// mutation property holds trivially, independent of dataCopy's semantics.
 func overlayObjectList(
 	ctx context.Context,
 	out map[string]any,
@@ -803,11 +808,6 @@ func overlayObjectList(
 
 	if cfg.IsNull() || cfg.IsUnknown() {
 		return diags
-	}
-
-	var baseElems []any
-	if existing, ok := out[key].([]any); ok {
-		baseElems = existing
 	}
 
 	cfgElems := cfg.Elements()
@@ -823,12 +823,6 @@ func overlayObjectList(
 		}
 
 		elemOut := map[string]any{}
-		if i < len(baseElems) {
-			if m, ok := baseElems[i].(map[string]any); ok {
-				elemOut = m
-			}
-		}
-
 		elemDiags := overlayObjectFields(ctx, elemOut, ownPrefix, fmt.Sprintf("%s[%d]", key, i), own, cfgObj)
 		diags.Append(elemDiags...)
 		items = append(items, elemOut)
