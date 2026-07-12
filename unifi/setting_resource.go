@@ -325,6 +325,7 @@ type settingResourceModel struct {
 	Netflow       types.Object   `tfsdk:"netflow"`
 	Dashboard     types.Object   `tfsdk:"dashboard"`
 	EtherLighting types.Object   `tfsdk:"ether_lighting"`
+	GlobalSwitch  types.Object   `tfsdk:"global_switch"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -417,6 +418,35 @@ type settingEtherLightingSpeedOverrideModel struct {
 type settingEtherLightingModel struct {
 	NetworkOverrides types.List `tfsdk:"network_overrides"`
 	SpeedOverrides   types.List `tfsdk:"speed_overrides"`
+}
+
+// settingGlobalSwitchAclL3IsolationModel is the nested per-entry element
+// of settingGlobalSwitchModel.AclL3Isolation
+// (global_switch.acl_l3_isolation): one source-network-to-destination-
+// networks Layer 3 isolation rule.
+type settingGlobalSwitchAclL3IsolationModel struct {
+	DestinationNetworks types.List   `tfsdk:"destination_networks"`
+	SourceNetwork       types.String `tfsdk:"source_network"`
+}
+
+// settingGlobalSwitchModel is the Terraform model for the "global_switch"
+// settings section (settingResourceModel.GlobalSwitch): site-wide switch
+// port/network behavior defaults, including the switch_exclusions MAC
+// exclusion list (a user-configured policy control, not controller
+// metadata — modeled like every other leaf here).
+type settingGlobalSwitchModel struct {
+	AclDeviceIsolation             types.List   `tfsdk:"acl_device_isolation"`
+	AclL3Isolation                 types.List   `tfsdk:"acl_l3_isolation"`
+	DHCPSnoop                      types.Bool   `tfsdk:"dhcp_snoop"`
+	Dot1XFallbackNetworkID         types.String `tfsdk:"dot1x_fallback_networkconf_id"`
+	Dot1XPortctrlEnabled           types.Bool   `tfsdk:"dot1x_portctrl_enabled"`
+	FloodKnownProtocols            types.Bool   `tfsdk:"flood_known_protocols"`
+	FlowctrlEnabled                types.Bool   `tfsdk:"flowctrl_enabled"`
+	ForwardUnknownMcastRouterPorts types.Bool   `tfsdk:"forward_unknown_mcast_router_ports"`
+	JumboframeEnabled              types.Bool   `tfsdk:"jumboframe_enabled"`
+	RADIUSProfileID                types.String `tfsdk:"radiusprofile_id"`
+	StpVersion                     types.String `tfsdk:"stp_version"`
+	SwitchExclusions               types.List   `tfsdk:"switch_exclusions"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -601,6 +631,24 @@ var (
 	etherLightingAttrTypes = map[string]attr.Type{
 		"network_overrides": types.ListType{ElemType: types.ObjectType{AttrTypes: etherLightingNetworkOverrideAttrTypes}},
 		"speed_overrides":   types.ListType{ElemType: types.ObjectType{AttrTypes: etherLightingSpeedOverrideAttrTypes}},
+	}
+	globalSwitchAclL3IsolationAttrTypes = map[string]attr.Type{
+		"destination_networks": types.ListType{ElemType: types.StringType},
+		"source_network":       types.StringType,
+	}
+	globalSwitchAttrTypes = map[string]attr.Type{
+		"acl_device_isolation":               types.ListType{ElemType: types.StringType},
+		"acl_l3_isolation":                   types.ListType{ElemType: types.ObjectType{AttrTypes: globalSwitchAclL3IsolationAttrTypes}},
+		"dhcp_snoop":                         types.BoolType,
+		"dot1x_fallback_networkconf_id":      types.StringType,
+		"dot1x_portctrl_enabled":             types.BoolType,
+		"flood_known_protocols":              types.BoolType,
+		"flowctrl_enabled":                   types.BoolType,
+		"forward_unknown_mcast_router_ports": types.BoolType,
+		"jumboframe_enabled":                 types.BoolType,
+		"radiusprofile_id":                   types.StringType,
+		"stp_version":                        types.StringType,
+		"switch_exclusions":                  types.ListType{ElemType: types.StringType},
 	}
 )
 
@@ -810,7 +858,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
 		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull() &&
 		m.TrafficFlow.IsNull() && m.SslInspection.IsNull() && m.Netflow.IsNull() &&
-		m.Dashboard.IsNull() && m.EtherLighting.IsNull()
+		m.Dashboard.IsNull() && m.EtherLighting.IsNull() && m.GlobalSwitch.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in

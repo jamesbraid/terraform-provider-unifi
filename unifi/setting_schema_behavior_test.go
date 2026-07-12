@@ -461,6 +461,88 @@ func TestSettingSchemaBehavior_etherLightingRawColorHexRejectsInvalid(t *testing
 	}
 }
 
+// validateListAll runs every validator in vs against a list value at p,
+// returning the accumulated diagnostics.
+func validateListAll(ctx context.Context, vs []validator.List, p path.Path, elemType attr.Type, values []string) diag.Diagnostics {
+	var diags diag.Diagnostics
+	listValue, d := types.ListValueFrom(ctx, elemType, values)
+	diags.Append(d...)
+	if diags.HasError() {
+		return diags
+	}
+	for _, v := range vs {
+		req := validator.ListRequest{Path: p, ConfigValue: listValue}
+		var resp validator.ListResponse
+		v.ValidateList(ctx, req, &resp)
+		diags.Append(resp.Diagnostics...)
+	}
+	return diags
+}
+
+func TestSettingSchemaBehavior_globalSwitchStpVersionRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "global_switch", "stp_version")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("global_switch.stp_version is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("global_switch.stp_version has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"stp is valid", "stp", false},
+		{"rstp is valid", "rstp", false},
+		{"disabled is valid", "disabled", false},
+		{"garbage is invalid", "mstp", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("global_switch").AtName("stp_version"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_globalSwitchSwitchExclusionsRejectsInvalidMAC(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "global_switch", "switch_exclusions")
+	la, ok := a.(schema.ListAttribute)
+	if !ok {
+		t.Fatalf("global_switch.switch_exclusions is %T, want schema.ListAttribute", a)
+	}
+	if len(la.Validators) == 0 {
+		t.Fatal("global_switch.switch_exclusions has no validators")
+	}
+
+	p := path.Root("global_switch").AtName("switch_exclusions")
+	for _, tc := range []struct {
+		name    string
+		values  []string
+		wantErr bool
+	}{
+		{"valid MAC", []string{"AA:BB:CC:00:11:22"}, false},
+		{"multiple valid MACs", []string{"AA:BB:CC:00:11:22", "00:11:22:AA:BB:CC"}, false},
+		{"missing colons is invalid", []string{"AABBCC001122"}, true},
+		{"too short is invalid", []string{"AA:BB:CC"}, true},
+		{"non-hex char is invalid", []string{"ZZ:BB:CC:00:11:22"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateListAll(ctx, la.Validators, p, types.StringType, tc.values)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("values %v: validator error = %v, want %v (diags: %v)", tc.values, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
 func TestSettingSchemaBehavior_radiusSecretRejectsTooLong(t *testing.T) {
 	ctx := context.Background()
 	attrs := builtSchema(t)
