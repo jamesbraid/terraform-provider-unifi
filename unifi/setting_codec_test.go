@@ -1795,6 +1795,85 @@ func TestOverlayObjectList_nestedWriteOnlySecretDeletesOnNullAndUnknownWritesOnS
 			t.Fatalf("expected token written for set config value, got %v", elem["token"])
 		}
 	})
+
+	// per-element isolation across MULTIPLE list elements: one overlay call,
+	// element 0's secret goes null (delete-on-null) while element 1's secret
+	// is set (write-on-set), in the SAME call. This is the case the
+	// single-element subtests above cannot exercise: overlayObjectList seeds
+	// each element's elemOut from out[key][i] specifically (setting_codec.go
+	// "elemOut = m" in the per-index loop), one map per index. A naive
+	// implementation that shared a single map/pointer across elements — e.g.
+	// reusing baseElems[0] for every index, or seeding elemOut once outside
+	// the loop — would leak element 1's write into element 0's map (or vice
+	// versa), and this subtest's cross-element assertions below would catch
+	// that: element 0 would unexpectedly gain a "token" key (from element
+	// 1's write landing in the shared map) or element 1's "label" would read
+	// back as element 0's stale "label-a" instead of "label-b".
+	t.Run("per-element isolation across two elements in one call", func(t *testing.T) {
+		multiOwn := map[string]ownershipClass{
+			"multi_list.token": ownerWriteOnlySecret,
+			"multi_list.label": ownerManaged,
+		}
+		multiAttrTypes := map[string]attr.Type{
+			"token": types.StringType,
+			"label": types.StringType,
+		}
+		multiElemType := types.ObjectType{AttrTypes: multiAttrTypes}
+
+		out := map[string]any{
+			"multi_list": []any{
+				map[string]any{"token": "stale-masked-a", "label": "label-a"},
+				map[string]any{"token": "stale-masked-b", "label": "label-b"},
+			},
+		}
+		// element 0: secret left null (delete), label omitted from config
+		// change (still ownerManaged so it's overwritten by cfg's value).
+		cfgElem0 := mustObjectValue(t, multiAttrTypes, map[string]attr.Value{
+			"token": types.StringNull(),
+			"label": types.StringValue("label-a"),
+		})
+		// element 1: secret set to a new value.
+		cfgElem1 := mustObjectValue(t, multiAttrTypes, map[string]attr.Value{
+			"token": types.StringValue("new-token-b"),
+			"label": types.StringValue("label-b"),
+		})
+		cfg := mustListValue(t, multiElemType, []attr.Value{cfgElem0, cfgElem1})
+
+		diags := overlayObjectList(ctx, out, "multi_list", multiOwn, "multi_list", cfg)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		list := out["multi_list"].([]any)
+		if len(list) != 2 {
+			t.Fatalf("expected 2 elements, got %d", len(list))
+		}
+
+		elem0 := list[0].(map[string]any)
+		if _, ok := elem0["token"]; ok {
+			t.Fatalf("expected element 0's masked token deleted on null config, still present: %v", elem0["token"])
+		}
+		if elem0["label"] != "label-a" {
+			t.Fatalf("expected element 0's own (non-secret) base field to survive untouched, got %v", elem0["label"])
+		}
+
+		elem1 := list[1].(map[string]any)
+		if elem1["token"] != "new-token-b" {
+			t.Fatalf("expected element 1's token replaced with the set config value, got %v", elem1["token"])
+		}
+		if elem1["label"] != "label-b" {
+			t.Fatalf("expected element 1's own (non-secret) base field to survive untouched, got %v", elem1["label"])
+		}
+
+		// Cross-element non-interference, stated explicitly: element 1's
+		// write must not bleed into element 0, and element 0's delete must
+		// not bleed into element 1.
+		if elem0["token"] == "new-token-b" {
+			t.Fatalf("element 1's written token leaked into element 0")
+		}
+		if elem1["token"] == "stale-masked-a" {
+			t.Fatalf("element 0's stale masked token leaked into element 1")
+		}
+	})
 }
 
 // --- 9. Round trips ---
@@ -1834,7 +1913,7 @@ func TestDecodeObjectList_dohCustomServerRoundTripWithFalseEnabled(t *testing.T)
 	}
 }
 
-func TestDecodeObjectList_ipsSuppressionAlertsRoundTripWithMultipleTrackingEntries(t *testing.T) {
+func TestDecodeObjectList_ipsSuppressionAlertsRoundTripWithMultipleTrackingEntriesOnBothElements(t *testing.T) {
 	ctx := context.Background()
 	own := map[string]ownershipClass{
 		"suppression_alerts.gid":                ownerManaged,
@@ -1858,6 +1937,7 @@ func TestDecodeObjectList_ipsSuppressionAlertsRoundTripWithMultipleTrackingEntri
 				"id":  200.0,
 				"tracking": []any{
 					map[string]any{"direction": "both"},
+					map[string]any{"direction": "egress"},
 				},
 			},
 		},
@@ -1892,8 +1972,14 @@ func TestDecodeObjectList_ipsSuppressionAlertsRoundTripWithMultipleTrackingEntri
 		t.Fatalf("expected second alert gid=2/id=200, got gid=%v id=%v", second["gid"], second["id"])
 	}
 	secondTracking := second["tracking"].(types.List).Elements()
-	if len(secondTracking) != 1 {
-		t.Fatalf("expected second alert to have 1 tracking entry, got %d", len(secondTracking))
+	if len(secondTracking) != 2 {
+		t.Fatalf("expected second alert to have 2 tracking entries, got %d", len(secondTracking))
+	}
+	if secondTracking[0].(types.Object).Attributes()["direction"].(types.String).ValueString() != "both" {
+		t.Fatalf("expected second alert's first tracking entry order preserved (both first), got %v", secondTracking[0])
+	}
+	if secondTracking[1].(types.Object).Attributes()["direction"].(types.String).ValueString() != "egress" {
+		t.Fatalf("expected second alert's second tracking entry order preserved (egress second), got %v", secondTracking[1])
 	}
 
 	out := map[string]any{}
@@ -1919,6 +2005,13 @@ func TestDecodeObjectList_ipsSuppressionAlertsRoundTripWithMultipleTrackingEntri
 	e1 := list[1].(map[string]any)
 	if e1["gid"] != float64(2) || e1["id"] != float64(200) {
 		t.Fatalf("expected element 1 gid=2/id=200 as float64, got gid=%v id=%v", e1["gid"], e1["id"])
+	}
+	e1Tracking := e1["tracking"].([]any)
+	if len(e1Tracking) != 2 {
+		t.Fatalf("expected element 1 tracking to have 2 entries after overlay, got %d", len(e1Tracking))
+	}
+	if e1Tracking[0].(map[string]any)["direction"] != "both" || e1Tracking[1].(map[string]any)["direction"] != "egress" {
+		t.Fatalf("expected element 1 tracking order preserved on overlay, got %v", e1Tracking)
 	}
 }
 
