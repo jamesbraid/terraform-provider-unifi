@@ -40,6 +40,16 @@ func (s rawSettings) has(key string) bool {
 // without corrupting this snapshot or any other section's view of it. If
 // key is absent from the snapshot, dataCopy returns an empty, non-nil map
 // so a caller can always overlay onto the result without a nil-map check.
+//
+// TODO(go-unifi): every section's overlay() starts here rather than from a
+// go-unifi typed settings struct (settings.SettingRadius, SettingMgmt, ...),
+// even though go-unifi already models each section's fields. PERMANENT: the
+// raw map[string]any is the read-modify-write base specifically so fields
+// the Terraform schema does not expose (e.g. mgmt's alert_enabled/
+// boot_sound/led_enabled — see setting_section_mgmt.go) survive an update
+// verbatim. That is a provider schema-scope choice, not a go-unifi gap, and
+// holds regardless of how completely go-unifi types a section; there is no
+// SDK change that retires this.
 func (s rawSettings) dataCopy(key string) map[string]any {
 	sec, ok := s.byKey[key]
 	if !ok {

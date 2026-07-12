@@ -33,6 +33,15 @@ import (
 // ("suppression_alerts"/"suppression_whitelist", used for schema-name
 // ownership lookups).
 //
+// TODO(go-unifi): the "suppression" nesting is unwrapped by hand from the
+// raw map rather than via settings.SettingIps.Suppression
+// (*SettingIpsSuppression, already correctly nested in go-unifi). PERMANENT:
+// the nested object is the controller's own wire shape, not a go-unifi
+// modeling gap — the Terraform-schema flattening (a deliberate UX choice)
+// would require this glue against the typed struct too, and raw map access
+// is required regardless for this section's unmodeled-field RMW (dataCopy's
+// TODO in setting_snapshot.go).
+//
 // key() and attrName() both return "ips": there is no top-level rename, only
 // the suppression wrapper's internal remap.
 type ipsSection struct{}

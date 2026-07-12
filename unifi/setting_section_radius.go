@@ -120,6 +120,13 @@ func (radiusSection) ownership() map[string]ownershipClass {
 // secret leaf reads from priorModel.Secret unconditionally (ownership()
 // classes it ownerWriteOnlySecret, so decodeString never inspects the
 // masked "x_secret" wire value present in data).
+//
+// TODO(go-unifi): "x_secret" is read/written as a raw map key rather than
+// through settings.SettingRadius.Secret (go-unifi already tags it
+// `json:"x_secret,omitempty"` correctly). PERMANENT: the "x_" prefix is the
+// controller's own wire naming, not a go-unifi modeling gap, and this
+// section's raw map access is required regardless (see dataCopy's TODO in
+// setting_snapshot.go) for read-modify-write over unmodeled fields.
 func (s radiusSection) decode(ctx context.Context, snap rawSettings, prior settingResourceModel, model *settingResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 

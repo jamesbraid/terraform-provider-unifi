@@ -26,21 +26,34 @@ import (
 //     the config value is null/unknown rather than ever re-sending a masked
 //     value; a configured value (including an explicit empty string) is
 //     written verbatim.
+//
 //   - A nested object-list leaf (ssh_keys, wire key x_ssh_keys) of PUBLIC
 //     keys, decoded/overlaid through the generalized nested codec
 //     (decodeObjectList/overlayObjectList, Task 16b).
+//
 //   - Many ssh_*->x_ssh_* wire-key remaps: the model's tfsdk names are
 //     ssh_enabled/ssh_username/ssh_password/ssh_keys/
 //     ssh_auth_password_enabled, but the controller's wire keys for all five
 //     are x_ssh_-prefixed. Every other leaf is 1:1. The WIRE key is used for
 //     data/base access; the OWNERSHIP key (schema tfsdk name) is used for
 //     the ownership() class lookup — exactly like radius's secret->x_secret.
+//
+//     TODO(go-unifi): these read/write raw "x_ssh_*" map keys rather than
+//     settings.SettingMgmt's SSHEnabled/SSHUsername/SSHPassword/SSHKeys
+//     fields (already correctly tagged `json:"x_ssh_*"` in go-unifi).
+//     PERMANENT: "x_ssh_" is the controller's own wire naming, not a
+//     go-unifi gap — the tfsdk-name-to-wire-key remap table here would be
+//     needed even against the typed struct, and raw map access is required
+//     regardless for this section's unmodeled-field RMW (dataCopy's TODO in
+//     setting_snapshot.go).
+//
 //   - Top-level read-modify-write (RMW): the controller's stored data for
 //     this key carries fields the model does not expose at all
 //     (alert_enabled, boot_sound, led_enabled, outdoor_mode_enabled,
 //     x_ssh_bind_wildcard). overlay() starts from a copy of the snapshot's
 //     current section data so those unmodeled fields survive the merge
 //     untouched.
+//
 //   - PER-ELEMENT RMW inside ssh_keys: each wire element also carries
 //     unmodeled date/fingerprint fields (assigned by the controller when a
 //     key is added) that are not part of the model's ssh_keys schema at
