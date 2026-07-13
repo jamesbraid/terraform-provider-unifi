@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 var (
@@ -239,6 +240,9 @@ func (r *firewallRuleResource) Schema(
 			"src_port": schema.StringAttribute{
 				MarkdownDescription: "The source port of the firewall rule.",
 				Optional:            true,
+				Validators: []validator.String{
+					validators.PortRangeListValidator(),
+				},
 			},
 			"src_mac": schema.StringAttribute{
 				MarkdownDescription: "The source MAC address of the firewall rule.",
@@ -274,6 +278,9 @@ func (r *firewallRuleResource) Schema(
 			"dst_port": schema.StringAttribute{
 				MarkdownDescription: "The destination port of the firewall rule.",
 				Optional:            true,
+				Validators: []validator.String{
+					validators.PortRangeListValidator(),
+				},
 			},
 			"logging": schema.BoolAttribute{
 				MarkdownDescription: "Enable logging for the firewall rule.",
