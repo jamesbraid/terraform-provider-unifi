@@ -10,6 +10,8 @@ import (
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
@@ -105,11 +107,16 @@ func TestFirewallPolicyPortStringHandling(t *testing.T) {
 	}
 
 	// API -> model: "" and the legacy "0" both become null; a real list survives.
+	// PortMatchingType is SPECIFIC throughout: `port` is only owned (read back)
+	// under that discriminator value (design doc §4.3); this test is about the
+	// ""/"0"-vs-real-value null mapping, not the discriminator gating itself.
 	cases := map[string]bool{"": true, "0": true, "161": false, "1812,1813": false}
 	for apiPort, wantNull := range cases {
 		got := apiSourceToEndpointModel(
 			ctx,
-			&unifi.FirewallPolicySource{ZoneID: "z1", MatchingTarget: "IP", Port: apiPort},
+			&unifi.FirewallPolicySource{
+				ZoneID: "z1", MatchingTarget: "IP", PortMatchingType: "SPECIFIC", Port: apiPort,
+			},
 			&diags,
 		)
 		if got.Port.IsNull() != wantNull {
@@ -246,6 +253,13 @@ func TestFirewallPolicyConnectionStatesRoundTrip(t *testing.T) {
 // network_ids and client_macs were declared in the schema but never mapped to/from
 // the API (model->API dropped them, API->model forced them to null). This asserts
 // all three survive both conversion directions.
+// Each selector is exercised under its own owning matching_target (WEB owns
+// web_domains, NETWORK owns network_ids, CLIENT owns client_macs — design doc
+// §4.3's ownership table). Asserting all three survive under one shared
+// matching_target (as this test originally did, using WEB for all three) is
+// itself the inconsistency the discriminator-gating fix (PR-C Task 1)
+// resolves: only the active matching_target's own selector is sent/read, so
+// the fixture must match that, not the production code.
 func TestFirewallPolicyEndpointListFieldsRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	var diags diag.Diagnostics
@@ -258,34 +272,52 @@ func TestFirewallPolicyEndpointListFieldsRoundTrip(t *testing.T) {
 	networkIDs, _ := types.ListValueFrom(ctx, types.StringType, []string{"net-1", "net-2"})
 	clientMACs, _ := types.ListValueFrom(ctx, types.StringType, []string{"00:11:22:33:44:55"})
 
-	m := firewallPolicyEndpointModel{
+	webM := firewallPolicyEndpointModel{
 		ZoneID:           types.StringValue("zone-1"),
 		MatchingTarget:   types.StringValue("WEB"),
-		NetworkIDs:       networkIDs,
-		ClientMACs:       clientMACs,
+		NetworkIDs:       types.ListNull(types.StringType),
+		ClientMACs:       types.ListNull(types.StringType),
 		IPs:              types.ListNull(types.StringType),
 		WebDomains:       webDomains,
 		Port:             types.StringNull(),
 		PortGroupID:      types.StringNull(),
 		PortMatchingType: types.StringValue("ANY"),
 	}
+	networkM := webM
+	networkM.MatchingTarget = types.StringValue("NETWORK")
+	networkM.WebDomains = types.ListNull(types.StringType)
+	networkM.NetworkIDs = networkIDs
+	clientM := webM
+	clientM.MatchingTarget = types.StringValue("CLIENT")
+	clientM.WebDomains = types.ListNull(types.StringType)
+	clientM.ClientMACs = clientMACs
 
 	// model -> API (PUT path)
-	src := endpointModelToSource(ctx, m, &diags)
+	webSrc := endpointModelToSource(ctx, webM, &diags)
 	if diags.HasError() {
 		t.Fatalf("source conversion errored: %v", diags)
 	}
-	if len(src.WebDomains) != 2 || src.WebDomains[0] != "example.com" {
-		t.Errorf("source WebDomains = %v, want [example.com ads.example.net]", src.WebDomains)
-	}
-	if len(src.NetworkIDs) != 2 || src.NetworkIDs[1] != "net-2" {
-		t.Errorf("source NetworkIDs = %v, want [net-1 net-2]", src.NetworkIDs)
-	}
-	if len(src.ClientMACs) != 1 || src.ClientMACs[0] != "00:11:22:33:44:55" {
-		t.Errorf("source ClientMACs = %v, want [00:11:22:33:44:55]", src.ClientMACs)
+	if len(webSrc.WebDomains) != 2 || webSrc.WebDomains[0] != "example.com" {
+		t.Errorf("source WebDomains = %v, want [example.com ads.example.net]", webSrc.WebDomains)
 	}
 
-	dst := endpointModelToDestination(ctx, m, &diags)
+	networkSrc := endpointModelToSource(ctx, networkM, &diags)
+	if diags.HasError() {
+		t.Fatalf("source conversion errored: %v", diags)
+	}
+	if len(networkSrc.NetworkIDs) != 2 || networkSrc.NetworkIDs[1] != "net-2" {
+		t.Errorf("source NetworkIDs = %v, want [net-1 net-2]", networkSrc.NetworkIDs)
+	}
+
+	clientSrc := endpointModelToSource(ctx, clientM, &diags)
+	if diags.HasError() {
+		t.Fatalf("source conversion errored: %v", diags)
+	}
+	if len(clientSrc.ClientMACs) != 1 || clientSrc.ClientMACs[0] != "00:11:22:33:44:55" {
+		t.Errorf("source ClientMACs = %v, want [00:11:22:33:44:55]", clientSrc.ClientMACs)
+	}
+
+	dst := endpointModelToDestination(ctx, webM, &diags)
 	if diags.HasError() {
 		t.Fatalf("destination conversion errored: %v", diags)
 	}
@@ -298,8 +330,8 @@ func TestFirewallPolicyEndpointListFieldsRoundTrip(t *testing.T) {
 		ZoneID:         "zone-1",
 		MatchingTarget: "WEB",
 		WebDomains:     []string{"example.com"},
-		NetworkIDs:     []string{"net-9"},
-		ClientMACs:     []string{"aa:bb:cc:dd:ee:ff"},
+		NetworkIDs:     []string{"net-9"},             // inactive under WEB: must not be read back
+		ClientMACs:     []string{"aa:bb:cc:dd:ee:ff"}, // inactive under WEB: must not be read back
 	}
 	got := apiSourceToEndpointModel(ctx, apiSrc, &diags)
 	if diags.HasError() {
@@ -312,11 +344,11 @@ func TestFirewallPolicyEndpointListFieldsRoundTrip(t *testing.T) {
 	if len(wd) != 1 || wd[0] != "example.com" {
 		t.Errorf("read WebDomains = %v, want [example.com]", wd)
 	}
-	if len(nids) != 1 || nids[0] != "net-9" {
-		t.Errorf("read NetworkIDs = %v, want [net-9]", nids)
+	if len(nids) != 0 {
+		t.Errorf("read NetworkIDs = %v, want empty (inactive under WEB)", nids)
 	}
-	if len(macs) != 1 || macs[0] != "aa:bb:cc:dd:ee:ff" {
-		t.Errorf("read ClientMACs = %v, want [aa:bb:cc:dd:ee:ff]", macs)
+	if len(macs) != 0 {
+		t.Errorf("read ClientMACs = %v, want empty (inactive under WEB)", macs)
 	}
 }
 
@@ -1408,6 +1440,13 @@ func TestFirewallPolicyMatchingTargetType(t *testing.T) {
 		// has no cross-field validation either way; pinned as documentation).
 		{"ANY", "", "gid1", "OBJECT"},
 		{"NETWORK", "", "gid1", "OBJECT"},
+		// A stale "OBJECT" surviving a transition away from IP (ip_group_id
+		// now correctly cleared by endpointOwnsSelector gating) must not be
+		// preserved — OBJECT is only meaningful under matching_target == "IP"
+		// (design doc §4.3's ip_group_id correctness note).
+		{"NETWORK", "OBJECT", "", "SPECIFIC"},
+		{"CLIENT", "OBJECT", "", "SPECIFIC"},
+		{"ANY", "OBJECT", "", ""},
 	}
 	for _, c := range cases {
 		got := firewallPolicyMatchingTargetType(c.matchingTarget, c.current, c.ipGroupID)
@@ -1578,5 +1617,467 @@ func TestFirewallPolicyEndpointListsUseStateForUnknown(t *testing.T) {
 				t.Errorf("%s.%s must have a plan modifier (UseStateForUnknown) (#338)", ep, key)
 			}
 		}
+	}
+}
+
+// TestEndpointOwnsSelector guards the matching_target discriminator table
+// from the design doc (§4.3): only the active matching_target's own
+// selector field is "owned"; every other selector is inactive and must be
+// cleared, regardless of what is left over in state. ip_group_id is owned
+// by IP alongside ips (design doc's "ip_group_id is a second, previously-
+// missed instance of the same bug" correctness note) — it is meaningless
+// under every other matching_target.
+func TestEndpointOwnsSelector(t *testing.T) {
+	cases := []struct {
+		matchingTarget, field string
+		want                  bool
+	}{
+		{"NETWORK", "network_ids", true},
+		{"NETWORK", "ips", false},
+		{"NETWORK", "client_macs", false},
+		{"NETWORK", "web_domains", false},
+		{"NETWORK", "ip_group_id", false},
+		{"CLIENT", "client_macs", true},
+		{"CLIENT", "network_ids", false},
+		{"CLIENT", "ip_group_id", false},
+		{"IP", "ips", true},
+		{"IP", "network_ids", false},
+		{"IP", "ip_group_id", true},
+		{"WEB", "web_domains", true},
+		{"WEB", "ips", false},
+		{"WEB", "ip_group_id", false},
+		{"ANY", "network_ids", false},
+		{"ANY", "ips", false},
+		{"ANY", "ip_group_id", false},
+		{"DEVICE", "network_ids", false},
+		{"DEVICE", "ip_group_id", false},
+		{"MAC", "client_macs", false}, // MAC target has no list selector today
+	}
+	for _, c := range cases {
+		if got := endpointOwnsSelector(c.matchingTarget, c.field); got != c.want {
+			t.Errorf("endpointOwnsSelector(%q, %q) = %v, want %v",
+				c.matchingTarget, c.field, got, c.want)
+		}
+	}
+}
+
+// TestEndpointOwnsPortField mirrors TestEndpointOwnsSelector for the
+// port_matching_type discriminator.
+func TestEndpointOwnsPortField(t *testing.T) {
+	cases := []struct {
+		portMatchingType, field string
+		want                    bool
+	}{
+		{"SPECIFIC", "port", true},
+		{"SPECIFIC", "port_group_id", false},
+		{"OBJECT", "port_group_id", true},
+		{"OBJECT", "port", false},
+		{"ANY", "port", false},
+		{"ANY", "port_group_id", false},
+	}
+	for _, c := range cases {
+		if got := endpointOwnsPortField(c.portMatchingType, c.field); got != c.want {
+			t.Errorf("endpointOwnsPortField(%q, %q) = %v, want %v",
+				c.portMatchingType, c.field, got, c.want)
+		}
+	}
+}
+
+// TestFirewallPolicyStaleSelectorClearedOnTransition guards #4.3: a policy
+// endpoint whose matching_target changed (e.g. state carries a stale `ips`
+// left over from a prior IP-targeted config, current config is NETWORK) must
+// not send the stale ips in the outbound PUT.
+func TestFirewallPolicyStaleSelectorClearedOnTransition(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	networkIDs, _ := types.ListValueFrom(ctx, types.StringType, []string{"net-1"})
+	staleIPs, _ := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.5"})
+
+	m := firewallPolicyEndpointModel{
+		ZoneID:             types.StringValue("z1"),
+		MatchingTarget:     types.StringValue("NETWORK"), // config: switched to NETWORK
+		NetworkIDs:         networkIDs,                   // config: the new selector
+		ClientMACs:         types.ListNull(types.StringType),
+		IPs:                staleIPs, // stale: left over from a prior IP-targeted state
+		WebDomains:         types.ListNull(types.StringType),
+		Port:               types.StringNull(),
+		PortGroupID:        types.StringNull(),
+		PortMatchingType:   types.StringValue("ANY"),
+		MatchingTargetType: types.StringValue("SPECIFIC"),
+	}
+
+	src := endpointModelToSource(ctx, m, &diags)
+	if diags.HasError() {
+		t.Fatalf("source conversion errored: %v", diags)
+	}
+	if len(src.NetworkIDs) != 1 || src.NetworkIDs[0] != "net-1" {
+		t.Errorf("source NetworkIDs = %v, want [net-1]", src.NetworkIDs)
+	}
+	if len(src.IPs) != 0 {
+		t.Errorf("source IPs = %v, want empty (stale selector must be cleared)", src.IPs)
+	}
+
+	dst := endpointModelToDestination(ctx, m, &diags)
+	if len(dst.IPs) != 0 {
+		t.Errorf("destination IPs = %v, want empty (stale selector must be cleared)", dst.IPs)
+	}
+}
+
+// TestFirewallPolicyStaleIPGroupIDClearedOnTransition guards the design
+// doc's ip_group_id correctness note: a policy switched from an IP-group
+// match (matching_target=IP, matching_target_type=OBJECT, ip_group_id set)
+// to NETWORK must not leave the stale ip_group_id in the outbound PUT —
+// otherwise firewallPolicyMatchingTargetType forces matching_target_type
+// back to OBJECT even though the endpoint is now NETWORK-targeted.
+func TestFirewallPolicyStaleIPGroupIDClearedOnTransition(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	networkIDs, _ := types.ListValueFrom(ctx, types.StringType, []string{"net-1"})
+
+	m := firewallPolicyEndpointModel{
+		ZoneID:             types.StringValue("z1"),
+		MatchingTarget:     types.StringValue("NETWORK"), // config: switched to NETWORK
+		NetworkIDs:         networkIDs,
+		ClientMACs:         types.ListNull(types.StringType),
+		IPs:                types.ListNull(types.StringType),
+		WebDomains:         types.ListNull(types.StringType),
+		Port:               types.StringNull(),
+		PortGroupID:        types.StringNull(),
+		IPGroupID:          types.StringValue("aaaa0000000000000000f101"), // stale: left over from a prior IP-group state
+		PortMatchingType:   types.StringValue("ANY"),
+		MatchingTargetType: types.StringValue("OBJECT"), // stale: left over from the prior IP-group state
+	}
+
+	src := endpointModelToSource(ctx, m, &diags)
+	if diags.HasError() {
+		t.Fatalf("source conversion errored: %v", diags)
+	}
+	if src.IPGroupID != "" {
+		t.Errorf("source IPGroupID = %q, want empty (stale ip_group_id must be cleared)", src.IPGroupID)
+	}
+	if src.MatchingTargetType != "SPECIFIC" {
+		t.Errorf("source MatchingTargetType = %q, want SPECIFIC (must not be forced to OBJECT by a cleared ip_group_id)",
+			src.MatchingTargetType)
+	}
+
+	dst := endpointModelToDestination(ctx, m, &diags)
+	if dst.IPGroupID != "" {
+		t.Errorf("destination IPGroupID = %q, want empty (stale ip_group_id must be cleared)", dst.IPGroupID)
+	}
+}
+
+// TestFirewallPolicyStalePortFieldClearedOnTransition mirrors the above for
+// the port_matching_type discriminator: switching from SPECIFIC to OBJECT
+// must not send a stale `port` alongside the new `port_group_id`.
+func TestFirewallPolicyStalePortFieldClearedOnTransition(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	m := firewallPolicyEndpointModel{
+		ZoneID:             types.StringValue("z1"),
+		MatchingTarget:     types.StringValue("IP"),
+		NetworkIDs:         types.ListNull(types.StringType),
+		ClientMACs:         types.ListNull(types.StringType),
+		IPs:                types.ListNull(types.StringType),
+		WebDomains:         types.ListNull(types.StringType),
+		Port:               types.StringValue("443"),  // stale: left over from SPECIFIC
+		PortGroupID:        types.StringValue("pg-1"), // config: switched to OBJECT
+		PortMatchingType:   types.StringValue("OBJECT"),
+		MatchingTargetType: types.StringValue("SPECIFIC"),
+	}
+
+	dst := endpointModelToDestination(ctx, m, &diags)
+	if diags.HasError() {
+		t.Fatalf("destination conversion errored: %v", diags)
+	}
+	if dst.Port != "" {
+		t.Errorf("destination Port = %q, want empty (stale port must be cleared)", dst.Port)
+	}
+	if dst.PortGroupID != "pg-1" {
+		t.Errorf("destination PortGroupID = %q, want pg-1", dst.PortGroupID)
+	}
+}
+
+// TestApiSourceToEndpointModelNormalizesInactiveSelectors guards the read-side
+// half of #4.3: if the controller echoes back a value in a selector field the
+// active matching_target does not own, it must not appear in state. Includes
+// ip_group_id alongside ips, per the design doc's correctness note.
+func TestApiSourceToEndpointModelNormalizesInactiveSelectors(t *testing.T) {
+	ctx := context.Background()
+	var diags diag.Diagnostics
+
+	src := &unifi.FirewallPolicySource{
+		ZoneID:         "z1",
+		MatchingTarget: "NETWORK",
+		NetworkIDs:     []string{"net-1"},
+		IPs:            []string{"10.0.0.5"},       // controller echoed a stale value
+		IPGroupID:      "aaaa0000000000000000f101", // controller echoed a stale value
+	}
+	got := apiSourceToEndpointModel(ctx, src, &diags)
+	if diags.HasError() {
+		t.Fatalf("apiSourceToEndpointModel errored: %v", diags)
+	}
+	var ips []string
+	got.IPs.ElementsAs(ctx, &ips, false)
+	if len(ips) != 0 {
+		t.Errorf("read IPs = %v, want empty for a NETWORK-targeted endpoint", ips)
+	}
+	if got.IPGroupID.ValueString() != "" {
+		t.Errorf("read IPGroupID = %q, want empty for a NETWORK-targeted endpoint", got.IPGroupID.ValueString())
+	}
+	var networkIDs []string
+	got.NetworkIDs.ElementsAs(ctx, &networkIDs, false)
+	if len(networkIDs) != 1 || networkIDs[0] != "net-1" {
+		t.Errorf("read NetworkIDs = %v, want [net-1]", networkIDs)
+	}
+}
+
+// TestEndpointDiscriminatorPlanModifierNullsInactiveChildren guards design
+// doc §4.3 item 3: a planned object whose matching_target changed away from
+// IP must have its stale `ips`/`ip_group_id` forced to null in the *planned*
+// object, before the validator (Step 7) or Update/Read ever run. This is
+// what UseStateForUnknown alone cannot do, since it resolves unknown
+// attributes from prior state before this modifier or the codec functions
+// execute.
+func TestEndpointDiscriminatorPlanModifierNullsInactiveChildren(t *testing.T) {
+	ctx := context.Background()
+	attrTypes := firewallPolicyEndpointModel{}.AttributeTypes()
+
+	staleIPs, _ := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.5"})
+	networkIDs, _ := types.ListValueFrom(ctx, types.StringType, []string{"net-1"})
+
+	// priorState/config mimic what UseStateForUnknown has already resolved:
+	// matching_target moved to NETWORK, network_ids is the new selector, but
+	// ips still carries the value UseStateForUnknown copied forward from
+	// state because the user didn't touch it.
+	planned, diags := types.ObjectValueFrom(ctx, attrTypes, firewallPolicyEndpointModel{
+		ZoneID:             types.StringValue("z1"),
+		MatchingTarget:     types.StringValue("NETWORK"),
+		NetworkIDs:         networkIDs,
+		ClientMACs:         types.ListNull(types.StringType),
+		IPs:                staleIPs, // stale, resolved forward by UseStateForUnknown
+		WebDomains:         types.ListNull(types.StringType),
+		Port:               types.StringNull(),
+		PortGroupID:        types.StringNull(),
+		IPGroupID:          types.StringValue("aaaa0000000000000000f101"), // stale
+		PortMatchingType:   types.StringValue("ANY"),
+		MatchingTargetType: types.StringValue("OBJECT"),
+	})
+	if diags.HasError() {
+		t.Fatalf("building planned object: %v", diags)
+	}
+
+	m := endpointDiscriminatorPlanModifier{}
+	req := planmodifier.ObjectRequest{PlanValue: planned}
+	resp := &planmodifier.ObjectResponse{PlanValue: planned}
+	m.PlanModifyObject(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("plan modifier errored: %v", resp.Diagnostics)
+	}
+
+	var got firewallPolicyEndpointModel
+	resp.Diagnostics.Append(resp.PlanValue.As(ctx, &got, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("decoding plan modifier result: %v", resp.Diagnostics)
+	}
+
+	if !got.IPs.IsNull() {
+		t.Errorf("planned IPs = %v, want null (matching_target is NETWORK, ips is inactive)", got.IPs)
+	}
+	if !got.IPGroupID.IsNull() && got.IPGroupID.ValueString() != "" {
+		t.Errorf("planned IPGroupID = %q, want null/empty (matching_target is NETWORK, ip_group_id is inactive)",
+			got.IPGroupID.ValueString())
+	}
+	var gotNetworkIDs []string
+	got.NetworkIDs.ElementsAs(ctx, &gotNetworkIDs, false)
+	if len(gotNetworkIDs) != 1 || gotNetworkIDs[0] != "net-1" {
+		t.Errorf("planned NetworkIDs = %v, want [net-1] (the active selector must survive)", gotNetworkIDs)
+	}
+}
+
+// TestEndpointDiscriminatorPlanModifierSkipsUnknownDiscriminator guards the
+// same null/unknown-defers-to-apply rule the Step 7 validator follows: if
+// matching_target itself is unknown in the plan (e.g. it depends on an
+// unresolved computed value), the plan modifier must not guess and must not
+// null out any child — nulling children based on a guessed discriminator
+// would itself introduce a plan/apply mismatch.
+func TestEndpointDiscriminatorPlanModifierSkipsUnknownDiscriminator(t *testing.T) {
+	ctx := context.Background()
+	attrTypes := firewallPolicyEndpointModel{}.AttributeTypes()
+
+	ips, _ := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.5"})
+	planned, diags := types.ObjectValueFrom(ctx, attrTypes, firewallPolicyEndpointModel{
+		ZoneID:             types.StringValue("z1"),
+		MatchingTarget:     types.StringUnknown(), // depends on an unresolved computed value
+		NetworkIDs:         types.ListNull(types.StringType),
+		ClientMACs:         types.ListNull(types.StringType),
+		IPs:                ips,
+		WebDomains:         types.ListNull(types.StringType),
+		Port:               types.StringNull(),
+		PortGroupID:        types.StringNull(),
+		PortMatchingType:   types.StringValue("ANY"),
+		MatchingTargetType: types.StringValue("SPECIFIC"),
+	})
+	if diags.HasError() {
+		t.Fatalf("building planned object: %v", diags)
+	}
+
+	m := endpointDiscriminatorPlanModifier{}
+	req := planmodifier.ObjectRequest{PlanValue: planned}
+	resp := &planmodifier.ObjectResponse{PlanValue: planned}
+	m.PlanModifyObject(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("plan modifier errored: %v", resp.Diagnostics)
+	}
+
+	var got firewallPolicyEndpointModel
+	resp.Diagnostics.Append(resp.PlanValue.As(ctx, &got, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("decoding plan modifier result: %v", resp.Diagnostics)
+	}
+	var gotIPs []string
+	got.IPs.ElementsAs(ctx, &gotIPs, false)
+	if len(gotIPs) != 1 || gotIPs[0] != "10.0.0.5" {
+		t.Errorf("planned IPs = %v, want unchanged [10.0.0.5] when matching_target is unknown (must defer, not guess)",
+			gotIPs)
+	}
+}
+
+// TestFirewallPolicyEndpointRejectsInactiveSelectorConfig guards the
+// plan-time half of #4.3: configuring a selector field the active
+// matching_target does not own must be a validation error, not a silently
+// dropped value.
+func TestFirewallPolicyEndpointRejectsInactiveSelectorConfig(t *testing.T) {
+	ctx := context.Background()
+
+	ips, _ := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.5"})
+	obj, diags := types.ObjectValueFrom(ctx, firewallPolicyEndpointModel{}.AttributeTypes(),
+		firewallPolicyEndpointModel{
+			ZoneID:             types.StringValue("z1"),
+			MatchingTarget:     types.StringValue("NETWORK"),
+			NetworkIDs:         types.ListNull(types.StringType),
+			ClientMACs:         types.ListNull(types.StringType),
+			IPs:                ips, // contradiction: NETWORK target, ips configured
+			WebDomains:         types.ListNull(types.StringType),
+			Port:               types.StringNull(),
+			PortGroupID:        types.StringNull(),
+			PortMatchingType:   types.StringValue("ANY"),
+			MatchingTargetType: types.StringValue("SPECIFIC"),
+		})
+	if diags.HasError() {
+		t.Fatalf("building test object: %v", diags)
+	}
+
+	v := endpointDiscriminatorValidator{}
+	req := validator.ObjectRequest{ConfigValue: obj}
+	resp := &validator.ObjectResponse{}
+	v.ValidateObject(ctx, req, resp)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("expected a validation error for ips configured under matching_target=NETWORK")
+	}
+}
+
+// TestFirewallPolicyEndpointAllowsActiveSelectorConfig is the negative case:
+// the active selector configured under its own matching_target is not an
+// error.
+func TestFirewallPolicyEndpointAllowsActiveSelectorConfig(t *testing.T) {
+	ctx := context.Background()
+
+	networkIDs, _ := types.ListValueFrom(ctx, types.StringType, []string{"net-1"})
+	obj, diags := types.ObjectValueFrom(ctx, firewallPolicyEndpointModel{}.AttributeTypes(),
+		firewallPolicyEndpointModel{
+			ZoneID:             types.StringValue("z1"),
+			MatchingTarget:     types.StringValue("NETWORK"),
+			NetworkIDs:         networkIDs,
+			ClientMACs:         types.ListNull(types.StringType),
+			IPs:                types.ListNull(types.StringType),
+			WebDomains:         types.ListNull(types.StringType),
+			Port:               types.StringNull(),
+			PortGroupID:        types.StringNull(),
+			PortMatchingType:   types.StringValue("ANY"),
+			MatchingTargetType: types.StringValue("SPECIFIC"),
+		})
+	if diags.HasError() {
+		t.Fatalf("building test object: %v", diags)
+	}
+
+	v := endpointDiscriminatorValidator{}
+	req := validator.ObjectRequest{ConfigValue: obj}
+	resp := &validator.ObjectResponse{}
+	v.ValidateObject(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("unexpected validation error: %v", resp.Diagnostics)
+	}
+}
+
+// TestFirewallPolicyEndpointValidatorDefersOnUnknownMatchingTarget guards
+// design doc §4.3 item 4's correctness requirement: when matching_target
+// itself is null or unknown, the validator must SKIP the selector-ownership
+// checks entirely rather than treating the discriminator as "" — treating
+// an unknown discriminator as "" would make every non-empty selector look
+// unowned and reject a config that is actually valid once the discriminator
+// resolves at apply time.
+func TestFirewallPolicyEndpointValidatorDefersOnUnknownMatchingTarget(t *testing.T) {
+	ctx := context.Background()
+
+	ips, _ := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.5"})
+	obj, diags := types.ObjectValueFrom(ctx, firewallPolicyEndpointModel{}.AttributeTypes(),
+		firewallPolicyEndpointModel{
+			ZoneID:             types.StringValue("z1"),
+			MatchingTarget:     types.StringUnknown(), // depends on an unresolved computed value
+			NetworkIDs:         types.ListNull(types.StringType),
+			ClientMACs:         types.ListNull(types.StringType),
+			IPs:                ips, // would be "inactive" under every guessed discriminator except IP
+			WebDomains:         types.ListNull(types.StringType),
+			Port:               types.StringNull(),
+			PortGroupID:        types.StringNull(),
+			PortMatchingType:   types.StringValue("ANY"),
+			MatchingTargetType: types.StringValue("SPECIFIC"),
+		})
+	if diags.HasError() {
+		t.Fatalf("building test object: %v", diags)
+	}
+
+	v := endpointDiscriminatorValidator{}
+	req := validator.ObjectRequest{ConfigValue: obj}
+	resp := &validator.ObjectResponse{}
+	v.ValidateObject(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("matching_target unknown must defer selector validation to apply, got: %v", resp.Diagnostics)
+	}
+}
+
+// TestFirewallPolicyEndpointValidatorDefersOnNullPortMatchingType mirrors
+// the above for the port_matching_type discriminator and a null (not just
+// unknown) value — null must defer identically to unknown, not be treated
+// as ANY/"".
+func TestFirewallPolicyEndpointValidatorDefersOnNullPortMatchingType(t *testing.T) {
+	ctx := context.Background()
+
+	obj, diags := types.ObjectValueFrom(ctx, firewallPolicyEndpointModel{}.AttributeTypes(),
+		firewallPolicyEndpointModel{
+			ZoneID:             types.StringValue("z1"),
+			MatchingTarget:     types.StringValue("ANY"),
+			NetworkIDs:         types.ListNull(types.StringType),
+			ClientMACs:         types.ListNull(types.StringType),
+			IPs:                types.ListNull(types.StringType),
+			WebDomains:         types.ListNull(types.StringType),
+			Port:               types.StringValue("443"), // would be "inactive" under a guessed ANY/""
+			PortGroupID:        types.StringNull(),
+			PortMatchingType:   types.StringNull(), // depends on an unresolved computed value
+			MatchingTargetType: types.StringValue("SPECIFIC"),
+		})
+	if diags.HasError() {
+		t.Fatalf("building test object: %v", diags)
+	}
+
+	v := endpointDiscriminatorValidator{}
+	req := validator.ObjectRequest{ConfigValue: obj}
+	resp := &validator.ObjectResponse{}
+	v.ValidateObject(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("port_matching_type null must defer port-field validation to apply, got: %v", resp.Diagnostics)
 	}
 }
