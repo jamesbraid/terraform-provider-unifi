@@ -34,6 +34,7 @@ func allSectionsNullModel() settingResourceModel {
 		AutoSpeedtest: types.ObjectNull(autoSpeedtestAttrTypes),
 		Country:       types.ObjectNull(countryAttrTypes),
 		Dpi:           types.ObjectNull(dpiAttrTypes),
+		GuestAccess:   types.ObjectNull(guestAccessAttrTypes),
 		Lcm:           types.ObjectNull(lcmAttrTypes),
 		NetworkOpt:    types.ObjectNull(networkOptimizationAttrTypes),
 		Ntp:           types.ObjectNull(ntpAttrTypes),

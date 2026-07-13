@@ -7,6 +7,7 @@ import (
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -844,5 +845,78 @@ func TestAllSectionAttrsNull_gate(t *testing.T) {
 	partial.Dpi = dpiObject(t, ctx, true, false)
 	if allSectionAttrsNull(partial) {
 		t.Error("allSectionAttrsNull(model with Dpi configured) = true, want false")
+	}
+
+	// guest_access-specific case: isolates the new section's clause in
+	// allSectionAttrsNull rather than relying on the pre-existing Dpi case
+	// above to prove the whole function still works.
+	guestAccessOnly := allSectionsNullModel()
+	m := settingGuestAccessModel{
+		Auth:          types.StringValue("hotspot"),
+		AuthUrl:       types.StringNull(),
+		PortalEnabled: types.BoolValue(true),
+
+		PortalUseHostname:         types.BoolNull(),
+		PortalHostname:            types.StringNull(),
+		CustomIP:                  types.StringNull(),
+		EcEnabled:                 types.BoolNull(),
+		Expire:                    types.StringNull(),
+		ExpireNumber:              types.Int64Null(),
+		ExpireUnit:                types.Int64Null(),
+		RedirectEnabled:           types.BoolNull(),
+		RedirectUrl:               types.StringNull(),
+		RedirectToHttps:           types.BoolNull(),
+		RedirectHttps:             types.BoolNull(),
+		AllowedSubnet:             types.StringNull(),
+		RestrictedSubnet:          types.StringNull(),
+		RestrictedDNSEnabled:      types.BoolNull(),
+		RestrictedDNSServers:      types.ListNull(types.StringType),
+		PasswordEnabled:           types.BoolNull(),
+		VoucherEnabled:            types.BoolNull(),
+		RADIUSEnabled:             types.BoolNull(),
+		RADIUSProfileID:           types.StringNull(),
+		RADIUSAuthType:            types.StringNull(),
+		RADIUSDisconnectEnabled:   types.BoolNull(),
+		RADIUSDisconnectPort:      types.Int64Null(),
+		FacebookEnabled:           types.BoolNull(),
+		FacebookAppID:             types.StringNull(),
+		GoogleEnabled:             types.BoolNull(),
+		GoogleClientID:            types.StringNull(),
+		WechatEnabled:             types.BoolNull(),
+		WechatAppID:               types.StringNull(),
+		PaymentEnabled:            types.BoolNull(),
+		Gateway:                   types.StringNull(),
+		PaypalUseSandbox:          types.BoolNull(),
+		AuthorizeUseSandbox:       types.BoolNull(),
+		QuickpayTestmode:          types.BoolNull(),
+		MerchantwarriorUseSandbox: types.BoolNull(),
+		IPpayUseSandbox:           types.BoolNull(),
+
+		Password:                     types.StringNull(),
+		FacebookAppSecret:            types.StringNull(),
+		GoogleClientSecret:           types.StringNull(),
+		WechatAppSecret:              types.StringNull(),
+		WechatSecretKey:              types.StringNull(),
+		PaypalUsername:               types.StringNull(),
+		PaypalPassword:               types.StringNull(),
+		PaypalSignature:              types.StringNull(),
+		StripeApiKey:                 types.StringNull(),
+		AuthorizeLoginid:             types.StringNull(),
+		AuthorizeTransactionkey:      types.StringNull(),
+		QuickpayMerchantid:           types.StringNull(),
+		QuickpayApikey:               types.StringNull(),
+		QuickpayAgreementid:          types.StringNull(),
+		MerchantwarriorMerchantuuid:  types.StringNull(),
+		MerchantwarriorApikey:        types.StringNull(),
+		MerchantwarriorApipassphrase: types.StringNull(),
+		IPpayTerminalid:              types.StringNull(),
+	}
+	obj, diags := types.ObjectValueFrom(ctx, guestAccessAttrTypes, m)
+	if diags.HasError() {
+		t.Fatalf("building guest_access object: %v", diags)
+	}
+	guestAccessOnly.GuestAccess = obj
+	if allSectionAttrsNull(guestAccessOnly) {
+		t.Error("allSectionAttrsNull(model with only GuestAccess configured) = true, want false — guest_access clause missing from allSectionAttrsNull")
 	}
 }
