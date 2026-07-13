@@ -23,6 +23,16 @@ import (
 // TestSettingSchema_equivalence compares the NEW registry-built schema
 // against that frozen golden, so it keeps proving equivalence even after
 // Task 24c deletes the legacy Schema code entirely.
+//
+// Intentional post-legacy divergence: the radius and usg entries in the golden
+// were hand-edited to add the object-level UseStateForUnknown plan modifier
+// ("Once set, the value of this attribute in state will not change.") that the
+// legacy inline schema lacked. Those two Optional+Computed sections shipped
+// without it, which left them unknown on every plan/update once hydrated (the
+// create-hydration fix now populates them). Adding UseStateForUnknown brings
+// them in line with mgmt and the other Optional+Computed sections. The golden
+// is therefore the current INTENDED schema, not a pure-legacy snapshot, for
+// those two sections; it remains a forward regression guard for all 13.
 
 // normAttr is a deterministic, JSON-serializable, reflect-free snapshot of a
 // schema.Attribute. Validators and plan modifiers are not comparable via

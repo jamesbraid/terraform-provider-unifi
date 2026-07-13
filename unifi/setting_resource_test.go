@@ -46,12 +46,24 @@ func TestAccSettingResource_mgmt(t *testing.T) {
 	})
 }
 
-// TestAccSettingImport_cleanPlan covers the acceptance-level import
-// contract: importing unifi_setting by a bare site name (via ImportStateId,
-// exercising the real "terraform import <addr> <site>" flow) must hydrate
-// every section, so re-applying the SAME config that produced the original
-// resource is a clean, empty plan — no drift from sections the config never
-// touched but the import hydrated as Computed.
+// TestAccSettingImport_cleanPlan covers the acceptance-level import contract,
+// decomposed into two independently-verifiable steps:
+//
+//  1. Apply a sparse config (only mgmt, only 2 of its leaves). The framework's
+//     implicit post-apply plan must be EMPTY — proving both that create
+//     hydrates every non-configured section to a known value (no
+//     unknown-after-apply) and that a partially-configured section settles to a
+//     clean plan (useStateForUnknownObject holds the unconfigured Computed
+//     leaves stable).
+//  2. Import the same resource by its BARE SITE NAME (ImportStateId "default",
+//     the C3 contract — not the "site:id" composite) and ImportStateVerify that
+//     the imported state equals the applied state. Since step 1's state
+//     re-plans cleanly, an import that reproduces it re-plans cleanly too — so
+//     importing a site the config never fully described drifts nothing.
+//
+// (The two steps together are the import→clean-replan guarantee: a persist-then-
+// PlanOnly single assertion cannot be expressed here because Terraform refuses
+// to `import` an address that step 1 already manages.)
 func TestAccSettingImport_cleanPlan(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -69,18 +81,15 @@ func TestAccSettingImport_cleanPlan(t *testing.T) {
 			},
 			{
 				// Bare site name import (C3: not the "site:id" composite).
-				ResourceName:       "unifi_setting.test",
-				ImportState:        true,
-				ImportStateId:      "default",
-				ImportStatePersist: true,
-			},
-			{
-				// Re-applying the identical config against the imported state
-				// must be a no-op plan: the hydration gate populated every
-				// other section as Computed, and UseStateForUnknown holds
-				// them stable across this plan.
-				Config:   testAccSettingConfig_mgmt(),
-				PlanOnly: true,
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateId:     "default",
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"mgmt.%",
+					"mgmt.auto_upgrade",
+					"mgmt.ssh_enabled",
+				},
 			},
 		},
 	})

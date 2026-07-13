@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -631,6 +632,23 @@ func (r *settingResource) Create(
 	// configuredSections. plan is still used for the payload VALUES.
 	newModel, applyDiags := applySections(ctx, configuredSections(config), client, site, data, settingResourceModel{})
 
+	// applySections only refreshes the configured sections; every
+	// non-configured Optional+Computed section is still at its planned UNKNOWN
+	// value (on create there is no prior state for UseStateForUnknown to
+	// resolve it), which Terraform rejects as unknown-after-apply. Hydrate the
+	// full registry — present sections become known Computed values (secrets
+	// carried from what we just applied), sections this controller does not
+	// expose resolve to typed null — so every section is known after apply,
+	// exactly as an import leaves them. Only on a clean apply: if applySections
+	// already errored, keep its best-effort model rather than reading again.
+	if !applyDiags.HasError() {
+		hydrated, hydrateDiags := hydrateAllSections(ctx, client, site, newModel)
+		applyDiags.Append(hydrateDiags...)
+		if !hydrateDiags.HasError() {
+			newModel = hydrated
+		}
+	}
+
 	// applySections/readSections only populate the 14 section fields. id,
 	// site, and timeouts are resource-level, not section fields, so they
 	// must be set explicitly here — this mirrors what legacy readSettings
@@ -684,6 +702,106 @@ func configuredSections(m settingResourceModel) []settingSection {
 		}
 	}
 	return out
+}
+
+// nullSectionsModel returns a settingResourceModel with every registered
+// section object explicitly TYPED null (id/site/timeouts left zero). It is the
+// seed for hydrateAllSections and mirrors the shape ImportState produces, so a
+// section the controller does not expose resolves to a typed null (known)
+// rather than an untyped zero value the framework cannot serialize against the
+// schema. Like allSectionAttrsNull, this is an explicit 14-field construction:
+// a 15th section must be added here too.
+func nullSectionsModel() settingResourceModel {
+	return settingResourceModel{
+		AutoSpeedtest: types.ObjectNull(autoSpeedtestAttrTypes),
+		Country:       types.ObjectNull(countryAttrTypes),
+		Dpi:           types.ObjectNull(dpiAttrTypes),
+		Lcm:           types.ObjectNull(lcmAttrTypes),
+		NetworkOpt:    types.ObjectNull(networkOptimizationAttrTypes),
+		Ntp:           types.ObjectNull(ntpAttrTypes),
+		Syslog:        types.ObjectNull(syslogAttrTypes),
+		Doh:           types.ObjectNull(dohAttrTypes),
+		Ips:           types.ObjectNull(ipsAttrTypes),
+		Mgmt:          types.ObjectNull(mgmtAttrTypes),
+		Radius:        types.ObjectNull(radiusAttrTypes),
+		USG:           types.ObjectNull(usgAttrTypes),
+		IgmpSnooping:  types.ObjectNull(igmpSnoopingAttrTypes),
+		Snmp:          types.ObjectNull(snmpAttrTypes),
+	}
+}
+
+// hydrateAllSections resolves the sections a create left UNKNOWN to known
+// values. applySections only refreshes the sections the user configured; on
+// create there is no prior state for UseStateForUnknown to resolve the
+// non-configured Optional+Computed sections, so they remain unknown — and
+// Terraform rejects any value still unknown after apply.
+//
+// It reads the full registry against a typed-null seed (nullSectionsModel):
+// sections present on the controller decode to known Computed values, sections
+// this controller does not expose stay typed null. applied is the decode prior
+// so a write-only secret configured this apply survives (the controller never
+// echoes secrets back); an unconfigured section has a null/unknown secret in
+// applied and so decodes its secret to null — exactly as a fresh import would.
+//
+// The result then takes the hydrated value ONLY for sections that were UNKNOWN
+// in applied. Every section already known in applied is kept as-is: a
+// configured section keeps its applied value (no needless re-decode), and an
+// Optional-only section the user did not configure (igmp_snooping — Optional,
+// NOT Computed) stays null. Force-hydrating that last case from the controller
+// would set a value Terraform never planned for a non-Computed attribute and
+// fail with "inconsistent result after apply". This is the create-time
+// counterpart of Read's import-hydration gate (allSectionAttrsNull).
+func hydrateAllSections(ctx context.Context, client settingsClient, site string, applied settingResourceModel) (settingResourceModel, diag.Diagnostics) {
+	hydrated := nullSectionsModel()
+	diags := readSections(ctx, settingSections, client, site, applied, &hydrated, false)
+
+	// Explicit 14-field merge (same rationale as allSectionAttrsNull /
+	// nullSectionsModel): a 15th section must be added here too. Only a section
+	// left UNKNOWN by the apply takes the hydrated value.
+	out := applied
+	if out.AutoSpeedtest.IsUnknown() {
+		out.AutoSpeedtest = hydrated.AutoSpeedtest
+	}
+	if out.Country.IsUnknown() {
+		out.Country = hydrated.Country
+	}
+	if out.Dpi.IsUnknown() {
+		out.Dpi = hydrated.Dpi
+	}
+	if out.Lcm.IsUnknown() {
+		out.Lcm = hydrated.Lcm
+	}
+	if out.NetworkOpt.IsUnknown() {
+		out.NetworkOpt = hydrated.NetworkOpt
+	}
+	if out.Ntp.IsUnknown() {
+		out.Ntp = hydrated.Ntp
+	}
+	if out.Syslog.IsUnknown() {
+		out.Syslog = hydrated.Syslog
+	}
+	if out.Doh.IsUnknown() {
+		out.Doh = hydrated.Doh
+	}
+	if out.Ips.IsUnknown() {
+		out.Ips = hydrated.Ips
+	}
+	if out.Mgmt.IsUnknown() {
+		out.Mgmt = hydrated.Mgmt
+	}
+	if out.Radius.IsUnknown() {
+		out.Radius = hydrated.Radius
+	}
+	if out.USG.IsUnknown() {
+		out.USG = hydrated.USG
+	}
+	if out.IgmpSnooping.IsUnknown() {
+		out.IgmpSnooping = hydrated.IgmpSnooping
+	}
+	if out.Snmp.IsUnknown() {
+		out.Snmp = hydrated.Snmp
+	}
+	return out, diags
 }
 
 // Read re-fetches the raw settings snapshot and overlays it onto state. If
