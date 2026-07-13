@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -1281,4 +1282,22 @@ func TestAccFirewallRuleList_basic(t *testing.T) {
 			},
 		},
 	})
+}
+
+// TestFirewallRulePortFieldsHaveSemanticValidator guards #4.5: src_port and
+// dst_port must reject 0/out-of-range/reversed ranges, the same class of
+// defect fixed on firewall_policy's port field in the same PR.
+func TestFirewallRulePortFieldsHaveSemanticValidator(t *testing.T) {
+	resp := &fwresource.SchemaResponse{}
+	(&firewallRuleResource{}).Schema(context.Background(), fwresource.SchemaRequest{}, resp)
+
+	for _, key := range []string{"src_port", "dst_port"} {
+		attr, ok := resp.Schema.Attributes[key].(schema.StringAttribute)
+		if !ok {
+			t.Fatalf("%s is not a StringAttribute", key)
+		}
+		if len(attr.Validators) == 0 {
+			t.Errorf("%s must have a port-range validator", key)
+		}
+	}
 }

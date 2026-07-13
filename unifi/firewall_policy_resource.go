@@ -3,7 +3,6 @@ package unifi
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 var (
@@ -209,11 +209,7 @@ func (r *firewallPolicyResource) Schema(
 			Optional: true,
 			Computed: true,
 			Validators: []validator.String{
-				stringvalidator.RegexMatches(
-					regexp.MustCompile(`^[0-9]{1,5}(-[0-9]{1,5})?(,[0-9]{1,5}(-[0-9]{1,5})?)*$`),
-					"must be a port number or a comma-separated list of ports/ranges "+
-						`(e.g. "80,443" or "8000-8100")`,
-				),
+				validators.PortRangeListValidator(),
 			},
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.UseStateForUnknown(),
@@ -383,11 +379,23 @@ func (r *firewallPolicyResource) Schema(
 				MarkdownDescription: "The source endpoint of the policy.",
 				Required:            true,
 				Attributes:          endpointAttrs,
+				PlanModifiers: []planmodifier.Object{
+					endpointDiscriminatorPlanModifier{},
+				},
+				Validators: []validator.Object{
+					endpointDiscriminatorValidator{},
+				},
 			},
 			"destination": schema.SingleNestedAttribute{
 				MarkdownDescription: "The destination endpoint of the policy.",
 				Required:            true,
 				Attributes:          endpointAttrs,
+				PlanModifiers: []planmodifier.Object{
+					endpointDiscriminatorPlanModifier{},
+				},
+				Validators: []validator.Object{
+					endpointDiscriminatorValidator{},
+				},
 			},
 			"timeouts": timeouts.Attributes(
 				ctx,
@@ -837,9 +845,22 @@ func modelToFirewallPolicy(
 // "OBJECT" — overriding a stale ""/"ANY"/"SPECIFIC" from state (e.g. when a
 // policy is switched from literal ips to a group). A controller-assigned
 // "OBJECT"/"LIST" is preserved.
+//
+// A stale "OBJECT" is only ever meaningful under matching_target == "IP" (the
+// only target ip_group_id can be owned by — see endpointOwnsSelector); if the
+// caller has already transitioned matching_target away from IP (so ipGroupID
+// is correctly empty per that gating) but currentType still carries a stale
+// "OBJECT" left over from the prior IP-group state, it is demoted and
+// re-derived by the SPECIFIC rule below instead of being preserved (design
+// doc §4.3's ip_group_id correctness note: a cleared ip_group_id must not
+// leave the type stuck at OBJECT). "LIST" has no such dependency on
+// ip_group_id and is always preserved.
 func firewallPolicyMatchingTargetType(matchingTarget, currentType, ipGroupID string) string {
 	if ipGroupID != "" && currentType != "OBJECT" && currentType != "LIST" {
 		return "OBJECT"
+	}
+	if currentType == "OBJECT" && matchingTarget != "IP" {
+		currentType = ""
 	}
 	if matchingTarget != "" && matchingTarget != "ANY" &&
 		(currentType == "" || currentType == "ANY") {
@@ -848,33 +869,307 @@ func firewallPolicyMatchingTargetType(matchingTarget, currentType, ipGroupID str
 	return currentType
 }
 
+// endpointOwnsSelector reports whether the given matching_target owns the
+// named selector field. A firewall policy endpoint's matching_target is a
+// discriminator: exactly one selector field is active for each non-ANY
+// value (network_ids for NETWORK, client_macs for CLIENT, ips and
+// ip_group_id for IP, web_domains for WEB); every other selector is
+// inactive and must not be sent to, or read back from, the controller
+// (design doc §4.3). ip_group_id is owned by IP alongside ips — it is the
+// object-reference form of the same IP match, not a separate discriminator
+// value (design doc's ip_group_id correctness note: leaving it unconditional
+// lets a stale ip_group_id force matching_target_type back to OBJECT after
+// a transition away from IP).
+func endpointOwnsSelector(matchingTarget, field string) bool {
+	switch field {
+	case "network_ids":
+		return matchingTarget == "NETWORK"
+	case "client_macs":
+		return matchingTarget == "CLIENT"
+	case "ips", "ip_group_id":
+		return matchingTarget == "IP"
+	case "web_domains":
+		return matchingTarget == "WEB"
+	default:
+		return false
+	}
+}
+
+// endpointOwnsPortField reports whether the given port_matching_type owns
+// the named port field: SPECIFIC owns port, OBJECT owns port_group_id, ANY
+// owns neither.
+func endpointOwnsPortField(portMatchingType, field string) bool {
+	switch field {
+	case "port":
+		return portMatchingType == "SPECIFIC"
+	case "port_group_id":
+		return portMatchingType == "OBJECT"
+	default:
+		return false
+	}
+}
+
+// endpointDiscriminatorPlanModifier rebuilds the planned source/destination
+// object so every selector/port field the active (planned) matching_target/
+// port_matching_type does not own is forced to null, before the
+// endpointDiscriminatorValidator or Terraform's plan/apply consistency check
+// ever see it.
+//
+// This runs after UseStateForUnknown (which is what leaves a stale child
+// resolved into the plan in the first place — see design doc §4.3 item 3)
+// and before validation. It shares endpointOwnsSelector/endpointOwnsPortField
+// with the codec functions (endpointModelToSource/Destination,
+// apiSourceToEndpointModel/apiDestinationToEndpointModel) and
+// endpointDiscriminatorValidator, so there is exactly one ownership
+// definition, not three that could drift.
+//
+// If matching_target or port_matching_type is itself null or unknown in the
+// plan, this modifier makes no changes at all: nulling children based on a
+// guessed discriminator would itself create a plan/apply mismatch once the
+// real value resolves at apply time. This mirrors the deferral rule
+// endpointDiscriminatorValidator follows.
+type endpointDiscriminatorPlanModifier struct{}
+
+func (m endpointDiscriminatorPlanModifier) Description(context.Context) string {
+	return "nulls source/destination selector and port fields the active matching_target/port_matching_type does not own"
+}
+
+func (m endpointDiscriminatorPlanModifier) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (m endpointDiscriminatorPlanModifier) PlanModifyObject(
+	ctx context.Context,
+	req planmodifier.ObjectRequest,
+	resp *planmodifier.ObjectResponse,
+) {
+	// Nothing to rebuild if there's no planned value, or if it's already
+	// unknown (e.g. an entirely-unresolved endpoint) — leave resp.PlanValue
+	// as whatever prior plan-modifier stages (UseStateForUnknown) produced.
+	if resp.PlanValue.IsNull() || resp.PlanValue.IsUnknown() {
+		return
+	}
+
+	var planned firewallPolicyEndpointModel
+	resp.Diagnostics.Append(resp.PlanValue.As(ctx, &planned, basetypes.ObjectAsOptions{
+		UnhandledUnknownAsEmpty: false,
+	})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	matchingTarget := planned.MatchingTarget
+	portMatchingType := planned.PortMatchingType
+
+	// A null/unknown discriminator defers entirely to apply — see the
+	// doc comment above and design doc §4.3 item 4 (the validator follows
+	// the identical rule). Guessing here would null out a child that turns
+	// out to be valid once the discriminator resolves.
+	matchingTargetKnown := !matchingTarget.IsNull() && !matchingTarget.IsUnknown()
+	portMatchingTypeKnown := !portMatchingType.IsNull() && !portMatchingType.IsUnknown()
+
+	if !matchingTargetKnown && !portMatchingTypeKnown {
+		// Neither discriminator is known yet: nothing to null, avoid the
+		// round-trip entirely so we don't risk re-encoding a value we
+		// didn't need to touch.
+		return
+	}
+
+	if matchingTargetKnown {
+		mt := matchingTarget.ValueString()
+		if !endpointOwnsSelector(mt, "network_ids") {
+			planned.NetworkIDs = types.ListNull(types.StringType)
+		}
+		if !endpointOwnsSelector(mt, "client_macs") {
+			planned.ClientMACs = types.ListNull(types.StringType)
+		}
+		if !endpointOwnsSelector(mt, "ips") {
+			planned.IPs = types.ListNull(types.StringType)
+		}
+		if !endpointOwnsSelector(mt, "web_domains") {
+			planned.WebDomains = types.ListNull(types.StringType)
+		}
+		if !endpointOwnsSelector(mt, "ip_group_id") {
+			planned.IPGroupID = types.StringNull()
+		}
+	}
+	if portMatchingTypeKnown {
+		pmt := portMatchingType.ValueString()
+		if !endpointOwnsPortField(pmt, "port") {
+			planned.Port = types.StringNull()
+		}
+		if !endpointOwnsPortField(pmt, "port_group_id") {
+			planned.PortGroupID = types.StringNull()
+		}
+	}
+
+	newObj, diags := types.ObjectValueFrom(ctx, firewallPolicyEndpointModel{}.AttributeTypes(), planned)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.PlanValue = newObj
+}
+
+// endpointDiscriminatorValidator rejects a firewall policy endpoint
+// (source/destination) config that sets a selector or port field the
+// active matching_target/port_matching_type does not own — the plan-time
+// half of the discriminator contract (design doc §4.3): a contradictory
+// config is a validation error, not a silently-dropped value.
+//
+// Correctness requirement (design doc §4.3 item 4): when matching_target or
+// port_matching_type is itself null or unknown, this validator skips the
+// corresponding ownership checks entirely rather than treating the
+// discriminator as "". An unresolved discriminator defers child validation
+// to apply, not to a guessed default — treating unknown as "" would make
+// every non-empty selector look "unowned" and reject configs that are
+// actually valid once the discriminator resolves.
+type endpointDiscriminatorValidator struct{}
+
+func (v endpointDiscriminatorValidator) Description(context.Context) string {
+	return "matching_target and port_matching_type must not have a configured selector for an inactive discriminator value"
+}
+
+func (v endpointDiscriminatorValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v endpointDiscriminatorValidator) ValidateObject(
+	ctx context.Context,
+	req validator.ObjectRequest,
+	resp *validator.ObjectResponse,
+) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	var m firewallPolicyEndpointModel
+	resp.Diagnostics.Append(req.ConfigValue.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Deferral rule: an unknown/null discriminator skips its ownership
+	// checks entirely rather than being treated as "" (design doc §4.3
+	// item 4). Each discriminator is gated independently, since
+	// matching_target and port_matching_type resolve independently.
+	if !m.MatchingTarget.IsNull() && !m.MatchingTarget.IsUnknown() {
+		matchingTarget := m.MatchingTarget.ValueString()
+		selectors := map[string]types.List{
+			"network_ids": m.NetworkIDs,
+			"client_macs": m.ClientMACs,
+			"ips":         m.IPs,
+			"web_domains": m.WebDomains,
+		}
+		for field, val := range selectors {
+			if val.IsNull() || val.IsUnknown() || len(val.Elements()) == 0 {
+				continue
+			}
+			if !endpointOwnsSelector(matchingTarget, field) {
+				resp.Diagnostics.AddAttributeError(
+					req.Path.AtName(field),
+					"Inactive Selector Configured",
+					fmt.Sprintf(
+						"%q is configured but matching_target is %q, which does not use it. "+
+							"Remove %q or change matching_target.",
+						field, matchingTarget, field,
+					),
+				)
+			}
+		}
+		if !m.IPGroupID.IsNull() && !m.IPGroupID.IsUnknown() && m.IPGroupID.ValueString() != "" &&
+			!endpointOwnsSelector(matchingTarget, "ip_group_id") {
+			resp.Diagnostics.AddAttributeError(
+				req.Path.AtName("ip_group_id"),
+				"Inactive Selector Configured",
+				fmt.Sprintf(
+					"%q is configured but matching_target is %q, which does not use it (ip_group_id is only valid under IP). "+
+						"Remove %q or change matching_target.",
+					"ip_group_id", matchingTarget, "ip_group_id",
+				),
+			)
+		}
+	}
+
+	if !m.PortMatchingType.IsNull() && !m.PortMatchingType.IsUnknown() {
+		portMatchingType := m.PortMatchingType.ValueString()
+		ports := map[string]types.String{
+			"port":          m.Port,
+			"port_group_id": m.PortGroupID,
+		}
+		for field, val := range ports {
+			if val.IsNull() || val.IsUnknown() || val.ValueString() == "" {
+				continue
+			}
+			if !endpointOwnsPortField(portMatchingType, field) {
+				resp.Diagnostics.AddAttributeError(
+					req.Path.AtName(field),
+					"Inactive Port Field Configured",
+					fmt.Sprintf(
+						"%q is configured but port_matching_type is %q, which does not use it. "+
+							"Remove %q or change port_matching_type.",
+						field, portMatchingType, field,
+					),
+				)
+			}
+		}
+	}
+}
+
 func endpointModelToSource(
 	ctx context.Context,
 	m firewallPolicyEndpointModel,
 	diags *diag.Diagnostics,
 ) *unifi.FirewallPolicySource {
+	matchingTarget := m.MatchingTarget.ValueString()
+	portMatchingType := m.PortMatchingType.ValueString()
+
+	// ip_group_id is gated the same as the other selectors (owned by IP
+	// only) BEFORE it is handed to firewallPolicyMatchingTargetType, so a
+	// stale group reference from a prior IP-targeted state cannot force
+	// matching_target_type back to OBJECT on an unrelated transition
+	// (design doc's ip_group_id correctness note).
+	ipGroupID := ""
+	if endpointOwnsSelector(matchingTarget, "ip_group_id") {
+		ipGroupID = m.IPGroupID.ValueString()
+	}
+
 	ep := &unifi.FirewallPolicySource{
 		ZoneID:         m.ZoneID.ValueString(),
-		MatchingTarget: m.MatchingTarget.ValueString(),
+		MatchingTarget: matchingTarget,
 		MatchingTargetType: firewallPolicyMatchingTargetType(
-			m.MatchingTarget.ValueString(), m.MatchingTargetType.ValueString(),
-			m.IPGroupID.ValueString(),
+			matchingTarget, m.MatchingTargetType.ValueString(),
+			ipGroupID,
 		),
-		Port:             m.Port.ValueString(),
-		PortGroupID:      m.PortGroupID.ValueString(),
-		IPGroupID:        m.IPGroupID.ValueString(),
-		PortMatchingType: m.PortMatchingType.ValueString(),
+		PortMatchingType: portMatchingType,
+		IPGroupID:        ipGroupID,
 	}
-	if !m.IPs.IsNull() && !m.IPs.IsUnknown() {
+	// Only the active port_matching_type's field is sent; the other is
+	// cleared regardless of what is left over in the model from a prior
+	// discriminator value (#4.3).
+	if endpointOwnsPortField(portMatchingType, "port") {
+		ep.Port = m.Port.ValueString()
+	}
+	if endpointOwnsPortField(portMatchingType, "port_group_id") {
+		ep.PortGroupID = m.PortGroupID.ValueString()
+	}
+
+	// Only the active matching_target's selector is sent; every other
+	// selector is cleared regardless of what is left over in the model
+	// from a prior discriminator value (#4.3).
+	if endpointOwnsSelector(matchingTarget, "ips") &&
+		!m.IPs.IsNull() && !m.IPs.IsUnknown() {
 		diags.Append(m.IPs.ElementsAs(ctx, &ep.IPs, false)...)
 	}
-	if !m.NetworkIDs.IsNull() && !m.NetworkIDs.IsUnknown() {
+	if endpointOwnsSelector(matchingTarget, "network_ids") &&
+		!m.NetworkIDs.IsNull() && !m.NetworkIDs.IsUnknown() {
 		diags.Append(m.NetworkIDs.ElementsAs(ctx, &ep.NetworkIDs, false)...)
 	}
-	if !m.ClientMACs.IsNull() && !m.ClientMACs.IsUnknown() {
+	if endpointOwnsSelector(matchingTarget, "client_macs") &&
+		!m.ClientMACs.IsNull() && !m.ClientMACs.IsUnknown() {
 		diags.Append(m.ClientMACs.ElementsAs(ctx, &ep.ClientMACs, false)...)
 	}
-	if !m.WebDomains.IsNull() && !m.WebDomains.IsUnknown() {
+	if endpointOwnsSelector(matchingTarget, "web_domains") &&
+		!m.WebDomains.IsNull() && !m.WebDomains.IsUnknown() {
 		diags.Append(m.WebDomains.ElementsAs(ctx, &ep.WebDomains, false)...)
 	}
 	return ep
@@ -885,28 +1180,47 @@ func endpointModelToDestination(
 	m firewallPolicyEndpointModel,
 	diags *diag.Diagnostics,
 ) *unifi.FirewallPolicyDestination {
+	matchingTarget := m.MatchingTarget.ValueString()
+	portMatchingType := m.PortMatchingType.ValueString()
+
+	// See endpointModelToSource: ip_group_id is gated identically before
+	// being handed to firewallPolicyMatchingTargetType.
+	ipGroupID := ""
+	if endpointOwnsSelector(matchingTarget, "ip_group_id") {
+		ipGroupID = m.IPGroupID.ValueString()
+	}
+
 	ep := &unifi.FirewallPolicyDestination{
 		ZoneID:         m.ZoneID.ValueString(),
-		MatchingTarget: m.MatchingTarget.ValueString(),
+		MatchingTarget: matchingTarget,
 		MatchingTargetType: firewallPolicyMatchingTargetType(
-			m.MatchingTarget.ValueString(), m.MatchingTargetType.ValueString(),
-			m.IPGroupID.ValueString(),
+			matchingTarget, m.MatchingTargetType.ValueString(),
+			ipGroupID,
 		),
-		Port:             m.Port.ValueString(),
-		PortGroupID:      m.PortGroupID.ValueString(),
-		IPGroupID:        m.IPGroupID.ValueString(),
-		PortMatchingType: m.PortMatchingType.ValueString(),
+		PortMatchingType: portMatchingType,
+		IPGroupID:        ipGroupID,
 	}
-	if !m.IPs.IsNull() && !m.IPs.IsUnknown() {
+	if endpointOwnsPortField(portMatchingType, "port") {
+		ep.Port = m.Port.ValueString()
+	}
+	if endpointOwnsPortField(portMatchingType, "port_group_id") {
+		ep.PortGroupID = m.PortGroupID.ValueString()
+	}
+
+	if endpointOwnsSelector(matchingTarget, "ips") &&
+		!m.IPs.IsNull() && !m.IPs.IsUnknown() {
 		diags.Append(m.IPs.ElementsAs(ctx, &ep.IPs, false)...)
 	}
-	if !m.NetworkIDs.IsNull() && !m.NetworkIDs.IsUnknown() {
+	if endpointOwnsSelector(matchingTarget, "network_ids") &&
+		!m.NetworkIDs.IsNull() && !m.NetworkIDs.IsUnknown() {
 		diags.Append(m.NetworkIDs.ElementsAs(ctx, &ep.NetworkIDs, false)...)
 	}
-	if !m.ClientMACs.IsNull() && !m.ClientMACs.IsUnknown() {
+	if endpointOwnsSelector(matchingTarget, "client_macs") &&
+		!m.ClientMACs.IsNull() && !m.ClientMACs.IsUnknown() {
 		diags.Append(m.ClientMACs.ElementsAs(ctx, &ep.ClientMACs, false)...)
 	}
-	if !m.WebDomains.IsNull() && !m.WebDomains.IsUnknown() {
+	if endpointOwnsSelector(matchingTarget, "web_domains") &&
+		!m.WebDomains.IsNull() && !m.WebDomains.IsUnknown() {
 		diags.Append(m.WebDomains.ElementsAs(ctx, &ep.WebDomains, false)...)
 	}
 	return ep
@@ -1011,26 +1325,59 @@ func apiSourceToEndpointModel(
 		ZoneID:             types.StringValue(src.ZoneID),
 		MatchingTarget:     types.StringValue(src.MatchingTarget),
 		MatchingTargetType: types.StringValue(src.MatchingTargetType),
-		Port:               portToStringValue(src.Port),
-		PortGroupID:        types.StringValue(src.PortGroupID),
-		IPGroupID:          types.StringValue(src.IPGroupID),
 		PortMatchingType:   types.StringValue(src.PortMatchingType),
 	}
-	networkIDs, nd := types.ListValueFrom(ctx, types.StringType, src.NetworkIDs)
+	if endpointOwnsPortField(src.PortMatchingType, "port") {
+		m.Port = portToStringValue(src.Port)
+	} else {
+		m.Port = types.StringNull()
+	}
+	// port_group_id is only valid under port_matching_type == OBJECT; a
+	// stale ID left over from a prior OBJECT state must not be copied into
+	// state on read, or it undoes what endpointDiscriminatorPlanModifier
+	// nulls in the plan (#4.3's port-field correctness note, read-side).
+	if endpointOwnsPortField(src.PortMatchingType, "port_group_id") {
+		m.PortGroupID = types.StringValue(src.PortGroupID)
+	} else {
+		m.PortGroupID = types.StringNull()
+	}
+	if endpointOwnsSelector(src.MatchingTarget, "ip_group_id") {
+		m.IPGroupID = types.StringValue(src.IPGroupID)
+	} else {
+		m.IPGroupID = types.StringValue("")
+	}
+
+	var networkIDs []string
+	if endpointOwnsSelector(src.MatchingTarget, "network_ids") {
+		networkIDs = src.NetworkIDs
+	}
+	nl, nd := types.ListValueFrom(ctx, types.StringType, networkIDs)
 	diags.Append(nd...)
-	m.NetworkIDs = networkIDs
+	m.NetworkIDs = nl
 
-	clientMACs, cd := types.ListValueFrom(ctx, types.StringType, src.ClientMACs)
+	var clientMACs []string
+	if endpointOwnsSelector(src.MatchingTarget, "client_macs") {
+		clientMACs = src.ClientMACs
+	}
+	cl, cd := types.ListValueFrom(ctx, types.StringType, clientMACs)
 	diags.Append(cd...)
-	m.ClientMACs = clientMACs
+	m.ClientMACs = cl
 
-	ips, d := types.ListValueFrom(ctx, types.StringType, src.IPs)
-	diags.Append(d...)
-	m.IPs = ips
+	var ips []string
+	if endpointOwnsSelector(src.MatchingTarget, "ips") {
+		ips = src.IPs
+	}
+	il, id := types.ListValueFrom(ctx, types.StringType, ips)
+	diags.Append(id...)
+	m.IPs = il
 
-	webDomains, wd := types.ListValueFrom(ctx, types.StringType, src.WebDomains)
+	var webDomains []string
+	if endpointOwnsSelector(src.MatchingTarget, "web_domains") {
+		webDomains = src.WebDomains
+	}
+	wl, wd := types.ListValueFrom(ctx, types.StringType, webDomains)
 	diags.Append(wd...)
-	m.WebDomains = webDomains
+	m.WebDomains = wl
 
 	return m
 }
@@ -1044,26 +1391,57 @@ func apiDestinationToEndpointModel(
 		ZoneID:             types.StringValue(dst.ZoneID),
 		MatchingTarget:     types.StringValue(dst.MatchingTarget),
 		MatchingTargetType: types.StringValue(dst.MatchingTargetType),
-		Port:               portToStringValue(dst.Port),
-		PortGroupID:        types.StringValue(dst.PortGroupID),
-		IPGroupID:          types.StringValue(dst.IPGroupID),
 		PortMatchingType:   types.StringValue(dst.PortMatchingType),
 	}
-	networkIDs, nd := types.ListValueFrom(ctx, types.StringType, dst.NetworkIDs)
+	if endpointOwnsPortField(dst.PortMatchingType, "port") {
+		m.Port = portToStringValue(dst.Port)
+	} else {
+		m.Port = types.StringNull()
+	}
+	// See apiSourceToEndpointModel: port_group_id is gated identically on
+	// the read path.
+	if endpointOwnsPortField(dst.PortMatchingType, "port_group_id") {
+		m.PortGroupID = types.StringValue(dst.PortGroupID)
+	} else {
+		m.PortGroupID = types.StringNull()
+	}
+	if endpointOwnsSelector(dst.MatchingTarget, "ip_group_id") {
+		m.IPGroupID = types.StringValue(dst.IPGroupID)
+	} else {
+		m.IPGroupID = types.StringValue("")
+	}
+
+	var networkIDs []string
+	if endpointOwnsSelector(dst.MatchingTarget, "network_ids") {
+		networkIDs = dst.NetworkIDs
+	}
+	nl, nd := types.ListValueFrom(ctx, types.StringType, networkIDs)
 	diags.Append(nd...)
-	m.NetworkIDs = networkIDs
+	m.NetworkIDs = nl
 
-	clientMACs, cd := types.ListValueFrom(ctx, types.StringType, dst.ClientMACs)
+	var clientMACs []string
+	if endpointOwnsSelector(dst.MatchingTarget, "client_macs") {
+		clientMACs = dst.ClientMACs
+	}
+	cl, cd := types.ListValueFrom(ctx, types.StringType, clientMACs)
 	diags.Append(cd...)
-	m.ClientMACs = clientMACs
+	m.ClientMACs = cl
 
-	ips, d := types.ListValueFrom(ctx, types.StringType, dst.IPs)
-	diags.Append(d...)
-	m.IPs = ips
+	var ips []string
+	if endpointOwnsSelector(dst.MatchingTarget, "ips") {
+		ips = dst.IPs
+	}
+	il, id := types.ListValueFrom(ctx, types.StringType, ips)
+	diags.Append(id...)
+	m.IPs = il
 
-	webDomains, wd := types.ListValueFrom(ctx, types.StringType, dst.WebDomains)
+	var webDomains []string
+	if endpointOwnsSelector(dst.MatchingTarget, "web_domains") {
+		webDomains = dst.WebDomains
+	}
+	wl, wd := types.ListValueFrom(ctx, types.StringType, webDomains)
 	diags.Append(wd...)
-	m.WebDomains = webDomains
+	m.WebDomains = wl
 
 	return m
 }
