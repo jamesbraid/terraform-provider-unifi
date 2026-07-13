@@ -653,12 +653,14 @@ func (r *settingResource) Create(
 // (UseStateForUnknown keeps them stable -> a subsequent no-config plan is
 // clean). Otherwise Read refreshes only the configured sections.
 //
-// This is an explicit 13-field check, not derived from the section registry
-// — if a 14th section is ever added, it must be updated here too (acceptable
-// for PR-A's fixed 13; a future refactor could derive it from the registry
-// if a section gains a model-field accessor).
+// This is an explicit 14-field check, not derived from the section registry
+// — if a 15th section is ever added, it must be updated here too (guest_access
+// was added here deliberately in PR-B4, not derived from the registry; a
+// future refactor could derive it from the registry if a section gains a
+// model-field accessor).
 func allSectionAttrsNull(m settingResourceModel) bool {
 	return m.AutoSpeedtest.IsNull() && m.Country.IsNull() && m.Dpi.IsNull() &&
+		m.GuestAccess.IsNull() &&
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
