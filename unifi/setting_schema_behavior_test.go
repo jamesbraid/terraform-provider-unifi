@@ -292,3 +292,225 @@ func TestSettingSchemaBehavior_autoSpeedtestUseStateForUnknownNoChurn(t *testing
 		}
 	}
 }
+
+// --- mdns mode discriminator (C4) -------------------------------------------
+
+// TestSettingSchemaBehavior_mdnsModeTransitionClearsStaleChildren drives the
+// mdns object's plan modifier directly: StateValue has mode = "custom" with
+// non-empty predefined_services/custom_services (prior state from before
+// this apply); ConfigValue has mode = "auto" and the two lists absent/null
+// (the user only changed mode, left the old lists untouched in HCL —
+// Optional+Computed means "untouched in config" is legitimate). The
+// resulting resp.PlanValue must carry an explicit empty list for both, not
+// the stale state values and not unknown — proving a legitimate transition
+// does not leak stale state forward. A bare decode()/overlay() test cannot
+// observe this: neither function touches resp.PlanValue.
+func TestSettingSchemaBehavior_mdnsModeTransitionClearsStaleChildren(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+
+	top, ok := attrs["mdns"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("mdns is %T, want schema.SingleNestedAttribute", attrs["mdns"])
+	}
+	if len(top.PlanModifiers) == 0 {
+		t.Fatal("mdns has no object plan modifiers")
+	}
+
+	predefinedType := types.ListType{ElemType: types.StringType}
+	customType := types.ListType{ElemType: types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}}
+
+	staleCustom, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}, []settingMdnsCustomServiceModel{
+		{Address: types.StringValue("_stale._tcp.local"), Name: types.StringValue("_stale._tcp")},
+	})
+	if diags.HasError() {
+		t.Fatalf("building stale custom_services: %v", diags)
+	}
+	stalePredefined, diags := types.ListValueFrom(ctx, types.StringType, []string{"printers"})
+	if diags.HasError() {
+		t.Fatalf("building stale predefined_services: %v", diags)
+	}
+
+	stateObj := types.ObjectValueMust(mdnsAttrTypes, map[string]attr.Value{
+		"mode":                types.StringValue("custom"),
+		"predefined_services": stalePredefined,
+		"custom_services":     staleCustom,
+	})
+
+	// Config: user only changed mode to "auto"; left the two lists
+	// untouched (null in config — Optional+Computed allows this).
+	configObj := types.ObjectValueMust(mdnsAttrTypes, map[string]attr.Value{
+		"mode":                types.StringValue("auto"),
+		"predefined_services": types.ListNull(types.StringType),
+		"custom_services":     types.ListNull(types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}),
+	})
+
+	// Plan proposed by the framework before this modifier runs: mode is
+	// known ("auto", from config), the two Computed lists are unknown
+	// (framework's default proposal for an omitted Optional+Computed
+	// attribute with a prior known state value it might recompute).
+	planObj := types.ObjectValueMust(mdnsAttrTypes, map[string]attr.Value{
+		"mode":                types.StringValue("auto"),
+		"predefined_services": types.ListUnknown(types.StringType),
+		"custom_services":     types.ListUnknown(types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}),
+	})
+
+	tfObjType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"mode":                tftypes.String,
+		"predefined_services": tftypes.List{ElementType: tftypes.String},
+		"custom_services": tftypes.List{ElementType: tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+			"address": tftypes.String,
+			"name":    tftypes.String,
+		}}},
+	}}
+	stateRaw := tftypes.NewValue(
+		tftypes.Object{AttributeTypes: map[string]tftypes.Type{"mdns": tfObjType}},
+		map[string]tftypes.Value{
+			"mdns": tftypes.NewValue(tfObjType, map[string]tftypes.Value{
+				"mode": tftypes.NewValue(tftypes.String, "custom"),
+				"predefined_services": tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{
+					tftypes.NewValue(tftypes.String, "printers"),
+				}),
+				"custom_services": tftypes.NewValue(tftypes.List{ElementType: tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+					"address": tftypes.String,
+					"name":    tftypes.String,
+				}}}, []tftypes.Value{
+					tftypes.NewValue(tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+						"address": tftypes.String,
+						"name":    tftypes.String,
+					}}, map[string]tftypes.Value{
+						"address": tftypes.NewValue(tftypes.String, "_stale._tcp.local"),
+						"name":    tftypes.NewValue(tftypes.String, "_stale._tcp"),
+					}),
+				}),
+			}),
+		},
+	)
+
+	for _, pm := range top.PlanModifiers {
+		req := planmodifier.ObjectRequest{
+			Path:        path.Root("mdns"),
+			State:       tfsdk.State{Raw: stateRaw},
+			StateValue:  stateObj,
+			PlanValue:   planObj,
+			ConfigValue: configObj,
+		}
+		var resp planmodifier.ObjectResponse
+		resp.PlanValue = req.PlanValue
+		pm.PlanModifyObject(ctx, req, &resp)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("PlanModifyObject produced diagnostics: %v", resp.Diagnostics)
+		}
+		planObj = resp.PlanValue
+	}
+
+	planAttrs := planObj.Attributes()
+	predefinedPlan, ok := planAttrs["predefined_services"].(types.List)
+	if !ok {
+		t.Fatalf("plan predefined_services is %T, want types.List", planAttrs["predefined_services"])
+	}
+	if predefinedPlan.IsNull() || predefinedPlan.IsUnknown() {
+		t.Errorf("plan predefined_services = %v, want explicit empty list (not null, not unknown)", predefinedPlan)
+	}
+	if len(predefinedPlan.Elements()) != 0 {
+		t.Errorf("plan predefined_services = %v, want empty (stale state must not leak forward)", predefinedPlan.Elements())
+	}
+	customPlan, ok := planAttrs["custom_services"].(types.List)
+	if !ok {
+		t.Fatalf("plan custom_services is %T, want types.List", planAttrs["custom_services"])
+	}
+	if customPlan.IsNull() || customPlan.IsUnknown() {
+		t.Errorf("plan custom_services = %v, want explicit empty list (not null, not unknown)", customPlan)
+	}
+	if len(customPlan.Elements()) != 0 {
+		t.Errorf("plan custom_services = %v, want empty (stale state must not leak forward)", customPlan.Elements())
+	}
+	_ = predefinedType
+	_ = customType
+}
+
+// TestSettingSchemaBehavior_mdnsCustomServicesRejectsUnderNonCustomMode
+// drives the mdns object validator directly: req.ConfigValue has mode =
+// "auto" AND custom_services explicitly set to a non-empty list in config
+// (not state) — the contradictory-config case, a user directly authoring
+// both `mode = "auto"` and `custom_services = [...]` in the same HCL block.
+// Asserts resp.Diagnostics.HasError() is true.
+func TestSettingSchemaBehavior_mdnsCustomServicesRejectsUnderNonCustomMode(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+
+	top, ok := attrs["mdns"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("mdns is %T, want schema.SingleNestedAttribute", attrs["mdns"])
+	}
+	if len(top.Validators) == 0 {
+		t.Fatal("mdns has no object validators")
+	}
+
+	customList, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}, []settingMdnsCustomServiceModel{
+		{Address: types.StringValue("_myservice._tcp.local"), Name: types.StringValue("_myservice._tcp")},
+	})
+	if diags.HasError() {
+		t.Fatalf("building custom_services: %v", diags)
+	}
+
+	configObj := types.ObjectValueMust(mdnsAttrTypes, map[string]attr.Value{
+		"mode":                types.StringValue("auto"),
+		"predefined_services": types.ListNull(types.StringType),
+		"custom_services":     customList,
+	})
+
+	for _, v := range top.Validators {
+		req := validator.ObjectRequest{
+			Path:        path.Root("mdns"),
+			ConfigValue: configObj,
+		}
+		var resp validator.ObjectResponse
+		v.ValidateObject(ctx, req, &resp)
+		if !resp.Diagnostics.HasError() {
+			t.Errorf("validator produced no error for mode=%q with non-empty custom_services in config, want a rejection", "auto")
+		}
+	}
+}
+
+// TestSettingSchemaBehavior_mdnsValidatorAllowsCustomModeWithServices proves
+// the validator does NOT reject the legitimate case: mode = "custom" with
+// non-empty custom_services/predefined_services in config.
+func TestSettingSchemaBehavior_mdnsValidatorAllowsCustomModeWithServices(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+
+	top, ok := attrs["mdns"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("mdns is %T, want schema.SingleNestedAttribute", attrs["mdns"])
+	}
+
+	customList, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}, []settingMdnsCustomServiceModel{
+		{Address: types.StringValue("_myservice._tcp.local"), Name: types.StringValue("_myservice._tcp")},
+	})
+	if diags.HasError() {
+		t.Fatalf("building custom_services: %v", diags)
+	}
+	predefinedList, diags := types.ListValueFrom(ctx, types.StringType, []string{"printers"})
+	if diags.HasError() {
+		t.Fatalf("building predefined_services: %v", diags)
+	}
+
+	configObj := types.ObjectValueMust(mdnsAttrTypes, map[string]attr.Value{
+		"mode":                types.StringValue("custom"),
+		"predefined_services": predefinedList,
+		"custom_services":     customList,
+	})
+
+	for _, v := range top.Validators {
+		req := validator.ObjectRequest{
+			Path:        path.Root("mdns"),
+			ConfigValue: configObj,
+		}
+		var resp validator.ObjectResponse
+		v.ValidateObject(ctx, req, &resp)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("validator produced error for legitimate mode=custom + configured services: %v", resp.Diagnostics)
+		}
+	}
+}

@@ -318,6 +318,7 @@ type settingResourceModel struct {
 	Radius        types.Object   `tfsdk:"radius"`
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
+	Mdns          types.Object   `tfsdk:"mdns"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -328,6 +329,24 @@ type settingResourceModel struct {
 type settingIgmpSnoopingModel struct {
 	Enabled    types.Bool `tfsdk:"enabled"`
 	NetworkIDs types.List `tfsdk:"network_ids"`
+}
+
+// settingMdnsModel is the Terraform model for the "mdns" settings section
+// (settingResourceModel.Mdns). mode is a discriminator: predefined_services
+// and custom_services are only live/authoritative when mode == "custom" —
+// see mdnsSection.decode/overlay and the design spec's C4 discriminator
+// section for the full contract (contradictory-config validator +
+// stale-state plan modifier + inactive-mode read-back normalization).
+type settingMdnsModel struct {
+	Mode               types.String `tfsdk:"mode"`
+	PredefinedServices types.List   `tfsdk:"predefined_services"` // []string of service codes
+	CustomServices     types.List   `tfsdk:"custom_services"`     // []settingMdnsCustomServiceModel
+}
+
+// settingMdnsCustomServiceModel is one element of mdns.custom_services.
+type settingMdnsCustomServiceModel struct {
+	Address types.String `tfsdk:"address"`
+	Name    types.String `tfsdk:"name"`
 }
 
 // Shared attribute-type maps for the doh/ips nested objects and lists. These
@@ -454,6 +473,15 @@ var (
 	igmpSnoopingAttrTypes = map[string]attr.Type{
 		"enabled":     types.BoolType,
 		"network_ids": types.ListType{ElemType: types.StringType},
+	}
+	mdnsCustomServiceAttrTypes = map[string]attr.Type{
+		"address": types.StringType,
+		"name":    types.StringType,
+	}
+	mdnsAttrTypes = map[string]attr.Type{
+		"mode":                types.StringType,
+		"predefined_services": types.ListType{ElemType: types.StringType},
+		"custom_services":     types.ListType{ElemType: types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}},
 	}
 )
 
@@ -661,7 +689,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull()
+		m.IgmpSnooping.IsNull() && m.Mdns.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in

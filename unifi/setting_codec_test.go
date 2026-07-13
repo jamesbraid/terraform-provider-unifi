@@ -288,6 +288,188 @@ func TestCodecStringList_absenceYieldsNullNotPrior(t *testing.T) {
 	}
 }
 
+// --- low-level codec: codecInt64List (new: radio_ai's five []int64 fields) ---
+
+func TestCodecInt64List_absentIsNull(t *testing.T) {
+	ctx := context.Background()
+	v, diags := codecInt64List(ctx, map[string]any{}, "k", types.ListNull(types.Int64Type))
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if !v.IsNull() {
+		t.Fatalf("expected null for absent key, got %v", v)
+	}
+}
+
+func TestCodecInt64List_presentEmptyIsValueNotNull(t *testing.T) {
+	ctx := context.Background()
+	v, diags := codecInt64List(ctx, map[string]any{"k": []any{}}, "k", types.ListNull(types.Int64Type))
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if v.IsNull() {
+		t.Fatalf("expected empty ListValue, got null")
+	}
+	if len(v.Elements()) != 0 {
+		t.Fatalf("expected 0 elements, got %d", len(v.Elements()))
+	}
+}
+
+func TestCodecInt64List_presentValues(t *testing.T) {
+	ctx := context.Background()
+	v, diags := codecInt64List(ctx, map[string]any{"k": []any{float64(36), float64(40)}}, "k", types.ListNull(types.Int64Type))
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	elems := v.Elements()
+	if len(elems) != 2 {
+		t.Fatalf("expected 2 elements, got %d", len(elems))
+	}
+	if elems[0].(types.Int64).ValueInt64() != 36 || elems[1].(types.Int64).ValueInt64() != 40 {
+		t.Fatalf("expected [36 40], got %v", elems)
+	}
+}
+
+func TestCodecInt64List_fractionalElementWarnsAndRetainsPrior(t *testing.T) {
+	ctx := context.Background()
+	prior, priorDiags := types.ListValue(types.Int64Type, []attr.Value{types.Int64Value(1)})
+	if priorDiags.HasError() {
+		t.Fatalf("unexpected diagnostics building prior: %v", priorDiags)
+	}
+	v, diags := codecInt64List(ctx, map[string]any{"k": []any{float64(1.9)}}, "k", prior)
+	if diags.HasError() {
+		t.Fatalf("fractional element must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("fractional element must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("fractional element must retain prior %v, got %v", prior, v)
+	}
+}
+
+func TestCodecInt64List_wrongElementTypeWarnsAndRetainsPrior(t *testing.T) {
+	ctx := context.Background()
+	prior, priorDiags := types.ListValue(types.Int64Type, []attr.Value{types.Int64Value(1)})
+	if priorDiags.HasError() {
+		t.Fatalf("unexpected diagnostics building prior: %v", priorDiags)
+	}
+	v, diags := codecInt64List(ctx, map[string]any{"k": []any{"not-a-number"}}, "k", prior)
+	if diags.HasError() {
+		t.Fatalf("wrong element type must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("wrong element type must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("wrong element type must retain prior %v, got %v", prior, v)
+	}
+}
+
+func TestCodecInt64List_wrongTypeWarnsAndRetainsPrior(t *testing.T) {
+	ctx := context.Background()
+	prior, priorDiags := types.ListValue(types.Int64Type, []attr.Value{types.Int64Value(1)})
+	if priorDiags.HasError() {
+		t.Fatalf("unexpected diagnostics building prior: %v", priorDiags)
+	}
+	v, diags := codecInt64List(ctx, map[string]any{"k": "not-a-list"}, "k", prior)
+	if diags.HasError() {
+		t.Fatalf("wrong type must not be an error, got: %v", diags)
+	}
+	if !hasWarning(diags) {
+		t.Fatalf("wrong type must produce a warning")
+	}
+	if !v.Equal(prior) {
+		t.Fatalf("wrong type must retain prior %v, got %v", prior, v)
+	}
+}
+
+func TestPutInt64List_writesValues(t *testing.T) {
+	out := map[string]any{}
+	l, diags := types.ListValue(types.Int64Type, []attr.Value{types.Int64Value(36), types.Int64Value(40)})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+	putDiags := putInt64List(out, "k", l)
+	if putDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", putDiags)
+	}
+	list, ok := out["k"].([]any)
+	if !ok || len(list) != 2 {
+		t.Fatalf("expected 2-element []any, got %v", out["k"])
+	}
+	if list[0] != float64(36) || list[1] != float64(40) {
+		t.Fatalf("expected [36.0 40.0], got %v", list)
+	}
+}
+
+func TestPutInt64List_writesEmptyList(t *testing.T) {
+	out := map[string]any{}
+	empty, diags := types.ListValue(types.Int64Type, []attr.Value{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+	putDiags := putInt64List(out, "k", empty)
+	if putDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", putDiags)
+	}
+	list, ok := out["k"].([]any)
+	if !ok || len(list) != 0 {
+		t.Fatalf("expected empty []any, got %v", out["k"])
+	}
+}
+
+func TestPutInt64List_skipsNull(t *testing.T) {
+	out := map[string]any{}
+	putDiags := putInt64List(out, "k", types.ListNull(types.Int64Type))
+	if putDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", putDiags)
+	}
+	if _, ok := out["k"]; ok {
+		t.Fatalf("expected null to be skipped")
+	}
+}
+
+func TestPutInt64List_skipsUnknown(t *testing.T) {
+	out := map[string]any{}
+	putDiags := putInt64List(out, "k", types.ListUnknown(types.Int64Type))
+	if putDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", putDiags)
+	}
+	if _, ok := out["k"]; ok {
+		t.Fatalf("expected unknown to be skipped")
+	}
+}
+
+func TestDecodeInt64List_passesThroughToCodecInt64List(t *testing.T) {
+	ctx := context.Background()
+	data := map[string]any{"k": []any{float64(1), float64(2)}}
+	v, diags := decodeInt64List(ctx, data, "k", types.ListNull(types.Int64Type))
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if len(v.Elements()) != 2 {
+		t.Fatalf("expected 2 elements read from data, got %d", len(v.Elements()))
+	}
+}
+
+func TestOverlayInt64List_writesEmptyList(t *testing.T) {
+	ctx := context.Background()
+	out := map[string]any{"k": []any{float64(1)}}
+	empty, diags := types.ListValue(types.Int64Type, []attr.Value{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics building fixture: %v", diags)
+	}
+	overlayDiags := overlayInt64List(ctx, out, "k", empty)
+	if overlayDiags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", overlayDiags)
+	}
+	list, ok := out["k"].([]any)
+	if !ok || len(list) != 0 {
+		t.Fatalf("expected empty list written (present-empty), got %v", out["k"])
+	}
+}
+
 // --- low-level setters: putString/putInt64/putBool/putStringList ---
 
 func TestPutString_writesEmpty(t *testing.T) {
