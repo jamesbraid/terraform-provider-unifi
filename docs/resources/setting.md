@@ -58,6 +58,21 @@ resource "unifi_setting" "combined" {
       primary_dns_server = "1.1.1.1"
     }
   }
+
+  locale = {
+    timezone = "Etc/UTC"
+  }
+
+  traffic_flow = {
+    enabled_allowed_traffic = true
+    gateway_dns_enabled     = true
+  }
+
+  netflow = {
+    enabled = true
+    server  = "netflow-collector.example.com"
+    port    = 2055
+  }
 }
 
 # Configure only RADIUS settings
@@ -78,18 +93,26 @@ resource "unifi_setting" "radius_only" {
 
 - `auto_speedtest` (Attributes) Periodic automated internet speed test settings. (see [below for nested schema](#nestedatt--auto_speedtest))
 - `country` (Attributes) Regulatory country settings. (see [below for nested schema](#nestedatt--country))
+- `dashboard` (Attributes) Dashboard layout and widget settings. (see [below for nested schema](#nestedatt--dashboard))
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
+- `ether_lighting` (Attributes) Ethernet port LED lighting overrides. (see [below for nested schema](#nestedatt--ether_lighting))
+- `global_nat` (Attributes) Global NAT settings. (see [below for nested schema](#nestedatt--global_nat))
+- `global_switch` (Attributes) Global switch settings. (see [below for nested schema](#nestedatt--global_switch))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
+- `locale` (Attributes) Site locale settings. (see [below for nested schema](#nestedatt--locale))
 - `mgmt` (Attributes) Management settings. (see [below for nested schema](#nestedatt--mgmt))
+- `netflow` (Attributes) NetFlow/IPFIX exporter settings. (see [below for nested schema](#nestedatt--netflow))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
 - `site` (String) The name of the site to associate the settings with.
+- `ssl_inspection` (Attributes) SSL/TLS inspection settings. (see [below for nested schema](#nestedatt--ssl_inspection))
 - `syslog` (Attributes) Remote syslog (rsyslogd) settings. (see [below for nested schema](#nestedatt--syslog))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
+- `traffic_flow` (Attributes) Traffic flow settings. (see [below for nested schema](#nestedatt--traffic_flow))
 - `usg` (Attributes) USG settings. (see [below for nested schema](#nestedatt--usg))
 
 ### Read-Only
@@ -111,6 +134,24 @@ Optional:
 Required:
 
 - `code` (Number) Regulatory country code (ISO 3166-1 numeric).
+
+
+<a id="nestedatt--dashboard"></a>
+### Nested Schema for `dashboard`
+
+Optional:
+
+- `layout_preference` (String) Dashboard layout preference.
+- `widgets` (Attributes List) Per-widget visibility overrides. (see [below for nested schema](#nestedatt--dashboard--widgets))
+
+<a id="nestedatt--dashboard--widgets"></a>
+### Nested Schema for `dashboard.widgets`
+
+Optional:
+
+- `enabled` (Boolean) Whether the widget is shown.
+- `name` (String) Widget identifier.
+
 
 
 <a id="nestedatt--doh"></a>
@@ -143,6 +184,76 @@ Optional:
 
 - `enabled` (Boolean) Whether DPI is enabled.
 - `fingerprinting_enabled` (Boolean) Whether device fingerprinting is enabled.
+
+
+<a id="nestedatt--ether_lighting"></a>
+### Nested Schema for `ether_lighting`
+
+Optional:
+
+- `network_overrides` (Attributes List) Per-network port LED color overrides. (see [below for nested schema](#nestedatt--ether_lighting--network_overrides))
+- `speed_overrides` (Attributes List) Per-link-speed port LED color overrides. (see [below for nested schema](#nestedatt--ether_lighting--speed_overrides))
+
+<a id="nestedatt--ether_lighting--network_overrides"></a>
+### Nested Schema for `ether_lighting.network_overrides`
+
+Required:
+
+- `key` (String) Network ID this override applies to.
+
+Optional:
+
+- `raw_color_hex` (String) LED color, as a 6-digit hex string (no leading "#").
+
+
+<a id="nestedatt--ether_lighting--speed_overrides"></a>
+### Nested Schema for `ether_lighting.speed_overrides`
+
+Required:
+
+- `key` (String) Link speed this override applies to.
+
+Optional:
+
+- `raw_color_hex` (String) LED color, as a 6-digit hex string (no leading "#").
+
+
+
+<a id="nestedatt--global_nat"></a>
+### Nested Schema for `global_nat`
+
+Optional:
+
+- `excluded_network_ids` (List of String) IDs of networks excluded from the site-wide NAT mode.
+- `mode` (String) Site-wide NAT mode.
+
+
+<a id="nestedatt--global_switch"></a>
+### Nested Schema for `global_switch`
+
+Optional:
+
+- `acl_device_isolation` (List of String) IDs of networks isolated from each other at Layer 2.
+- `acl_l3_isolation` (Attributes List) Layer 3 isolation rules: a source network isolated from a set of destination networks. (see [below for nested schema](#nestedatt--global_switch--acl_l3_isolation))
+- `dhcp_snoop` (Boolean) Whether DHCP snooping is enabled.
+- `dot1x_fallback_networkconf_id` (String) Network ID to fall back to when 802.1X authentication fails.
+- `dot1x_portctrl_enabled` (Boolean) Whether 802.1X port control is enabled.
+- `flood_known_protocols` (Boolean) Whether known-protocol multicast is flooded.
+- `flowctrl_enabled` (Boolean) Whether switch flow control is enabled.
+- `forward_unknown_mcast_router_ports` (Boolean) Whether unknown multicast is forwarded to router ports.
+- `jumboframe_enabled` (Boolean) Whether jumbo frames are enabled.
+- `radiusprofile_id` (String) RADIUS profile ID used for 802.1X port authentication.
+- `stp_version` (String) Spanning tree protocol version.
+- `switch_exclusions` (List of String) MAC addresses of switches excluded from these global switch settings.
+
+<a id="nestedatt--global_switch--acl_l3_isolation"></a>
+### Nested Schema for `global_switch.acl_l3_isolation`
+
+Optional:
+
+- `destination_networks` (List of String) Destination network IDs isolated from the source network.
+- `source_network` (String) Source network ID.
+
 
 
 <a id="nestedatt--igmp_snooping"></a>
@@ -227,6 +338,14 @@ Optional:
 - `touch_event` (Boolean) Whether touch events on the display are enabled.
 
 
+<a id="nestedatt--locale"></a>
+### Nested Schema for `locale`
+
+Optional:
+
+- `timezone` (String) The site's configured timezone (IANA timezone name, e.g. "Etc/UTC").
+
+
 <a id="nestedatt--mgmt"></a>
 ### Nested Schema for `mgmt`
 
@@ -258,6 +377,24 @@ Optional:
 - `comment` (String) Comment.
 - `key` (String) Public SSH key.
 
+
+
+<a id="nestedatt--netflow"></a>
+### Nested Schema for `netflow`
+
+Optional:
+
+- `auto_engine_id_enabled` (Boolean) Whether the NetFlow engine ID is assigned automatically.
+- `enabled` (Boolean) Whether NetFlow export is enabled.
+- `engine_id` (Number) NetFlow engine ID.
+- `export_frequency` (Number) Export frequency, in seconds.
+- `network_ids` (List of String) IDs of networks whose traffic is exported.
+- `port` (Number) Destination UDP port for the NetFlow collector.
+- `refresh_rate` (Number) Template refresh rate, in seconds.
+- `sampling_mode` (String) Sampling mode.
+- `sampling_rate` (Number) Sampling rate (1-in-N packets).
+- `server` (String) NetFlow collector hostname or IP address.
+- `version` (Number) NetFlow protocol version.
 
 
 <a id="nestedatt--network_optimization"></a>
@@ -292,6 +429,14 @@ Optional:
 - `secret` (String, Sensitive) RADIUS shared secret.
 
 
+<a id="nestedatt--ssl_inspection"></a>
+### Nested Schema for `ssl_inspection`
+
+Optional:
+
+- `state` (String) SSL inspection mode.
+
+
 <a id="nestedatt--syslog"></a>
 ### Nested Schema for `syslog`
 
@@ -319,6 +464,17 @@ Optional:
 - `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
 - `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+
+<a id="nestedatt--traffic_flow"></a>
+### Nested Schema for `traffic_flow`
+
+Optional:
+
+- `enabled_allowed_traffic` (Boolean) Whether the allowed-traffic list is enforced.
+- `gateway_dns_enabled` (Boolean) Whether gateway DNS traffic flow tracking is enabled.
+- `unifi_device_management_enabled` (Boolean) Whether UniFi device management traffic flow tracking is enabled.
+- `unifi_services_enabled` (Boolean) Whether UniFi services traffic flow tracking is enabled.
 
 
 <a id="nestedatt--usg"></a>
