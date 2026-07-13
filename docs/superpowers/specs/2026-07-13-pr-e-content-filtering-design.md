@@ -368,9 +368,18 @@ already establishes it in this codebase:
 - Identity follows the C3 table exactly as `unifi_content_filtering` is
   already named in the parent spec's identity table (§245): import accepts
   `<id>` or `<site>:<id>`; persisted `id` is the canonical `<site>:<id>`;
-  `site` is derived from `id`; changing `site` is `RequiresReplace`. Uses
-  PR-V's `v2ImportState` (which delegates to `parseSiteID`/`resolveV2Site`)
-  verbatim — no resource-specific import logic.
+  `site` is derived from `id`; changing `site` is `RequiresReplace`.
+- **Composite `id` depends on the same PR-V amendment PR-D identifies
+  (PR-D design §8), not on `v2ImportState` as-is.** PR-V's current
+  `v2ImportState` parses `<id>`/`<site>:<id>` but writes the **bare** `id`
+  plus a separate `site` (`unifi/v2_resource.go:249`), so it cannot persist
+  a canonical `<site>:<id>` `id` on its own. If the capture confirms the
+  composite-identity model, E must consume the shared composite-identity
+  import helper/mode added to PR-V by that amendment — exactly as PR-D will —
+  rather than implementing resource-specific composite-ID parsing. (If the
+  capture instead proves a per-site singleton, this whole identity model is
+  dropped in favour of the `unifi_setting`/BGP singleton shape and no
+  composite import applies.)
 - `<id>` with no site prefix on import uses the provider default site and is
   provably equivalent to `<default-site>:<id>` (parent spec's shared
   `resolveSite` guarantee, exercised via PR-V's `resolveV2Site` wrapper).
