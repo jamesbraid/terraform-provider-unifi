@@ -870,3 +870,313 @@ func TestGuestAccessSection_CarryBestEffortSecrets(t *testing.T) {
 		t.Errorf("non-secret leaf Auth = %q, want plan's %q", dstM.Auth.ValueString(), "hotspot")
 	}
 }
+
+// guestAccessAllPreservedFields is every one of the 41 preserved (RMW-only,
+// never-decoded) guest_access wire fields, each set to a distinct synthetic
+// value chosen to match its go-unifi wire type (bool/string/number/list).
+// This is the complement of the 56 modeled fields (see
+// TestGuestAccessFieldSplit's wantModeled) — generated once here from the
+// live struct rather than hand-duplicated, so it cannot silently drift from
+// the field-split contract. x_facebook_wifi_gw_secret (a credential-shaped
+// preserved field, spec Key Decision 1) is included and asserted
+// separately, by name, in TestGuestAccessSection_PreservesUnmodeledFields
+// below — proving preserve-by-default protects it without it ever being
+// decoded into state.
+var guestAccessAllPreservedFields = map[string]any{
+	"facebook_scope_email":                       true,
+	"facebook_wifi_block_https":                  false,
+	"facebook_wifi_gw_id":                        "example-facebook-wifi-gw-id",
+	"facebook_wifi_gw_name":                      "example-facebook-wifi-gw-name",
+	"x_facebook_wifi_gw_secret":                  "preserved-fb-wifi-gw-secret-not-in-state",
+	"google_domain":                              "example.internal",
+	"google_scope_email":                         true,
+	"portal_customized":                          false,
+	"portal_customized_authentication_text":      "Example authentication copy",
+	"portal_customized_bg_color":                 "#334455",
+	"portal_customized_bg_image_enabled":         true,
+	"portal_customized_bg_image_filename":        "example-bg.png",
+	"portal_customized_bg_image_tile":            true,
+	"portal_customized_bg_type":                  "color",
+	"portal_customized_box_color":                "#445566",
+	"portal_customized_box_link_color":           "#556677",
+	"portal_customized_box_opacity":              float64(80),
+	"portal_customized_box_radius":               float64(4),
+	"portal_customized_box_text_color":           "#667788",
+	"portal_customized_button_color":             "#778899",
+	"portal_customized_button_text":              "Continue",
+	"portal_customized_button_text_color":        "#8899aa",
+	"portal_customized_languages":                []any{"en", "fr"},
+	"portal_customized_link_color":               "#99aabb",
+	"portal_customized_logo_enabled":             true,
+	"portal_customized_logo_filename":            "example-logo.png",
+	"portal_customized_logo_position":            "center",
+	"portal_customized_logo_size":                float64(128),
+	"portal_customized_success_text":             "Example success copy",
+	"portal_customized_text_color":               "#aabbcc",
+	"portal_customized_title":                    "Example Guest Portal",
+	"portal_customized_tos":                      "Example terms of service copy",
+	"portal_customized_tos_enabled":              true,
+	"portal_customized_unsplash_author_name":     "Example Photographer",
+	"portal_customized_unsplash_author_username": "example-photographer",
+	"portal_customized_welcome_text":             "Example welcome copy",
+	"portal_customized_welcome_text_enabled":     true,
+	"portal_customized_welcome_text_position":    "under_logo",
+	"template_engine":                            "angular",
+	"voucher_customized":                         false,
+	"wechat_shop_id":                             "shop-example-002",
+}
+
+// TestGuestAccessSection_PreservesUnmodeledFields seeds an RMW base
+// containing ALL 41 preserved fields with distinct synthetic values, a
+// realistic snapshot of "what a controller with a fully customized guest
+// portal looks like", configures a partial subset of the 56 modeled fields
+// (not all — proving unconfigured modeled fields don't spuriously touch the
+// base either), calls overlay(), and asserts every preserved key survives
+// byte-identical, including x_facebook_wifi_gw_secret (the 19th
+// credential-like field, deliberately preserved rather than modeled) —
+// direct proof that preserve-by-default protects a credential-shaped
+// preserved field without it ever appearing in Terraform state.
+func TestGuestAccessSection_PreservesUnmodeledFields(t *testing.T) {
+	if len(guestAccessAllPreservedFields) != 41 {
+		t.Fatalf("guestAccessAllPreservedFields has %d entries, want 41", len(guestAccessAllPreservedFields))
+	}
+
+	ctx := context.Background()
+
+	base := map[string]any{}
+	for k, v := range guestAccessAllPreservedFields {
+		base[k] = v
+	}
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "guest_access"},
+		Data:        base,
+	}})
+
+	// Partial, realistic subset of modeled fields — not all 56 — proving
+	// unconfigured modeled fields don't spuriously touch the preserved base
+	// either.
+	m := settingGuestAccessModel{
+		Auth:          types.StringValue("hotspot"),
+		AuthUrl:       types.StringNull(),
+		PortalEnabled: types.BoolValue(true),
+
+		PortalUseHostname:         types.BoolNull(),
+		PortalHostname:            types.StringNull(),
+		CustomIP:                  types.StringNull(),
+		EcEnabled:                 types.BoolNull(),
+		Expire:                    types.StringNull(),
+		ExpireNumber:              types.Int64Value(8),
+		ExpireUnit:                types.Int64Value(60),
+		RedirectEnabled:           types.BoolNull(),
+		RedirectUrl:               types.StringNull(),
+		RedirectToHttps:           types.BoolNull(),
+		RedirectHttps:             types.BoolNull(),
+		AllowedSubnet:             types.StringNull(),
+		RestrictedSubnet:          types.StringNull(),
+		RestrictedDNSEnabled:      types.BoolNull(),
+		RestrictedDNSServers:      types.ListNull(types.StringType),
+		PasswordEnabled:           types.BoolNull(),
+		VoucherEnabled:            types.BoolNull(),
+		RADIUSEnabled:             types.BoolNull(),
+		RADIUSProfileID:           types.StringNull(),
+		RADIUSAuthType:            types.StringNull(),
+		RADIUSDisconnectEnabled:   types.BoolNull(),
+		RADIUSDisconnectPort:      types.Int64Null(),
+		FacebookEnabled:           types.BoolNull(),
+		FacebookAppID:             types.StringNull(),
+		GoogleEnabled:             types.BoolNull(),
+		GoogleClientID:            types.StringNull(),
+		WechatEnabled:             types.BoolNull(),
+		WechatAppID:               types.StringNull(),
+		PaymentEnabled:            types.BoolNull(),
+		Gateway:                   types.StringNull(),
+		PaypalUseSandbox:          types.BoolNull(),
+		AuthorizeUseSandbox:       types.BoolNull(),
+		QuickpayTestmode:          types.BoolNull(),
+		MerchantwarriorUseSandbox: types.BoolNull(),
+		IPpayUseSandbox:           types.BoolNull(),
+
+		Password:                     types.StringNull(),
+		FacebookAppSecret:            types.StringNull(),
+		GoogleClientSecret:           types.StringNull(),
+		WechatAppSecret:              types.StringNull(),
+		WechatSecretKey:              types.StringNull(),
+		PaypalUsername:               types.StringNull(),
+		PaypalPassword:               types.StringNull(),
+		PaypalSignature:              types.StringNull(),
+		StripeApiKey:                 types.StringNull(),
+		AuthorizeLoginid:             types.StringNull(),
+		AuthorizeTransactionkey:      types.StringNull(),
+		QuickpayMerchantid:           types.StringNull(),
+		QuickpayApikey:               types.StringNull(),
+		QuickpayAgreementid:          types.StringNull(),
+		MerchantwarriorMerchantuuid:  types.StringNull(),
+		MerchantwarriorApikey:        types.StringNull(),
+		MerchantwarriorApipassphrase: types.StringNull(),
+		IPpayTerminalid:              types.StringNull(),
+	}
+	obj := guestAccessObjectFrom(t, ctx, m)
+	model := settingResourceModel{GuestAccess: obj}
+
+	rs, configured, diags := guestAccessSection{}.overlay(ctx, model, settingResourceModel{}, snap)
+	if diags.HasError() {
+		t.Fatalf("overlay: %v", diags)
+	}
+	if !configured {
+		t.Fatal("overlay() configured = false, want true")
+	}
+
+	for k, want := range guestAccessAllPreservedFields {
+		got, ok := rs.Data[k]
+		if !ok {
+			t.Errorf("preserved field %q dropped from overlay output", k)
+			continue
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("preserved field %q = %v, want unchanged %v", k, got, want)
+		}
+	}
+
+	// Direct, separate assertion (not folded into the loop above) so a
+	// future refactor can't accidentally delete this specific check while
+	// pruning the generic preserved map.
+	if got := rs.Data["x_facebook_wifi_gw_secret"]; got != "preserved-fb-wifi-gw-secret-not-in-state" {
+		t.Errorf("x_facebook_wifi_gw_secret = %v, want byte-identical round-trip of the preserved (never-in-state) credential", got)
+	}
+
+	// The configured modeled subset's keys must carry the NEW values.
+	if got := rs.Data["auth"]; got != "hotspot" {
+		t.Errorf("auth = %v, want configured %q", got, "hotspot")
+	}
+	if got := rs.Data["portal_enabled"]; got != true {
+		t.Errorf("portal_enabled = %v, want configured true", got)
+	}
+}
+
+// TestGuestAccessSection_DecodeRoundTrip_AllModeled decodes a snapshot
+// carrying all 56 modeled fields (38 non-secret + 18 secret via prior) and
+// asserts every leaf round-trips, complementing Task 2's 38-leaf-only
+// decode-roundtrip test with full coverage over the finished 56-field
+// surface.
+func TestGuestAccessSection_DecodeRoundTrip_AllModeled(t *testing.T) {
+	ctx := context.Background()
+
+	priorModel := guestAccessFullModelWithSecrets(t, guestAccessPriorValues())
+	priorObj := guestAccessObjectFrom(t, ctx, priorModel)
+	prior := settingResourceModel{GuestAccess: priorObj}
+
+	data := map[string]any{
+		"auth":                        "hotspot",
+		"auth_url":                    "https://auth.example.internal/guest",
+		"portal_enabled":              true,
+		"portal_use_hostname":         true,
+		"portal_hostname":             "guest.example.internal",
+		"custom_ip":                   "192.0.2.10",
+		"ec_enabled":                  true,
+		"expire":                      "480",
+		"expire_number":               float64(8),
+		"expire_unit":                 float64(60),
+		"redirect_enabled":            true,
+		"redirect_url":                "https://welcome.example.com/",
+		"redirect_to_https":           true,
+		"redirect_https":              false,
+		"allowed_subnet_":             "10.20.30.0/24",
+		"restricted_subnet_":          "10.20.31.0/24",
+		"restricted_dns_enabled":      true,
+		"restricted_dns_servers":      []any{"192.0.2.1", "198.51.100.1"},
+		"password_enabled":            false,
+		"voucher_enabled":             true,
+		"radius_enabled":              true,
+		"radiusprofile_id":            "radius-profile-example",
+		"radius_auth_type":            "chap",
+		"radius_disconnect_enabled":   true,
+		"radius_disconnect_port":      float64(3799),
+		"facebook_enabled":            true,
+		"facebook_app_id":             "example-app-id-123",
+		"google_enabled":              true,
+		"google_client_id":            "example-app-id-123",
+		"wechat_enabled":              false,
+		"wechat_app_id":               "example-app-id-123",
+		"payment_enabled":             true,
+		"gateway":                     "paypal",
+		"paypal_use_sandbox":          true,
+		"authorize_use_sandbox":       true,
+		"quickpay_testmode":           true,
+		"merchantwarrior_use_sandbox": true,
+		"ippay_use_sandbox":           true,
+		// Secret wire keys carry a masked placeholder — decode must ignore
+		// these entirely and read from prior instead (asserted below).
+		"x_password":                      "MASKED",
+		"x_facebook_app_secret":           "MASKED",
+		"x_google_client_secret":          "MASKED",
+		"x_wechat_app_secret":             "MASKED",
+		"x_wechat_secret_key":             "MASKED",
+		"x_paypal_username":               "MASKED",
+		"x_paypal_password":               "MASKED",
+		"x_paypal_signature":              "MASKED",
+		"x_stripe_api_key":                "MASKED",
+		"x_authorize_loginid":             "MASKED",
+		"x_authorize_transactionkey":      "MASKED",
+		"x_quickpay_merchantid":           "MASKED",
+		"x_quickpay_apikey":               "MASKED",
+		"x_quickpay_agreementid":          "MASKED",
+		"x_merchantwarrior_merchantuuid":  "MASKED",
+		"x_merchantwarrior_apikey":        "MASKED",
+		"x_merchantwarrior_apipassphrase": "MASKED",
+		"x_ippay_terminalid":              "MASKED",
+	}
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "guest_access"},
+		Data:        data,
+	}})
+
+	var model settingResourceModel
+	diags := guestAccessSection{}.decode(ctx, snap, prior, &model)
+	if diags.HasError() {
+		t.Fatalf("decode: %v", diags)
+	}
+
+	var m settingGuestAccessModel
+	diags = model.GuestAccess.As(ctx, &m, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		t.Fatalf("As: %v", diags)
+	}
+
+	// Non-secret leaves round-trip from the wire.
+	if m.Auth.ValueString() != "hotspot" || m.AuthUrl.ValueString() != "https://auth.example.internal/guest" {
+		t.Errorf("Auth/AuthUrl = %q/%q, want hotspot/https://auth.example.internal/guest", m.Auth.ValueString(), m.AuthUrl.ValueString())
+	}
+	if m.Gateway.ValueString() != "paypal" {
+		t.Errorf("Gateway = %q, want paypal", m.Gateway.ValueString())
+	}
+
+	// All 18 secret leaves must come from prior, never the masked wire
+	// value.
+	priors := guestAccessPriorValues()
+	byLeaf := map[string]types.String{
+		"password":                      m.Password,
+		"facebook_app_secret":           m.FacebookAppSecret,
+		"google_client_secret":          m.GoogleClientSecret,
+		"wechat_app_secret":             m.WechatAppSecret,
+		"wechat_secret_key":             m.WechatSecretKey,
+		"paypal_username":               m.PaypalUsername,
+		"paypal_password":               m.PaypalPassword,
+		"paypal_signature":              m.PaypalSignature,
+		"stripe_api_key":                m.StripeApiKey,
+		"authorize_loginid":             m.AuthorizeLoginid,
+		"authorize_transactionkey":      m.AuthorizeTransactionkey,
+		"quickpay_merchantid":           m.QuickpayMerchantid,
+		"quickpay_apikey":               m.QuickpayApikey,
+		"quickpay_agreementid":          m.QuickpayAgreementid,
+		"merchantwarrior_merchantuuid":  m.MerchantwarriorMerchantuuid,
+		"merchantwarrior_apikey":        m.MerchantwarriorApikey,
+		"merchantwarrior_apipassphrase": m.MerchantwarriorApipassphrase,
+		"ippay_terminalid":              m.IPpayTerminalid,
+	}
+	for leaf, want := range priors {
+		got := byLeaf[leaf]
+		if got.ValueString() != want {
+			t.Errorf("%s = %q, want prior %q (masked wire value must not leak)", leaf, got.ValueString(), want)
+		}
+	}
+}
