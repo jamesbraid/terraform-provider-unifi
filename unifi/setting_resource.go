@@ -321,6 +321,7 @@ type settingResourceModel struct {
 	Mdns               types.Object   `tfsdk:"mdns"`
 	Teleport           types.Object   `tfsdk:"teleport"`
 	MagicSiteToSiteVpn types.Object   `tfsdk:"magic_site_to_site_vpn"`
+	RadioAi            types.Object   `tfsdk:"radio_ai"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -378,6 +379,65 @@ type settingTeleportModel struct {
 // could be added.
 type settingMagicSiteToSiteVpnModel struct {
 	Enabled types.Bool `tfsdk:"enabled"`
+}
+
+// settingRadioAiModel is the Terraform model for the "radio_ai" settings
+// section (settingResourceModel.RadioAi): UniFi's AI-driven RF
+// optimization feature. Models 16 of the underlying go-unifi struct's 18
+// top-level fields; "default" and "useXY" are deliberately NOT modeled
+// (read as internal/legacy flags, not user-facing surface — see the
+// design spec's Modeling section, flagged as a judgment call pending a
+// live controller UI walkthrough). Both survive every apply untouched via
+// overlay()'s snap.dataCopy(key()) RMW base, same preserve-by-default
+// mechanism as magic_site_to_site_vpn's hypothesized generated field.
+//
+// setting_preference (auto|manual) is a soft discriminator: unlike mdns's
+// mode, it does NOT gate whether the channel/width fields are
+// meaningful — they remain real, readable values in both modes. The 7
+// CoManaged-flavored fields below get UseStateForUnknown on their schema
+// plan modifiers so the optimizer's out-of-band rewrites (hypothesized,
+// unconfirmed — see design spec) don't produce spurious plan diffs when
+// the user never configured them; if the user DOES pin a value, it
+// re-asserts on every apply exactly like a Managed field. No plan-time
+// validator rejects configuring channels_* under setting_preference =
+// "auto" — see design spec's discriminator section for why this is a
+// deliberate, flagged decision, not an oversight.
+type settingRadioAiModel struct {
+	Enabled                     types.Bool   `tfsdk:"enabled"`
+	SettingPreference           types.String `tfsdk:"setting_preference"`
+	AutoChannelPresetsType      types.String `tfsdk:"auto_channel_presets_type"`
+	AutoAdjustChannelsToCountry types.Bool   `tfsdk:"auto_adjust_channels_to_country"`
+	Radios                      types.List   `tfsdk:"radios"`
+	Optimize                    types.List   `tfsdk:"optimize"`
+	ExcludeDevices              types.List   `tfsdk:"exclude_devices"`
+	HighPriorityDevices         types.List   `tfsdk:"high_priority_devices"`
+	CronExpr                    types.String `tfsdk:"cron_expr"`
+	// CoManaged-flavored: UseStateForUnknown on their schema plan
+	// modifiers, ordinary overlay write semantics otherwise (see doc
+	// comment above).
+	ChannelsNa          types.List `tfsdk:"channels_na"`
+	ChannelsNg          types.List `tfsdk:"channels_ng"`
+	Channels6E          types.List `tfsdk:"channels_6e"`
+	HtModesNa           types.List `tfsdk:"ht_modes_na"`
+	HtModesNg           types.List `tfsdk:"ht_modes_ng"`
+	RadiosConfiguration types.List `tfsdk:"radios_configuration"`
+	ChannelsBlacklist   types.List `tfsdk:"channels_blacklist"`
+}
+
+// settingRadioAiRadiosConfigurationModel is one element of
+// radio_ai.radios_configuration.
+type settingRadioAiRadiosConfigurationModel struct {
+	Radio        types.String `tfsdk:"radio"`
+	ChannelWidth types.Int64  `tfsdk:"channel_width"` // nullable
+	Dfs          types.Bool   `tfsdk:"dfs"`
+}
+
+// settingRadioAiChannelsBlacklistModel is one element of
+// radio_ai.channels_blacklist.
+type settingRadioAiChannelsBlacklistModel struct {
+	Radio        types.String `tfsdk:"radio"`
+	Channel      types.Int64  `tfsdk:"channel"`       // nullable
+	ChannelWidth types.Int64  `tfsdk:"channel_width"` // nullable
 }
 
 // Shared attribute-type maps for the doh/ips nested objects and lists. These
@@ -520,6 +580,34 @@ var (
 	}
 	magicSiteToSiteVpnAttrTypes = map[string]attr.Type{
 		"enabled": types.BoolType,
+	}
+	radioAiRadiosConfigurationAttrTypes = map[string]attr.Type{
+		"radio":         types.StringType,
+		"channel_width": types.Int64Type,
+		"dfs":           types.BoolType,
+	}
+	radioAiChannelsBlacklistAttrTypes = map[string]attr.Type{
+		"radio":         types.StringType,
+		"channel":       types.Int64Type,
+		"channel_width": types.Int64Type,
+	}
+	radioAiAttrTypes = map[string]attr.Type{
+		"enabled":                         types.BoolType,
+		"setting_preference":              types.StringType,
+		"auto_channel_presets_type":       types.StringType,
+		"auto_adjust_channels_to_country": types.BoolType,
+		"radios":                          types.ListType{ElemType: types.StringType},
+		"optimize":                        types.ListType{ElemType: types.StringType},
+		"exclude_devices":                 types.ListType{ElemType: types.StringType},
+		"high_priority_devices":           types.ListType{ElemType: types.StringType},
+		"cron_expr":                       types.StringType,
+		"channels_na":                     types.ListType{ElemType: types.Int64Type},
+		"channels_ng":                     types.ListType{ElemType: types.Int64Type},
+		"channels_6e":                     types.ListType{ElemType: types.Int64Type},
+		"ht_modes_na":                     types.ListType{ElemType: types.Int64Type},
+		"ht_modes_ng":                     types.ListType{ElemType: types.Int64Type},
+		"radios_configuration":            types.ListType{ElemType: types.ObjectType{AttrTypes: radioAiRadiosConfigurationAttrTypes}},
+		"channels_blacklist":              types.ListType{ElemType: types.ObjectType{AttrTypes: radioAiChannelsBlacklistAttrTypes}},
 	}
 )
 
@@ -728,7 +816,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
 		m.IgmpSnooping.IsNull() && m.Mdns.IsNull() && m.Teleport.IsNull() &&
-		m.MagicSiteToSiteVpn.IsNull()
+		m.MagicSiteToSiteVpn.IsNull() && m.RadioAi.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in
