@@ -44,6 +44,7 @@ func allSectionsNullModel() settingResourceModel {
 		Radius:        types.ObjectNull(radiusAttrTypes),
 		USG:           types.ObjectNull(usgAttrTypes),
 		IgmpSnooping:  types.ObjectNull(igmpSnoopingAttrTypes),
+		Snmp:          types.ObjectNull(snmpAttrTypes),
 	}
 }
 

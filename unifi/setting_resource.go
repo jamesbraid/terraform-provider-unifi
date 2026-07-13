@@ -318,6 +318,7 @@ type settingResourceModel struct {
 	Radius        types.Object   `tfsdk:"radius"`
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
+	Snmp          types.Object   `tfsdk:"snmp"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -630,7 +631,7 @@ func (r *settingResource) Create(
 	// configuredSections. plan is still used for the payload VALUES.
 	newModel, applyDiags := applySections(ctx, configuredSections(config), client, site, data, settingResourceModel{})
 
-	// applySections/readSections only populate the 13 section fields. id,
+	// applySections/readSections only populate the 14 section fields. id,
 	// site, and timeouts are resource-level, not section fields, so they
 	// must be set explicitly here — this mirrors what legacy readSettings
 	// did at id/site assignment (settings are site-level: id == site).
@@ -652,16 +653,16 @@ func (r *settingResource) Create(
 // (UseStateForUnknown keeps them stable -> a subsequent no-config plan is
 // clean). Otherwise Read refreshes only the configured sections.
 //
-// This is an explicit 13-field check, not derived from the section registry
-// — if a 14th section is ever added, it must be updated here too (acceptable
-// for PR-A's fixed 13; a future refactor could derive it from the registry
-// if a section gains a model-field accessor).
+// This is an explicit 14-field check, not derived from the section registry
+// — if a 15th section is ever added, it must be updated here too (acceptable
+// for the current fixed set of 14; a future refactor could derive it from
+// the registry if a section gains a model-field accessor).
 func allSectionAttrsNull(m settingResourceModel) bool {
 	return m.AutoSpeedtest.IsNull() && m.Country.IsNull() && m.Dpi.IsNull() &&
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull()
+		m.IgmpSnooping.IsNull() && m.Snmp.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in
@@ -801,7 +802,7 @@ func (r *settingResource) Update(
 	// the payload VALUES within each configured section.
 	newModel, applyDiags := applySections(ctx, configuredSections(config), client, site, plan, state)
 
-	// applySections/readSections only populate the 13 section fields. id,
+	// applySections/readSections only populate the 14 section fields. id,
 	// site, and timeouts are resource-level, not section fields, so they
 	// must be set explicitly here — this mirrors what legacy readSettings
 	// did at id/site assignment (settings are site-level: id == site).
@@ -830,7 +831,7 @@ func (r *settingResource) Delete(
 // ImportState accepts a bare site name (e.g. "default"), NOT the "site:id"
 // composite ImportStatePassthroughID (and the NAT/CF resources) use —
 // unifi_setting is site-level, so the site name alone fully identifies it.
-// id and site are both set to that name; all 13 section attributes are left
+// id and site are both set to that name; all 14 section attributes are left
 // null (the imported shape), and the first Read hydrates them in full — see
 // the hydration gate in Read and allSectionAttrsNull below.
 func (r *settingResource) ImportState(
@@ -853,6 +854,6 @@ func (r *settingResource) ImportState(
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), siteName)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), siteName)...)
-	// All 13 section attributes are left null (the imported shape); the first
+	// All 14 section attributes are left null (the imported shape); the first
 	// Read hydrates them (see the Read hydration gate above).
 }
