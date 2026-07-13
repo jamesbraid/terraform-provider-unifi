@@ -134,6 +134,415 @@ func TestSettingSchemaBehavior_ipsModeRejectsInvalid(t *testing.T) {
 	}
 }
 
+func TestSettingSchemaBehavior_globalNatModeRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "global_nat", "mode")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("global_nat.mode is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("global_nat.mode has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"auto is valid", "auto", false},
+		{"custom is valid", "custom", false},
+		{"off is valid", "off", false},
+		{"garbage is invalid", "bridge", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("global_nat").AtName("mode"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_sslInspectionStateRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "ssl_inspection", "state")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("ssl_inspection.state is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("ssl_inspection.state has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"off is valid", "off", false},
+		{"simple is valid", "simple", false},
+		{"advanced is valid", "advanced", false},
+		{"garbage is invalid", "full", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("ssl_inspection").AtName("state"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+// validateInt64All runs every validator in vs against value at p, returning
+// the accumulated diagnostics.
+func validateInt64All(ctx context.Context, vs []validator.Int64, p path.Path, value int64) diag.Diagnostics {
+	var diags diag.Diagnostics
+	for _, v := range vs {
+		req := validator.Int64Request{Path: p, ConfigValue: types.Int64Value(value)}
+		var resp validator.Int64Response
+		v.ValidateInt64(ctx, req, &resp)
+		diags.Append(resp.Diagnostics...)
+	}
+	return diags
+}
+
+func TestSettingSchemaBehavior_netflowSamplingModeRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "netflow", "sampling_mode")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("netflow.sampling_mode is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("netflow.sampling_mode has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"off is valid", "off", false},
+		{"hash is valid", "hash", false},
+		{"random is valid", "random", false},
+		{"deterministic is valid", "deterministic", false},
+		{"garbage is invalid", "always", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("netflow").AtName("sampling_mode"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_netflowVersionRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "netflow", "version")
+	ia, ok := a.(schema.Int64Attribute)
+	if !ok {
+		t.Fatalf("netflow.version is %T, want schema.Int64Attribute", a)
+	}
+	if len(ia.Validators) == 0 {
+		t.Fatal("netflow.version has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   int64
+		wantErr bool
+	}{
+		{"5 is valid", 5, false},
+		{"9 is valid", 9, false},
+		{"10 is valid", 10, false},
+		{"7 is invalid", 7, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateInt64All(ctx, ia.Validators, path.Root("netflow").AtName("version"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %d: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_netflowPortRejectsOutOfRange(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "netflow", "port")
+	ia, ok := a.(schema.Int64Attribute)
+	if !ok {
+		t.Fatalf("netflow.port is %T, want schema.Int64Attribute", a)
+	}
+	if len(ia.Validators) == 0 {
+		t.Fatal("netflow.port has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   int64
+		wantErr bool
+	}{
+		{"1024 (lower bound) is valid", 1024, false},
+		{"65535 (upper bound) is valid", 65535, false},
+		{"2055 is valid", 2055, false},
+		{"1023 is too low", 1023, true},
+		{"65536 is too high", 65536, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateInt64All(ctx, ia.Validators, path.Root("netflow").AtName("port"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %d: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+// nestedListElementAttr looks up a leaf attribute inside a
+// ListNestedAttribute's NestedObject, e.g.
+// nestedListElementAttr(t, attrs, "dashboard", "widgets", "name").
+func nestedListElementAttr(t *testing.T, attrs map[string]schema.Attribute, top string, list string, leaf string) schema.Attribute {
+	t.Helper()
+	a, ok := attrs[top]
+	if !ok {
+		t.Fatalf("schema missing top-level attribute %q", top)
+	}
+	sn, ok := a.(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("attribute %q is %T, want schema.SingleNestedAttribute", top, a)
+	}
+	la, ok := sn.Attributes[list].(schema.ListNestedAttribute)
+	if !ok {
+		t.Fatalf("attribute %q.%q is %T, want schema.ListNestedAttribute", top, list, sn.Attributes[list])
+	}
+	child, ok := la.NestedObject.Attributes[leaf]
+	if !ok {
+		t.Fatalf("attribute %q.%q has no child %q", top, list, leaf)
+	}
+	return child
+}
+
+func TestSettingSchemaBehavior_dashboardLayoutPreferenceRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "dashboard", "layout_preference")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("dashboard.layout_preference is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("dashboard.layout_preference has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"auto is valid", "auto", false},
+		{"manual is valid", "manual", false},
+		{"garbage is invalid", "custom", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("dashboard").AtName("layout_preference"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_dashboardWidgetNameRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedListElementAttr(t, attrs, "dashboard", "widgets", "name")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("dashboard.widgets[].name is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("dashboard.widgets[].name has no validators")
+	}
+
+	p := path.Root("dashboard").AtName("widgets").AtListIndex(0).AtName("name")
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"wifi_channels is valid", "wifi_channels", false},
+		{"wan_activity is valid", "wan_activity", false},
+		{"most_active_apps_aps_clients is valid", "most_active_apps_aps_clients", false},
+		{"garbage is invalid", "some_future_widget", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, p, tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_etherLightingSpeedOverrideKeyRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedListElementAttr(t, attrs, "ether_lighting", "speed_overrides", "key")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("ether_lighting.speed_overrides[].key is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("ether_lighting.speed_overrides[].key has no validators")
+	}
+
+	p := path.Root("ether_lighting").AtName("speed_overrides").AtListIndex(0).AtName("key")
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"FE is valid", "FE", false},
+		{"GbE is valid", "GbE", false},
+		{"2.5GbE is valid", "2.5GbE", false},
+		{"100GbE is valid", "100GbE", false},
+		{"1GbE is invalid (not a real token)", "1GbE", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, p, tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_etherLightingRawColorHexRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+
+	for _, list := range []string{"network_overrides", "speed_overrides"} {
+		t.Run(list, func(t *testing.T) {
+			a := nestedListElementAttr(t, attrs, "ether_lighting", list, "raw_color_hex")
+			sa, ok := a.(schema.StringAttribute)
+			if !ok {
+				t.Fatalf("ether_lighting.%s[].raw_color_hex is %T, want schema.StringAttribute", list, a)
+			}
+			if len(sa.Validators) == 0 {
+				t.Fatalf("ether_lighting.%s[].raw_color_hex has no validators", list)
+			}
+
+			p := path.Root("ether_lighting").AtName(list).AtListIndex(0).AtName("raw_color_hex")
+			for _, tc := range []struct {
+				name    string
+				value   string
+				wantErr bool
+			}{
+				{"00ff88 is valid", "00ff88", false},
+				{"0088FF is valid (uppercase hex ok)", "0088FF", false},
+				{"leading # is invalid", "#00ff88", true},
+				{"too short is invalid", "00ff8", true},
+				{"non-hex char is invalid", "00ff8g", true},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					diags := validateStringAll(ctx, sa.Validators, p, tc.value)
+					if got := diags.HasError(); got != tc.wantErr {
+						t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+					}
+				})
+			}
+		})
+	}
+}
+
+// validateListAll runs every validator in vs against a list value at p,
+// returning the accumulated diagnostics.
+func validateListAll(ctx context.Context, vs []validator.List, p path.Path, elemType attr.Type, values []string) diag.Diagnostics {
+	var diags diag.Diagnostics
+	listValue, d := types.ListValueFrom(ctx, elemType, values)
+	diags.Append(d...)
+	if diags.HasError() {
+		return diags
+	}
+	for _, v := range vs {
+		req := validator.ListRequest{Path: p, ConfigValue: listValue}
+		var resp validator.ListResponse
+		v.ValidateList(ctx, req, &resp)
+		diags.Append(resp.Diagnostics...)
+	}
+	return diags
+}
+
+func TestSettingSchemaBehavior_globalSwitchStpVersionRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "global_switch", "stp_version")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("global_switch.stp_version is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("global_switch.stp_version has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"stp is valid", "stp", false},
+		{"rstp is valid", "rstp", false},
+		{"disabled is valid", "disabled", false},
+		{"garbage is invalid", "mstp", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("global_switch").AtName("stp_version"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+func TestSettingSchemaBehavior_globalSwitchSwitchExclusionsRejectsInvalidMAC(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "global_switch", "switch_exclusions")
+	la, ok := a.(schema.ListAttribute)
+	if !ok {
+		t.Fatalf("global_switch.switch_exclusions is %T, want schema.ListAttribute", a)
+	}
+	if len(la.Validators) == 0 {
+		t.Fatal("global_switch.switch_exclusions has no validators")
+	}
+
+	p := path.Root("global_switch").AtName("switch_exclusions")
+	for _, tc := range []struct {
+		name    string
+		values  []string
+		wantErr bool
+	}{
+		{"valid MAC", []string{"AA:BB:CC:00:11:22"}, false},
+		{"multiple valid MACs", []string{"AA:BB:CC:00:11:22", "00:11:22:AA:BB:CC"}, false},
+		{"missing colons is invalid", []string{"AABBCC001122"}, true},
+		{"too short is invalid", []string{"AA:BB:CC"}, true},
+		{"non-hex char is invalid", []string{"ZZ:BB:CC:00:11:22"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateListAll(ctx, la.Validators, p, types.StringType, tc.values)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("values %v: validator error = %v, want %v (diags: %v)", tc.values, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
 func TestSettingSchemaBehavior_radiusSecretRejectsTooLong(t *testing.T) {
 	ctx := context.Background()
 	attrs := builtSchema(t)

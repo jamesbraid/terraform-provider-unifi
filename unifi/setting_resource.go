@@ -318,7 +318,135 @@ type settingResourceModel struct {
 	Radius        types.Object   `tfsdk:"radius"`
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
+	Locale        types.Object   `tfsdk:"locale"`
+	GlobalNat     types.Object   `tfsdk:"global_nat"`
+	TrafficFlow   types.Object   `tfsdk:"traffic_flow"`
+	SslInspection types.Object   `tfsdk:"ssl_inspection"`
+	Netflow       types.Object   `tfsdk:"netflow"`
+	Dashboard     types.Object   `tfsdk:"dashboard"`
+	EtherLighting types.Object   `tfsdk:"ether_lighting"`
+	GlobalSwitch  types.Object   `tfsdk:"global_switch"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
+}
+
+// settingLocaleModel is the Terraform model for the "locale" settings
+// section (settingResourceModel.Locale): the site's configured timezone.
+type settingLocaleModel struct {
+	Timezone types.String `tfsdk:"timezone"`
+}
+
+// settingGlobalNatModel is the Terraform model for the "global_nat"
+// settings section (settingResourceModel.GlobalNat): site-wide NAT mode
+// and any networks excluded from it.
+type settingGlobalNatModel struct {
+	ExcludedNetworkIDs types.List   `tfsdk:"excluded_network_ids"`
+	Mode               types.String `tfsdk:"mode"`
+}
+
+// settingTrafficFlowModel is the Terraform model for the "traffic_flow"
+// settings section (settingResourceModel.TrafficFlow): toggles for which
+// traffic classes the gateway allows/manages.
+type settingTrafficFlowModel struct {
+	EnabledAllowedTraffic        types.Bool `tfsdk:"enabled_allowed_traffic"`
+	GatewayDNSEnabled            types.Bool `tfsdk:"gateway_dns_enabled"`
+	UnifiDeviceManagementEnabled types.Bool `tfsdk:"unifi_device_management_enabled"`
+	UnifiServicesEnabled         types.Bool `tfsdk:"unifi_services_enabled"`
+}
+
+// settingSslInspectionModel is the Terraform model for the
+// "ssl_inspection" settings section (settingResourceModel.SslInspection):
+// the gateway's SSL/TLS inspection mode.
+type settingSslInspectionModel struct {
+	State types.String `tfsdk:"state"`
+}
+
+// settingNetflowModel is the Terraform model for the "netflow" settings
+// section (settingResourceModel.Netflow): NetFlow/IPFIX exporter
+// configuration.
+type settingNetflowModel struct {
+	AutoEngineIDEnabled types.Bool   `tfsdk:"auto_engine_id_enabled"`
+	Enabled             types.Bool   `tfsdk:"enabled"`
+	EngineID            types.Int64  `tfsdk:"engine_id"`
+	ExportFrequency     types.Int64  `tfsdk:"export_frequency"`
+	NetworkIDs          types.List   `tfsdk:"network_ids"`
+	Port                types.Int64  `tfsdk:"port"`
+	RefreshRate         types.Int64  `tfsdk:"refresh_rate"`
+	SamplingMode        types.String `tfsdk:"sampling_mode"`
+	SamplingRate        types.Int64  `tfsdk:"sampling_rate"`
+	Server              types.String `tfsdk:"server"`
+	Version             types.Int64  `tfsdk:"version"`
+}
+
+// settingDashboardWidgetModel is the nested per-entry element of
+// settingDashboardModel.Widgets (dashboard.widgets): one dashboard widget's
+// enabled state and identifier.
+type settingDashboardWidgetModel struct {
+	Enabled types.Bool   `tfsdk:"enabled"`
+	Name    types.String `tfsdk:"name"`
+}
+
+// settingDashboardModel is the Terraform model for the "dashboard"
+// settings section (settingResourceModel.Dashboard): dashboard layout
+// preference and per-widget visibility.
+type settingDashboardModel struct {
+	LayoutPreference types.String `tfsdk:"layout_preference"`
+	Widgets          types.List   `tfsdk:"widgets"`
+}
+
+// settingEtherLightingNetworkOverrideModel is the nested per-entry element
+// of settingEtherLightingModel.NetworkOverrides
+// (ether_lighting.network_overrides): a per-network port LED color
+// override.
+type settingEtherLightingNetworkOverrideModel struct {
+	Key         types.String `tfsdk:"key"`
+	RawColorHex types.String `tfsdk:"raw_color_hex"`
+}
+
+// settingEtherLightingSpeedOverrideModel is the nested per-entry element
+// of settingEtherLightingModel.SpeedOverrides
+// (ether_lighting.speed_overrides): a per-link-speed port LED color
+// override.
+type settingEtherLightingSpeedOverrideModel struct {
+	Key         types.String `tfsdk:"key"`
+	RawColorHex types.String `tfsdk:"raw_color_hex"`
+}
+
+// settingEtherLightingModel is the Terraform model for the
+// "ether_lighting" settings section (settingResourceModel.EtherLighting):
+// per-network and per-speed port LED color overrides on supported
+// switches.
+type settingEtherLightingModel struct {
+	NetworkOverrides types.List `tfsdk:"network_overrides"`
+	SpeedOverrides   types.List `tfsdk:"speed_overrides"`
+}
+
+// settingGlobalSwitchAclL3IsolationModel is the nested per-entry element
+// of settingGlobalSwitchModel.AclL3Isolation
+// (global_switch.acl_l3_isolation): one source-network-to-destination-
+// networks Layer 3 isolation rule.
+type settingGlobalSwitchAclL3IsolationModel struct {
+	DestinationNetworks types.List   `tfsdk:"destination_networks"`
+	SourceNetwork       types.String `tfsdk:"source_network"`
+}
+
+// settingGlobalSwitchModel is the Terraform model for the "global_switch"
+// settings section (settingResourceModel.GlobalSwitch): site-wide switch
+// port/network behavior defaults, including the switch_exclusions MAC
+// exclusion list (a user-configured policy control, not controller
+// metadata — modeled like every other leaf here).
+type settingGlobalSwitchModel struct {
+	AclDeviceIsolation             types.List   `tfsdk:"acl_device_isolation"`
+	AclL3Isolation                 types.List   `tfsdk:"acl_l3_isolation"`
+	DHCPSnoop                      types.Bool   `tfsdk:"dhcp_snoop"`
+	Dot1XFallbackNetworkID         types.String `tfsdk:"dot1x_fallback_networkconf_id"`
+	Dot1XPortctrlEnabled           types.Bool   `tfsdk:"dot1x_portctrl_enabled"`
+	FloodKnownProtocols            types.Bool   `tfsdk:"flood_known_protocols"`
+	FlowctrlEnabled                types.Bool   `tfsdk:"flowctrl_enabled"`
+	ForwardUnknownMcastRouterPorts types.Bool   `tfsdk:"forward_unknown_mcast_router_ports"`
+	JumboframeEnabled              types.Bool   `tfsdk:"jumboframe_enabled"`
+	RADIUSProfileID                types.String `tfsdk:"radiusprofile_id"`
+	StpVersion                     types.String `tfsdk:"stp_version"`
+	SwitchExclusions               types.List   `tfsdk:"switch_exclusions"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -454,6 +582,73 @@ var (
 	igmpSnoopingAttrTypes = map[string]attr.Type{
 		"enabled":     types.BoolType,
 		"network_ids": types.ListType{ElemType: types.StringType},
+	}
+	localeAttrTypes = map[string]attr.Type{
+		"timezone": types.StringType,
+	}
+	globalNatAttrTypes = map[string]attr.Type{
+		"excluded_network_ids": types.ListType{ElemType: types.StringType},
+		"mode":                 types.StringType,
+	}
+	trafficFlowAttrTypes = map[string]attr.Type{
+		"enabled_allowed_traffic":         types.BoolType,
+		"gateway_dns_enabled":             types.BoolType,
+		"unifi_device_management_enabled": types.BoolType,
+		"unifi_services_enabled":          types.BoolType,
+	}
+	sslInspectionAttrTypes = map[string]attr.Type{
+		"state": types.StringType,
+	}
+	netflowAttrTypes = map[string]attr.Type{
+		"auto_engine_id_enabled": types.BoolType,
+		"enabled":                types.BoolType,
+		"engine_id":              types.Int64Type,
+		"export_frequency":       types.Int64Type,
+		"network_ids":            types.ListType{ElemType: types.StringType},
+		"port":                   types.Int64Type,
+		"refresh_rate":           types.Int64Type,
+		"sampling_mode":          types.StringType,
+		"sampling_rate":          types.Int64Type,
+		"server":                 types.StringType,
+		"version":                types.Int64Type,
+	}
+	dashboardWidgetAttrTypes = map[string]attr.Type{
+		"enabled": types.BoolType,
+		"name":    types.StringType,
+	}
+	dashboardAttrTypes = map[string]attr.Type{
+		"layout_preference": types.StringType,
+		"widgets":           types.ListType{ElemType: types.ObjectType{AttrTypes: dashboardWidgetAttrTypes}},
+	}
+	etherLightingNetworkOverrideAttrTypes = map[string]attr.Type{
+		"key":           types.StringType,
+		"raw_color_hex": types.StringType,
+	}
+	etherLightingSpeedOverrideAttrTypes = map[string]attr.Type{
+		"key":           types.StringType,
+		"raw_color_hex": types.StringType,
+	}
+	etherLightingAttrTypes = map[string]attr.Type{
+		"network_overrides": types.ListType{ElemType: types.ObjectType{AttrTypes: etherLightingNetworkOverrideAttrTypes}},
+		"speed_overrides":   types.ListType{ElemType: types.ObjectType{AttrTypes: etherLightingSpeedOverrideAttrTypes}},
+	}
+	globalSwitchAclL3IsolationAttrTypes = map[string]attr.Type{
+		"destination_networks": types.ListType{ElemType: types.StringType},
+		"source_network":       types.StringType,
+	}
+	globalSwitchAttrTypes = map[string]attr.Type{
+		"acl_device_isolation":               types.ListType{ElemType: types.StringType},
+		"acl_l3_isolation":                   types.ListType{ElemType: types.ObjectType{AttrTypes: globalSwitchAclL3IsolationAttrTypes}},
+		"dhcp_snoop":                         types.BoolType,
+		"dot1x_fallback_networkconf_id":      types.StringType,
+		"dot1x_portctrl_enabled":             types.BoolType,
+		"flood_known_protocols":              types.BoolType,
+		"flowctrl_enabled":                   types.BoolType,
+		"forward_unknown_mcast_router_ports": types.BoolType,
+		"jumboframe_enabled":                 types.BoolType,
+		"radiusprofile_id":                   types.StringType,
+		"stp_version":                        types.StringType,
+		"switch_exclusions":                  types.ListType{ElemType: types.StringType},
 	}
 )
 
@@ -661,7 +856,9 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull()
+		m.IgmpSnooping.IsNull() && m.Locale.IsNull() && m.GlobalNat.IsNull() &&
+		m.TrafficFlow.IsNull() && m.SslInspection.IsNull() && m.Netflow.IsNull() &&
+		m.Dashboard.IsNull() && m.EtherLighting.IsNull() && m.GlobalSwitch.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in

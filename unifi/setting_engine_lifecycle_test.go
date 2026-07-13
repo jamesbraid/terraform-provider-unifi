@@ -44,6 +44,14 @@ func allSectionsNullModel() settingResourceModel {
 		Radius:        types.ObjectNull(radiusAttrTypes),
 		USG:           types.ObjectNull(usgAttrTypes),
 		IgmpSnooping:  types.ObjectNull(igmpSnoopingAttrTypes),
+		Locale:        types.ObjectNull(localeAttrTypes),
+		GlobalNat:     types.ObjectNull(globalNatAttrTypes),
+		TrafficFlow:   types.ObjectNull(trafficFlowAttrTypes),
+		SslInspection: types.ObjectNull(sslInspectionAttrTypes),
+		Netflow:       types.ObjectNull(netflowAttrTypes),
+		Dashboard:     types.ObjectNull(dashboardAttrTypes),
+		EtherLighting: types.ObjectNull(etherLightingAttrTypes),
+		GlobalSwitch:  types.ObjectNull(globalSwitchAttrTypes),
 	}
 }
 
