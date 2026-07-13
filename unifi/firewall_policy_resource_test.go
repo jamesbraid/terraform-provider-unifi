@@ -846,7 +846,7 @@ func Test_endpointModelToSource(t *testing.T) {
 					WebDomains:         types.ListNull(types.StringType),
 					Port:               types.StringNull(),
 					PortGroupID:        types.StringNull(),
-					IPGroupID:          types.StringValue("689ff798c4b72577507ae001"),
+					IPGroupID:          types.StringValue("aaaa0000000000000000f101"),
 					PortMatchingType:   types.StringValue("ANY"),
 				},
 			},
@@ -854,7 +854,7 @@ func Test_endpointModelToSource(t *testing.T) {
 				ZoneID:             "z1",
 				MatchingTarget:     "IP",
 				MatchingTargetType: "OBJECT",
-				IPGroupID:          "689ff798c4b72577507ae001",
+				IPGroupID:          "aaaa0000000000000000f101",
 				PortMatchingType:   "ANY",
 			},
 		},
@@ -903,7 +903,7 @@ func Test_endpointModelToSource(t *testing.T) {
 					WebDomains:         types.ListNull(types.StringType),
 					Port:               types.StringNull(),
 					PortGroupID:        types.StringNull(),
-					IPGroupID:          types.StringValue("689ff798c4b72577507ae001"),
+					IPGroupID:          types.StringValue("aaaa0000000000000000f101"),
 					PortMatchingType:   types.StringValue("ANY"),
 				},
 			},
@@ -911,7 +911,7 @@ func Test_endpointModelToSource(t *testing.T) {
 				ZoneID:             "z1",
 				MatchingTarget:     "IP",
 				MatchingTargetType: "OBJECT",
-				IPGroupID:          "689ff798c4b72577507ae001",
+				IPGroupID:          "aaaa0000000000000000f101",
 				PortMatchingType:   "ANY",
 			},
 		},
@@ -930,7 +930,7 @@ func Test_endpointModelToSource(t *testing.T) {
 					WebDomains:         types.ListNull(types.StringType),
 					Port:               types.StringNull(),
 					PortGroupID:        types.StringNull(),
-					IPGroupID:          types.StringValue("689ff798c4b72577507ae001"),
+					IPGroupID:          types.StringValue("aaaa0000000000000000f101"),
 					PortMatchingType:   types.StringValue("ANY"),
 				},
 			},
@@ -938,7 +938,7 @@ func Test_endpointModelToSource(t *testing.T) {
 				ZoneID:             "z1",
 				MatchingTarget:     "IP",
 				MatchingTargetType: "LIST",
-				IPGroupID:          "689ff798c4b72577507ae001",
+				IPGroupID:          "aaaa0000000000000000f101",
 				PortMatchingType:   "ANY",
 			},
 		},
@@ -1016,7 +1016,7 @@ func Test_endpointModelToDestination(t *testing.T) {
 					WebDomains:         types.ListNull(types.StringType),
 					Port:               types.StringNull(),
 					PortGroupID:        types.StringNull(),
-					IPGroupID:          types.StringValue("689ff798c4b72577507ae001"),
+					IPGroupID:          types.StringValue("aaaa0000000000000000f101"),
 					PortMatchingType:   types.StringValue("ANY"),
 				},
 			},
@@ -1024,7 +1024,7 @@ func Test_endpointModelToDestination(t *testing.T) {
 				ZoneID:             "z2",
 				MatchingTarget:     "IP",
 				MatchingTargetType: "OBJECT",
-				IPGroupID:          "689ff798c4b72577507ae001",
+				IPGroupID:          "aaaa0000000000000000f101",
 				PortMatchingType:   "ANY",
 			},
 		},
@@ -1073,7 +1073,7 @@ func Test_endpointModelToDestination(t *testing.T) {
 					WebDomains:         types.ListNull(types.StringType),
 					Port:               types.StringNull(),
 					PortGroupID:        types.StringNull(),
-					IPGroupID:          types.StringValue("689ff798c4b72577507ae001"),
+					IPGroupID:          types.StringValue("aaaa0000000000000000f101"),
 					PortMatchingType:   types.StringValue("ANY"),
 				},
 			},
@@ -1081,7 +1081,7 @@ func Test_endpointModelToDestination(t *testing.T) {
 				ZoneID:             "z2",
 				MatchingTarget:     "IP",
 				MatchingTargetType: "OBJECT",
-				IPGroupID:          "689ff798c4b72577507ae001",
+				IPGroupID:          "aaaa0000000000000000f101",
 				PortMatchingType:   "ANY",
 			},
 		},
@@ -1100,7 +1100,7 @@ func Test_endpointModelToDestination(t *testing.T) {
 					WebDomains:         types.ListNull(types.StringType),
 					Port:               types.StringNull(),
 					PortGroupID:        types.StringNull(),
-					IPGroupID:          types.StringValue("689ff798c4b72577507ae001"),
+					IPGroupID:          types.StringValue("aaaa0000000000000000f101"),
 					PortMatchingType:   types.StringValue("ANY"),
 				},
 			},
@@ -1108,7 +1108,7 @@ func Test_endpointModelToDestination(t *testing.T) {
 				ZoneID:             "z2",
 				MatchingTarget:     "IP",
 				MatchingTargetType: "LIST",
-				IPGroupID:          "689ff798c4b72577507ae001",
+				IPGroupID:          "aaaa0000000000000000f101",
 				PortMatchingType:   "ANY",
 			},
 		},
@@ -1558,7 +1558,7 @@ func TestFirewallPolicyIPGroupIDRoundTrip(t *testing.T) {
 		WebDomains:         types.ListNull(types.StringType),
 		Port:               types.StringNull(),
 		PortGroupID:        types.StringValue(""),
-		IPGroupID:          types.StringValue("68945578bfcb5d2e51dd0f10"),
+		IPGroupID:          types.StringValue("aaaa0000000000000000f102"),
 		PortMatchingType:   types.StringValue("ANY"),
 		MatchingTargetType: types.StringValue("OBJECT"),
 	}
@@ -1568,12 +1568,12 @@ func TestFirewallPolicyIPGroupIDRoundTrip(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("source conversion errored: %v", diags)
 	}
-	if src.IPGroupID != "68945578bfcb5d2e51dd0f10" {
-		t.Errorf("source IPGroupID = %q, want 68945578bfcb5d2e51dd0f10", src.IPGroupID)
+	if src.IPGroupID != "aaaa0000000000000000f102" {
+		t.Errorf("source IPGroupID = %q, want aaaa0000000000000000f102", src.IPGroupID)
 	}
 	dst := endpointModelToDestination(ctx, m, &diags)
-	if dst.IPGroupID != "68945578bfcb5d2e51dd0f10" {
-		t.Errorf("destination IPGroupID = %q, want 68945578bfcb5d2e51dd0f10", dst.IPGroupID)
+	if dst.IPGroupID != "aaaa0000000000000000f102" {
+		t.Errorf("destination IPGroupID = %q, want aaaa0000000000000000f102", dst.IPGroupID)
 	}
 
 	// API -> model (read path)
