@@ -319,6 +319,7 @@ type settingResourceModel struct {
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
 	Mdns          types.Object   `tfsdk:"mdns"`
+	Teleport      types.Object   `tfsdk:"teleport"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -347,6 +348,17 @@ type settingMdnsModel struct {
 type settingMdnsCustomServiceModel struct {
 	Address types.String `tfsdk:"address"`
 	Name    types.String `tfsdk:"name"`
+}
+
+// settingTeleportModel is the Terraform model for the "teleport" settings
+// section (settingResourceModel.Teleport). enabled and subnet_cidr are
+// weakly coupled: the go-unifi wire regex explicitly allows an empty
+// subnet_cidr regardless of enabled's value, so this section does NOT
+// enforce AlsoRequires/ConflictsWith between them — see the design spec's
+// "The enabled/subnet coupling" section for the full rationale.
+type settingTeleportModel struct {
+	Enabled    types.Bool   `tfsdk:"enabled"`
+	SubnetCidr types.String `tfsdk:"subnet_cidr"`
 }
 
 // Shared attribute-type maps for the doh/ips nested objects and lists. These
@@ -482,6 +494,10 @@ var (
 		"mode":                types.StringType,
 		"predefined_services": types.ListType{ElemType: types.StringType},
 		"custom_services":     types.ListType{ElemType: types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}},
+	}
+	teleportAttrTypes = map[string]attr.Type{
+		"enabled":     types.BoolType,
+		"subnet_cidr": types.StringType,
 	}
 )
 
@@ -689,7 +705,7 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull() && m.Mdns.IsNull()
+		m.IgmpSnooping.IsNull() && m.Mdns.IsNull() && m.Teleport.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in

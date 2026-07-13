@@ -514,3 +514,57 @@ func TestSettingSchemaBehavior_mdnsValidatorAllowsCustomModeWithServices(t *test
 		}
 	}
 }
+
+// --- teleport subnet_cidr empty-or-CIDR validator ---------------------------
+
+// TestSettingSchemaBehavior_teleportSubnetCidrAcceptsEmpty proves
+// subnet_cidr = "" produces no validation diagnostic: the wire regex
+// (teleport.generated.go) explicitly allows an empty string via its
+// trailing |^$ alternative, so a bare validators.CIDRValidator() reuse
+// would wrongly reject it (net.ParseCIDR("") errors) — this section needs
+// its own empty-or-CIDR validator, and this test is the regression guard
+// that the wire-legal empty string stays accepted.
+func TestSettingSchemaBehavior_teleportSubnetCidrAcceptsEmpty(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "teleport", "subnet_cidr")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("teleport.subnet_cidr is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("teleport.subnet_cidr has no validators")
+	}
+	diags := validateStringAll(ctx, sa.Validators, path.Root("teleport").AtName("subnet_cidr"), "")
+	if diags.HasError() {
+		t.Errorf("empty subnet_cidr rejected, want accepted (wire-legal via the |^$ regex alternative): %v", diags)
+	}
+}
+
+func TestSettingSchemaBehavior_teleportSubnetCidrAcceptsValid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "teleport", "subnet_cidr")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("teleport.subnet_cidr is %T, want schema.StringAttribute", a)
+	}
+	diags := validateStringAll(ctx, sa.Validators, path.Root("teleport").AtName("subnet_cidr"), "10.200.0.0/24")
+	if diags.HasError() {
+		t.Errorf("valid CIDR rejected: %v", diags)
+	}
+}
+
+func TestSettingSchemaBehavior_teleportSubnetCidrRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "teleport", "subnet_cidr")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("teleport.subnet_cidr is %T, want schema.StringAttribute", a)
+	}
+	diags := validateStringAll(ctx, sa.Validators, path.Root("teleport").AtName("subnet_cidr"), "not-a-cidr")
+	if !diags.HasError() {
+		t.Error("invalid CIDR accepted, want rejected")
+	}
+}
