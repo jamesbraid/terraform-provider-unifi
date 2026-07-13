@@ -1232,7 +1232,7 @@ func Test_apiSourceToEndpointModel(t *testing.T) {
 					ClientMACs:         clientMACs,
 					WebDomains:         webDomains,
 					Port:               types.StringValue("443"),
-					PortGroupID:        types.StringValue(""),
+					PortGroupID:        types.StringNull(),
 					IPGroupID:          types.StringValue(""),
 					PortMatchingType:   types.StringValue("SPECIFIC"),
 				}
@@ -1294,7 +1294,7 @@ func Test_apiDestinationToEndpointModel(t *testing.T) {
 					ClientMACs:         clientMACs,
 					WebDomains:         webDomains,
 					Port:               types.StringValue("8080"),
-					PortGroupID:        types.StringValue(""),
+					PortGroupID:        types.StringNull(),
 					IPGroupID:          types.StringValue(""),
 					PortMatchingType:   types.StringValue("SPECIFIC"),
 				}
@@ -1831,6 +1831,106 @@ func TestApiSourceToEndpointModelNormalizesInactiveSelectors(t *testing.T) {
 	got.NetworkIDs.ElementsAs(ctx, &networkIDs, false)
 	if len(networkIDs) != 1 || networkIDs[0] != "net-1" {
 		t.Errorf("read NetworkIDs = %v, want [net-1]", networkIDs)
+	}
+}
+
+// TestApiToEndpointModelNormalizesStalePortGroupID guards the read-side half
+// of the port_matching_type discriminator (mirrors
+// TestApiSourceToEndpointModelNormalizesInactiveSelectors, but for
+// port_group_id): if the controller echoes back a port_group_id left over
+// from a prior OBJECT-matched state while port_matching_type has moved to a
+// non-OBJECT value (ANY/SPECIFIC), the flattener must null it out rather than
+// copy it into state — otherwise the stale ID reappears on every read and
+// undoes what the plan modifier (around firewallPolicyEndpointModel's
+// endpointDiscriminatorPlanModifier, ~line 1001) nulls in the plan.
+func TestApiToEndpointModelNormalizesStalePortGroupID(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("source", func(t *testing.T) {
+		var diags diag.Diagnostics
+		src := &unifi.FirewallPolicySource{
+			ZoneID:           "z1",
+			MatchingTarget:   "ANY",
+			PortMatchingType: "ANY",
+			PortGroupID:      "aaaa0000000000000000f103", // controller echoed a stale value
+		}
+		got := apiSourceToEndpointModel(ctx, src, &diags)
+		if diags.HasError() {
+			t.Fatalf("apiSourceToEndpointModel errored: %v", diags)
+		}
+		if !got.PortGroupID.IsNull() {
+			t.Errorf("read source PortGroupID = %q, want null for an ANY port-matched endpoint",
+				got.PortGroupID.ValueString())
+		}
+	})
+
+	t.Run("destination", func(t *testing.T) {
+		var diags diag.Diagnostics
+		dst := &unifi.FirewallPolicyDestination{
+			ZoneID:           "z2",
+			MatchingTarget:   "ANY",
+			PortMatchingType: "SPECIFIC",
+			Port:             "443",
+			PortGroupID:      "aaaa0000000000000000f103", // controller echoed a stale value
+		}
+		got := apiDestinationToEndpointModel(ctx, dst, &diags)
+		if diags.HasError() {
+			t.Fatalf("apiDestinationToEndpointModel errored: %v", diags)
+		}
+		if !got.PortGroupID.IsNull() {
+			t.Errorf("read destination PortGroupID = %q, want null for a SPECIFIC port-matched endpoint",
+				got.PortGroupID.ValueString())
+		}
+	})
+}
+
+// TestFirewallPolicyToModelRoundTripsStalePortGroupIDAsNull wires the same
+// regression through the full read path used by Create/Read/Update
+// (firewallPolicyToModel -> apiSourceToEndpointModel/
+// apiDestinationToEndpointModel -> types.ObjectValueFrom), so a future change
+// that reintroduces the stale copy in the flattener but somehow keeps the
+// narrower unit test green would still be caught here.
+func TestFirewallPolicyToModelRoundTripsStalePortGroupIDAsNull(t *testing.T) {
+	ctx := context.Background()
+
+	fp := &unifi.FirewallPolicy{
+		ID:     "pol-stale-pg",
+		Name:   "stale-port-group",
+		Action: "ALLOW",
+		Source: &unifi.FirewallPolicySource{
+			ZoneID:           "z1",
+			MatchingTarget:   "ANY",
+			PortMatchingType: "ANY",
+			PortGroupID:      "aaaa0000000000000000f103", // stale: left over from a prior OBJECT state
+		},
+		Destination: &unifi.FirewallPolicyDestination{
+			ZoneID:           "z2",
+			MatchingTarget:   "ANY",
+			PortMatchingType: "ANY",
+			PortGroupID:      "aaaa0000000000000000f103", // stale: left over from a prior OBJECT state
+		},
+	}
+
+	model := &firewallPolicyModel{}
+	diags := firewallPolicyToModel(ctx, fp, model)
+	if diags.HasError() {
+		t.Fatalf("firewallPolicyToModel errored: %v", diags)
+	}
+
+	var srcModel, dstModel firewallPolicyEndpointModel
+	diags.Append(model.Source.As(ctx, &srcModel, basetypes.ObjectAsOptions{})...)
+	diags.Append(model.Destination.As(ctx, &dstModel, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		t.Fatalf("decoding endpoint objects: %v", diags)
+	}
+
+	if !srcModel.PortGroupID.IsNull() {
+		t.Errorf("source port_group_id in state = %q, want null (stale value must not survive the read path)",
+			srcModel.PortGroupID.ValueString())
+	}
+	if !dstModel.PortGroupID.IsNull() {
+		t.Errorf("destination port_group_id in state = %q, want null (stale value must not survive the read path)",
+			dstModel.PortGroupID.ValueString())
 	}
 }
 

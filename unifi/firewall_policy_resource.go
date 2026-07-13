@@ -1325,13 +1325,21 @@ func apiSourceToEndpointModel(
 		ZoneID:             types.StringValue(src.ZoneID),
 		MatchingTarget:     types.StringValue(src.MatchingTarget),
 		MatchingTargetType: types.StringValue(src.MatchingTargetType),
-		PortGroupID:        types.StringValue(src.PortGroupID),
 		PortMatchingType:   types.StringValue(src.PortMatchingType),
 	}
 	if endpointOwnsPortField(src.PortMatchingType, "port") {
 		m.Port = portToStringValue(src.Port)
 	} else {
 		m.Port = types.StringNull()
+	}
+	// port_group_id is only valid under port_matching_type == OBJECT; a
+	// stale ID left over from a prior OBJECT state must not be copied into
+	// state on read, or it undoes what endpointDiscriminatorPlanModifier
+	// nulls in the plan (#4.3's port-field correctness note, read-side).
+	if endpointOwnsPortField(src.PortMatchingType, "port_group_id") {
+		m.PortGroupID = types.StringValue(src.PortGroupID)
+	} else {
+		m.PortGroupID = types.StringNull()
 	}
 	if endpointOwnsSelector(src.MatchingTarget, "ip_group_id") {
 		m.IPGroupID = types.StringValue(src.IPGroupID)
@@ -1383,13 +1391,19 @@ func apiDestinationToEndpointModel(
 		ZoneID:             types.StringValue(dst.ZoneID),
 		MatchingTarget:     types.StringValue(dst.MatchingTarget),
 		MatchingTargetType: types.StringValue(dst.MatchingTargetType),
-		PortGroupID:        types.StringValue(dst.PortGroupID),
 		PortMatchingType:   types.StringValue(dst.PortMatchingType),
 	}
 	if endpointOwnsPortField(dst.PortMatchingType, "port") {
 		m.Port = portToStringValue(dst.Port)
 	} else {
 		m.Port = types.StringNull()
+	}
+	// See apiSourceToEndpointModel: port_group_id is gated identically on
+	// the read path.
+	if endpointOwnsPortField(dst.PortMatchingType, "port_group_id") {
+		m.PortGroupID = types.StringValue(dst.PortGroupID)
+	} else {
+		m.PortGroupID = types.StringNull()
 	}
 	if endpointOwnsSelector(dst.MatchingTarget, "ip_group_id") {
 		m.IPGroupID = types.StringValue(dst.IPGroupID)
