@@ -3,7 +3,6 @@ package unifi
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 var (
@@ -209,11 +209,7 @@ func (r *firewallPolicyResource) Schema(
 			Optional: true,
 			Computed: true,
 			Validators: []validator.String{
-				stringvalidator.RegexMatches(
-					regexp.MustCompile(`^[0-9]{1,5}(-[0-9]{1,5})?(,[0-9]{1,5}(-[0-9]{1,5})?)*$`),
-					"must be a port number or a comma-separated list of ports/ranges "+
-						`(e.g. "80,443" or "8000-8100")`,
-				),
+				validators.PortRangeListValidator(),
 			},
 			PlanModifiers: []planmodifier.String{
 				stringplanmodifier.UseStateForUnknown(),

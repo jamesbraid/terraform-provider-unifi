@@ -2081,3 +2081,31 @@ func TestFirewallPolicyEndpointValidatorDefersOnNullPortMatchingType(t *testing.
 		t.Errorf("port_matching_type null must defer port-field validation to apply, got: %v", resp.Diagnostics)
 	}
 }
+
+// TestFirewallPolicyPortSchemaRejectsSemanticallyInvalidPorts guards #4.5:
+// the port field must carry PortRangeListValidator (full syntax-and-
+// semantics validation) and nothing else — the old shape-gate regex is
+// removed in the same change, not kept alongside it (design doc Open
+// Question 4).
+func TestFirewallPolicyPortSchemaRejectsSemanticallyInvalidPorts(t *testing.T) {
+	resp := &fwresource.SchemaResponse{}
+	(&firewallPolicyResource{}).Schema(context.Background(), fwresource.SchemaRequest{}, resp)
+
+	source, ok := resp.Schema.Attributes["source"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatal("source is not a SingleNestedAttribute")
+	}
+	portAttr, ok := source.Attributes["port"].(schema.StringAttribute)
+	if !ok {
+		t.Fatal("source.port is not a StringAttribute")
+	}
+	if len(portAttr.Validators) != 1 {
+		t.Fatalf("source.port must have exactly 1 validator (PortRangeListValidator, no separate shape regex), got %d",
+			len(portAttr.Validators))
+	}
+	if _, ok := portAttr.Validators[0].(interface {
+		ValidateString(context.Context, validator.StringRequest, *validator.StringResponse)
+	}); !ok {
+		t.Fatalf("source.port's validator does not implement validator.String")
+	}
+}
