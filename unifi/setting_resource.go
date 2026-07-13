@@ -303,24 +303,25 @@ type settingIpsModel struct {
 // in HCL; settingSection.isConfigured reads that null/unknown state to
 // decide whether Create/Update pushes the section to the controller at all.
 type settingResourceModel struct {
-	ID            types.String   `tfsdk:"id"`
-	Site          types.String   `tfsdk:"site"`
-	AutoSpeedtest types.Object   `tfsdk:"auto_speedtest"`
-	Country       types.Object   `tfsdk:"country"`
-	Dpi           types.Object   `tfsdk:"dpi"`
-	Lcm           types.Object   `tfsdk:"lcm"`
-	NetworkOpt    types.Object   `tfsdk:"network_optimization"`
-	Ntp           types.Object   `tfsdk:"ntp"`
-	Syslog        types.Object   `tfsdk:"syslog"`
-	Doh           types.Object   `tfsdk:"doh"`
-	Ips           types.Object   `tfsdk:"ips"`
-	Mgmt          types.Object   `tfsdk:"mgmt"`
-	Radius        types.Object   `tfsdk:"radius"`
-	USG           types.Object   `tfsdk:"usg"`
-	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
-	Mdns          types.Object   `tfsdk:"mdns"`
-	Teleport      types.Object   `tfsdk:"teleport"`
-	Timeouts      timeouts.Value `tfsdk:"timeouts"`
+	ID                 types.String   `tfsdk:"id"`
+	Site               types.String   `tfsdk:"site"`
+	AutoSpeedtest      types.Object   `tfsdk:"auto_speedtest"`
+	Country            types.Object   `tfsdk:"country"`
+	Dpi                types.Object   `tfsdk:"dpi"`
+	Lcm                types.Object   `tfsdk:"lcm"`
+	NetworkOpt         types.Object   `tfsdk:"network_optimization"`
+	Ntp                types.Object   `tfsdk:"ntp"`
+	Syslog             types.Object   `tfsdk:"syslog"`
+	Doh                types.Object   `tfsdk:"doh"`
+	Ips                types.Object   `tfsdk:"ips"`
+	Mgmt               types.Object   `tfsdk:"mgmt"`
+	Radius             types.Object   `tfsdk:"radius"`
+	USG                types.Object   `tfsdk:"usg"`
+	IgmpSnooping       types.Object   `tfsdk:"igmp_snooping"`
+	Mdns               types.Object   `tfsdk:"mdns"`
+	Teleport           types.Object   `tfsdk:"teleport"`
+	MagicSiteToSiteVpn types.Object   `tfsdk:"magic_site_to_site_vpn"`
+	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -359,6 +360,24 @@ type settingMdnsCustomServiceModel struct {
 type settingTeleportModel struct {
 	Enabled    types.Bool   `tfsdk:"enabled"`
 	SubnetCidr types.String `tfsdk:"subnet_cidr"`
+}
+
+// settingMagicSiteToSiteVpnModel is the Terraform model for the
+// "magic_site_to_site_vpn" settings section
+// (settingResourceModel.MagicSiteToSiteVpn). Only "enabled" is modeled:
+// the pinned go-unifi SDK (settings.MagicSiteToSiteVpn) has exactly this
+// one field. A controller-generated secret/key is HYPOTHESIZED (unifi's
+// "Magic VPN" mesh feature is exactly the kind of newer UI surface likely
+// to lag go-unifi's codegen, frozen at controller 9.5.21) but UNCONFIRMED
+// — no such field is added here without evidence. If one exists on the
+// wire, overlay()'s snap.dataCopy(key()) base preserves it untouched by
+// construction (see setting_section_magic_site_to_site_vpn.go's overlay
+// godoc and TestMagicSiteToSiteVpnSection_PreservesUnmodeledGeneratedField
+// for the mechanism this relies on). Needs a live-controller capture to
+// confirm or refute before a Computed+Sensitive+UseStateForUnknown leaf
+// could be added.
+type settingMagicSiteToSiteVpnModel struct {
+	Enabled types.Bool `tfsdk:"enabled"`
 }
 
 // Shared attribute-type maps for the doh/ips nested objects and lists. These
@@ -498,6 +517,9 @@ var (
 	teleportAttrTypes = map[string]attr.Type{
 		"enabled":     types.BoolType,
 		"subnet_cidr": types.StringType,
+	}
+	magicSiteToSiteVpnAttrTypes = map[string]attr.Type{
+		"enabled": types.BoolType,
 	}
 )
 
@@ -705,7 +727,8 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull() && m.Mdns.IsNull() && m.Teleport.IsNull()
+		m.IgmpSnooping.IsNull() && m.Mdns.IsNull() && m.Teleport.IsNull() &&
+		m.MagicSiteToSiteVpn.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in
