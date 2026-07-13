@@ -7,6 +7,7 @@ import (
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -785,7 +786,7 @@ func TestSettingImport_setsSiteAndHydrates(t *testing.T) {
 		t.Errorf("site = %q, want %q", got.Site.ValueString(), "default")
 	}
 	if !allSectionAttrsNull(got) {
-		t.Errorf("imported model has a non-null section attribute, want all 13 null: %+v", got)
+		t.Errorf("imported model has a non-null section attribute, want all 14 null: %+v", got)
 	}
 }
 
@@ -844,5 +845,21 @@ func TestAllSectionAttrsNull_gate(t *testing.T) {
 	partial.Dpi = dpiObject(t, ctx, true, false)
 	if allSectionAttrsNull(partial) {
 		t.Error("allSectionAttrsNull(model with Dpi configured) = true, want false")
+	}
+
+	// PR-B3: the snmp clause specifically, since allSectionAttrsNull is a
+	// hardcoded per-section clause list (not derived from the registry) —
+	// omitting the "&& m.Snmp.IsNull()" clause would silently break
+	// ImportState hydration for every section, not just snmp.
+	withSnmp := allSectionsNullModel()
+	withSnmp.Snmp = snmpObject(t, ctx, settingSnmpModel{
+		Enabled:   types.BoolValue(true),
+		Community: types.StringNull(),
+		EnabledV3: types.BoolValue(false),
+		Username:  types.StringNull(),
+		Password:  types.StringNull(),
+	})
+	if allSectionAttrsNull(withSnmp) {
+		t.Error("allSectionAttrsNull(model with Snmp configured) = true, want false")
 	}
 }

@@ -33,6 +33,14 @@ resource "unifi_setting" "combined" {
     secret                  = "my-radius-secret"
   }
 
+  snmp = {
+    enabled    = true
+    community  = "synthetic-ro-community" # replace with a real community string
+    enabled_v3 = true
+    username   = "snmpv3-svc"
+    password   = "Synthetic-Passw0rd!" # replace with a real passphrase; consider a secret manager
+  }
+
   usg = {
     broadcast_ping = false
     upnp_enabled   = true
