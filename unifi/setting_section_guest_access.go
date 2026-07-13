@@ -22,8 +22,9 @@ import (
 // restriction, RADIUS-backed auth, OAuth SSO connection settings, and the
 // full payment-gateway credential surface). Of the 97 controller fields on
 // go-unifi's settings.GuestAccess, 56 are modeled here (18 of them secrets,
-// added in a follow-up commit) and 41 are deliberately preserved by
-// read-modify-write, never decoded into state — see
+// via the WriteOnlySecret pattern fanned out through carryGuestAccessSecrets
+// below) and 41 are deliberately preserved by read-modify-write, never
+// decoded into state — see
 // docs/superpowers/specs/2026-07-13-pr-b4-guest-access-design.md for the
 // full field table and rationale (Key Decision 1). The preserved surface is
 // almost entirely the portal template/styling surface (colors, fonts, logo,
@@ -81,6 +82,42 @@ type settingGuestAccessModel struct {
 	QuickpayTestmode          types.Bool   `tfsdk:"quickpay_testmode"`
 	MerchantwarriorUseSandbox types.Bool   `tfsdk:"merchantwarrior_use_sandbox"`
 	IPpayUseSandbox           types.Bool   `tfsdk:"ippay_use_sandbox"`
+
+	// Secret leaves (WriteOnlySecret class: Optional + Computed + Sensitive
+	// in schema; decode always carries prior, never the wire; overlay
+	// deletes on unset, writes verbatim including explicit empty on set —
+	// see spec Key Decision 2a/2b and carryGuestAccessSecrets below).
+	Password                     types.String `tfsdk:"password"`
+	FacebookAppSecret            types.String `tfsdk:"facebook_app_secret"`
+	GoogleClientSecret           types.String `tfsdk:"google_client_secret"`
+	WechatAppSecret              types.String `tfsdk:"wechat_app_secret"`
+	WechatSecretKey              types.String `tfsdk:"wechat_secret_key"`
+	PaypalUsername               types.String `tfsdk:"paypal_username"`
+	PaypalPassword               types.String `tfsdk:"paypal_password"`
+	PaypalSignature              types.String `tfsdk:"paypal_signature"`
+	StripeApiKey                 types.String `tfsdk:"stripe_api_key"`
+	AuthorizeLoginid             types.String `tfsdk:"authorize_loginid"`
+	AuthorizeTransactionkey      types.String `tfsdk:"authorize_transactionkey"`
+	QuickpayMerchantid           types.String `tfsdk:"quickpay_merchantid"`
+	QuickpayApikey               types.String `tfsdk:"quickpay_apikey"`
+	QuickpayAgreementid          types.String `tfsdk:"quickpay_agreementid"`
+	MerchantwarriorMerchantuuid  types.String `tfsdk:"merchantwarrior_merchantuuid"`
+	MerchantwarriorApikey        types.String `tfsdk:"merchantwarrior_apikey"`
+	MerchantwarriorApipassphrase types.String `tfsdk:"merchantwarrior_apipassphrase"`
+	IPpayTerminalid              types.String `tfsdk:"ippay_terminalid"`
+}
+
+// guestAccessSecretLeaves is the 18 tfsdk attribute names of guest_access's
+// secret leaves, in the same order as the spec's secret list. Consumed by
+// carryGuestAccessSecrets.
+var guestAccessSecretLeaves = []string{
+	"password", "facebook_app_secret", "google_client_secret",
+	"wechat_app_secret", "wechat_secret_key",
+	"paypal_username", "paypal_password", "paypal_signature",
+	"stripe_api_key", "authorize_loginid", "authorize_transactionkey",
+	"quickpay_merchantid", "quickpay_apikey", "quickpay_agreementid",
+	"merchantwarrior_merchantuuid", "merchantwarrior_apikey", "merchantwarrior_apipassphrase",
+	"ippay_terminalid",
 }
 
 // guestAccessAttrTypes is the object attribute-type map for
@@ -124,6 +161,25 @@ var guestAccessAttrTypes = map[string]attr.Type{
 	"quickpay_testmode":           types.BoolType,
 	"merchantwarrior_use_sandbox": types.BoolType,
 	"ippay_use_sandbox":           types.BoolType,
+
+	"password":                      types.StringType,
+	"facebook_app_secret":           types.StringType,
+	"google_client_secret":          types.StringType,
+	"wechat_app_secret":             types.StringType,
+	"wechat_secret_key":             types.StringType,
+	"paypal_username":               types.StringType,
+	"paypal_password":               types.StringType,
+	"paypal_signature":              types.StringType,
+	"stripe_api_key":                types.StringType,
+	"authorize_loginid":             types.StringType,
+	"authorize_transactionkey":      types.StringType,
+	"quickpay_merchantid":           types.StringType,
+	"quickpay_apikey":               types.StringType,
+	"quickpay_agreementid":          types.StringType,
+	"merchantwarrior_merchantuuid":  types.StringType,
+	"merchantwarrior_apikey":        types.StringType,
+	"merchantwarrior_apipassphrase": types.StringType,
+	"ippay_terminalid":              types.StringType,
 }
 
 // guestAccessDottedQuadOrEmpty matches an IPv4 dotted-quad or the empty
@@ -366,6 +422,121 @@ func (guestAccessSection) schemaAttribute() schema.Attribute {
 				Optional:            true,
 				Computed:            true,
 			},
+
+			// Secret leaves: Optional + Computed + Sensitive, matching the
+			// shipped radius.secret precedent (NOT mgmt.ssh_password's
+			// Optional-only variance) — required because decode() always
+			// supplies a provider-computed value (prior) for a null config
+			// leaf, which the framework requires Computed to reconcile
+			// against a Computed parent object. See spec Key Decision 2a.
+			"password": schema.StringAttribute{
+				MarkdownDescription: "Shared portal password, used when `password_enabled` is set. Sensitive — never read back from the controller (which returns a mask, never the real value); an unset config preserves the prior value, and a configured value (including an explicit empty string) is written verbatim.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"facebook_app_secret": schema.StringAttribute{
+				MarkdownDescription: "Facebook app secret for guest SSO. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"google_client_secret": schema.StringAttribute{
+				MarkdownDescription: "Google OAuth client secret for guest SSO. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"wechat_app_secret": schema.StringAttribute{
+				MarkdownDescription: "WeChat app secret for guest SSO. Sensitive — same write-only handling as `password`. Distinct from `wechat_secret_key`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"wechat_secret_key": schema.StringAttribute{
+				MarkdownDescription: "WeChat secret key for guest SSO. Sensitive — same write-only handling as `password`. Distinct from `wechat_app_secret`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"paypal_username": schema.StringAttribute{
+				MarkdownDescription: "PayPal API username for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"paypal_password": schema.StringAttribute{
+				MarkdownDescription: "PayPal API password for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"paypal_signature": schema.StringAttribute{
+				MarkdownDescription: "PayPal API signature for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"stripe_api_key": schema.StringAttribute{
+				MarkdownDescription: "Stripe API key for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"authorize_loginid": schema.StringAttribute{
+				MarkdownDescription: "Authorize.Net API login ID for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"authorize_transactionkey": schema.StringAttribute{
+				MarkdownDescription: "Authorize.Net transaction key for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"quickpay_merchantid": schema.StringAttribute{
+				MarkdownDescription: "Quickpay merchant ID for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"quickpay_apikey": schema.StringAttribute{
+				MarkdownDescription: "Quickpay API key for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"quickpay_agreementid": schema.StringAttribute{
+				MarkdownDescription: "Quickpay agreement ID for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"merchantwarrior_merchantuuid": schema.StringAttribute{
+				MarkdownDescription: "MerchantWarrior merchant UUID for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"merchantwarrior_apikey": schema.StringAttribute{
+				MarkdownDescription: "MerchantWarrior API key for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"merchantwarrior_apipassphrase": schema.StringAttribute{
+				MarkdownDescription: "MerchantWarrior API passphrase for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"ippay_terminalid": schema.StringAttribute{
+				MarkdownDescription: "ippay terminal ID for the payment gateway. Sensitive — same write-only handling as `password`.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+			},
 		},
 	}
 }
@@ -461,6 +632,28 @@ func (s guestAccessSection) decode(ctx context.Context, snap rawSettings, prior 
 	diags.Append(d...)
 	ippayUseSandbox, d := decodeBool(data, "ippay_use_sandbox", priorModel.IPpayUseSandbox)
 	diags.Append(d...)
+
+	// Secret leaves are write-only: the controller never returns them (only
+	// a mask), so decode always preserves prior instead of reading data.
+	password := priorModel.Password
+	facebookAppSecret := priorModel.FacebookAppSecret
+	googleClientSecret := priorModel.GoogleClientSecret
+	wechatAppSecret := priorModel.WechatAppSecret
+	wechatSecretKey := priorModel.WechatSecretKey
+	paypalUsername := priorModel.PaypalUsername
+	paypalPassword := priorModel.PaypalPassword
+	paypalSignature := priorModel.PaypalSignature
+	stripeAPIKey := priorModel.StripeApiKey
+	authorizeLoginid := priorModel.AuthorizeLoginid
+	authorizeTransactionkey := priorModel.AuthorizeTransactionkey
+	quickpayMerchantid := priorModel.QuickpayMerchantid
+	quickpayApikey := priorModel.QuickpayApikey
+	quickpayAgreementid := priorModel.QuickpayAgreementid
+	merchantwarriorMerchantuuid := priorModel.MerchantwarriorMerchantuuid
+	merchantwarriorApikey := priorModel.MerchantwarriorApikey
+	merchantwarriorApipassphrase := priorModel.MerchantwarriorApipassphrase
+	ippayTerminalid := priorModel.IPpayTerminalid
+
 	if diags.HasError() {
 		return diags
 	}
@@ -504,6 +697,25 @@ func (s guestAccessSection) decode(ctx context.Context, snap rawSettings, prior 
 		QuickpayTestmode:          quickpayTestmode,
 		MerchantwarriorUseSandbox: merchantwarriorUseSandbox,
 		IPpayUseSandbox:           ippayUseSandbox,
+
+		Password:                     password,
+		FacebookAppSecret:            facebookAppSecret,
+		GoogleClientSecret:           googleClientSecret,
+		WechatAppSecret:              wechatAppSecret,
+		WechatSecretKey:              wechatSecretKey,
+		PaypalUsername:               paypalUsername,
+		PaypalPassword:               paypalPassword,
+		PaypalSignature:              paypalSignature,
+		StripeApiKey:                 stripeAPIKey,
+		AuthorizeLoginid:             authorizeLoginid,
+		AuthorizeTransactionkey:      authorizeTransactionkey,
+		QuickpayMerchantid:           quickpayMerchantid,
+		QuickpayApikey:               quickpayApikey,
+		QuickpayAgreementid:          quickpayAgreementid,
+		MerchantwarriorMerchantuuid:  merchantwarriorMerchantuuid,
+		MerchantwarriorApikey:        merchantwarriorApikey,
+		MerchantwarriorApipassphrase: merchantwarriorApipassphrase,
+		IPpayTerminalid:              ippayTerminalid,
 	}
 
 	obj, objDiags := types.ObjectValueFrom(ctx, guestAccessAttrTypes, m)
@@ -573,6 +785,24 @@ func (s guestAccessSection) overlay(ctx context.Context, model, prior settingRes
 	overlayBool(base, "quickpay_testmode", m.QuickpayTestmode)
 	overlayBool(base, "merchantwarrior_use_sandbox", m.MerchantwarriorUseSandbox)
 	overlayBool(base, "ippay_use_sandbox", m.IPpayUseSandbox)
+	overlayGuestAccessSecret(base, "x_password", m.Password)
+	overlayGuestAccessSecret(base, "x_facebook_app_secret", m.FacebookAppSecret)
+	overlayGuestAccessSecret(base, "x_google_client_secret", m.GoogleClientSecret)
+	overlayGuestAccessSecret(base, "x_wechat_app_secret", m.WechatAppSecret)
+	overlayGuestAccessSecret(base, "x_wechat_secret_key", m.WechatSecretKey)
+	overlayGuestAccessSecret(base, "x_paypal_username", m.PaypalUsername)
+	overlayGuestAccessSecret(base, "x_paypal_password", m.PaypalPassword)
+	overlayGuestAccessSecret(base, "x_paypal_signature", m.PaypalSignature)
+	overlayGuestAccessSecret(base, "x_stripe_api_key", m.StripeApiKey)
+	overlayGuestAccessSecret(base, "x_authorize_loginid", m.AuthorizeLoginid)
+	overlayGuestAccessSecret(base, "x_authorize_transactionkey", m.AuthorizeTransactionkey)
+	overlayGuestAccessSecret(base, "x_quickpay_merchantid", m.QuickpayMerchantid)
+	overlayGuestAccessSecret(base, "x_quickpay_apikey", m.QuickpayApikey)
+	overlayGuestAccessSecret(base, "x_quickpay_agreementid", m.QuickpayAgreementid)
+	overlayGuestAccessSecret(base, "x_merchantwarrior_merchantuuid", m.MerchantwarriorMerchantuuid)
+	overlayGuestAccessSecret(base, "x_merchantwarrior_apikey", m.MerchantwarriorApikey)
+	overlayGuestAccessSecret(base, "x_merchantwarrior_apipassphrase", m.MerchantwarriorApipassphrase)
+	overlayGuestAccessSecret(base, "x_ippay_terminalid", m.IPpayTerminalid)
 	if diags.HasError() {
 		return settings.RawSetting{}, false, diags
 	}
@@ -584,13 +814,64 @@ func (s guestAccessSection) overlay(ctx context.Context, model, prior settingRes
 	return rs, true, diags
 }
 
-// carryBestEffort copies the plan's guest_access value onto dst. This
-// section holds no secret leaves yet (added in a follow-up commit, which
-// replaces this with a carryGuestAccessSecrets call), so for now it is a
-// straight copy with no per-leaf plan/prior choice needed.
+// overlayGuestAccessSecret writes a single guest_access secret leaf to
+// out[wireKey]: deletes the wire key when v is null/unknown (never re-sends
+// a masked value read back from the controller), writes v verbatim
+// (including an explicit empty string — a real rotate-to-empty) when known.
+// Identical in shape to radius's/mgmt's inline x_secret/x_ssh_password
+// handling, factored out here purely because guest_access repeats it 18
+// times.
+func overlayGuestAccessSecret(out map[string]any, wireKey string, v types.String) {
+	if !v.IsNull() && !v.IsUnknown() {
+		out[wireKey] = v.ValueString()
+	} else {
+		delete(out, wireKey)
+	}
+}
+
+// carryGuestAccessSecrets threads plan.GuestAccess through carrySecretObject
+// (unifi/setting_engine.go, unmodified) once per leaf in secretLeaves,
+// accumulating the rebuilt object across iterations. CRITICAL: arg2 to
+// carrySecretObject is ALWAYS the original prior object passed into this
+// function, never the accumulating "out" — carrySecretObject reads
+// prior.Attributes()[secretLeaf] to decide what to substitute when plan's
+// leaf is null/unknown. If "out" were passed as arg2 instead, then by the
+// time a LATER leaf in this loop is processed, "out" would already have had
+// EARLIER leaves substituted — but "out" started as a copy of "plan", so
+// passing out-as-prior would make every not-yet-processed leaf see PLAN's
+// value as if it were "prior", silently losing the real original prior
+// value for any leaf whose plan value is null/unknown and which hasn't been
+// processed yet in this loop. Threading the untouched "prior" parameter as
+// arg2 on every iteration is what keeps each leaf's substitution correct
+// regardless of loop order. See spec Key Decision 2b.
+func carryGuestAccessSecrets(plan, prior types.Object, secretLeaves []string) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if plan.IsNull() || plan.IsUnknown() {
+		return prior, diags
+	}
+
+	out := plan
+	for _, leaf := range secretLeaves {
+		var d diag.Diagnostics
+		out, d = carrySecretObject(out, prior, leaf)
+		diags.Append(d...)
+	}
+	return out, diags
+}
+
+// carryBestEffort copies the plan's guest_access value onto dst via
+// carryGuestAccessSecrets: this section holds 18 write-only secret leaves,
+// so a straight plan copy would be wrong when best-effort state recovery
+// needs to fall back to prior's secret for a null/unknown plan secret.
+// Every non-secret leaf comes from plan verbatim; each secret leaf keeps
+// prior's value (read off dst, which bestEffortState seeds as prior) when
+// plan's is null/unknown, and keeps plan's value (including an explicit
+// empty string) when set.
 func (guestAccessSection) carryBestEffort(dst *settingResourceModel, plan settingResourceModel) diag.Diagnostics {
-	dst.GuestAccess = plan.GuestAccess
-	return nil
+	obj, diags := carryGuestAccessSecrets(plan.GuestAccess, dst.GuestAccess, guestAccessSecretLeaves)
+	dst.GuestAccess = obj
+	return diags
 }
 
 // isConfigured reports whether m.GuestAccess is set (non-null, non-unknown),
