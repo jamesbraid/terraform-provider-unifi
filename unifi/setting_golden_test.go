@@ -556,3 +556,55 @@ func TestGolden_igmp_snooping(t *testing.T) {
 	}
 	assertPUTBodyMatchesGolden(t, rs, goldenIgmpSnooping)
 }
+
+// --- guest_access (56 modeled fields incl. 18 secrets; RMW over 41
+// preserved fields) ---
+//
+// RMW preservation: the seeded snapshot base carries template_engine,
+// portal_customized_bg_color, and wechat_shop_id — three of the 41
+// preserved (never-decoded) fields — which survive the merge untouched
+// alongside the 56 configured modeled fields. Model and snapshot mirror
+// TestGuestAccessSection_GoldenReproduction /
+// guestAccessFullModelWithSecrets in setting_section_guest_access_test.go.
+const goldenGuestAccess = `{"allowed_subnet_":"10.20.30.0/24","auth":"hotspot","auth_url":"https://auth.example.internal/guest","authorize_use_sandbox":true,"custom_ip":"192.0.2.10","ec_enabled":true,"expire":"480","expire_number":8,"expire_unit":60,"facebook_app_id":"example-app-id-123","facebook_enabled":true,"gateway":"paypal","google_client_id":"example-app-id-123","google_enabled":true,"ippay_use_sandbox":true,"key":"","merchantwarrior_use_sandbox":true,"password_enabled":false,"payment_enabled":true,"paypal_use_sandbox":true,"portal_customized_bg_color":"#112233","portal_enabled":true,"portal_hostname":"guest.example.internal","portal_use_hostname":true,"quickpay_testmode":true,"radius_auth_type":"chap","radius_disconnect_enabled":true,"radius_disconnect_port":3799,"radius_enabled":true,"radiusprofile_id":"radius-profile-example","redirect_enabled":true,"redirect_https":false,"redirect_to_https":true,"redirect_url":"https://welcome.example.com/","restricted_dns_enabled":true,"restricted_dns_servers":["192.0.2.1","198.51.100.1"],"restricted_subnet_":"10.20.31.0/24","template_engine":"angular","voucher_enabled":true,"wechat_app_id":"example-app-id-123","wechat_enabled":false,"wechat_shop_id":"shop-example-001","x_authorize_loginid":"test-authorize-loginid","x_authorize_transactionkey":"test-authorize-transactionkey","x_facebook_app_secret":"test-facebook-app-secret","x_google_client_secret":"test-google-client-secret","x_ippay_terminalid":"test-ippay-terminalid","x_merchantwarrior_apikey":"test-merchantwarrior-apikey","x_merchantwarrior_apipassphrase":"test-merchantwarrior-apipassphrase","x_merchantwarrior_merchantuuid":"test-merchantwarrior-merchantuuid","x_password":"test-guest-portal-password","x_paypal_password":"test-paypal-password","x_paypal_signature":"test-paypal-signature","x_paypal_username":"test-paypal-username","x_quickpay_agreementid":"test-quickpay-agreementid","x_quickpay_apikey":"test-quickpay-apikey","x_quickpay_merchantid":"test-quickpay-merchantid","x_stripe_api_key":"test-stripe-api-key","x_wechat_app_secret":"test-wechat-app-secret","x_wechat_secret_key":"test-wechat-secret-key"}`
+
+func TestGolden_guest_access(t *testing.T) {
+	ctx := context.Background()
+
+	m := guestAccessFullModelWithSecrets(t, map[string]string{
+		"password":                      "test-guest-portal-password",
+		"facebook_app_secret":           "test-facebook-app-secret",
+		"google_client_secret":          "test-google-client-secret",
+		"wechat_app_secret":             "test-wechat-app-secret",
+		"wechat_secret_key":             "test-wechat-secret-key",
+		"paypal_username":               "test-paypal-username",
+		"paypal_password":               "test-paypal-password",
+		"paypal_signature":              "test-paypal-signature",
+		"stripe_api_key":                "test-stripe-api-key",
+		"authorize_loginid":             "test-authorize-loginid",
+		"authorize_transactionkey":      "test-authorize-transactionkey",
+		"quickpay_merchantid":           "test-quickpay-merchantid",
+		"quickpay_apikey":               "test-quickpay-apikey",
+		"quickpay_agreementid":          "test-quickpay-agreementid",
+		"merchantwarrior_merchantuuid":  "test-merchantwarrior-merchantuuid",
+		"merchantwarrior_apikey":        "test-merchantwarrior-apikey",
+		"merchantwarrior_apipassphrase": "test-merchantwarrior-apipassphrase",
+		"ippay_terminalid":              "test-ippay-terminalid",
+	})
+	obj := guestAccessObjectFrom(t, ctx, m)
+
+	snap := newRawSettings([]settings.RawSetting{{
+		BaseSetting: settings.BaseSetting{Key: "guest_access"},
+		Data: map[string]any{
+			"template_engine":            "angular",
+			"portal_customized_bg_color": "#112233",
+			"wechat_shop_id":             "shop-example-001",
+		},
+	}})
+
+	rs, _, oDiags := guestAccessSection{}.overlay(ctx, settingResourceModel{GuestAccess: obj}, settingResourceModel{}, snap)
+	if oDiags.HasError() {
+		t.Fatalf("overlay: %v", oDiags)
+	}
+	assertPUTBodyMatchesGolden(t, rs, goldenGuestAccess)
+}

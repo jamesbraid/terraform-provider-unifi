@@ -58,6 +58,14 @@ resource "unifi_setting" "combined" {
       primary_dns_server = "1.1.1.1"
     }
   }
+
+  guest_access = {
+    auth            = "hotspot"
+    portal_enabled  = true
+    portal_hostname = "guest.example.internal"
+    expire_number   = 8
+    expire_unit     = 60 # 1 = minutes, 60 = hours, 1440 = days
+  }
 }
 
 # Configure only RADIUS settings
@@ -67,6 +75,48 @@ resource "unifi_setting" "radius_only" {
   radius = {
     accounting_enabled = true
     auth_port          = 1812
+  }
+}
+
+# Configure only guest portal / access settings
+resource "unifi_setting" "guest_access_only" {
+  site = "default"
+
+  guest_access = {
+    auth                = "hotspot"
+    portal_enabled      = true
+    portal_use_hostname = true
+    portal_hostname     = "guest.example.internal"
+
+    expire_number = 8
+    expire_unit   = 60 # 1 = minutes, 60 = hours, 1440 = days
+
+    redirect_enabled  = true
+    redirect_url      = "https://welcome.example.com/"
+    redirect_to_https = true
+
+    allowed_subnet         = "10.20.30.0/24"
+    restricted_dns_enabled = true
+    restricted_dns_servers = ["192.0.2.1", "198.51.100.1"]
+
+    radius_enabled   = true
+    radiusprofile_id = "radius-profile-example"
+    radius_auth_type = "chap"
+
+    # Secrets: replace with real values — never commit one. Omitting a
+    # configured secret on a later apply preserves the value already stored
+    # on the controller (it is never re-read, only ever written).
+    password            = "replace-with-a-real-password" # replace with a real secret — never commit one
+    facebook_enabled    = true
+    facebook_app_id     = "example-app-id-123"
+    facebook_app_secret = "replace-with-a-real-secret" # replace with a real secret — never commit one
+
+    payment_enabled    = true
+    gateway            = "paypal"
+    paypal_use_sandbox = true
+    paypal_username    = "sandbox-user"
+    paypal_password    = "replace-with-a-real-secret" # replace with a real secret — never commit one
+    paypal_signature   = "replace-with-a-real-secret" # replace with a real secret — never commit one
   }
 }
 ```
@@ -80,6 +130,7 @@ resource "unifi_setting" "radius_only" {
 - `country` (Attributes) Regulatory country settings. (see [below for nested schema](#nestedatt--country))
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
+- `guest_access` (Attributes) Guest portal, authentication, RADIUS, SSO, and payment-gateway settings. (see [below for nested schema](#nestedatt--guest_access))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
@@ -143,6 +194,69 @@ Optional:
 
 - `enabled` (Boolean) Whether DPI is enabled.
 - `fingerprinting_enabled` (Boolean) Whether device fingerprinting is enabled.
+
+
+<a id="nestedatt--guest_access"></a>
+### Nested Schema for `guest_access`
+
+Optional:
+
+- `allowed_subnet` (String) Subnet (CIDR) allowed to bypass the guest portal.
+- `auth` (String) Guest portal authentication mode.
+- `auth_url` (String) Custom authentication endpoint, used when `auth = "custom"`.
+- `authorize_loginid` (String, Sensitive) Authorize.Net API login ID for the payment gateway. Sensitive — same write-only handling as `password`.
+- `authorize_transactionkey` (String, Sensitive) Authorize.Net transaction key for the payment gateway. Sensitive — same write-only handling as `password`.
+- `authorize_use_sandbox` (Boolean) Use the Authorize.Net sandbox environment.
+- `custom_ip` (String) Alternate portal address, pinned to a specific IPv4 address instead of `portal_hostname`.
+- `ec_enabled` (Boolean) Enable Elliptic-Curve TLS/crypto mode for the guest portal.
+- `expire` (String) Guest session expiry, in `expire_unit` units, or `"custom"`.
+- `expire_number` (Number) Guest session expiry duration.
+- `expire_unit` (Number) Guest session expiry unit multiplier in minutes: `1` (minutes), `60` (hours), or `1440` (days).
+- `facebook_app_id` (String) Facebook app ID for guest SSO.
+- `facebook_app_secret` (String, Sensitive) Facebook app secret for guest SSO. Sensitive — same write-only handling as `password`.
+- `facebook_enabled` (Boolean) Enable Facebook Wi-Fi / Facebook login SSO.
+- `gateway` (String) Payment gateway used for paid guest access.
+- `google_client_id` (String) Google OAuth client ID for guest SSO.
+- `google_client_secret` (String, Sensitive) Google OAuth client secret for guest SSO. Sensitive — same write-only handling as `password`.
+- `google_enabled` (Boolean) Enable Google SSO.
+- `ippay_terminalid` (String, Sensitive) ippay terminal ID for the payment gateway. Sensitive — same write-only handling as `password`.
+- `ippay_use_sandbox` (Boolean) Use the ippay sandbox environment.
+- `merchantwarrior_apikey` (String, Sensitive) MerchantWarrior API key for the payment gateway. Sensitive — same write-only handling as `password`.
+- `merchantwarrior_apipassphrase` (String, Sensitive) MerchantWarrior API passphrase for the payment gateway. Sensitive — same write-only handling as `password`.
+- `merchantwarrior_merchantuuid` (String, Sensitive) MerchantWarrior merchant UUID for the payment gateway. Sensitive — same write-only handling as `password`.
+- `merchantwarrior_use_sandbox` (Boolean) Use the MerchantWarrior sandbox environment.
+- `password` (String, Sensitive) Shared portal password, used when `password_enabled` is set. Sensitive — never read back from the controller (which returns a mask, never the real value); an unset config preserves the prior value, and a configured value (including an explicit empty string) is written verbatim.
+- `password_enabled` (Boolean) Enable shared/hotspot password mode.
+- `payment_enabled` (Boolean) Enable paid guest access via a payment gateway.
+- `paypal_password` (String, Sensitive) PayPal API password for the payment gateway. Sensitive — same write-only handling as `password`.
+- `paypal_signature` (String, Sensitive) PayPal API signature for the payment gateway. Sensitive — same write-only handling as `password`.
+- `paypal_use_sandbox` (Boolean) Use the PayPal sandbox environment.
+- `paypal_username` (String, Sensitive) PayPal API username for the payment gateway. Sensitive — same write-only handling as `password`.
+- `portal_enabled` (Boolean) Enable the guest portal.
+- `portal_hostname` (String) Guest portal hostname.
+- `portal_use_hostname` (Boolean) Use `portal_hostname` instead of the controller's own address for the portal.
+- `quickpay_agreementid` (String, Sensitive) Quickpay agreement ID for the payment gateway. Sensitive — same write-only handling as `password`.
+- `quickpay_apikey` (String, Sensitive) Quickpay API key for the payment gateway. Sensitive — same write-only handling as `password`.
+- `quickpay_merchantid` (String, Sensitive) Quickpay merchant ID for the payment gateway. Sensitive — same write-only handling as `password`.
+- `quickpay_testmode` (Boolean) Use Quickpay's test mode.
+- `radius_auth_type` (String) RADIUS authentication type.
+- `radius_disconnect_enabled` (Boolean) Enable RADIUS Disconnect-Message (CoA) support.
+- `radius_disconnect_port` (Number) RADIUS Disconnect-Message listening port.
+- `radius_enabled` (Boolean) Enable RADIUS-backed guest authentication.
+- `radiusprofile_id` (String) RADIUS profile ID used for guest authentication.
+- `redirect_enabled` (Boolean) Enable redirecting guests to a URL after successful authentication.
+- `redirect_https` (Boolean) Additional HTTPS-redirect toggle, distinct from `redirect_to_https` — both are independent controller fields.
+- `redirect_to_https` (Boolean) Redirect the guest portal to HTTPS.
+- `redirect_url` (String) URL to redirect guests to after successful authentication.
+- `restricted_dns_enabled` (Boolean) Enable restricting guests to specific DNS servers.
+- `restricted_dns_servers` (List of String) DNS servers guests are restricted to when `restricted_dns_enabled` is set.
+- `restricted_subnet` (String) Subnet (CIDR) restricted from guest access.
+- `stripe_api_key` (String, Sensitive) Stripe API key for the payment gateway. Sensitive — same write-only handling as `password`.
+- `voucher_enabled` (Boolean) Enable voucher-based guest access.
+- `wechat_app_id` (String) WeChat app ID for guest SSO.
+- `wechat_app_secret` (String, Sensitive) WeChat app secret for guest SSO. Sensitive — same write-only handling as `password`. Distinct from `wechat_secret_key`.
+- `wechat_enabled` (Boolean) Enable WeChat SSO.
+- `wechat_secret_key` (String, Sensitive) WeChat secret key for guest SSO. Sensitive — same write-only handling as `password`. Distinct from `wechat_app_secret`.
 
 
 <a id="nestedatt--igmp_snooping"></a>
