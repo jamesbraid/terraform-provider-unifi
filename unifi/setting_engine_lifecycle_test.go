@@ -31,19 +31,23 @@ import (
 // starting point for building a partially-configured model in these tests.
 func allSectionsNullModel() settingResourceModel {
 	return settingResourceModel{
-		AutoSpeedtest: types.ObjectNull(autoSpeedtestAttrTypes),
-		Country:       types.ObjectNull(countryAttrTypes),
-		Dpi:           types.ObjectNull(dpiAttrTypes),
-		Lcm:           types.ObjectNull(lcmAttrTypes),
-		NetworkOpt:    types.ObjectNull(networkOptimizationAttrTypes),
-		Ntp:           types.ObjectNull(ntpAttrTypes),
-		Syslog:        types.ObjectNull(syslogAttrTypes),
-		Doh:           types.ObjectNull(dohAttrTypes),
-		Ips:           types.ObjectNull(ipsAttrTypes),
-		Mgmt:          types.ObjectNull(mgmtAttrTypes),
-		Radius:        types.ObjectNull(radiusAttrTypes),
-		USG:           types.ObjectNull(usgAttrTypes),
-		IgmpSnooping:  types.ObjectNull(igmpSnoopingAttrTypes),
+		AutoSpeedtest:      types.ObjectNull(autoSpeedtestAttrTypes),
+		Country:            types.ObjectNull(countryAttrTypes),
+		Dpi:                types.ObjectNull(dpiAttrTypes),
+		Lcm:                types.ObjectNull(lcmAttrTypes),
+		NetworkOpt:         types.ObjectNull(networkOptimizationAttrTypes),
+		Ntp:                types.ObjectNull(ntpAttrTypes),
+		Syslog:             types.ObjectNull(syslogAttrTypes),
+		Doh:                types.ObjectNull(dohAttrTypes),
+		Ips:                types.ObjectNull(ipsAttrTypes),
+		Mgmt:               types.ObjectNull(mgmtAttrTypes),
+		Radius:             types.ObjectNull(radiusAttrTypes),
+		USG:                types.ObjectNull(usgAttrTypes),
+		IgmpSnooping:       types.ObjectNull(igmpSnoopingAttrTypes),
+		Mdns:               types.ObjectNull(mdnsAttrTypes),
+		Teleport:           types.ObjectNull(teleportAttrTypes),
+		MagicSiteToSiteVpn: types.ObjectNull(magicSiteToSiteVpnAttrTypes),
+		RadioAi:            types.ObjectNull(radioAiAttrTypes),
 	}
 }
 
