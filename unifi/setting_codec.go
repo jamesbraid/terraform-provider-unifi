@@ -180,6 +180,74 @@ func codecStringList(ctx context.Context, data map[string]any, key string, prior
 	return list, diags
 }
 
+// codecInt64List reads a list-of-int64 field from data. Absent/null
+// decodes to types.ListNull(); present-empty ([]) decodes to an empty
+// ListValue, not null. A present value that is not a []any, or an element
+// that is not a whole-number float64, is remote type drift: a WARNING
+// (not error), retaining prior so a single drifted field never fails
+// refresh.
+func codecInt64List(ctx context.Context, data map[string]any, key string, prior types.List) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	raw, ok := data[key]
+	if !ok || raw == nil {
+		return types.ListNull(types.Int64Type), diags
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		diags.AddWarning(
+			"Settings value type drift",
+			fmt.Sprintf("field %q: expected array, got %T; retaining last-known value", key, raw),
+		)
+		return prior, diags
+	}
+	elems := make([]attr.Value, 0, len(items))
+	for i, item := range items {
+		f, ok := item.(float64)
+		if !ok {
+			diags.AddWarning(
+				"Settings value type drift",
+				fmt.Sprintf("field %q: element %d: expected number, got %T; retaining last-known value", key, i, item),
+			)
+			return prior, diags
+		}
+		if math.Trunc(f) != f {
+			diags.AddWarning(
+				"Settings value type drift",
+				fmt.Sprintf("field %q: element %d: expected integer, got fractional value %v; retaining last-known value", key, i, f),
+			)
+			return prior, diags
+		}
+		elems = append(elems, types.Int64Value(int64(f)))
+	}
+	list, listDiags := types.ListValue(types.Int64Type, elems)
+	diags.Append(listDiags...)
+	return list, diags
+}
+
+// putInt64List writes v into out[key] when known (including an empty
+// list); skips null/unknown. Mirrors putStringList.
+func putInt64List(out map[string]any, key string, v types.List) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if v.IsNull() || v.IsUnknown() {
+		return diags
+	}
+	elems := v.Elements()
+	items := make([]any, 0, len(elems))
+	for _, e := range elems {
+		i, ok := e.(types.Int64)
+		if !ok {
+			diags.AddError(
+				"Malformed settings value",
+				fmt.Sprintf("field %q: element is not an int64 value: %T", key, e),
+			)
+			continue
+		}
+		items = append(items, float64(i.ValueInt64()))
+	}
+	out[key] = items
+	return diags
+}
+
 // ---------------------------------------------------------------------------
 // Low-level setters: types.X -> map[string]any
 // ---------------------------------------------------------------------------
@@ -281,6 +349,11 @@ func decodeStringList(ctx context.Context, data map[string]any, key string, prio
 	return codecStringList(ctx, data, key, prior)
 }
 
+// decodeInt64List is the int64-list analogue of decodeStringList.
+func decodeInt64List(ctx context.Context, data map[string]any, key string, prior types.List) (types.List, diag.Diagnostics) {
+	return codecInt64List(ctx, data, key, prior)
+}
+
 // overlayString writes v onto out[key]: known (including empty) writes;
 // null/unknown leaves the snapshot's copied value in out untouched,
 // preserving the controller value across this apply.
@@ -307,6 +380,11 @@ func overlayBool(out map[string]any, key string, v types.Bool) {
 // overlayStringList is the string-list analogue of overlayString.
 func overlayStringList(ctx context.Context, out map[string]any, key string, v types.List) diag.Diagnostics {
 	return putStringList(ctx, out, key, v)
+}
+
+// overlayInt64List is the int64-list analogue of overlayStringList.
+func overlayInt64List(ctx context.Context, out map[string]any, key string, v types.List) diag.Diagnostics {
+	return putInt64List(out, key, v)
 }
 
 // ---------------------------------------------------------------------------

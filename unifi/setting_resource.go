@@ -303,22 +303,26 @@ type settingIpsModel struct {
 // in HCL; settingSection.isConfigured reads that null/unknown state to
 // decide whether Create/Update pushes the section to the controller at all.
 type settingResourceModel struct {
-	ID            types.String   `tfsdk:"id"`
-	Site          types.String   `tfsdk:"site"`
-	AutoSpeedtest types.Object   `tfsdk:"auto_speedtest"`
-	Country       types.Object   `tfsdk:"country"`
-	Dpi           types.Object   `tfsdk:"dpi"`
-	Lcm           types.Object   `tfsdk:"lcm"`
-	NetworkOpt    types.Object   `tfsdk:"network_optimization"`
-	Ntp           types.Object   `tfsdk:"ntp"`
-	Syslog        types.Object   `tfsdk:"syslog"`
-	Doh           types.Object   `tfsdk:"doh"`
-	Ips           types.Object   `tfsdk:"ips"`
-	Mgmt          types.Object   `tfsdk:"mgmt"`
-	Radius        types.Object   `tfsdk:"radius"`
-	USG           types.Object   `tfsdk:"usg"`
-	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
-	Timeouts      timeouts.Value `tfsdk:"timeouts"`
+	ID                 types.String   `tfsdk:"id"`
+	Site               types.String   `tfsdk:"site"`
+	AutoSpeedtest      types.Object   `tfsdk:"auto_speedtest"`
+	Country            types.Object   `tfsdk:"country"`
+	Dpi                types.Object   `tfsdk:"dpi"`
+	Lcm                types.Object   `tfsdk:"lcm"`
+	NetworkOpt         types.Object   `tfsdk:"network_optimization"`
+	Ntp                types.Object   `tfsdk:"ntp"`
+	Syslog             types.Object   `tfsdk:"syslog"`
+	Doh                types.Object   `tfsdk:"doh"`
+	Ips                types.Object   `tfsdk:"ips"`
+	Mgmt               types.Object   `tfsdk:"mgmt"`
+	Radius             types.Object   `tfsdk:"radius"`
+	USG                types.Object   `tfsdk:"usg"`
+	IgmpSnooping       types.Object   `tfsdk:"igmp_snooping"`
+	Mdns               types.Object   `tfsdk:"mdns"`
+	Teleport           types.Object   `tfsdk:"teleport"`
+	MagicSiteToSiteVpn types.Object   `tfsdk:"magic_site_to_site_vpn"`
+	RadioAi            types.Object   `tfsdk:"radio_ai"`
+	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
 // settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
@@ -328,6 +332,112 @@ type settingResourceModel struct {
 type settingIgmpSnoopingModel struct {
 	Enabled    types.Bool `tfsdk:"enabled"`
 	NetworkIDs types.List `tfsdk:"network_ids"`
+}
+
+// settingMdnsModel is the Terraform model for the "mdns" settings section
+// (settingResourceModel.Mdns). mode is a discriminator: predefined_services
+// and custom_services are only live/authoritative when mode == "custom" —
+// see mdnsSection.decode/overlay and the design spec's C4 discriminator
+// section for the full contract (contradictory-config validator +
+// stale-state plan modifier + inactive-mode read-back normalization).
+type settingMdnsModel struct {
+	Mode               types.String `tfsdk:"mode"`
+	PredefinedServices types.List   `tfsdk:"predefined_services"` // []string of service codes
+	CustomServices     types.List   `tfsdk:"custom_services"`     // []settingMdnsCustomServiceModel
+}
+
+// settingMdnsCustomServiceModel is one element of mdns.custom_services.
+type settingMdnsCustomServiceModel struct {
+	Address types.String `tfsdk:"address"`
+	Name    types.String `tfsdk:"name"`
+}
+
+// settingTeleportModel is the Terraform model for the "teleport" settings
+// section (settingResourceModel.Teleport). enabled and subnet_cidr are
+// weakly coupled: the go-unifi wire regex explicitly allows an empty
+// subnet_cidr regardless of enabled's value, so this section does NOT
+// enforce AlsoRequires/ConflictsWith between them — see the design spec's
+// "The enabled/subnet coupling" section for the full rationale.
+type settingTeleportModel struct {
+	Enabled    types.Bool   `tfsdk:"enabled"`
+	SubnetCidr types.String `tfsdk:"subnet_cidr"`
+}
+
+// settingMagicSiteToSiteVpnModel is the Terraform model for the
+// "magic_site_to_site_vpn" settings section
+// (settingResourceModel.MagicSiteToSiteVpn). Only "enabled" is modeled:
+// the pinned go-unifi SDK (settings.MagicSiteToSiteVpn) has exactly this
+// one field. A controller-generated secret/key is HYPOTHESIZED (unifi's
+// "Magic VPN" mesh feature is exactly the kind of newer UI surface likely
+// to lag go-unifi's codegen, frozen at controller 9.5.21) but UNCONFIRMED
+// — no such field is added here without evidence. If one exists on the
+// wire, overlay()'s snap.dataCopy(key()) base preserves it untouched by
+// construction (see setting_section_magic_site_to_site_vpn.go's overlay
+// godoc and TestMagicSiteToSiteVpnSection_PreservesUnmodeledGeneratedField
+// for the mechanism this relies on). Needs a live-controller capture to
+// confirm or refute before a Computed+Sensitive+UseStateForUnknown leaf
+// could be added.
+type settingMagicSiteToSiteVpnModel struct {
+	Enabled types.Bool `tfsdk:"enabled"`
+}
+
+// settingRadioAiModel is the Terraform model for the "radio_ai" settings
+// section (settingResourceModel.RadioAi): UniFi's AI-driven RF
+// optimization feature. Models 16 of the underlying go-unifi struct's 18
+// top-level fields; "default" and "useXY" are deliberately NOT modeled
+// (read as internal/legacy flags, not user-facing surface — see the
+// design spec's Modeling section, flagged as a judgment call pending a
+// live controller UI walkthrough). Both survive every apply untouched via
+// overlay()'s snap.dataCopy(key()) RMW base, same preserve-by-default
+// mechanism as magic_site_to_site_vpn's hypothesized generated field.
+//
+// setting_preference (auto|manual) is a soft discriminator: unlike mdns's
+// mode, it does NOT gate whether the channel/width fields are
+// meaningful — they remain real, readable values in both modes. The 7
+// CoManaged-flavored fields below get UseStateForUnknown on their schema
+// plan modifiers so the optimizer's out-of-band rewrites (hypothesized,
+// unconfirmed — see design spec) don't produce spurious plan diffs when
+// the user never configured them; if the user DOES pin a value, it
+// re-asserts on every apply exactly like a Managed field. No plan-time
+// validator rejects configuring channels_* under setting_preference =
+// "auto" — see design spec's discriminator section for why this is a
+// deliberate, flagged decision, not an oversight.
+type settingRadioAiModel struct {
+	Enabled                     types.Bool   `tfsdk:"enabled"`
+	SettingPreference           types.String `tfsdk:"setting_preference"`
+	AutoChannelPresetsType      types.String `tfsdk:"auto_channel_presets_type"`
+	AutoAdjustChannelsToCountry types.Bool   `tfsdk:"auto_adjust_channels_to_country"`
+	Radios                      types.List   `tfsdk:"radios"`
+	Optimize                    types.List   `tfsdk:"optimize"`
+	ExcludeDevices              types.List   `tfsdk:"exclude_devices"`
+	HighPriorityDevices         types.List   `tfsdk:"high_priority_devices"`
+	CronExpr                    types.String `tfsdk:"cron_expr"`
+	// CoManaged-flavored: UseStateForUnknown on their schema plan
+	// modifiers, ordinary overlay write semantics otherwise (see doc
+	// comment above).
+	ChannelsNa          types.List `tfsdk:"channels_na"`
+	ChannelsNg          types.List `tfsdk:"channels_ng"`
+	Channels6E          types.List `tfsdk:"channels_6e"`
+	HtModesNa           types.List `tfsdk:"ht_modes_na"`
+	HtModesNg           types.List `tfsdk:"ht_modes_ng"`
+	RadiosConfiguration types.List `tfsdk:"radios_configuration"`
+	ChannelsBlacklist   types.List `tfsdk:"channels_blacklist"`
+}
+
+// settingRadioAiRadiosConfigurationModel is one element of
+// radio_ai.radios_configuration.
+type settingRadioAiRadiosConfigurationModel struct {
+	Radio        types.String `tfsdk:"radio"`
+	ChannelWidth types.Int64  `tfsdk:"channel_width"` // nullable
+	Dfs          types.Bool   `tfsdk:"dfs"`
+}
+
+// settingRadioAiChannelsBlacklistModel is one element of
+// radio_ai.channels_blacklist.
+type settingRadioAiChannelsBlacklistModel struct {
+	Radio        types.String `tfsdk:"radio"`
+	Channel      types.Int64  `tfsdk:"channel"`       // nullable
+	ChannelWidth types.Int64  `tfsdk:"channel_width"` // nullable
 }
 
 // Shared attribute-type maps for the doh/ips nested objects and lists. These
@@ -454,6 +564,50 @@ var (
 	igmpSnoopingAttrTypes = map[string]attr.Type{
 		"enabled":     types.BoolType,
 		"network_ids": types.ListType{ElemType: types.StringType},
+	}
+	mdnsCustomServiceAttrTypes = map[string]attr.Type{
+		"address": types.StringType,
+		"name":    types.StringType,
+	}
+	mdnsAttrTypes = map[string]attr.Type{
+		"mode":                types.StringType,
+		"predefined_services": types.ListType{ElemType: types.StringType},
+		"custom_services":     types.ListType{ElemType: types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}},
+	}
+	teleportAttrTypes = map[string]attr.Type{
+		"enabled":     types.BoolType,
+		"subnet_cidr": types.StringType,
+	}
+	magicSiteToSiteVpnAttrTypes = map[string]attr.Type{
+		"enabled": types.BoolType,
+	}
+	radioAiRadiosConfigurationAttrTypes = map[string]attr.Type{
+		"radio":         types.StringType,
+		"channel_width": types.Int64Type,
+		"dfs":           types.BoolType,
+	}
+	radioAiChannelsBlacklistAttrTypes = map[string]attr.Type{
+		"radio":         types.StringType,
+		"channel":       types.Int64Type,
+		"channel_width": types.Int64Type,
+	}
+	radioAiAttrTypes = map[string]attr.Type{
+		"enabled":                         types.BoolType,
+		"setting_preference":              types.StringType,
+		"auto_channel_presets_type":       types.StringType,
+		"auto_adjust_channels_to_country": types.BoolType,
+		"radios":                          types.ListType{ElemType: types.StringType},
+		"optimize":                        types.ListType{ElemType: types.StringType},
+		"exclude_devices":                 types.ListType{ElemType: types.StringType},
+		"high_priority_devices":           types.ListType{ElemType: types.StringType},
+		"cron_expr":                       types.StringType,
+		"channels_na":                     types.ListType{ElemType: types.Int64Type},
+		"channels_ng":                     types.ListType{ElemType: types.Int64Type},
+		"channels_6e":                     types.ListType{ElemType: types.Int64Type},
+		"ht_modes_na":                     types.ListType{ElemType: types.Int64Type},
+		"ht_modes_ng":                     types.ListType{ElemType: types.Int64Type},
+		"radios_configuration":            types.ListType{ElemType: types.ObjectType{AttrTypes: radioAiRadiosConfigurationAttrTypes}},
+		"channels_blacklist":              types.ListType{ElemType: types.ObjectType{AttrTypes: radioAiChannelsBlacklistAttrTypes}},
 	}
 )
 
@@ -661,7 +815,8 @@ func allSectionAttrsNull(m settingResourceModel) bool {
 		m.Lcm.IsNull() && m.NetworkOpt.IsNull() && m.Ntp.IsNull() &&
 		m.Syslog.IsNull() && m.Doh.IsNull() && m.Ips.IsNull() &&
 		m.Mgmt.IsNull() && m.Radius.IsNull() && m.USG.IsNull() &&
-		m.IgmpSnooping.IsNull()
+		m.IgmpSnooping.IsNull() && m.Mdns.IsNull() && m.Teleport.IsNull() &&
+		m.MagicSiteToSiteVpn.IsNull() && m.RadioAi.IsNull()
 }
 
 // configuredSections returns the registered sections the user configured in

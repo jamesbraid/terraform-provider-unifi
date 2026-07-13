@@ -7,6 +7,7 @@ import (
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -845,4 +846,65 @@ func TestAllSectionAttrsNull_gate(t *testing.T) {
 	if allSectionAttrsNull(partial) {
 		t.Error("allSectionAttrsNull(model with Dpi configured) = true, want false")
 	}
+
+	// PR-B2: one subtest per new section, each proving allSectionAttrsNull
+	// flips from true to false when exactly that field is populated.
+	t.Run("Mdns", func(t *testing.T) {
+		m := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, mdnsAttrTypes, settingMdnsModel{
+			Mode:               types.StringValue("all"),
+			PredefinedServices: types.ListNull(types.StringType),
+			CustomServices:     types.ListNull(types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}),
+		})
+		if diags.HasError() {
+			t.Fatalf("building mdns object: %v", diags)
+		}
+		m.Mdns = obj
+		if allSectionAttrsNull(m) {
+			t.Error("allSectionAttrsNull(model with Mdns configured) = true, want false")
+		}
+	})
+
+	t.Run("Teleport", func(t *testing.T) {
+		m := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, teleportAttrTypes, settingTeleportModel{
+			Enabled:    types.BoolValue(true),
+			SubnetCidr: types.StringValue("10.200.0.0/24"),
+		})
+		if diags.HasError() {
+			t.Fatalf("building teleport object: %v", diags)
+		}
+		m.Teleport = obj
+		if allSectionAttrsNull(m) {
+			t.Error("allSectionAttrsNull(model with Teleport configured) = true, want false")
+		}
+	})
+
+	t.Run("MagicSiteToSiteVpn", func(t *testing.T) {
+		m := allSectionsNullModel()
+		obj, diags := types.ObjectValueFrom(ctx, magicSiteToSiteVpnAttrTypes, settingMagicSiteToSiteVpnModel{
+			Enabled: types.BoolValue(true),
+		})
+		if diags.HasError() {
+			t.Fatalf("building magic_site_to_site_vpn object: %v", diags)
+		}
+		m.MagicSiteToSiteVpn = obj
+		if allSectionAttrsNull(m) {
+			t.Error("allSectionAttrsNull(model with MagicSiteToSiteVpn configured) = true, want false")
+		}
+	})
+
+	t.Run("RadioAi", func(t *testing.T) {
+		m := allSectionsNullModel()
+		rm := radioAiNullListsModel()
+		rm.Enabled = types.BoolValue(true)
+		obj, diags := types.ObjectValueFrom(ctx, radioAiAttrTypes, rm)
+		if diags.HasError() {
+			t.Fatalf("building radio_ai object: %v", diags)
+		}
+		m.RadioAi = obj
+		if allSectionAttrsNull(m) {
+			t.Error("allSectionAttrsNull(model with RadioAi configured) = true, want false")
+		}
+	})
 }

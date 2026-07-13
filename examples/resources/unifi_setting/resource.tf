@@ -44,6 +44,26 @@ resource "unifi_setting" "combined" {
       primary_dns_server = "1.1.1.1"
     }
   }
+
+  teleport = {
+    enabled     = true
+    subnet_cidr = "10.200.0.0/24"
+  }
+
+  magic_site_to_site_vpn = {
+    enabled = true
+  }
+
+  mdns = {
+    mode                = "custom"
+    predefined_services = ["apple_airPlay", "printers"]
+    custom_services = [
+      {
+        name    = "_myservice._tcp"
+        address = "_myservice._tcp.local"
+      }
+    ]
+  }
 }
 
 # Configure only RADIUS settings
