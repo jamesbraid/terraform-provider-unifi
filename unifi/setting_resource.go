@@ -308,6 +308,7 @@ type settingResourceModel struct {
 	AutoSpeedtest types.Object   `tfsdk:"auto_speedtest"`
 	Country       types.Object   `tfsdk:"country"`
 	Dpi           types.Object   `tfsdk:"dpi"`
+	GuestAccess   types.Object   `tfsdk:"guest_access"`
 	Lcm           types.Object   `tfsdk:"lcm"`
 	NetworkOpt    types.Object   `tfsdk:"network_optimization"`
 	Ntp           types.Object   `tfsdk:"ntp"`
