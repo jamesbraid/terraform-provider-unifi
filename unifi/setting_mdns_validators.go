@@ -10,12 +10,16 @@ import (
 )
 
 // mdnsObjectValidator implements C4 rule 1 for the mdns section: reject
-// configuring predefined_services or custom_services while mode is known
-// and not "custom". There is no existing "forbid field X when sibling Y has
-// value Z" helper in this codebase (grepped: only unconditional
-// ConflictsWith/AlsoRequires precedent, e.g. bgp_resource.go — neither is
-// value-gated), so this is a small, purpose-built validator rather than a
-// reuse of one.
+// configuring predefined_services or custom_services unless mode resolves to
+// a known "custom" value. mode being null/unset or a known non-"custom"
+// value are both rejected, same as mode being a known non-"custom" string —
+// a null/unset mode is not ambiguous once a service list is explicitly,
+// non-emptily configured, since overlay() has no "custom" behavior to fall
+// back on for a null mode. There is no existing "forbid field X when
+// sibling Y has value Z" helper in this codebase (grepped: only
+// unconditional ConflictsWith/AlsoRequires precedent, e.g. bgp_resource.go —
+// neither is value-gated), so this is a small, purpose-built validator
+// rather than a reuse of one.
 //
 // It operates on the whole "mdns" object (not per-list attribute paths)
 // since mode/predefined_services/custom_services are siblings inside the
@@ -38,28 +42,61 @@ func (mdnsObjectValidator) ValidateObject(ctx context.Context, req validator.Obj
 
 	attrs := req.ConfigValue.Attributes()
 
-	mode, ok := attrs["mode"].(types.String)
-	if !ok || mode.IsNull() || mode.IsUnknown() {
-		// mode unknown/unset: nothing to gate against yet.
-		return
-	}
-	if mode.ValueString() == "custom" {
-		return
-	}
-
 	predefined, _ := attrs["predefined_services"].(types.List)
 	custom, _ := attrs["custom_services"].(types.List)
 
 	configuredPredefined := !predefined.IsNull() && !predefined.IsUnknown() && len(predefined.Elements()) > 0
 	configuredCustom := !custom.IsNull() && !custom.IsUnknown() && len(custom.Elements()) > 0
 
-	if configuredPredefined || configuredCustom {
+	if !configuredPredefined && !configuredCustom {
+		// Neither list is explicitly, non-emptily configured: nothing to
+		// gate, regardless of mode's value (including null/unknown).
+		return
+	}
+
+	// From here, at least one service list is explicitly, non-emptily
+	// configured, so the section's intent is unambiguous: mode MUST resolve
+	// to "custom", or this errors. Deferring is only safe when mode itself
+	// is unknown AND the services are also unknown — but that can't be the
+	// case here, since we've already established a service list is known
+	// and non-empty. So: mode unknown, null, or a known non-"custom" value
+	// are all rejected below. This closes the silent-drop bug where mode
+	// left null/unset used to defer silently, only for overlay() to treat
+	// null mode as "not custom" and PUT an empty services array — dropping
+	// the user's configured services with no diagnostic at all.
+	mode, ok := attrs["mode"].(types.String)
+	if !ok {
+		return
+	}
+
+	if mode.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"mdns.mode discriminator violation",
-			`predefined_services/custom_services are only valid when mode = "custom"`,
+			`predefined_services/custom_services are configured, but mode is not known to be "custom" `+
+				`(mode's value cannot be determined until apply); set mode = "custom" explicitly`,
 		)
+		return
 	}
+
+	if mode.IsNull() {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"mdns.mode discriminator violation",
+			`predefined_services/custom_services are only valid when mode = "custom", but mode is not set`,
+		)
+		return
+	}
+
+	if mode.ValueString() == "custom" {
+		return
+	}
+
+	resp.Diagnostics.AddAttributeError(
+		req.Path,
+		"mdns.mode discriminator violation",
+		`predefined_services/custom_services are only valid when mode = "custom"`,
+	)
 }
 
 // mdnsStaleChildrenPlanModifier implements C4 rule 2 for the mdns section:

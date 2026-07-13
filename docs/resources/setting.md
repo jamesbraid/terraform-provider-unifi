@@ -58,6 +58,26 @@ resource "unifi_setting" "combined" {
       primary_dns_server = "1.1.1.1"
     }
   }
+
+  teleport = {
+    enabled     = true
+    subnet_cidr = "10.200.0.0/24"
+  }
+
+  magic_site_to_site_vpn = {
+    enabled = true
+  }
+
+  mdns = {
+    mode                = "custom"
+    predefined_services = ["apple_airPlay", "printers"]
+    custom_services = [
+      {
+        name    = "_myservice._tcp"
+        address = "_myservice._tcp.local"
+      }
+    ]
+  }
 }
 
 # Configure only RADIUS settings
@@ -83,12 +103,16 @@ resource "unifi_setting" "radius_only" {
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
+- `magic_site_to_site_vpn` (Attributes) Magic Site-to-Site VPN (mesh) settings. Only `enabled` is modeled — the pinned go-unifi SDK exposes no other field for this section. Any additional controller-managed value (e.g. a generated key, if one exists — unconfirmed) is preserved untouched across updates via the standard read-modify-write mechanism. (see [below for nested schema](#nestedatt--magic_site_to_site_vpn))
+- `mdns` (Attributes) mDNS (multicast DNS / Bonjour) settings. `mode` is a discriminator: `predefined_services`/`custom_services` are only live/authoritative when `mode = "custom"` — configuring either while `mode` is `"all"` or `"auto"` is rejected at plan time, and both are normalized to an empty list on read/write when `mode` is not `"custom"`. (see [below for nested schema](#nestedatt--mdns))
 - `mgmt` (Attributes) Management settings. (see [below for nested schema](#nestedatt--mgmt))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
+- `radio_ai` (Attributes) AI-driven RF (radio) optimization settings. `setting_preference` is a soft discriminator: unlike `mdns.mode`, it does not gate whether the channel/width fields are meaningful — they remain real values in both `auto` and `manual`. The channel/width-selection attributes below use `UseStateForUnknown` so the optimizer's out-of-band rewrites (if `setting_preference = "auto"`) don't produce plan diffs when left unconfigured; a configured value still re-asserts on every apply. (see [below for nested schema](#nestedatt--radio_ai))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
 - `site` (String) The name of the site to associate the settings with.
 - `syslog` (Attributes) Remote syslog (rsyslogd) settings. (see [below for nested schema](#nestedatt--syslog))
+- `teleport` (Attributes) Teleport (personal VPN) settings. (see [below for nested schema](#nestedatt--teleport))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `usg` (Attributes) USG settings. (see [below for nested schema](#nestedatt--usg))
 
@@ -227,6 +251,33 @@ Optional:
 - `touch_event` (Boolean) Whether touch events on the display are enabled.
 
 
+<a id="nestedatt--magic_site_to_site_vpn"></a>
+### Nested Schema for `magic_site_to_site_vpn`
+
+Optional:
+
+- `enabled` (Boolean) Whether Magic Site-to-Site VPN is enabled.
+
+
+<a id="nestedatt--mdns"></a>
+### Nested Schema for `mdns`
+
+Optional:
+
+- `custom_services` (Attributes List) Custom mDNS services to broadcast. Only authoritative when `mode = "custom"`. (see [below for nested schema](#nestedatt--mdns--custom_services))
+- `mode` (String) Service discovery mode: `all` (broadcast every predefined service), `auto` (controller-driven discovery), or `custom` (only `predefined_services`/`custom_services` are broadcast).
+- `predefined_services` (List of String) Predefined service codes to broadcast. Only authoritative when `mode = "custom"`.
+
+<a id="nestedatt--mdns--custom_services"></a>
+### Nested Schema for `mdns.custom_services`
+
+Required:
+
+- `address` (String) mDNS service type, e.g. `_myservice._tcp` or `_myservice._tcp.local`.
+- `name` (String) Display name for the custom service.
+
+
+
 <a id="nestedatt--mgmt"></a>
 ### Nested Schema for `mgmt`
 
@@ -280,6 +331,55 @@ Optional:
 - `setting_preference` (String) Configuration mode: `auto` or `manual`.
 
 
+<a id="nestedatt--radio_ai"></a>
+### Nested Schema for `radio_ai`
+
+Optional:
+
+- `auto_adjust_channels_to_country` (Boolean) Whether to automatically adjust channels to the configured regulatory country.
+- `auto_channel_presets_type` (String) Automatic channel preset: `maximum_speed`, `conservative`, or `custom`.
+- `channels_6e` (List of Number) Pinned 6 GHz (6e) channel list. A wide, gapped range spanning 1-221 with exclusions (1-29, 33-61, 65-93, 97-125, 129-157, 161-189, 193-221, 225-229, 233).
+- `channels_blacklist` (Attributes List) Per-radio channel/width blacklist. (see [below for nested schema](#nestedatt--radio_ai--channels_blacklist))
+- `channels_na` (List of Number) Pinned 5 GHz (na) channel list. Closed set: 34, 36, 38, 40, 42, 44, 46, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165, 169.
+- `channels_ng` (List of Number) Pinned 2.4 GHz (ng) channel list. Closed set: 1-14.
+- `cron_expr` (String) Cron expression controlling when the optimizer runs. Opaque; no syntax validator (not worth one for this section, same as other cron_expr leaves in this schema).
+- `enabled` (Boolean) Whether AI radio optimization is enabled.
+- `exclude_devices` (List of String) MAC addresses of devices excluded from AI radio optimization.
+- `high_priority_devices` (List of String) MAC addresses of devices prioritized during AI radio optimization.
+- `ht_modes_na` (List of Number) Pinned 5 GHz (na) HT/channel-width list (MHz): 20, 40, 80, 160.
+- `ht_modes_ng` (List of Number) Pinned 2.4 GHz (ng) HT/channel-width list (MHz): 20, 40.
+- `optimize` (List of String) What the optimizer adjusts: `channel`, `power`.
+- `radios` (List of String) Radio bands this section applies to.
+- `radios_configuration` (Attributes List) Per-radio channel-width/DFS configuration. (see [below for nested schema](#nestedatt--radio_ai--radios_configuration))
+- `setting_preference` (String) Optimization preference: `auto` (controller-driven) or `manual` (user-pinned). Does not gate whether the channel/width fields below are meaningful — no plan-time validator rejects configuring them under `auto`.
+
+<a id="nestedatt--radio_ai--channels_blacklist"></a>
+### Nested Schema for `radio_ai.channels_blacklist`
+
+Required:
+
+- `radio` (String) Radio band: `na`, `ng`, or `6e`.
+
+Optional:
+
+- `channel` (Number) Channel number to blacklist (1-221, 225-233; a controller-wide range spanning all bands, constrained per-row by the sibling `radio` field rather than a short enum).
+- `channel_width` (Number) Channel width (MHz): 20, 40, 80, 160, 240, or 320. NOTE: this enum has 6 values and DOES include 240, unlike radios_configuration.channel_width's 5-value enum.
+
+
+<a id="nestedatt--radio_ai--radios_configuration"></a>
+### Nested Schema for `radio_ai.radios_configuration`
+
+Required:
+
+- `radio` (String) Radio band: `na`, `ng`, or `6e`.
+
+Optional:
+
+- `channel_width` (Number) Channel width (MHz): 20, 40, 80, 160, or 320. NOTE: this enum has 5 values and does NOT include 240 — channels_blacklist.channel_width is a different, 6-value enum that does include 240; the two are not interchangeable.
+- `dfs` (Boolean) Whether DFS (Dynamic Frequency Selection) is enabled for this radio.
+
+
+
 <a id="nestedatt--radius"></a>
 ### Nested Schema for `radius`
 
@@ -308,6 +408,15 @@ Optional:
 - `port` (Number) Remote syslog server port (1-65535).
 - `this_controller` (Boolean) Also log this controller's events.
 - `this_controller_encrypted_only` (Boolean) Only send this controller's logs over an encrypted channel.
+
+
+<a id="nestedatt--teleport"></a>
+### Nested Schema for `teleport`
+
+Optional:
+
+- `enabled` (Boolean) Whether Teleport is enabled.
+- `subnet_cidr` (String) Teleport subnet, in CIDR notation (/8-/32), or an empty string to clear it. Not required to be set when `enabled = true`, and not required to be empty when `enabled = false` — the controller's own wire format tolerates any combination, so no cross-field validation is enforced here (a deliberate decision, not an oversight).
 
 
 <a id="nestedatt--timeouts"></a>

@@ -36,6 +36,48 @@ func radioAiChannelsBlacklistChannelValidator() validator.Int64 {
 	)
 }
 
+// radioAiChannelsNgValues is the closed set for SettingRadioAi.ChannelsNg
+// per its struct comment (radio_ai.generated.go):
+// "1|2|3|4|5|6|7|8|9|10|11|12|13|14" — the 2.4GHz channel numbers 1-14.
+var radioAiChannelsNgValues = []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
+
+// radioAiChannelsNaValues is the closed set for SettingRadioAi.ChannelsNa
+// per its struct comment (radio_ai.generated.go): "34|36|38|40|42|44|46|48|
+// 52|56|60|64|100|104|108|112|116|120|124|128|132|136|140|144|149|153|157|
+// 161|165|169" — 30 discrete 5GHz channel numbers, transcribed verbatim (not
+// a contiguous range, so a []int64 literal + OneOf is the right shape, not
+// int64validator.Between).
+var radioAiChannelsNaValues = []int64{
+	34, 36, 38, 40, 42, 44, 46, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116,
+	120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165, 169,
+}
+
+// radioAiChannels6EValidator validates channels_6e against
+// SettingRadioAi.Channels6E's struct comment (radio_ai.generated.go):
+// "[1-9]|[1-2][0-9]|3[3-9]|[4-5][0-9]|6[0-1]|6[5-9]|[7-8][0-9]|9[0-3]|9[7-9]|
+// 1[0-1][0-9]|12[0-5]|129|1[3-4][0-9]|15[0-7]|16[1-9]|1[7-8][0-9]|19[3-9]|
+// 2[0-1][0-9]|22[0-1]|22[5-9]|233" — expanded programmatically against the
+// regex, this is the union of 9 contiguous ranges (1-29, 33-61, 65-93,
+// 97-125, 129-157, 161-189, 193-221, 225-229) plus the single isolated value
+// 233; it excludes 30-32, 62-64, 94-96, 126-128, 158-160, 190-192, 222-224,
+// and 230-232/234+. Same shape as radioAiChannelsBlacklistChannelValidator:
+// a wide, gapped 6GHz channel set, not a short discrete enum, so
+// int64validator.Any + Between ranges is used rather than a ~200-literal
+// OneOf.
+func radioAiChannels6EValidator() validator.Int64 {
+	return int64validator.Any(
+		int64validator.Between(1, 29),
+		int64validator.Between(33, 61),
+		int64validator.Between(65, 93),
+		int64validator.Between(97, 125),
+		int64validator.Between(129, 157),
+		int64validator.Between(161, 189),
+		int64validator.Between(193, 221),
+		int64validator.Between(225, 229),
+		int64validator.Between(233, 233),
+	)
+}
+
 // radioAiSection is the settingSection implementation for the "radio_ai"
 // settings section: UniFi's AI-driven RF optimization feature. See
 // settingRadioAiModel's doc comment (setting_resource.go) for the
@@ -59,10 +101,12 @@ func (radioAiSection) attrName() string { return "radio_ai" }
 // UseStateForUnknown on their plan modifiers so an out-of-band controller
 // rewrite under setting_preference=auto (hypothesized, unconfirmed) does
 // not produce a spurious plan diff when the user never configured them.
-// channels_na/channels_ng/channels_6e deliberately have NO numeric enum
-// validator (per the design spec's leaning: rely on controller-side
-// rejection rather than hand-maintaining a large/drift-prone enum) — this
-// omission is documented here, not a gap. "default"/"useXY" have no schema
+// channels_na/channels_ng/channels_6e each DO have a closed allowed-value
+// set per their struct comments (radio_ai.generated.go) and are validated
+// accordingly: channels_ng (1-14) and channels_na (30 discrete 5GHz channel
+// numbers) via int64validator.OneOf; channels_6e (a wide, gapped ~200-value
+// 6GHz range) via the same Any+Between-ranges shape as
+// radioAiChannelsBlacklistChannelValidator. "default"/"useXY" have no schema
 // attribute at all.
 func (radioAiSection) schemaAttribute() schema.Attribute {
 	return schema.SingleNestedAttribute{
@@ -165,34 +209,43 @@ func (radioAiSection) schemaAttribute() schema.Attribute {
 			// --- CoManaged-flavored: UseStateForUnknown, no plan-time
 			// rejection of configuring them under setting_preference=auto.
 			"channels_na": schema.ListAttribute{
-				MarkdownDescription: "Pinned 5 GHz (na) channel list. No numeric enum validator — " +
-					"relies on controller-side rejection of invalid channel numbers (deliberate " +
-					"omission, not a gap; see the design spec).",
+				MarkdownDescription: "Pinned 5 GHz (na) channel list. Closed set: 34, 36, 38, 40, 42, " +
+					"44, 46, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, " +
+					"144, 149, 153, 157, 161, 165, 169.",
 				ElementType: types.Int64Type,
 				Optional:    true,
 				Computed:    true,
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.List{
+					listvalidator.ValueInt64sAre(int64validator.OneOf(radioAiChannelsNaValues...)),
 				},
 			},
 			"channels_ng": schema.ListAttribute{
-				MarkdownDescription: "Pinned 2.4 GHz (ng) channel list. No numeric enum validator — " +
-					"relies on controller-side rejection.",
+				MarkdownDescription: "Pinned 2.4 GHz (ng) channel list. Closed set: 1-14.",
+				ElementType:         types.Int64Type,
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.List{
+					listvalidator.ValueInt64sAre(int64validator.OneOf(radioAiChannelsNgValues...)),
+				},
+			},
+			"channels_6e": schema.ListAttribute{
+				MarkdownDescription: "Pinned 6 GHz (6e) channel list. A wide, gapped range spanning " +
+					"1-221 with exclusions (1-29, 33-61, 65-93, 97-125, 129-157, 161-189, 193-221, " +
+					"225-229, 233).",
 				ElementType: types.Int64Type,
 				Optional:    true,
 				Computed:    true,
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
 				},
-			},
-			"channels_6e": schema.ListAttribute{
-				MarkdownDescription: "Pinned 6 GHz (6e) channel list. No numeric enum validator — " +
-					"relies on controller-side rejection.",
-				ElementType: types.Int64Type,
-				Optional:    true,
-				Computed:    true,
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
+				Validators: []validator.List{
+					listvalidator.ValueInt64sAre(radioAiChannels6EValidator()),
 				},
 			},
 			"ht_modes_na": schema.ListAttribute{

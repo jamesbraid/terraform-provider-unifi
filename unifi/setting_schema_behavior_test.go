@@ -70,6 +70,23 @@ func validateStringAll(ctx context.Context, vs []validator.String, p path.Path, 
 	return diags
 }
 
+// validateInt64ListAll runs every validator in vs against a types.List of
+// Int64Type built from values, returning the accumulated diagnostics.
+func validateInt64ListAll(ctx context.Context, t *testing.T, vs []validator.List, p path.Path, values []int64) diag.Diagnostics {
+	t.Helper()
+	listVal, diags := types.ListValueFrom(ctx, types.Int64Type, values)
+	if diags.HasError() {
+		t.Fatalf("building int64 list from %v: %v", values, diags)
+	}
+	for _, v := range vs {
+		req := validator.ListRequest{Path: p, ConfigValue: listVal}
+		var resp validator.ListResponse
+		v.ValidateList(ctx, req, &resp)
+		diags.Append(resp.Diagnostics...)
+	}
+	return diags
+}
+
 // --- validator rejection ---------------------------------------------------
 
 func TestSettingSchemaBehavior_ntpSettingPreferenceRejectsInvalid(t *testing.T) {
@@ -512,6 +529,186 @@ func TestSettingSchemaBehavior_mdnsValidatorAllowsCustomModeWithServices(t *test
 		if resp.Diagnostics.HasError() {
 			t.Errorf("validator produced error for legitimate mode=custom + configured services: %v", resp.Diagnostics)
 		}
+	}
+}
+
+// TestSettingSchemaBehavior_mdnsValidatorRejectsServicesWhenModeAbsent
+// regression-guards the silent-drop bug: `mdns = { custom_services = [...] }`
+// with mode left ABSENT (null, not just non-custom) used to slip past the
+// validator entirely (it returned early on null mode) and PLAN successfully,
+// only for overlay() to then treat null mode as "not custom" and PUT an
+// empty custom_services array — silently dropping the user's configured
+// services with no diagnostic at all. mode being null is not a deferral
+// case: services were explicitly, non-emptily configured, so the section's
+// intent is unambiguous and must be rejected up front, exactly like the
+// known-non-custom case.
+func TestSettingSchemaBehavior_mdnsValidatorRejectsServicesWhenModeAbsent(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+
+	top, ok := attrs["mdns"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("mdns is %T, want schema.SingleNestedAttribute", attrs["mdns"])
+	}
+	if len(top.Validators) == 0 {
+		t.Fatal("mdns has no object validators")
+	}
+
+	customList, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}, []settingMdnsCustomServiceModel{
+		{Address: types.StringValue("_myservice._tcp.local"), Name: types.StringValue("_myservice._tcp")},
+	})
+	if diags.HasError() {
+		t.Fatalf("building custom_services: %v", diags)
+	}
+
+	configObj := types.ObjectValueMust(mdnsAttrTypes, map[string]attr.Value{
+		"mode":                types.StringNull(), // mode absent from config entirely
+		"predefined_services": types.ListNull(types.StringType),
+		"custom_services":     customList,
+	})
+
+	var gotError bool
+	for _, v := range top.Validators {
+		req := validator.ObjectRequest{
+			Path:        path.Root("mdns"),
+			ConfigValue: configObj,
+		}
+		var resp validator.ObjectResponse
+		v.ValidateObject(ctx, req, &resp)
+		if resp.Diagnostics.HasError() {
+			gotError = true
+		}
+	}
+	if !gotError {
+		t.Error("validator produced no error for mode=null (absent) with non-empty custom_services in config, want a rejection (silent-drop regression: overlay() would otherwise PUT an empty custom_services array)")
+	}
+}
+
+// --- radio_ai channels_na/channels_ng/channels_6e closed-enum validators ---
+
+// TestSettingSchemaBehavior_radioAiChannelsNgRejectsInvalid proves
+// channels_ng only accepts SettingRadioAi.ChannelsNg's closed set per its
+// struct comment (radio_ai.generated.go): "1|2|3|4|5|6|7|8|9|10|11|12|13|14"
+// — the 2.4GHz channel numbers 1-14.
+func TestSettingSchemaBehavior_radioAiChannelsNgRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "radio_ai", "channels_ng")
+	la, ok := a.(schema.ListAttribute)
+	if !ok {
+		t.Fatalf("radio_ai.channels_ng is %T, want schema.ListAttribute", a)
+	}
+	if len(la.Validators) == 0 {
+		t.Fatal("radio_ai.channels_ng has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		values  []int64
+		wantErr bool
+	}{
+		{"1 is valid (lower bound)", []int64{1}, false},
+		{"14 is valid (upper bound)", []int64{14}, false},
+		{"6 is valid", []int64{6}, false},
+		{"0 is invalid", []int64{0}, true},
+		{"15 is invalid (just past upper bound)", []int64{15}, true},
+		{"36 is invalid (a 5GHz channel, not 2.4GHz)", []int64{36}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateInt64ListAll(ctx, t, la.Validators, path.Root("radio_ai").AtName("channels_ng"), tc.values)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("values %v: validator error = %v, want %v (diags: %v)", tc.values, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+// TestSettingSchemaBehavior_radioAiChannelsNaRejectsInvalid proves
+// channels_na only accepts SettingRadioAi.ChannelsNa's closed set per its
+// struct comment (radio_ai.generated.go): "34|36|38|40|42|44|46|48|52|56|60|
+// 64|100|104|108|112|116|120|124|128|132|136|140|144|149|153|157|161|165|169"
+// — 30 discrete 5GHz channel numbers, not a contiguous range.
+func TestSettingSchemaBehavior_radioAiChannelsNaRejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "radio_ai", "channels_na")
+	la, ok := a.(schema.ListAttribute)
+	if !ok {
+		t.Fatalf("radio_ai.channels_na is %T, want schema.ListAttribute", a)
+	}
+	if len(la.Validators) == 0 {
+		t.Fatal("radio_ai.channels_na has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		values  []int64
+		wantErr bool
+	}{
+		{"34 is valid (lowest in set)", []int64{34}, false},
+		{"169 is valid (highest in set)", []int64{169}, false},
+		{"100 is valid", []int64{100}, false},
+		{"6 is invalid (a 2.4GHz channel, not in the 5GHz set)", []int64{6}, true},
+		{"35 is invalid (gap between 34 and 36)", []int64{35}, true},
+		{"50 is invalid (gap between 48 and 52)", []int64{50}, true},
+		{"170 is invalid (just past the highest value)", []int64{170}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateInt64ListAll(ctx, t, la.Validators, path.Root("radio_ai").AtName("channels_na"), tc.values)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("values %v: validator error = %v, want %v (diags: %v)", tc.values, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+// TestSettingSchemaBehavior_radioAiChannels6ERejectsInvalid proves
+// channels_6e only accepts SettingRadioAi.Channels6E's closed set per its
+// struct comment (radio_ai.generated.go): "[1-9]|[1-2][0-9]|3[3-9]|[4-5][0-9]
+// |6[0-1]|6[5-9]|[7-8][0-9]|9[0-3]|9[7-9]|1[0-1][0-9]|12[0-5]|129|1[3-4][0-9]
+// |15[0-7]|16[1-9]|1[7-8][0-9]|19[3-9]|2[0-1][0-9]|22[0-1]|22[5-9]|233" —
+// expanded (verified programmatically), this is the union of 9 contiguous
+// ranges: 1-29, 33-61, 65-93, 97-125, 129-157, 161-189, 193-221, 225-229,
+// and the single value 233. It deliberately excludes 30-32, 62-64, 94-96,
+// 126-128, 158-160, 190-192, 222-224, and 230-232/234+.
+func TestSettingSchemaBehavior_radioAiChannels6ERejectsInvalid(t *testing.T) {
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "radio_ai", "channels_6e")
+	la, ok := a.(schema.ListAttribute)
+	if !ok {
+		t.Fatalf("radio_ai.channels_6e is %T, want schema.ListAttribute", a)
+	}
+	if len(la.Validators) == 0 {
+		t.Fatal("radio_ai.channels_6e has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		values  []int64
+		wantErr bool
+	}{
+		{"1 is valid (lowest overall)", []int64{1}, false},
+		{"233 is valid (highest overall, isolated value)", []int64{233}, false},
+		{"29 is valid (upper edge of first range)", []int64{29}, false},
+		{"33 is valid (lower edge of second range)", []int64{33}, false},
+		{"221 is valid (upper edge of 193-221 range)", []int64{221}, false},
+		{"225 is valid (lower edge of 225-229 range)", []int64{225}, false},
+		{"229 is valid (upper edge of 225-229 range)", []int64{229}, false},
+		{"0 is invalid (below range)", []int64{0}, true},
+		{"30 is invalid (gap between 29 and 33)", []int64{30}, true},
+		{"32 is invalid (gap between 29 and 33)", []int64{32}, true},
+		{"222 is invalid (gap between 221 and 225)", []int64{222}, true},
+		{"230 is invalid (gap between 229 and 233)", []int64{230}, true},
+		{"232 is invalid (gap between 229 and 233)", []int64{232}, true},
+		{"234 is invalid (past the highest value)", []int64{234}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateInt64ListAll(ctx, t, la.Validators, path.Root("radio_ai").AtName("channels_6e"), tc.values)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("values %v: validator error = %v, want %v (diags: %v)", tc.values, got, tc.wantErr, diags)
+			}
+		})
 	}
 }
 
