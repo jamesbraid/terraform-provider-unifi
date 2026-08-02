@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
 )
 
 // TestMergePortOverridesByIndex guards #266: declaring a subset of port_override
@@ -312,9 +313,9 @@ func Test_buildMinimalUpdateDevice_meshStaVapEnabled(t *testing.T) {
 // because a literal can only name a controller-simulated demo device, which
 // never informs and so never exercises adoption for real.
 func TestAccDeviceFramework_basic(t *testing.T) {
-	mac := os.Getenv(envAccDeviceMAC)
+	mac := os.Getenv(controllertest.EnvAccDeviceMAC)
 	if mac == "" {
-		t.Skipf("%s not set; skipping device acceptance test", envAccDeviceMAC)
+		t.Skipf("%s not set; skipping device acceptance test", controllertest.EnvAccDeviceMAC)
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },

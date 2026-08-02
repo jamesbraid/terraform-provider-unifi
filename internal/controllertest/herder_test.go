@@ -1,4 +1,4 @@
-package unifi
+package controllertest
 
 import (
 	"reflect"
@@ -152,35 +152,100 @@ func TestDecodeHerderEvents(t *testing.T) {
 	}
 }
 
-func TestSelectHerderDevice(t *testing.T) {
-	t.Run("returns the only device the request asked for", func(t *testing.T) {
-		got, err := selectHerderDevice([]herderDevice{{MAC: "02:aa:bb:cc:dd:ee"}})
+func TestMatchHerderFleet(t *testing.T) {
+	fleet := []herderFleetMember{
+		{Model: "USM8P", Env: "SWITCH_MAC"},
+		{Model: "U7PRO", Env: "AP_MAC"},
+	}
+
+	t.Run("pairs each device with its fleet member by request index", func(t *testing.T) {
+		// Deliberately out of order: the index is what pairs them, not the
+		// position in the ready event.
+		devices := []herderDevice{
+			{Index: 1, Model: "U7PRO", MAC: "02:aa:bb:cc:dd:ef"},
+			{Index: 0, Model: "USM8P", MAC: "02:aa:bb:cc:dd:ee"},
+		}
+		got, err := matchHerderFleet(devices, fleet)
 		if err != nil {
-			t.Fatalf("selectHerderDevice() error = %v", err)
+			t.Fatalf("matchHerderFleet() error = %v", err)
 		}
-		if got.MAC != "02:aa:bb:cc:dd:ee" {
-			t.Errorf("MAC = %q, want 02:aa:bb:cc:dd:ee", got.MAC)
+		if got["SWITCH_MAC"].MAC != "02:aa:bb:cc:dd:ee" {
+			t.Errorf("SWITCH_MAC = %q, want the USM8P", got["SWITCH_MAC"].MAC)
 		}
-	})
-
-	t.Run("a ready event with no devices is an error", func(t *testing.T) {
-		if _, err := selectHerderDevice(nil); err == nil {
-			t.Fatal("selectHerderDevice() error = nil, want an error")
+		if got["AP_MAC"].MAC != "02:aa:bb:cc:dd:ef" {
+			t.Errorf("AP_MAC = %q, want the U7PRO", got["AP_MAC"].MAC)
 		}
 	})
 
-	t.Run("more devices than requested is an error", func(t *testing.T) {
-		devices := []herderDevice{{MAC: "02:aa:bb:cc:dd:ee"}, {MAC: "02:aa:bb:cc:dd:ef"}}
-		if _, err := selectHerderDevice(devices); err == nil {
-			t.Fatal("selectHerderDevice() error = nil, want an error")
+	t.Run("a short ready event is an error", func(t *testing.T) {
+		devices := []herderDevice{{Index: 0, Model: "USM8P", MAC: "02:aa:bb:cc:dd:ee"}}
+		if _, err := matchHerderFleet(devices, fleet); err == nil {
+			t.Fatal("matchHerderFleet() error = nil, want a count mismatch")
+		}
+	})
+
+	// A model that does not match the index it claims means the request and
+	// the reply have drifted apart, which would silently hand a test the
+	// wrong device.
+	t.Run("a model that contradicts its index is an error", func(t *testing.T) {
+		devices := []herderDevice{
+			{Index: 0, Model: "U7PRO", MAC: "02:aa:bb:cc:dd:ee"},
+			{Index: 1, Model: "USM8P", MAC: "02:aa:bb:cc:dd:ef"},
+		}
+		if _, err := matchHerderFleet(devices, fleet); err == nil {
+			t.Fatal("matchHerderFleet() error = nil, want a model mismatch")
+		}
+	})
+
+	t.Run("an out-of-range index is an error", func(t *testing.T) {
+		devices := []herderDevice{
+			{Index: 0, Model: "USM8P", MAC: "02:aa:bb:cc:dd:ee"},
+			{Index: 7, Model: "U7PRO", MAC: "02:aa:bb:cc:dd:ef"},
+		}
+		if _, err := matchHerderFleet(devices, fleet); err == nil {
+			t.Fatal("matchHerderFleet() error = nil, want an index error")
 		}
 	})
 
 	t.Run("a device with no MAC is an error", func(t *testing.T) {
-		if _, err := selectHerderDevice([]herderDevice{{Model: "USM8P"}}); err == nil {
-			t.Fatal("selectHerderDevice() error = nil, want an error")
+		devices := []herderDevice{
+			{Index: 0, Model: "USM8P"},
+			{Index: 1, Model: "U7PRO", MAC: "02:aa:bb:cc:dd:ef"},
+		}
+		if _, err := matchHerderFleet(devices, fleet); err == nil {
+			t.Fatal("matchHerderFleet() error = nil, want a missing-MAC error")
 		}
 	})
+
+	t.Run("two devices claiming one index is an error", func(t *testing.T) {
+		devices := []herderDevice{
+			{Index: 0, Model: "USM8P", MAC: "02:aa:bb:cc:dd:ee"},
+			{Index: 0, Model: "USM8P", MAC: "02:aa:bb:cc:dd:ef"},
+		}
+		if _, err := matchHerderFleet(devices, fleet); err == nil {
+			t.Fatal("matchHerderFleet() error = nil, want a duplicate-index error")
+		}
+	})
+}
+
+// TestHerderFleetIsWellFormed guards the fleet itself: a duplicate variable or
+// a blank field would hand some test an empty MAC and skip it silently.
+func TestHerderFleetIsWellFormed(t *testing.T) {
+	seen := map[string]bool{}
+	for i, member := range herderFleet {
+		if member.Model == "" || member.Env == "" {
+			t.Errorf("herderFleet[%d] has a blank Model or Env: %+v", i, member)
+		}
+		if seen[member.Env] {
+			t.Errorf("herderFleet[%d] reuses %s", i, member.Env)
+		}
+		seen[member.Env] = true
+	}
+	for _, env := range []string{EnvAccDeviceMAC, EnvAccAPMAC} {
+		if !seen[env] {
+			t.Errorf("no fleet member publishes %s", env)
+		}
+	}
 }
 
 func TestHerderFailureMessage(t *testing.T) {

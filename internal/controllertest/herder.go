@@ -1,4 +1,4 @@
-package unifi
+package controllertest
 
 import (
 	"bufio"
@@ -29,20 +29,63 @@ import (
 // planning and device-container lifecycle and nothing else. Its supported
 // integration surface is the versioned NDJSON protocol on its stdout — stderr
 // is diagnostics and aggregated device logs, and is never parsed here.
+// The two herder coordinates share go-unifi's names on purpose. Both
+// repositories drive the same process against the same controller images, so a
+// runner configured for one is configured for both, and there is one thing to
+// bump when the herder moves rather than two.
 const (
-	// envHerderBin points at the unifi-emu-herder binary. Unset means no
-	// fake devices, and every acceptance test that needs a real adoptable
-	// device skips itself.
-	envHerderBin = "UNIFI_ACC_HERDER_BIN"
+	// envHerderBin points at the unifi-emu-herder binary. The acceptance
+	// suite cannot run without it: the controller starts with no devices of
+	// its own, so every device under test comes from here.
+	envHerderBin = "UNIFI_TEST_HERDER_BIN"
 	// envHerderSyntheticImage overrides the public synthetic image. A
 	// development herder build has no compiled default and needs it; a
 	// release build carries a version-matched one.
-	envHerderSyntheticImage = "UNIFI_ACC_HERDER_SYNTHETIC_IMAGE"
-	// envHerderModel picks the device model to start.
-	envHerderModel = "UNIFI_ACC_HERDER_MODEL"
-	// envAccDeviceMAC carries the started device's MAC to the tests.
-	envAccDeviceMAC = "UNIFI_ACC_DEVICE_MAC"
+	envHerderSyntheticImage = "UNIFI_TEST_HERDER_SYNTHETIC_IMAGE"
 )
+
+// The MACs the fleet publishes to the tests. These stay UNIFI_ACC_*: they are
+// this provider's own test inputs, not part of the shared herder contract.
+const (
+	EnvAccDeviceMAC = "UNIFI_ACC_DEVICE_MAC"
+	EnvAccAPMAC     = "UNIFI_ACC_AP_MAC"
+)
+
+// herderFleetMember is one device every acceptance run starts.
+type herderFleetMember struct {
+	Model string
+	// Env is the variable this device's MAC reaches the tests through.
+	Env string
+	// Adopt asks the harness to adopt this device before any test runs.
+	// Adoption is the caller's job, never the herder's, and whether it
+	// happens up front is a per-device decision: a device that is the
+	// subject of an adoption test must be left pending.
+	Adopt bool
+}
+
+// herderFleet is the fixed fleet the acceptance suite runs against. It is not
+// configurable: the tests name the devices they need through the constants
+// above, so a fleet that varied with the environment would only mean tests
+// that pass on one runner and skip on another.
+var herderFleet = []herderFleetMember{
+	{
+		// A switch, left pending on purpose. unifi_device's allow_adoption
+		// is exactly what TestAccDeviceFramework_basic drives, so adopting
+		// it here would decide the result before the test starts.
+		Model: "USM8P",
+		Env:   EnvAccDeviceMAC,
+		Adopt: false,
+	},
+	{
+		// An access point, adopted up front. The controller rejects AP
+		// group membership for any device it has not adopted, so for
+		// TestAccAPGroupFramework_withDevices an adopted AP is a
+		// precondition rather than the subject.
+		Model: "U7PRO",
+		Env:   EnvAccAPMAC,
+		Adopt: true,
+	},
+}
 
 // envRyukDisabled is the Testcontainers reaper switch runAcceptanceTests sets
 // for its own Compose lifecycle. The herder reads effective Testcontainers
@@ -74,21 +117,23 @@ const (
 // Compose controller reports it as inform_port and publishes it.
 const controllerInformPort = 8080
 
-// defaultHerderModel is a switch, which keeps the started device useful to the
-// unifi_device acceptance tests without pulling in radio state.
-const defaultHerderModel = "USM8P"
-
 const (
-	// herderReadyTimeout covers validation, pulls, container start and
-	// readiness. It sits above the herder's own 5m --startup-timeout so a
-	// startup that overruns is reported by the herder's failed event rather
-	// than by this harness giving up first.
-	herderReadyTimeout = 6 * time.Minute
+	// herderStartupTimeout and herderChildStopTimeout are passed to the child
+	// so it and this harness work to the same clock.
+	herderStartupTimeout   = 5 * time.Minute
+	herderChildStopTimeout = 30 * time.Second
+	// herderSlack keeps every wait here strictly longer than the child's own
+	// deadline for the same phase. A stuck run is then reported by the herder
+	// as the failure it is, with a code and a phase, rather than by this
+	// harness as an unexplained timeout.
+	herderSlack = 30 * time.Second
 	// herderStopTimeout covers SIGTERM, the terminal event and process exit.
-	herderStopTimeout = 2 * time.Minute
-	// herderInformTimeout is how long the started device gets to reach the
+	herderStopTimeout = herderChildStopTimeout + herderSlack
+	// herderInformTimeout is how long a started device gets to reach the
 	// controller before the run is called off.
 	herderInformTimeout = 2 * time.Minute
+	// herderAdoptTimeout bounds a precondition adoption reaching connected.
+	herderAdoptTimeout = 3 * time.Minute
 )
 
 // herderDevice is one entry of the ready event. Only the ready event carries
@@ -132,23 +177,27 @@ type herderRequestedDevice struct {
 type herder struct {
 	cmd    *exec.Cmd
 	events chan herderEvent
-	device herderDevice
+	// devices maps each fleet member's variable to the device it resolved to.
+	devices map[string]herderDevice
 
 	stopOnce sync.Once
 }
 
-// startDeviceHerder starts the herder against the Compose controller and
-// blocks until its ready event names the device the acceptance tests drive.
-// It returns (nil, nil) when no herder binary is configured.
-func startDeviceHerder(
+// StartDevices starts the herder against the Compose controller and
+// blocks until its ready event names every device in the fleet. A missing
+// herder binary is fatal, not a skip: the controller starts with no devices,
+// so a suite without one would go green having tested nothing.
+func StartDevices(
 	ctx context.Context,
-	logger *UnifiLogger,
+	logger Logger,
 	controller *testcontainers.DockerContainer,
 ) (*herder, error) {
 	bin := os.Getenv(envHerderBin)
 	if bin == "" {
-		logger.Printf("%s is not set: starting no fake devices", envHerderBin)
-		return nil, nil
+		return nil, fmt.Errorf(
+			"%s is not set: the controller starts no devices of its own, so the "+
+				"acceptance suite has nothing to drive", envHerderBin,
+		)
 	}
 
 	network, informURL, err := controllerInformEndpoint(ctx, controller)
@@ -156,19 +205,22 @@ func startDeviceHerder(
 		return nil, err
 	}
 
-	model := os.Getenv(envHerderModel)
-	if model == "" {
-		model = defaultHerderModel
+	requested := make([]herderRequestedDevice, len(herderFleet))
+	for i, member := range herderFleet {
+		requested[i] = herderRequestedDevice{Model: member.Model}
 	}
-	request, err := json.Marshal(herderRequest{
-		Version: 1,
-		Devices: []herderRequestedDevice{{Model: model}},
-	})
+	request, err := json.Marshal(herderRequest{Version: 1, Devices: requested})
 	if err != nil {
 		return nil, fmt.Errorf("encode the device request: %w", err)
 	}
 
-	args := []string{"--network", network, "--inform-url", informURL, "--devices", "-"}
+	args := []string{
+		"--network", network,
+		"--inform-url", informURL,
+		"--devices", "-",
+		"--startup-timeout", herderStartupTimeout.String(),
+		"--stop-timeout", herderChildStopTimeout.String(),
+	}
 	if image := os.Getenv(envHerderSyntheticImage); image != "" {
 		args = append(args, "--synthetic-image", image)
 	}
@@ -188,9 +240,13 @@ func startDeviceHerder(
 		return nil, fmt.Errorf("open the herder diagnostics: %w", err)
 	}
 
+	models := make([]string, len(herderFleet))
+	for i, member := range herderFleet {
+		models[i] = member.Model
+	}
 	logger.Printf(
-		"Starting %s on network %s informing %s (model %s)",
-		bin, network, informURL, model,
+		"Starting %s on network %s informing %s (fleet %s)",
+		bin, network, informURL, strings.Join(models, ", "),
 	)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("start the herder: %w", err)
@@ -213,42 +269,50 @@ func startDeviceHerder(
 	// here is parsed: only protocol-1 stdout events are stable.
 	go forwardHerderDiagnostics(logger, stderr)
 
-	device, err := h.waitForReady(ctx)
+	ready, err := h.waitForReady(ctx)
 	if err != nil {
 		h.stop(logger)
 		return nil, err
 	}
-	h.device = device
-	logger.Printf(
-		"✓ herder ready: %s %s (serial %s, name %s) at %s",
-		device.Model, device.MAC, device.Serial, device.Name, device.IP,
-	)
+	devices, err := matchHerderFleet(ready, herderFleet)
+	if err != nil {
+		h.stop(logger)
+		return nil, err
+	}
+	h.devices = devices
+	for _, member := range herderFleet {
+		d := devices[member.Env]
+		logger.Printf(
+			"✓ herder ready: %s %s (serial %s, name %s) at %s -> %s",
+			d.Model, d.MAC, d.Serial, d.Name, d.IP, member.Env,
+		)
+	}
 	return h, nil
 }
 
 // waitForReady consumes events until the ready event, and turns a terminal
 // event that arrives first into the failure it reports.
-func (h *herder) waitForReady(ctx context.Context) (herderDevice, error) {
-	ctx, cancel := context.WithTimeout(ctx, herderReadyTimeout)
+func (h *herder) waitForReady(ctx context.Context) ([]herderDevice, error) {
+	ctx, cancel := context.WithTimeout(ctx, herderStartupTimeout+herderSlack)
 	defer cancel()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return herderDevice{}, fmt.Errorf("herder did not report ready: %w", ctx.Err())
+			return nil, fmt.Errorf("herder did not report ready: %w", ctx.Err())
 		case ev, open := <-h.events:
 			if !open {
-				return herderDevice{}, errors.New(
+				return nil, errors.New(
 					"the herder control stream ended before the ready event",
 				)
 			}
 			switch ev.Event {
 			case "ready":
-				return selectHerderDevice(ev.Devices)
+				return ev.Devices, nil
 			case "failed":
-				return herderDevice{}, errors.New(herderFailureMessage(ev))
+				return nil, errors.New(herderFailureMessage(ev))
 			case "stopped":
-				return herderDevice{}, errors.New("the herder stopped before reporting ready")
+				return nil, errors.New("the herder stopped before reporting ready")
 			}
 		}
 	}
@@ -257,7 +321,7 @@ func (h *herder) waitForReady(ctx context.Context) (herderDevice, error) {
 // stop signals the herder, waits for its terminal event and then for the
 // process. Compose teardown must not start until this returns: removing the
 // network first would pull it out from under the device containers.
-func (h *herder) stop(logger *UnifiLogger) {
+func (h *herder) stop(logger Logger) {
 	h.stopOnce.Do(func() {
 		if h.cmd.Process == nil {
 			return
@@ -359,7 +423,7 @@ func decodeHerderEvents(r io.Reader, out chan<- herderEvent) error {
 }
 
 // forwardHerderDiagnostics copies the herder's stderr to the test log.
-func forwardHerderDiagnostics(logger *UnifiLogger, r io.Reader) {
+func forwardHerderDiagnostics(logger Logger, r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	// Aggregated device logs can carry a long line; the default 64KiB
 	// token limit would end the scan on one.
@@ -372,17 +436,43 @@ func forwardHerderDiagnostics(logger *UnifiLogger, r io.Reader) {
 	}
 }
 
-// selectHerderDevice returns the single device the request asked for.
-func selectHerderDevice(devices []herderDevice) (herderDevice, error) {
-	if len(devices) != 1 {
-		return herderDevice{}, fmt.Errorf(
-			"the ready event names %d devices, want the 1 that was requested", len(devices),
+// matchHerderFleet pairs the ready event's devices with the fleet that was
+// requested, keyed by the variable each member publishes its MAC through.
+//
+// The pairing is by request index, which is what the protocol guarantees:
+// devices carry the index of the entry they were resolved from. Matching on
+// model instead would be ambiguous the moment the fleet wants two of one
+// model, and matching on order alone would go unnoticed if it ever shifted.
+func matchHerderFleet(
+	devices []herderDevice,
+	fleet []herderFleetMember,
+) (map[string]herderDevice, error) {
+	if len(devices) != len(fleet) {
+		return nil, fmt.Errorf(
+			"the ready event names %d devices, want the %d that were requested",
+			len(devices), len(fleet),
 		)
 	}
-	if devices[0].MAC == "" {
-		return herderDevice{}, errors.New("the ready device carries no MAC")
+	out := make(map[string]herderDevice, len(fleet))
+	for _, d := range devices {
+		if d.Index < 0 || d.Index >= len(fleet) {
+			return nil, fmt.Errorf("ready device index %d is outside the fleet", d.Index)
+		}
+		member := fleet[d.Index]
+		if d.Model != member.Model {
+			return nil, fmt.Errorf(
+				"ready device %d is model %q, want %q", d.Index, d.Model, member.Model,
+			)
+		}
+		if d.MAC == "" {
+			return nil, fmt.Errorf("ready device %d carries no MAC", d.Index)
+		}
+		if _, dup := out[member.Env]; dup {
+			return nil, fmt.Errorf("two ready devices claim index %d", d.Index)
+		}
+		out[member.Env] = d
 	}
-	return devices[0], nil
+	return out, nil
 }
 
 // herderFailureMessage renders a failed event. The code is the stable part;
@@ -422,7 +512,7 @@ func herderChildEnv(environ []string) []string {
 // an acceptance test.
 func waitForHerderDevice(
 	ctx context.Context,
-	logger *UnifiLogger,
+	logger Logger,
 	client *unifi.ApiClient,
 	mac string,
 ) error {
@@ -439,6 +529,39 @@ func waitForHerderDevice(
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("the controller never saw device %s: %w", mac, ctx.Err())
+		case <-time.After(3 * time.Second):
+		}
+	}
+}
+
+// adoptHerderDevice adopts a device and waits for it to reach connected.
+//
+// This runs only for fleet members marked Adopt: a device that some test
+// adopts itself must be left pending, or the test measures nothing. Adoption
+// belongs to the caller either way — the herder starts devices and stops
+// there.
+func adoptHerderDevice(
+	ctx context.Context,
+	logger Logger,
+	client *unifi.ApiClient,
+	mac string,
+) error {
+	ctx, cancel := context.WithTimeout(ctx, herderAdoptTimeout)
+	defer cancel()
+
+	logger.Printf("Adopting %s as a test precondition...", mac)
+	if err := client.AdoptDevice(ctx, "default", mac); err != nil {
+		return fmt.Errorf("adopt device %s: %w", mac, err)
+	}
+	for {
+		device, err := client.GetDeviceByMAC(ctx, "default", mac)
+		if err == nil && device != nil && device.State == unifi.DeviceStateConnected {
+			logger.Printf("✓ %s adopted and connected", mac)
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("device %s never reached connected: %w", mac, ctx.Err())
 		case <-time.After(3 * time.Second):
 		}
 	}
