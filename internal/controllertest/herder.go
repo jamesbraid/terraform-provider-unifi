@@ -227,6 +227,13 @@ func StartDevices(
 
 	// The child is not tied to ctx: it has to outlive a cancelled setup
 	// context so its own SIGTERM cleanup still removes the containers.
+	//
+	// Running an operator-named binary is this fixture's whole purpose, so
+	// the variable command is the contract rather than a weakness: bin comes
+	// from the environment of whoever started the test run, who could run the
+	// same binary directly. Every argument is built here from a fixed fleet
+	// and the controller's own inspected network, never from test data.
+	// #nosec G204,G702 -- test fixture; the command is the caller's own herder
 	cmd := exec.Command(bin, args...)
 	cmd.Env = herderChildEnv(os.Environ())
 	cmd.Stdin = bytes.NewReader(request)
