@@ -857,6 +857,9 @@
     "computed": true,
     "sensitive": false,
     "markdown_description": "RADIUS settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
     "attributes": [
       {
         "name": "accounting_enabled",
@@ -1051,6 +1054,9 @@
     "computed": true,
     "sensitive": false,
     "markdown_description": "USG settings.",
+    "plan_modifiers": [
+      "Once set, the value of this attribute in state will not change."
+    ],
     "attributes": [
       {
         "name": "broadcast_ping",

@@ -168,6 +168,42 @@ func TestSettingSchemaBehavior_radiusSecretRejectsTooLong(t *testing.T) {
 	}
 }
 
+func TestSettingSchemaBehavior_snmpCommunityRejectsNewline(t *testing.T) {
+	// go-unifi's Snmp.Community wire field is documented `.{1,256}` (see
+	// snmp.generated.go) — Go regexp's "." never matches "\n", so the SDK's
+	// own spec excludes newlines even though it isn't spelled out in prose.
+	// A community value containing an embedded newline must be rejected here
+	// too, or Terraform validation passes while the controller can still
+	// reject the write.
+	ctx := context.Background()
+	attrs := builtSchema(t)
+	a := nestedAttr(t, attrs, "snmp", "community")
+	sa, ok := a.(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("snmp.community is %T, want schema.StringAttribute", a)
+	}
+	if len(sa.Validators) == 0 {
+		t.Fatal("snmp.community has no validators")
+	}
+
+	for _, tc := range []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"normal community is valid", "synthetic-ro-community", false},
+		{"embedded newline is invalid", "synthetic\nro-community", true},
+		{"trailing newline is invalid", "synthetic-ro-community\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := validateStringAll(ctx, sa.Validators, path.Root("snmp").AtName("community"), tc.value)
+			if got := diags.HasError(); got != tc.wantErr {
+				t.Errorf("value %q: validator error = %v, want %v (diags: %v)", tc.value, got, tc.wantErr, diags)
+			}
+		})
+	}
+}
+
 // --- default application ----------------------------------------------------
 
 func TestSettingSchemaBehavior_autoSpeedtestEnabledDefaultsFalse(t *testing.T) {

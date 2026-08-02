@@ -28,22 +28,34 @@ import (
 
 // allSectionsNullModel returns a settingResourceModel with every registered
 // section's object field explicitly null (nothing configured) — the base
-// starting point for building a partially-configured model in these tests.
+// starting point for building a partially-configured model in these tests. It
+// delegates to the production nullSectionsModel so the typed-null shape has one
+// source of truth.
 func allSectionsNullModel() settingResourceModel {
+	return nullSectionsModel()
+}
+
+// unknownSectionsModel returns a settingResourceModel with every registered
+// section object UNKNOWN — the shape the framework hands Create for an
+// Optional+Computed section the user did not configure. It is the create-time
+// counterpart to allSectionsNullModel (typed nulls: the import/stop-managing
+// shape).
+func unknownSectionsModel() settingResourceModel {
 	return settingResourceModel{
-		AutoSpeedtest: types.ObjectNull(autoSpeedtestAttrTypes),
-		Country:       types.ObjectNull(countryAttrTypes),
-		Dpi:           types.ObjectNull(dpiAttrTypes),
-		Lcm:           types.ObjectNull(lcmAttrTypes),
-		NetworkOpt:    types.ObjectNull(networkOptimizationAttrTypes),
-		Ntp:           types.ObjectNull(ntpAttrTypes),
-		Syslog:        types.ObjectNull(syslogAttrTypes),
-		Doh:           types.ObjectNull(dohAttrTypes),
-		Ips:           types.ObjectNull(ipsAttrTypes),
-		Mgmt:          types.ObjectNull(mgmtAttrTypes),
-		Radius:        types.ObjectNull(radiusAttrTypes),
-		USG:           types.ObjectNull(usgAttrTypes),
-		IgmpSnooping:  types.ObjectNull(igmpSnoopingAttrTypes),
+		AutoSpeedtest: types.ObjectUnknown(autoSpeedtestAttrTypes),
+		Country:       types.ObjectUnknown(countryAttrTypes),
+		Dpi:           types.ObjectUnknown(dpiAttrTypes),
+		Lcm:           types.ObjectUnknown(lcmAttrTypes),
+		NetworkOpt:    types.ObjectUnknown(networkOptimizationAttrTypes),
+		Ntp:           types.ObjectUnknown(ntpAttrTypes),
+		Syslog:        types.ObjectUnknown(syslogAttrTypes),
+		Doh:           types.ObjectUnknown(dohAttrTypes),
+		Ips:           types.ObjectUnknown(ipsAttrTypes),
+		Mgmt:          types.ObjectUnknown(mgmtAttrTypes),
+		Radius:        types.ObjectUnknown(radiusAttrTypes),
+		USG:           types.ObjectUnknown(usgAttrTypes),
+		IgmpSnooping:  types.ObjectUnknown(igmpSnoopingAttrTypes),
+		Snmp:          types.ObjectUnknown(snmpAttrTypes),
 	}
 }
 
@@ -730,6 +742,118 @@ func TestLifecycle_writeOnlySecretNeverCleared(t *testing.T) {
 			t.Errorf("PUT Data[x_secret] = %v, want key deleted (mask must never be re-sent)", put.Data["x_secret"])
 		}
 	})
+}
+
+// ---------------------------------------------------------------------------
+// 11. TestLifecycle_createHydratesUnconfiguredSections
+// ---------------------------------------------------------------------------
+
+// TestLifecycle_createHydratesUnconfiguredSections proves the create-time
+// contract that applySections alone does NOT provide. On create the framework
+// hands each Optional+Computed section the user did not configure an UNKNOWN
+// value; applySections only refreshes the CONFIGURED sections, so those
+// unknowns survive into the returned model — and Terraform rejects any value
+// still unknown after apply. hydrateAllSections closes that gap by re-reading
+// the full registry: sections present on the controller become known Computed
+// values (write-only secrets carried from what was just applied), sections
+// absent from the controller resolve to typed null — never left unknown. This
+// mirrors the import hydration path exactly (TestLifecycle_importHydratesAll).
+func TestLifecycle_createHydratesUnconfiguredSections(t *testing.T) {
+	ctx := context.Background()
+	client := newFakeSettingsClient()
+	// Controller supports dpi (the one configured section) plus country and
+	// radius (present but NOT configured); every other section — including usg
+	// and mgmt — is absent from the snapshot entirely.
+	client.sections["dpi"] = rawSection("dpi", map[string]any{"enabled": true, "fingerprintingEnabled": false})
+	client.sections["country"] = rawSection("country", map[string]any{"code": float64(840)})
+	client.sections["radius"] = rawSection("radius", map[string]any{
+		"accounting_enabled": true,
+		"acct_port":          float64(1813),
+		"x_secret":           "******",
+	})
+	// igmp_snooping is present on the controller but Optional-ONLY (not
+	// Computed): an unconfigured create leaves it NULL (not unknown), and
+	// hydration must NOT force-populate it from the controller — doing so would
+	// set a value Terraform never planned for a non-Computed attribute.
+	client.sections["igmp_snooping"] = rawSection("igmp_snooping", map[string]any{"enabled": true})
+
+	// Create's plan shape: the configured section is known; the non-configured
+	// Optional+Computed sections are UNKNOWN; the non-configured Optional-only
+	// igmp_snooping is NULL (the framework never makes a non-Computed attribute
+	// unknown).
+	plan := unknownSectionsModel()
+	plan.Dpi = dpiObject(t, ctx, true, false)
+	plan.IgmpSnooping = types.ObjectNull(igmpSnoopingAttrTypes)
+
+	applied, diags := applySections(ctx, configuredSections(plan), client, "default", plan, settingResourceModel{})
+	if diags.HasError() {
+		t.Fatalf("applySections: unexpected diagnostics: %v", diags)
+	}
+	// Precondition documenting the gap: applySections leaves the
+	// non-configured sections exactly as the plan had them — UNKNOWN.
+	if !applied.Radius.IsUnknown() {
+		t.Fatalf("precondition: applySections left radius %v, want UNKNOWN (the create gap this test guards)", applied.Radius)
+	}
+
+	// The fix: hydrate the full registry so every section becomes KNOWN.
+	hydrated, hdiags := hydrateAllSections(ctx, client, "default", applied)
+	if hdiags.HasError() {
+		t.Fatalf("hydrateAllSections: unexpected diagnostics: %v", hdiags)
+	}
+
+	// No section may remain unknown after apply — Terraform rejects that.
+	sections := map[string]types.Object{
+		"auto_speedtest": hydrated.AutoSpeedtest, "country": hydrated.Country,
+		"dpi": hydrated.Dpi, "lcm": hydrated.Lcm, "network_optimization": hydrated.NetworkOpt,
+		"ntp": hydrated.Ntp, "syslog": hydrated.Syslog, "doh": hydrated.Doh,
+		"ips": hydrated.Ips, "mgmt": hydrated.Mgmt, "radius": hydrated.Radius,
+		"usg": hydrated.USG, "igmp_snooping": hydrated.IgmpSnooping, "snmp": hydrated.Snmp,
+	}
+	for name, obj := range sections {
+		if obj.IsUnknown() {
+			t.Errorf("section %q is UNKNOWN after hydration, want known", name)
+		}
+	}
+
+	// Present-but-unconfigured sections hydrate to known, non-null Computed
+	// values (matching what an import produces).
+	if hydrated.Country.IsNull() || hydrated.Country.IsUnknown() {
+		t.Errorf("country present on controller but not hydrated: %v", hydrated.Country)
+	}
+	if hydrated.Radius.IsNull() || hydrated.Radius.IsUnknown() {
+		t.Errorf("radius present on controller but not hydrated: %v", hydrated.Radius)
+	}
+	// A present-but-unconfigured secret leaf carries as NULL: the controller
+	// never echoes it, and nothing was configured this apply to carry forward.
+	var gotRadius settingRadiusModel
+	if d := hydrated.Radius.As(ctx, &gotRadius, basetypes.ObjectAsOptions{}); d.HasError() {
+		t.Fatalf("extracting radius: %v", d)
+	}
+	if !gotRadius.Secret.IsNull() {
+		t.Errorf("radius.secret = %v, want null (unconfigured secret; controller never echoes it)", gotRadius.Secret)
+	}
+
+	// The configured section keeps its applied value.
+	if hydrated.Dpi.IsNull() || hydrated.Dpi.IsUnknown() {
+		t.Errorf("configured dpi not present after hydration: %v", hydrated.Dpi)
+	}
+
+	// Sections absent from the controller resolve to typed NULL (known), never
+	// unknown — an import leaves them the same way.
+	if !hydrated.USG.IsNull() {
+		t.Errorf("usg absent from controller, want typed null, got %v", hydrated.USG)
+	}
+	if !hydrated.Mgmt.IsNull() {
+		t.Errorf("mgmt absent from controller, want typed null, got %v", hydrated.Mgmt)
+	}
+
+	// Regression guard: igmp_snooping is present on the controller but
+	// Optional-only and unconfigured — it must remain NULL, never
+	// force-hydrated to the controller's value (which would fail with
+	// "inconsistent result after apply" for a non-Computed attribute).
+	if !hydrated.IgmpSnooping.IsNull() {
+		t.Errorf("igmp_snooping is Optional-only + unconfigured, want null (not force-hydrated), got %v", hydrated.IgmpSnooping)
+	}
 }
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -52,14 +53,21 @@ func init() {
 func (radiusSection) key() string      { return "radius" }
 func (radiusSection) attrName() string { return "radius" }
 
-// schemaAttribute is byte-identical to the inline "radius" block in
-// setting_resource.go's schema (setting_resource.go:970-1017): the parent
-// SingleNestedAttribute is Optional+Computed with NO PlanModifiers.
+// schemaAttribute defines the "radius" nested block. The parent
+// SingleNestedAttribute is Optional+Computed with UseStateForUnknown: once the
+// controller's values are hydrated into state (on create or import), that plan
+// modifier holds the whole section stable when the user does not reconfigure
+// it, so a subsequent plan is clean and Update does not leave it unknown. It
+// mirrors mgmt's shape (Optional+Computed+UseStateForUnknown, secret leaf
+// included).
 func (radiusSection) schemaAttribute() schema.Attribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "RADIUS settings.",
 		Optional:            true,
 		Computed:            true,
+		PlanModifiers: []planmodifier.Object{
+			useStateForUnknownObject(),
+		},
 		Attributes: map[string]schema.Attribute{
 			"accounting_enabled": schema.BoolAttribute{
 				MarkdownDescription: "Enable RADIUS accounting.",

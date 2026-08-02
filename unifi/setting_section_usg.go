@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
@@ -96,13 +97,20 @@ func init() {
 func (usgSection) key() string      { return "usg" }
 func (usgSection) attrName() string { return "usg" }
 
-// schemaAttribute is byte-identical to the inline "usg" block in
-// setting_resource.go's schema (setting_resource.go:1018-1244).
+// schemaAttribute defines the "usg" nested block. The parent
+// SingleNestedAttribute is Optional+Computed with UseStateForUnknown: once the
+// controller's values are hydrated into state (on create or import), that plan
+// modifier holds the whole section stable when the user does not reconfigure
+// it, so a subsequent plan is clean and Update does not leave it unknown
+// (matching every other Optional+Computed section).
 func (usgSection) schemaAttribute() schema.Attribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "USG settings.",
 		Optional:            true,
 		Computed:            true,
+		PlanModifiers: []planmodifier.Object{
+			useStateForUnknownObject(),
+		},
 		Attributes: map[string]schema.Attribute{
 			"broadcast_ping": schema.BoolAttribute{
 				MarkdownDescription: "Enable broadcast ping.",

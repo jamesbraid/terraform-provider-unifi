@@ -47,6 +47,14 @@ resource "unifi_setting" "combined" {
     secret                  = "my-radius-secret"
   }
 
+  snmp = {
+    enabled    = true
+    community  = "synthetic-ro-community" # replace with a real community string
+    enabled_v3 = true
+    username   = "snmpv3-svc"
+    password   = "Synthetic-Passw0rd!" # replace with a real passphrase; consider a secret manager
+  }
+
   usg = {
     broadcast_ping = false
     upnp_enabled   = true
@@ -88,6 +96,7 @@ resource "unifi_setting" "radius_only" {
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
 - `site` (String) The name of the site to associate the settings with.
+- `snmp` (Attributes) SNMP settings. (see [below for nested schema](#nestedatt--snmp))
 - `syslog` (Attributes) Remote syslog (rsyslogd) settings. (see [below for nested schema](#nestedatt--syslog))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `usg` (Attributes) USG settings. (see [below for nested schema](#nestedatt--usg))
@@ -290,6 +299,18 @@ Optional:
 - `auth_port` (Number) RADIUS authentication port.
 - `interim_update_interval` (String) Interim update interval, as a Go duration string (e.g. `1h`, `3600s`).
 - `secret` (String, Sensitive) RADIUS shared secret.
+
+
+<a id="nestedatt--snmp"></a>
+### Nested Schema for `snmp`
+
+Optional:
+
+- `community` (String, Sensitive) SNMPv2 community string. Sensitive — the controller never returns this value; state preserves the last-configured value and omits it from the write payload when unset in configuration.
+- `enabled` (Boolean) Enable SNMP.
+- `enabled_v3` (Boolean) Enable SNMPv3.
+- `password` (String, Sensitive) SNMPv3 passphrase. Sensitive — the controller never returns this value; state preserves the last-configured value and omits it from the write payload when unset in configuration.
+- `username` (String) SNMPv3 username.
 
 
 <a id="nestedatt--syslog"></a>
