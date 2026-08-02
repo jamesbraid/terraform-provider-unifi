@@ -528,7 +528,12 @@ func (r *wlanFrameworkResource) Schema(
 					"`unifi_device.radio_table.assisted_roaming_enabled` with this per-WLAN setting.",
 				Optional: true,
 				Computed: true,
-				Default:  booldefault.StaticBool(false),
+				// No default. The controller owns this when the configuration
+				// leaves it out, and defaulting to false planned it off for
+				// every WLAN that already had it on (cf. #323).
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"roaming_assistant_na_rssi": schema.Int64Attribute{
 				MarkdownDescription: "Signal threshold in dBm at which the 5GHz roaming assistant " +
@@ -547,7 +552,12 @@ func (r *wlanFrameworkResource) Schema(
 					"`roaming_assistant_na_enabled`.",
 				Optional: true,
 				Computed: true,
-				Default:  booldefault.StaticBool(false),
+				// No default. The controller owns this when the configuration
+				// leaves it out, and defaulting to false planned it off for
+				// every WLAN that already had it on (cf. #323).
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"roaming_assistant_6e_rssi": schema.Int64Attribute{
 				MarkdownDescription: "Signal threshold in dBm at which the 6GHz roaming assistant " +
