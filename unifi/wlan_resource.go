@@ -135,6 +135,10 @@ type wlanFrameworkResourceModel struct {
 	MinimumDataRate2GKbps       types.Int64  `tfsdk:"minimum_data_rate_2g_kbps"`
 	MinimumDataRate5GKbps       types.Int64  `tfsdk:"minimum_data_rate_5g_kbps"`
 	MinrateSettingPreference    types.String `tfsdk:"minrate_setting_preference"`
+	RoamingAssistantNaEnabled   types.Bool   `tfsdk:"roaming_assistant_na_enabled"`
+	RoamingAssistantNaRssi      types.Int64  `tfsdk:"roaming_assistant_na_rssi"`
+	RoamingAssistant6EEnabled   types.Bool   `tfsdk:"roaming_assistant_6e_enabled"`
+	RoamingAssistant6ERssi      types.Int64  `tfsdk:"roaming_assistant_6e_rssi"`
 
 	// Security / encryption
 	WPAMode types.String `tfsdk:"wpa_mode"`
@@ -515,6 +519,47 @@ func (r *wlanFrameworkResource) Schema(
 				Default:             stringdefault.StaticString("auto"),
 				Validators: []validator.String{
 					stringvalidator.OneOf("auto", "manual"),
+				},
+			},
+			"roaming_assistant_na_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable the roaming assistant on 5GHz, which disconnects " +
+					"clients whose signal drops below `roaming_assistant_na_rssi` so they " +
+					"reassociate with a closer AP. UniFi Network 10.x replaced the per-radio " +
+					"`unifi_device.radio_table.assisted_roaming_enabled` with this per-WLAN setting.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
+			},
+			"roaming_assistant_na_rssi": schema.Int64Attribute{
+				MarkdownDescription: "Signal threshold in dBm at which the 5GHz roaming assistant " +
+					"disconnects a client. Between `-80` and `-60`.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.Int64{
+					int64validator.Between(-80, -60),
+				},
+			},
+			"roaming_assistant_6e_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable the roaming assistant on 6GHz. See " +
+					"`roaming_assistant_na_enabled`.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
+			},
+			"roaming_assistant_6e_rssi": schema.Int64Attribute{
+				MarkdownDescription: "Signal threshold in dBm at which the 6GHz roaming assistant " +
+					"disconnects a client. Between `-90` and `-70` — note the range differs from " +
+					"the 5GHz one.",
+				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.Int64{
+					int64validator.Between(-90, -70),
 				},
 			},
 			"wpa_mode": schema.StringAttribute{
@@ -906,7 +951,7 @@ func (r *wlanFrameworkResource) Create(
 		}
 		// Find the default AP group (attr_hidden_id == "default")
 		for _, group := range apGroups {
-			if group.HiddenId == "default" {
+			if group.HiddenID == "default" {
 				wlan.ApGroupIDs = []string{group.ID}
 				break
 			}
@@ -1220,6 +1265,18 @@ func (r *wlanFrameworkResource) applyPlanToState(
 	if !plan.MinrateSettingPreference.IsNull() && !plan.MinrateSettingPreference.IsUnknown() {
 		state.MinrateSettingPreference = plan.MinrateSettingPreference
 	}
+	if !plan.RoamingAssistantNaEnabled.IsNull() && !plan.RoamingAssistantNaEnabled.IsUnknown() {
+		state.RoamingAssistantNaEnabled = plan.RoamingAssistantNaEnabled
+	}
+	if !plan.RoamingAssistantNaRssi.IsNull() && !plan.RoamingAssistantNaRssi.IsUnknown() {
+		state.RoamingAssistantNaRssi = plan.RoamingAssistantNaRssi
+	}
+	if !plan.RoamingAssistant6EEnabled.IsNull() && !plan.RoamingAssistant6EEnabled.IsUnknown() {
+		state.RoamingAssistant6EEnabled = plan.RoamingAssistant6EEnabled
+	}
+	if !plan.RoamingAssistant6ERssi.IsNull() && !plan.RoamingAssistant6ERssi.IsUnknown() {
+		state.RoamingAssistant6ERssi = plan.RoamingAssistant6ERssi
+	}
 	if !plan.WPAMode.IsNull() && !plan.WPAMode.IsUnknown() {
 		state.WPAMode = plan.WPAMode
 	}
@@ -1364,6 +1421,11 @@ func (r *wlanFrameworkResource) planToWLAN(
 		MinrateNgDataRateKbps:    plan.MinimumDataRate2GKbps.ValueInt64Pointer(),
 		MinrateNaEnabled:         plan.MinimumDataRate5GKbps.ValueInt64() > 0,
 		MinrateNaDataRateKbps:    plan.MinimumDataRate5GKbps.ValueInt64Pointer(),
+
+		RoamingAssistantNaEnabled: plan.RoamingAssistantNaEnabled.ValueBool(),
+		RoamingAssistantNaRssi:    plan.RoamingAssistantNaRssi.ValueInt64Pointer(),
+		RoamingAssistant6EEnabled: plan.RoamingAssistant6EEnabled.ValueBool(),
+		RoamingAssistant6ERssi:    plan.RoamingAssistant6ERssi.ValueInt64Pointer(),
 
 		GroupRekey:         plan.GroupRekey.ValueInt64Pointer(),
 		DTIMMode:           plan.DTIMMode.ValueString(),
@@ -1663,6 +1725,11 @@ func (r *wlanFrameworkResource) wlanToModel(
 	} else {
 		model.MinrateSettingPreference = types.StringValue("auto")
 	}
+
+	model.RoamingAssistantNaEnabled = types.BoolValue(wlan.RoamingAssistantNaEnabled)
+	model.RoamingAssistantNaRssi = types.Int64PointerValue(wlan.RoamingAssistantNaRssi)
+	model.RoamingAssistant6EEnabled = types.BoolValue(wlan.RoamingAssistant6EEnabled)
+	model.RoamingAssistant6ERssi = types.Int64PointerValue(wlan.RoamingAssistant6ERssi)
 
 	// The API omits these fields from GET responses when unset; map the missing
 	// value to 0 (the schema default) instead of null to avoid perpetual

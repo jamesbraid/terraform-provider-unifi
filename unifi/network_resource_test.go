@@ -2,7 +2,9 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
@@ -11,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -308,6 +311,135 @@ resource "unifi_network" "test_third_party" {
 	}
 }
 `
+}
+
+// Test_networkResource_ModifyPlan_settingPreference pins the set of attributes
+// that force setting_preference to "manual".
+//
+// On "auto" the controller stores false for dhcpguard_enabled, igmp_snooping
+// and the dhcpd dns/ntp/time-offset toggles however they were sent, and turns
+// dhcp_relay off. The write succeeds, so getting this wrong is silent: the
+// setting simply never applies. Only a true value forces the switch — "auto"
+// storing false for something the practitioner also set to false is the same
+// outcome, and switching there would churn setting_preference for everyone.
+func Test_networkResource_ModifyPlan_settingPreference(t *testing.T) {
+	tests := []struct {
+		name string
+		// attr is the plan attribute set to true; empty means none.
+		attr string
+		want bool
+	}{
+		{name: "nothing enabled stays auto", attr: "", want: false},
+		{name: "igmp_snooping", attr: "igmp_snooping", want: true},
+		{name: "dhcp_relay", attr: "dhcp_relay.enabled", want: true},
+		{name: "dhcp_guarding", attr: "dhcp_guarding.enabled", want: true},
+		{name: "dhcp_server dns", attr: "dhcp_server.dns_enabled", want: true},
+		{name: "dhcp_server ntp", attr: "dhcp_server.ntp_enabled", want: true},
+		{name: "dhcp_server time offset", attr: "dhcp_server.time_offset_enabled", want: true},
+	}
+	resp := &fwresource.SchemaResponse{}
+	(&networkResource{}).Schema(context.Background(), fwresource.SchemaRequest{}, resp)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.attr == "" {
+				return
+			}
+			// Guard the attribute names against schema drift. A rename would
+			// leave ModifyPlan reading a path that never matches, and because
+			// the controller accepts the write either way, the failure is
+			// silent.
+			root, nested, isNested := strings.Cut(tt.attr, ".")
+			attribute, ok := resp.Schema.Attributes[root]
+			if !ok {
+				t.Fatalf("schema has no attribute %q", root)
+			}
+			if !isNested {
+				return
+			}
+			single, ok := attribute.(schema.SingleNestedAttribute)
+			if !ok {
+				t.Fatalf("attribute %q is not a SingleNestedAttribute", root)
+			}
+			if _, ok := single.Attributes[nested]; !ok {
+				t.Errorf("schema has no attribute %q under %q", nested, root)
+			}
+		})
+	}
+}
+
+// TestAccNetworkFramework_dhcpGuardingCorporate covers DHCP Guard on a
+// corporate network. The existing dhcp_guarding coverage is on a
+// third_party_gateway network, which the controller stores as vlan-only, and
+// the vlan-only encoder was never broken — so it passed throughout the bug.
+//
+// go-unifi before v1.101.0 sent dhcpguard_enabled from marshalCorporate and
+// marshalGuest without the dhcpd_ip_1..3 trusted-server slots the controller
+// requires alongside it, and the controller rejected the write with
+// api.err.MissingIPAddress. The second step is the important one: the failure
+// hit every update, including an unmodified round trip, so a guarded network
+// could not be managed at all once created.
+func TestAccNetworkFramework_dhcpGuardingCorporate(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkFrameworkConfig_dhcpGuardingCorporate("Test DHCP Guard"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "purpose", "corporate",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.servers.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.servers.0", "192.168.70.20",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.servers.1", "192.168.70.21",
+					),
+				),
+			},
+			{
+				// Touch an unrelated field so the provider issues an update with
+				// dhcp_guarding unchanged.
+				Config: testAccNetworkFrameworkConfig_dhcpGuardingCorporate(
+					"Test DHCP Guard Renamed",
+				),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "name", "Test DHCP Guard Renamed",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.servers.#", "2",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccNetworkFrameworkConfig_dhcpGuardingCorporate(name string) string {
+	return fmt.Sprintf(`
+resource "unifi_network" "test_dhcp_guard" {
+	name    = %q
+	subnet  = "192.168.70.1/24"
+	vlan    = 70
+	purpose = "corporate"
+
+	dhcp_guarding = {
+		enabled = true
+		servers = ["192.168.70.20", "192.168.70.21"]
+	}
+}
+`, name)
 }
 
 func testAccNetworkFrameworkConfig_thirdPartyGatewayMinimal() string {
