@@ -918,6 +918,166 @@ func Test_settingResource_usgModelToSetting(t *testing.T) {
 	})
 }
 
+// TestUsgGeoRoundTrip covers the geo IP filtering split. UniFi Network 10.x
+// moved these four attributes off the `usg` setting onto `usg_geo`, renaming
+// geo_ip_filtering_block to `action`. The Terraform schema kept them on the
+// `usg` block, so nothing but this test checks the wire mapping.
+func TestUsgGeoRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	r := &settingResource{}
+
+	model := &settingUSGModel{
+		GeoIPFilteringBlock:            types.StringValue("block"),
+		GeoIPFilteringCountries:        types.StringValue("NZ,AU"),
+		GeoIPFilteringEnabled:          types.BoolValue(true),
+		GeoIPFilteringTrafficDirection: types.StringValue("both"),
+	}
+
+	if !usgGeoConfigured(model) {
+		t.Fatal("geo attributes should be reported as configured")
+	}
+
+	setting := r.usgGeoModelToSetting(model, nil)
+	if setting == nil || setting.IPFiltering == nil {
+		t.Fatal("expected an allocated IPFiltering object")
+	}
+	if setting.IPFiltering.Action != "block" {
+		t.Errorf("Action = %q, want block", setting.IPFiltering.Action)
+	}
+	if setting.IPFiltering.Countries != "NZ,AU" {
+		t.Errorf("Countries = %q, want NZ,AU", setting.IPFiltering.Countries)
+	}
+	if !setting.IPFiltering.Enabled {
+		t.Error("Enabled should be true")
+	}
+	if setting.IPFiltering.TrafficDirection != "both" {
+		t.Errorf("TrafficDirection = %q, want both", setting.IPFiltering.TrafficDirection)
+	}
+
+	out := r.usgSettingToModel(ctx, &settings.Usg{}, setting, model)
+	if out.GeoIPFilteringBlock.ValueString() != "block" {
+		t.Errorf("read-back block = %q, want block", out.GeoIPFilteringBlock.ValueString())
+	}
+	if out.GeoIPFilteringCountries.ValueString() != "NZ,AU" {
+		t.Errorf("read-back countries = %q", out.GeoIPFilteringCountries.ValueString())
+	}
+	if !out.GeoIPFilteringEnabled.ValueBool() {
+		t.Error("read-back enabled should be true")
+	}
+	if out.GeoIPFilteringTrafficDirection.ValueString() != "both" {
+		t.Errorf("read-back direction = %q", out.GeoIPFilteringTrafficDirection.ValueString())
+	}
+}
+
+// TestUsgGeoPreservesUnmanagedFields guards against the write clobbering geo
+// settings the practitioner does not manage. usg_geo is written as a whole
+// object and its `enabled` field has no `omitempty`, so a blind full replace
+// would silently disable filtering configured in the controller UI.
+func TestUsgGeoPreservesUnmanagedFields(t *testing.T) {
+	r := &settingResource{}
+
+	current := &settings.UsgGeo{
+		IPFiltering: &settings.SettingUsgGeoIPFiltering{
+			Action:           "allow",
+			Countries:        "NZ",
+			Enabled:          true,
+			TrafficDirection: "ingress",
+		},
+	}
+
+	// Only the country list is managed here.
+	model := &settingUSGModel{
+		GeoIPFilteringBlock:            types.StringNull(),
+		GeoIPFilteringCountries:        types.StringValue("NZ,AU"),
+		GeoIPFilteringEnabled:          types.BoolNull(),
+		GeoIPFilteringTrafficDirection: types.StringNull(),
+	}
+
+	got := r.usgGeoModelToSetting(model, current)
+	if got.IPFiltering.Countries != "NZ,AU" {
+		t.Errorf("Countries = %q, want the managed value NZ,AU", got.IPFiltering.Countries)
+	}
+	if got.IPFiltering.Action != "allow" {
+		t.Errorf("Action = %q, want the stored value allow", got.IPFiltering.Action)
+	}
+	if !got.IPFiltering.Enabled {
+		t.Error("Enabled was reset; the stored value should survive")
+	}
+	if got.IPFiltering.TrafficDirection != "ingress" {
+		t.Errorf("TrafficDirection = %q, want the stored value ingress",
+			got.IPFiltering.TrafficDirection)
+	}
+}
+
+// TestUsgGeoAbsentSetting covers a controller that does not expose usg_geo. The
+// read path passes nil through, which must produce nulls rather than panic on
+// the IPFiltering pointer.
+func TestUsgGeoAbsentSetting(t *testing.T) {
+	ctx := context.Background()
+	r := &settingResource{}
+
+	t.Run("nothing configured", func(t *testing.T) {
+		model := &settingUSGModel{}
+		if usgGeoConfigured(model) {
+			t.Error("an unconfigured model must not trigger a usg_geo write")
+		}
+		out := r.usgSettingToModel(ctx, &settings.Usg{}, nil, model)
+		if !out.GeoIPFilteringEnabled.IsNull() || !out.GeoIPFilteringBlock.IsNull() {
+			t.Error("absent usg_geo should read back as null")
+		}
+	})
+
+	t.Run("configured but setting absent", func(t *testing.T) {
+		model := &settingUSGModel{
+			GeoIPFilteringEnabled: types.BoolValue(true),
+			GeoIPFilteringBlock:   types.StringValue("block"),
+		}
+		out := r.usgSettingToModel(ctx, &settings.Usg{}, nil, model)
+		if out.GeoIPFilteringEnabled.ValueBool() {
+			t.Error("absent usg_geo should read back as disabled, not the planned value")
+		}
+		if !out.GeoIPFilteringBlock.IsNull() {
+			t.Error("absent usg_geo should read back block as null")
+		}
+	})
+
+	t.Run("setting present but IPFiltering nil", func(t *testing.T) {
+		model := &settingUSGModel{GeoIPFilteringEnabled: types.BoolValue(true)}
+		out := r.usgSettingToModel(ctx, &settings.Usg{}, &settings.UsgGeo{}, model)
+		if out.GeoIPFilteringEnabled.ValueBool() {
+			t.Error("nil IPFiltering should read back as disabled")
+		}
+	})
+}
+
+// TestIpsSuppressionAbsentSetting mirrors TestUsgGeoAbsentSetting for the
+// ips_suppression split.
+func TestIpsSuppressionAbsentSetting(t *testing.T) {
+	ctx := context.Background()
+	r := &settingResource{}
+	var diags diag.Diagnostics
+
+	model := &settingIpsModel{
+		EnabledCategories:    types.ListNull(types.StringType),
+		EnabledNetworks:      types.ListNull(types.StringType),
+		Honeypot:             types.ListNull(types.ObjectType{AttrTypes: ipsHoneypotAttrTypes}),
+		SuppressionWhitelist: types.ListNull(types.ObjectType{AttrTypes: ipsWhitelistAttrTypes}),
+		SuppressionAlerts:    types.ListNull(types.ObjectType{AttrTypes: ipsAlertAttrTypes}),
+	}
+
+	if ipsSuppressionConfigured(model) {
+		t.Error("an unconfigured model must not trigger an ips_suppression write")
+	}
+
+	out := r.ipsSettingToModel(ctx, &settings.Ips{}, nil, model, &diags)
+	if diags.HasError() {
+		t.Fatalf("unexpected diags: %v", diags)
+	}
+	if !out.SuppressionAlerts.IsNull() || !out.SuppressionWhitelist.IsNull() {
+		t.Error("absent ips_suppression should read back as null lists")
+	}
+}
+
 func Test_settingResource_usgSettingToModel(t *testing.T) {
 	r := &settingResource{}
 	ctx := context.Background()
@@ -928,7 +1088,7 @@ func Test_settingResource_usgSettingToModel(t *testing.T) {
 			FtpModule: types.BoolNull(),
 			SipModule: types.BoolNull(),
 		}
-		got := r.usgSettingToModel(ctx, setting, plan)
+		got := r.usgSettingToModel(ctx, setting, nil, plan)
 		if got == nil {
 			t.Fatal("expected non-nil result")
 		}
@@ -943,7 +1103,7 @@ func Test_settingResource_usgSettingToModel(t *testing.T) {
 			FtpModule: types.BoolValue(false),
 			GreModule: types.BoolValue(true),
 		}
-		got := r.usgSettingToModel(ctx, setting, plan)
+		got := r.usgSettingToModel(ctx, setting, nil, plan)
 		if !got.FtpModule.ValueBool() {
 			t.Error("FtpModule should be true (remote value)")
 		}
@@ -1175,7 +1335,7 @@ func Test_settingResource_ipsSettingToModel(t *testing.T) {
 			IPSMode: types.StringNull(),
 		}
 		var diags diag.Diagnostics
-		got := r.ipsSettingToModel(ctx, setting, plan, &diags)
+		got := r.ipsSettingToModel(ctx, setting, nil, plan, &diags)
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -1194,7 +1354,7 @@ func Test_settingResource_ipsSettingToModel(t *testing.T) {
 			RestrictTorrents: types.BoolValue(false),
 		}
 		var diags diag.Diagnostics
-		got := r.ipsSettingToModel(ctx, setting, plan, &diags)
+		got := r.ipsSettingToModel(ctx, setting, nil, plan, &diags)
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -1406,16 +1566,24 @@ func TestIpsSuppressionAlertsRoundTrip(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("modelToSetting: %v", diags)
 	}
-	if setting.Suppression == nil || len(setting.Suppression.Alerts) != 1 {
-		t.Fatalf("alerts not built: %+v", setting.Suppression)
+
+	if !ipsSuppressionConfigured(model) {
+		t.Fatal("suppression should be reported as configured")
 	}
-	a := setting.Suppression.Alerts[0]
+	suppression := r.ipsSuppressionModelToSetting(ctx, model, &diags)
+	if diags.HasError() {
+		t.Fatalf("suppressionModelToSetting: %v", diags)
+	}
+	if suppression == nil || len(suppression.Alerts) != 1 {
+		t.Fatalf("alerts not built: %+v", suppression)
+	}
+	a := suppression.Alerts[0]
 	if a.Category != "malware" || a.Gid == nil || *a.Gid != 1 || a.ID == nil || *a.ID != 2001 ||
 		a.Type != "track" || len(a.Tracking) != 1 || a.Tracking[0].Value != "10.0.0.5" {
 		t.Fatalf("alert mismatch: %+v", a)
 	}
 
-	out := r.ipsSettingToModel(ctx, setting, model, &diags)
+	out := r.ipsSettingToModel(ctx, setting, suppression, model, &diags)
 	if diags.HasError() {
 		t.Fatalf("settingToModel: %v", diags)
 	}

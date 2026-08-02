@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### ⚠️ Breaking Changes
+
+- **`unifi_device`: `radio_table.assisted_roaming_enabled` and `radio_table.assisted_roaming_rssi` are removed.** UniFi Network 10.x dropped the per-radio assisted roaming setting — the controller no longer stores or returns either field, so the attributes could only report a value the provider had made up. The equivalent control moved to the WLAN and is exposed in this release as `unifi_wlan.roaming_assistant_na_enabled` / `roaming_assistant_na_rssi` and the `_6e_` pair. Existing state is migrated by a schema upgrader (v1 → v2), so no manual state edit is needed, but a configuration that sets either attribute now fails to plan and has to be updated.
+
+### ✨ Features
+
+- **`unifi_wlan`: manage the roaming assistant.** Four new `Optional + Computed` attributes — `roaming_assistant_na_enabled` / `roaming_assistant_na_rssi` for 5GHz, `roaming_assistant_6e_enabled` / `roaming_assistant_6e_rssi` for 6GHz. The assistant disconnects a client whose signal drops below the threshold so it reassociates with a closer AP. The two RSSI ranges are not the same: 5GHz accepts `-80` to `-60`, 6GHz accepts `-90` to `-70`. These replace the per-radio `unifi_device` attributes removed above.
+
+### 🐛 Bug Fixes
+
+- **`unifi_network`: `dhcp_guarding` now takes effect on corporate and guest networks.** Two separate faults had to be fixed. The network encoder sent `dhcpguard_enabled` without the `dhcpd_ip_1..3` trusted-server slots the controller requires alongside it, so the controller rejected creates and updates with `api.err.MissingIPAddress` — including an unmodified round trip, which left an already-guarded network unmanageable once created. Underneath that, the provider sent `setting_preference = "auto"` (the attribute's default), and on `auto` the controller manages the advanced block itself and stores `false` for `dhcpguard_enabled` however it was sent. That write returns success, so the setting silently never applied. The trusted-server slots and the paired `dhcpd_mac_1..3` are now sent, and `setting_preference` switches to `manual` on its own when the plan needs it (below).
+- **`unifi_network`: settings the controller only honors under `setting_preference = "manual"` now switch it automatically.** On `auto` the controller discards `dhcpguard_enabled`, `igmp_snooping` and the `dhcpd` DNS, NTP and time-offset toggles, storing `false` whatever the payload said, and re-enables its built-in DHCP server, which turns `dhcp_relay` off. All of it failed silently, so a configured DHCP DNS server was stored and never handed out. `setting_preference` already switched to `manual` for `dhcp_relay`; it now also switches when the plan enables `igmp_snooping`, `dhcp_guarding`, or any of the three `dhcp_server` toggles. Only a `true` triggers it, and an explicitly configured `setting_preference` is still left alone. **This shows up as a one-time plan diff** (`setting_preference` `"auto"` → `"manual"`) for an existing network that enables any of those and does not set `setting_preference` itself. Set `setting_preference = "auto"` explicitly to keep the old behaviour, at the cost of those settings continuing to have no effect.
+- **`unifi_network`: WAN and vlan-only networks stop losing fields on a round trip.** WAN dropped `setting_preference` and `ipv6_setting_preference`, vlan-only dropped `mdns_enabled`. Reading one of these networks and writing it back discarded the stored value, so for vlan-only, disabling mDNS and then saving any other change turned it back on.
+- **`unifi_network`: `enabled = false` now works on a vlan-only network.** The encoder previously forced `enabled=true` for that purpose and ignored the field, so a disabled vlan-only network could not be created and a read-modify-write silently re-enabled one.
+- **`unifi_network`: corporate and guest networks no longer pin `dhcpd_leasetime`, `gateway_type` and `networkgroup`.** The encoder substituted `86400`, `"default"` and `"LAN"` when these were left unset. The controller supplies `networkgroup` itself and stores nothing for the other two, so a network now follows whatever default applies rather than the encoder's choice.
+
+### 🔧 Maintenance
+
+- **go-unifi updated to v1.101.0**, which is where the network encoder fixes above come from. Two settings objects moved on the controller as part of UniFi Network 10.x: geo IP filtering left the `usg` setting for a separate `usg_geo` object, and IPS suppression left `ips` for `ips_suppression`. The Terraform schema is unchanged — `usg.geo_ip_filtering_*` and `ips.suppression_alerts` / `suppression_whitelist` stay exactly where they were, and no state migration is required — but the provider now reads and writes those attributes through the new objects. Two consequences: a controller that does not expose them reports an explicit error when the attributes are configured (it previously wrote them to an endpoint that quietly ignored them), and the first plan after a controller upgrade may re-apply an existing geo IP filtering config once. Geo IP filtering attributes left unset in Terraform are no longer written at all, so a configuration set in the controller UI survives.
+
 ## [v0.55.0] - 2026-07-10
 
 ### ✨ Features

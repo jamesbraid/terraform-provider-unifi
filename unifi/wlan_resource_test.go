@@ -261,6 +261,12 @@ func Test_wlanFrameworkResource_Schema_computedControllerFields(t *testing.T) {
 		"minimum_data_rate_5g_kbps",
 		"radius_profile_id",
 		"bc_filter_list",
+		// UniFi Network 10.x replaced unifi_device.radio_table.assisted_roaming_*
+		// with these per-WLAN attributes.
+		"roaming_assistant_na_enabled",
+		"roaming_assistant_na_rssi",
+		"roaming_assistant_6e_enabled",
+		"roaming_assistant_6e_rssi",
 	} {
 		attr, ok := resp.Schema.Attributes[key]
 		if !ok {
@@ -269,6 +275,20 @@ func Test_wlanFrameworkResource_Schema_computedControllerFields(t *testing.T) {
 		}
 		if !attr.IsComputed() {
 			t.Errorf("attribute %q must be Computed (controller-managed, #323)", key)
+		}
+	}
+}
+
+// Test_wlanFrameworkResource_Schema_noAssistedRoaming guards against the
+// removed unifi_device attributes being reintroduced here under their old
+// names. The per-WLAN replacements are spelled roaming_assistant_*.
+func Test_wlanFrameworkResource_Schema_noAssistedRoaming(t *testing.T) {
+	resp := &fwresource.SchemaResponse{}
+	(&wlanFrameworkResource{}).Schema(context.Background(), fwresource.SchemaRequest{}, resp)
+
+	for _, key := range []string{"assisted_roaming_enabled", "assisted_roaming_rssi"} {
+		if _, ok := resp.Schema.Attributes[key]; ok {
+			t.Errorf("attribute %q should not exist; use roaming_assistant_* instead", key)
 		}
 	}
 }
