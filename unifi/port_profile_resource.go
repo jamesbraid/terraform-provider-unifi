@@ -264,10 +264,10 @@ func (r *portProfileResource) Schema(
 				},
 			},
 			"poe_mode": schema.StringAttribute{
-				Description: "The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`.",
+				Description: "The POE mode for the port profile. Can be one of `auto`, `pasv24`, `passthrough` or `off`.",
 				Optional:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("auto", "passv24", "passthrough", "off"),
+					stringvalidator.OneOf("auto", "pasv24", "passthrough", "off"),
 				},
 			},
 			"port_security_enabled": schema.BoolAttribute{

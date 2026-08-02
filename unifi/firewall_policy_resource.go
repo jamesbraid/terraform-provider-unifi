@@ -237,7 +237,7 @@ func (r *firewallPolicyResource) Schema(
 			Computed:            true,
 			Default:             stringdefault.StaticString("ANY"),
 			Validators: []validator.String{
-				stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT"),
+				stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT", "LIST"),
 			},
 		},
 		"matching_target_type": schema.StringAttribute{
