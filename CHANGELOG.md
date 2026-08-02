@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.101.1] - 2026-08-02
+
+### 🐛 Bug Fixes
+
+- **`unifi_wlan`: fix `roaming_assistant_na_enabled` and `roaming_assistant_6e_enabled` planning themselves off.** Both shipped in v0.101.0 with `Default: false`. A default is applied before the controller is consulted, so any WLAN that already had roaming assistance enabled planned a change turning it off the moment the attribute was absent from the configuration — which is every configuration written before v0.101.0. Both are now `Optional + Computed` with no default and `UseStateForUnknown`, so leaving them out keeps whatever the controller holds. Upgrading from v0.101.0 removes the spurious diff. No configuration change is needed, and anyone who added an explicit `= true` to work around it can drop it again.
+
+### 🔧 Maintenance
+
+- **A schema test now pins every `Optional + Computed` attribute that also carries a `Default`.** That combination is what caused the bug above and #323 before it: `Computed` says the controller may own the value, and a `Default` overrides it. The inventory lives in `unifi/testdata/optional_computed_defaults.txt` (166 attributes), and a new one fails the build until it is added deliberately. The list is a record of what still needs checking against a live controller, not a set of approved patterns.
+
 ## [v0.101.0] - 2026-08-01
 
 ### ⚠️ Breaking Changes
