@@ -3,6 +3,8 @@ package unifi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
 )
 
 // TestMergePortOverridesByIndex guards #266: declaring a subset of port_override
@@ -305,13 +308,21 @@ func Test_buildMinimalUpdateDevice_meshStaVapEnabled(t *testing.T) {
 	})
 }
 
+// TestAccDeviceFramework_basic drives whichever device the harness started for
+// it. The MAC comes from the herder's ready event rather than from a literal,
+// because a literal can only name a controller-simulated demo device, which
+// never informs and so never exercises adoption for real.
 func TestAccDeviceFramework_basic(t *testing.T) {
+	mac := os.Getenv(controllertest.EnvAccDeviceMAC)
+	if mac == "" {
+		t.Skipf("%s not set; skipping device acceptance test", controllertest.EnvAccDeviceMAC)
+	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDeviceFrameworkConfig_basic(),
+				Config: testAccDeviceFrameworkConfig_basic(mac),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_device.test", "id"),
 					resource.TestCheckResourceAttr("unifi_device.test", "name", "Test Device"),
@@ -328,15 +339,15 @@ func TestAccDeviceFramework_basic(t *testing.T) {
 	})
 }
 
-func testAccDeviceFrameworkConfig_basic() string {
-	return `
+func testAccDeviceFrameworkConfig_basic(mac string) string {
+	return fmt.Sprintf(`
 resource "unifi_device" "test" {
-	mac  = "00:27:22:00:00:02"
+	mac  = %q
 	name = "Test Device"
 	allow_adoption = true
 	forget_on_destroy = false
 }
-`
+`, mac)
 }
 
 func TestNewDeviceFrameworkResource(t *testing.T) {
