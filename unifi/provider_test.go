@@ -141,11 +141,42 @@ func runAcceptanceTests(m *testing.M) int {
 		}
 	}()
 
-	if _, err := waitForUniFiAPI(ctx, logger, endpoint, user, password); err != nil {
+	client, err := waitForUniFiAPI(ctx, logger, endpoint, user, password)
+	if err != nil {
 		panic(err)
 	}
 
-	return m.Run()
+	// Fake devices come from unifi-emu-herder, which owns device planning and
+	// device-container lifecycle only: the network, the controller and the
+	// adoption below stay this harness's job.
+	h, err := startDeviceHerder(ctx, logger, container)
+	if err != nil {
+		panic(err)
+	}
+	if h != nil {
+		// Deferred teardown runs last in, first out, so this stops the
+		// herder before the Compose teardown registered above. Tearing
+		// Compose down first would remove the network out from under the
+		// device containers.
+		defer h.stop(logger)
+
+		if err := waitForHerderDevice(ctx, logger, client, h.device.MAC); err != nil {
+			panic(err)
+		}
+		if err := os.Setenv(envAccDeviceMAC, h.device.MAC); err != nil {
+			panic(err)
+		}
+	}
+
+	code := m.Run()
+
+	// Explicit, so the ordering does not rest on the deferred stop above:
+	// signal the herder, wait for its terminal event and for the process,
+	// and only then let Compose teardown run.
+	if h != nil {
+		h.stop(logger)
+	}
+	return code
 }
 
 func preCheck(t *testing.T) {
