@@ -6,13 +6,24 @@
 
 Functionality first needs to be added to the [go-unifi](https://github.com/ubiquiti-community/go-unifi) SDK.
 
+This fork tracks [jamesbraid/go-unifi](https://github.com/jamesbraid/go-unifi), which carries fixes not yet upstream. Its releases are tagged on the fork, but the module still declares the upstream path. So `go.mod` redirects them with a `replace`, and `go get -u` will not move the SDK. To change SDK version:
+
+```
+go mod edit -replace github.com/ubiquiti-community/go-unifi=github.com/jamesbraid/go-unifi@vX.Y.Z
+go mod tidy
+```
+
 ## Documentation
 
 You can browse documentation on the [Terraform provider registry](https://registry.terraform.io/providers/paultyng/unifi/latest/docs).
 
 ## Supported Unifi Controller Versions
 
-As of version [v0.34](https://github.com/ubiquiti-community/terraform-provider-unifi/releases/tag/v0.34.0), this provider only supports version 6 of the Unifi controller software. If you need v5 support, you can pin an older version of the provider.
+Acceptance tests run against UniFi Network 10.4.57. That is the version the SDK's field definitions are generated from, and the one to assume when a resource's behaviour is in question.
+
+Version 6 is the floor, from [v0.34](https://github.com/ubiquiti-community/terraform-provider-unifi/releases/tag/v0.34.0) onwards. Pin an older provider release if you need v5.
+
+Some attributes need more than the floor. UniFi Network 10.x moved geo IP filtering and IPS suppression out of the `usg` and `ips` settings into objects of their own. `unifi_setting`'s `usg.geo_ip_filtering_*` and `ips.suppression_*` therefore need a controller that exposes those objects, and report an error against one that does not. A 10.0 controller is not enough. 10.4.57 has them.
 
 The docker, UDM, and UDM-Pro versions are slightly different (the API is proxied a little differently) but for the most part should all be supported. Individual patch versions of the controller are generally not tested for compatibility, just the latest stable versions.
 

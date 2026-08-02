@@ -212,23 +212,23 @@ type configNetworkModel struct {
 
 // radioTableModel describes the radio table data model.
 type radioTableModel struct {
-	Radio                  types.String `tfsdk:"radio"`
-	Channel                types.String `tfsdk:"channel"`
-	Ht                     types.Int64  `tfsdk:"ht"`
-	TxPower                types.String `tfsdk:"tx_power"`
-	TxPowerMode            types.String `tfsdk:"tx_power_mode"`
-	MinRssiEnabled         types.Bool   `tfsdk:"min_rssi_enabled"`
-	MinRssi                types.Int64  `tfsdk:"min_rssi"`
-	AntennaGain            types.Int64  `tfsdk:"antenna_gain"`
-	AntennaID              types.Int64  `tfsdk:"antenna_id"`
-	Dfs                    types.Bool   `tfsdk:"dfs"`
-	HardNoiseFloorEnabled  types.Bool   `tfsdk:"hard_noise_floor_enabled"`
-	LoadbalanceEnabled     types.Bool   `tfsdk:"loadbalance_enabled"`
-	Maxsta                 types.Int64  `tfsdk:"maxsta"`
-	Name                   types.String `tfsdk:"name"`
-	SensLevel              types.Int64  `tfsdk:"sens_level"`
-	SensLevelEnabled       types.Bool   `tfsdk:"sens_level_enabled"`
-	VwireEnabled           types.Bool   `tfsdk:"vwire_enabled"`
+	Radio                 types.String `tfsdk:"radio"`
+	Channel               types.String `tfsdk:"channel"`
+	Ht                    types.Int64  `tfsdk:"ht"`
+	TxPower               types.String `tfsdk:"tx_power"`
+	TxPowerMode           types.String `tfsdk:"tx_power_mode"`
+	MinRssiEnabled        types.Bool   `tfsdk:"min_rssi_enabled"`
+	MinRssi               types.Int64  `tfsdk:"min_rssi"`
+	AntennaGain           types.Int64  `tfsdk:"antenna_gain"`
+	AntennaID             types.Int64  `tfsdk:"antenna_id"`
+	Dfs                   types.Bool   `tfsdk:"dfs"`
+	HardNoiseFloorEnabled types.Bool   `tfsdk:"hard_noise_floor_enabled"`
+	LoadbalanceEnabled    types.Bool   `tfsdk:"loadbalance_enabled"`
+	Maxsta                types.Int64  `tfsdk:"maxsta"`
+	Name                  types.String `tfsdk:"name"`
+	SensLevel             types.Int64  `tfsdk:"sens_level"`
+	SensLevelEnabled      types.Bool   `tfsdk:"sens_level_enabled"`
+	VwireEnabled          types.Bool   `tfsdk:"vwire_enabled"`
 }
 
 // outletOverrideModel describes the outlet override data model.
@@ -2868,23 +2868,23 @@ func (r *deviceResource) radioTableToFramework(
 	elements := make([]attr.Value, 0, len(radios))
 	for _, radio := range radios {
 		model := radioTableModel{
-			Radio:                  stringOrNull(radio.Radio),
-			Channel:                stringOrNull(radio.Channel),
-			Ht:                     types.Int64PointerValue(radio.Ht),
-			TxPower:                stringOrNull(radio.TxPower),
-			TxPowerMode:            stringOrNull(radio.TxPowerMode),
-			MinRssiEnabled:         types.BoolValue(radio.MinRssiEnabled),
-			MinRssi:                types.Int64PointerValue(radio.MinRssi),
-			AntennaGain:            types.Int64PointerValue(radio.AntennaGain),
-			AntennaID:              types.Int64PointerValue(radio.AntennaID),
-			Dfs:                    types.BoolValue(radio.Dfs),
-			HardNoiseFloorEnabled:  types.BoolValue(radio.HardNoiseFloorEnabled),
-			LoadbalanceEnabled:     types.BoolValue(radio.LoadbalanceEnabled),
-			Maxsta:                 types.Int64PointerValue(radio.Maxsta),
-			Name:                   stringOrNull(radio.Name),
-			SensLevel:              types.Int64PointerValue(radio.SensLevel),
-			SensLevelEnabled:       types.BoolValue(radio.SensLevelEnabled),
-			VwireEnabled:           types.BoolValue(radio.VwireEnabled),
+			Radio:                 stringOrNull(radio.Radio),
+			Channel:               stringOrNull(radio.Channel),
+			Ht:                    types.Int64PointerValue(radio.Ht),
+			TxPower:               stringOrNull(radio.TxPower),
+			TxPowerMode:           stringOrNull(radio.TxPowerMode),
+			MinRssiEnabled:        types.BoolValue(radio.MinRssiEnabled),
+			MinRssi:               types.Int64PointerValue(radio.MinRssi),
+			AntennaGain:           types.Int64PointerValue(radio.AntennaGain),
+			AntennaID:             types.Int64PointerValue(radio.AntennaID),
+			Dfs:                   types.BoolValue(radio.Dfs),
+			HardNoiseFloorEnabled: types.BoolValue(radio.HardNoiseFloorEnabled),
+			LoadbalanceEnabled:    types.BoolValue(radio.LoadbalanceEnabled),
+			Maxsta:                types.Int64PointerValue(radio.Maxsta),
+			Name:                  stringOrNull(radio.Name),
+			SensLevel:             types.Int64PointerValue(radio.SensLevel),
+			SensLevelEnabled:      types.BoolValue(radio.SensLevelEnabled),
+			VwireEnabled:          types.BoolValue(radio.VwireEnabled),
 		}
 
 		objVal, objDiags := types.ObjectValueFrom(ctx, radioTableAttrTypes(), model)
@@ -3001,23 +3001,23 @@ func (r *deviceResource) frameworkToRadioTable(
 		}
 
 		radio := unifi.DeviceRadioTable{
-			Radio:                  model.Radio.ValueString(),
-			Channel:                model.Channel.ValueString(),
-			Ht:                     model.Ht.ValueInt64Pointer(),
-			TxPower:                model.TxPower.ValueString(),
-			TxPowerMode:            model.TxPowerMode.ValueString(),
-			MinRssiEnabled:         model.MinRssiEnabled.ValueBool(),
-			MinRssi:                model.MinRssi.ValueInt64Pointer(),
-			AntennaGain:            model.AntennaGain.ValueInt64Pointer(),
-			AntennaID:              model.AntennaID.ValueInt64Pointer(),
-			Dfs:                    model.Dfs.ValueBool(),
-			HardNoiseFloorEnabled:  model.HardNoiseFloorEnabled.ValueBool(),
-			LoadbalanceEnabled:     model.LoadbalanceEnabled.ValueBool(),
-			Maxsta:                 model.Maxsta.ValueInt64Pointer(),
-			Name:                   model.Name.ValueString(),
-			SensLevel:              model.SensLevel.ValueInt64Pointer(),
-			SensLevelEnabled:       model.SensLevelEnabled.ValueBool(),
-			VwireEnabled:           model.VwireEnabled.ValueBool(),
+			Radio:                 model.Radio.ValueString(),
+			Channel:               model.Channel.ValueString(),
+			Ht:                    model.Ht.ValueInt64Pointer(),
+			TxPower:               model.TxPower.ValueString(),
+			TxPowerMode:           model.TxPowerMode.ValueString(),
+			MinRssiEnabled:        model.MinRssiEnabled.ValueBool(),
+			MinRssi:               model.MinRssi.ValueInt64Pointer(),
+			AntennaGain:           model.AntennaGain.ValueInt64Pointer(),
+			AntennaID:             model.AntennaID.ValueInt64Pointer(),
+			Dfs:                   model.Dfs.ValueBool(),
+			HardNoiseFloorEnabled: model.HardNoiseFloorEnabled.ValueBool(),
+			LoadbalanceEnabled:    model.LoadbalanceEnabled.ValueBool(),
+			Maxsta:                model.Maxsta.ValueInt64Pointer(),
+			Name:                  model.Name.ValueString(),
+			SensLevel:             model.SensLevel.ValueInt64Pointer(),
+			SensLevelEnabled:      model.SensLevelEnabled.ValueBool(),
+			VwireEnabled:          model.VwireEnabled.ValueBool(),
 		}
 
 		radios = append(radios, radio)

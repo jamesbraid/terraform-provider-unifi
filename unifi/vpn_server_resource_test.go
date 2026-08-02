@@ -263,7 +263,7 @@ func TestAccVPNServer_openvpn_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"unifi_vpn_server.test",
 						"openvpn.encryption_cipher",
-						"AES_256_GCM",
+						"AES_256_CBC",
 					),
 				),
 			},
@@ -304,7 +304,7 @@ func TestAccVPNServer_openvpn_update(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"unifi_vpn_server.test",
 						"openvpn.encryption_cipher",
-						"AES_256_GCM",
+						"AES_256_CBC",
 					),
 				),
 			},
@@ -546,7 +546,7 @@ resource "unifi_vpn_server" "test" {
 
   openvpn = {
     port              = 1194
-    encryption_cipher = "AES_256_GCM"
+    encryption_cipher = "AES_256_CBC"
   }
 }
 `
@@ -1054,4 +1054,39 @@ func TestAccVPNServerList_basic(t *testing.T) {
 			},
 		},
 	})
+}
+
+// Test_knownNonEmpty guards the OpenVPN create payload. The certificate and key
+// fields are controller-generated, so they are unknown at create time, and an
+// unknown types.String yields a pointer to "" rather than nil, putting empty
+// x_ca_crt, x_ca_key, x_dh_key and x_server_crt on the wire. The controller
+// generates that material itself, so the create has no business asserting it.
+func Test_knownNonEmpty(t *testing.T) {
+	tests := []struct {
+		name string
+		in   types.String
+		want *string
+	}{
+		{name: "unknown is omitted", in: types.StringUnknown(), want: nil},
+		{name: "null is omitted", in: types.StringNull(), want: nil},
+		{name: "empty is omitted", in: types.StringValue(""), want: nil},
+		{
+			name: "value is sent", in: types.StringValue("-----BEGIN CERTIFICATE-----"),
+			want: func() *string { s := "-----BEGIN CERTIFICATE-----"; return &s }(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := knownNonEmpty(tt.in)
+			switch {
+			case tt.want == nil && got != nil:
+				t.Errorf("knownNonEmpty() = %q, want nil (absent from the payload)", *got)
+			case tt.want != nil && got == nil:
+				t.Errorf("knownNonEmpty() = nil, want %q", *tt.want)
+			case tt.want != nil && *got != *tt.want:
+				t.Errorf("knownNonEmpty() = %q, want %q", *got, *tt.want)
+			}
+		})
+	}
 }

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.101.0] - 2026-08-01
 
 ### ⚠️ Breaking Changes
 
@@ -10,15 +10,33 @@ All notable changes to this project will be documented in this file.
 
 ### ✨ Features
 
+- **`unifi_setting`: enable the site's RADIUS server with `radius.enabled`.** A `unifi_vpn_server` that authenticates against the controller's own accounts rather than an external RADIUS server points at the built-in `Default` profile, and the controller holds those accounts in its own RADIUS server. Create one while that server is off and it answers `api.err.RadiusServerNotEnabled`. The UI enables it inline, prompting for the pre-shared key as you create the VPN server. The provider's `radius` block exposed the ports, secret and accounting toggle but not the switch itself, so a configuration could not reach the same state. A VPN server pointing at an external RADIUS profile is unaffected and needs nothing extra.
+
+    ```hcl
+    resource "unifi_setting" "radius" {
+      radius = {
+        enabled = true
+        secret  = "..."
+      }
+    }
+
+    resource "unifi_vpn_server" "ovpn" {
+      depends_on       = [unifi_setting.radius]
+      radiusprofile_id = data.unifi_radius_profile.default.id
+      # ...
+    }
+    ```
 - **`unifi_wlan`: manage the roaming assistant.** Four new `Optional + Computed` attributes — `roaming_assistant_na_enabled` / `roaming_assistant_na_rssi` for 5GHz, `roaming_assistant_6e_enabled` / `roaming_assistant_6e_rssi` for 6GHz. The assistant disconnects a client whose signal drops below the threshold so it reassociates with a closer AP. The two RSSI ranges are not the same: 5GHz accepts `-80` to `-60`, 6GHz accepts `-90` to `-70`. These replace the per-radio `unifi_device` attributes removed above.
 
 ### 🐛 Bug Fixes
 
 - **`unifi_network`: `dhcp_guarding` now takes effect on corporate and guest networks.** Two separate faults had to be fixed. The network encoder sent `dhcpguard_enabled` without the `dhcpd_ip_1..3` trusted-server slots the controller requires alongside it, so the controller rejected creates and updates with `api.err.MissingIPAddress` — including an unmodified round trip, which left an already-guarded network unmanageable once created. Underneath that, the provider sent `setting_preference = "auto"` (the attribute's default), and on `auto` the controller manages the advanced block itself and stores `false` for `dhcpguard_enabled` however it was sent. That write returns success, so the setting silently never applied. The trusted-server slots and the paired `dhcpd_mac_1..3` are now sent, and `setting_preference` switches to `manual` on its own when the plan needs it (below).
-- **`unifi_network`: settings the controller only honors under `setting_preference = "manual"` now switch it automatically.** On `auto` the controller discards `dhcpguard_enabled`, `igmp_snooping` and the `dhcpd` DNS, NTP and time-offset toggles, storing `false` whatever the payload said, and re-enables its built-in DHCP server, which turns `dhcp_relay` off. All of it failed silently, so a configured DHCP DNS server was stored and never handed out. `setting_preference` already switched to `manual` for `dhcp_relay`; it now also switches when the plan enables `igmp_snooping`, `dhcp_guarding`, or any of the three `dhcp_server` toggles. Only a `true` triggers it, and an explicitly configured `setting_preference` is still left alone. **This shows up as a one-time plan diff** (`setting_preference` `"auto"` → `"manual"`) for an existing network that enables any of those and does not set `setting_preference` itself. Set `setting_preference = "auto"` explicitly to keep the old behaviour, at the cost of those settings continuing to have no effect.
+- **`unifi_network`: settings the controller only honors under `setting_preference = "manual"` now switch it automatically.** On `auto` the controller discards `dhcpguard_enabled`, `igmp_snooping` and the `dhcpd` DNS, NTP and time-offset toggles, storing `false` whatever the payload said, and re-enables its built-in DHCP server, which turns `dhcp_relay` off. All of it failed silently, so a configured DHCP DNS server was stored and never handed out. `setting_preference` already switched to `manual` for `dhcp_relay`. It now also switches when the plan enables `igmp_snooping`, `dhcp_guarding`, or any of the three `dhcp_server` toggles. Only a `true` triggers it, and an explicitly configured `setting_preference` is still left alone. **This shows up as a one-time plan diff** (`setting_preference` `"auto"` → `"manual"`) for an existing network that enables any of those and does not set `setting_preference` itself. Set `setting_preference = "auto"` explicitly to keep the old behaviour, at the cost of those settings continuing to have no effect.
 - **`unifi_network`: WAN and vlan-only networks stop losing fields on a round trip.** WAN dropped `setting_preference` and `ipv6_setting_preference`, vlan-only dropped `mdns_enabled`. Reading one of these networks and writing it back discarded the stored value, so for vlan-only, disabling mDNS and then saving any other change turned it back on.
 - **`unifi_network`: `enabled = false` now works on a vlan-only network.** The encoder previously forced `enabled=true` for that purpose and ignored the field, so a disabled vlan-only network could not be created and a read-modify-write silently re-enabled one.
 - **`unifi_network`: corporate and guest networks no longer pin `dhcpd_leasetime`, `gateway_type` and `networkgroup`.** The encoder substituted `86400`, `"default"` and `"LAN"` when these were left unset. The controller supplies `networkgroup` itself and stores nothing for the other two, so a network now follows whatever default applies rather than the encoder's choice.
+- **`unifi_ap_group`: fix `device_macs` written as `AA-BB-CC-DD-EE-FF` failing the apply.** The controller returns MACs lower-case and colon-separated, and the create and update paths overwrote the configured value with that form, so an apply of a config written any other way ended in `Provider produced inconsistent result after apply`. A refresh rewrote it the same way. The attribute's element type does compare MACs semantically, but a set identifies its members by their string value, so that never reached the set. Create, update and refresh now keep the representation already in state when the controller returns the same addresses, and take the controller's when the membership actually differs. Rewriting an applied `aa:bb:…` as `AA-BB-…` also plans empty: Terraform never consults semantic equality while building a plan, so `device_macs` became `Optional + Computed` and a plan modifier holds the stored value when the configured addresses match.
+- **`unifi_vpn_server`: fix creating an OpenVPN server failing with `api.err.InvalidPayload` (400).** `openvpn.encryption_cipher` accepted and defaulted to `AES_256_GCM`, which the controller does not take: it answers `api.err.InvalidValue` naming the pattern `AES_256_CBC|BF_CBC`, and the SDK has declared that same pair all along. Every OpenVPN server that did not override the default therefore failed to create. The default is now `AES_256_CBC` and `AES_256_GCM` is no longer offered — a configuration that sets it explicitly now fails validation with the accepted values rather than a 400 from the controller. The create also stopped sending the controller-generated `x_ca_crt`, `x_ca_key`, `x_dh_key` and `x_server_crt` as empty strings, which is wrong independently of the cipher.
 
 ### 🔧 Maintenance
 

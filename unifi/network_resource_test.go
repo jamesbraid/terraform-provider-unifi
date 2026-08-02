@@ -407,7 +407,9 @@ func TestAccNetworkFramework_dhcpGuardingCorporate(t *testing.T) {
 			{
 				// Touch an unrelated field so the provider issues an update with
 				// dhcp_guarding unchanged.
-				Config: testAccNetworkFrameworkConfig_dhcpGuardingCorporate("Test DHCP Guard Renamed"),
+				Config: testAccNetworkFrameworkConfig_dhcpGuardingCorporate(
+					"Test DHCP Guard Renamed",
+				),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"unifi_network.test_dhcp_guard", "name", "Test DHCP Guard Renamed",

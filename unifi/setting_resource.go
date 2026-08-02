@@ -67,6 +67,7 @@ type settingMgmtModel struct {
 
 type settingRadiusModel struct {
 	AccountingEnabled     types.Bool           `tfsdk:"accounting_enabled"`
+	Enabled               types.Bool           `tfsdk:"enabled"`
 	AcctPort              types.Int64          `tfsdk:"acct_port"`
 	AuthPort              types.Int64          `tfsdk:"auth_port"`
 	InterimUpdateInterval timetypes.GoDuration `tfsdk:"interim_update_interval"`
@@ -974,6 +975,11 @@ func (r *settingResource) Schema(
 				Attributes: map[string]schema.Attribute{
 					"accounting_enabled": schema.BoolAttribute{
 						MarkdownDescription: "Enable RADIUS accounting.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"enabled": schema.BoolAttribute{
+						MarkdownDescription: "Enable the site's RADIUS server. A VPN server that authenticates against RADIUS (`unifi_vpn_server` with `openvpn` or `l2tp`) is rejected with `api.err.RadiusServerNotEnabled` while this is off.",
 						Optional:            true,
 						Computed:            true,
 					},
@@ -2177,6 +2183,7 @@ func (r *settingResource) readSettings(
 		radiusModel := r.radiusSettingToModel(ctx, radiusSetting, &planRadius)
 		objValue, d := types.ObjectValueFrom(ctx, map[string]attr.Type{
 			"accounting_enabled":      types.BoolType,
+			"enabled":                 types.BoolType,
 			"acct_port":               types.Int64Type,
 			"auth_port":               types.Int64Type,
 			"interim_update_interval": timetypes.GoDurationType{},
@@ -2190,6 +2197,7 @@ func (r *settingResource) readSettings(
 	} else {
 		data.Radius = types.ObjectNull(map[string]attr.Type{
 			"accounting_enabled":      types.BoolType,
+			"enabled":                 types.BoolType,
 			"acct_port":               types.Int64Type,
 			"auth_port":               types.Int64Type,
 			"interim_update_interval": timetypes.GoDurationType{},
@@ -2485,6 +2493,9 @@ func (r *settingResource) radiusModelToSetting(
 	if !model.AccountingEnabled.IsNull() && !model.AccountingEnabled.IsUnknown() {
 		setting.AccountingEnabled = model.AccountingEnabled.ValueBool()
 	}
+	if !model.Enabled.IsNull() && !model.Enabled.IsUnknown() {
+		setting.Enabled = model.Enabled.ValueBool()
+	}
 	if !model.AcctPort.IsNull() && !model.AcctPort.IsUnknown() {
 		setting.AcctPort = model.AcctPort.ValueInt64Pointer()
 	}
@@ -2513,6 +2524,8 @@ func (r *settingResource) radiusSettingToModel(
 
 	// Only populate fields that were explicitly configured in the plan
 	model.AccountingEnabled = types.BoolValue(setting.AccountingEnabled)
+
+	model.Enabled = types.BoolValue(setting.Enabled)
 
 	model.AcctPort = types.Int64PointerValue(setting.AcctPort)
 
@@ -2613,7 +2626,11 @@ func (r *settingResource) writeUsgGeo(
 		current = &settings.UsgGeo{}
 	}
 
-	if err := r.client.UpdateSetting(ctx, site, r.usgGeoModelToSetting(model, current)); err != nil {
+	if err := r.client.UpdateSetting(
+		ctx,
+		site,
+		r.usgGeoModelToSetting(model, current),
+	); err != nil {
 		var notFound *ui.NotFoundError
 		if errors.As(err, &notFound) {
 			diags.AddError(

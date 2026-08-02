@@ -523,8 +523,14 @@ func Test_dropAssistedRoaming(t *testing.T) {
 
 	dropAssistedRoaming(state)
 
-	radios := state["radio_table"].([]any)
-	first := radios[0].(map[string]any)
+	radios, ok := state["radio_table"].([]any)
+	if !ok {
+		t.Fatalf("radio_table is %T, want []any", state["radio_table"])
+	}
+	first, ok := radios[0].(map[string]any)
+	if !ok {
+		t.Fatalf("radio_table[0] is %T, want map[string]any", radios[0])
+	}
 	for _, k := range []string{"assisted_roaming_enabled", "assisted_roaming_rssi"} {
 		if _, present := first[k]; present {
 			t.Errorf("%s survived the rewrite", k)
