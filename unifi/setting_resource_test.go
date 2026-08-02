@@ -5,12 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
 func TestAccSettingResource_mgmt(t *testing.T) {
@@ -42,6 +40,46 @@ func TestAccSettingResource_mgmt(t *testing.T) {
 					"mgmt.auto_upgrade",
 					"mgmt.ssh_enabled",
 				},
+			},
+		},
+	})
+}
+
+// TestAccSettingImport_cleanPlan covers the acceptance-level import
+// contract: importing unifi_setting by a bare site name (via ImportStateId,
+// exercising the real "terraform import <addr> <site>" flow) must hydrate
+// every section, so re-applying the SAME config that produced the original
+// resource is a clean, empty plan — no drift from sections the config never
+// touched but the import hydrated as Computed.
+func TestAccSettingImport_cleanPlan(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_mgmt(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mgmt.auto_upgrade",
+						"true",
+					),
+				),
+			},
+			{
+				// Bare site name import (C3: not the "site:id" composite).
+				ResourceName:       "unifi_setting.test",
+				ImportState:        true,
+				ImportStateId:      "default",
+				ImportStatePersist: true,
+			},
+			{
+				// Re-applying the identical config against the imported state
+				// must be a no-op plan: the hydration gate populated every
+				// other section as Computed, and UseStateForUnknown holds
+				// them stable across this plan.
+				Config:   testAccSettingConfig_mgmt(),
+				PlanOnly: true,
 			},
 		},
 	})
@@ -695,781 +733,116 @@ func Test_settingResource_Configure(t *testing.T) {
 	}
 }
 
-func Test_settingResource_ImportState(t *testing.T) {
-	t.Skip(
-		"ImportState delegates to ImportStatePassthroughID which requires full state schema setup",
-	)
-}
-
-func Test_settingResource_mgmtModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("nil model returns empty setting", func(t *testing.T) {
-		// mgmtModelToSetting does not accept nil (it dereferences the pointer);
-		// test zero-value model produces a zero-value settings.Mgmt.
-		model := &settingMgmtModel{
-			AutoUpgrade: types.BoolNull(),
-			SSHEnabled:  types.BoolNull(),
-			SSHKeys:     types.ListNull(types.StringType),
-		}
-		got := r.mgmtModelToSetting(ctx, model, &settings.Mgmt{})
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.AutoUpgrade {
-			t.Error("AutoUpgrade should be false for null input")
-		}
-		if got.SSHEnabled {
-			t.Error("SSHEnabled should be false for null input")
-		}
-	})
-
-	t.Run("basic fields set", func(t *testing.T) {
-		model := &settingMgmtModel{
-			AutoUpgrade: types.BoolValue(true),
-			SSHEnabled:  types.BoolValue(false),
-			SSHKeys:     types.ListNull(types.StringType),
-		}
-		got := r.mgmtModelToSetting(ctx, model, &settings.Mgmt{})
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AutoUpgrade {
-			t.Error("AutoUpgrade should be true")
-		}
-		if got.SSHEnabled {
-			t.Error("SSHEnabled should be false")
-		}
-	})
-}
-
-func Test_settingResource_mgmtSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null plan fields produce null model fields", func(t *testing.T) {
-		setting := &settings.Mgmt{
-			AutoUpgrade: true,
-			SSHEnabled:  true,
-		}
-		plan := &settingMgmtModel{
-			AutoUpgrade: types.BoolNull(),
-			SSHEnabled:  types.BoolNull(),
-			SSHKeys:     types.ListNull(types.StringType),
-		}
-		got := r.mgmtSettingToModel(ctx, setting, plan)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AutoUpgrade.IsNull() {
-			t.Error("AutoUpgrade should be null when plan is null")
-		}
-		if !got.SSHEnabled.IsNull() {
-			t.Error("SSHEnabled should be null when plan is null")
-		}
-	})
-
-	t.Run("non-null plan fields reflect remote value", func(t *testing.T) {
-		setting := &settings.Mgmt{
-			AutoUpgrade: true,
-			SSHEnabled:  false,
-		}
-		plan := &settingMgmtModel{
-			AutoUpgrade: types.BoolValue(false), // plan had a value configured
-			SSHEnabled:  types.BoolValue(true),
-			SSHKeys:     types.ListNull(types.StringType),
-		}
-		got := r.mgmtSettingToModel(ctx, setting, plan)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AutoUpgrade.ValueBool() {
-			t.Error("AutoUpgrade should reflect remote value (true)")
-		}
-		if got.SSHEnabled.ValueBool() {
-			t.Error("SSHEnabled should reflect remote value (false)")
-		}
-	})
-}
-
-func Test_settingResource_radiusModelToSetting(t *testing.T) {
-	r := &settingResource{}
-
-	t.Run("null fields leave base unchanged", func(t *testing.T) {
-		authPort := int64(1812)
-		base := &settings.Radius{
-			AccountingEnabled: true,
-			AuthPort:          &authPort,
-		}
-		model := &settingRadiusModel{
-			AccountingEnabled:     types.BoolNull(),
-			AcctPort:              types.Int64Null(),
-			AuthPort:              types.Int64Null(),
-			InterimUpdateInterval: timetypes.NewGoDurationNull(),
-			Secret:                types.StringNull(),
-		}
-		got := r.radiusModelToSetting(context.Background(), model, base)
-		// radiusModelToSetting starts from base and only overlays non-null fields.
-		// Null AccountingEnabled means the base value (true) is left in place.
-		if !got.AccountingEnabled {
-			t.Error("AccountingEnabled should remain true (from base)")
-		}
-	})
-
-	t.Run("non-null fields overlay base", func(t *testing.T) {
-		base := &settings.Radius{}
-		model := &settingRadiusModel{
-			AccountingEnabled:     types.BoolValue(true),
-			AcctPort:              types.Int64Value(1813),
-			AuthPort:              types.Int64Value(1812),
-			InterimUpdateInterval: timetypes.NewGoDurationNull(),
-			Secret:                types.StringValue("mysecret"),
-		}
-		got := r.radiusModelToSetting(context.Background(), model, base)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AccountingEnabled {
-			t.Error("AccountingEnabled should be true")
-		}
-		if got.AuthPort == nil || *got.AuthPort != 1812 {
-			t.Errorf("AuthPort = %v, want 1812", got.AuthPort)
-		}
-		if got.Secret != "mysecret" {
-			t.Errorf("Secret = %q, want mysecret", got.Secret)
-		}
-	})
-}
-
-func Test_settingResource_radiusSettingToModel(t *testing.T) {
-	r := &settingResource{}
-
-	t.Run("nil secret plan produces null secret model", func(t *testing.T) {
-		authPort := int64(1812)
-		acctPort := int64(1813)
-		setting := &settings.Radius{
-			AccountingEnabled: true,
-			AuthPort:          &authPort,
-			AcctPort:          &acctPort,
-			Secret:            "remote-secret",
-		}
-		plan := &settingRadiusModel{
-			Secret: types.StringNull(),
-		}
-		got := r.radiusSettingToModel(context.Background(), setting, plan)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AccountingEnabled.ValueBool() {
-			t.Error("AccountingEnabled should be true")
-		}
-		// When plan.Secret is null, model.Secret should be null regardless of remote value.
-		if !got.Secret.IsNull() {
-			t.Errorf(
-				"Secret should be null when plan secret is null, got %q",
-				got.Secret.ValueString(),
-			)
-		}
-	})
-
-	t.Run("non-null secret plan reflects remote value", func(t *testing.T) {
-		setting := &settings.Radius{Secret: "the-secret"}
-		plan := &settingRadiusModel{Secret: types.StringValue("old")}
-		got := r.radiusSettingToModel(context.Background(), setting, plan)
-		if got.Secret.ValueString() != "the-secret" {
-			t.Errorf("Secret = %q, want the-secret", got.Secret.ValueString())
-		}
-	})
-}
-
-func Test_settingResource_usgModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null fields produce zero-value setting", func(t *testing.T) {
-		model := &settingUSGModel{
-			FtpModule:       types.BoolNull(),
-			BroadcastPing:   types.BoolNull(),
-			DNSVerification: types.ObjectNull(nil),
-		}
-		got := r.usgModelToSetting(ctx, model)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.FtpModule {
-			t.Error("FtpModule should be false for null input")
-		}
-	})
-
-	t.Run("ftp_module set to true", func(t *testing.T) {
-		model := &settingUSGModel{
-			FtpModule:       types.BoolValue(true),
-			BroadcastPing:   types.BoolNull(),
-			DNSVerification: types.ObjectNull(nil),
-		}
-		got := r.usgModelToSetting(ctx, model)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.FtpModule {
-			t.Error("FtpModule should be true")
-		}
-	})
-}
-
-func Test_settingResource_usgSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null plan fields produce null model fields", func(t *testing.T) {
-		setting := &settings.Usg{FtpModule: true, SipModule: true}
-		plan := &settingUSGModel{
-			FtpModule: types.BoolNull(),
-			SipModule: types.BoolNull(),
-		}
-		got := r.usgSettingToModel(ctx, setting, plan)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.FtpModule.IsNull() {
-			t.Error("FtpModule should be null when plan is null")
-		}
-	})
-
-	t.Run("non-null plan fields reflect remote value", func(t *testing.T) {
-		setting := &settings.Usg{FtpModule: true, GreModule: false}
-		plan := &settingUSGModel{
-			FtpModule: types.BoolValue(false),
-			GreModule: types.BoolValue(true),
-		}
-		got := r.usgSettingToModel(ctx, setting, plan)
-		if !got.FtpModule.ValueBool() {
-			t.Error("FtpModule should be true (remote value)")
-		}
-		if got.GreModule.ValueBool() {
-			t.Error("GreModule should be false (remote value)")
-		}
-	})
-}
-
-func Test_settingResource_igmpSnoopingModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("enabled overlaid onto base", func(t *testing.T) {
-		base := &settings.IgmpSnooping{Enabled: false, QuerierMode: "AUTO"}
-		model := &settingIgmpSnoopingModel{
-			Enabled:    types.BoolValue(true),
-			NetworkIDs: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.igmpSnoopingModelToSetting(ctx, model, base, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if !got.Enabled {
-			t.Error("Enabled should be true")
-		}
-		// Advanced fields on base must be preserved.
-		if got.QuerierMode != "AUTO" {
-			t.Errorf("QuerierMode = %q, want AUTO", got.QuerierMode)
-		}
-	})
-
-	t.Run("network_ids overlaid onto base", func(t *testing.T) {
-		base := &settings.IgmpSnooping{NetworkIDs: []string{"old-net"}}
-		nids, d := types.ListValueFrom(ctx, types.StringType, []string{"net-1", "net-2"})
-		if d.HasError() {
-			t.Fatalf("building list: %v", d)
-		}
-		model := &settingIgmpSnoopingModel{
-			Enabled:    types.BoolNull(),
-			NetworkIDs: nids,
-		}
-		var diags diag.Diagnostics
-		got := r.igmpSnoopingModelToSetting(ctx, model, base, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if len(got.NetworkIDs) != 2 || got.NetworkIDs[0] != "net-1" {
-			t.Errorf("NetworkIDs = %v, want [net-1 net-2]", got.NetworkIDs)
-		}
-	})
-}
-
-func Test_settingResource_igmpSnoopingSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("basic fields mapped", func(t *testing.T) {
-		setting := &settings.IgmpSnooping{
-			Enabled:    true,
-			NetworkIDs: []string{"net-a", "net-b"},
-		}
-		var diags diag.Diagnostics
-		got := r.igmpSnoopingSettingToModel(ctx, setting, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.Enabled.ValueBool() {
-			t.Error("Enabled should be true")
-		}
-		var ids []string
-		if d := got.NetworkIDs.ElementsAs(ctx, &ids, false); d.HasError() {
-			t.Fatalf("reading network_ids: %v", d)
-		}
-		if len(ids) != 2 {
-			t.Errorf("NetworkIDs len = %d, want 2", len(ids))
-		}
-	})
-
-	t.Run("empty network ids", func(t *testing.T) {
-		setting := &settings.IgmpSnooping{Enabled: false, NetworkIDs: nil}
-		var diags diag.Diagnostics
-		got := r.igmpSnoopingSettingToModel(ctx, setting, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.Enabled.ValueBool() {
-			t.Error("Enabled should be false")
-		}
-	})
-}
-
-func Test_settingResource_dohModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null fields produce empty setting", func(t *testing.T) {
-		model := &settingDohModel{
-			State:         types.StringNull(),
-			ServerNames:   types.ListNull(types.StringType),
-			CustomServers: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.dohModelToSetting(ctx, model, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.State != "" {
-			t.Errorf("State should be empty, got %q", got.State)
-		}
-	})
-
-	t.Run("state set", func(t *testing.T) {
-		model := &settingDohModel{
-			State:         types.StringValue("auto"),
-			ServerNames:   types.ListNull(types.StringType),
-			CustomServers: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.dohModelToSetting(ctx, model, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.State != "auto" {
-			t.Errorf("State = %q, want auto", got.State)
-		}
-	})
-}
-
-func Test_settingResource_dohSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null plan state produces null model state", func(t *testing.T) {
-		setting := &settings.Doh{State: "auto"}
-		plan := &settingDohModel{
-			State:         types.StringNull(),
-			ServerNames:   types.ListNull(types.StringType),
-			CustomServers: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.dohSettingToModel(ctx, setting, plan, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.State.IsNull() {
-			t.Errorf("State should be null when plan is null, got %q", got.State.ValueString())
-		}
-	})
-
-	t.Run("non-null plan state reflects remote value", func(t *testing.T) {
-		setting := &settings.Doh{State: "off"}
-		plan := &settingDohModel{
-			State:         types.StringValue("auto"),
-			ServerNames:   types.ListNull(types.StringType),
-			CustomServers: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.dohSettingToModel(ctx, setting, plan, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.State.ValueString() != "off" {
-			t.Errorf("State = %q, want off", got.State.ValueString())
-		}
-	})
-}
-
-func Test_settingResource_ipsModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null fields produce empty setting", func(t *testing.T) {
-		model := &settingIpsModel{
-			IPSMode:          types.StringNull(),
-			HoneypotEnabled:  types.BoolNull(),
-			RestrictTorrents: types.BoolNull(),
-		}
-		var diags diag.Diagnostics
-		got := r.ipsModelToSetting(ctx, model, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.IPsMode != "" {
-			t.Errorf("IPsMode should be empty, got %q", got.IPsMode)
-		}
-	})
-
-	t.Run("ips_mode and restrict_torrents set", func(t *testing.T) {
-		model := &settingIpsModel{
-			IPSMode:          types.StringValue("disabled"),
-			RestrictTorrents: types.BoolValue(true),
-			HoneypotEnabled:  types.BoolNull(),
-		}
-		var diags diag.Diagnostics
-		got := r.ipsModelToSetting(ctx, model, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.IPsMode != "disabled" {
-			t.Errorf("IPsMode = %q, want disabled", got.IPsMode)
-		}
-		if !got.RestrictTorrents {
-			t.Error("RestrictTorrents should be true")
-		}
-	})
-}
-
-func Test_settingResource_ipsSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null plan ips_mode produces null model ips_mode", func(t *testing.T) {
-		setting := &settings.Ips{IPsMode: "ips"}
-		plan := &settingIpsModel{
-			IPSMode: types.StringNull(),
-		}
-		var diags diag.Diagnostics
-		got := r.ipsSettingToModel(ctx, setting, plan, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.IPSMode.IsNull() {
-			t.Errorf("IPSMode should be null when plan is null, got %q", got.IPSMode.ValueString())
-		}
-	})
-
-	t.Run("non-null plan reflects remote value", func(t *testing.T) {
-		setting := &settings.Ips{IPsMode: "disabled", RestrictTorrents: true}
-		plan := &settingIpsModel{
-			IPSMode:          types.StringValue("ips"),
-			RestrictTorrents: types.BoolValue(false),
-		}
-		var diags diag.Diagnostics
-		got := r.ipsSettingToModel(ctx, setting, plan, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.IPSMode.ValueString() != "disabled" {
-			t.Errorf("IPSMode = %q, want disabled", got.IPSMode.ValueString())
-		}
-		if !got.RestrictTorrents.ValueBool() {
-			t.Error("RestrictTorrents should be true (remote value)")
-		}
-	})
-}
-
-// TestIgmpSnoopingModelMerge guards #164: the site-level igmp_snooping setting
-// exposes only enabled + network_ids, and the model->setting conversion must
-// overlay those onto the current remote setting so advanced querier/flood
-// fields configured in the UI are preserved across an update.
-func TestIgmpSnoopingModelMerge(t *testing.T) {
+// newImportStateTestResponse builds an ImportStateResponse whose State is
+// wired to the real settingResource schema, seeded with an all-null root
+// object — mirroring the empty state Terraform hands ImportState before any
+// attributes are set. This lets tests drive resp.State.SetAttribute (what
+// ImportState actually calls) instead of stubbing it out.
+func newImportStateTestResponse(t *testing.T) (*settingResource, *fwresource.ImportStateResponse) {
+	t.Helper()
 	ctx := context.Background()
 	r := &settingResource{}
-	var diags diag.Diagnostics
-
-	// Current remote setting with advanced fields that must survive.
-	base := &settings.IgmpSnooping{
-		Enabled:             false,
-		QuerierMode:         "CUSTOM",
-		QuerierSwitches:     []string{"aa:bb:cc:dd:ee:ff"},
-		FloodKnownProtocols: true,
+	var schemaResp fwresource.SchemaResponse
+	r.Schema(ctx, fwresource.SchemaRequest{}, &schemaResp)
+	if schemaResp.Diagnostics.HasError() {
+		t.Fatalf("Schema() produced errors: %v", schemaResp.Diagnostics)
 	}
-	nids, d := types.ListValueFrom(ctx, types.StringType, []string{"net-1", "net-2"})
-	if d.HasError() {
-		t.Fatalf("building network_ids: %v", d)
-	}
-	model := &settingIgmpSnoopingModel{
-		Enabled:    types.BoolValue(true),
-		NetworkIDs: nids,
-	}
-
-	out := r.igmpSnoopingModelToSetting(ctx, model, base, &diags)
-	if diags.HasError() {
-		t.Fatalf("igmpSnoopingModelToSetting: %v", diags)
-	}
-	if !out.Enabled {
-		t.Error("Enabled not applied from model")
-	}
-	if len(out.NetworkIDs) != 2 || out.NetworkIDs[0] != "net-1" {
-		t.Errorf("NetworkIDs = %v, want [net-1 net-2]", out.NetworkIDs)
-	}
-	// Advanced fields must be preserved from base (not dropped).
-	if out.QuerierMode != "CUSTOM" || len(out.QuerierSwitches) != 1 || !out.FloodKnownProtocols {
-		t.Errorf("advanced fields not preserved: querier_mode=%q querier_switches=%v flood=%v",
-			out.QuerierMode, out.QuerierSwitches, out.FloodKnownProtocols)
-	}
-
-	// Read-back conversion.
-	m := r.igmpSnoopingSettingToModel(ctx, out, &diags)
-	if diags.HasError() {
-		t.Fatalf("igmpSnoopingSettingToModel: %v", diags)
-	}
-	if !m.Enabled.ValueBool() {
-		t.Error("model Enabled = false, want true")
-	}
-	var ids []string
-	if d := m.NetworkIDs.ElementsAs(ctx, &ids, false); d.HasError() {
-		t.Fatalf("reading model network_ids: %v", d)
-	}
-	if len(ids) != 2 {
-		t.Errorf("model network_ids = %v, want 2", ids)
+	nullRoot := tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil)
+	return r, &fwresource.ImportStateResponse{
+		State: tfsdk.State{
+			Raw:    nullRoot,
+			Schema: schemaResp.Schema,
+		},
 	}
 }
 
-// TestAutoSpeedtestSettingRoundTrip is a unit round-trip for the auto_speedtest
-// setting block (#272): model -> go-unifi setting -> model preserves the fields.
-func TestAutoSpeedtestSettingRoundTrip(t *testing.T) {
-	r := &settingResource{}
-	in := &settingAutoSpeedtestModel{
-		Enabled:  types.BoolValue(true),
-		CronExpr: types.StringValue("0 3 * * *"),
-	}
-	setting := r.autoSpeedtestModelToSetting(in)
-	if !setting.Enabled || setting.CronExpr != "0 3 * * *" {
-		t.Fatalf("modelToSetting = %+v, want enabled cron=0 3 * * *", setting)
-	}
-	out := r.autoSpeedtestSettingToModel(setting)
-	if !out.Enabled.ValueBool() || out.CronExpr.ValueString() != "0 3 * * *" {
-		t.Errorf("settingToModel = %+v, want enabled cron preserved", out)
-	}
-}
-
-// TestSettingBlocksRoundTrip covers the model<->go-unifi conversions for the
-// settings added in #273 (a representative scalar block and the list-bearing one).
-func TestSettingBlocksRoundTrip(t *testing.T) {
+// TestSettingImport_setsSiteAndHydrates covers ImportState's half of the
+// contract: given a bare site name, it must set both id and site to that
+// name and leave every section attribute null (the shape Read's hydration
+// gate then detects and hydrates in full). The Read-hydrates-all half is
+// covered directly against the engine in
+// setting_engine_lifecycle_test.go's TestLifecycle_importHydratesAll_thenCleanRePlan
+// (readSections is the same call Read makes; onlyConfigured=false there is
+// exactly the value allSectionAttrsNull produces for this imported shape).
+func TestSettingImport_setsSiteAndHydrates(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
+	r, resp := newImportStateTestResponse(t)
 
-	t.Run("ntp", func(t *testing.T) {
-		in := &settingNtpModel{
-			NtpServer1:        types.StringValue("pool.ntp.org"),
-			SettingPreference: types.StringValue("manual"),
-		}
-		out := r.ntpSettingToModel(r.ntpModelToSetting(in))
-		if out.NtpServer1.ValueString() != "pool.ntp.org" ||
-			out.SettingPreference.ValueString() != "manual" {
-			t.Errorf("ntp round-trip mismatch: %+v", out)
-		}
-	})
+	r.ImportState(ctx, fwresource.ImportStateRequest{ID: "default"}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("ImportState produced diagnostics: %v", resp.Diagnostics)
+	}
 
-	t.Run("syslog", func(t *testing.T) {
-		var diags diag.Diagnostics
-		contents, _ := types.ListValueFrom(ctx, types.StringType, []string{"device", "client"})
-		in := &settingSyslogModel{
-			Enabled:  types.BoolValue(true),
-			IP:       types.StringValue("10.0.0.9"),
-			Port:     types.Int64Value(514),
-			Contents: contents,
-		}
-		setting := r.syslogModelToSetting(ctx, in, &diags)
-		if diags.HasError() {
-			t.Fatalf("modelToSetting: %v", diags)
-		}
-		if !setting.Enabled || setting.IP != "10.0.0.9" || setting.Port == nil ||
-			*setting.Port != 514 || len(setting.Contents) != 2 {
-			t.Fatalf("syslog modelToSetting mismatch: %+v", setting)
-		}
-		out := r.syslogSettingToModel(ctx, setting, &diags)
-		if diags.HasError() {
-			t.Fatalf("settingToModel: %v", diags)
-		}
-		var gotContents []string
-		out.Contents.ElementsAs(ctx, &gotContents, false)
-		if out.IP.ValueString() != "10.0.0.9" || len(gotContents) != 2 {
-			t.Errorf("syslog round-trip mismatch: %+v", out)
-		}
-	})
+	var got settingResourceModel
+	if diags := resp.State.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("reading back imported state: %v", diags)
+	}
+
+	if got.ID.ValueString() != "default" {
+		t.Errorf("id = %q, want %q", got.ID.ValueString(), "default")
+	}
+	if got.Site.ValueString() != "default" {
+		t.Errorf("site = %q, want %q", got.Site.ValueString(), "default")
+	}
+	if !allSectionAttrsNull(got) {
+		t.Errorf("imported model has a non-null section attribute, want all 13 null: %+v", got)
+	}
 }
 
-// TestMgmtNewFields guards #274: the new mgmt fields overlay onto the current
-// remote setting (read-base, so unmanaged fields aren't clobbered) and the
-// secret ssh_password is preserved from the plan (the controller never echoes it).
-func TestMgmtNewFields(t *testing.T) {
+// TestSettingImport_nonDefaultSite proves the import ID is not hardcoded to
+// "default": any bare site name is accepted and persisted verbatim to both
+// id and site.
+func TestSettingImport_nonDefaultSite(t *testing.T) {
 	ctx := context.Background()
-	r := &settingResource{}
+	r, resp := newImportStateTestResponse(t)
 
-	// Base has a field the user does NOT manage; it must survive.
-	base := &settings.Mgmt{WifimanEnabled: true}
-	model := &settingMgmtModel{
-		SSHUsername:            types.StringValue("admin"),
-		SSHPassword:            types.StringValue("s3cret"),
-		SSHAuthPasswordEnabled: types.BoolValue(true),
-		AdvancedFeatureEnabled: types.BoolValue(true),
-	}
-	setting := r.mgmtModelToSetting(ctx, model, base)
-	if !setting.WifimanEnabled {
-		t.Error("read-base field WifimanEnabled was clobbered")
-	}
-	if setting.SSHUsername != "admin" || setting.SSHPassword != "s3cret" ||
-		!setting.SSHAuthPasswordEnabled || !setting.AdvancedFeatureEnabled {
-		t.Errorf("overlay missing: %+v", setting)
+	r.ImportState(ctx, fwresource.ImportStateRequest{ID: "branch-office"}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("ImportState produced diagnostics: %v", resp.Diagnostics)
 	}
 
-	// On read, ssh_password is preserved from the plan (API returns no plaintext).
-	plan := &settingMgmtModel{
-		SSHUsername: types.StringValue("admin"),
-		SSHPassword: types.StringValue("s3cret"),
+	var got settingResourceModel
+	if diags := resp.State.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("reading back imported state: %v", diags)
 	}
-	out := r.mgmtSettingToModel(ctx, &settings.Mgmt{SSHUsername: "admin"}, plan)
-	if out.SSHPassword.ValueString() != "s3cret" {
-		t.Errorf("ssh_password not preserved: %q", out.SSHPassword.ValueString())
+	if got.ID.ValueString() != "branch-office" {
+		t.Errorf("id = %q, want %q", got.ID.ValueString(), "branch-office")
 	}
-	if out.SSHUsername.ValueString() != "admin" {
-		t.Errorf("ssh_username = %q, want admin", out.SSHUsername.ValueString())
-	}
-	// An unconfigured field stays null (no drift on unmanaged settings).
-	if !out.WifimanEnabled.IsNull() {
-		t.Error("unconfigured wifiman_enabled should be null")
+	if got.Site.ValueString() != "branch-office" {
+		t.Errorf("site = %q, want %q", got.Site.ValueString(), "branch-office")
 	}
 }
 
-// TestIpsSuppressionAlertsRoundTrip guards #275: signature alert suppression
-// (incl. gid/id pointers and the nested tracking list) round-trips model<->setting.
-func TestIpsSuppressionAlertsRoundTrip(t *testing.T) {
+// TestSettingImport_rejectsComposite guards the C3 contract: unifi_setting's
+// import ID is a bare site name, NOT the "site:id" composite used by NAT/CF
+// resources. Both an empty ID and a composite-shaped ID must produce an
+// error diagnostic rather than silently defaulting or mis-parsing.
+func TestSettingImport_rejectsComposite(t *testing.T) {
+	for _, id := range []string{"", "default:abc123", "site:id"} {
+		t.Run(id, func(t *testing.T) {
+			ctx := context.Background()
+			r, resp := newImportStateTestResponse(t)
+
+			r.ImportState(ctx, fwresource.ImportStateRequest{ID: id}, resp)
+			if !resp.Diagnostics.HasError() {
+				t.Fatalf("ImportState(%q): expected an error diagnostic, got none", id)
+			}
+		})
+	}
+}
+
+// TestAllSectionAttrsNull_gate exercises the helper Read's hydration gate
+// depends on directly: true for the freshly-imported all-null shape, false
+// as soon as any single section attribute is populated.
+func TestAllSectionAttrsNull_gate(t *testing.T) {
+	if !allSectionAttrsNull(allSectionsNullModel()) {
+		t.Error("allSectionAttrsNull(all-null model) = false, want true")
+	}
+
 	ctx := context.Background()
-	var diags diag.Diagnostics
-	r := &settingResource{}
-
-	tracking, _ := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ipsTrackingAttrTypes},
-		[]settingIpsTrackingModel{{
-			Direction: types.StringValue("both"),
-			Mode:      types.StringValue("ip"),
-			Value:     types.StringValue("10.0.0.5"),
-		}})
-	alerts, _ := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ipsAlertAttrTypes},
-		[]settingIpsAlertModel{{
-			Category:  types.StringValue("malware"),
-			Gid:       types.Int64Value(1),
-			ID:        types.Int64Value(2001),
-			Signature: types.StringValue("ET MALWARE"),
-			Type:      types.StringValue("track"),
-			Tracking:  tracking,
-		}})
-
-	model := &settingIpsModel{
-		EnabledCategories:    types.ListNull(types.StringType),
-		EnabledNetworks:      types.ListNull(types.StringType),
-		Honeypot:             types.ListNull(types.ObjectType{AttrTypes: ipsHoneypotAttrTypes}),
-		SuppressionWhitelist: types.ListNull(types.ObjectType{AttrTypes: ipsWhitelistAttrTypes}),
-		SuppressionAlerts:    alerts,
-	}
-	setting := r.ipsModelToSetting(ctx, model, &diags)
-	if diags.HasError() {
-		t.Fatalf("modelToSetting: %v", diags)
-	}
-	if setting.Suppression == nil || len(setting.Suppression.Alerts) != 1 {
-		t.Fatalf("alerts not built: %+v", setting.Suppression)
-	}
-	a := setting.Suppression.Alerts[0]
-	if a.Category != "malware" || a.Gid == nil || *a.Gid != 1 || a.ID == nil || *a.ID != 2001 ||
-		a.Type != "track" || len(a.Tracking) != 1 || a.Tracking[0].Value != "10.0.0.5" {
-		t.Fatalf("alert mismatch: %+v", a)
-	}
-
-	out := r.ipsSettingToModel(ctx, setting, model, &diags)
-	if diags.HasError() {
-		t.Fatalf("settingToModel: %v", diags)
-	}
-	var outAlerts []settingIpsAlertModel
-	out.SuppressionAlerts.ElementsAs(ctx, &outAlerts, false)
-	if len(outAlerts) != 1 || outAlerts[0].Signature.ValueString() != "ET MALWARE" ||
-		outAlerts[0].Gid.ValueInt64() != 1 {
-		t.Errorf("read-back alerts mismatch: %+v", outAlerts)
-	}
-}
-
-// TestSyslogOmitsUnsetPorts guards #303: an unset port / netconsole_port must be
-// omitted (nil pointer), not serialized as 0 — the controller rejects port 0.
-func TestSyslogOmitsUnsetPorts(t *testing.T) {
-	ctx := context.Background()
-	var diags diag.Diagnostics
-	r := &settingResource{}
-
-	m := &settingSyslogModel{
-		Enabled:        types.BoolValue(true),
-		IP:             types.StringValue("10.0.10.15"),
-		Port:           types.Int64Value(1514),
-		NetconsolePort: types.Int64Null(), // netconsole disabled / unset
-		Contents:       types.ListNull(types.StringType),
-	}
-	setting := r.syslogModelToSetting(ctx, m, &diags)
-	if diags.HasError() {
-		t.Fatalf("modelToSetting: %v", diags)
-	}
-	if setting.NetconsolePort != nil {
-		t.Errorf("netconsole_port must be omitted when unset, got %d", *setting.NetconsolePort)
-	}
-	if setting.Port == nil || *setting.Port != 1514 {
-		t.Errorf("port = %v, want 1514", setting.Port)
-	}
-
-	// Unknown (Optional+Computed at create) must also omit, not send 0.
-	m.Port = types.Int64Unknown()
-	setting = r.syslogModelToSetting(ctx, m, &diags)
-	if setting.Port != nil {
-		t.Errorf("unknown port must be omitted, got %d", *setting.Port)
-	}
-}
-
-// TestLcmOmitsUnsetInts guards the same #303 pattern for the lcm block.
-func TestLcmOmitsUnsetInts(t *testing.T) {
-	r := &settingResource{}
-	setting := r.lcmModelToSetting(&settingLcmModel{
-		Enabled:     types.BoolValue(true),
-		Brightness:  types.Int64Null(),
-		IdleTimeout: types.Int64Unknown(),
-	})
-	if setting.Brightness != nil || setting.IDleTimeout != nil {
-		t.Errorf("unset lcm ints must be omitted: brightness=%v idle=%v",
-			setting.Brightness, setting.IDleTimeout)
+	partial := allSectionsNullModel()
+	partial.Dpi = dpiObject(t, ctx, true, false)
+	if allSectionAttrsNull(partial) {
+		t.Error("allSectionAttrsNull(model with Dpi configured) = true, want false")
 	}
 }
