@@ -10,6 +10,10 @@ All notable changes to this project will be documented in this file.
 
 - **`unifi_port_profile`: keep forwarding mode consistent with tagged-VLAN mode.** The controller stores Allow All with `forward = "all"`, Block All with `"native"`, and Custom with `"customize"`. The provider now derives that pairing when `forward` is omitted and rejects conflicting explicit combinations instead of accepting a plan the controller will normalize after apply.
 
+### ✨ Features
+
+- **The `unifi_port_profile` data source now reports the stored VLAN mode, actual tagged-network set, and raw exclusion set.** `tagged_networkconf_ids` is derived from the site network inventory instead of always returning null. `tagged_vlan_mgmt` and `excluded_networkconf_ids` expose the controller representation when it matters.
+
 ## [v0.101.1] - 2026-08-02
 
 ### 🐛 Bug Fixes

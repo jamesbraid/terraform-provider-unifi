@@ -160,6 +160,17 @@ func TestAccPortProfileFramework_exactTaggedNetworks(t *testing.T) {
 						"excluded_networkconf_ids.#",
 						"1",
 					),
+					resource.TestCheckResourceAttr(
+						"data.unifi_port_profile.exact",
+						"tagged_vlan_mgmt",
+						"custom",
+					),
+					resource.TestCheckTypeSetElemAttrPair(
+						"data.unifi_port_profile.exact",
+						"tagged_networkconf_ids.*",
+						"unifi_network.allowed",
+						"id",
+					),
 				),
 			},
 			{
