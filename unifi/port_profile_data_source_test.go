@@ -48,7 +48,16 @@ func Test_portProfileDataSource_Schema(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
 	}
-	for _, attr := range []string{"id", "site", "name", "forward"} {
+	for _, attr := range []string{
+		"id",
+		"site",
+		"name",
+		"forward",
+		"native_networkconf_id",
+		"tagged_networkconf_ids",
+		"excluded_networkconf_ids",
+		"tagged_vlan_mgmt",
+	} {
 		if _, ok := resp.Schema.Attributes[attr]; !ok {
 			t.Errorf("missing attribute %q", attr)
 		}
