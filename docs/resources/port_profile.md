@@ -12,14 +12,18 @@ description: |-
 ## Example Usage
 
 ```terraform
-variable "vlan_id" {
+variable "native_vlan_id" {
   default = 10
 }
 
-resource "unifi_network" "vlan" {
-  name   = "wifi-vlan"
+variable "tagged_vlan_id" {
+  default = 20
+}
+
+resource "unifi_network" "native" {
+  name   = "management"
   subnet = "10.0.0.1/24"
-  vlan   = var.vlan_id
+  vlan   = var.native_vlan_id
 
   dhcp_server = {
     enabled = true
@@ -28,10 +32,27 @@ resource "unifi_network" "vlan" {
   }
 }
 
+resource "unifi_network" "tagged" {
+  name   = "servers"
+  subnet = "10.0.20.1/24"
+  vlan   = var.tagged_vlan_id
+}
+
+resource "unifi_port_profile" "server_trunk" {
+  name                  = "Server Trunk"
+  native_networkconf_id = unifi_network.native.id
+
+  # This is an exact set. The provider writes the controller's inverse
+  # excluded_networkconf_ids representation and keeps it current on apply.
+  tagged_networkconf_ids = [
+    unifi_network.tagged.id,
+  ]
+}
+
 resource "unifi_port_profile" "poe_disabled" {
   name = "POE Disabled"
 
-  native_networkconf_id = unifi_network.vlan.id
+  native_networkconf_id = unifi_network.native.id
   poe_mode              = "off"
 }
 ```
@@ -46,9 +67,9 @@ resource "unifi_port_profile" "poe_disabled" {
 - `dot1x_idle_timeout` (String) The idle timeout to use when using MAC Based 802.1X control, as a Go duration string (e.g. `5m`, `300s`). Defaults to `5m0s`.
 - `egress_rate_limit_kbps` (Number) The egress rate limit, in kpbs, for the port profile. Can be between `64` and `9999999`.
 - `egress_rate_limit_kbps_enabled` (Boolean) Enable egress rate limiting for the port profile.
-- `excluded_networkconf_ids` (Set of String) The IDs of networks excluded from the port profile (used when `tagged_vlan_mgmt` is `custom`). Computed from the controller when not set.
+- `excluded_networkconf_ids` (Set of String) The controller-facing set of networks excluded from the port profile when `tagged_vlan_mgmt` is `custom`. This advanced interface conflicts with `tagged_networkconf_ids`; prefer the exact tagged-network set.
 - `fec_mode` (String) Forward Error Correction mode. Can be `rs-fec`, `fc-fec`, `default`, or `disabled`.
-- `forward` (String) The type forwarding to use for the port profile. Can be `all`, `native`, `customize` or `disabled`.
+- `forward` (String) The forwarding mode. Can be `all`, `native`, `customize`, or `disabled`; tagged VLAN configuration derives the matching value when omitted.
 - `full_duplex` (Boolean) Enable full duplex for the port profile.
 - `isolation` (Boolean) Enable port isolation for the port profile.
 - `lldpmed_enabled` (Boolean) Enable LLDP-MED for the port profile.
@@ -79,8 +100,8 @@ resource "unifi_port_profile" "poe_disabled" {
 - `stormctrl_ucast_level` (Number) The unknown unicast Storm Control level for the port profile. Can be between 0 and 100.
 - `stormctrl_ucast_rate` (Number) The unknown unicast Storm Control rate for the port profile. Can be between 0 and 14880000.
 - `stp_port_mode` (Boolean) Enable Spanning Tree Protocol (STP) for the port profile. Computed from the controller when not set.
-- `tagged_networkconf_ids` (Set of String) The IDs of networks to tag traffic with for the port profile.
-- `tagged_vlan_mgmt` (String) How tagged VLANs are managed on the port. Can be `auto`, `block_all`, or `custom`.
+- `tagged_networkconf_ids` (Set of String) The exact set of VLAN network IDs to carry tagged. The provider translates this to the controller's exclusion list and keeps it exact as site networks change. Conflicts with `excluded_networkconf_ids`.
+- `tagged_vlan_mgmt` (String) Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom). An exact tagged or excluded set derives the matching mode when omitted.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `voice_networkconf_id` (String) The ID of network to use for voice traffic for the port profile.
 

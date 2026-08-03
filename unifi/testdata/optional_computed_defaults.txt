@@ -79,7 +79,6 @@ unifi_port_profile.autoneg
 unifi_port_profile.dot1x_ctrl
 unifi_port_profile.dot1x_idle_timeout
 unifi_port_profile.egress_rate_limit_kbps_enabled
-unifi_port_profile.forward
 unifi_port_profile.full_duplex
 unifi_port_profile.isolation
 unifi_port_profile.lldpmed_enabled

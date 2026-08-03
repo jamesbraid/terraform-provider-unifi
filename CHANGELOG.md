@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.101.2] - 2026-08-02
+
+### 🐛 Bug Fixes
+
+- **`unifi_port_profile`: make `tagged_networkconf_ids` an exact tagged-VLAN set.** Port profiles store Custom tagged VLANs as the inverse `excluded_networkconf_ids` list, but the provider accepted an include-list it could neither send nor read. Applying one dropped the requested set, could put the profile into the opposite controller configuration, and then failed with `Provider produced inconsistent result after apply`. The provider now lists the site's VLAN networks, writes the complement, and reconstructs the actual tagged set on refresh and import. An empty include-list maps to the UI's Block All mode. `tagged_vlan_mgmt = "auto"` maps to Allow All. The raw exclusion list remains available for existing configurations, but it cannot be configured together with the exact include-list. A VLAN created in the same apply is discovered on the following refresh, and that next apply adds it to the exclusions.
+
+- **`unifi_port_profile`: keep forwarding mode consistent with tagged-VLAN mode.** The controller stores Allow All with `forward = "all"`, Block All with `"native"`, and Custom with `"customize"`. The provider now derives that pairing when `forward` is omitted and rejects conflicting explicit combinations instead of accepting a plan the controller will normalize after apply.
+
 ## [v0.101.1] - 2026-08-02
 
 ### 🐛 Bug Fixes
