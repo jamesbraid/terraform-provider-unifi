@@ -431,7 +431,7 @@ func (r *networkResource) Schema(
 				Computed:            true,
 				Default:             stringdefault.StaticString("none"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("none", "pd", "static"),
+					stringvalidator.OneOf("none", "pd", "static", "single_network"),
 				},
 			},
 			"ipv6_client_address_assignment": schema.StringAttribute{

@@ -755,7 +755,13 @@ func (r *deviceResource) Schema(
 							Computed: true,
 							Default:  stringdefault.StaticString("switch"),
 							Validators: []validator.String{
-								stringvalidator.OneOf("switch", "mirror", "aggregate"),
+								stringvalidator.OneOf(
+									"switch",
+									"mirror",
+									"aggregate",
+									"routed",
+									"routed_aggregate",
+								),
 							},
 						},
 						"poe_mode": schema.StringAttribute{

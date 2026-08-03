@@ -162,7 +162,17 @@ func (r *dnsRecordFrameworkResource) Schema(
 				MarkdownDescription: "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS"),
+					stringvalidator.OneOf(
+						"A",
+						"AAAA",
+						"CNAME",
+						"MX",
+						"TXT",
+						"SRV",
+						"PTR",
+						"NS",
+						"SOA",
+					),
 				},
 			},
 			"ttl": schema.StringAttribute{

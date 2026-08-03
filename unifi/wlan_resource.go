@@ -242,7 +242,7 @@ func (r *wlanFrameworkResource) Schema(
 				MarkdownDescription: "The type of WiFi security for this network.",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("wpapsk", "wpaeap", "open"),
+					stringvalidator.OneOf("wpapsk", "wpaeap", "open", "wep", "osen"),
 				},
 			},
 			"wpa3_support": schema.BoolAttribute{

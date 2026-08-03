@@ -57,7 +57,7 @@ resource "unifi_port_profile" "poe_disabled" {
 - `name` (String) The name of the port profile.
 - `native_networkconf_id` (String) The ID of network to use as the main (native/untagged) network on the port profile. Assigned by the controller if not set.
 - `op_mode` (String) The operation mode for the port profile. Can only be `switch`
-- `poe_mode` (String) The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`.
+- `poe_mode` (String) The POE mode for the port profile. Can be one of `auto`, `pasv24`, `passthrough` or `off`.
 - `port_keepalive_enabled` (Boolean) Enable port keepalive for the port profile.
 - `port_security_enabled` (Boolean) Enable port security for the port profile.
 - `port_security_mac_address` (Set of String) The MAC addresses associated with the port security for the port profile.
