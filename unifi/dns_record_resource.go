@@ -8,23 +8,16 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	resource_dns_record "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -109,90 +102,13 @@ func (r *dnsRecordFrameworkResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		// v1: ttl changed from Int64 (seconds) to a GoDuration string.
-		Version:             1,
-		MarkdownDescription: "Manages DNS record settings for different providers.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the DNS record.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the DNS record with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The key of the DNS record.",
-				Required:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the DNS record is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"port": schema.Int64Attribute{
-				MarkdownDescription: "The port of the DNS record.",
-				Optional:            true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 65535),
-				},
-			},
-			"priority": schema.Int64Attribute{
-				MarkdownDescription: "The priority of the DNS record.",
-				Optional:            true,
-				Validators: []validator.Int64{
-					int64validator.AtLeast(0),
-				},
-			},
-			"record_type": schema.StringAttribute{
-				MarkdownDescription: "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
-				Required:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("A", "AAAA", "CNAME", "MX", "TXT", "SRV", "PTR", "NS"),
-				},
-			},
-			"ttl": schema.StringAttribute{
-				MarkdownDescription: "The TTL of the DNS record, as a Go duration string " +
-					"(e.g. `1h`, `300s`). The controller stores this value as whole seconds " +
-					"in the range 0–65535s (≈18h12m15s).",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Validators: []validator.String{
-					validators.GoDurationBetween(0, 65535*time.Second),
-					validators.GoDurationMultipleOf(time.Second),
-				},
-			},
-			"value": schema.StringAttribute{
-				MarkdownDescription: "The value of the DNS record.",
-				Required:            true,
-			},
-			"weight": schema.Int64Attribute{
-				MarkdownDescription: "The weight of the DNS record.",
-				Optional:            true,
-				Validators: []validator.Int64{
-					int64validator.AtLeast(0),
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_dns_record.DnsRecordResourceSchema(ctx)
+	// v1: ttl changed from Int64 (seconds) to a GoDuration string.
+	resp.Schema.Version = 1
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 // UpgradeState migrates v0 state (ttl stored as integer seconds) to v1
