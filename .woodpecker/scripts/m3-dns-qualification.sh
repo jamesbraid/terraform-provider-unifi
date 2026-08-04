@@ -339,7 +339,7 @@ if docker network inspect "${network}" >/dev/null 2>&1; then
     exit 1
 fi
 
-jq --compact-output --null-input \
+receipt=$(jq --compact-output --null-input \
     --arg source_commit "${source_commit}" \
     --arg old_provider_commit "${old_provider_commit}" \
     --arg old_provider_binary_sha256 "${old_provider_binary_sha256}" \
@@ -354,5 +354,8 @@ jq --compact-output --null-input \
     --arg controller_manifest_sha256 "${controller_manifest_sha256}" \
     --arg controller_config_sha256 "${controller_config_sha256}" \
     --arg normalized_state_sha256 "${normalized_state_sha256}" \
-    '{format_version: 1, gate: "M3 DNS managed-operation qualification", result: "pass", source_commit: $source_commit, platform: "linux/amd64", provider_version: "0.101.2", provider_binary_sha256: $provider_binary_sha256, legacy_provider: {version: "0.101.2", archive_sha256: $provider_archive_sha256, binary_sha256: $legacy_provider_binary_sha256}, state_upgrade_source: {version: "0.41.11", commit: $old_provider_commit, binary_sha256: $old_provider_binary_sha256}, terraform: {version: "1.15.8", archive_sha256: $terraform_archive_sha256, binary_sha256: $terraform_binary_sha256}, tofu: {version: "1.12.1", archive_sha256: $tofu_archive_sha256, binary_sha256: $tofu_binary_sha256}, target: {product: "UniFi Network", version: "10.4.57", index_sha256: $controller_index_sha256, platform_manifest_sha256: $controller_manifest_sha256, config_sha256: $controller_config_sha256}, lifecycle: {fresh_target_per_cli_and_adapter: true, create: true, update: true, replacement_plan: true, restart_refresh: true, import: true, v0_integer_ttl_state_upgrade: true, no_op_plan: true, delete: true, cleanup: true, bidirectional_adapter_state_round_trip: true}, normalized_state_sha256: $normalized_state_sha256, cli_outcomes_equivalent: true, adapter_outcomes_equivalent: true}' \
-    | sed 's/^/M3_DNS_RECEIPT=/'
+    '{format_version: 1, gate: "M3 DNS managed-operation qualification", result: "pass", source_commit: $source_commit, platform: "linux/amd64", provider_version: "0.101.2", provider_binary_sha256: $provider_binary_sha256, legacy_provider: {version: "0.101.2", archive_sha256: $provider_archive_sha256, binary_sha256: $legacy_provider_binary_sha256}, state_upgrade_source: {version: "0.41.11", commit: $old_provider_commit, binary_sha256: $old_provider_binary_sha256}, terraform: {version: "1.15.8", archive_sha256: $terraform_archive_sha256, binary_sha256: $terraform_binary_sha256}, tofu: {version: "1.12.1", archive_sha256: $tofu_archive_sha256, binary_sha256: $tofu_binary_sha256}, target: {product: "UniFi Network", version: "10.4.57", index_sha256: $controller_index_sha256, platform_manifest_sha256: $controller_manifest_sha256, config_sha256: $controller_config_sha256}, lifecycle: {fresh_target_per_cli_and_adapter: true, create: true, update: true, replacement_plan: true, restart_refresh: true, import: true, v0_integer_ttl_state_upgrade: true, no_op_plan: true, delete: true, cleanup: true, bidirectional_adapter_state_round_trip: true}, normalized_state_sha256: $normalized_state_sha256, cli_outcomes_equivalent: true, adapter_outcomes_equivalent: true}')
+if [[ -n ${M3_LIFECYCLE_RECEIPT_OUTPUT:-} ]]; then
+    printf '%s\n' "${receipt}" >"${M3_LIFECYCLE_RECEIPT_OUTPUT}"
+fi
+printf 'M3_DNS_RECEIPT=%s\n' "${receipt}"

@@ -19,8 +19,7 @@ steps:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
       - apk add --no-cache bash coreutils curl git jq tar unzip
-      - bash .woodpecker/scripts/m3-dns-qualification.sh | tee /tmp/m3-dns-qualification.log
-      - sed -n 's/^M3_DNS_RECEIPT=//p' /tmp/m3-dns-qualification.log > build/m3/network-dns-qualification-ci.json
+      - M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
       - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true' build/m3/network-dns-qualification-ci.json
 
   - name: promotion-receipt
