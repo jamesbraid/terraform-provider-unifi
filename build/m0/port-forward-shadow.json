@@ -1,0 +1,53 @@
+{
+  "format_version": 1,
+  "gate": "M0 port-forward shadow baseline",
+  "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
+  "provider_version": "0.101.2",
+  "provider_source_commit": "223be7f657dec7550387699fc9b9a19a4096cf5a",
+  "schema": {
+    "resource_sha256": "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6",
+    "list_resource_sha256": "1a62efc7f26708ffc9c085a1a7f86566f28d803cc5fd6dceaf2434e28245c503",
+    "identity_sha256": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+    "nested_shapes": {
+      "wan": {
+        "kind": "single_nested_attribute",
+        "attributes": ["interface", "ip_address", "port"]
+      },
+      "forward": {
+        "kind": "single_nested_attribute",
+        "attributes": ["ip", "port"]
+      },
+      "source_limiting": {
+        "kind": "single_nested_attribute",
+        "attributes": ["enabled", "firewall_group_id", "ip", "type"]
+      },
+      "destination_ips": {
+        "kind": "list_nested_attribute",
+        "attributes": ["destination_ip", "interface"]
+      },
+      "timeouts": {
+        "kind": "object_attribute",
+        "attributes": ["create", "delete", "read", "update"]
+      }
+    }
+  },
+  "mapping_tests": {
+    "command": "go test ./unifi -run '^(TestNewPortForward(Resource|ListResource)|Test_portForward.*|Test_stringValueOrNull)$' -count=1",
+    "result": "pass",
+    "covered_directions": ["model_to_controller", "controller_to_model"]
+  },
+  "import": {
+    "resource_with_import_state": true,
+    "accepted_id_grammar": ["id", "site:id"],
+    "invalid_multiple_colons_rejected": true,
+    "acceptance_fixture_has_import_state_verify": true
+  },
+  "acceptance": {
+    "result": "not_run",
+    "reason": "M0 records the existing test surface only; it makes no lifecycle or admission claim for port forward."
+  },
+  "generated": false,
+  "migration_claim": false,
+  "lifecycle_claim": false,
+  "admission_claim": false
+}
