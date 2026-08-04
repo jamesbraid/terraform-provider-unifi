@@ -130,6 +130,7 @@ git archive "${source_commit}" | docker run --rm --interactive \
     --mount "type=volume,src=${source_volume},dst=/source" \
     "${go_image}" -c 'tar -xf - -C /source'
 docker run --rm --platform linux/amd64 \
+    --env CGO_ENABLED=0 \
     --env GOCACHE=/go/build-cache --env GOMODCACHE=/go/module-cache \
     --env GOTELEMETRY=off --env GOTOOLCHAIN=local \
     --mount "type=volume,src=${source_volume},dst=/source,readonly" \

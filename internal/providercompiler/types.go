@@ -43,7 +43,7 @@ type bootstrapField struct {
 type observedCatalog struct {
 	FormatVersion     int                       `json:"format_version"`
 	CatalogID         string                    `json:"catalog_id"`
-	Target            json.RawMessage           `json:"target"`
+	Target            catalogTarget             `json:"target"`
 	Sources           catalogSources            `json:"sources"`
 	StructuralRecords []catalogStructuralRecord `json:"structural_records"`
 	ObservedRecords   []catalogObservedRecord   `json:"observed_records"`
@@ -52,6 +52,16 @@ type observedCatalog struct {
 	Admission         catalogAdmission          `json:"admission"`
 	Tombstones        []string                  `json:"tombstones"`
 	Migrations        []catalogMigration        `json:"migrations"`
+}
+
+type catalogTarget struct {
+	Name                  string `json:"name"`
+	Product               string `json:"product"`
+	Version               string `json:"version"`
+	Architecture          string `json:"architecture"`
+	ImageIndexSHA256      string `json:"image_index_sha256"`
+	ImageManifestSHA256   string `json:"image_manifest_sha256"`
+	ControllerFingerprint string `json:"controller_fingerprint"`
 }
 
 type catalogObservedRecord struct {
@@ -110,6 +120,8 @@ type policy struct {
 	CatalogID                 string                `json:"catalog_id,omitempty"`
 	CatalogSHA256             string                `json:"catalog_sha256,omitempty"`
 	CatalogSource             catalogPolicySource   `json:"catalog_source,omitempty"`
+	CatalogTarget             catalogTarget         `json:"catalog_target,omitempty"`
+	CatalogSources            catalogSources        `json:"catalog_sources,omitempty"`
 	OperationDigest           string                `json:"operation_digest,omitempty"`
 	Description               string                `json:"description"`
 	Fields                    []fieldPolicy         `json:"fields"`

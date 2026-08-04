@@ -3,6 +3,7 @@ package providercompiler
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -227,6 +228,12 @@ func structuralSource(input CompileInput, rules policy) (bootstrap, error) {
 	if rules.CatalogSource.Repository == "" || len(rules.CatalogSource.Commit) != 40 || rules.CatalogSource.Path == "" {
 		return bootstrap{}, fmt.Errorf("complete admitted catalog source is required")
 	}
+	if err := validateCatalogTarget(catalog.Target, rules.CatalogTarget, catalog.CatalogID); err != nil {
+		return bootstrap{}, err
+	}
+	if err := validateCatalogSources(catalog.Sources, rules.CatalogSources); err != nil {
+		return bootstrap{}, err
+	}
 	if rules.OperationDigest == "" || catalog.Admission.OperationDigest != rules.OperationDigest {
 		return bootstrap{}, fmt.Errorf("admitted operation digest mismatch")
 	}
@@ -379,6 +386,72 @@ func catalogDefinitionDigest(record catalogStructuralRecord) string {
 func byteSHA256(data []byte) string {
 	digest := sha256.Sum256(data)
 	return fmt.Sprintf("%x", digest)
+}
+
+func validateCatalogTarget(actual, expected catalogTarget, catalogID string) error {
+	if expected.Name == "" || expected.Product == "" || expected.Version == "" || expected.Architecture == "" ||
+		!validSHA256(expected.ImageIndexSHA256, true) || !validSHA256(expected.ImageManifestSHA256, true) ||
+		!validSHA256(expected.ControllerFingerprint, true) {
+		return fmt.Errorf("complete locked catalog target policy is required")
+	}
+	if actual.Name == "" || actual.Product == "" || actual.Version == "" || actual.Architecture == "" ||
+		!validSHA256(actual.ImageIndexSHA256, true) || !validSHA256(actual.ImageManifestSHA256, true) ||
+		!validSHA256(actual.ControllerFingerprint, true) {
+		return fmt.Errorf("complete locked catalog target is required")
+	}
+	if actual != expected {
+		return fmt.Errorf("locked catalog target does not match provider policy")
+	}
+	if catalogID != "unifi.network.dns_record@"+actual.Version {
+		return fmt.Errorf("catalog ID does not match locked target version")
+	}
+	return nil
+}
+
+func validateCatalogSources(actual, expected catalogSources) error {
+	actualDigests := []string{
+		actual.CaptureLockSHA256,
+		actual.StructuralProjectionSHA256,
+		actual.SemanticPredecessorSHA256,
+		actual.SemanticIDsSHA256,
+	}
+	expectedDigests := []string{
+		expected.CaptureLockSHA256,
+		expected.StructuralProjectionSHA256,
+		expected.SemanticPredecessorSHA256,
+		expected.SemanticIDsSHA256,
+	}
+	for _, digest := range expectedDigests {
+		if !validSHA256(digest, false) {
+			return fmt.Errorf("complete catalog source digest policy is required")
+		}
+	}
+	for _, digest := range actualDigests {
+		if !validSHA256(digest, false) {
+			return fmt.Errorf("complete catalog source digests are required")
+		}
+	}
+	if actual.CaptureLockSHA256 != expected.CaptureLockSHA256 ||
+		actual.StructuralProjectionSHA256 != expected.StructuralProjectionSHA256 ||
+		actual.SemanticPredecessorSHA256 != expected.SemanticPredecessorSHA256 ||
+		actual.SemanticIDsSHA256 != expected.SemanticIDsSHA256 {
+		return fmt.Errorf("catalog source digests do not match provider policy")
+	}
+	return nil
+}
+
+func validSHA256(value string, prefixed bool) bool {
+	if prefixed {
+		if !strings.HasPrefix(value, "sha256:") {
+			return false
+		}
+		value = strings.TrimPrefix(value, "sha256:")
+	}
+	if len(value) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 
 func providerStructuralType(jsonType string) (string, error) {
