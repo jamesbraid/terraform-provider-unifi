@@ -46,17 +46,35 @@ type observedCatalog struct {
 	Target            json.RawMessage           `json:"target"`
 	Sources           catalogSources            `json:"sources"`
 	StructuralRecords []catalogStructuralRecord `json:"structural_records"`
-	ObservedRecords   json.RawMessage           `json:"observed_records"`
+	ObservedRecords   []catalogObservedRecord   `json:"observed_records"`
 	Conflicts         []catalogConflict         `json:"conflicts"`
 	Coverage          []catalogCoverage         `json:"coverage"`
 	Admission         catalogAdmission          `json:"admission"`
 	Tombstones        []string                  `json:"tombstones"`
-	Migrations        json.RawMessage           `json:"migrations"`
+	Migrations        []catalogMigration        `json:"migrations"`
+}
+
+type catalogObservedRecord struct {
+	ID           string `json:"id"`
+	Field        string `json:"field"`
+	JSONType     string `json:"json_type"`
+	PresentCount int    `json:"present_count"`
+	NonNullCount int    `json:"non_null_count"`
+}
+
+type catalogMigration struct {
+	FromID   string `json:"from_id"`
+	ToID     string `json:"to_id"`
+	Reason   string `json:"reason"`
+	Reviewed bool   `json:"reviewed"`
 }
 
 type catalogSources struct {
-	CaptureLockSHA256   string `json:"capture_lock_sha256,omitempty"`
-	SpecificationSHA256 string `json:"specification_sha256"`
+	CaptureLockSHA256          string `json:"capture_lock_sha256"`
+	SpecificationSHA256        string `json:"specification_sha256,omitempty"`
+	StructuralProjectionSHA256 string `json:"structural_projection_sha256,omitempty"`
+	SemanticPredecessorSHA256  string `json:"semantic_predecessor_sha256,omitempty"`
+	SemanticIDsSHA256          string `json:"semantic_ids_sha256,omitempty"`
 }
 
 type catalogStructuralRecord struct {
@@ -90,6 +108,8 @@ type policy struct {
 	GeneratorName             string                `json:"generator_name"`
 	SourceSpecificationSHA256 string                `json:"source_specification_sha256"`
 	CatalogID                 string                `json:"catalog_id,omitempty"`
+	CatalogSHA256             string                `json:"catalog_sha256,omitempty"`
+	CatalogSource             catalogPolicySource   `json:"catalog_source,omitempty"`
 	OperationDigest           string                `json:"operation_digest,omitempty"`
 	Description               string                `json:"description"`
 	Fields                    []fieldPolicy         `json:"fields"`
@@ -97,8 +117,15 @@ type policy struct {
 	BaselineDigests           baselineDigestSet     `json:"baseline_digests"`
 }
 
+type catalogPolicySource struct {
+	Repository string `json:"repository"`
+	Commit     string `json:"commit"`
+	Path       string `json:"path"`
+}
+
 type fieldPolicy struct {
 	StructuralName string          `json:"structural_name"`
+	SemanticID     string          `json:"semantic_id,omitempty"`
 	TerraformName  string          `json:"terraform_name"`
 	TerraformType  string          `json:"terraform_type,omitempty"`
 	Disposition    string          `json:"disposition"`

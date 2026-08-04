@@ -8,67 +8,69 @@
     "architecture": "amd64",
     "image_index_sha256": "sha256:584be3a2e45c4913e1bc373eff9c7330609c82085d4fc6f5ea365abdcdb3e664",
     "image_manifest_sha256": "sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4",
-    "controller_fingerprint": "sha256:5a9624d7671e1cead43755f3f2bdb37d852460fe58e75b184af85eb67635751a"
+    "controller_fingerprint": "sha256:3af14713d39e67ad63caa797434856135fefad1a13770b10ff3a51400b37ca0c"
   },
   "sources": {
-    "capture_lock_sha256": "136421431577ad8cce79aee0a25619577d78f41c1d7c70b914b0317bfbbf08ae",
-    "specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad"
+    "capture_lock_sha256": "45cdd9e52b5a6a5c73605fdff5f6cba085231234226f64d01cb3e1b17ceeaeba",
+    "structural_projection_sha256": "5a733c9c1a642175fe85e48f4c4b1ee70d7ceb10d41629873535208ab4a804b5",
+    "semantic_predecessor_sha256": "224cf5e5f2cfb519bab61af2782a95c03981b95b6b10336ecd62d572dc13fd85",
+    "semantic_ids_sha256": "addd6d3117626201b9b33c50bf1ef6824327eed088f06079357b676be8c5e2a0"
   },
   "structural_records": [
     {
       "id": "unifi.network.dns_record.field.enabled",
       "field": "enabled",
       "type": "bool",
-      "definition_sha256": "3afa5e6858fe18781b61b6f6eab878cce2c1840be9e1c328d2ec607a2da303f9",
+      "definition_sha256": "2606beb488a7bd93e271a953fa6f5cbe6d17152e0e337e2310fef44679b3c344",
       "secret_candidate": false
     },
     {
       "id": "unifi.network.dns_record.field.key",
       "field": "key",
       "type": "string",
-      "definition_sha256": "72c79fb38a6497a0033d94fcd96de7531a211c7bc036be84dca77f9f390ed9a5",
+      "definition_sha256": "0fea2d7d5e14f25218e45653297ba6e213451f28c81b4910c4fc6b8529a14c02",
       "secret_candidate": false
     },
     {
       "id": "unifi.network.dns_record.field.port",
       "field": "port",
-      "type": "int64",
-      "definition_sha256": "3ba69f76088630bd78fa1dec48fa2949c57a6367eb4f510c290944194da16b76",
+      "type": "number",
+      "definition_sha256": "85058862c5e75d5c06517898ad310b2f73b3b38861ecfc6303bc528ce9a97394",
       "secret_candidate": false
     },
     {
       "id": "unifi.network.dns_record.field.priority",
       "field": "priority",
-      "type": "int64",
-      "definition_sha256": "4aa9d24141e4e72628c9645f0b84b29707243e3317dd3a9b0ea55691574e9dd2",
+      "type": "number",
+      "definition_sha256": "a53d4235e3dc44fabd5efd730156662217d1d9313ccd79c9b7fe5cebb328a9a7",
       "secret_candidate": false
     },
     {
       "id": "unifi.network.dns_record.field.record_type",
       "field": "record_type",
       "type": "string",
-      "definition_sha256": "e624ca121ec1d9473d7b53501db4419f202234cec7a25927b7bb36e38d014f7e",
+      "definition_sha256": "665ca4c5356ee420d7634cdbdf8080d8a9708c834002d0c8bc9817cad2b2a380",
       "secret_candidate": false
     },
     {
       "id": "unifi.network.dns_record.field.ttl",
       "field": "ttl",
-      "type": "int64",
-      "definition_sha256": "4aa9d24141e4e72628c9645f0b84b29707243e3317dd3a9b0ea55691574e9dd2",
+      "type": "number",
+      "definition_sha256": "f187f220ca450bfac1e371a7db736f1ff1c9e90c62b37dba61ed753eb1271bfc",
       "secret_candidate": false
     },
     {
       "id": "unifi.network.dns_record.field.value",
       "field": "value",
       "type": "string",
-      "definition_sha256": "be1fdbf845280f893349417a378dd992de927edc6231d292208915906d31a09d",
+      "definition_sha256": "4ed108c6e51d183344b7a94482c9bd69baf2026682c973e345755b9bba3103df",
       "secret_candidate": false
     },
     {
       "id": "unifi.network.dns_record.field.weight",
       "field": "weight",
-      "type": "int64",
-      "definition_sha256": "4aa9d24141e4e72628c9645f0b84b29707243e3317dd3a9b0ea55691574e9dd2",
+      "type": "number",
+      "definition_sha256": "677080cdb142d038df041d1e8f48c35b9692a1a4eb8e021b8d5e1c2e9bc23e00",
       "secret_candidate": false
     }
   ],
@@ -166,8 +168,8 @@
     }
   ],
   "admission": {
-    "state": "candidate",
-    "operation_digest": "fcae2fd0f6a3ed9793541c61fc9f9ed5ae00187f8084fb95c042b5be2ca4aa6e"
+    "state": "admitted",
+    "operation_digest": "199c002d9a1229aa7e43a94b12da6f33c7ce612ecb471eebcd6896d985b161f8"
   },
   "tombstones": [],
   "migrations": []

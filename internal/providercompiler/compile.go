@@ -2,10 +2,12 @@ package providercompiler
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 )
 
 var validDispositions = map[string]struct{}{
@@ -219,13 +221,19 @@ func structuralSource(input CompileInput, rules policy) (bootstrap, error) {
 	if rules.CatalogID == "" || catalog.CatalogID != rules.CatalogID {
 		return bootstrap{}, fmt.Errorf("catalog ID mismatch: catalog %q, policy %q", catalog.CatalogID, rules.CatalogID)
 	}
+	if rules.CatalogSHA256 == "" || byteSHA256(input.Catalog) != rules.CatalogSHA256 {
+		return bootstrap{}, fmt.Errorf("admitted catalog digest mismatch")
+	}
+	if rules.CatalogSource.Repository == "" || len(rules.CatalogSource.Commit) != 40 || rules.CatalogSource.Path == "" {
+		return bootstrap{}, fmt.Errorf("complete admitted catalog source is required")
+	}
 	if rules.OperationDigest == "" || catalog.Admission.OperationDigest != rules.OperationDigest {
 		return bootstrap{}, fmt.Errorf("admitted operation digest mismatch")
 	}
-	if catalog.Admission.State != "candidate" && catalog.Admission.State != "admitted" {
-		return bootstrap{}, fmt.Errorf("catalog admission state %q is not consumable", catalog.Admission.State)
+	if catalog.Admission.State != "admitted" {
+		return bootstrap{}, fmt.Errorf("catalog admission state %q is not admitted", catalog.Admission.State)
 	}
-	if catalog.Sources.SpecificationSHA256 != rules.SourceSpecificationSHA256 {
+	if catalog.Sources.SpecificationSHA256 != "" && catalog.Sources.SpecificationSHA256 != rules.SourceSpecificationSHA256 {
 		return bootstrap{}, fmt.Errorf(
 			"catalog specification digest mismatch: catalog %q, policy %q",
 			catalog.Sources.SpecificationSHA256,
@@ -234,6 +242,16 @@ func structuralSource(input CompileInput, rules policy) (bootstrap, error) {
 	}
 	if len(catalog.Conflicts) != 0 {
 		return bootstrap{}, fmt.Errorf("catalog contains %d unresolved conflicts", len(catalog.Conflicts))
+	}
+	policyBySemanticID := make(map[string]fieldPolicy, len(rules.Fields))
+	for _, field := range rules.Fields {
+		if field.SemanticID == "" {
+			return bootstrap{}, fmt.Errorf("policy field %q is missing semantic ID", field.StructuralName)
+		}
+		if _, duplicate := policyBySemanticID[field.SemanticID]; duplicate {
+			return bootstrap{}, fmt.Errorf("duplicate policy semantic ID %q", field.SemanticID)
+		}
+		policyBySemanticID[field.SemanticID] = field
 	}
 
 	coverage := make(map[string]string, len(catalog.Coverage))
@@ -244,33 +262,153 @@ func structuralSource(input CompileInput, rules policy) (bootstrap, error) {
 		coverage[record.ID] = record.State
 	}
 	fields := make([]bootstrapField, 0, len(catalog.StructuralRecords))
-	seen := make(map[string]struct{}, len(catalog.StructuralRecords))
+	seenFields := make(map[string]struct{}, len(catalog.StructuralRecords))
+	structuralByID := make(map[string]catalogStructuralRecord, len(catalog.StructuralRecords))
 	for _, record := range catalog.StructuralRecords {
 		expectedID := "unifi.network.dns_record.field." + record.Field
 		if record.ID != expectedID {
 			return bootstrap{}, fmt.Errorf("unstable catalog ID %q for field %q", record.ID, record.Field)
 		}
-		if _, duplicate := seen[record.Field]; duplicate {
+		if _, duplicate := structuralByID[record.ID]; duplicate {
+			return bootstrap{}, fmt.Errorf("duplicate structural semantic ID %q", record.ID)
+		}
+		if _, duplicate := seenFields[record.Field]; duplicate {
 			return bootstrap{}, fmt.Errorf("duplicate catalog field %q", record.Field)
 		}
-		seen[record.Field] = struct{}{}
+		policyField, selected := policyBySemanticID[record.ID]
+		if !selected || policyField.StructuralName != record.Field {
+			return bootstrap{}, fmt.Errorf("policy semantic ID mismatch for %q", record.ID)
+		}
+		if catalogDefinitionDigest(record) != record.DefinitionSHA256 {
+			return bootstrap{}, fmt.Errorf("definition digest mismatch for %q", record.ID)
+		}
+		seenFields[record.Field] = struct{}{}
+		structuralByID[record.ID] = record
 		if coverage[record.ID] != "observed" {
 			return bootstrap{}, fmt.Errorf("incomplete catalog coverage for %q", record.ID)
 		}
-		fields = append(fields, bootstrapField{Name: record.Field, Type: record.Type})
+		fieldType, err := providerStructuralType(record.Type)
+		if err != nil {
+			return bootstrap{}, fmt.Errorf("field %q: %w", record.Field, err)
+		}
+		fields = append(fields, bootstrapField{Name: record.Field, Type: fieldType})
 	}
 	if len(fields) == 0 {
 		return bootstrap{}, fmt.Errorf("catalog has no structural records")
 	}
+	observedByID := make(map[string]catalogObservedRecord, len(catalog.ObservedRecords))
+	for _, record := range catalog.ObservedRecords {
+		if _, duplicate := observedByID[record.ID]; duplicate {
+			return bootstrap{}, fmt.Errorf("duplicate observed semantic ID %q", record.ID)
+		}
+		structural, known := structuralByID[record.ID]
+		if !known {
+			return bootstrap{}, fmt.Errorf("unknown observed semantic ID %q", record.ID)
+		}
+		if record.Field != structural.Field {
+			return bootstrap{}, fmt.Errorf("observed field mismatch for %q", record.ID)
+		}
+		if record.JSONType != structural.Type {
+			return bootstrap{}, fmt.Errorf("observed type mismatch for %q: structural %q, observed %q", record.ID, structural.Type, record.JSONType)
+		}
+		if record.PresentCount < 1 || record.NonNullCount < 0 || record.NonNullCount > record.PresentCount {
+			return bootstrap{}, fmt.Errorf("invalid observation counts for %q", record.ID)
+		}
+		observedByID[record.ID] = record
+	}
+	for id := range structuralByID {
+		if _, observed := observedByID[id]; !observed {
+			return bootstrap{}, fmt.Errorf("missing observed record for %q", id)
+		}
+	}
+	for id := range coverage {
+		if _, known := structuralByID[id]; !known {
+			return bootstrap{}, fmt.Errorf("unknown coverage semantic ID %q", id)
+		}
+	}
+	migrationSources := make(map[string]struct{}, len(catalog.Migrations))
+	for _, migration := range catalog.Migrations {
+		if migration.FromID == "" || migration.ToID == "" || strings.TrimSpace(migration.Reason) == "" || !migration.Reviewed {
+			return bootstrap{}, fmt.Errorf("incomplete migration from %q", migration.FromID)
+		}
+		if _, duplicate := migrationSources[migration.FromID]; duplicate {
+			return bootstrap{}, fmt.Errorf("duplicate migration from %q", migration.FromID)
+		}
+		if _, active := structuralByID[migration.FromID]; active {
+			return bootstrap{}, fmt.Errorf("migration source %q is still active", migration.FromID)
+		}
+		if _, known := structuralByID[migration.ToID]; !known {
+			return bootstrap{}, fmt.Errorf("migration target %q is not selected", migration.ToID)
+		}
+		migrationSources[migration.FromID] = struct{}{}
+	}
+	for _, tombstone := range catalog.Tombstones {
+		if _, resolved := migrationSources[tombstone]; !resolved {
+			return bootstrap{}, fmt.Errorf("unresolved tombstone %q", tombstone)
+		}
+	}
+	for _, record := range catalog.StructuralRecords {
+		if record.SecretCandidate {
+			field, ok := policyFieldByStructuralName(rules.Fields, record.Field)
+			if !ok || !secretCandidateIsSafe(field) {
+				return bootstrap{}, fmt.Errorf("secret candidate %q lacks a safe provider disposition", record.ID)
+			}
+		}
+	}
 	return bootstrap{
 		FormatVersion: 1,
 		Source: bootstrapSource{
-			Repository:          "catalog:" + catalog.CatalogID,
-			Commit:              catalog.Admission.OperationDigest,
-			SpecificationSHA256: catalog.Sources.SpecificationSHA256,
+			Repository:          rules.CatalogSource.Repository,
+			Commit:              rules.CatalogSource.Commit,
+			SpecificationSHA256: rules.SourceSpecificationSHA256,
 		},
 		Resource: bootstrapSchema{Name: rules.Resource, Fields: fields},
 	}, nil
+}
+
+func catalogDefinitionDigest(record catalogStructuralRecord) string {
+	definition, _ := json.Marshal(struct {
+		WireName        string `json:"wire_name"`
+		JSONType        string `json:"json_type"`
+		SecretCandidate bool   `json:"secret_candidate"`
+	}{record.Field, record.Type, record.SecretCandidate})
+	digest := sha256.Sum256(definition)
+	return fmt.Sprintf("%x", digest)
+}
+
+func byteSHA256(data []byte) string {
+	digest := sha256.Sum256(data)
+	return fmt.Sprintf("%x", digest)
+}
+
+func providerStructuralType(jsonType string) (string, error) {
+	switch jsonType {
+	case "number":
+		return "int64", nil
+	case "bool", "string", "int64":
+		return jsonType, nil
+	default:
+		return "", fmt.Errorf("unsupported structural type %q", jsonType)
+	}
+}
+
+func policyFieldByStructuralName(fields []fieldPolicy, name string) (fieldPolicy, bool) {
+	for _, field := range fields {
+		if field.StructuralName == name {
+			return field, true
+		}
+	}
+	return fieldPolicy{}, false
+}
+
+func secretCandidateIsSafe(field fieldPolicy) bool {
+	if field.Disposition == "omitted" {
+		return true
+	}
+	var attribute struct {
+		Sensitive bool `json:"sensitive"`
+	}
+	return len(field.Attribute) > 0 && json.Unmarshal(field.Attribute, &attribute) == nil && attribute.Sensitive
 }
 
 func (a codeAttribute) MarshalJSON() ([]byte, error) {
