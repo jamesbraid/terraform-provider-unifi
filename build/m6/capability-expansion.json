@@ -1,0 +1,44 @@
+{
+  "format_version": 1,
+  "milestone": "M6",
+  "result": "pass",
+  "decision": "no-capability-expansion",
+  "admitted_managed_resources": [
+    "unifi_dns_record"
+  ],
+  "port_forward_shadow": {
+    "mode": "schema_only",
+    "receipt": "provider-codegen/shadow/port_forward.schema-shadow.json",
+    "sha256": "0cb2f935840a0d02b8fca841e820a7d7738fcd686667cbcd60cd6ddf392564eb",
+    "resource_schema_sha256": "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6",
+    "nested_attribute_equivalence": true,
+    "runtime_changed": false,
+    "lifecycle_admitted": false
+  },
+  "deferred_capability_classes": [
+    {
+      "class": "read-only-official-data-sources",
+      "reason": "no resource-specific evidence gate has been proposed"
+    },
+    {
+      "class": "compact-private-managed-resources",
+      "reason": "DNS record remains the sole management-contract lighthouse"
+    },
+    {
+      "class": "complex-private-resources",
+      "reason": "requires an independent provider_projection_required contract"
+    },
+    {
+      "class": "device-and-adoption-operations",
+      "reason": "requires emulator and herder evidence"
+    },
+    {
+      "class": "zbf-zone-adapter",
+      "reason": "requires restart, upgrade, and HIL gates"
+    },
+    {
+      "class": "firewall-policy",
+      "reason": "requires a controller identity bridge and lossless semantic mapping"
+    }
+  ]
+}

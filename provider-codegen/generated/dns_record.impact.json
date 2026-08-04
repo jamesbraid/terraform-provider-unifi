@@ -1,0 +1,19 @@
+{
+  "format_version": 1,
+  "resource": "unifi_dns_record",
+  "source": {
+    "repository": "catalog:unifi.network.dns_record@10.4.57",
+    "commit": "fcae2fd0f6a3ed9793541c61fc9f9ed5ae00187f8084fb95c042b5be2ca4aa6e",
+    "specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad"
+  },
+  "baseline_digests": {
+    "resource": "1bdb6740d88d68bf232d79874c34d0e3811d382f55948352add15c2a28e5e93c",
+    "identity": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+    "list_resource": "c914929e71ab8ce0e8977518615ee3cf81c31a411ec77c9f58a2350145c6ee95"
+  },
+  "structural_fields": 8,
+  "generated_attributes": 10,
+  "provider_owned_seams": 3,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

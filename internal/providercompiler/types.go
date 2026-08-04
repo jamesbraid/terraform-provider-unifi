@@ -1,0 +1,184 @@
+package providercompiler
+
+import "encoding/json"
+
+// CompileInput contains the immutable structural source, provider policy, and
+// released schema baseline used for one compiler run.
+type CompileInput struct {
+	Bootstrap       []byte
+	Catalog         []byte
+	Policy          []byte
+	BaselineDigests []byte
+}
+
+// Result contains the deterministic artifacts produced by one compiler run.
+type Result struct {
+	ProviderCodeSpec []byte
+	ImpactReport     []byte
+	MappingReport    []byte
+}
+
+type bootstrap struct {
+	FormatVersion int             `json:"format_version"`
+	Source        bootstrapSource `json:"source"`
+	Resource      bootstrapSchema `json:"resource"`
+}
+
+type bootstrapSource struct {
+	Repository          string `json:"repository"`
+	Commit              string `json:"commit"`
+	SpecificationSHA256 string `json:"specification_sha256"`
+}
+
+type bootstrapSchema struct {
+	Name   string           `json:"name"`
+	Fields []bootstrapField `json:"fields"`
+}
+
+type bootstrapField struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+type observedCatalog struct {
+	FormatVersion     int                       `json:"format_version"`
+	CatalogID         string                    `json:"catalog_id"`
+	Target            json.RawMessage           `json:"target"`
+	Sources           catalogSources            `json:"sources"`
+	StructuralRecords []catalogStructuralRecord `json:"structural_records"`
+	ObservedRecords   json.RawMessage           `json:"observed_records"`
+	Conflicts         []catalogConflict         `json:"conflicts"`
+	Coverage          []catalogCoverage         `json:"coverage"`
+	Admission         catalogAdmission          `json:"admission"`
+	Tombstones        []string                  `json:"tombstones"`
+	Migrations        json.RawMessage           `json:"migrations"`
+}
+
+type catalogSources struct {
+	CaptureLockSHA256   string `json:"capture_lock_sha256,omitempty"`
+	SpecificationSHA256 string `json:"specification_sha256"`
+}
+
+type catalogStructuralRecord struct {
+	ID               string `json:"id"`
+	Field            string `json:"field"`
+	Type             string `json:"type"`
+	DefinitionSHA256 string `json:"definition_sha256"`
+	SecretCandidate  bool   `json:"secret_candidate"`
+}
+
+type catalogConflict struct {
+	Kind     string `json:"kind"`
+	Field    string `json:"field"`
+	Expected string `json:"expected,omitempty"`
+	Observed string `json:"observed,omitempty"`
+}
+
+type catalogCoverage struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+}
+
+type catalogAdmission struct {
+	State           string `json:"state"`
+	OperationDigest string `json:"operation_digest"`
+}
+
+type policy struct {
+	FormatVersion             int                   `json:"format_version"`
+	Resource                  string                `json:"resource"`
+	GeneratorName             string                `json:"generator_name"`
+	SourceSpecificationSHA256 string                `json:"source_specification_sha256"`
+	CatalogID                 string                `json:"catalog_id,omitempty"`
+	OperationDigest           string                `json:"operation_digest,omitempty"`
+	Description               string                `json:"description"`
+	Fields                    []fieldPolicy         `json:"fields"`
+	ProviderOwned             []providerOwnedPolicy `json:"provider_owned"`
+	BaselineDigests           baselineDigestSet     `json:"baseline_digests"`
+}
+
+type fieldPolicy struct {
+	StructuralName string          `json:"structural_name"`
+	TerraformName  string          `json:"terraform_name"`
+	TerraformType  string          `json:"terraform_type,omitempty"`
+	Disposition    string          `json:"disposition"`
+	Attribute      json.RawMessage `json:"attribute,omitempty"`
+}
+
+type providerOwnedPolicy struct {
+	TerraformName string          `json:"terraform_name"`
+	TerraformType string          `json:"terraform_type,omitempty"`
+	Disposition   string          `json:"disposition"`
+	Generated     bool            `json:"generated"`
+	Attribute     json.RawMessage `json:"attribute,omitempty"`
+}
+
+type baselineDigestSet struct {
+	Resource     string `json:"resource"`
+	Identity     string `json:"identity"`
+	ListResource string `json:"list_resource"`
+}
+
+type baselineManifest struct {
+	SchemaSHA256 map[string]string `json:"schema_sha256"`
+}
+
+type codeSpecification struct {
+	Version   string         `json:"version"`
+	Provider  codeProvider   `json:"provider"`
+	Resources []codeResource `json:"resources"`
+}
+
+type codeProvider struct {
+	Name string `json:"name"`
+}
+
+type codeResource struct {
+	Name   string     `json:"name"`
+	Schema codeSchema `json:"schema"`
+}
+
+type codeSchema struct {
+	Attributes          []codeAttribute `json:"attributes"`
+	MarkdownDescription string          `json:"markdown_description,omitempty"`
+}
+
+type codeAttribute struct {
+	Name       string          `json:"name"`
+	Type       string          `json:"-"`
+	Definition json.RawMessage `json:"-"`
+}
+
+type impactReport struct {
+	FormatVersion     int               `json:"format_version"`
+	Resource          string            `json:"resource"`
+	Source            bootstrapSource   `json:"source"`
+	BaselineDigests   baselineDigestSet `json:"baseline_digests"`
+	StructuralFields  int               `json:"structural_fields"`
+	GeneratedAttrs    int               `json:"generated_attributes"`
+	ProviderSeams     int               `json:"provider_owned_seams"`
+	UnresolvedFields  []string          `json:"unresolved_fields"`
+	StalePolicyFields []string          `json:"stale_policy_fields"`
+}
+
+type mappingReport struct {
+	FormatVersion int                    `json:"format_version"`
+	Resource      string                 `json:"resource"`
+	Fields        []mappingField         `json:"fields"`
+	ProviderOwned []providerOwnedMapping `json:"provider_owned"`
+}
+
+type mappingField struct {
+	StructuralName string `json:"structural_name"`
+	TerraformName  string `json:"terraform_name"`
+	StructuralType string `json:"structural_type"`
+	TerraformType  string `json:"terraform_type"`
+	Disposition    string `json:"disposition"`
+}
+
+type providerOwnedMapping struct {
+	TerraformName string `json:"terraform_name"`
+	TerraformType string `json:"terraform_type,omitempty"`
+	Disposition   string `json:"disposition"`
+	Generated     bool   `json:"generated"`
+}

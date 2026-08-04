@@ -1,0 +1,59 @@
+{
+  "format_version": 1,
+  "contract_id": "unifi_dns_record@development-1",
+  "mode": "provider_projection_required",
+  "provider": {
+    "address": "registry.terraform.io/ubiquiti-community/unifi",
+    "version": "0.101.2",
+    "source_commit": "6ce5e1ca",
+    "binary": {
+      "platform": "linux/amd64",
+      "sha256": "6e9ada6323822a3c54250597c1ef62b5ccafd4d927444eb852ad9f0c2bc39701"
+    },
+    "schema": {
+      "toolchains": {
+        "terraform": {
+          "version": "1.15.8",
+          "binary_sha256": "8b6cb96cd46080ee1287baf646c70078715a99123b9b3a6ce2a7fe3892ec703a",
+          "canonical_schema": "schema/terraform-1.15.8.json",
+          "canonical_schema_sha256": "e054aef83f2cf19c82968951342d3daf46b0b8071c15c5c076201aa0c5d93317"
+        },
+        "tofu": {
+          "version": "1.12.1",
+          "binary_sha256": "b6cb308bd699c8b53882319986f339eeaa44f925a68f12d5b0a14e6caceedf23",
+          "canonical_schema": "schema/tofu-1.12.1.json",
+          "canonical_schema_sha256": "73c4e1fab3ddc7f70dbdfc38ab117e504c5c71d8133c090e9ede0dc0851ff7f0"
+        }
+      }
+    }
+  },
+  "catalog": {
+    "id": "unifi.network.dns_record@10.4.57",
+    "sha256": "2bf9c410d98c5bc98d7d790ea9370dcd5e7a94630ee7dc5356d7bb5fa85625f6"
+  },
+  "resource": {
+    "resource_type": "unifi_dns_record",
+    "endpoint": "v2/api/site/{site}/static-dns",
+    "id_rule": "_id",
+    "site_scoped": true,
+    "capture_eligible": true,
+    "redaction": {
+      "schema_sensitive": true,
+      "secret_shaped": true
+    }
+  },
+  "lifecycle": {
+    "receipt": "evidence/network-dns-qualification.json",
+    "receipt_sha256": "0ce0b0f0dab228ed570b13cdb4d453ef744ad94b2716f471f4628e4611f883a4",
+    "result": "pass"
+  },
+  "provenance": {
+    "policy_sha256": "c938ea898e17b5e3563f3422dbfbfbb927919fec2be286c82d7c3a2253012a7b",
+    "provider_code_spec_sha256": "bcb5a8fa6994d09c5f57fe639b93821325bb95d64801f18481def23ddb40acc4",
+    "mapping_sha256": "329a7b8963bdee63a11f384f3e0ddf6df527e983933344576117646337cfe14b"
+  },
+  "trust": {
+    "kind": "operator-pinned-checksum",
+    "signed": false
+  }
+}

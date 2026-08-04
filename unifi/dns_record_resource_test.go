@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
@@ -283,7 +284,7 @@ func Test_dnsRecordFrameworkResource_Configure(t *testing.T) {
 			r:    &dnsRecordFrameworkResource{},
 			args: args{
 				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{}},
+				req:  fwresource.ConfigureRequest{ProviderData: &Client{Site: "site-a"}},
 				resp: &fwresource.ConfigureResponse{},
 			},
 			wantError: false,
@@ -298,6 +299,14 @@ func Test_dnsRecordFrameworkResource_Configure(t *testing.T) {
 					tt.args.resp.Diagnostics.HasError(),
 					tt.wantError,
 				)
+			}
+			if tt.name == "correct_client" {
+				if tt.r.backend == nil {
+					t.Fatal("Configure did not install the DNS backend")
+				}
+				if tt.r.defaultSite != "site-a" {
+					t.Fatalf("default site = %q, want site-a", tt.r.defaultSite)
+				}
 			}
 		})
 	}
@@ -342,7 +351,52 @@ func Test_dnsRecordFrameworkResource_applyPlanToState(t *testing.T) {
 	}
 }
 
-func Test_dnsRecordFrameworkResource_modelToDNSRecord(t *testing.T) {
+func Test_dnsRecordFrameworkResource_modelToDNSRecordPatchPreservesAbsentOptionals(t *testing.T) {
+	resource := &dnsRecordFrameworkResource{}
+	state := &dnsRecordFrameworkResourceModel{
+		ID:         types.StringValue("record-1"),
+		Name:       types.StringValue("service.example.test"),
+		Enabled:    types.BoolValue(true),
+		Port:       types.Int64Value(8443),
+		Priority:   types.Int64Value(10),
+		RecordType: types.StringValue("SRV"),
+		TTL:        timetypes.NewGoDurationValue(5 * time.Minute),
+		Value:      types.StringValue("old.example.test"),
+		Weight:     types.Int64Value(20),
+	}
+	plan := &dnsRecordFrameworkResourceModel{
+		Name:       types.StringValue("service.example.test"),
+		Enabled:    types.BoolValue(false),
+		Port:       types.Int64Null(),
+		Priority:   types.Int64Unknown(),
+		RecordType: types.StringValue("SRV"),
+		TTL:        timetypes.NewGoDurationUnknown(),
+		Value:      types.StringValue("new.example.test"),
+		Weight:     types.Int64Value(0),
+	}
+
+	resource.applyPlanToState(context.Background(), plan, state)
+	patch := resource.modelToDNSRecordPatch(context.Background(), plan, state)
+
+	wantFields := []dnsRecordField{
+		dnsRecordFieldEnabled,
+		dnsRecordFieldName,
+		dnsRecordFieldRecordType,
+		dnsRecordFieldValue,
+		dnsRecordFieldWeight,
+	}
+	if !reflect.DeepEqual(patch.Fields, wantFields) {
+		t.Fatalf("patch fields = %v, want %v", patch.Fields, wantFields)
+	}
+	if patch.ID != "record-1" || patch.Values.Enabled || patch.Values.Value != "new.example.test" || patch.Values.Weight != 0 {
+		t.Fatalf("patch values = %#v", patch)
+	}
+	if patch.Values.Port == nil || *patch.Values.Port != 8443 || patch.Values.Priority != 10 || patch.Values.TTL != 300 {
+		t.Fatalf("preserved optional values = %#v", patch.Values)
+	}
+}
+
+func Test_dnsRecordFrameworkResource_modelToDNSRecordIntent(t *testing.T) {
 	type args struct {
 		in0   context.Context
 		model *dnsRecordFrameworkResourceModel
@@ -351,7 +405,7 @@ func Test_dnsRecordFrameworkResource_modelToDNSRecord(t *testing.T) {
 		name string
 		r    *dnsRecordFrameworkResource
 		args args
-		want *unifi.DNSRecord
+		want dnsRecordIntent
 	}{
 		{
 			name: "basic_conversion",
@@ -369,8 +423,8 @@ func Test_dnsRecordFrameworkResource_modelToDNSRecord(t *testing.T) {
 					TTL:        timetypes.NewGoDurationNull(),
 				},
 			},
-			want: &unifi.DNSRecord{
-				Key:        "test.example.com",
+			want: dnsRecordIntent{
+				Name:       "test.example.com",
 				Value:      "1.2.3.4",
 				Enabled:    true,
 				RecordType: "A",
@@ -381,14 +435,14 @@ func Test_dnsRecordFrameworkResource_modelToDNSRecord(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.modelToDNSRecord(
+			if got := tt.r.modelToDNSRecordIntent(
 				tt.args.in0,
 				tt.args.model,
 			); !reflect.DeepEqual(
 				got,
 				tt.want,
 			) {
-				t.Errorf("modelToDNSRecord() = %v, want %v", got, tt.want)
+				t.Errorf("modelToDNSRecordIntent() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -397,7 +451,7 @@ func Test_dnsRecordFrameworkResource_modelToDNSRecord(t *testing.T) {
 func Test_dnsRecordFrameworkResource_dnsRecordToModel(t *testing.T) {
 	type args struct {
 		in0       context.Context
-		dnsRecord *unifi.DNSRecord
+		dnsRecord dnsRecordModel
 		model     *dnsRecordFrameworkResourceModel
 		site      string
 	}
@@ -411,9 +465,9 @@ func Test_dnsRecordFrameworkResource_dnsRecordToModel(t *testing.T) {
 			r:    &dnsRecordFrameworkResource{},
 			args: args{
 				in0: context.Background(),
-				dnsRecord: &unifi.DNSRecord{
+				dnsRecord: dnsRecordModel{
 					ID:         "abc123",
-					Key:        "test.example.com",
+					Name:       "test.example.com",
 					Value:      "1.2.3.4",
 					Enabled:    true,
 					RecordType: "A",
@@ -428,9 +482,9 @@ func Test_dnsRecordFrameworkResource_dnsRecordToModel(t *testing.T) {
 			r:    &dnsRecordFrameworkResource{},
 			args: args{
 				in0: context.Background(),
-				dnsRecord: &unifi.DNSRecord{
+				dnsRecord: dnsRecordModel{
 					ID:    "abc123",
-					Key:   "test",
+					Name:  "test",
 					Value: "1.2.3.4",
 				},
 				model: &dnsRecordFrameworkResourceModel{},
@@ -447,11 +501,11 @@ func Test_dnsRecordFrameworkResource_dnsRecordToModel(t *testing.T) {
 			if tt.args.model.Site.ValueString() != tt.args.site {
 				t.Errorf("Site = %q, want %q", tt.args.model.Site.ValueString(), tt.args.site)
 			}
-			if tt.args.model.Name.ValueString() != tt.args.dnsRecord.Key {
+			if tt.args.model.Name.ValueString() != tt.args.dnsRecord.Name {
 				t.Errorf(
 					"Name = %q, want %q",
 					tt.args.model.Name.ValueString(),
-					tt.args.dnsRecord.Key,
+					tt.args.dnsRecord.Name,
 				)
 			}
 		})

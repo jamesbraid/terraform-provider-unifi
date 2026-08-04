@@ -1,0 +1,38 @@
+when:
+  - event: manual
+  - event: push
+    branch: emdash/m3-dns-operation
+
+labels:
+  pool: skunkworks
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.9.2
+    settings:
+      partial: false
+
+steps:
+  - name: locked-network-lifecycle
+    image: docker:27.5.1-cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - apk add --no-cache bash coreutils curl git jq tar unzip
+      - M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
+      - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true' build/m3/network-dns-qualification-ci.json
+
+  - name: promotion-receipt
+    image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
+    commands:
+      - apt-get update
+      - apt-get install --yes --no-install-recommends ca-certificates curl jq unzip
+      - curl --fail --location --silent --show-error --output /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.15.8/terraform_1.15.8_linux_amd64.zip
+      - echo 'd25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d  /tmp/terraform.zip' | sha256sum --check -
+      - curl --fail --location --silent --show-error --output /tmp/tofu.zip https://github.com/opentofu/opentofu/releases/download/v1.12.1/tofu_1.12.1_linux_amd64.zip
+      - echo '1fc9af962e3632b7cd0ba27076cd9f1ced177567defe9e331ac37f5a40468575  /tmp/tofu.zip' | sha256sum --check -
+      - unzip -q /tmp/terraform.zip -d /usr/local/bin
+      - unzip -q /tmp/tofu.zip -d /usr/local/bin
+      - go mod download all
+      - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M3_EXECUTION=woodpecker M3_LIFECYCLE_RECEIPT=build/m3/network-dns-qualification-ci.json M3_RECEIPT_OUTPUT=build/m3/dns-operation-ci.json TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m3-dns-operation.sh
+      - jq -e '.promotion == "qualified" and .lifecycle.locked_target_result == "pass"' build/m3/dns-operation-ci.json

@@ -1,21 +1,20 @@
 {
   "format_version": 1,
-  "gate": "M0 Network DNS qualification",
+  "gate": "M3 DNS managed-operation qualification",
   "result": "pass",
-  "canonical_repository": "https://github.com/ubiquiti-community/terraform-provider-unifi",
-  "provider_source_commit": "223be7f657dec7550387699fc9b9a19a4096cf5a",
-  "private_carrier_commit": "e29696797e1c9cc45188b51b6032b4bfa82c82a5",
-  "runner_pool": "skunkworks",
-  "pipeline_number": 8,
-  "workflow": {
-    "pipeline_sha256": "adc307390de7856ae464d4d2eb6ed594b769dc3a4cfe053bf0b2ec9a4ab9125b",
-    "script_sha256": "a52cba13b7563b8f50bd288feaa0f540b918c7546493a7c9fd243d8a6467f965",
-    "fixtures_sha256": "ab5ec21d1b2350e652b56b5cbf4b88d49221f25b634c224964126d1448962b62"
-  },
-  "provider": {
+  "source_commit": "2f3d6ff79a51deef0d60110ca3925b05f4005c3d",
+  "platform": "linux/amd64",
+  "provider_version": "0.101.2",
+  "provider_binary_sha256": "6e9ada6323822a3c54250597c1ef62b5ccafd4d927444eb852ad9f0c2bc39701",
+  "legacy_provider": {
     "version": "0.101.2",
     "archive_sha256": "9954f29512f0049f0e86908e2fc11a8a0e3cb11f980f3468d5e3da4005fab4b8",
     "binary_sha256": "c580db83441331fb8c194b9c894730e624743cdaf73b02a990c0655b47fc2d48"
+  },
+  "state_upgrade_source": {
+    "version": "0.41.11",
+    "commit": "eaf41ff7dbf39c01690eaca54e99f7f9cec867b9",
+    "binary_sha256": "c752f7bb1eea6cdb4f3b1fc8bd93ac53e72afaba45edb84c19163b489905a25a"
   },
   "terraform": {
     "version": "1.15.8",
@@ -30,34 +29,24 @@
   "target": {
     "product": "UniFi Network",
     "version": "10.4.57",
-    "platform": "linux/amd64",
     "index_sha256": "sha256:584be3a2e45c4913e1bc373eff9c7330609c82085d4fc6f5ea365abdcdb3e664",
     "platform_manifest_sha256": "sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4",
     "config_sha256": "sha256:5a9624d7671e1cead43755f3f2bdb37d852460fe58e75b184af85eb67635751a"
   },
   "lifecycle": {
-    "fresh_target_per_cli": true,
+    "fresh_target_per_cli_and_adapter": true,
     "create": true,
     "update": true,
     "replacement_plan": true,
     "restart_refresh": true,
     "import": true,
+    "v0_integer_ttl_state_upgrade": true,
     "no_op_plan": true,
     "delete": true,
-    "cleanup": true
+    "cleanup": true,
+    "bidirectional_adapter_state_round_trip": true
   },
   "normalized_state_sha256": "2031f5d48c29e6f590d0c2e8f1b379e5af0ba044ec39d55f631fd8823d957a0f",
   "cli_outcomes_equivalent": true,
-  "evidence_redaction": {
-    "result": "pass",
-    "raw_state_retained": false,
-    "fixtures_are_synthetic": true,
-    "credentials_retained": false
-  },
-  "coverage_limits": {
-    "v0_ttl_upgrade": "covered_by_provider_unit_suite",
-    "persisted_uos_restart": "covered_by_uos-dns-qualification.json",
-    "native_arm64_uos_matrix": "covered_by_uos-dns-qualification.json"
-  },
-  "milestone_0_complete": true
+  "adapter_outcomes_equivalent": true
 }
