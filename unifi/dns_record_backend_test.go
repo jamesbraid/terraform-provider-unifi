@@ -171,6 +171,29 @@ func TestDNSRecordPatchRejectsUnsafeMasksBeforeRequest(t *testing.T) {
 	}
 }
 
+func TestPrivateDNSRecordBackendDoesNotFallBackAfterWriteError(t *testing.T) {
+	requests := 0
+	server := newDNSBackendTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"code":"invalid","message":"rejected"}`))
+	})
+	backend := newPrivateDNSRecordBackend(newDNSBackendTestClient(t, server))
+
+	_, err := backend.Update(context.Background(), "default", dnsRecordPatch{
+		ID:     "record-1",
+		Values: dnsRecordIntent{Enabled: true},
+		Fields: []dnsRecordField{dnsRecordFieldEnabled},
+	})
+	if err == nil {
+		t.Fatal("Update succeeded after the controller rejected the write")
+	}
+	if requests != 1 {
+		t.Fatalf("rejected write issued %d request(s), want 1", requests)
+	}
+}
+
 func newDNSBackendTestServer(t *testing.T, operation http.HandlerFunc) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
