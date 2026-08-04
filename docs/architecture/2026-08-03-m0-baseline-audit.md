@@ -25,6 +25,13 @@ The legacy provider address `registry.terraform.io/paultyng/unifi` is not an
 alias promise. Moving existing state to the canonical address requires an
 explicit, separately tested `terraform state replace-provider` operation.
 
+M0c measured one CLI capability difference. Terraform 1.15.8 returns the
+provider's action schema and 25 list-resource schemas; OpenTofu 1.12.1 omits
+those two categories. Their provider, resource, data-source, and identity
+projections are otherwise byte-identical after removing only the CLI envelope.
+The baseline preserves both full projections and treats the missing categories
+as an explicit OpenTofu compatibility fact, not as provider schema drift.
+
 ## `go-unifi` baseline
 
 `go-unifi` v1.102.0 resolves to
