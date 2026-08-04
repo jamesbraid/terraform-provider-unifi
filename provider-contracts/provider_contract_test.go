@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/managementcontract"
 )
 
 type schemaToolchain struct {
@@ -22,9 +24,10 @@ type dnsContract struct {
 	ContractID    string `json:"contract_id"`
 	Mode          string `json:"mode"`
 	Provider      struct {
-		Address string `json:"address"`
-		Version string `json:"version"`
-		Binary  struct {
+		Address      string `json:"address"`
+		Version      string `json:"version"`
+		SourceCommit string `json:"source_commit"`
+		Binary       struct {
 			Platform string `json:"platform"`
 			SHA256   string `json:"sha256"`
 		} `json:"binary"`
@@ -35,6 +38,10 @@ type dnsContract struct {
 	Catalog struct {
 		SHA256 string `json:"sha256"`
 	} `json:"catalog"`
+	Operation struct {
+		ArtifactSHA256 string `json:"artifact_sha256"`
+		Digest         string `json:"digest"`
+	} `json:"operation"`
 	Lifecycle struct {
 		Receipt       string `json:"receipt"`
 		ReceiptSHA256 string `json:"receipt_sha256"`
@@ -53,6 +60,7 @@ type dnsContract struct {
 
 type lifecycleReceipt struct {
 	Result               string `json:"result"`
+	SourceCommit         string `json:"source_commit"`
 	ProviderBinarySHA256 string `json:"provider_binary_sha256"`
 }
 
@@ -153,6 +161,42 @@ func TestDNSContractEvidenceIsInternallyBound(t *testing.T) {
 	requireEqual(t, "lifecycle result", "pass", receipt.Result)
 	requireEqual(t, "contract lifecycle result", receipt.Result, contract.Lifecycle.Result)
 	requireEqual(t, "provider binary", receipt.ProviderBinarySHA256, contract.Provider.Binary.SHA256)
+
+	boundContract := managementcontract.Contract{FormatVersion: contract.FormatVersion}
+	boundContract.Provider.SourceCommit = contract.Provider.SourceCommit
+	boundContract.Provider.Binary.SHA256 = contract.Provider.Binary.SHA256
+	boundContract.Provider.Schema.Toolchains = map[string]managementcontract.SchemaToolchain{
+		"terraform": {
+			Version:               terraform.Version,
+			BinarySHA256:          terraform.BinarySHA256,
+			CanonicalSchemaSHA256: terraform.CanonicalSchemaSHA256,
+		},
+		"tofu": {
+			Version:               tofu.Version,
+			BinarySHA256:          tofu.BinarySHA256,
+			CanonicalSchemaSHA256: tofu.CanonicalSchemaSHA256,
+		},
+	}
+	boundContract.Catalog.SHA256 = contract.Catalog.SHA256
+	boundContract.Operation.ArtifactSHA256 = contract.Operation.ArtifactSHA256
+	boundContract.Operation.Digest = contract.Operation.Digest
+	boundContract.Lifecycle.ReceiptSHA256 = contract.Lifecycle.ReceiptSHA256
+	boundContract.Lifecycle.Result = contract.Lifecycle.Result
+	boundContract.Provenance.MappingSHA256 = contract.Provenance.MappingSHA256
+	boundEvidence := managementcontract.Evidence{
+		ProviderBinarySHA256:          receipt.ProviderBinarySHA256,
+		CatalogSHA256:                 fileSHA256(t, filepath.Join("..", "provider-codegen", "catalog", "go-unifi-v1.102.0-dns-record.catalog.json")),
+		OperationArtifactSHA256:       fileSHA256(t, filepath.Join("..", "provider-codegen", "catalog", "go-unifi-62add0c-dns-record.operation.json")),
+		OperationDigest:               "199c002d9a1229aa7e43a94b12da6f33c7ce612ecb471eebcd6896d985b161f8",
+		LifecycleReceiptSHA256:        fileSHA256(t, receiptPath),
+		LifecycleProviderBinarySHA256: receipt.ProviderBinarySHA256,
+		MappingSHA256:                 fileSHA256(t, filepath.Join("..", "provider-codegen", "generated", "dns_record.mapping.json")),
+		SourceCommit:                  receipt.SourceCommit,
+		SchemaToolchains:              boundContract.Provider.Schema.Toolchains,
+	}
+	if err := managementcontract.Verify(boundContract, boundEvidence); err != nil {
+		t.Fatalf("management contract evidence is not bound: %v", err)
+	}
 
 	requireEqual(t, "development trust", "operator-pinned-checksum", contract.Trust.Kind)
 	if contract.Trust.Signed {

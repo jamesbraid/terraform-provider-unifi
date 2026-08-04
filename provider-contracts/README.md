@@ -5,9 +5,10 @@ the M5 shadow integration with ubitofu. It is a release-style sidecar, but its
 trust root is the adjacent operator-pinned SHA-256 file. Signing and key
 rotation are later release work.
 
-The sidecar binds one Linux/amd64 provider binary, both pinned schema CLIs,
-their different complete canonical schema projections, the admitted catalog,
-compiler policy and outputs, and the passing locked-controller receipt.
+The sidecar binds one Linux/amd64 provider binary and its source commit, both
+pinned schema CLIs, their different complete canonical schema projections, the
+admitted catalog, normalized operation, mapping corpus, compiler policy and
+outputs, and the passing locked-controller receipt.
 Consumers select the schema file for the CLI they actually use. They must stop
 before contacting a controller if any digest or toolchain identity differs.
 

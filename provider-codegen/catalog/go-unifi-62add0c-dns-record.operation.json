@@ -1,0 +1,9 @@
+{
+  "identity": "unifi.network.dns_record.operation.patch.v1",
+  "catalog_identity": "unifi.network.dns_record",
+  "idempotency": "Building against the same observed model and intent returns the same patch; rebuilding after the desired state is observed returns a no-op.",
+  "retry": "After any failed write, re-read the record and rebuild the patch before retrying; never retry through a fallback transport.",
+  "convergence": "Read, normalize, build, apply, and re-read until BuildPatch returns a no-op or a bounded caller policy stops.",
+  "concurrency": "Apply only to the same identity and expected revision; without a revision token, re-read immediately before writing and treat competing changes as a conflict.",
+  "errors": "Reject invalid identity or presence before writing; return transport and controller errors unchanged and do not fall back after a failed write."
+}

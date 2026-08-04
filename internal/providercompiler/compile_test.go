@@ -1,7 +1,9 @@
 package providercompiler
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -124,7 +126,7 @@ func TestCompilePinnedDNSInputs(t *testing.T) {
 		return data
 	}
 	result, err := Compile(CompileInput{
-		Bootstrap:       read("../../provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json"),
+		Catalog:         read("../../provider-codegen/catalog/go-unifi-v1.102.0-dns-record.catalog.json"),
 		Policy:          read("../../provider-codegen/policy/dns_record.json"),
 		BaselineDigests: read("../../build/m0/provider-schema-digests.json"),
 	})
@@ -140,6 +142,9 @@ func TestCompileCatalogMatchesBootstrapSpecification(t *testing.T) {
 	policyObject := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
 	policyObject["catalog_id"] = "unifi.network.dns_record@10.4.57"
 	policyObject["operation_digest"] = "operation-digest"
+	catalog := testCatalog(t, dnsFieldNames())
+	policyObject["catalog_sha256"] = byteDigest(catalog)
+	addTestCatalogSource(policyObject)
 	policy := mustJSON(t, policyObject)
 	baseline := testBaseline(t)
 	bootstrapResult, err := Compile(CompileInput{
@@ -151,7 +156,7 @@ func TestCompileCatalogMatchesBootstrapSpecification(t *testing.T) {
 		t.Fatalf("bootstrap Compile() error = %v", err)
 	}
 	catalogResult, err := Compile(CompileInput{
-		Catalog:         testCatalog(t, dnsFieldNames()),
+		Catalog:         catalog,
 		Policy:          policy,
 		BaselineDigests: baseline,
 	})
@@ -164,9 +169,6 @@ func TestCompileCatalogMatchesBootstrapSpecification(t *testing.T) {
 }
 
 func TestCompileCatalogFailsClosed(t *testing.T) {
-	policyObject := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
-	policyObject["catalog_id"] = "unifi.network.dns_record@10.4.57"
-	policyObject["operation_digest"] = "operation-digest"
 	tests := map[string]struct {
 		mutate func(map[string]any)
 		want   string
@@ -177,11 +179,100 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 			},
 			want: "unresolved conflicts",
 		},
+		"missing locked target": {
+			mutate: func(catalog map[string]any) {
+				delete(catalog, "target")
+			},
+			want: "complete locked catalog target",
+		},
+		"locked target policy mismatch": {
+			mutate: func(catalog map[string]any) {
+				catalog["target"].(map[string]any)["name"] = "different-target"
+			},
+			want: "locked catalog target does not match provider policy",
+		},
+		"missing source digests": {
+			mutate: func(catalog map[string]any) {
+				delete(catalog, "sources")
+			},
+			want: "complete catalog source digests",
+		},
+		"source digest policy mismatch": {
+			mutate: func(catalog map[string]any) {
+				catalog["sources"].(map[string]any)["capture_lock_sha256"] = strings.Repeat("8", 64)
+			},
+			want: "catalog source digests do not match provider policy",
+		},
 		"incomplete coverage": {
 			mutate: func(catalog map[string]any) {
 				catalog["coverage"] = catalog["coverage"].([]any)[1:]
 			},
 			want: "incomplete catalog coverage",
+		},
+		"missing observed record": {
+			mutate: func(catalog map[string]any) {
+				catalog["observed_records"] = catalog["observed_records"].([]any)[1:]
+			},
+			want: "missing observed record",
+		},
+		"duplicate observed semantic ID": {
+			mutate: func(catalog map[string]any) {
+				records := catalog["observed_records"].([]any)
+				records[1].(map[string]any)["id"] = records[0].(map[string]any)["id"]
+			},
+			want: "duplicate observed semantic ID",
+		},
+		"duplicate policy semantic ID": {
+			mutate: func(catalog map[string]any) {},
+			want:   "duplicate policy semantic ID",
+		},
+		"unknown observed semantic ID": {
+			mutate: func(catalog map[string]any) {
+				records := catalog["observed_records"].([]any)
+				records[0].(map[string]any)["id"] = "unifi.network.dns_record.field.unknown"
+			},
+			want: "unknown observed semantic ID",
+		},
+		"definition digest disagreement": {
+			mutate: func(catalog map[string]any) {
+				catalog["structural_records"].([]any)[0].(map[string]any)["definition_sha256"] = strings.Repeat("0", 64)
+			},
+			want: "definition digest mismatch",
+		},
+		"observed type disagreement": {
+			mutate: func(catalog map[string]any) {
+				catalog["observed_records"].([]any)[0].(map[string]any)["json_type"] = "string"
+			},
+			want: "observed type mismatch",
+		},
+		"uncovered field": {
+			mutate: func(catalog map[string]any) {
+				catalog["coverage"].([]any)[0].(map[string]any)["state"] = "not_observed"
+			},
+			want: "incomplete catalog coverage",
+		},
+		"unsafe secret candidate": {
+			mutate: func(catalog map[string]any) {
+				catalog["structural_records"].([]any)[0].(map[string]any)["secret_candidate"] = true
+				rehashCatalogDefinition(t, catalog["structural_records"].([]any)[0].(map[string]any))
+			},
+			want: "secret candidate",
+		},
+		"unresolved tombstone": {
+			mutate: func(catalog map[string]any) {
+				catalog["tombstones"] = []any{"unifi.network.dns_record.field.removed"}
+			},
+			want: "unresolved tombstone",
+		},
+		"incomplete migration": {
+			mutate: func(catalog map[string]any) {
+				catalog["migrations"] = []any{map[string]any{
+					"from_id": "unifi.network.dns_record.field.old_key",
+					"to_id":   "unifi.network.dns_record.field.key",
+					"reason":  "renamed",
+				}}
+			},
+			want: "incomplete migration",
 		},
 		"unstable semantic ID": {
 			mutate: func(catalog map[string]any) {
@@ -195,6 +286,10 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 			},
 			want: "admitted operation digest mismatch",
 		},
+		"unpinned catalog": {
+			mutate: func(catalog map[string]any) {},
+			want:   "admitted catalog digest mismatch",
+		},
 	}
 
 	for name, test := range tests {
@@ -204,9 +299,22 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 				t.Fatal(err)
 			}
 			test.mutate(catalog)
+			catalogBytes := mustJSON(t, catalog)
+			policy := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+			policy["catalog_id"] = "unifi.network.dns_record@10.4.57"
+			policy["operation_digest"] = "operation-digest"
+			policy["catalog_sha256"] = byteDigest(catalogBytes)
+			addTestCatalogSource(policy)
+			if name == "duplicate policy semantic ID" {
+				fields := policy["fields"].([]any)
+				fields[1].(map[string]any)["semantic_id"] = fields[0].(map[string]any)["semantic_id"]
+			}
+			if name == "unpinned catalog" {
+				policy["catalog_sha256"] = strings.Repeat("0", 64)
+			}
 			_, err := Compile(CompileInput{
-				Catalog:         mustJSON(t, catalog),
-				Policy:          mustJSON(t, policyObject),
+				Catalog:         catalogBytes,
+				Policy:          mustJSON(t, policy),
 				BaselineDigests: testBaseline(t),
 			})
 			if err == nil || !strings.Contains(err.Error(), test.want) {
@@ -261,6 +369,7 @@ func testPolicyObject(fieldNames []string, digest string) map[string]any {
 		}
 		fields = append(fields, map[string]any{
 			"structural_name": name,
+			"semantic_id":     "unifi.network.dns_record.field." + name,
 			"terraform_name":  terraformName,
 			"disposition":     "managed",
 			"attribute": map[string]any{
@@ -298,6 +407,42 @@ func testPolicyObject(fieldNames []string, digest string) map[string]any {
 	}
 }
 
+func byteDigest(data []byte) string {
+	digest := sha256.Sum256(data)
+	return fmt.Sprintf("%x", digest)
+}
+
+func addTestCatalogSource(policy map[string]any) {
+	policy["catalog_source"] = map[string]any{
+		"repository": "github.com/ubiquiti-community/go-unifi",
+		"commit":     strings.Repeat("a", 40),
+		"path":       "catalogs/network-10.4.57/dns_record.admitted-catalog.json",
+	}
+	policy["catalog_target"] = testCatalogTarget()
+	policy["catalog_sources"] = testCatalogSources()
+}
+
+func testCatalogTarget() map[string]any {
+	return map[string]any{
+		"name":                   "network-10.4.57-seeded",
+		"product":                "unifi-network",
+		"version":                "10.4.57",
+		"architecture":           "amd64",
+		"image_index_sha256":     "sha256:" + strings.Repeat("1", 64),
+		"image_manifest_sha256":  "sha256:" + strings.Repeat("2", 64),
+		"controller_fingerprint": "sha256:" + strings.Repeat("3", 64),
+	}
+}
+
+func testCatalogSources() map[string]any {
+	return map[string]any{
+		"capture_lock_sha256":          strings.Repeat("4", 64),
+		"structural_projection_sha256": strings.Repeat("5", 64),
+		"semantic_predecessor_sha256":  strings.Repeat("6", 64),
+		"semantic_ids_sha256":          strings.Repeat("7", 64),
+	}
+}
+
 func testBaseline(t *testing.T) []byte {
 	t.Helper()
 	return mustJSON(t, map[string]any{
@@ -312,6 +457,7 @@ func testBaseline(t *testing.T) []byte {
 func testCatalog(t *testing.T, fieldNames []string) []byte {
 	t.Helper()
 	structural := make([]any, 0, len(fieldNames))
+	observed := make([]any, 0, len(fieldNames))
 	coverage := make([]any, 0, len(fieldNames))
 	for _, name := range fieldNames {
 		fieldType := "int64"
@@ -326,25 +472,62 @@ func testCatalog(t *testing.T, fieldNames []string) []byte {
 			"id":                id,
 			"field":             name,
 			"type":              fieldType,
-			"definition_sha256": "definition-digest",
+			"definition_sha256": expectedCatalogDefinitionDigest(t, name, fieldType, false),
 			"secret_candidate":  false,
+		})
+		observed = append(observed, map[string]any{
+			"id":             id,
+			"field":          name,
+			"json_type":      fieldType,
+			"present_count":  1,
+			"non_null_count": 1,
 		})
 		coverage = append(coverage, map[string]any{"id": id, "state": "observed"})
 	}
 	return mustJSON(t, map[string]any{
 		"format_version": 1,
 		"catalog_id":     "unifi.network.dns_record@10.4.57",
+		"target":         testCatalogTarget(),
 		"sources": map[string]any{
-			"specification_sha256": testSpecificationDigest,
+			"capture_lock_sha256":          strings.Repeat("4", 64),
+			"specification_sha256":         testSpecificationDigest,
+			"structural_projection_sha256": strings.Repeat("5", 64),
+			"semantic_predecessor_sha256":  strings.Repeat("6", 64),
+			"semantic_ids_sha256":          strings.Repeat("7", 64),
 		},
 		"structural_records": structural,
+		"observed_records":   observed,
 		"conflicts":          []any{},
 		"coverage":           coverage,
 		"admission": map[string]any{
-			"state":            "candidate",
+			"state":            "admitted",
 			"operation_digest": "operation-digest",
 		},
 	})
+}
+
+func expectedCatalogDefinitionDigest(t *testing.T, field, fieldType string, secretCandidate bool) string {
+	t.Helper()
+	definition, err := json.Marshal(struct {
+		WireName        string `json:"wire_name"`
+		JSONType        string `json:"json_type"`
+		SecretCandidate bool   `json:"secret_candidate"`
+	}{field, fieldType, secretCandidate})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(definition)
+	return fmt.Sprintf("%x", digest)
+}
+
+func rehashCatalogDefinition(t *testing.T, record map[string]any) {
+	t.Helper()
+	record["definition_sha256"] = expectedCatalogDefinitionDigest(
+		t,
+		record["field"].(string),
+		record["type"].(string),
+		record["secret_candidate"].(bool),
+	)
 }
 
 func mustJSON(t *testing.T, value any) []byte {

@@ -5,13 +5,13 @@
     "version": "0.101.2",
     "released_commit": "4e677062f23f232be9fda3e559279937a0f3d007",
     "development_baseline_commit": "26bcad84d786a4e9dd9bd3654179ae3f3c8c9059",
-    "evidence_source_commit": "223be7f657dec7550387699fc9b9a19a4096cf5a",
+    "evidence_source_commit": "cc797e8af47d6910f248bf0226b555c0b6424d6c",
     "platform": "linux/amd64",
     "release_repository": "https://github.com/jamesbraid/terraform-provider-unifi",
     "release_archive": "terraform-provider-unifi_0.101.2_linux_amd64.zip",
     "release_archive_sha256": "9954f29512f0049f0e86908e2fc11a8a0e3cb11f980f3468d5e3da4005fab4b8",
     "release_binary_sha256": "c580db83441331fb8c194b9c894730e624743cdaf73b02a990c0655b47fc2d48",
-    "head_binary_sha256": "8d20a843f9b53e5caaf0833390ed71507efa270921ca4eb917728f2ae862c114"
+    "head_binary_sha256": "31340e31f0ba86ae4bf5cab8d51157316829403e0d14e75e72ff89e13a7191f1"
   },
   "sdk": {
     "module_path": "github.com/ubiquiti-community/go-unifi",
@@ -64,13 +64,27 @@
   },
   "generated_docs_sha256": "9f3f04598ae43b4b39c062491f7546e0a990b127b6340361bc7bc48d563c95cb",
   "verification": {
-    "carrier_commit": "ab163bb932b480ff7a3f03e6b5ec992206fe411e",
-    "pipeline_number": 4,
+    "carrier_commit": "cc797e8af47d6910f248bf0226b555c0b6424d6c",
+    "pipeline_number": 19,
     "clean_builds": 2,
     "build_network": "none",
+    "head_evidence_build_flags": [
+      "-trimpath",
+      "-buildvcs=false"
+    ],
     "release_to_head": true,
     "shared_projection_equal": true,
     "generated_docs_unchanged": true,
-    "raw_linux_cli_outputs_retained": false
+    "raw_linux_cli_outputs_retained": true,
+    "raw_linux_cli_evidence": {
+      "repository": "infra/unifi-build-evidence",
+      "receipt": "receipts/provider-baseline/receipt.json",
+      "receipt_sha256": "f1348f983477203cd744843f72a1c388b99f8dfccb001b62bdfb2f32848dc99d",
+      "required_raw_outputs": [
+        "raw/terraform-1.15.8-head.json",
+        "raw/tofu-1.12.1-head.json"
+      ],
+      "status": "retained_and_verified"
+    }
   }
 }

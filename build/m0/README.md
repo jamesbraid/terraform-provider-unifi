@@ -10,8 +10,9 @@ action, or ephemeral-resource schemas returned by the CLI. The companion
 digest manifest records the complete projection digest and one digest for each
 named schema.
 
-Raw CLI output belongs in the restricted evidence store. It is useful for
-diagnosing a mismatch but is not a committed compatibility contract.
+Raw CLI output belongs in the restricted `infra/unifi-build-evidence`
+repository. It is useful for diagnosing a mismatch but is not a committed
+public compatibility contract.
 
 The accepted M0c manifest is `provider-baseline.json`; per-schema hashes are in
 `provider-schema-digests.json`. Terraform 1.15.8 returns action and list-resource
@@ -20,9 +21,25 @@ are retained and hashed. The gate compares release to HEAD within each CLI and
 also compares the shared projection exactly.
 
 The first passing private carrier retained the raw outputs only for the life of
-the job. That is recorded as an evidence limitation in the baseline manifest;
-a later evidence-carrier update must persist the raw diagnostic envelopes
-before release promotion.
+the job. The baseline keeps `raw_linux_cli_outputs_retained` false until
+`receipts/provider-baseline/receipt.json` verifies the Terraform 1.15.8 and
+OpenTofu 1.12.1 raw files in the private evidence repository. The M1 script
+rejects an evidence output directory inside this repository.
+
+M1 builds the same HEAD provider binary twice with fresh Go build caches,
+networked module lookup disabled, and VCS embedding disabled. The lifecycle
+builder uses the same flags even though it builds from a Git archive. M1 drives
+both schema CLIs through development overrides against that binary, then
+repeats the queries against the released v0.101.2 binary. Release and HEAD must
+match within each CLI. Terraform and OpenTofu must also match after removing
+only the categories absent from OpenTofu 1.12.1.
+
+Set `M1_EVIDENCE_OUTPUT_DIRECTORY` to a restricted external directory to retain
+the four raw envelopes, the two canonical HEAD projections, checksums, and the
+M1 receipt. `M1_EVIDENCE_ARCHIVE` optionally writes the same verified bundle as
+a compressed archive. Set `M1_LIFECYCLE_RECEIPT` during qualification to emit
+an exact-binary management sidecar; its source commit and provider hash must
+match the lifecycle receipt.
 
 `port-forward-shadow.json` records the nested-shape and mapping-test shadow
 baseline. It deliberately does not claim acceptance, lifecycle, migration, or
