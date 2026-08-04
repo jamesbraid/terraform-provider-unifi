@@ -15,6 +15,7 @@ func TestCanonicalizeStripsOnlyCLIEnvelope(t *testing.T) {
 			"registry.terraform.io/ubiquiti-community/unifi":{
 				"provider":{"version":0,"block":{"attributes":{"username":{"type":"string","optional":true}}}},
 				"resource_schemas":{"unifi_dns_record":{"version":1,"block":{"attributes":{"ttl":{"type":"string","required":true}}}}},
+				"resource_identity_schemas":{"unifi_dns_record":{"version":0,"identity_attributes":["id"]}},
 				"data_source_schemas":{"unifi_dns_record":{"version":0,"block":{}}},
 				"list_resource_schemas":{"unifi_dns_record":{"version":0,"block":{}}},
 				"functions":{"normalize_name":{"return_type":"string"}},
@@ -33,6 +34,7 @@ func TestCanonicalizeStripsOnlyCLIEnvelope(t *testing.T) {
 				"functions":{"normalize_name":{"return_type":"string"}},
 				"list_resource_schemas":{"unifi_dns_record":{"block":{},"version":0}},
 				"data_source_schemas":{"unifi_dns_record":{"block":{},"version":0}},
+				"resource_identity_schemas":{"unifi_dns_record":{"identity_attributes":["id"],"version":0}},
 				"resource_schemas":{"unifi_dns_record":{"block":{"attributes":{"ttl":{"required":true,"type":"string"}}},"version":1}},
 				"provider":{"block":{"attributes":{"username":{"optional":true,"type":"string"}}},"version":0}
 			}
@@ -58,6 +60,7 @@ func TestCanonicalizeStripsOnlyCLIEnvelope(t *testing.T) {
 	for _, category := range []string{
 		`"provider"`,
 		`"resource_schemas"`,
+		`"resource_identity_schemas"`,
 		`"data_source_schemas"`,
 		`"list_resource_schemas"`,
 		`"functions"`,
@@ -75,6 +78,7 @@ func TestCanonicalizeStripsOnlyCLIEnvelope(t *testing.T) {
 		`"canonical_schema_sha256"`,
 		`"provider"`,
 		`"resource_schemas.unifi_dns_record"`,
+		`"resource_identity_schemas.unifi_dns_record"`,
 		`"data_source_schemas.unifi_dns_record"`,
 		`"list_resource_schemas.unifi_dns_record"`,
 		`"functions.normalize_name"`,

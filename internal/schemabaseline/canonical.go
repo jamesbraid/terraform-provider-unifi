@@ -13,6 +13,7 @@ import (
 
 var schemaCategories = []string{
 	"resource_schemas",
+	"resource_identity_schemas",
 	"data_source_schemas",
 	"list_resource_schemas",
 	"functions",
