@@ -18,12 +18,12 @@ var validDispositions = map[string]struct{}{
 // Compile resolves structural facts and provider policy into generator input
 // and reviewable reports. It rejects drift instead of guessing policy.
 func Compile(input CompileInput) (Result, error) {
-	var source bootstrap
-	if err := decodeJSON("bootstrap", input.Bootstrap, &source, true); err != nil {
-		return Result{}, err
-	}
 	var rules policy
 	if err := decodeJSON("policy", input.Policy, &rules, true); err != nil {
+		return Result{}, err
+	}
+	source, err := structuralSource(input, rules)
+	if err != nil {
 		return Result{}, err
 	}
 	var baseline baselineManifest
@@ -194,6 +194,82 @@ func Compile(input CompileInput) (Result, error) {
 		ProviderCodeSpec: providerCodeSpec,
 		ImpactReport:     impactBytes,
 		MappingReport:    mappingBytes,
+	}, nil
+}
+
+func structuralSource(input CompileInput, rules policy) (bootstrap, error) {
+	if len(input.Bootstrap) > 0 && len(input.Catalog) > 0 {
+		return bootstrap{}, fmt.Errorf("bootstrap and catalog inputs are mutually exclusive")
+	}
+	if len(input.Catalog) == 0 {
+		var source bootstrap
+		if err := decodeJSON("bootstrap", input.Bootstrap, &source, true); err != nil {
+			return bootstrap{}, err
+		}
+		return source, nil
+	}
+
+	var catalog observedCatalog
+	if err := decodeJSON("catalog", input.Catalog, &catalog, true); err != nil {
+		return bootstrap{}, err
+	}
+	if catalog.FormatVersion != 1 {
+		return bootstrap{}, fmt.Errorf("unsupported catalog format")
+	}
+	if rules.CatalogID == "" || catalog.CatalogID != rules.CatalogID {
+		return bootstrap{}, fmt.Errorf("catalog ID mismatch: catalog %q, policy %q", catalog.CatalogID, rules.CatalogID)
+	}
+	if rules.OperationDigest == "" || catalog.Admission.OperationDigest != rules.OperationDigest {
+		return bootstrap{}, fmt.Errorf("admitted operation digest mismatch")
+	}
+	if catalog.Admission.State != "candidate" && catalog.Admission.State != "admitted" {
+		return bootstrap{}, fmt.Errorf("catalog admission state %q is not consumable", catalog.Admission.State)
+	}
+	if catalog.Sources.SpecificationSHA256 != rules.SourceSpecificationSHA256 {
+		return bootstrap{}, fmt.Errorf(
+			"catalog specification digest mismatch: catalog %q, policy %q",
+			catalog.Sources.SpecificationSHA256,
+			rules.SourceSpecificationSHA256,
+		)
+	}
+	if len(catalog.Conflicts) != 0 {
+		return bootstrap{}, fmt.Errorf("catalog contains %d unresolved conflicts", len(catalog.Conflicts))
+	}
+
+	coverage := make(map[string]string, len(catalog.Coverage))
+	for _, record := range catalog.Coverage {
+		if _, duplicate := coverage[record.ID]; duplicate {
+			return bootstrap{}, fmt.Errorf("duplicate catalog coverage for %q", record.ID)
+		}
+		coverage[record.ID] = record.State
+	}
+	fields := make([]bootstrapField, 0, len(catalog.StructuralRecords))
+	seen := make(map[string]struct{}, len(catalog.StructuralRecords))
+	for _, record := range catalog.StructuralRecords {
+		expectedID := "unifi.network.dns_record.field." + record.Field
+		if record.ID != expectedID {
+			return bootstrap{}, fmt.Errorf("unstable catalog ID %q for field %q", record.ID, record.Field)
+		}
+		if _, duplicate := seen[record.Field]; duplicate {
+			return bootstrap{}, fmt.Errorf("duplicate catalog field %q", record.Field)
+		}
+		seen[record.Field] = struct{}{}
+		if coverage[record.ID] != "observed" {
+			return bootstrap{}, fmt.Errorf("incomplete catalog coverage for %q", record.ID)
+		}
+		fields = append(fields, bootstrapField{Name: record.Field, Type: record.Type})
+	}
+	if len(fields) == 0 {
+		return bootstrap{}, fmt.Errorf("catalog has no structural records")
+	}
+	return bootstrap{
+		FormatVersion: 1,
+		Source: bootstrapSource{
+			Repository:          "catalog:" + catalog.CatalogID,
+			Commit:              catalog.Admission.OperationDigest,
+			SpecificationSHA256: catalog.Sources.SpecificationSHA256,
+		},
+		Resource: bootstrapSchema{Name: rules.Resource, Fields: fields},
 	}, nil
 }
 

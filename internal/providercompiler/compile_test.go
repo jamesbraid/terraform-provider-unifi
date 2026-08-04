@@ -136,6 +136,86 @@ func TestCompilePinnedDNSInputs(t *testing.T) {
 	}
 }
 
+func TestCompileCatalogMatchesBootstrapSpecification(t *testing.T) {
+	policyObject := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+	policyObject["catalog_id"] = "unifi.network.dns_record@10.4.57"
+	policyObject["operation_digest"] = "operation-digest"
+	policy := mustJSON(t, policyObject)
+	baseline := testBaseline(t)
+	bootstrapResult, err := Compile(CompileInput{
+		Bootstrap:       testBootstrap(t, dnsFieldNames()),
+		Policy:          policy,
+		BaselineDigests: baseline,
+	})
+	if err != nil {
+		t.Fatalf("bootstrap Compile() error = %v", err)
+	}
+	catalogResult, err := Compile(CompileInput{
+		Catalog:         testCatalog(t, dnsFieldNames()),
+		Policy:          policy,
+		BaselineDigests: baseline,
+	})
+	if err != nil {
+		t.Fatalf("catalog Compile() error = %v", err)
+	}
+	if string(catalogResult.ProviderCodeSpec) != string(bootstrapResult.ProviderCodeSpec) {
+		t.Fatalf("catalog changed provider code specification:\nbootstrap: %s\ncatalog: %s", bootstrapResult.ProviderCodeSpec, catalogResult.ProviderCodeSpec)
+	}
+}
+
+func TestCompileCatalogFailsClosed(t *testing.T) {
+	policyObject := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+	policyObject["catalog_id"] = "unifi.network.dns_record@10.4.57"
+	policyObject["operation_digest"] = "operation-digest"
+	tests := map[string]struct {
+		mutate func(map[string]any)
+		want   string
+	}{
+		"unresolved conflict": {
+			mutate: func(catalog map[string]any) {
+				catalog["conflicts"] = []any{map[string]any{"kind": "type_mismatch", "field": "ttl"}}
+			},
+			want: "unresolved conflicts",
+		},
+		"incomplete coverage": {
+			mutate: func(catalog map[string]any) {
+				catalog["coverage"] = catalog["coverage"].([]any)[1:]
+			},
+			want: "incomplete catalog coverage",
+		},
+		"unstable semantic ID": {
+			mutate: func(catalog map[string]any) {
+				catalog["structural_records"].([]any)[0].(map[string]any)["id"] = "dns.enabled"
+			},
+			want: "unstable catalog ID",
+		},
+		"unpinned operation": {
+			mutate: func(catalog map[string]any) {
+				catalog["admission"].(map[string]any)["operation_digest"] = "different-operation"
+			},
+			want: "admitted operation digest mismatch",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			var catalog map[string]any
+			if err := json.Unmarshal(testCatalog(t, dnsFieldNames()), &catalog); err != nil {
+				t.Fatal(err)
+			}
+			test.mutate(catalog)
+			_, err := Compile(CompileInput{
+				Catalog:         mustJSON(t, catalog),
+				Policy:          mustJSON(t, policyObject),
+				BaselineDigests: testBaseline(t),
+			})
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want containing %q", err, test.want)
+			}
+		})
+	}
+}
+
 func dnsFieldNames() []string {
 	return []string{"enabled", "key", "port", "priority", "record_type", "ttl", "value", "weight"}
 }
@@ -225,6 +305,44 @@ func testBaseline(t *testing.T) []byte {
 			"resource_schemas.unifi_dns_record":          "resource-digest",
 			"resource_identity_schemas.unifi_dns_record": "identity-digest",
 			"list_resource_schemas.unifi_dns_record":     "list-digest",
+		},
+	})
+}
+
+func testCatalog(t *testing.T, fieldNames []string) []byte {
+	t.Helper()
+	structural := make([]any, 0, len(fieldNames))
+	coverage := make([]any, 0, len(fieldNames))
+	for _, name := range fieldNames {
+		fieldType := "int64"
+		switch name {
+		case "enabled":
+			fieldType = "bool"
+		case "key", "record_type", "value":
+			fieldType = "string"
+		}
+		id := "unifi.network.dns_record.field." + name
+		structural = append(structural, map[string]any{
+			"id":                id,
+			"field":             name,
+			"type":              fieldType,
+			"definition_sha256": "definition-digest",
+			"secret_candidate":  false,
+		})
+		coverage = append(coverage, map[string]any{"id": id, "state": "observed"})
+	}
+	return mustJSON(t, map[string]any{
+		"format_version": 1,
+		"catalog_id":     "unifi.network.dns_record@10.4.57",
+		"sources": map[string]any{
+			"specification_sha256": testSpecificationDigest,
+		},
+		"structural_records": structural,
+		"conflicts":          []any{},
+		"coverage":           coverage,
+		"admission": map[string]any{
+			"state":            "candidate",
+			"operation_digest": "operation-digest",
 		},
 	})
 }

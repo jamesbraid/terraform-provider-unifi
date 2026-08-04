@@ -21,7 +21,7 @@ func TestRunProducesDeterministicDNSArtifacts(t *testing.T) {
 		outputDir := t.TempDir()
 		var stderr bytes.Buffer
 		exitCode := run([]string{
-			"-bootstrap", filepath.Join(root, "provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json"),
+			"-catalog", filepath.Join(root, "provider-codegen/catalog/go-unifi-v1.102.0-dns-record.catalog.json"),
 			"-policy", filepath.Join(root, "provider-codegen/policy/dns_record.json"),
 			"-baseline", filepath.Join(root, "build/m0/provider-schema-digests.json"),
 			"-output-dir", outputDir,
