@@ -1,0 +1,48 @@
+{
+  "format_version": 1,
+  "gate": "M0 native arm64 UOS DNS restart qualification",
+  "result": "pass",
+  "source_commit": "dd4d375aab24012c2bf9ebd92f7c2785be98061c",
+  "platform": "linux/arm64",
+  "provider": {
+    "version": "0.101.2",
+    "binary_sha256": "8a06e4b046623a49a3b0276dc196e9252d6e76971f7f9c94d921278b686443da"
+  },
+  "terraform": {
+    "version": "1.15.8",
+    "image_sha256": "sha256:7ae513256f7ce67879e218ae8593d6fbe216ec9e123abe6c94e4e10704857963",
+    "binary_sha256": "00f55981f5215594c418cd6b20f44fa4c99f9126650602e65d533d131005ea81"
+  },
+  "tofu": {
+    "version": "1.12.1",
+    "image_sha256": "sha256:1cdf44e7a44a67c7838ada83c71ad28b4c4e1571b47ad1c5b592624c2c8f35b5",
+    "binary_sha256": "a34a240447e7b061f040bc5ae26036f3d9f882a68da5d70c7851d367c02a85ad"
+  },
+  "target": {
+    "product": "UniFi OS Server",
+    "version": "5.1.21",
+    "image_build": "5.1.21-2",
+    "network_version": "10.4.57",
+    "image_sha256": "sha256:dc7e093b65c4ec27af1bba8b7e7639bb53805266c9fdbcb869c03e94bab7c2cf",
+    "architecture": "arm64",
+    "runtime": "systemd",
+    "authentication": "per-volume API key"
+  },
+  "lifecycle": {
+    "fresh_persisted_target_per_cli": true,
+    "create": true,
+    "persisted_restart": true,
+    "api_key_persisted": true,
+    "refresh": true,
+    "no_op_plan": true,
+    "delete": true,
+    "cleanup": true
+  },
+  "normalized_state_sha256": "ac691edf46543fa21b7795e1b4533b6dc9431aba86155f1abaa207070abac409",
+  "cli_outcomes_equivalent": true,
+  "evidence_redaction": {
+    "api_key_retained": false,
+    "raw_state_retained": false,
+    "fixtures_are_synthetic": true
+  }
+}

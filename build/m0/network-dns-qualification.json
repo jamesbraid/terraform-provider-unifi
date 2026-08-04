@@ -56,8 +56,8 @@
   },
   "coverage_limits": {
     "v0_ttl_upgrade": "covered_by_provider_unit_suite",
-    "persisted_uos_restart": "pending",
-    "native_arm64_uos_matrix": "pending"
+    "persisted_uos_restart": "covered_by_uos-dns-qualification.json",
+    "native_arm64_uos_matrix": "covered_by_uos-dns-qualification.json"
   },
-  "milestone_0_complete": false
+  "milestone_0_complete": true
 }
