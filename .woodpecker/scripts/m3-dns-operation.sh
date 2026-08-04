@@ -96,6 +96,8 @@ go test ./unifi \
 
 M1_EXECUTION="${M3_EXECUTION:-local-m3}" \
 M1_RECEIPT_OUTPUT="${work_root}/schema-gate.json" \
+M1_LIFECYCLE_RECEIPT="${lifecycle_receipt}" \
+M1_MANAGEMENT_SIDECAR_OUTPUT="${M3_MANAGEMENT_SIDECAR_OUTPUT:-${work_root}/management-sidecar.json}" \
 TERRAFORM_BIN="${terraform_bin}" \
 TOFU_BIN="${tofu_bin}" \
     .woodpecker/scripts/m1-dns-compiler.sh
@@ -105,6 +107,11 @@ test "$(jq -r '.terraform_version' "${work_root}/schema-gate.json")" = 1.15.8
 test "$(jq -r '.tofu_version' "${work_root}/schema-gate.json")" = 1.12.1
 test "$(jq -r '.provider_binary_sha256' "${work_root}/schema-gate.json")" = \
     "$(jq -r '.provider_binary_sha256' "${lifecycle_receipt}")"
+management_sidecar_sha256=$(sha256sum \
+    "${M3_MANAGEMENT_SIDECAR_OUTPUT:-${work_root}/management-sidecar.json}" | awk '{print $1}')
+readonly management_sidecar_sha256
+test "$(jq -r '.management_sidecar_sha256' "${work_root}/schema-gate.json")" = \
+    "${management_sidecar_sha256}"
 lifecycle_result=pass
 lifecycle_sha256=$(sha256sum "${lifecycle_receipt}" | awk '{print $1}')
 readonly lifecycle_result lifecycle_sha256
@@ -127,6 +134,7 @@ jq --indent 2 --null-input \
     --arg lifecycle_result "${lifecycle_result}" \
     --arg lifecycle_receipt "${lifecycle_receipt}" \
     --arg lifecycle_sha256 "${lifecycle_sha256}" \
+    --arg management_sidecar_sha256 "${management_sidecar_sha256}" \
     --slurpfile schema_gate "${work_root}/schema-gate.json" \
     '{
         format_version: 1,
@@ -161,6 +169,7 @@ jq --indent 2 --null-input \
         deterministic_regeneration: $schema_gate[0].deterministic_regeneration,
         shared_cli_projection_equal: $schema_gate[0].shared_cli_projection_equal,
         provider_binary_sha256: $schema_gate[0].provider_binary_sha256,
+        management_sidecar_sha256: $management_sidecar_sha256,
         lifecycle: {
             unit_and_http_boundary: "passed",
             baseline_receipt: "build/m0/network-dns-qualification.json",

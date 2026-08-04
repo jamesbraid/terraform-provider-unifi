@@ -137,7 +137,8 @@ docker run --rm --platform linux/amd64 \
     --mount "type=volume,src=${go_cache_volume},dst=/go" \
     --mount "type=volume,src=${tools_volume},dst=/tools" \
     --workdir /source "${go_image}" \
-    go build -trimpath -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
+    go build -trimpath -buildvcs=false \
+    -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
 git archive "${old_provider_commit}" | docker run --rm --interactive \
     --entrypoint /bin/sh \
     --mount "type=volume,src=${old_source_volume},dst=/source" \
