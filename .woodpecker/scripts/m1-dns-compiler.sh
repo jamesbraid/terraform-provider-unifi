@@ -263,15 +263,15 @@ if [[ ${raw_retained} = true ]]; then
         if [[ ${M1_PRINT_EVIDENCE_BUNDLE:-false} = true ]]; then
             archive_size=$(wc -c <"${M1_EVIDENCE_ARCHIVE}")
             readonly archive_size
-            if (( archive_size > 1048576 )); then
-                echo "M1 evidence archive exceeds the 1 MiB log transport limit" >&2
+            if (( archive_size > 786432 )); then
+                echo "M1 evidence archive exceeds the 768 KiB transport limit" >&2
                 exit 1
             fi
             printf 'M1_EVIDENCE_ARCHIVE_SHA256=%s\n' \
                 "$(sha256sum "${M1_EVIDENCE_ARCHIVE}" | awk '{print $1}')"
-            printf 'M1_EVIDENCE_BUNDLE_BASE64='
-            base64 -w 0 "${M1_EVIDENCE_ARCHIVE}"
-            printf '\n'
+            printf 'M1_EVIDENCE_BUNDLE_BASE64_BEGIN\n'
+            base64 "${M1_EVIDENCE_ARCHIVE}"
+            printf 'M1_EVIDENCE_BUNDLE_BASE64_END\n'
         fi
     fi
 fi
