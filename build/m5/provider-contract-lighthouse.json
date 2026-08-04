@@ -1,0 +1,43 @@
+{
+  "format_version": 1,
+  "milestone": "M5",
+  "result": "pass",
+  "resource": "unifi_dns_record",
+  "mode": "provider_projection_required",
+  "provider": {
+    "contract": "provider-contracts/unifi_dns_record.v1.json",
+    "contract_sha256": "992b8e8167484ac00a65d1d03c125445f0df580548eeaed190726ad0868613c0",
+    "binary_sha256": "6e9ada6323822a3c54250597c1ef62b5ccafd4d927444eb852ad9f0c2bc39701",
+    "normal_commands_require_contract": false
+  },
+  "ubitofu": {
+    "repository": "infra/ubitofu",
+    "commit": "27cd04f980cb4544a93ee35f2ae8c2b97558adf5",
+    "woodpecker_pipeline": 369,
+    "woodpecker_result": "success",
+    "legacy_manifest_authoritative": true,
+    "contract_resolution_opt_in": true,
+    "corpus": "tests/fixtures/provider-contract/v1/dns-record.json",
+    "corpus_sha256": "69b225b321913c2d917353b116905987feb5500ea19121d2495f6dda32ff6220"
+  },
+  "parity": {
+    "enumeration": true,
+    "import_identity": true,
+    "capture_eligibility": true,
+    "redaction": true,
+    "generated_import_hcl": true,
+    "plan_outcomes_classified": true,
+    "coverage": true,
+    "receipt_inputs": true
+  },
+  "fail_closed": [
+    "sidecar-checksum",
+    "provider-binary",
+    "provider-schema",
+    "schema-cli-name",
+    "schema-cli-version",
+    "schema-cli-binary",
+    "legacy-manifest-mapping"
+  ],
+  "trust": "operator-pinned-checksum"
+}
