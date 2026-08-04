@@ -167,17 +167,19 @@ terraform_binary_sha256=$(sha256sum "${work_root}/tools/terraform" | awk '{print
 tofu_binary_sha256=$(sha256sum "${work_root}/tools/tofu" | awk '{print $1}')
 
 wait_healthy() {
-    for _ in $(seq 1 180); do
+    for _ in $(seq 1 240); do
         status=$(docker inspect --format '{{.State.Health.Status}}' "${controller}")
         if [[ ${status} = healthy ]]; then
             return
         fi
-        if [[ ${status} = unhealthy ]]; then
+        if [[ $(docker inspect --format '{{.State.Running}}' "${controller}") != true ]]; then
+            docker inspect --format '{{json .State}}' "${controller}" >&2
             docker logs "${controller}" >&2
             return 1
         fi
         sleep 5
     done
+    docker inspect --format '{{json .State.Health}}' "${controller}" >&2
     docker logs "${controller}" >&2
     return 1
 }
