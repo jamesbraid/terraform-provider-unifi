@@ -288,6 +288,7 @@ Optional:
 - `accounting_enabled` (Boolean) Enable RADIUS accounting.
 - `acct_port` (Number) RADIUS accounting port.
 - `auth_port` (Number) RADIUS authentication port.
+- `enabled` (Boolean) Enable the site's RADIUS server. A VPN server that authenticates against RADIUS (`unifi_vpn_server` with `openvpn` or `l2tp`) is rejected with `api.err.RadiusServerNotEnabled` while this is off.
 - `interim_update_interval` (String) Interim update interval, as a Go duration string (e.g. `1h`, `3600s`).
 - `secret` (String, Sensitive) RADIUS shared secret.
 

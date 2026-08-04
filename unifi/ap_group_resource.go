@@ -3,6 +3,7 @@ package unifi
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
@@ -16,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -131,12 +133,21 @@ func (r *apGroupResource) Schema(
 				},
 			},
 			"device_macs": schema.SetAttribute{
-				Description: "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members.",
-				Required:    true,
-				// hwtypes.MACAddressType gives each element semantic equality so
-				// case and separator differences (e.g. AA-BB-.. vs aa:bb:..) do
-				// not produce spurious diffs.
+				Description: "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members. Omit it to leave the membership as the controller has it.",
+				// Optional + Computed rather than Required so the plan modifier
+				// below may keep the prior value: Terraform rejects a planned
+				// value that differs from config for a Required attribute, and
+				// keeping the prior spelling of a MAC is exactly that.
+				Optional: true,
+				Computed: true,
+				// hwtypes.MACAddressType gives each element semantic equality,
+				// which settles the value the controller reports against the one
+				// in state. It does not reach the set itself: see the modifier.
 				ElementType: hwtypes.MACAddressType{},
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.UseStateForUnknown(),
+					keepEquivalentMACs{},
+				},
 			},
 			"timeouts": timeouts.Attributes(
 				ctx,
@@ -476,11 +487,91 @@ func (r *apGroupResource) apGroupToModel(
 	if macs == nil {
 		macs = []string{}
 	}
-	macsSet, d := types.SetValueFrom(ctx, hwtypes.MACAddressType{}, macs)
-	diags.Append(d...)
-	model.DeviceMacs = macsSet
+	// Keep the representation already in state when the controller returns the
+	// same addresses. hwtypes.MACAddressType gives each element semantic
+	// equality, but a Set identifies its elements by their string value, so
+	// that never reaches the set itself: overwriting "AA-BB-.." with the
+	// controller's "aa:bb:.." leaves a diff that no apply can settle, because
+	// device_macs is Required and the config keeps producing the original form.
+	if !macSetsEqual(ctx, model.DeviceMacs, macs) {
+		macsSet, d := types.SetValueFrom(ctx, hwtypes.MACAddressType{}, macs)
+		diags.Append(d...)
+		model.DeviceMacs = macsSet
+	}
 
 	return diags
+}
+
+// keepEquivalentMACs keeps the stored device_macs when the configuration names
+// the same addresses in a different format.
+//
+// hwtypes.MACAddressType compares elements semantically, but a Set identifies
+// its members by their string value, so that never reaches the set. Terraform
+// also never consults semantic equality while building a plan — the framework
+// applies it on create, read and update only. Rewriting an applied
+// aa:bb:cc:dd:ee:ff as AA-BB-CC-DD-EE-FF would otherwise plan a change with
+// nothing behind it. A real membership change still plans.
+type keepEquivalentMACs struct{}
+
+func (keepEquivalentMACs) Description(_ context.Context) string {
+	return "Keeps the stored MAC addresses when the configuration writes the same ones differently."
+}
+
+func (m keepEquivalentMACs) MarkdownDescription(ctx context.Context) string {
+	return m.Description(ctx)
+}
+
+func (keepEquivalentMACs) PlanModifySet(
+	ctx context.Context,
+	req planmodifier.SetRequest,
+	resp *planmodifier.SetResponse,
+) {
+	if req.StateValue.IsNull() || req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	var configMACs []string
+	if diags := req.ConfigValue.ElementsAs(ctx, &configMACs, false); diags.HasError() {
+		return
+	}
+	if macSetsEqual(ctx, req.StateValue, configMACs) {
+		resp.PlanValue = req.StateValue
+	}
+}
+
+// canonicalMAC reduces a MAC to a comparable form, ignoring the separator and
+// case differences that distinguish "AA-BB-CC-DD-EE-FF" from "aa:bb:cc:dd:ee:ff".
+func canonicalMAC(mac string) string {
+	return strings.ToLower(strings.NewReplacer("-", "", ":", "", ".", "").Replace(mac))
+}
+
+// macSetsEqual reports whether a set already in state holds the same addresses
+// the controller returned, disregarding how each one is written.
+func macSetsEqual(ctx context.Context, current types.Set, apiMACs []string) bool {
+	if current.IsNull() || current.IsUnknown() {
+		return false
+	}
+
+	var stateMACs []string
+	if diags := current.ElementsAs(ctx, &stateMACs, false); diags.HasError() {
+		return false
+	}
+	if len(stateMACs) != len(apiMACs) {
+		return false
+	}
+
+	seen := make(map[string]int, len(stateMACs))
+	for _, mac := range stateMACs {
+		seen[canonicalMAC(mac)]++
+	}
+	for _, mac := range apiMACs {
+		key := canonicalMAC(mac)
+		if seen[key] == 0 {
+			return false
+		}
+		seen[key]--
+	}
+	return true
 }
 
 // ListResourceConfigSchema implements [list.ListResource].

@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
@@ -886,13 +887,32 @@ func (r *networkResource) Configure(
 	r.client = client
 }
 
-// ModifyPlan forces setting_preference to "manual" when DHCP relay is enabled.
+// planBoolAt reads a bool from the plan, treating null and unknown as false.
+func planBoolAt(
+	ctx context.Context,
+	plan tfsdk.Plan,
+	p path.Path,
+	diags *diag.Diagnostics,
+) bool {
+	var v types.Bool
+	diags.Append(plan.GetAttribute(ctx, p, &v)...)
+	return v.ValueBool()
+}
+
+// ModifyPlan forces setting_preference to "manual" when the plan enables a
+// field the controller only honors under "manual".
 //
-// With setting_preference "auto" the controller auto-manages the network and
-// re-enables its built-in DHCP server, which silently turns dhcp_relay off
-// (the two cannot coexist). Forcing "manual" makes the controller honor the
-// explicit relay configuration. We only override the default; an explicit
-// user-provided value is left untouched.
+// On "auto" the controller manages the advanced block itself and silently
+// discards fields sent in the same payload — dhcpguard_enabled, igmp_snooping,
+// and the dhcpd dns/ntp/time-offset toggles are stored as false however they
+// were sent. It also re-enables its built-in DHCP server, which turns
+// dhcp_relay off, since the two cannot coexist. The write succeeds either way,
+// so without this the setting simply never takes effect and the post-apply read
+// contradicts the plan.
+//
+// Only a true value forces the switch: "auto" storing false for a field the
+// practitioner also set to false is the same outcome, so leave those alone.
+// An explicit user-provided setting_preference is always respected.
 func (r *networkResource) ModifyPlan(
 	ctx context.Context,
 	req resource.ModifyPlanRequest,
@@ -909,15 +929,19 @@ func (r *networkResource) ModifyPlan(
 		return // user set it explicitly: respect their choice
 	}
 
-	var relay types.Object
-	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("dhcp_relay"), &relay)...)
-	if resp.Diagnostics.HasError() || relay.IsNull() || relay.IsUnknown() {
-		return
-	}
+	needsManual := planBoolAt(ctx, req.Plan, path.Root("igmp_snooping"), &resp.Diagnostics) ||
+		planBoolAt(ctx, req.Plan,
+			path.Root("dhcp_relay").AtName("enabled"), &resp.Diagnostics) ||
+		planBoolAt(ctx, req.Plan,
+			path.Root("dhcp_guarding").AtName("enabled"), &resp.Diagnostics) ||
+		planBoolAt(ctx, req.Plan,
+			path.Root("dhcp_server").AtName("dns_enabled"), &resp.Diagnostics) ||
+		planBoolAt(ctx, req.Plan,
+			path.Root("dhcp_server").AtName("ntp_enabled"), &resp.Diagnostics) ||
+		planBoolAt(ctx, req.Plan,
+			path.Root("dhcp_server").AtName("time_offset_enabled"), &resp.Diagnostics)
 
-	var dr dhcpRelayModel
-	resp.Diagnostics.Append(relay.As(ctx, &dr, basetypes.ObjectAsOptions{})...)
-	if resp.Diagnostics.HasError() || !dr.Enabled.ValueBool() {
+	if resp.Diagnostics.HasError() || !needsManual {
 		return
 	}
 
@@ -1565,10 +1589,6 @@ func (r *networkResource) modelToNetwork(
 				d := dhcpRelay.Servers.ElementsAs(ctx, &servers, false)
 				diags.Append(d...)
 				if !diags.HasError() {
-					// The go-unifi client's marshalCorporate maps RemoteVPNSubnets → dhcp_relay_servers
-					// JSON field. marshalGuest uses DHCPRelayServers directly. Setting both ensures
-					// relay servers are serialized correctly for any network purpose.
-					network.RemoteVPNSubnets = servers
 					network.DHCPRelayServers = servers
 				}
 			}

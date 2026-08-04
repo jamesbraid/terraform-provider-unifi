@@ -13,3 +13,18 @@ output "port_profile_native_network_id" {
   description = "The native (untagged) network ID for the port profile."
   value       = data.unifi_port_profile.all.native_networkconf_id
 }
+
+output "port_profile_tagged_vlan_mode" {
+  description = "The stored tagged VLAN mode (`auto`, `block_all`, or `custom`)."
+  value       = data.unifi_port_profile.all.tagged_vlan_mgmt
+}
+
+output "port_profile_tagged_network_ids" {
+  description = "The actual tagged networks after applying the mode and exclusions."
+  value       = data.unifi_port_profile.all.tagged_networkconf_ids
+}
+
+output "port_profile_excluded_network_ids" {
+  description = "The controller-facing exclusions used by Custom mode."
+  value       = data.unifi_port_profile.all.excluded_networkconf_ids
+}

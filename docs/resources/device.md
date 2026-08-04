@@ -200,8 +200,6 @@ Optional:
 
 - `antenna_gain` (Number) Antenna gain.
 - `antenna_id` (Number) Antenna ID.
-- `assisted_roaming_enabled` (Boolean) Enable assisted roaming.
-- `assisted_roaming_rssi` (Number) Assisted roaming RSSI threshold.
 - `channel` (String) Channel number or 'auto'.
 - `dfs` (Boolean) Enable DFS (Dynamic Frequency Selection).
 - `hard_noise_floor_enabled` (Boolean) Enable hard noise floor.

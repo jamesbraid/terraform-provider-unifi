@@ -3,6 +3,8 @@ package unifi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -13,8 +15,11 @@ import (
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
 )
 
 // TestMergePortOverridesByIndex guards #266: declaring a subset of port_override
@@ -305,13 +310,21 @@ func Test_buildMinimalUpdateDevice_meshStaVapEnabled(t *testing.T) {
 	})
 }
 
+// TestAccDeviceFramework_basic drives whichever device the harness started for
+// it. The MAC comes from the herder's ready event rather than from a literal,
+// because a literal can only name a controller-simulated demo device, which
+// never informs and so never exercises adoption for real.
 func TestAccDeviceFramework_basic(t *testing.T) {
+	mac := os.Getenv(controllertest.EnvAccDeviceMAC)
+	if mac == "" {
+		t.Skipf("%s not set; skipping device acceptance test", controllertest.EnvAccDeviceMAC)
+	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDeviceFrameworkConfig_basic(),
+				Config: testAccDeviceFrameworkConfig_basic(mac),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_device.test", "id"),
 					resource.TestCheckResourceAttr("unifi_device.test", "name", "Test Device"),
@@ -328,15 +341,15 @@ func TestAccDeviceFramework_basic(t *testing.T) {
 	})
 }
 
-func testAccDeviceFrameworkConfig_basic() string {
-	return `
+func testAccDeviceFrameworkConfig_basic(mac string) string {
+	return fmt.Sprintf(`
 resource "unifi_device" "test" {
-	mac  = "00:27:22:00:00:02"
+	mac  = %q
 	name = "Test Device"
 	allow_adoption = true
 	forget_on_destroy = false
 }
-`
+`, mac)
 }
 
 func TestNewDeviceFrameworkResource(t *testing.T) {
@@ -483,21 +496,150 @@ func Test_deviceResource_Schema(t *testing.T) {
 }
 
 func Test_deviceResource_UpgradeState(t *testing.T) {
-	type args struct {
-		ctx context.Context
+	got := (&deviceResource{}).UpgradeState(context.Background())
+	for _, version := range []int64{0, 1} {
+		if _, ok := got[version]; !ok {
+			t.Errorf("missing state upgrader for schema version %d", version)
+		}
 	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-		want map[int64]fwresource.StateUpgrader
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.UpgradeState(tt.args.ctx); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("deviceResource.UpgradeState() = %v, want %v", got, tt.want)
-			}
+	if len(got) != 2 {
+		t.Errorf("UpgradeState() has %d upgraders, want 2", len(got))
+	}
+}
+
+func Test_dropAssistedRoaming(t *testing.T) {
+	state := map[string]any{
+		"mac": "00:11:22:33:44:55",
+		"radio_table": []any{
+			map[string]any{
+				"radio":                    "na",
+				"channel":                  "36",
+				"assisted_roaming_enabled": true,
+				"assisted_roaming_rssi":    -75,
+			},
+			map[string]any{"radio": "ng"},
+		},
+	}
+
+	dropAssistedRoaming(state)
+
+	radios, ok := state["radio_table"].([]any)
+	if !ok {
+		t.Fatalf("radio_table is %T, want []any", state["radio_table"])
+	}
+	first, ok := radios[0].(map[string]any)
+	if !ok {
+		t.Fatalf("radio_table[0] is %T, want map[string]any", radios[0])
+	}
+	for _, k := range []string{"assisted_roaming_enabled", "assisted_roaming_rssi"} {
+		if _, present := first[k]; present {
+			t.Errorf("%s survived the rewrite", k)
+		}
+	}
+	if first["channel"] != "36" {
+		t.Errorf("channel = %v, want 36", first["channel"])
+	}
+	if len(radios) != 2 {
+		t.Errorf("radio_table has %d entries, want 2", len(radios))
+	}
+}
+
+// Test_dropAssistedRoaming_nonRadioState covers state shapes the rewrite must
+// pass through untouched rather than panic on.
+func Test_dropAssistedRoaming_nonRadioState(t *testing.T) {
+	for name, state := range map[string]map[string]any{
+		"no radio_table":       {"mac": "00:11:22:33:44:55"},
+		"null radio_table":     {"radio_table": nil},
+		"radio_table not list": {"radio_table": "unexpected"},
+		"entry not an object":  {"radio_table": []any{"unexpected"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dropAssistedRoaming(state)
 		})
+	}
+}
+
+// Test_deviceResource_UpgradeState_dropsAssistedRoaming guards the v1 -> v2
+// migration end to end. UniFi Network 10.x dropped the per-radio assisted
+// roaming setting, so the attributes left the schema — but prior state still
+// carries them, and cty rejects attributes the schema no longer declares.
+// Without a registered upgrader every refresh fails with "unsupported
+// attribute". Acceptance tests cannot reach this path, since they never start
+// from old state.
+func Test_deviceResource_UpgradeState_dropsAssistedRoaming(t *testing.T) {
+	ctx := context.Background()
+	r := &deviceResource{}
+
+	priorState := `{
+		"id": "abc123",
+		"site": "default",
+		"mac": "00:11:22:33:44:55",
+		"radio_table": [
+			{
+				"radio": "na",
+				"channel": "36",
+				"tx_power_mode": "auto",
+				"assisted_roaming_enabled": true,
+				"assisted_roaming_rssi": -75
+			},
+			{
+				"radio": "ng",
+				"channel": "6",
+				"assisted_roaming_enabled": false
+			}
+		]
+	}`
+
+	upgrader, ok := r.UpgradeState(ctx)[1]
+	if !ok {
+		t.Fatal("no v1 state upgrader registered")
+	}
+
+	resp := &fwresource.UpgradeStateResponse{}
+	upgrader.StateUpgrader(ctx, fwresource.UpgradeStateRequest{
+		RawState: &tfprotov6.RawState{JSON: []byte(priorState)},
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("upgrade produced diagnostics: %v", resp.Diagnostics)
+	}
+	if resp.DynamicValue == nil {
+		t.Fatal("upgrade produced no value")
+	}
+
+	// Decoding against the current schema is the assertion: it fails outright if
+	// the removed attributes survived.
+	var schemaResp fwresource.SchemaResponse
+	r.Schema(ctx, fwresource.SchemaRequest{}, &schemaResp)
+	schemaType := schemaResp.Schema.Type().TerraformType(ctx)
+
+	val, err := resp.DynamicValue.Unmarshal(schemaType)
+	if err != nil {
+		t.Fatalf("upgraded state does not decode against the v2 schema: %v", err)
+	}
+
+	// The rest of the radio table must survive the rewrite.
+	var obj map[string]tftypes.Value
+	if err := val.As(&obj); err != nil {
+		t.Fatalf("decoding upgraded object: %v", err)
+	}
+	var radios []tftypes.Value
+	if err := obj["radio_table"].As(&radios); err != nil {
+		t.Fatalf("decoding radio_table: %v", err)
+	}
+	if len(radios) != 2 {
+		t.Fatalf("radio_table has %d entries, want 2", len(radios))
+	}
+	var first map[string]tftypes.Value
+	if err := radios[0].As(&first); err != nil {
+		t.Fatalf("decoding radio_table[0]: %v", err)
+	}
+	var channel *string
+	if err := first["channel"].As(&channel); err != nil {
+		t.Fatalf("decoding radio_table[0].channel: %v", err)
+	}
+	if channel == nil || *channel != "36" {
+		t.Errorf("radio_table[0].channel = %v, want 36", channel)
 	}
 }
 

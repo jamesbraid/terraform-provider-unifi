@@ -110,10 +110,19 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      # internal/controllertest is the acceptance-test fixture: it brings up a
+      # controller and runs the herder binary the operator names. gosec does
+      # not scan _test.go files unless -tests is passed, and this is that same
+      # test-only code, living in a package so it can be shared and unit
+      # tested rather than because it ships. Excluding it keeps gosec's own
+      # scope rather than carving out per-call exceptions inside it — the
+      # exec it performs is the fixture's entire purpose and cannot be
+      # expressed with constant arguments, since the Docker network and inform
+      # URL are discovered at run time.
       - name: Run Gosec Security Scanner
         uses: securego/gosec@9e6a9843d7a4a6e3e9a8539b02612c8a4aa3f889 # v2.27.1
         with:
-          args: "-no-fail -fmt sarif -out results.sarif ./..."
+          args: "-no-fail -exclude-dir=internal/controllertest -fmt sarif -out results.sarif ./..."
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:

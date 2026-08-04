@@ -23,12 +23,14 @@ type portProfileDataSource struct {
 }
 
 type portProfileDataSourceModel struct {
-	ID                   types.String `tfsdk:"id"`
-	Site                 types.String `tfsdk:"site"`
-	Name                 types.String `tfsdk:"name"`
-	Forward              types.String `tfsdk:"forward"`
-	NativeNetworkconfID  types.String `tfsdk:"native_networkconf_id"`
-	TaggedNetworkconfIDs types.Set    `tfsdk:"tagged_networkconf_ids"`
+	ID                     types.String `tfsdk:"id"`
+	Site                   types.String `tfsdk:"site"`
+	Name                   types.String `tfsdk:"name"`
+	Forward                types.String `tfsdk:"forward"`
+	NativeNetworkconfID    types.String `tfsdk:"native_networkconf_id"`
+	TaggedNetworkconfIDs   types.Set    `tfsdk:"tagged_networkconf_ids"`
+	ExcludedNetworkconfIDs types.Set    `tfsdk:"excluded_networkconf_ids"`
+	TaggedVLANMgmt         types.String `tfsdk:"tagged_vlan_mgmt"`
 
 	Timeouts timeouts.Value `tfsdk:"timeouts"`
 }
@@ -72,9 +74,18 @@ func (d *portProfileDataSource) Schema(
 				Computed:            true,
 			},
 			"tagged_networkconf_ids": schema.SetAttribute{
-				MarkdownDescription: "The IDs of the tagged (VLAN) networks for the port profile.",
+				MarkdownDescription: "The actual set of tagged VLAN network IDs after applying the controller mode and exclusions.",
 				Computed:            true,
 				ElementType:         types.StringType,
+			},
+			"excluded_networkconf_ids": schema.SetAttribute{
+				MarkdownDescription: "The controller-facing network exclusion set used by Custom mode.",
+				Computed:            true,
+				ElementType:         types.StringType,
+			},
+			"tagged_vlan_mgmt": schema.StringAttribute{
+				MarkdownDescription: "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom).",
+				Computed:            true,
 			},
 			"timeouts": timeouts.Attributes(ctx),
 		},
@@ -173,9 +184,47 @@ func (d *portProfileDataSource) Read(
 		data.NativeNetworkconfID = types.StringNull()
 	}
 
-	// tagged_networkconf_ids has no corresponding go-unifi field; tagged VLANs are
-	// managed via tagged_vlan_mgmt + excluded_networkconf_ids instead.
-	data.TaggedNetworkconfIDs = types.SetNull(types.StringType)
+	networks, err := d.client.ListNetwork(ctx, site)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Networks for Port Profile",
+			"Could not read the site network inventory: "+err.Error(),
+		)
+		return
+	}
+	universe := portProfileTaggedNetworkUniverse(networks, portProfile.NATiveNetworkID)
+	tagged := portProfileActualTaggedNetworkIDs(
+		portProfile.TaggedVLANMgmt,
+		universe,
+		portProfile.ExcludedNetworkIDs,
+	)
+	if tagged == nil {
+		data.TaggedNetworkconfIDs = types.SetNull(types.StringType)
+	} else {
+		value, d := types.SetValueFrom(ctx, types.StringType, tagged)
+		resp.Diagnostics.Append(d...)
+		data.TaggedNetworkconfIDs = value
+	}
+	if portProfile.TaggedVLANMgmt == "custom" {
+		excluded := portProfile.ExcludedNetworkIDs
+		if excluded == nil {
+			excluded = []string{}
+		}
+		value, d := types.SetValueFrom(
+			ctx,
+			types.StringType,
+			excluded,
+		)
+		resp.Diagnostics.Append(d...)
+		data.ExcludedNetworkconfIDs = value
+	} else {
+		data.ExcludedNetworkconfIDs = types.SetNull(types.StringType)
+	}
+	if portProfile.TaggedVLANMgmt == "" {
+		data.TaggedVLANMgmt = types.StringNull()
+	} else {
+		data.TaggedVLANMgmt = types.StringValue(portProfile.TaggedVLANMgmt)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

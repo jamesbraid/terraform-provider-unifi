@@ -109,6 +109,10 @@ resource "unifi_wlan" "wifi" {
 - `proxy_arp` (Boolean) Reduces airtime usage by allowing APs to "proxy" common broadcast frames as unicast.
 - `radius_mac_auth_enabled` (Boolean) Enable RADIUS MAC authentication.
 - `radius_profile_id` (String) ID of the RADIUS profile to use when security `wpaeap`. The controller may assign a default profile, so this is computed when unset.
+- `roaming_assistant_6e_enabled` (Boolean) Enable the roaming assistant on 6GHz. See `roaming_assistant_na_enabled`.
+- `roaming_assistant_6e_rssi` (Number) Signal threshold in dBm at which the 6GHz roaming assistant disconnects a client. Between `-90` and `-70` — note the range differs from the 5GHz one.
+- `roaming_assistant_na_enabled` (Boolean) Enable the roaming assistant on 5GHz, which disconnects clients whose signal drops below `roaming_assistant_na_rssi` so they reassociate with a closer AP. UniFi Network 10.x replaced the per-radio `unifi_device.radio_table.assisted_roaming_enabled` with this per-WLAN setting.
+- `roaming_assistant_na_rssi` (Number) Signal threshold in dBm at which the 5GHz roaming assistant disconnects a client. Between `-80` and `-60`.
 - `schedule` (Block List) Start and stop schedules for the WLAN (see [below for nested schema](#nestedblock--schedule))
 - `site` (String) The name of the site to associate the WLAN with.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))

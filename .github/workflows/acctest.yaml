@@ -12,14 +12,9 @@ permissions:
 
 jobs:
   test:
-    name: Matrix Test
+    name: Acceptance Test
     runs-on: ubuntu-latest
     timeout-minutes: 75
-    strategy:
-      fail-fast: false
-      matrix:
-        unifi_version:
-          - "latest"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
@@ -33,13 +28,27 @@ jobs:
         with:
           terraform_wrapper: false
 
+      # unifi-emu-herder starts the fake devices the device acceptance tests
+      # adopt; without it those tests skip. The pin picks the synthetic image
+      # too — a release binary carries the image built from the same tag — so
+      # nothing here selects one, and a nightly run cannot change behaviour
+      # without a commit. The action takes its release from a VERSION file
+      # beside it, so pinning by digest still installs 0.5.1.
+      - name: Install unifi-emu-herder
+        id: herder
+        uses: jamesbraid/unifi-emu/.github/actions/install-herder@0e4fc0e83dc418f3196ec5ecb580cc6085354cb1 # v0.5.1
+
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
         uses: "nick-fields/retry@v4"
+        # The harness takes the herder from this variable, not from PATH.
+        # It shares go-unifi's name: both suites drive the same process.
+        env:
+          UNIFI_TEST_HERDER_BIN: ${{ steps.herder.outputs.path }}
         with:
           timeout_minutes: 20
           max_attempts: 3
-          command: make testacc TEST_TIMEOUT=1h UNIFI_STDOUT=true UNIFI_VERSION=${{ matrix.unifi_download_url && 'beta' || matrix.unifi_version }} UNIFI_DOWNLOAD_URL=${{ matrix.unifi_download_url }}
+          command: make testacc TEST_TIMEOUT=1h
           retry_on: "timeout"
 
       - name: Upload test results to Codecov

@@ -212,25 +212,23 @@ type configNetworkModel struct {
 
 // radioTableModel describes the radio table data model.
 type radioTableModel struct {
-	Radio                  types.String `tfsdk:"radio"`
-	Channel                types.String `tfsdk:"channel"`
-	Ht                     types.Int64  `tfsdk:"ht"`
-	TxPower                types.String `tfsdk:"tx_power"`
-	TxPowerMode            types.String `tfsdk:"tx_power_mode"`
-	MinRssiEnabled         types.Bool   `tfsdk:"min_rssi_enabled"`
-	MinRssi                types.Int64  `tfsdk:"min_rssi"`
-	AntennaGain            types.Int64  `tfsdk:"antenna_gain"`
-	AntennaID              types.Int64  `tfsdk:"antenna_id"`
-	AssistedRoamingEnabled types.Bool   `tfsdk:"assisted_roaming_enabled"`
-	AssistedRoamingRssi    types.Int64  `tfsdk:"assisted_roaming_rssi"`
-	Dfs                    types.Bool   `tfsdk:"dfs"`
-	HardNoiseFloorEnabled  types.Bool   `tfsdk:"hard_noise_floor_enabled"`
-	LoadbalanceEnabled     types.Bool   `tfsdk:"loadbalance_enabled"`
-	Maxsta                 types.Int64  `tfsdk:"maxsta"`
-	Name                   types.String `tfsdk:"name"`
-	SensLevel              types.Int64  `tfsdk:"sens_level"`
-	SensLevelEnabled       types.Bool   `tfsdk:"sens_level_enabled"`
-	VwireEnabled           types.Bool   `tfsdk:"vwire_enabled"`
+	Radio                 types.String `tfsdk:"radio"`
+	Channel               types.String `tfsdk:"channel"`
+	Ht                    types.Int64  `tfsdk:"ht"`
+	TxPower               types.String `tfsdk:"tx_power"`
+	TxPowerMode           types.String `tfsdk:"tx_power_mode"`
+	MinRssiEnabled        types.Bool   `tfsdk:"min_rssi_enabled"`
+	MinRssi               types.Int64  `tfsdk:"min_rssi"`
+	AntennaGain           types.Int64  `tfsdk:"antenna_gain"`
+	AntennaID             types.Int64  `tfsdk:"antenna_id"`
+	Dfs                   types.Bool   `tfsdk:"dfs"`
+	HardNoiseFloorEnabled types.Bool   `tfsdk:"hard_noise_floor_enabled"`
+	LoadbalanceEnabled    types.Bool   `tfsdk:"loadbalance_enabled"`
+	Maxsta                types.Int64  `tfsdk:"maxsta"`
+	Name                  types.String `tfsdk:"name"`
+	SensLevel             types.Int64  `tfsdk:"sens_level"`
+	SensLevelEnabled      types.Bool   `tfsdk:"sens_level_enabled"`
+	VwireEnabled          types.Bool   `tfsdk:"vwire_enabled"`
 }
 
 // outletOverrideModel describes the outlet override data model.
@@ -271,8 +269,10 @@ func (r *deviceResource) Schema(
 ) {
 	resp.Schema = schema.Schema{
 		// v1: lcm_idle_timeout and port_override.dot1x_idle_timeout changed from
-		// Int64 (seconds) to GoDuration strings. See UpgradeState.
-		Version: 1,
+		// Int64 (seconds) to GoDuration strings.
+		// v2: radio_table.assisted_roaming_enabled and .assisted_roaming_rssi were
+		// removed. See UpgradeState.
+		Version: 2,
 		Description: "`unifi_device` manages a device of the network.\n\n" +
 			"Devices are adopted by the controller, so it is not possible for this resource to be created through " +
 			"Terraform, the create operation instead will simply start managing the device specified by MAC address. " +
@@ -638,16 +638,6 @@ func (r *deviceResource) Schema(
 							Optional:    true,
 							Computed:    true,
 						},
-						"assisted_roaming_enabled": schema.BoolAttribute{
-							Description: "Enable assisted roaming.",
-							Optional:    true,
-							Computed:    true,
-						},
-						"assisted_roaming_rssi": schema.Int64Attribute{
-							Description: "Assisted roaming RSSI threshold.",
-							Optional:    true,
-							Computed:    true,
-						},
 						"dfs": schema.BoolAttribute{
 							Description: "Enable DFS (Dynamic Frequency Selection).",
 							Optional:    true,
@@ -966,9 +956,31 @@ func (r *deviceResource) Schema(
 	}
 }
 
-// UpgradeState migrates v0 state to v1: lcm_idle_timeout and each
-// port_override.dot1x_idle_timeout changed from integer seconds to GoDuration
-// strings.
+// dropAssistedRoaming removes the radio_table attributes that UniFi Network 10.x
+// dropped. Prior state carries them, and the framework decodes it against the
+// current schema, which rejects attributes the schema no longer declares.
+func dropAssistedRoaming(state map[string]any) {
+	radios, ok := state["radio_table"].([]any)
+	if !ok {
+		return
+	}
+	for _, r := range radios {
+		if rm, ok := r.(map[string]any); ok {
+			delete(rm, "assisted_roaming_enabled")
+			delete(rm, "assisted_roaming_rssi")
+		}
+	}
+}
+
+// UpgradeState migrates prior state to v2.
+//
+// v0 -> v1: lcm_idle_timeout and each port_override.dot1x_idle_timeout changed
+// from integer seconds to GoDuration strings.
+// v1 -> v2: radio_table.assisted_roaming_enabled and .assisted_roaming_rssi were
+// removed, following UniFi Network 10.x dropping the per-radio setting.
+//
+// Both upgraders target the current schema, so the v0 path applies the v1 -> v2
+// rewrite as well.
 func (r *deviceResource) UpgradeState(
 	ctx context.Context,
 ) map[int64]resource.StateUpgrader {
@@ -998,7 +1010,29 @@ func (r *deviceResource) UpgradeState(
 								}
 							}
 						}
+						dropAssistedRoaming(state)
 					},
+				)
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade device state", err.Error())
+					return
+				}
+				resp.DynamicValue = dv
+			},
+		},
+		1: {
+			StateUpgrader: func(
+				ctx context.Context,
+				req resource.UpgradeStateRequest,
+				resp *resource.UpgradeStateResponse,
+			) {
+				if req.RawState == nil {
+					return
+				}
+				dv, err := util.UpgradeDurationRawState(
+					schemaType,
+					req.RawState.JSON,
+					dropAssistedRoaming,
 				)
 				if err != nil {
 					resp.Diagnostics.AddError("Failed to upgrade device state", err.Error())
@@ -2754,8 +2788,6 @@ func radioTableAttrTypes() map[string]attr.Type {
 		"min_rssi":                 types.Int64Type,
 		"antenna_gain":             types.Int64Type,
 		"antenna_id":               types.Int64Type,
-		"assisted_roaming_enabled": types.BoolType,
-		"assisted_roaming_rssi":    types.Int64Type,
 		"dfs":                      types.BoolType,
 		"hard_noise_floor_enabled": types.BoolType,
 		"loadbalance_enabled":      types.BoolType,
@@ -2836,25 +2868,23 @@ func (r *deviceResource) radioTableToFramework(
 	elements := make([]attr.Value, 0, len(radios))
 	for _, radio := range radios {
 		model := radioTableModel{
-			Radio:                  stringOrNull(radio.Radio),
-			Channel:                stringOrNull(radio.Channel),
-			Ht:                     types.Int64PointerValue(radio.Ht),
-			TxPower:                stringOrNull(radio.TxPower),
-			TxPowerMode:            stringOrNull(radio.TxPowerMode),
-			MinRssiEnabled:         types.BoolValue(radio.MinRssiEnabled),
-			MinRssi:                types.Int64PointerValue(radio.MinRssi),
-			AntennaGain:            types.Int64PointerValue(radio.AntennaGain),
-			AntennaID:              types.Int64PointerValue(radio.AntennaID),
-			AssistedRoamingEnabled: types.BoolValue(radio.AssistedRoamingEnabled),
-			AssistedRoamingRssi:    types.Int64PointerValue(radio.AssistedRoamingRssi),
-			Dfs:                    types.BoolValue(radio.Dfs),
-			HardNoiseFloorEnabled:  types.BoolValue(radio.HardNoiseFloorEnabled),
-			LoadbalanceEnabled:     types.BoolValue(radio.LoadbalanceEnabled),
-			Maxsta:                 types.Int64PointerValue(radio.Maxsta),
-			Name:                   stringOrNull(radio.Name),
-			SensLevel:              types.Int64PointerValue(radio.SensLevel),
-			SensLevelEnabled:       types.BoolValue(radio.SensLevelEnabled),
-			VwireEnabled:           types.BoolValue(radio.VwireEnabled),
+			Radio:                 stringOrNull(radio.Radio),
+			Channel:               stringOrNull(radio.Channel),
+			Ht:                    types.Int64PointerValue(radio.Ht),
+			TxPower:               stringOrNull(radio.TxPower),
+			TxPowerMode:           stringOrNull(radio.TxPowerMode),
+			MinRssiEnabled:        types.BoolValue(radio.MinRssiEnabled),
+			MinRssi:               types.Int64PointerValue(radio.MinRssi),
+			AntennaGain:           types.Int64PointerValue(radio.AntennaGain),
+			AntennaID:             types.Int64PointerValue(radio.AntennaID),
+			Dfs:                   types.BoolValue(radio.Dfs),
+			HardNoiseFloorEnabled: types.BoolValue(radio.HardNoiseFloorEnabled),
+			LoadbalanceEnabled:    types.BoolValue(radio.LoadbalanceEnabled),
+			Maxsta:                types.Int64PointerValue(radio.Maxsta),
+			Name:                  stringOrNull(radio.Name),
+			SensLevel:             types.Int64PointerValue(radio.SensLevel),
+			SensLevelEnabled:      types.BoolValue(radio.SensLevelEnabled),
+			VwireEnabled:          types.BoolValue(radio.VwireEnabled),
 		}
 
 		objVal, objDiags := types.ObjectValueFrom(ctx, radioTableAttrTypes(), model)
@@ -2971,25 +3001,23 @@ func (r *deviceResource) frameworkToRadioTable(
 		}
 
 		radio := unifi.DeviceRadioTable{
-			Radio:                  model.Radio.ValueString(),
-			Channel:                model.Channel.ValueString(),
-			Ht:                     model.Ht.ValueInt64Pointer(),
-			TxPower:                model.TxPower.ValueString(),
-			TxPowerMode:            model.TxPowerMode.ValueString(),
-			MinRssiEnabled:         model.MinRssiEnabled.ValueBool(),
-			MinRssi:                model.MinRssi.ValueInt64Pointer(),
-			AntennaGain:            model.AntennaGain.ValueInt64Pointer(),
-			AntennaID:              model.AntennaID.ValueInt64Pointer(),
-			AssistedRoamingEnabled: model.AssistedRoamingEnabled.ValueBool(),
-			AssistedRoamingRssi:    model.AssistedRoamingRssi.ValueInt64Pointer(),
-			Dfs:                    model.Dfs.ValueBool(),
-			HardNoiseFloorEnabled:  model.HardNoiseFloorEnabled.ValueBool(),
-			LoadbalanceEnabled:     model.LoadbalanceEnabled.ValueBool(),
-			Maxsta:                 model.Maxsta.ValueInt64Pointer(),
-			Name:                   model.Name.ValueString(),
-			SensLevel:              model.SensLevel.ValueInt64Pointer(),
-			SensLevelEnabled:       model.SensLevelEnabled.ValueBool(),
-			VwireEnabled:           model.VwireEnabled.ValueBool(),
+			Radio:                 model.Radio.ValueString(),
+			Channel:               model.Channel.ValueString(),
+			Ht:                    model.Ht.ValueInt64Pointer(),
+			TxPower:               model.TxPower.ValueString(),
+			TxPowerMode:           model.TxPowerMode.ValueString(),
+			MinRssiEnabled:        model.MinRssiEnabled.ValueBool(),
+			MinRssi:               model.MinRssi.ValueInt64Pointer(),
+			AntennaGain:           model.AntennaGain.ValueInt64Pointer(),
+			AntennaID:             model.AntennaID.ValueInt64Pointer(),
+			Dfs:                   model.Dfs.ValueBool(),
+			HardNoiseFloorEnabled: model.HardNoiseFloorEnabled.ValueBool(),
+			LoadbalanceEnabled:    model.LoadbalanceEnabled.ValueBool(),
+			Maxsta:                model.Maxsta.ValueInt64Pointer(),
+			Name:                  model.Name.ValueString(),
+			SensLevel:             model.SensLevel.ValueInt64Pointer(),
+			SensLevelEnabled:      model.SensLevelEnabled.ValueBool(),
+			VwireEnabled:          model.VwireEnabled.ValueBool(),
 		}
 
 		radios = append(radios, radio)

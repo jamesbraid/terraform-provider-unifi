@@ -374,12 +374,17 @@ func (r *vpnServerResource) Schema(
 						},
 					},
 					"encryption_cipher": schema.StringAttribute{
-						MarkdownDescription: "Encryption cipher for OpenVPN.",
+						MarkdownDescription: "Encryption cipher for OpenVPN. One of `AES_256_CBC` or `BF_CBC`.",
 						Optional:            true,
 						Computed:            true,
-						Default:             stringdefault.StaticString("AES_256_GCM"),
+						// The controller accepts AES_256_CBC and BF_CBC. AES_256_GCM
+						// was offered here and defaulted to, and the controller
+						// answers it with api.err.InvalidValue naming the pattern
+						// AES_256_CBC|BF_CBC, so every OpenVPN server that did not
+						// override the default failed to create.
+						Default: stringdefault.StaticString("AES_256_CBC"),
 						Validators: []validator.String{
-							stringvalidator.OneOf("AES_256_GCM", "AES_256_CBC", "BF_CBC"),
+							stringvalidator.OneOf("AES_256_CBC", "BF_CBC"),
 						},
 					},
 					"server_crt": schema.StringAttribute{
@@ -866,19 +871,33 @@ func (r *vpnServerResource) modelToNetwork(
 			network.OpenVPNMode = openvpn.Mode.ValueStringPointer()
 			network.OpenVPNEncryptionCipher = openvpn.EncryptionCipher.ValueStringPointer()
 
-			// Send computed certificate/key fields back on updates
-			network.ServerCrt = openvpn.ServerCrt.ValueStringPointer()
-			network.ServerKey = openvpn.ServerKey.ValueStringPointer()
-			network.DhKey = openvpn.DhKey.ValueStringPointer()
-			network.SharedClientKey = openvpn.SharedClientKey.ValueStringPointer()
-			network.SharedClientCrt = openvpn.SharedClientCrt.ValueStringPointer()
-			network.AuthKey = openvpn.AuthKey.ValueStringPointer()
-			network.CaCrt = openvpn.CaCrt.ValueStringPointer()
-			network.CaKey = openvpn.CaKey.ValueStringPointer()
+			// Send the controller-generated certificate and key material back on
+			// update, and only then. On create these are unknown, and an unknown
+			// yields a pointer to "" rather than nil, which puts empty x_ca_crt,
+			// x_ca_key, x_dh_key and x_server_crt on the wire. The controller
+			// issues that material itself, so a create must not assert it.
+			network.ServerCrt = knownNonEmpty(openvpn.ServerCrt)
+			network.ServerKey = knownNonEmpty(openvpn.ServerKey)
+			network.DhKey = knownNonEmpty(openvpn.DhKey)
+			network.SharedClientKey = knownNonEmpty(openvpn.SharedClientKey)
+			network.SharedClientCrt = knownNonEmpty(openvpn.SharedClientCrt)
+			network.AuthKey = knownNonEmpty(openvpn.AuthKey)
+			network.CaCrt = knownNonEmpty(openvpn.CaCrt)
+			network.CaKey = knownNonEmpty(openvpn.CaKey)
 		}
 	}
 
 	return network, diags
+}
+
+// knownNonEmpty returns a pointer to v's value, or nil when it is null,
+// unknown, or the empty string. Fields the controller generates must be absent
+// from the payload rather than present and empty.
+func knownNonEmpty(v types.String) *string {
+	if v.IsNull() || v.IsUnknown() || v.ValueString() == "" {
+		return nil
+	}
+	return v.ValueStringPointer()
 }
 
 // networkToModel converts from unifi.Network to Terraform model.

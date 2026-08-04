@@ -3,6 +3,7 @@ package unifi
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -19,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -31,10 +31,11 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var (
-	_ resource.Resource                 = &portProfileResource{}
-	_ resource.ResourceWithImportState  = &portProfileResource{}
-	_ resource.ResourceWithIdentity     = &portProfileResource{}
-	_ resource.ResourceWithUpgradeState = &portProfileResource{}
+	_ resource.Resource                     = &portProfileResource{}
+	_ resource.ResourceWithImportState      = &portProfileResource{}
+	_ resource.ResourceWithIdentity         = &portProfileResource{}
+	_ resource.ResourceWithUpgradeState     = &portProfileResource{}
+	_ resource.ResourceWithConfigValidators = &portProfileResource{}
 )
 
 // Ensure provider defined types fully satisfy list interfaces.
@@ -113,6 +114,286 @@ type portProfileResourceModel struct {
 	SettingPreference          types.String         `tfsdk:"setting_preference"`
 	PortKeepaliveEnabled       types.Bool           `tfsdk:"port_keepalive_enabled"`
 	Timeouts                   timeouts.Value       `tfsdk:"timeouts"`
+}
+
+// portProfileTaggedNetworkUniverse returns the site networks which can be
+// carried as tagged VLANs by a port profile. The native network is carried
+// untagged and therefore never belongs to this set.
+func portProfileTaggedNetworkUniverse(networks []unifi.Network, nativeNetworkID string) []string {
+	ids := make([]string, 0, len(networks))
+	for _, network := range networks {
+		if network.ID == "" || network.ID == nativeNetworkID || network.VLAN == nil {
+			continue
+		}
+		switch network.Purpose {
+		case unifi.PurposeCorporate, unifi.PurposeGuest, unifi.PurposeVLANOnly:
+			ids = append(ids, network.ID)
+		}
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+// portProfileExcludedNetworkIDs converts an exact tagged-network selection to
+// the exclusion list accepted by the controller. IDs outside the eligible
+// universe are returned separately so callers can fail before writing.
+func portProfileExcludedNetworkIDs(universe, included []string) ([]string, []string) {
+	eligible := make(map[string]struct{}, len(universe))
+	for _, id := range universe {
+		eligible[id] = struct{}{}
+	}
+
+	selected := make(map[string]struct{}, len(included))
+	var invalid []string
+	for _, id := range included {
+		if _, ok := eligible[id]; !ok {
+			invalid = append(invalid, id)
+			continue
+		}
+		selected[id] = struct{}{}
+	}
+
+	excluded := make([]string, 0, len(universe))
+	for _, id := range universe {
+		if _, ok := selected[id]; !ok {
+			excluded = append(excluded, id)
+		}
+	}
+	slices.Sort(excluded)
+	slices.Sort(invalid)
+	return excluded, invalid
+}
+
+// portProfileActualTaggedNetworkIDs translates the controller's mode and
+// exclusion list into the set users see in Terraform.
+func portProfileActualTaggedNetworkIDs(mode string, universe, excluded []string) []string {
+	switch mode {
+	case "auto":
+		return slices.Clone(universe)
+	case "block_all":
+		return []string{}
+	case "custom":
+		blocked := make(map[string]struct{}, len(excluded))
+		for _, id := range excluded {
+			blocked[id] = struct{}{}
+		}
+		included := make([]string, 0, len(universe))
+		for _, id := range universe {
+			if _, ok := blocked[id]; !ok {
+				included = append(included, id)
+			}
+		}
+		return included
+	default:
+		return nil
+	}
+}
+
+func resolvePortProfileVLANMode(
+	taggedConfigured bool,
+	taggedCount int,
+	excludedConfigured bool,
+	configuredMode string,
+) (string, error) {
+	if taggedConfigured && excludedConfigured {
+		return "", fmt.Errorf(
+			"tagged_networkconf_ids and excluded_networkconf_ids cannot both be configured",
+		)
+	}
+
+	if taggedConfigured {
+		derived := "custom"
+		if taggedCount == 0 {
+			derived = "block_all"
+		}
+		if configuredMode != "" && configuredMode != derived {
+			return "", fmt.Errorf(
+				"tagged_vlan_mgmt must be %q when tagged_networkconf_ids contains %d network(s)",
+				derived,
+				taggedCount,
+			)
+		}
+		return derived, nil
+	}
+
+	if excludedConfigured {
+		if configuredMode != "" && configuredMode != "custom" {
+			return "", fmt.Errorf(
+				"tagged_vlan_mgmt must be %q when excluded_networkconf_ids is configured",
+				"custom",
+			)
+		}
+		return "custom", nil
+	}
+
+	return configuredMode, nil
+}
+
+func resolvePortProfileForward(mode, configuredForward string) (string, error) {
+	derived := ""
+	switch mode {
+	case "auto":
+		derived = "all"
+	case "block_all":
+		derived = "native"
+	case "custom":
+		derived = "customize"
+	}
+	if derived == "" {
+		return configuredForward, nil
+	}
+	if configuredForward != "" && configuredForward != derived {
+		return "", fmt.Errorf(
+			"forward must be %q when tagged_vlan_mgmt is %q",
+			derived,
+			mode,
+		)
+	}
+	return derived, nil
+}
+
+type portProfileVLANConfig struct {
+	TaggedConfigured   bool
+	TaggedIDs          []string
+	ExcludedConfigured bool
+	ExcludedIDs        []string
+	Mode               string
+	Forward            string
+}
+
+func portProfileVLANConfigFromModel(
+	ctx context.Context,
+	model *portProfileResourceModel,
+) (portProfileVLANConfig, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	config := portProfileVLANConfig{}
+
+	if !model.TaggedNetworkConfIDs.IsNull() {
+		config.TaggedConfigured = true
+		if model.TaggedNetworkConfIDs.IsUnknown() {
+			diags.AddError(
+				"Unknown tagged network IDs",
+				"tagged_networkconf_ids must be known before the port profile can be written.",
+			)
+		} else {
+			diags.Append(
+				model.TaggedNetworkConfIDs.ElementsAs(ctx, &config.TaggedIDs, false)...,
+			)
+		}
+	}
+
+	if !model.ExcludedNetworkConfIDs.IsNull() {
+		config.ExcludedConfigured = true
+		if model.ExcludedNetworkConfIDs.IsUnknown() {
+			diags.AddError(
+				"Unknown excluded network IDs",
+				"excluded_networkconf_ids must be known before the port profile can be written.",
+			)
+		} else {
+			diags.Append(
+				model.ExcludedNetworkConfIDs.ElementsAs(ctx, &config.ExcludedIDs, false)...,
+			)
+		}
+	}
+
+	if !model.TaggedVLANMgmt.IsNull() {
+		if model.TaggedVLANMgmt.IsUnknown() {
+			diags.AddError(
+				"Unknown tagged VLAN mode",
+				"tagged_vlan_mgmt must be known before the port profile can be written.",
+			)
+		} else {
+			config.Mode = model.TaggedVLANMgmt.ValueString()
+		}
+	}
+	if !model.Forward.IsNull() {
+		if model.Forward.IsUnknown() {
+			diags.AddError(
+				"Unknown forwarding mode",
+				"forward must be known before the port profile can be written.",
+			)
+		} else {
+			config.Forward = model.Forward.ValueString()
+		}
+	}
+
+	if diags.HasError() {
+		return config, diags
+	}
+	mode, err := resolvePortProfileVLANMode(
+		config.TaggedConfigured,
+		len(config.TaggedIDs),
+		config.ExcludedConfigured,
+		config.Mode,
+	)
+	if err != nil {
+		diags.AddError("Invalid tagged VLAN configuration", err.Error())
+		return config, diags
+	}
+	config.Mode = mode
+	forward, err := resolvePortProfileForward(config.Mode, config.Forward)
+	if err != nil {
+		diags.AddError("Invalid tagged VLAN configuration", err.Error())
+		return config, diags
+	}
+	config.Forward = forward
+	return config, diags
+}
+
+func applyPortProfileVLANConfig(
+	config portProfileVLANConfig,
+	universe []string,
+	api *unifi.PortProfile,
+) error {
+	var excluded []string
+	forward, err := resolvePortProfileForward(config.Mode, config.Forward)
+	if err != nil {
+		return err
+	}
+	if config.TaggedConfigured && config.Mode == "custom" {
+		var invalid []string
+		excluded, invalid = portProfileExcludedNetworkIDs(universe, config.TaggedIDs)
+		if len(invalid) > 0 {
+			return fmt.Errorf(
+				"tagged_networkconf_ids contains IDs that are not eligible tagged networks in this site: %v",
+				invalid,
+			)
+		}
+	} else if config.ExcludedConfigured {
+		excluded = slices.Clone(config.ExcludedIDs)
+		slices.Sort(excluded)
+	}
+
+	api.TaggedVLANMgmt = config.Mode
+	api.ExcludedNetworkIDs = excluded
+	if forward != "" {
+		api.Forward = forward
+	}
+	return nil
+}
+
+func setPortProfileTaggedNetworkState(
+	ctx context.Context,
+	api *unifi.PortProfile,
+	networks []unifi.Network,
+	model *portProfileResourceModel,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	universe := portProfileTaggedNetworkUniverse(networks, api.NATiveNetworkID)
+	tagged := portProfileActualTaggedNetworkIDs(
+		api.TaggedVLANMgmt,
+		universe,
+		api.ExcludedNetworkIDs,
+	)
+	if tagged == nil {
+		model.TaggedNetworkConfIDs = types.SetNull(types.StringType)
+		return diags
+	}
+
+	value, d := types.SetValueFrom(ctx, types.StringType, tagged)
+	diags.Append(d...)
+	model.TaggedNetworkConfIDs = value
+	return diags
 }
 
 func (r *portProfileResource) Metadata(
@@ -212,10 +493,9 @@ func (r *portProfileResource) Schema(
 				Default:     booldefault.StaticBool(false),
 			},
 			"forward": schema.StringAttribute{
-				Description: "The type forwarding to use for the port profile. Can be `all`, `native`, `customize` or `disabled`.",
+				Description: "The forwarding mode. Can be `all`, `native`, `customize`, or `disabled`; tagged VLAN configuration derives the matching value when omitted.",
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("all"),
 				Validators: []validator.String{
 					stringvalidator.OneOf("all", "native", "customize", "disabled"),
 				},
@@ -410,8 +690,9 @@ func (r *portProfileResource) Schema(
 				},
 			},
 			"tagged_networkconf_ids": schema.SetAttribute{
-				Description: "The IDs of networks to tag traffic with for the port profile.",
+				Description: "The exact set of VLAN network IDs to carry tagged. The provider translates this to the controller's exclusion list and keeps it exact as site networks change. Conflicts with `excluded_networkconf_ids`.",
 				Optional:    true,
+				Computed:    true,
 				ElementType: types.StringType,
 			},
 			"voice_networkconf_id": schema.StringAttribute{
@@ -419,13 +700,10 @@ func (r *portProfileResource) Schema(
 				Optional:    true,
 			},
 			"excluded_networkconf_ids": schema.SetAttribute{
-				Description: "The IDs of networks excluded from the port profile (used when `tagged_vlan_mgmt` is `custom`). Computed from the controller when not set.",
+				Description: "The controller-facing set of networks excluded from the port profile when `tagged_vlan_mgmt` is `custom`. This advanced interface conflicts with `tagged_networkconf_ids`; prefer the exact tagged-network set.",
 				Optional:    true,
 				Computed:    true,
 				ElementType: types.StringType,
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"multicast_router_networkconf_ids": schema.SetAttribute{
 				Description: "The IDs of networks designated as multicast routers for the port profile.",
@@ -433,7 +711,7 @@ func (r *portProfileResource) Schema(
 				ElementType: types.StringType,
 			},
 			"tagged_vlan_mgmt": schema.StringAttribute{
-				Description: "How tagged VLANs are managed on the port. Can be `auto`, `block_all`, or `custom`.",
+				Description: "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom). An exact tagged or excluded set derives the matching mode when omitted.",
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.String{
@@ -468,6 +746,73 @@ func (r *portProfileResource) Schema(
 		},
 	}
 }
+
+func (r *portProfileResource) ConfigValidators(
+	_ context.Context,
+) []resource.ConfigValidator {
+	return []resource.ConfigValidator{&portProfileVLANConfigValidator{}}
+}
+
+type portProfileVLANConfigValidator struct{}
+
+func (v *portProfileVLANConfigValidator) Description(_ context.Context) string {
+	return "tagged VLAN include, exclude, and mode settings must describe one unambiguous policy"
+}
+
+func (v *portProfileVLANConfigValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v *portProfileVLANConfigValidator) ValidateResource(
+	ctx context.Context,
+	req resource.ValidateConfigRequest,
+	resp *resource.ValidateConfigResponse,
+) {
+	var tagged types.Set
+	var excluded types.Set
+	var mode types.String
+	var forward types.String
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("tagged_networkconf_ids"), &tagged)...,
+	)
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("excluded_networkconf_ids"), &excluded)...,
+	)
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("tagged_vlan_mgmt"), &mode)...,
+	)
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("forward"), &forward)...,
+	)
+	if resp.Diagnostics.HasError() || tagged.IsUnknown() || excluded.IsUnknown() ||
+		mode.IsUnknown() || forward.IsUnknown() {
+		return
+	}
+
+	configuredMode := ""
+	if !mode.IsNull() {
+		configuredMode = mode.ValueString()
+	}
+	resolvedMode, err := resolvePortProfileVLANMode(
+		!tagged.IsNull(),
+		len(tagged.Elements()),
+		!excluded.IsNull(),
+		configuredMode,
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("Invalid tagged VLAN configuration", err.Error())
+		return
+	}
+	configuredForward := ""
+	if !forward.IsNull() {
+		configuredForward = forward.ValueString()
+	}
+	if _, err := resolvePortProfileForward(resolvedMode, configuredForward); err != nil {
+		resp.Diagnostics.AddError("Invalid tagged VLAN configuration", err.Error())
+	}
+}
+
+var _ resource.ConfigValidator = &portProfileVLANConfigValidator{}
 
 // UpgradeState migrates v0 state (dot1x_idle_timeout stored as integer seconds)
 // to v1 (a GoDuration string).
@@ -541,6 +886,12 @@ func (r *portProfileResource) Create(
 		return
 	}
 
+	var config portProfileResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	createTimeout, timeoutDiags := plan.Timeouts.Create(ctx, 20*time.Minute)
 	resp.Diagnostics.Append(timeoutDiags...)
 	if resp.Diagnostics.HasError() {
@@ -554,10 +905,32 @@ func (r *portProfileResource) Create(
 		site = r.client.Site
 	}
 
+	networks, err := r.client.ListNetwork(ctx, site)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Networks for Port Profile",
+			"Could not read the site network inventory before creating the port profile: "+err.Error(),
+		)
+		return
+	}
+	vlanConfig, vlanDiags := portProfileVLANConfigFromModel(ctx, &config)
+	resp.Diagnostics.Append(vlanDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Convert model to API request
 	portProfile, convDiags := r.modelToAPIPortProfile(ctx, &plan)
 	resp.Diagnostics.Append(convDiags...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := applyPortProfileVLANConfig(
+		vlanConfig,
+		portProfileTaggedNetworkUniverse(networks, portProfile.NATiveNetworkID),
+		portProfile,
+	); err != nil {
+		resp.Diagnostics.AddError("Invalid tagged network selection", err.Error())
 		return
 	}
 
@@ -574,6 +947,9 @@ func (r *portProfileResource) Create(
 	plan.ID = types.StringValue(apiPortProfile.ID)
 	plan.Site = types.StringValue(site)
 	resp.Diagnostics.Append(r.portProfileToModel(ctx, apiPortProfile, &plan, site)...)
+	resp.Diagnostics.Append(
+		setPortProfileTaggedNetworkState(ctx, apiPortProfile, networks, &plan)...,
+	)
 
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), plan.ID)...)
 	diags = resp.State.Set(ctx, plan)
@@ -618,9 +994,20 @@ func (r *portProfileResource) Read(
 		)
 		return
 	}
+	networks, err := r.client.ListNetwork(ctx, site)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Networks for Port Profile",
+			"Could not read the site network inventory while reading the port profile: "+err.Error(),
+		)
+		return
+	}
 
 	// Update state from API response
 	resp.Diagnostics.Append(r.portProfileToModel(ctx, portProfile, &state, site)...)
+	resp.Diagnostics.Append(
+		setPortProfileTaggedNetworkState(ctx, portProfile, networks, &state)...,
+	)
 
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), state.ID)...)
 	diags = resp.State.Set(ctx, state)
@@ -635,6 +1022,12 @@ func (r *portProfileResource) Update(
 	var plan portProfileResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var config portProfileResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -670,6 +1063,19 @@ func (r *portProfileResource) Update(
 		)
 		return
 	}
+	networks, err := r.client.ListNetwork(ctx, site)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Networks for Port Profile",
+			"Could not read the site network inventory before updating the port profile: "+err.Error(),
+		)
+		return
+	}
+	vlanConfig, vlanDiags := portProfileVLANConfigFromModel(ctx, &config)
+	resp.Diagnostics.Append(vlanDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Apply current API values to state
 	r.setResourceData(ctx, currentPortProfile, &state, site)
@@ -681,6 +1087,14 @@ func (r *portProfileResource) Update(
 	portProfile, convDiags := r.modelToAPIPortProfile(ctx, &state)
 	resp.Diagnostics.Append(convDiags...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if err := applyPortProfileVLANConfig(
+		vlanConfig,
+		portProfileTaggedNetworkUniverse(networks, portProfile.NATiveNetworkID),
+		portProfile,
+	); err != nil {
+		resp.Diagnostics.AddError("Invalid tagged network selection", err.Error())
 		return
 	}
 
@@ -698,6 +1112,9 @@ func (r *portProfileResource) Update(
 
 	// Update state from API response
 	resp.Diagnostics.Append(r.portProfileToModel(ctx, apiPortProfile, &state, site)...)
+	resp.Diagnostics.Append(
+		setPortProfileTaggedNetworkState(ctx, apiPortProfile, networks, &state)...,
+	)
 
 	state.Timeouts = plan.Timeouts
 
@@ -835,9 +1252,6 @@ func (r *portProfileResource) modelToAPIPortProfile(
 	if !model.VoiceNetworkConfID.IsNull() {
 		portProfile.VoiceNetworkID = model.VoiceNetworkConfID.ValueString()
 	}
-	if !model.TaggedVLANMgmt.IsNull() && !model.TaggedVLANMgmt.IsUnknown() {
-		portProfile.TaggedVLANMgmt = model.TaggedVLANMgmt.ValueString()
-	}
 	if !model.FecMode.IsNull() {
 		portProfile.FecMode = model.FecMode.ValueString()
 	}
@@ -847,13 +1261,6 @@ func (r *portProfileResource) modelToAPIPortProfile(
 	portProfile.PortKeepaliveEnabled = model.PortKeepaliveEnabled.ValueBool()
 	portProfile.StpPortMode = model.STPPortMode.ValueBool()
 
-	if !model.ExcludedNetworkConfIDs.IsNull() && !model.ExcludedNetworkConfIDs.IsUnknown() {
-		var ids []string
-		diags.Append(model.ExcludedNetworkConfIDs.ElementsAs(ctx, &ids, false)...)
-		if !diags.HasError() {
-			portProfile.ExcludedNetworkIDs = ids
-		}
-	}
 	if !model.MulticastRouterNetworkIDs.IsNull() && !model.MulticastRouterNetworkIDs.IsUnknown() {
 		var ids []string
 		diags.Append(model.MulticastRouterNetworkIDs.ElementsAs(ctx, &ids, false)...)
@@ -997,8 +1404,12 @@ func (r *portProfileResource) portProfileToModel(
 
 	model.PortKeepaliveEnabled = types.BoolValue(portProfile.PortKeepaliveEnabled)
 
-	if len(portProfile.ExcludedNetworkIDs) > 0 {
-		s, d := types.SetValueFrom(ctx, types.StringType, portProfile.ExcludedNetworkIDs)
+	if portProfile.TaggedVLANMgmt == "custom" {
+		excluded := portProfile.ExcludedNetworkIDs
+		if excluded == nil {
+			excluded = []string{}
+		}
+		s, d := types.SetValueFrom(ctx, types.StringType, excluded)
 		diags.Append(d...)
 		model.ExcludedNetworkConfIDs = s
 	} else {
@@ -1195,6 +1606,16 @@ func (r *portProfileResource) List(
 		stream.Results = list.ListResultsStreamDiagnostics(d)
 		return
 	}
+	networks, err := r.client.ListNetwork(ctx, site)
+	if err != nil {
+		var d diag.Diagnostics
+		d.AddError(
+			"Error Reading Networks for Port Profiles",
+			"Could not read the site network inventory: "+err.Error(),
+		)
+		stream.Results = list.ListResultsStreamDiagnostics(d)
+		return
+	}
 
 	stream.Results = func(push func(list.ListResult) bool) {
 		for _, profile := range profiles {
@@ -1227,6 +1648,9 @@ func (r *portProfileResource) List(
 			var model portProfileResourceModel
 			result.Diagnostics.Append(
 				r.portProfileToModel(ctx, &profile, &model, site)...,
+			)
+			result.Diagnostics.Append(
+				setPortProfileTaggedNetworkState(ctx, &profile, networks, &model)...,
 			)
 			if !result.Diagnostics.HasError() {
 				model.Timeouts = timeoutsNullValue()

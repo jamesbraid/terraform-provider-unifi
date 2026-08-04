@@ -66,6 +66,17 @@ jobs:
       with:
         go-version-file: "go.mod"
         cache: true
+
+    # tfplugindocs uses a Terraform CLI from PATH and otherwise downloads one,
+    # which reaches checkpoint-api.hashicorp.com and fails the job whenever
+    # that call times out. Installing it here removes the network dependency.
+    # terraform_wrapper: false because the wrapper is a script that reformats
+    # the CLI's output, which the schema export cannot read (same reason
+    # acctest.yaml sets it).
+    - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+      with:
+        terraform_wrapper: false
+
     - run: go generate ./...
     - name: git diff
       run: |
