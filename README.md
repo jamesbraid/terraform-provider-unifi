@@ -15,7 +15,7 @@ go mod tidy
 
 ## Documentation
 
-You can browse documentation on the [Terraform provider registry](https://registry.terraform.io/providers/paultyng/unifi/latest/docs).
+You can browse documentation on the [Terraform provider registry](https://registry.terraform.io/providers/ubiquiti-community/unifi/latest/docs).
 
 ## Supported Unifi Controller Versions
 
@@ -31,4 +31,19 @@ The docker, UDM, and UDM-Pro versions are slightly different (the API is proxied
 
 ### Terraform 1.0 and above
 
-You can use the provider via the [Terraform provider registry](https://registry.terraform.io/providers/paultyng/unifi).
+Use the provider from its canonical Terraform Registry address,
+[`ubiquiti-community/unifi`](https://registry.terraform.io/providers/ubiquiti-community/unifi).
+
+Existing state that records the legacy `paultyng/unifi` address does not move
+implicitly when the configuration changes. Review the state backup and plan
+for the affected workspace, then perform the address migration explicitly:
+
+```shell
+terraform state replace-provider \
+  registry.terraform.io/paultyng/unifi \
+  registry.terraform.io/ubiquiti-community/unifi
+```
+
+This is a state migration, not a provider compatibility promise. Test it with
+the Terraform CLI and provider versions used by the workspace before applying
+any infrastructure changes.
