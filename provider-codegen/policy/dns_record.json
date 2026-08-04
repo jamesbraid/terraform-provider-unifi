@@ -3,6 +3,8 @@
   "resource": "unifi_dns_record",
   "generator_name": "dns_record",
   "source_specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad",
+  "catalog_id": "unifi.network.dns_record@10.4.57",
+  "operation_digest": "fcae2fd0f6a3ed9793541c61fc9f9ed5ae00187f8084fb95c042b5be2ca4aa6e",
   "description": "Manages DNS record settings for different providers.",
   "fields": [
     {

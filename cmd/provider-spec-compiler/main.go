@@ -18,21 +18,32 @@ func run(args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("provider-spec-compiler", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	bootstrapPath := flags.String("bootstrap", "", "path to the structural bootstrap projection")
+	catalogPath := flags.String("catalog", "", "path to the admitted observed catalog")
 	policyPath := flags.String("policy", "", "path to the provider policy")
 	baselinePath := flags.String("baseline", "", "path to the M0 schema digest manifest")
 	outputDir := flags.String("output-dir", "", "directory for generated compiler artifacts")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if *bootstrapPath == "" || *policyPath == "" || *baselinePath == "" || *outputDir == "" {
-		fmt.Fprintln(stderr, "bootstrap, policy, baseline, and output-dir are required")
+	if (*bootstrapPath == "") == (*catalogPath == "") || *policyPath == "" || *baselinePath == "" || *outputDir == "" {
+		fmt.Fprintln(stderr, "exactly one of bootstrap or catalog plus policy, baseline, and output-dir are required")
 		return 2
 	}
 
-	bootstrap, err := os.ReadFile(*bootstrapPath)
-	if err != nil {
-		fmt.Fprintf(stderr, "read bootstrap: %v\n", err)
-		return 1
+	var bootstrap, catalog []byte
+	var err error
+	if *bootstrapPath != "" {
+		bootstrap, err = os.ReadFile(*bootstrapPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "read bootstrap: %v\n", err)
+			return 1
+		}
+	} else {
+		catalog, err = os.ReadFile(*catalogPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "read catalog: %v\n", err)
+			return 1
+		}
 	}
 	policy, err := os.ReadFile(*policyPath)
 	if err != nil {
@@ -47,6 +58,7 @@ func run(args []string, stderr io.Writer) int {
 
 	result, err := providercompiler.Compile(providercompiler.CompileInput{
 		Bootstrap:       bootstrap,
+		Catalog:         catalog,
 		Policy:          policy,
 		BaselineDigests: baseline,
 	})

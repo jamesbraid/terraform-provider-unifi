@@ -6,6 +6,7 @@ import "encoding/json"
 // released schema baseline used for one compiler run.
 type CompileInput struct {
 	Bootstrap       []byte
+	Catalog         []byte
 	Policy          []byte
 	BaselineDigests []byte
 }
@@ -39,11 +40,57 @@ type bootstrapField struct {
 	Type string `json:"type"`
 }
 
+type observedCatalog struct {
+	FormatVersion     int                       `json:"format_version"`
+	CatalogID         string                    `json:"catalog_id"`
+	Target            json.RawMessage           `json:"target"`
+	Sources           catalogSources            `json:"sources"`
+	StructuralRecords []catalogStructuralRecord `json:"structural_records"`
+	ObservedRecords   json.RawMessage           `json:"observed_records"`
+	Conflicts         []catalogConflict         `json:"conflicts"`
+	Coverage          []catalogCoverage         `json:"coverage"`
+	Admission         catalogAdmission          `json:"admission"`
+	Tombstones        []string                  `json:"tombstones"`
+	Migrations        json.RawMessage           `json:"migrations"`
+}
+
+type catalogSources struct {
+	CaptureLockSHA256   string `json:"capture_lock_sha256,omitempty"`
+	SpecificationSHA256 string `json:"specification_sha256"`
+}
+
+type catalogStructuralRecord struct {
+	ID               string `json:"id"`
+	Field            string `json:"field"`
+	Type             string `json:"type"`
+	DefinitionSHA256 string `json:"definition_sha256"`
+	SecretCandidate  bool   `json:"secret_candidate"`
+}
+
+type catalogConflict struct {
+	Kind     string `json:"kind"`
+	Field    string `json:"field"`
+	Expected string `json:"expected,omitempty"`
+	Observed string `json:"observed,omitempty"`
+}
+
+type catalogCoverage struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+}
+
+type catalogAdmission struct {
+	State           string `json:"state"`
+	OperationDigest string `json:"operation_digest"`
+}
+
 type policy struct {
 	FormatVersion             int                   `json:"format_version"`
 	Resource                  string                `json:"resource"`
 	GeneratorName             string                `json:"generator_name"`
 	SourceSpecificationSHA256 string                `json:"source_specification_sha256"`
+	CatalogID                 string                `json:"catalog_id,omitempty"`
+	OperationDigest           string                `json:"operation_digest,omitempty"`
 	Description               string                `json:"description"`
 	Fields                    []fieldPolicy         `json:"fields"`
 	ProviderOwned             []providerOwnedPolicy `json:"provider_owned"`
