@@ -94,7 +94,6 @@ Stage the five task files and commit with subject `providercompiler: resolve DNS
 - Create: `provider-codegen/generated/dns_record.impact.json`
 - Create: `provider-codegen/generated/dns_record.mapping.json`
 - Create: `internal/generated/resource_dns_record/dns_record_resource_gen.go`
-- Modify: `tools/tools.go`
 - Modify: `go.mod`
 - Modify: `go.sum`
 - Create: `provider-codegen/generate.go`

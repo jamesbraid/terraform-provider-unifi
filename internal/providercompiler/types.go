@@ -78,7 +78,12 @@ type baselineManifest struct {
 
 type codeSpecification struct {
 	Version   string         `json:"version"`
+	Provider  codeProvider   `json:"provider"`
 	Resources []codeResource `json:"resources"`
+}
+
+type codeProvider struct {
+	Name string `json:"name"`
 }
 
 type codeResource struct {

@@ -155,7 +155,8 @@ func Compile(input CompileInput) (Result, error) {
 		generatorName = rules.Resource
 	}
 	specification := codeSpecification{
-		Version: "0.1",
+		Version:  "0.1",
+		Provider: codeProvider{Name: "unifi"},
 		Resources: []codeResource{{
 			Name: generatorName,
 			Schema: codeSchema{

@@ -14,7 +14,7 @@
         "default": {
           "static": true
         },
-        "markdown_description": "Whether the DNS record is enabled."
+        "description": "Whether the DNS record is enabled."
       }
     },
     {
@@ -23,7 +23,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "required",
-        "markdown_description": "The key of the DNS record.",
+        "description": "The key of the DNS record.",
         "plan_modifiers": [
           {
             "custom": {
@@ -44,7 +44,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "optional",
-        "markdown_description": "The port of the DNS record.",
+        "description": "The port of the DNS record.",
         "validators": [
           {
             "custom": {
@@ -65,7 +65,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "optional",
-        "markdown_description": "The priority of the DNS record.",
+        "description": "The priority of the DNS record.",
         "validators": [
           {
             "custom": {
@@ -86,7 +86,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "required",
-        "markdown_description": "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
+        "description": "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
         "validators": [
           {
             "custom": {
@@ -112,10 +112,10 @@
           "import": {
             "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
           },
-          "type": "timetypes.GoDurationType",
+          "type": "timetypes.GoDurationType{}",
           "value_type": "timetypes.GoDuration"
         },
-        "markdown_description": "The TTL of the DNS record, as a Go duration string (e.g. `1h`, `300s`). The controller stores this value as whole seconds in the range 0–65535s (≈18h12m15s).",
+        "description": "The TTL of the DNS record, as a Go duration string (e.g. `1h`, `300s`). The controller stores this value as whole seconds in the range 0–65535s (≈18h12m15s).",
         "validators": [
           {
             "custom": {
@@ -152,7 +152,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "required",
-        "markdown_description": "The value of the DNS record."
+        "description": "The value of the DNS record."
       }
     },
     {
@@ -161,7 +161,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "optional",
-        "markdown_description": "The weight of the DNS record.",
+        "description": "The weight of the DNS record.",
         "validators": [
           {
             "custom": {
@@ -185,7 +185,7 @@
       "generated": true,
       "attribute": {
         "computed_optional_required": "computed",
-        "markdown_description": "The ID of the DNS record.",
+        "description": "The ID of the DNS record.",
         "plan_modifiers": [
           {
             "custom": {
@@ -207,7 +207,7 @@
       "generated": true,
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "markdown_description": "The name of the site to associate the DNS record with.",
+        "description": "The name of the site to associate the DNS record with.",
         "plan_modifiers": [
           {
             "custom": {
