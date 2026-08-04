@@ -1,0 +1,52 @@
+{
+  "format_version": 1,
+  "milestone": "M1",
+  "result": "passed",
+  "execution": "local",
+  "woodpecker_pipeline": "pending",
+  "source_commit": "3b9eeb6e9c2b976f514d3f78300b3eb0c72d4937",
+  "platform": "darwin/arm64",
+  "go_version": "go version go1.26.5 darwin/arm64",
+  "terraform_version": "1.15.8",
+  "tofu_version": "1.12.1",
+  "provider_binary_sha256": "fe77696c65e60271d6dac851df81edebc49f3457a5efb79626f42e9c6240fb54",
+  "generator": {
+    "module": "github.com/hashicorp/terraform-plugin-codegen-framework",
+    "version": "v0.4.1",
+    "commit": "eea0e9d6b59b4e678cac5cda2d2c5d852f8679f2"
+  },
+  "outputs": {
+    "provider_code_spec_sha256": "bcb5a8fa6994d09c5f57fe639b93821325bb95d64801f18481def23ddb40acc4",
+    "impact_sha256": "33f2a5f0fff39b65907d181c176bf403bf05f5bfedeac405fb2099d630591aa6",
+    "mapping_sha256": "329a7b8963bdee63a11f384f3e0ddf6df527e983933344576117646337cfe14b",
+    "generated_go_sha256": "cb5dbae12a5fa1835e9d15a4e38c88f49c071be04552f069ee3e153cbc7c2e5b"
+  },
+  "schema_sha256": {
+    "resource": "1bdb6740d88d68bf232d79874c34d0e3811d382f55948352add15c2a28e5e93c",
+    "identity": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+    "list_resource": "c914929e71ab8ce0e8977518615ee3cf81c31a411ec77c9f58a2350145c6ee95"
+  },
+  "deterministic_regeneration": true,
+  "shared_cli_projection_equal": true,
+  "full_cli_projection_equal": false,
+  "terraform_only_categories": [
+    "action_schemas",
+    "list_resource_schemas"
+  ],
+  "lifecycle_evidence": {
+    "receipt": "build/m0/network-dns-qualification.json",
+    "reused": true,
+    "reason": "schema-only cutover left runtime paths unchanged"
+  },
+  "human_decisions": [
+    "field dispositions",
+    "key to name mapping",
+    "integer seconds to duration string",
+    "provider-owned identity site and timeouts",
+    "defaults",
+    "validators",
+    "replacement modifiers",
+    "handwritten state list and lifecycle seams"
+  ],
+  "elapsed_seconds": 10
+}
