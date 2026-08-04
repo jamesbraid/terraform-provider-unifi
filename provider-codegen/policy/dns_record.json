@@ -4,11 +4,33 @@
   "generator_name": "dns_record",
   "source_specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad",
   "catalog_id": "unifi.network.dns_record@10.4.57",
-  "operation_digest": "fcae2fd0f6a3ed9793541c61fc9f9ed5ae00187f8084fb95c042b5be2ca4aa6e",
+  "catalog_sha256": "a07b8a4b91d68aaaf35b7bb8a2d8f3d877531ffff64cbd44a44748ab736b9ac1",
+  "catalog_source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "62add0c72d932aba663164fd794d510fb56aebae",
+    "path": "catalogs/network-10.4.57/dns_record.admitted-catalog.json"
+  },
+  "catalog_target": {
+    "name": "network-10.4.57-seeded",
+    "product": "unifi-network",
+    "version": "10.4.57",
+    "architecture": "amd64",
+    "image_index_sha256": "sha256:584be3a2e45c4913e1bc373eff9c7330609c82085d4fc6f5ea365abdcdb3e664",
+    "image_manifest_sha256": "sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4",
+    "controller_fingerprint": "sha256:3af14713d39e67ad63caa797434856135fefad1a13770b10ff3a51400b37ca0c"
+  },
+  "catalog_sources": {
+    "capture_lock_sha256": "45cdd9e52b5a6a5c73605fdff5f6cba085231234226f64d01cb3e1b17ceeaeba",
+    "structural_projection_sha256": "5a733c9c1a642175fe85e48f4c4b1ee70d7ceb10d41629873535208ab4a804b5",
+    "semantic_predecessor_sha256": "224cf5e5f2cfb519bab61af2782a95c03981b95b6b10336ecd62d572dc13fd85",
+    "semantic_ids_sha256": "addd6d3117626201b9b33c50bf1ef6824327eed088f06079357b676be8c5e2a0"
+  },
+  "operation_digest": "199c002d9a1229aa7e43a94b12da6f33c7ce612ecb471eebcd6896d985b161f8",
   "description": "Manages DNS record settings for different providers.",
   "fields": [
     {
       "structural_name": "enabled",
+      "semantic_id": "unifi.network.dns_record.field.enabled",
       "terraform_name": "enabled",
       "disposition": "managed",
       "attribute": {
@@ -21,6 +43,7 @@
     },
     {
       "structural_name": "key",
+      "semantic_id": "unifi.network.dns_record.field.key",
       "terraform_name": "name",
       "disposition": "managed",
       "attribute": {
@@ -42,6 +65,7 @@
     },
     {
       "structural_name": "port",
+      "semantic_id": "unifi.network.dns_record.field.port",
       "terraform_name": "port",
       "disposition": "managed",
       "attribute": {
@@ -63,6 +87,7 @@
     },
     {
       "structural_name": "priority",
+      "semantic_id": "unifi.network.dns_record.field.priority",
       "terraform_name": "priority",
       "disposition": "managed",
       "attribute": {
@@ -84,6 +109,7 @@
     },
     {
       "structural_name": "record_type",
+      "semantic_id": "unifi.network.dns_record.field.record_type",
       "terraform_name": "record_type",
       "disposition": "managed",
       "attribute": {
@@ -105,6 +131,7 @@
     },
     {
       "structural_name": "ttl",
+      "semantic_id": "unifi.network.dns_record.field.ttl",
       "terraform_name": "ttl",
       "terraform_type": "string",
       "disposition": "managed",
@@ -150,6 +177,7 @@
     },
     {
       "structural_name": "value",
+      "semantic_id": "unifi.network.dns_record.field.value",
       "terraform_name": "value",
       "disposition": "managed",
       "attribute": {
@@ -159,6 +187,7 @@
     },
     {
       "structural_name": "weight",
+      "semantic_id": "unifi.network.dns_record.field.weight",
       "terraform_name": "weight",
       "disposition": "managed",
       "attribute": {

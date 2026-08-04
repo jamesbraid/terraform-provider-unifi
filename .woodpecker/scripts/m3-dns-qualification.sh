@@ -130,13 +130,15 @@ git archive "${source_commit}" | docker run --rm --interactive \
     --mount "type=volume,src=${source_volume},dst=/source" \
     "${go_image}" -c 'tar -xf - -C /source'
 docker run --rm --platform linux/amd64 \
+    --env CGO_ENABLED=0 \
     --env GOCACHE=/go/build-cache --env GOMODCACHE=/go/module-cache \
     --env GOTELEMETRY=off --env GOTOOLCHAIN=local \
     --mount "type=volume,src=${source_volume},dst=/source,readonly" \
     --mount "type=volume,src=${go_cache_volume},dst=/go" \
     --mount "type=volume,src=${tools_volume},dst=/tools" \
     --workdir /source "${go_image}" \
-    go build -trimpath -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
+    go build -trimpath -buildvcs=false \
+    -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
 git archive "${old_provider_commit}" | docker run --rm --interactive \
     --entrypoint /bin/sh \
     --mount "type=volume,src=${old_source_volume},dst=/source" \
@@ -165,17 +167,19 @@ terraform_binary_sha256=$(sha256sum "${work_root}/tools/terraform" | awk '{print
 tofu_binary_sha256=$(sha256sum "${work_root}/tools/tofu" | awk '{print $1}')
 
 wait_healthy() {
-    for _ in $(seq 1 180); do
+    for _ in $(seq 1 240); do
         status=$(docker inspect --format '{{.State.Health.Status}}' "${controller}")
         if [[ ${status} = healthy ]]; then
             return
         fi
-        if [[ ${status} = unhealthy ]]; then
+        if [[ $(docker inspect --format '{{.State.Running}}' "${controller}") != true ]]; then
+            docker inspect --format '{{json .State}}' "${controller}" >&2
             docker logs "${controller}" >&2
             return 1
         fi
         sleep 5
     done
+    docker inspect --format '{{json .State.Health}}' "${controller}" >&2
     docker logs "${controller}" >&2
     return 1
 }
@@ -354,7 +358,7 @@ receipt=$(jq --compact-output --null-input \
     --arg controller_manifest_sha256 "${controller_manifest_sha256}" \
     --arg controller_config_sha256 "${controller_config_sha256}" \
     --arg normalized_state_sha256 "${normalized_state_sha256}" \
-    '{format_version: 1, gate: "M3 DNS managed-operation qualification", result: "pass", source_commit: $source_commit, platform: "linux/amd64", provider_version: "0.101.2", provider_binary_sha256: $provider_binary_sha256, legacy_provider: {version: "0.101.2", archive_sha256: $provider_archive_sha256, binary_sha256: $legacy_provider_binary_sha256}, state_upgrade_source: {version: "0.41.11", commit: $old_provider_commit, binary_sha256: $old_provider_binary_sha256}, terraform: {version: "1.15.8", archive_sha256: $terraform_archive_sha256, binary_sha256: $terraform_binary_sha256}, tofu: {version: "1.12.1", archive_sha256: $tofu_archive_sha256, binary_sha256: $tofu_binary_sha256}, target: {product: "UniFi Network", version: "10.4.57", index_sha256: $controller_index_sha256, platform_manifest_sha256: $controller_manifest_sha256, config_sha256: $controller_config_sha256}, lifecycle: {fresh_target_per_cli_and_adapter: true, create: true, update: true, replacement_plan: true, restart_refresh: true, import: true, v0_integer_ttl_state_upgrade: true, no_op_plan: true, delete: true, cleanup: true, bidirectional_adapter_state_round_trip: true}, normalized_state_sha256: $normalized_state_sha256, cli_outcomes_equivalent: true, adapter_outcomes_equivalent: true}')
+    '{format_version: 1, gate: "M3 DNS managed-operation qualification", result: "pass", source_commit: $source_commit, platform: "linux/amd64", provider_version: "0.101.2", provider_binary_sha256: $provider_binary_sha256, legacy_provider: {version: "0.101.2", archive_sha256: $provider_archive_sha256, binary_sha256: $legacy_provider_binary_sha256}, state_upgrade_source: {version: "0.41.11", commit: $old_provider_commit, binary_sha256: $old_provider_binary_sha256}, terraform: {version: "1.15.8", archive_sha256: $terraform_archive_sha256, binary_sha256: $terraform_binary_sha256}, tofu: {version: "1.12.1", archive_sha256: $tofu_archive_sha256, binary_sha256: $tofu_binary_sha256}, target: {product: "UniFi Network", version: "10.4.57", index_sha256: $controller_index_sha256, platform_manifest_sha256: $controller_manifest_sha256, config_sha256: $controller_config_sha256}, lifecycle: {fresh_target_per_cli_and_adapter: true, create: true, update: true, omitted_optional_fields: true, configured_optional_fields: true, replacement_plan: true, restart_refresh: true, import: true, v0_integer_ttl_state_upgrade: true, no_op_plan: true, delete: true, cleanup: true, bidirectional_adapter_state_round_trip: true}, normalized_state_sha256: $normalized_state_sha256, cli_outcomes_equivalent: true, adapter_outcomes_equivalent: true}')
 if [[ -n ${M3_LIFECYCLE_RECEIPT_OUTPUT:-} ]]; then
     printf '%s\n' "${receipt}" >"${M3_LIFECYCLE_RECEIPT_OUTPUT}"
 fi

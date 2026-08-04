@@ -2,8 +2,8 @@
   "format_version": 1,
   "resource": "unifi_dns_record",
   "source": {
-    "repository": "catalog:unifi.network.dns_record@10.4.57",
-    "commit": "fcae2fd0f6a3ed9793541c61fc9f9ed5ae00187f8084fb95c042b5be2ca4aa6e",
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "62add0c72d932aba663164fd794d510fb56aebae",
     "specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad"
   },
   "baseline_digests": {
