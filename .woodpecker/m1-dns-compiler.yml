@@ -23,4 +23,5 @@ steps:
       - mkdir -p /tmp/released-provider
       - unzip -q /tmp/provider.zip -d /tmp/released-provider
       - go mod download all
+      - bash .woodpecker/scripts/m1-evidence-lib_test.sh
       - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_EXECUTION=woodpecker M1_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 M1_EVIDENCE_OUTPUT_DIRECTORY=/tmp/provider-m1-evidence M1_EVIDENCE_ARCHIVE=/tmp/provider-m1-evidence.tar.gz M1_PRINT_EVIDENCE_BUNDLE=true TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m1-dns-compiler.sh

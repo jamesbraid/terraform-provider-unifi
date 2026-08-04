@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_directory=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+readonly script_directory
+# shellcheck source=.woodpecker/scripts/m1-evidence-lib.sh
+source "${script_directory}/m1-evidence-lib.sh"
+
 readonly terraform_bin=${TERRAFORM_BIN:-terraform}
 readonly tofu_bin=${TOFU_BIN:-tofu}
 readonly provider_address=registry.terraform.io/ubiquiti-community/unifi
@@ -137,22 +142,12 @@ done
 
 raw_retained=false
 if [[ -n ${M1_EVIDENCE_OUTPUT_DIRECTORY:-} ]]; then
-    evidence_directory=${M1_EVIDENCE_OUTPUT_DIRECTORY}
-    readonly evidence_directory
     repository_root=$(git rev-parse --show-toplevel)
     readonly repository_root
-    if [[ -d ${evidence_directory} ]] && \
-        [[ -n $(find "${evidence_directory}" -mindepth 1 -print -quit) ]]; then
-        echo "M1 evidence output directory must be empty" >&2
-        exit 1
-    fi
+    evidence_directory=$(prepare_evidence_directory \
+        "${M1_EVIDENCE_OUTPUT_DIRECTORY}" "${repository_root}")
+    readonly evidence_directory
     mkdir -p "${evidence_directory}/raw" "${evidence_directory}/canonical"
-    case "$(cd "${evidence_directory}" && pwd -P)" in
-        "${repository_root}"|"${repository_root}"/*)
-            echo "M1 evidence output must be outside the provider repository" >&2
-            exit 1
-            ;;
-    esac
     cp "${work_root}/head.terraform.raw.json" "${evidence_directory}/raw/terraform-1.15.8-head.json"
     cp "${work_root}/head.tofu.raw.json" "${evidence_directory}/raw/tofu-1.12.1-head.json"
     cp "${work_root}/released.terraform.raw.json" "${evidence_directory}/raw/terraform-1.15.8-released.json"
@@ -259,7 +254,7 @@ if [[ ${raw_retained} = true ]]; then
         sha256sum --check SHA256SUMS
     )
     if [[ -n ${M1_EVIDENCE_ARCHIVE:-} ]]; then
-        tar -C "${evidence_directory}" -czf "${M1_EVIDENCE_ARCHIVE}" .
+        archive_evidence_directory "${evidence_directory}" "${M1_EVIDENCE_ARCHIVE}"
         if [[ ${M1_PRINT_EVIDENCE_BUNDLE:-false} = true ]]; then
             archive_size=$(wc -c <"${M1_EVIDENCE_ARCHIVE}")
             readonly archive_size
