@@ -1,0 +1,60 @@
+{
+  "format_version": 1,
+  "mode": "schema_only",
+  "resource": "unifi_port_forward",
+  "source": {
+    "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
+    "provider_version": "0.101.2",
+    "schema_cli": "terraform",
+    "schema_cli_version": "1.15.8",
+    "schema_sha256": "e054aef83f2cf19c82968951342d3daf46b0b8071c15c5c076201aa0c5d93317",
+    "resource_schema_sha256": "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6"
+  },
+  "attributes": {
+    "destination_ips": {
+      "nesting_mode": "list",
+      "attributes": [
+        "destination_ip",
+        "interface"
+      ]
+    },
+    "forward": {
+      "nesting_mode": "single",
+      "attributes": [
+        "ip",
+        "port"
+      ]
+    },
+    "source_limiting": {
+      "nesting_mode": "single",
+      "attributes": [
+        "enabled",
+        "firewall_group_id",
+        "ip",
+        "type"
+      ]
+    },
+    "timeouts": {
+      "nesting_mode": "single",
+      "attributes": [
+        "create",
+        "delete",
+        "read",
+        "update"
+      ]
+    },
+    "wan": {
+      "nesting_mode": "single",
+      "attributes": [
+        "interface",
+        "ip_address",
+        "port"
+      ]
+    }
+  },
+  "claims": {
+    "schema_only": true,
+    "runtime_changed": false,
+    "lifecycle_admitted": false
+  }
+}
