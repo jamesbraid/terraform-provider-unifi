@@ -141,6 +141,11 @@ if [[ -n ${M1_EVIDENCE_OUTPUT_DIRECTORY:-} ]]; then
     readonly evidence_directory
     repository_root=$(git rev-parse --show-toplevel)
     readonly repository_root
+    if [[ -d ${evidence_directory} ]] && \
+        [[ -n $(find "${evidence_directory}" -mindepth 1 -print -quit) ]]; then
+        echo "M1 evidence output directory must be empty" >&2
+        exit 1
+    fi
     mkdir -p "${evidence_directory}/raw" "${evidence_directory}/canonical"
     case "$(cd "${evidence_directory}" && pwd -P)" in
         "${repository_root}"|"${repository_root}"/*)
