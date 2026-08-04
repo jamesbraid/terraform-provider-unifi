@@ -29,9 +29,15 @@ baseline. It deliberately does not claim acceptance, lifecycle, migration, or
 compiler admission for `unifi_port_forward`.
 
 `network-dns-qualification.json` records the passing Terraform/OpenTofu DNS
-lifecycle against the locked standalone Network target. Its coverage limits
-keep the persisted-UOS restart and native-arm64 UOS matrix visible; this receipt
-does not claim that Milestone 0 is complete.
+lifecycle against the locked standalone Network target.
+
+`uos-dns-qualification.json` records the complementary native-arm64 run against
+the digest-pinned UOS 5.1.21 target. Each CLI used a fresh persisted volume,
+created and deleted the same synthetic DNS record, restarted the controller,
+and produced the same normalized state after refresh and a no-op plan. The
+per-volume API key was verified across restart but was not retained. Together
+the Network and UOS receipts close the controller coverage recorded by the M0
+checkpoint.
 
 ```sh
 go run ./cmd/schema-baseline \
