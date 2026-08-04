@@ -1,0 +1,22 @@
+when:
+  - event: manual
+  - event: push
+    branch: emdash/m1-dns-compiler
+
+labels:
+  pool: skunkworks
+
+steps:
+  - name: dns-compiler-lighthouse
+    image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
+    commands:
+      - apt-get update
+      - apt-get install --yes --no-install-recommends ca-certificates curl jq unzip
+      - curl --fail --location --silent --show-error --output /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.15.8/terraform_1.15.8_linux_amd64.zip
+      - echo 'd25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d  /tmp/terraform.zip' | sha256sum --check -
+      - curl --fail --location --silent --show-error --output /tmp/tofu.zip https://github.com/opentofu/opentofu/releases/download/v1.12.1/tofu_1.12.1_linux_amd64.zip
+      - echo '1fc9af962e3632b7cd0ba27076cd9f1ced177567defe9e331ac37f5a40468575  /tmp/tofu.zip' | sha256sum --check -
+      - unzip -q /tmp/terraform.zip -d /usr/local/bin
+      - unzip -q /tmp/tofu.zip -d /usr/local/bin
+      - go mod download
+      - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_EXECUTION=woodpecker TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m1-dns-compiler.sh
