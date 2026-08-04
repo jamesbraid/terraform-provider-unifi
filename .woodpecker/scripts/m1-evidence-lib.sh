@@ -2,7 +2,7 @@
 
 prepare_evidence_directory() {
     local requested_directory=$1
-    local repository_root=$2
+    local requested_repository_root=$2
     local resolved_directory resolved_repository
 
     if [[ -L ${requested_directory} ]]; then
@@ -16,7 +16,7 @@ prepare_evidence_directory() {
 
     mkdir -p "${requested_directory}"
     resolved_directory=$(CDPATH='' cd -- "${requested_directory}" && pwd -P)
-    resolved_repository=$(CDPATH='' cd -- "${repository_root}" && pwd -P)
+    resolved_repository=$(CDPATH='' cd -- "${requested_repository_root}" && pwd -P)
     case "${resolved_directory}" in
         "${resolved_repository}"|"${resolved_repository}"/*)
             echo "M1 evidence output must be outside the provider repository" >&2
@@ -31,11 +31,11 @@ prepare_evidence_directory() {
 }
 
 archive_evidence_directory() {
-    local evidence_directory=$1
+    local source_directory=$1
     local archive_path=$2
     local resolved_directory archive_parent resolved_archive temporary_directory
 
-    resolved_directory=$(CDPATH='' cd -- "${evidence_directory}" && pwd -P)
+    resolved_directory=$(CDPATH='' cd -- "${source_directory}" && pwd -P)
     archive_parent=$(dirname -- "${archive_path}")
     mkdir -p "${archive_parent}"
     archive_parent=$(CDPATH='' cd -- "${archive_parent}" && pwd -P)
