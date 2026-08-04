@@ -20,8 +20,8 @@ cleanup() {
 trap cleanup EXIT
 
 module_json=$(go list -m -json all | jq --compact-output \
-    --arg module "${expected_module}" \
-    'select(.Path == $module)')
+    --arg module_path "${expected_module}" \
+    'select(.Path == $module_path)')
 readonly module_json
 test "$(jq -r '.Replace.Path' <<<"${module_json}")" = "${expected_replacement}"
 test "$(jq -r '.Replace.Version' <<<"${module_json}")" = "${expected_version}"
@@ -52,7 +52,7 @@ readonly lifecycle_result lifecycle_sha256
 jq --indent 2 --null-input \
     --arg source_commit "$(git rev-parse HEAD)" \
     --arg execution "${M3_EXECUTION:-local}" \
-    --arg module "${expected_module}" \
+    --arg module_path "${expected_module}" \
     --arg replacement "${expected_replacement}" \
     --arg version "${expected_version}" \
     --arg sum "${expected_sum}" \
@@ -69,7 +69,7 @@ jq --indent 2 --null-input \
         execution: $execution,
         source_commit: $source_commit,
         go_unifi: {
-            module: $module,
+            module: $module_path,
             replacement: $replacement,
             version: $version,
             sum: $sum

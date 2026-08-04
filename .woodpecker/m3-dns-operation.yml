@@ -18,5 +18,5 @@ steps:
       - echo '1fc9af962e3632b7cd0ba27076cd9f1ced177567defe9e331ac37f5a40468575  /tmp/tofu.zip' | sha256sum --check -
       - unzip -q /tmp/terraform.zip -d /usr/local/bin
       - unzip -q /tmp/tofu.zip -d /usr/local/bin
-      - go mod download
+      - go mod download all
       - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M3_EXECUTION=woodpecker TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m3-dns-operation.sh
