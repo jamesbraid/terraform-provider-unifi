@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "milestone": "M7",
+  "result": "pass",
+  "decision": "no-hardware-capability-promoted",
+  "promoted_capabilities": [],
+  "provider_release_claims_hardware_support": false,
+  "hil_required": false,
+  "hardware_dependent_claims": [
+    "adoption",
+    "inform",
+    "device-reboot",
+    "firmware-or-device-upgrade",
+    "gateway-topology",
+    "hardware-qualified-zbf"
+  ],
+  "guardrails": {
+    "unreviewed_field_promoted": false,
+    "unreviewed_operation_promoted": false,
+    "controller_crud_evidence_only": true
+  }
+}
