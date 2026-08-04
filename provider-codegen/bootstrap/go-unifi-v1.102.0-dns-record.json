@@ -1,0 +1,45 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "e255518385e0104eb838be56c2a491de158f3194",
+    "specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad"
+  },
+  "resource": {
+    "name": "unifi_dns_record",
+    "fields": [
+      {
+        "name": "enabled",
+        "type": "bool"
+      },
+      {
+        "name": "key",
+        "type": "string"
+      },
+      {
+        "name": "port",
+        "type": "int64"
+      },
+      {
+        "name": "priority",
+        "type": "int64"
+      },
+      {
+        "name": "record_type",
+        "type": "string"
+      },
+      {
+        "name": "ttl",
+        "type": "int64"
+      },
+      {
+        "name": "value",
+        "type": "string"
+      },
+      {
+        "name": "weight",
+        "type": "int64"
+      }
+    ]
+  }
+}
