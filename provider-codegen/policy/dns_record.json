@@ -4,11 +4,18 @@
   "generator_name": "dns_record",
   "source_specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad",
   "catalog_id": "unifi.network.dns_record@10.4.57",
-  "operation_digest": "fcae2fd0f6a3ed9793541c61fc9f9ed5ae00187f8084fb95c042b5be2ca4aa6e",
+  "catalog_sha256": "a07b8a4b91d68aaaf35b7bb8a2d8f3d877531ffff64cbd44a44748ab736b9ac1",
+  "catalog_source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "62add0c72d932aba663164fd794d510fb56aebae",
+    "path": "catalogs/network-10.4.57/dns_record.admitted-catalog.json"
+  },
+  "operation_digest": "199c002d9a1229aa7e43a94b12da6f33c7ce612ecb471eebcd6896d985b161f8",
   "description": "Manages DNS record settings for different providers.",
   "fields": [
     {
       "structural_name": "enabled",
+      "semantic_id": "unifi.network.dns_record.field.enabled",
       "terraform_name": "enabled",
       "disposition": "managed",
       "attribute": {
@@ -21,6 +28,7 @@
     },
     {
       "structural_name": "key",
+      "semantic_id": "unifi.network.dns_record.field.key",
       "terraform_name": "name",
       "disposition": "managed",
       "attribute": {
@@ -42,6 +50,7 @@
     },
     {
       "structural_name": "port",
+      "semantic_id": "unifi.network.dns_record.field.port",
       "terraform_name": "port",
       "disposition": "managed",
       "attribute": {
@@ -63,6 +72,7 @@
     },
     {
       "structural_name": "priority",
+      "semantic_id": "unifi.network.dns_record.field.priority",
       "terraform_name": "priority",
       "disposition": "managed",
       "attribute": {
@@ -84,6 +94,7 @@
     },
     {
       "structural_name": "record_type",
+      "semantic_id": "unifi.network.dns_record.field.record_type",
       "terraform_name": "record_type",
       "disposition": "managed",
       "attribute": {
@@ -105,6 +116,7 @@
     },
     {
       "structural_name": "ttl",
+      "semantic_id": "unifi.network.dns_record.field.ttl",
       "terraform_name": "ttl",
       "terraform_type": "string",
       "disposition": "managed",
@@ -150,6 +162,7 @@
     },
     {
       "structural_name": "value",
+      "semantic_id": "unifi.network.dns_record.field.value",
       "terraform_name": "value",
       "disposition": "managed",
       "attribute": {
@@ -159,6 +172,7 @@
     },
     {
       "structural_name": "weight",
+      "semantic_id": "unifi.network.dns_record.field.weight",
       "terraform_name": "weight",
       "disposition": "managed",
       "attribute": {
