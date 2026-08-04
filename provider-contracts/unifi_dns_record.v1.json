@@ -5,7 +5,7 @@
   "provider": {
     "address": "registry.terraform.io/ubiquiti-community/unifi",
     "version": "0.101.2",
-    "source_commit": "6ce5e1ca",
+    "source_commit": "2f3d6ff79a51deef0d60110ca3925b05f4005c3d",
     "binary": {
       "platform": "linux/amd64",
       "sha256": "6e9ada6323822a3c54250597c1ef62b5ccafd4d927444eb852ad9f0c2bc39701"
@@ -30,6 +30,10 @@
   "catalog": {
     "id": "unifi.network.dns_record@10.4.57",
     "sha256": "a07b8a4b91d68aaaf35b7bb8a2d8f3d877531ffff64cbd44a44748ab736b9ac1"
+  },
+  "operation": {
+    "artifact_sha256": "d004069d8f4d911de2d893c3183e0d9e59a67d66425fcb3d1551caa55c623cbd",
+    "digest": "199c002d9a1229aa7e43a94b12da6f33c7ce612ecb471eebcd6896d985b161f8"
   },
   "resource": {
     "resource_type": "unifi_dns_record",
