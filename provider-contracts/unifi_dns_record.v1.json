@@ -48,7 +48,7 @@
     "result": "pass"
   },
   "provenance": {
-    "policy_sha256": "05e14b6f4ef312808022009579170379e6b7e99a1ee35eaa1153ca600856d7cb",
+    "policy_sha256": "fe0d90fd006ec65846270fd898ad86e4dac6b1960e30fa0884ebe74ba2177af3",
     "provider_code_spec_sha256": "bcb5a8fa6994d09c5f57fe639b93821325bb95d64801f18481def23ddb40acc4",
     "mapping_sha256": "329a7b8963bdee63a11f384f3e0ddf6df527e983933344576117646337cfe14b"
   },

@@ -179,6 +179,30 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 			},
 			want: "unresolved conflicts",
 		},
+		"missing locked target": {
+			mutate: func(catalog map[string]any) {
+				delete(catalog, "target")
+			},
+			want: "complete locked catalog target",
+		},
+		"locked target policy mismatch": {
+			mutate: func(catalog map[string]any) {
+				catalog["target"].(map[string]any)["name"] = "different-target"
+			},
+			want: "locked catalog target does not match provider policy",
+		},
+		"missing source digests": {
+			mutate: func(catalog map[string]any) {
+				delete(catalog, "sources")
+			},
+			want: "complete catalog source digests",
+		},
+		"source digest policy mismatch": {
+			mutate: func(catalog map[string]any) {
+				catalog["sources"].(map[string]any)["capture_lock_sha256"] = strings.Repeat("8", 64)
+			},
+			want: "catalog source digests do not match provider policy",
+		},
 		"incomplete coverage": {
 			mutate: func(catalog map[string]any) {
 				catalog["coverage"] = catalog["coverage"].([]any)[1:]
@@ -394,6 +418,29 @@ func addTestCatalogSource(policy map[string]any) {
 		"commit":     strings.Repeat("a", 40),
 		"path":       "catalogs/network-10.4.57/dns_record.admitted-catalog.json",
 	}
+	policy["catalog_target"] = testCatalogTarget()
+	policy["catalog_sources"] = testCatalogSources()
+}
+
+func testCatalogTarget() map[string]any {
+	return map[string]any{
+		"name":                   "network-10.4.57-seeded",
+		"product":                "unifi-network",
+		"version":                "10.4.57",
+		"architecture":           "amd64",
+		"image_index_sha256":     "sha256:" + strings.Repeat("1", 64),
+		"image_manifest_sha256":  "sha256:" + strings.Repeat("2", 64),
+		"controller_fingerprint": "sha256:" + strings.Repeat("3", 64),
+	}
+}
+
+func testCatalogSources() map[string]any {
+	return map[string]any{
+		"capture_lock_sha256":          strings.Repeat("4", 64),
+		"structural_projection_sha256": strings.Repeat("5", 64),
+		"semantic_predecessor_sha256":  strings.Repeat("6", 64),
+		"semantic_ids_sha256":          strings.Repeat("7", 64),
+	}
 }
 
 func testBaseline(t *testing.T) []byte {
@@ -440,8 +487,13 @@ func testCatalog(t *testing.T, fieldNames []string) []byte {
 	return mustJSON(t, map[string]any{
 		"format_version": 1,
 		"catalog_id":     "unifi.network.dns_record@10.4.57",
+		"target":         testCatalogTarget(),
 		"sources": map[string]any{
-			"specification_sha256": testSpecificationDigest,
+			"capture_lock_sha256":          strings.Repeat("4", 64),
+			"specification_sha256":         testSpecificationDigest,
+			"structural_projection_sha256": strings.Repeat("5", 64),
+			"semantic_predecessor_sha256":  strings.Repeat("6", 64),
+			"semantic_ids_sha256":          strings.Repeat("7", 64),
 		},
 		"structural_records": structural,
 		"observed_records":   observed,
