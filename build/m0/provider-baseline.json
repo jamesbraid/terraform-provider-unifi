@@ -68,9 +68,23 @@
     "pipeline_number": 4,
     "clean_builds": 2,
     "build_network": "none",
+    "head_evidence_build_flags": [
+      "-trimpath",
+      "-buildvcs=false"
+    ],
     "release_to_head": true,
     "shared_projection_equal": true,
     "generated_docs_unchanged": true,
-    "raw_linux_cli_outputs_retained": false
+    "raw_linux_cli_outputs_retained": false,
+    "raw_linux_cli_evidence": {
+      "repository": "infra/unifi-build-evidence",
+      "receipt": "receipts/provider-baseline/receipt.json",
+      "receipt_sha256": null,
+      "required_raw_outputs": [
+        "raw/terraform-1.15.8-head.json",
+        "raw/tofu-1.12.1-head.json"
+      ],
+      "status": "pending_skunkworks_capture"
+    }
   }
 }
