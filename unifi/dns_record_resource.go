@@ -2,6 +2,7 @@ package unifi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -44,7 +45,8 @@ func NewDNSRecordListResource() list.ListResource {
 
 // dnsRecordFrameworkResource defines the resource implementation.
 type dnsRecordFrameworkResource struct {
-	client *Client
+	backend     dnsRecordBackend
+	defaultSite string
 }
 
 // dnsRecordFrameworkResourceModel describes the resource data model.
@@ -168,7 +170,8 @@ func (r *dnsRecordFrameworkResource) Configure(
 		return
 	}
 
-	r.client = client
+	r.backend = newPrivateDNSRecordBackend(client.ApiClient)
+	r.defaultSite = client.Site
 }
 
 func (r *dnsRecordFrameworkResource) Create(
@@ -192,16 +195,13 @@ func (r *dnsRecordFrameworkResource) Create(
 	ctx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	// Convert to unifi.DNSRecord
-	dnsRecord := r.modelToDNSRecord(ctx, &data)
-
 	site := data.Site.ValueString()
 	if site == "" {
-		site = r.client.Site
+		site = r.defaultSite
 	}
 
 	// Create the DNS record
-	createdDNSRecord, err := r.client.CreateDNSRecord(ctx, site, dnsRecord)
+	createdDNSRecord, err := r.backend.Create(ctx, site, r.modelToDNSRecordIntent(ctx, &data))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Creating Dns Record",
@@ -241,13 +241,14 @@ func (r *dnsRecordFrameworkResource) Read(
 
 	site := data.Site.ValueString()
 	if site == "" {
-		site = r.client.Site
+		site = r.defaultSite
 	}
 
 	// Get the DNS record from the API
-	dnsRecord, err := r.client.GetDNSRecord(ctx, site, data.ID.ValueString())
+	dnsRecord, err := r.backend.Read(ctx, site, data.ID.ValueString())
 	if err != nil {
-		if _, ok := err.(*unifi.NotFoundError); ok {
+		var notFound *unifi.NotFoundError
+		if errors.As(err, &notFound) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -299,15 +300,12 @@ func (r *dnsRecordFrameworkResource) Update(
 
 	site := state.Site.ValueString()
 	if site == "" {
-		site = r.client.Site
+		site = r.defaultSite
 	}
 
-	// Step 3: Convert the updated state to API format
-	dnsRecord := r.modelToDNSRecord(ctx, &state)
-	dnsRecord.ID = state.ID.ValueString()
-
-	// Step 4: Send to API
-	updatedDNSRecord, err := r.client.UpdateDNSRecord(ctx, site, dnsRecord)
+	// Step 3: Send only the managed fields present in the plan.
+	patch := r.modelToDNSRecordPatch(ctx, &plan, &state)
+	updatedDNSRecord, err := r.backend.Update(ctx, site, patch)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Dns Record",
@@ -316,7 +314,7 @@ func (r *dnsRecordFrameworkResource) Update(
 		return
 	}
 
-	// Step 5: Update state with API response
+	// Step 4: Update state with API response
 	r.dnsRecordToModel(ctx, updatedDNSRecord, &state, site)
 
 	state.Timeouts = plan.Timeouts
@@ -349,11 +347,11 @@ func (r *dnsRecordFrameworkResource) Delete(
 
 	site := data.Site.ValueString()
 	if site == "" {
-		site = r.client.Site
+		site = r.defaultSite
 	}
 
 	// Delete the DNS record
-	err := r.client.DeleteDNSRecord(ctx, site, data.ID.ValueString())
+	err := r.backend.Delete(ctx, site, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting Dns Record",
@@ -426,51 +424,88 @@ func (r *dnsRecordFrameworkResource) applyPlanToState(
 	}
 }
 
-// modelToDNSRecord converts the Terraform model to the API struct.
-func (r *dnsRecordFrameworkResource) modelToDNSRecord(
+// modelToDNSRecordIntent converts the Terraform model to provider-owned API intent.
+func (r *dnsRecordFrameworkResource) modelToDNSRecordIntent(
 	_ context.Context,
 	model *dnsRecordFrameworkResourceModel,
-) *unifi.DNSRecord {
-	dnsRecord := &unifi.DNSRecord{
-		Key:   model.Name.ValueString(),
+) dnsRecordIntent {
+	intent := dnsRecordIntent{
+		Name:  model.Name.ValueString(),
 		Value: model.Value.ValueString(),
 	}
 
 	if !model.Enabled.IsNull() && !model.Enabled.IsUnknown() {
-		dnsRecord.Enabled = model.Enabled.ValueBool()
+		intent.Enabled = model.Enabled.ValueBool()
 	}
 
-	dnsRecord.Port = model.Port.ValueInt64Pointer()
+	intent.Port = model.Port.ValueInt64Pointer()
 
 	if !model.Priority.IsNull() && !model.Priority.IsUnknown() {
-		dnsRecord.Priority = model.Priority.ValueInt64()
+		intent.Priority = model.Priority.ValueInt64()
 	}
 
 	if !model.RecordType.IsNull() && !model.RecordType.IsUnknown() {
-		dnsRecord.RecordType = model.RecordType.ValueString()
+		intent.RecordType = model.RecordType.ValueString()
 	}
 
 	if !model.TTL.IsNull() && !model.TTL.IsUnknown() {
-		dnsRecord.Ttl = util.DurationUnits(model.TTL, time.Second)
+		intent.TTL = util.DurationUnits(model.TTL, time.Second)
 	}
 
 	if !model.Weight.IsNull() && !model.Weight.IsUnknown() {
-		dnsRecord.Weight = model.Weight.ValueInt64()
+		intent.Weight = model.Weight.ValueInt64()
 	}
 
-	return dnsRecord
+	return intent
 }
 
-// dnsRecordToModel converts the API struct to the Terraform model.
+func (r *dnsRecordFrameworkResource) modelToDNSRecordPatch(
+	ctx context.Context,
+	plan *dnsRecordFrameworkResourceModel,
+	state *dnsRecordFrameworkResourceModel,
+) dnsRecordPatch {
+	patch := dnsRecordPatch{
+		ID:     state.ID.ValueString(),
+		Values: r.modelToDNSRecordIntent(ctx, state),
+		Fields: make([]dnsRecordField, 0, 8),
+	}
+	if !plan.Enabled.IsNull() && !plan.Enabled.IsUnknown() {
+		patch.Fields = append(patch.Fields, dnsRecordFieldEnabled)
+	}
+	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
+		patch.Fields = append(patch.Fields, dnsRecordFieldName)
+	}
+	if !plan.Port.IsNull() && !plan.Port.IsUnknown() {
+		patch.Fields = append(patch.Fields, dnsRecordFieldPort)
+	}
+	if !plan.Priority.IsNull() && !plan.Priority.IsUnknown() {
+		patch.Fields = append(patch.Fields, dnsRecordFieldPriority)
+	}
+	if !plan.RecordType.IsNull() && !plan.RecordType.IsUnknown() {
+		patch.Fields = append(patch.Fields, dnsRecordFieldRecordType)
+	}
+	if !plan.TTL.IsNull() && !plan.TTL.IsUnknown() {
+		patch.Fields = append(patch.Fields, dnsRecordFieldTTL)
+	}
+	if !plan.Value.IsNull() && !plan.Value.IsUnknown() {
+		patch.Fields = append(patch.Fields, dnsRecordFieldValue)
+	}
+	if !plan.Weight.IsNull() && !plan.Weight.IsUnknown() {
+		patch.Fields = append(patch.Fields, dnsRecordFieldWeight)
+	}
+	return patch
+}
+
+// dnsRecordToModel converts normalized controller state to the Terraform model.
 func (r *dnsRecordFrameworkResource) dnsRecordToModel(
 	_ context.Context,
-	dnsRecord *unifi.DNSRecord,
+	dnsRecord dnsRecordModel,
 	model *dnsRecordFrameworkResourceModel,
 	site string,
 ) {
 	model.ID = types.StringValue(dnsRecord.ID)
 	model.Site = types.StringValue(site)
-	model.Name = types.StringValue(dnsRecord.Key)
+	model.Name = types.StringValue(dnsRecord.Name)
 	model.Value = types.StringValue(dnsRecord.Value)
 
 	model.Enabled = types.BoolValue(dnsRecord.Enabled)
@@ -493,8 +528,8 @@ func (r *dnsRecordFrameworkResource) dnsRecordToModel(
 		model.RecordType = types.StringNull()
 	}
 
-	if dnsRecord.Ttl != 0 {
-		model.TTL = util.DurationValue(dnsRecord.Ttl, time.Second)
+	if dnsRecord.TTL != 0 {
+		model.TTL = util.DurationValue(dnsRecord.TTL, time.Second)
 	} else {
 		model.TTL = timetypes.NewGoDurationNull()
 	}
@@ -555,7 +590,7 @@ func (r *dnsRecordFrameworkResource) List(
 
 	site := config.Site.ValueString()
 	if site == "" {
-		site = r.client.Site
+		site = r.defaultSite
 	}
 
 	// Process filter blocks.
@@ -569,7 +604,7 @@ func (r *dnsRecordFrameworkResource) List(
 		postFilters[f.Name.ValueString()] = f.Value.ValueString()
 	}
 
-	records, err := r.client.ListDNSRecord(ctx, site)
+	records, err := r.backend.List(ctx, site)
 	if err != nil {
 		var d diag.Diagnostics
 		d.AddError("Error Listing DNS Records", "Could not list DNS records: "+err.Error())
@@ -581,7 +616,7 @@ func (r *dnsRecordFrameworkResource) List(
 		for _, record := range records {
 			// Apply name filter.
 			if val, ok := postFilters["name"]; ok {
-				if record.Key != val {
+				if record.Name != val {
 					continue
 				}
 			}
@@ -604,8 +639,8 @@ func (r *dnsRecordFrameworkResource) List(
 			result := req.NewListResult(ctx)
 
 			// Display name: prefer key, fall back to ID.
-			if record.Key != "" {
-				result.DisplayName = record.Key
+			if record.Name != "" {
+				result.DisplayName = record.Name
 			} else {
 				result.DisplayName = record.ID
 			}
@@ -621,7 +656,7 @@ func (r *dnsRecordFrameworkResource) List(
 
 			// Convert to model.
 			var model dnsRecordFrameworkResourceModel
-			r.dnsRecordToModel(ctx, &record, &model, site)
+			r.dnsRecordToModel(ctx, record, &model, site)
 			model.Timeouts = timeoutsNullValue()
 			result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
 
