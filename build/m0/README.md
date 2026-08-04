@@ -24,6 +24,15 @@ the job. That is recorded as an evidence limitation in the baseline manifest;
 a later evidence-carrier update must persist the raw diagnostic envelopes
 before release promotion.
 
+`port-forward-shadow.json` records the nested-shape and mapping-test shadow
+baseline. It deliberately does not claim acceptance, lifecycle, migration, or
+compiler admission for `unifi_port_forward`.
+
+`network-dns-qualification.json` records the passing Terraform/OpenTofu DNS
+lifecycle against the locked standalone Network target. Its coverage limits
+keep the persisted-UOS restart and native-arm64 UOS matrix visible; this receipt
+does not claim that Milestone 0 is complete.
+
 ```sh
 go run ./cmd/schema-baseline \
   -input terraform.raw.json \
