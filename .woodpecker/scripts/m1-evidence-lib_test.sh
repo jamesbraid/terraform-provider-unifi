@@ -37,3 +37,21 @@ archive_evidence_directory "${work_root}/bundle" "${work_root}/good.tar.gz"
 tar -tzf "${work_root}/good.tar.gz" | LC_ALL=C sort >"${work_root}/members"
 printf '%s\n' SHA256SUMS raw/schema.json | LC_ALL=C sort >"${work_root}/expected-members"
 cmp "${work_root}/expected-members" "${work_root}/members"
+
+# Bash uses dynamic scoping for locals. Exercise the helper from the same
+# readonly caller variable names used by m1-dns-compiler.sh.
+mkdir -p "${work_root}/readonly-bundle/raw"
+printf 'schema\n' >"${work_root}/readonly-bundle/raw/schema.json"
+(
+    cd "${work_root}/readonly-bundle"
+    sha256sum raw/schema.json >SHA256SUMS
+)
+(
+    readonly repository_root="${work_root}/repository"
+    readonly evidence_directory="${work_root}/readonly-bundle"
+    resolved_output=$(prepare_evidence_directory \
+        "${work_root}/readonly-output" "${repository_root}")
+    test "${resolved_output}" = "${work_root}/readonly-output"
+    archive_evidence_directory "${evidence_directory}" \
+        "${work_root}/readonly.tar.gz"
+)
