@@ -78,5 +78,14 @@ exact provider binary and Terraform/OpenTofu schema toolchains. Its 67-surface
 projection marks all 28 managed resources for downstream capture verification
 and marks the remaining data, list, and action surfaces `not_applicable` for
 capture. The legacy authority is an immutable `ubitofu` manifest commit and
-file digest; endpoint and identity policy are not duplicated into this
+file digest. Endpoint and identity policy are not duplicated into this
 repository during the parity check.
+
+`cmd/catalog-migration-recovery` binds the complete admission, build/schema,
+controller, inventory, and migration manifest to the M3 DNS lifecycle receipt.
+The DNS resource carries bidirectional v0.101.2/candidate state, import,
+restart, no-op plan, deletion, and v0 integer-TTL upgrade evidence. The DNS list
+surface carries the matching controller differential. The other 65 surfaces
+must be source-identical to v0.101.2 and retain their explicit identity and
+snapshot-recovery entries. This gate produces `migration_recovery_pass`. It
+does not claim downstream contract parity, fleet soak, or `release_ready`.
