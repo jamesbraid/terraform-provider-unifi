@@ -7,20 +7,21 @@ import (
 )
 
 type staticWaveReceipt struct {
-	FormatVersion           int            `json:"format_version"`
-	Wave                    int            `json:"wave"`
-	Result                  string         `json:"result"`
-	Promotion               string         `json:"promotion"`
-	RuntimeChanged          bool           `json:"runtime_changed"`
-	ControllerExecution     string         `json:"controller_execution"`
-	SurfaceCount            int            `json:"surface_count"`
-	SurfaceCounts           map[string]int `json:"surface_counts"`
-	StatusCounts            map[string]int `json:"status_counts"`
-	BlockerCounts           map[string]int `json:"blocker_counts"`
-	SchemaSHA256            string         `json:"schema_sha256"`
-	LedgerSHA256            string         `json:"ledger_sha256"`
-	SurfaceContractsSHA256  string         `json:"surface_contracts_sha256"`
-	MigrationManifestSHA256 string         `json:"migration_manifest_sha256"`
+	FormatVersion           int               `json:"format_version"`
+	Wave                    int               `json:"wave"`
+	Result                  string            `json:"result"`
+	Promotion               string            `json:"promotion"`
+	RuntimeChanged          bool              `json:"runtime_changed"`
+	ControllerExecution     string            `json:"controller_execution"`
+	SurfaceCount            int               `json:"surface_count"`
+	SurfaceCounts           map[string]int    `json:"surface_counts"`
+	StatusCounts            map[string]int    `json:"status_counts"`
+	BlockerCounts           map[string]int    `json:"blocker_counts"`
+	ShadowArtifacts         map[string]string `json:"shadow_artifacts,omitempty"`
+	SchemaSHA256            string            `json:"schema_sha256"`
+	LedgerSHA256            string            `json:"ledger_sha256"`
+	SurfaceContractsSHA256  string            `json:"surface_contracts_sha256"`
+	MigrationManifestSHA256 string            `json:"migration_manifest_sha256"`
 }
 
 func TestWave1ReadSurfaceReceipt(t *testing.T) {
@@ -116,6 +117,55 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 	}
 	if seen != 8 {
 		t.Fatalf("Wave 2 corpus surfaces = %d, want 8", seen)
+	}
+}
+
+func TestWave3FleetDependentReceipt(t *testing.T) {
+	receipt := readStaticWaveReceipt(t, "../../build/wave3/fleet-dependent.json")
+	if receipt.FormatVersion != 1 || receipt.Wave != 3 || receipt.Result != "static_pass" || receipt.Promotion != "blocked_evidence" {
+		t.Fatalf("unexpected Wave 3 identity: %+v", receipt)
+	}
+	if receipt.RuntimeChanged || receipt.ControllerExecution != "not_run" {
+		t.Fatalf("Wave 3 execution claims = runtime:%v controller:%q", receipt.RuntimeChanged, receipt.ControllerExecution)
+	}
+	if receipt.SurfaceCount != 9 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 9}) {
+		t.Fatalf("Wave 3 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
+	}
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"policy_complete": 8, "shadow_only": 1}) {
+		t.Fatalf("Wave 3 status counts = %v", receipt.StatusCounts)
+	}
+	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
+		"adapter_differential":        9,
+		"locked_controller_lifecycle": 9,
+		"nested_schema_adapter":       1,
+	}) {
+		t.Fatalf("Wave 3 blocker counts = %v", receipt.BlockerCounts)
+	}
+	requireStaticWaveDigests(t, receipt)
+	portForwardShadow := receipt.ShadowArtifacts["unifi_port_forward"]
+	requireDigestMatches(t, portForwardShadow, "../../build/m0/port-forward-shadow.json")
+
+	ledger := parseTestLedger(t)
+	corpus := parseTestCorpus(t)
+	seen := 0
+	for _, contract := range corpus.Contracts {
+		if contract.Wave != 3 {
+			continue
+		}
+		seen++
+		want := PolicyComplete
+		if contract.Name == "unifi_port_forward" {
+			want = ShadowOnly
+			if contract.BaselineSchemaSHA256 != "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6" {
+				t.Fatalf("port-forward schema digest = %q", contract.BaselineSchemaSHA256)
+			}
+		}
+		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if seen != 9 {
+		t.Fatalf("Wave 3 corpus surfaces = %d, want 9", seen)
 	}
 }
 
