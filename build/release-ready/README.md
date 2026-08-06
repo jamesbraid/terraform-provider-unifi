@@ -72,3 +72,11 @@ controller differential, and a pragmatic resolution bound to that controller
 receipt. Each surface gets separate `adapter_parity` and `admitted` digests.
 The catalog can be admitted with the port action's physical hardware claim
 carried forward as a release blocker. No other unresolved signal is allowed.
+
+`cmd/catalog-management-contract` binds the admission receipt back to the
+exact provider binary and Terraform/OpenTofu schema toolchains. Its 67-surface
+projection marks all 28 managed resources for downstream capture verification
+and marks the remaining data, list, and action surfaces `not_applicable` for
+capture. The legacy authority is an immutable `ubitofu` manifest commit and
+file digest; endpoint and identity policy are not duplicated into this
+repository during the parity check.
