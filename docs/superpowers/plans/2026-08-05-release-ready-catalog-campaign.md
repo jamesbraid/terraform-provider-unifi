@@ -69,3 +69,13 @@ network-disabled builds, locked-controller restart/upgrade scenarios, private
 fleet-informed soak, HIL where protocol/controller evidence is insufficient,
 and the public-export confidentiality gate. Only then set all 67 ledger entries
 to `release_ready` and pass `VerifyCatalogPromotion`.
+
+Dependency promotion is part of this gate. The candidate consumes
+`github.com/ubiquiti-community/go-unifi v1.102.0` directly, with no `replace`.
+Until the public handoff publishes that tag at its canonical GitHub origin,
+Skunkworks constructs a local Go module-proxy entry from the exact v1.102.0
+source commit and verifies the canonical module declaration and content sum.
+That private proxy is staging transport, not a claim that the public module is
+already available. The laptop does not contact GitHub; release downloads and
+source acquisition run only on Skunkworks. The public handoff must publish the
+same commit and reproduce the receipt before the provider is tagged.
