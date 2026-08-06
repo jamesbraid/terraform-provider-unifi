@@ -313,16 +313,23 @@ git commit -m "catalogparity: expand catalog-wide admission status"
 
 **Interfaces:**
 
-- Consumes: `Baseline` and `MigrationPolicy`.
-- Produces: `ExpandMigration(Baseline, MigrationPolicy)
-  (MigrationManifest, error)` and `BuildMigrationReport(MigrationManifest)
+- Consumes: `Baseline`, the locked Terraform 1.15.8 canonical schema, and
+  `MigrationPolicy`.
+- Produces: `ParseSchemaVersions([]byte, Baseline) (SchemaVersions, error)`,
+  `ExpandMigration(Baseline, SchemaVersions, MigrationPolicy)
+  (MigrationManifest, error)`, and `BuildMigrationReport(MigrationManifest)
   (MigrationReport, error)`.
 
 - [ ] **Step 1: Write failing identity-expansion and safety tests**
 
 ```go
 func TestExpandMigrationRecordsEveryReleasedSurface(t *testing.T) {
-	manifest, err := ExpandMigration(releasedBaseline(t), MigrationPolicy{
+	baseline := releasedBaseline(t)
+	versions, err := ParseSchemaVersions(canonicalSchemaFixture(t), baseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := ExpandMigration(baseline, versions, MigrationPolicy{
 		FormatVersion:   1,
 		FromVersion:     "0.101.2",
 		ToVersion:       "next",
@@ -372,8 +379,8 @@ type MigrationEntry struct {
 	OldName           string            `json:"old_name"`
 	NewName           string            `json:"new_name"`
 	Strategy          MigrationStrategy `json:"strategy"`
-	OldSchemaVersion  int64             `json:"old_schema_version"`
-	NewSchemaVersion  int64             `json:"new_schema_version"`
+	OldSchemaVersion  *int64            `json:"old_schema_version"`
+	NewSchemaVersion  *int64            `json:"new_schema_version"`
 	AttributeMapping  map[string]string `json:"attribute_mapping"`
 	StateMoves        []StateMove       `json:"state_moves"`
 	ImportTransform   string            `json:"import_transform,omitempty"`
@@ -406,7 +413,7 @@ type MigrationPolicy struct {
 	ToVersion       string               `json:"to_version"`
 	ProviderAddress string               `json:"provider_address"`
 	DefaultStrategy MigrationStrategy    `json:"default_strategy"`
-	Overrides       []MigrationEntry      `json:"overrides"`
+	Overrides       []MigrationOverride   `json:"overrides"`
 }
 
 type MigrationManifest struct {
@@ -426,7 +433,11 @@ type MigrationReport struct {
 }
 ```
 
-The initial policy expands all 67 surfaces to explicit identity transforms.
+Parse state-version numbers from
+`provider-contracts/schema/terraform-1.15.8.json` and bind its SHA-256 to the
+baseline canonical digest. Actions use a null schema version because the CLI
+does not expose one. The initial policy expands all 67 surfaces to explicit
+identity transforms.
 Use `snapshot_restore` as the recovery mode, require the assertions
 `identity_preserved`, `no_undeclared_replace`, `no_undeclared_delete`, and
 `first_plan_empty`, and emit no state commands for identity entries.
@@ -457,7 +468,8 @@ git commit -m "catalogparity: define the catalog migration contract"
 
 **Interfaces:**
 
-- Consumes: baseline, status overlay, and migration policy paths.
+- Consumes: baseline, locked canonical schema, status overlay, and migration
+  policy paths.
 - Produces: three canonical JSON files through `run(args []string,
   stderr io.Writer) int` and atomic file replacement.
 
@@ -487,6 +499,7 @@ func runCatalogParity(t *testing.T) map[string][]byte {
 	outputDir := t.TempDir()
 	exitCode := run([]string{
 		"-baseline", filepath.Join(root, "build", "m0", "provider-schema-digests.json"),
+		"-schema", filepath.Join(root, "provider-contracts", "schema", "terraform-1.15.8.json"),
 		"-status", filepath.Join(root, "provider-codegen", "parity", "status.json"),
 		"-migration", filepath.Join(root, "provider-codegen", "migrations", "v0.101.2-to-next.json"),
 		"-output-dir", outputDir,
@@ -533,6 +546,7 @@ Required flags:
 
 ```text
 -baseline build/m0/provider-schema-digests.json
+-schema provider-contracts/schema/terraform-1.15.8.json
 -status provider-codegen/parity/status.json
 -migration provider-codegen/migrations/v0.101.2-to-next.json
 -output-dir provider-codegen/generated
@@ -547,7 +561,7 @@ unexpected files matching `catalog-*.json` in the output directory.
 Add this directive before the DNS compiler directives:
 
 ```go
-//go:generate go run ../cmd/catalog-parity -baseline ../build/m0/provider-schema-digests.json -status parity/status.json -migration migrations/v0.101.2-to-next.json -output-dir generated
+//go:generate go run ../cmd/catalog-parity -baseline ../build/m0/provider-schema-digests.json -schema ../provider-contracts/schema/terraform-1.15.8.json -status parity/status.json -migration migrations/v0.101.2-to-next.json -output-dir generated
 ```
 
 Run: `go generate ./... && git diff --exit-code`
