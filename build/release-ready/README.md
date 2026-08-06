@@ -20,3 +20,22 @@ compares it byte-for-byte with the tracked artifact.
 The missing-signal list drives the controller campaign. A source-identical file
 or an existing acceptance test does not satisfy adapter parity, admission,
 contract parity, or `release_ready`.
+
+`catalog-build-schema.sh` builds the released source and candidate twice, then
+drives both binaries through Terraform and OpenTofu development overrides. It
+requires the pinned Linux toolchain and published release binary for a passing
+promotion receipt. A developer can set `CATALOG_ALLOW_DIAGNOSTIC_TOOLCHAIN=true`
+to inspect another platform or CLI patch level. That receipt is marked
+`diagnostic_pass` and lists every promotion blocker.
+
+```sh
+CATALOG_ALLOW_DIAGNOSTIC_TOOLCHAIN=true \
+CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json \
+TERRAFORM_BIN=/path/to/terraform \
+TOFU_BIN=/path/to/tofu \
+bash .woodpecker/scripts/catalog-build-schema.sh
+```
+
+The gate performs no dependency or VCS fetch. Final evidence must also set
+`CATALOG_RELEASED_PROVIDER_BINARY` to the verified v0.101.2 binary retained in
+the private evidence store.
