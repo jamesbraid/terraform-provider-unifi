@@ -1,5 +1,7 @@
 {
   "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_dns_record",
   "resource": "unifi_dns_record",
   "fields": [
     {

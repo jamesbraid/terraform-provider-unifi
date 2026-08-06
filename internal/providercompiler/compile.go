@@ -9,6 +9,8 @@ import (
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
 
 var validDispositions = map[string]struct{}{
@@ -48,6 +50,9 @@ func Compile(input CompileInput) (Result, error) {
 		)
 	}
 	if err := validateBaseline(rules.BaselineDigests, baseline.SchemaSHA256, rules.Resource); err != nil {
+		return Result{}, err
+	}
+	if err := validateAdmission(input, rules, baseline); err != nil {
 		return Result{}, err
 	}
 
@@ -109,6 +114,8 @@ func Compile(input CompileInput) (Result, error) {
 
 	mapping := mappingReport{
 		FormatVersion: 1,
+		SurfaceKind:   rules.SurfaceKind,
+		SurfaceName:   rules.Resource,
 		Resource:      rules.Resource,
 		Fields:        make([]mappingField, 0, len(fieldNames)),
 		ProviderOwned: make([]providerOwnedMapping, 0, len(providerOwned)),
@@ -170,6 +177,8 @@ func Compile(input CompileInput) (Result, error) {
 	}
 	impact := impactReport{
 		FormatVersion:     1,
+		SurfaceKind:       rules.SurfaceKind,
+		SurfaceName:       rules.Resource,
 		Resource:          rules.Resource,
 		Source:            source.Source,
 		BaselineDigests:   rules.BaselineDigests,
@@ -198,6 +207,61 @@ func Compile(input CompileInput) (Result, error) {
 		ImpactReport:     impactBytes,
 		MappingReport:    mappingBytes,
 	}, nil
+}
+
+func validateAdmission(input CompileInput, rules policy, baseline baselineManifest) error {
+	if !validSurfaceKind(rules.SurfaceKind) {
+		return fmt.Errorf("unsupported surface kind %q", rules.SurfaceKind)
+	}
+	if len(input.Ledger) == 0 {
+		return fmt.Errorf("catalog admission ledger is required")
+	}
+	ledger, err := catalogparity.ParseLedger(input.Ledger)
+	if err != nil {
+		return fmt.Errorf("catalog admission ledger: %w", err)
+	}
+	if ledger.BaselineSHA256 != byteSHA256(input.BaselineDigests) {
+		return fmt.Errorf("catalog admission ledger baseline digest mismatch")
+	}
+	key := catalogparity.SurfaceKey{Kind: rules.SurfaceKind, Name: rules.Resource}
+	if err := ledger.Require(key, catalogparity.Admitted, catalogparity.ContractParity, catalogparity.ReleaseReady); err != nil {
+		return fmt.Errorf("catalog admission: %w", err)
+	}
+	expected := baseline.SchemaSHA256[surfaceBaselineKey(key)]
+	for _, entry := range ledger.Entries {
+		if entry.SurfaceKey != key {
+			continue
+		}
+		if expected == "" || entry.BaselineSchemaSHA256 != expected {
+			return fmt.Errorf("catalog admission baseline schema digest mismatch for %s/%s", key.Kind, key.Name)
+		}
+		return nil
+	}
+	return fmt.Errorf("catalog admission surface %s/%s is missing", key.Kind, key.Name)
+}
+
+func validSurfaceKind(kind catalogparity.SurfaceKind) bool {
+	switch kind {
+	case catalogparity.ManagedResource, catalogparity.DataSource, catalogparity.ListResource, catalogparity.Action:
+		return true
+	default:
+		return false
+	}
+}
+
+func surfaceBaselineKey(key catalogparity.SurfaceKey) string {
+	switch key.Kind {
+	case catalogparity.ManagedResource:
+		return "resource_schemas." + key.Name
+	case catalogparity.DataSource:
+		return "data_source_schemas." + key.Name
+	case catalogparity.ListResource:
+		return "list_resource_schemas." + key.Name
+	case catalogparity.Action:
+		return "action_schemas." + key.Name
+	default:
+		return ""
+	}
 }
 
 func structuralSource(input CompileInput, rules policy) (bootstrap, error) {

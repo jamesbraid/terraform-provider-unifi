@@ -1,6 +1,10 @@
 package providercompiler
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+)
 
 // CompileInput contains the immutable structural source, provider policy, and
 // released schema baseline used for one compiler run.
@@ -9,6 +13,7 @@ type CompileInput struct {
 	Catalog         []byte
 	Policy          []byte
 	BaselineDigests []byte
+	Ledger          []byte
 }
 
 // Result contains the deterministic artifacts produced by one compiler run.
@@ -113,20 +118,21 @@ type catalogAdmission struct {
 }
 
 type policy struct {
-	FormatVersion             int                   `json:"format_version"`
-	Resource                  string                `json:"resource"`
-	GeneratorName             string                `json:"generator_name"`
-	SourceSpecificationSHA256 string                `json:"source_specification_sha256"`
-	CatalogID                 string                `json:"catalog_id,omitempty"`
-	CatalogSHA256             string                `json:"catalog_sha256,omitempty"`
-	CatalogSource             catalogPolicySource   `json:"catalog_source,omitempty"`
-	CatalogTarget             catalogTarget         `json:"catalog_target,omitempty"`
-	CatalogSources            catalogSources        `json:"catalog_sources,omitempty"`
-	OperationDigest           string                `json:"operation_digest,omitempty"`
-	Description               string                `json:"description"`
-	Fields                    []fieldPolicy         `json:"fields"`
-	ProviderOwned             []providerOwnedPolicy `json:"provider_owned"`
-	BaselineDigests           baselineDigestSet     `json:"baseline_digests"`
+	FormatVersion             int                       `json:"format_version"`
+	SurfaceKind               catalogparity.SurfaceKind `json:"surface_kind"`
+	Resource                  string                    `json:"resource"`
+	GeneratorName             string                    `json:"generator_name"`
+	SourceSpecificationSHA256 string                    `json:"source_specification_sha256"`
+	CatalogID                 string                    `json:"catalog_id,omitempty"`
+	CatalogSHA256             string                    `json:"catalog_sha256,omitempty"`
+	CatalogSource             catalogPolicySource       `json:"catalog_source,omitempty"`
+	CatalogTarget             catalogTarget             `json:"catalog_target,omitempty"`
+	CatalogSources            catalogSources            `json:"catalog_sources,omitempty"`
+	OperationDigest           string                    `json:"operation_digest,omitempty"`
+	Description               string                    `json:"description"`
+	Fields                    []fieldPolicy             `json:"fields"`
+	ProviderOwned             []providerOwnedPolicy     `json:"provider_owned"`
+	BaselineDigests           baselineDigestSet         `json:"baseline_digests"`
 }
 
 type catalogPolicySource struct {
@@ -189,22 +195,26 @@ type codeAttribute struct {
 }
 
 type impactReport struct {
-	FormatVersion     int               `json:"format_version"`
-	Resource          string            `json:"resource"`
-	Source            bootstrapSource   `json:"source"`
-	BaselineDigests   baselineDigestSet `json:"baseline_digests"`
-	StructuralFields  int               `json:"structural_fields"`
-	GeneratedAttrs    int               `json:"generated_attributes"`
-	ProviderSeams     int               `json:"provider_owned_seams"`
-	UnresolvedFields  []string          `json:"unresolved_fields"`
-	StalePolicyFields []string          `json:"stale_policy_fields"`
+	FormatVersion     int                       `json:"format_version"`
+	SurfaceKind       catalogparity.SurfaceKind `json:"surface_kind"`
+	SurfaceName       string                    `json:"surface_name"`
+	Resource          string                    `json:"resource"`
+	Source            bootstrapSource           `json:"source"`
+	BaselineDigests   baselineDigestSet         `json:"baseline_digests"`
+	StructuralFields  int                       `json:"structural_fields"`
+	GeneratedAttrs    int                       `json:"generated_attributes"`
+	ProviderSeams     int                       `json:"provider_owned_seams"`
+	UnresolvedFields  []string                  `json:"unresolved_fields"`
+	StalePolicyFields []string                  `json:"stale_policy_fields"`
 }
 
 type mappingReport struct {
-	FormatVersion int                    `json:"format_version"`
-	Resource      string                 `json:"resource"`
-	Fields        []mappingField         `json:"fields"`
-	ProviderOwned []providerOwnedMapping `json:"provider_owned"`
+	FormatVersion int                       `json:"format_version"`
+	SurfaceKind   catalogparity.SurfaceKind `json:"surface_kind"`
+	SurfaceName   string                    `json:"surface_name"`
+	Resource      string                    `json:"resource"`
+	Fields        []mappingField            `json:"fields"`
+	ProviderOwned []providerOwnedMapping    `json:"provider_owned"`
 }
 
 type mappingField struct {
