@@ -65,3 +65,10 @@ The private carrier reconciles non-lifecycle Wave 1-4 gaps with
 summary, a digest-bound reference policy, source-identical target runtime, and
 a fully covered source surface. It cannot resolve the Wave 5 hardware claim or
 promote a ledger entry.
+
+`cmd/catalog-admission` is the next fail-closed boundary. It accepts only
+promotable build/schema and unit receipts, a complete released/candidate
+controller differential, and a pragmatic resolution bound to that controller
+receipt. Each surface gets separate `adapter_parity` and `admitted` digests.
+The catalog can be admitted with the port action's physical hardware claim
+carried forward as a release blocker. No other unresolved signal is allowed.
