@@ -56,6 +56,26 @@ if ! jq -e '
     exit 1
 fi
 
+# Woodpecker CLI uses commas to separate repeated --param values. Operators
+# therefore pass multi-test diagnostic selections with semicolons; the plan
+# must preserve both requested tests as one environment value.
+CATALOG_ACCEPTANCE_PLAN_ONLY=true \
+CATALOG_ACCEPTANCE_WAVES=1,2,3,4,5 \
+CATALOG_ACCEPTANCE_TEST_NAMES='TestAccDeviceList_basic;TestAccDeviceFramework_basic' \
+CATALOG_ACCEPTANCE_OUTPUT="${work_root}/targeted-multiple-plan.json" \
+    "${script}"
+
+if ! jq -e '
+  .diagnostic_selection == true and
+  .test_names == ["TestAccDeviceFramework_basic", "TestAccDeviceList_basic"] and
+  .allowed_skips == [] and
+  .catalog_test_count == 150
+' "${work_root}/targeted-multiple-plan.json" >/dev/null; then
+    echo "semicolon-separated controller selection did not preserve every test" >&2
+    jq '.' "${work_root}/targeted-multiple-plan.json" >&2
+    exit 1
+fi
+
 followup_script=${repository_root}/.woodpecker/scripts/catalog-controller-followup.sh
 jq -n --slurpfile plan "${work_root}/plan.json" '
   {
