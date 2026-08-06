@@ -57,7 +57,8 @@ jq -e '.surface_count > 0 and (.test_names | length) > 0' "${plan_path}" >/dev/n
 
 if [[ -n ${CATALOG_ACCEPTANCE_TEST_NAMES:-} ]]; then
     catalog_test_count=$(jq '.test_names | length' "${plan_path}")
-    IFS=',' read -r -a requested_tests <<<"${CATALOG_ACCEPTANCE_TEST_NAMES}"
+    requested_test_names=${CATALOG_ACCEPTANCE_TEST_NAMES//;/,}
+    IFS=',' read -r -a requested_tests <<<"${requested_test_names}"
     for requested_test in "${requested_tests[@]}"; do
         if ! jq -e --arg requested_test "${requested_test}" \
             '.test_names | index($requested_test) != null' "${plan_path}" >/dev/null; then
