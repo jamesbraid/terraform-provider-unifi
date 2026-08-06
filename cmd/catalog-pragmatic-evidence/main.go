@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
@@ -92,13 +93,22 @@ type controllerReceipt struct {
 	Gate          string `json:"gate"`
 	Result        string `json:"result"`
 	Plan          struct {
-		EvidenceGapCount int `json:"evidence_gap_count"`
+		EvidenceGapCount        int      `json:"evidence_gap_count"`
+		ReleasedAllowedFailures []string `json:"released_allowed_failures"`
 	} `json:"plan"`
 	Released struct {
-		Result string `json:"result"`
+		Result             string   `json:"result"`
+		Failed             []string `json:"failed"`
+		AcceptedFailures   []string `json:"accepted_failures"`
+		UnexpectedFailures []string `json:"unexpected_failures"`
+		Missing            []string `json:"missing"`
 	} `json:"released"`
 	Candidate struct {
-		Result string `json:"result"`
+		Result             string   `json:"result"`
+		Failed             []string `json:"failed"`
+		AcceptedFailures   []string `json:"accepted_failures"`
+		UnexpectedFailures []string `json:"unexpected_failures"`
+		Missing            []string `json:"missing"`
 	} `json:"candidate"`
 }
 
@@ -117,8 +127,28 @@ func validateControllerReceipt(path string) (string, error) {
 	if receipt.Result != "blocked_evidence" || receipt.Plan.EvidenceGapCount != 10 {
 		return "", fmt.Errorf("catalog result is %q with %d gaps", receipt.Result, receipt.Plan.EvidenceGapCount)
 	}
-	if receipt.Released.Result != "pass" || receipt.Candidate.Result != "pass" {
-		return "", fmt.Errorf("released and candidate results must pass")
+	releasedAllowedFailures := []string{"TestAccDeviceFramework_basic"}
+	if !slices.Equal(receipt.Plan.ReleasedAllowedFailures, releasedAllowedFailures) {
+		return "", fmt.Errorf("released allowed failures are invalid")
+	}
+	releasedAccepted := receipt.Released.Result == "pass" &&
+		len(receipt.Released.Failed) == 0 &&
+		len(receipt.Released.AcceptedFailures) == 0 &&
+		len(receipt.Released.UnexpectedFailures) == 0 &&
+		len(receipt.Released.Missing) == 0
+	if receipt.Released.Result == "accepted_limitation" {
+		releasedAccepted = slices.Equal(receipt.Released.Failed, releasedAllowedFailures) &&
+			slices.Equal(receipt.Released.AcceptedFailures, releasedAllowedFailures) &&
+			len(receipt.Released.UnexpectedFailures) == 0 &&
+			len(receipt.Released.Missing) == 0
+	}
+	candidatePassed := receipt.Candidate.Result == "pass" &&
+		len(receipt.Candidate.Failed) == 0 &&
+		len(receipt.Candidate.AcceptedFailures) == 0 &&
+		len(receipt.Candidate.UnexpectedFailures) == 0 &&
+		len(receipt.Candidate.Missing) == 0
+	if !releasedAccepted || !candidatePassed {
+		return "", fmt.Errorf("released limitation or candidate result is invalid")
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil

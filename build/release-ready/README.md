@@ -52,8 +52,14 @@ gate, a non-baseline local toolchain can only produce `diagnostic_pass`.
 runs those test names against the released and candidate source trees. Both
 attempts use the same digest-pinned, locally cached controller and the same
 source-pinned synthetic fleet and Ryuk helper. Controller registry pulls are
-disabled. The port action adopts a synthetic switch, runs through Terraform's
-action trigger, and must persist the requested port override in the controller.
+disabled. The candidate must pass every planned scenario outside the exact
+declared skip set. A released-only failure is accepted only when the plan names
+that specific v0.101.2 limitation and the candidate passes the scenario. The
+receipt reports `accepted_limitation`, not `pass`. The only current limitation
+is `TestAccDeviceFramework_basic`, which reproduces v0.101.2 returning the
+controller's stale model-default name after apply. The port action adopts a
+synthetic switch, runs through Terraform's action trigger, and must persist the
+requested port override in the controller.
 That proves the action protocol, not electrical PoE behavior. A passing
 differential can still report `blocked_evidence`: missing acceptance, import,
 list, or hardware signals remain blockers until a scenario or a pragmatic

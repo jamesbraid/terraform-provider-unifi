@@ -12,6 +12,10 @@ if ! bash "${repository_root}/.woodpecker/scripts/catalog-controller-diagnostics
     echo "controller diagnostic redaction self-test failed" >&2
     exit 1
 fi
+if ! bash "${repository_root}/.woodpecker/scripts/catalog-controller-summary_test.sh"; then
+    echo "controller summary self-test failed" >&2
+    exit 1
+fi
 CATALOG_ACCEPTANCE_PLAN_ONLY=true \
 CATALOG_ACCEPTANCE_WAVES=1,2,3,4,5 \
 CATALOG_ACCEPTANCE_TEST_NAMES='' \
@@ -29,6 +33,7 @@ if ! jq -e '
     "TestAccSettingResource_ipsHoneypot",
     "TestAccWLANList_basic"
   ] and
+  .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
   (.test_names | length) == 150 and
   (.shared_scenario_owners | length) == 40 and
   ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
@@ -49,6 +54,7 @@ if ! jq -e '
   .diagnostic_selection == true and
   .test_names == ["TestAccDeviceFramework_basic"] and
   .allowed_skips == [] and
+  .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
   .catalog_test_count == 150
 ' "${work_root}/targeted-plan.json" >/dev/null; then
     echo "targeted controller plan self-test failed" >&2
@@ -69,6 +75,7 @@ if ! jq -e '
   .diagnostic_selection == true and
   .test_names == ["TestAccDeviceFramework_basic", "TestAccDeviceList_basic"] and
   .allowed_skips == [] and
+  .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
   .catalog_test_count == 150
 ' "${work_root}/targeted-multiple-plan.json" >/dev/null; then
     echo "semicolon-separated controller selection did not preserve every test" >&2
@@ -81,12 +88,41 @@ jq -n --slurpfile plan "${work_root}/plan.json" '
   {
     result: "blocked_evidence",
     plan: $plan[0],
-    released: {result: "pass"},
-    candidate: {result: "pass"}
+    released: {
+      result: "accepted_limitation",
+      failed: ["TestAccDeviceFramework_basic"],
+      accepted_failures: ["TestAccDeviceFramework_basic"],
+      unexpected_failures: [],
+      missing: []
+    },
+    candidate: {
+      result: "pass",
+      failed: [],
+      accepted_failures: [],
+      unexpected_failures: [],
+      missing: []
+    }
   }
 ' >"${work_root}/full-receipt.json"
 if [[ $(bash "${followup_script}" "${work_root}/full-receipt.json") != full ]]; then
     echo "full controller receipt did not continue to downstream evidence" >&2
+    exit 1
+fi
+
+jq '.released.accepted_failures = ["TestAccDeviceFramework_basic", "TestAccUnexpected"]' \
+    "${work_root}/full-receipt.json" >"${work_root}/invalid-limitation-receipt.json"
+if bash "${followup_script}" "${work_root}/invalid-limitation-receipt.json" >/dev/null 2>&1; then
+    echo "full controller receipt accepted an unexpected released limitation" >&2
+    exit 1
+fi
+
+jq '
+  .released.result = "pass" |
+  .released.failed = ["TestAccUnexpected"] |
+  .released.accepted_failures = []
+' "${work_root}/full-receipt.json" >"${work_root}/invalid-released-pass.json"
+if bash "${followup_script}" "${work_root}/invalid-released-pass.json" >/dev/null 2>&1; then
+    echo "full controller receipt accepted a released pass with a failed test" >&2
     exit 1
 fi
 
