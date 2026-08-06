@@ -49,6 +49,46 @@
       "state": "policy_complete"
     },
     {
+      "kind": "managed_resource",
+      "name": "unifi_ap_group",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_client",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_device",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_policy",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_port_profile",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_vpn_server",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wireguard_peer",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wlan",
+      "state": "policy_complete"
+    },
+    {
       "kind": "data_source",
       "name": "unifi_account",
       "state": "policy_complete"

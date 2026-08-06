@@ -1,23 +1,25 @@
 {
   "format_version": 1,
-  "wave": 1,
+  "wave": 3,
   "result": "static_pass",
   "promotion": "blocked_evidence",
   "runtime_changed": false,
   "controller_execution": "not_run",
-  "surface_count": 38,
+  "surface_count": 9,
   "surface_counts": {
-    "data_source": 13,
-    "list_resource": 25
+    "managed_resource": 9
   },
   "status_counts": {
-    "policy_complete": 37,
+    "policy_complete": 8,
     "shadow_only": 1
   },
   "blocker_counts": {
-    "adapter_differential": 38,
-    "locked_controller_lifecycle": 38,
-    "pagination_filter": 25
+    "adapter_differential": 9,
+    "locked_controller_lifecycle": 9,
+    "nested_schema_adapter": 1
+  },
+  "shadow_artifacts": {
+    "unifi_port_forward": "16905dd1474edcc39263cf10be327a856717633e27299c7d6d2c285d84c339f6"
   },
   "schema_sha256": "e054aef83f2cf19c82968951342d3daf46b0b8071c15c5c076201aa0c5d93317",
   "ledger_sha256": "c3d0b0b1dfbecc190157f86f6ce17b5097d4803d5a9a3f2724aafa27085b0275",
