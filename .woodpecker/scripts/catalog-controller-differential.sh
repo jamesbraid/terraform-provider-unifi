@@ -45,6 +45,27 @@ jq --arg waves "${waves}" '
 
 jq -e '.surface_count > 0 and (.test_names | length) > 0' "${plan_path}" >/dev/null
 
+if [[ -n ${CATALOG_ACCEPTANCE_TEST_NAMES:-} ]]; then
+    catalog_test_count=$(jq '.test_names | length' "${plan_path}")
+    IFS=',' read -r -a requested_tests <<<"${CATALOG_ACCEPTANCE_TEST_NAMES}"
+    for requested_test in "${requested_tests[@]}"; do
+        if ! jq -e --arg requested_test "${requested_test}" \
+            '.test_names | index($requested_test) != null' "${plan_path}" >/dev/null; then
+            echo "requested diagnostic test is not in the selected catalog: ${requested_test}" >&2
+            exit 1
+        fi
+    done
+
+    requested_json=$(printf '%s\n' "${requested_tests[@]}" | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')
+    jq --argjson requested "${requested_json}" \
+       --argjson catalog_test_count "${catalog_test_count}" '
+      .diagnostic_selection = true |
+      .catalog_test_count = $catalog_test_count |
+      .test_names = $requested
+    ' "${plan_path}" >"${plan_path}.targeted"
+    mv "${plan_path}.targeted" "${plan_path}"
+fi
+
 if [[ ${CATALOG_ACCEPTANCE_PLAN_ONLY:-} == true ]]; then
     cp "${plan_path}" "${output}"
     exit 0
@@ -141,6 +162,14 @@ run_suite() {
                                else [] end)
       }
     ' "${log}" >"${work_root}/${label}-summary.json"
+
+    if [[ ${CATALOG_PRINT_FAILURE_DIAGNOSTICS:-false} == true ]]; then
+        while IFS= read -r failed_test; do
+            echo "sanitized controller diagnostic: ${label}/${failed_test}"
+            bash "${repository_root}/.woodpecker/scripts/catalog-controller-diagnostics.sh" \
+                "${failed_test}" <"${log}"
+        done < <(jq -r '.failed[]' "${work_root}/${label}-summary.json")
+    fi
 }
 
 run_suite candidate "${repository_root}"
