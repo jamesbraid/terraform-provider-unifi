@@ -14,9 +14,194 @@
       "state": "shadow_only"
     },
     {
+      "kind": "data_source",
+      "name": "unifi_account",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_ap_group",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_info",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_info_list",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_list",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_qos_rate",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_dns_record",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_firewall_zone",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_network",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_port_profile",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_radius_profile",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_radius_user",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_ap_group",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_client",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_client_qos_rate",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_device",
+      "state": "policy_complete"
+    },
+    {
       "kind": "list_resource",
       "name": "unifi_dns_record",
       "state": "shadow_only"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_dynamic_dns",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_firewall_group",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_firewall_policy",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_firewall_rule",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_firewall_zone",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_network",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_port_forward",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_port_profile",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_power_supervisor",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_radius_profile",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_radius_user",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_site",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_site_to_site_vpn",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_static_route",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_traffic_route",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_vpn_client",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_vpn_server",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_wan",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_wireguard_peer",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_wlan",
+      "state": "policy_complete"
     }
   ]
 }
