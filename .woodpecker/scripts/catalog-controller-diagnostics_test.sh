@@ -14,8 +14,12 @@ EOF
 
 bash "${script}" TestAccDeviceFramework_basic <"${work_root}/input.jsonl" >"${work_root}/output.txt"
 
-grep -F 'Error: request to [redacted-url] failed for [redacted-ip] and [redacted-mac] at [redacted-workspace]/device_resource_test.go:42' \
-    "${work_root}/output.txt" >/dev/null
+if ! grep -F 'Error: request to [redacted-url] failed for [redacted-ip] and [redacted-mac] at [redacted-workspace]/device_resource_test.go:42' \
+    "${work_root}/output.txt" >/dev/null; then
+    echo "diagnostic output did not match its redacted form" >&2
+    sed -n '1,40p' "${work_root}/output.txt" >&2
+    exit 1
+fi
 if grep -F 'must not be emitted' "${work_root}/output.txt"; then
     echo "diagnostic filter emitted another test's output" >&2
     exit 1
