@@ -131,7 +131,14 @@ run_suite() {
         passed: $passed,
         skipped: $skipped,
         failed: $failed,
-        missing: ($planned - $passed - $skipped - $failed)
+        missing: ($planned - $passed - $skipped - $failed),
+        pre_test_diagnostics: (if ($passed | length) == 0 and
+                                  ($skipped | length) == 0 and
+                                  ($failed | length) == 0
+                               then [.[] |
+                                 select(.Test == null and .Action == "output") |
+                                 .Output] | unique | .[:40]
+                               else [] end)
       }
     ' "${log}" >"${work_root}/${label}-summary.json"
 }

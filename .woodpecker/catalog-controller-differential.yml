@@ -29,6 +29,9 @@ steps:
       - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
+      - CATALOG_UNIT_OUTPUT=/tmp/catalog-unit-differential.json bash .woodpecker/scripts/catalog-unit-differential.sh
+      - jq -e '.result == "pass" and .network == "none" and .promotion_blockers == [] and .released.result == "pass" and .candidate.result == "pass"' /tmp/catalog-unit-differential.json
+      - jq '.' /tmp/catalog-unit-differential.json
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go -C /tmp/unifi-emu mod download all
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local CGO_ENABLED=0 go -C /tmp/unifi-emu build -trimpath -buildvcs=false -o /tmp/unifi-emu-herder ./cmd/unifi-emu-herder
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local CGO_ENABLED=0 go -C /tmp/unifi-emu build -trimpath -buildvcs=false -o /tmp/unifi-emu-bin ./cmd/unifi-emu
