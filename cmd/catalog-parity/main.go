@@ -16,6 +16,7 @@ var manifestedOutputNames = []string{
 	"catalog-parity-ledger.json",
 	"catalog-migration-manifest.json",
 	"catalog-migration-report.json",
+	"catalog-surface-contracts.json",
 }
 
 func main() {
@@ -29,12 +30,13 @@ func run(args []string, stderr io.Writer) int {
 	schemaPath := flags.String("schema", "", "path to the locked canonical provider schema")
 	statusPath := flags.String("status", "", "path to the admission status overlay")
 	migrationPath := flags.String("migration", "", "path to the migration policy")
+	wavesPath := flags.String("waves", "", "path to the catalog wave policy")
 	outputDir := flags.String("output-dir", "", "directory for canonical catalog artifacts")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if *baselinePath == "" || *schemaPath == "" || *statusPath == "" || *migrationPath == "" || *outputDir == "" {
-		fmt.Fprintln(stderr, "baseline, schema, status, migration, and output-dir are required")
+	if *baselinePath == "" || *schemaPath == "" || *statusPath == "" || *migrationPath == "" || *wavesPath == "" || *outputDir == "" {
+		fmt.Fprintln(stderr, "baseline, schema, status, migration, waves, and output-dir are required")
 		return 2
 	}
 	if flags.NArg() != 0 {
@@ -58,6 +60,11 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	migrationData, err := readInput("migration", *migrationPath)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	wavesData, err := readInput("waves", *wavesPath)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -98,6 +105,16 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "migration report: %v\n", err)
 		return 1
 	}
+	wavePolicy, err := catalogparity.ParseWavePolicy(wavesData)
+	if err != nil {
+		fmt.Fprintf(stderr, "waves: %v\n", err)
+		return 1
+	}
+	corpus, err := catalogparity.BuildSurfaceContracts(baseline, versions, wavePolicy)
+	if err != nil {
+		fmt.Fprintf(stderr, "waves: %v\n", err)
+		return 1
+	}
 
 	artifacts := []struct {
 		name  string
@@ -106,6 +123,7 @@ func run(args []string, stderr io.Writer) int {
 		{name: manifestedOutputNames[0], value: ledger},
 		{name: manifestedOutputNames[1], value: manifest},
 		{name: manifestedOutputNames[2], value: report},
+		{name: manifestedOutputNames[3], value: corpus},
 	}
 	encoded := make(map[string][]byte, len(artifacts))
 	for _, artifact := range artifacts {

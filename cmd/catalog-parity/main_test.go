@@ -35,6 +35,11 @@ func TestRunProducesDeterministicCatalogArtifacts(t *testing.T) {
 	if report.StrategyCounts[string(catalogparity.IdentityTransform)] != 67 || len(report.StateCommands) != 0 {
 		t.Fatalf("migration report = %#v", report)
 	}
+	var corpus catalogparity.SurfaceContractCorpus
+	decodeOutput(t, first["catalog-surface-contracts.json"], &corpus)
+	if len(corpus.Contracts) != 67 || !reflect.DeepEqual(corpus.WaveCounts(), map[int]int{1: 38, 2: 8, 3: 9, 4: 11, 5: 1}) {
+		t.Fatalf("surface contract corpus = %#v", corpus.WaveCounts())
+	}
 }
 
 func TestRunReplacesOnlyManifestedOutputs(t *testing.T) {
@@ -59,8 +64,9 @@ func TestRunReplacesOnlyManifestedOutputs(t *testing.T) {
 func TestRunRejectsMissingArguments(t *testing.T) {
 	for name, args := range map[string][]string{
 		"all":        nil,
-		"schema":     {"-baseline", "baseline", "-status", "status", "-migration", "migration", "-output-dir", "output"},
-		"output dir": {"-baseline", "baseline", "-schema", "schema", "-status", "status", "-migration", "migration"},
+		"schema":     {"-baseline", "baseline", "-status", "status", "-migration", "migration", "-waves", "waves", "-output-dir", "output"},
+		"waves":      {"-baseline", "baseline", "-schema", "schema", "-status", "status", "-migration", "migration", "-output-dir", "output"},
+		"output dir": {"-baseline", "baseline", "-schema", "schema", "-status", "status", "-migration", "migration", "-waves", "waves"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if exitCode := run(args, io.Discard); exitCode == 0 {
@@ -111,6 +117,7 @@ func catalogArgs(root, outputDir string) []string {
 		"-schema", filepath.Join(root, "provider-contracts", "schema", "terraform-1.15.8.json"),
 		"-status", filepath.Join(root, "provider-codegen", "parity", "status.json"),
 		"-migration", filepath.Join(root, "provider-codegen", "migrations", "v0.101.2-to-next.json"),
+		"-waves", filepath.Join(root, "provider-codegen", "policy", "catalog.json"),
 		"-output-dir", outputDir,
 	}
 }
@@ -120,6 +127,7 @@ func catalogOutputNames() []string {
 		"catalog-parity-ledger.json",
 		"catalog-migration-manifest.json",
 		"catalog-migration-report.json",
+		"catalog-surface-contracts.json",
 	}
 }
 
