@@ -3,10 +3,16 @@ set -euo pipefail
 
 repository_root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)
 readonly repository_root
+# shellcheck source=.woodpecker/scripts/m1-evidence-lib.sh
+source "${repository_root}/.woodpecker/scripts/m1-evidence-lib.sh"
 terraform_bin=${TERRAFORM_BIN:-terraform}
 tofu_bin=${TOFU_BIN:-tofu}
 output=${CATALOG_BUILD_SCHEMA_OUTPUT:?CATALOG_BUILD_SCHEMA_OUTPUT is required}
-readonly terraform_bin tofu_bin output
+evidence_directory=${CATALOG_BUILD_SCHEMA_EVIDENCE_DIRECTORY:-}
+if [[ -n ${evidence_directory} ]]; then
+    evidence_directory=$(prepare_evidence_directory "${evidence_directory}" "${repository_root}")
+fi
+readonly terraform_bin tofu_bin output evidence_directory
 baseline_manifest=${repository_root}/build/m0/provider-baseline.json
 readonly baseline_manifest
 
@@ -206,3 +212,16 @@ jq --indent 2 --null-input \
     --arg shared_schema_sha256 "$(sha256_file "${work_root}/candidate.terraform.shared.json")" \
     '{format_version: 1, gate: "catalog-build-schema", result: $result, promotion_blockers: $promotion_blockers, source_commit: $source_commit, released_commit: $released_commit, platform: $platform, go_version: $go_version, build_network: "none", clean_builds: {released: 2, candidate: 2}, provider_binaries: {released_source_rebuild_sha256: $released_source_binary_sha256, released_authority: $released_authority, released_authority_sha256: $released_authority_binary_sha256, candidate_sha256: $candidate_binary_sha256}, catalog_evidence_inventory_sha256: $inventory_sha256, schema_evidence: {terraform: {version: $terraform_version, binary_sha256: $terraform_binary_sha256, released_raw_sha256: $terraform_released_raw_sha256, candidate_raw_sha256: $terraform_candidate_raw_sha256, canonical_sha256: $terraform_canonical_sha256}, tofu: {version: $tofu_version, binary_sha256: $tofu_binary_sha256, released_raw_sha256: $tofu_released_raw_sha256, candidate_raw_sha256: $tofu_candidate_raw_sha256, canonical_sha256: $tofu_canonical_sha256}, release_to_candidate_within_cli: true, shared_cli_projection_equal: true, full_cli_projection_equal: false, shared_schema_sha256: $shared_schema_sha256, terraform_only_categories: ["action_schemas", "list_resource_schemas"]}}' \
     >"${output}"
+
+if [[ -n ${evidence_directory} ]]; then
+    install -m 0755 "${candidate_binary}" "${evidence_directory}/terraform-provider-unifi"
+    install -m 0600 "${work_root}/candidate.terraform.canonical.json" \
+        "${evidence_directory}/terraform-schema.json"
+    install -m 0600 "${work_root}/candidate.tofu.canonical.json" \
+        "${evidence_directory}/tofu-schema.json"
+    (
+        cd "${evidence_directory}"
+        sha256sum terraform-provider-unifi terraform-schema.json tofu-schema.json >SHA256SUMS
+        chmod 0600 SHA256SUMS
+    )
+fi
