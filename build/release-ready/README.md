@@ -43,9 +43,14 @@ the private evidence store.
 `catalog-controller-differential.sh` plans the Wave 1-4 acceptance corpus and
 runs those test names against the released and candidate source trees. Both
 attempts use the same digest-pinned, locally cached controller and the same
-source-pinned synthetic fleet and Ryuk helper; controller registry pulls are
-disabled. A
-passing differential can still report `blocked_evidence`: missing acceptance,
+source-pinned synthetic fleet and Ryuk helper. Controller registry pulls are
+disabled. A passing differential can still report `blocked_evidence`: missing acceptance,
 import, list, or hardware signals remain blockers until a scenario or a
 pragmatic fleet reference covers them. Only `CATALOG_REQUIRE_COMPLETE=true`
 turns the diagnostic into a promotion gate.
+
+The private carrier reconciles non-lifecycle Wave 1-4 gaps with
+`cmd/catalog-pragmatic-evidence`. The reconciler requires a value-free fleet
+summary, a digest-bound reference policy, source-identical target runtime, and
+a fully covered source surface. It leaves Wave 5 evidence untouched and cannot
+promote a ledger entry.
