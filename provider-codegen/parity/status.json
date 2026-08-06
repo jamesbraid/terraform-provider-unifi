@@ -10,8 +10,43 @@
     },
     {
       "kind": "managed_resource",
+      "name": "unifi_dynamic_dns",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_group",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_zone",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_network",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
       "name": "unifi_port_forward",
       "state": "shadow_only"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_setting",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_site",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wan",
+      "state": "policy_complete"
     },
     {
       "kind": "data_source",
