@@ -18,8 +18,9 @@ jq -e '
   .gate == "catalog controller differential" and
   .waves == [1, 2, 3, 4] and
   .surface_count == 66 and
-  .evidence_gap_count > 0 and
-  (.test_names | length) == 138 and
+  .evidence_gap_count == 9 and
+  (.test_names | length) == 149 and
+  (.shared_scenario_owners | length) == 39 and
   ([.surfaces[] | select(.name == "unifi_dns_record" and .kind == "managed_resource")] | length) == 1
 ' "${work_root}/plan.json" >/dev/null
 

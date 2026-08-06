@@ -27,6 +27,10 @@ jq --arg waves "${waves}" '
   ($waves | split(",") | map(tonumber)) as $selected |
   [.surfaces[] | select(.wave as $wave | $selected | index($wave)) |
     {kind, name, wave, missing_signals, test_names: acceptance_tests}] as $surfaces |
+  [.surfaces[] |
+    select(.wave as $wave | $selected | index($wave)) |
+    select(.runtime.status == "identical") |
+    .scenario_owner] | unique as $shared_scenario_owners |
   {
     format_version: 1,
     gate: "catalog controller differential",
@@ -34,6 +38,7 @@ jq --arg waves "${waves}" '
     surfaces: $surfaces,
     surface_count: ($surfaces | length),
     evidence_gap_count: ([$surfaces[].missing_signals[]] | length),
+    shared_scenario_owners: $shared_scenario_owners,
     test_names: ([$surfaces[].test_names[]] | unique)
   }
 ' "${inventory}" >"${plan_path}"
@@ -67,11 +72,17 @@ mkdir -p "${released_root}"
 git -C "${repository_root}" archive "${released_ref}" | tar -xf - -C "${released_root}"
 
 # The fixture is campaign infrastructure, not provider runtime. Use the same
-# digest-aware harness for both sides so only provider code and released tests
-# differ. This also keeps the released teardown from evicting the target.
+# digest-aware harness for both sides. Source-identical runtime paths also use
+# the same candidate scenario owner, so newly added coverage exercises both
+# implementations instead of appearing as a missing released test. A changed
+# runtime path retains its released test owner and needs separate migration
+# evidence.
 rm -rf "${released_root}/internal/controllertest"
 cp -R "${repository_root}/internal/controllertest" "${released_root}/internal/controllertest"
 cp "${repository_root}/docker-compose.yaml" "${released_root}/docker-compose.yaml"
+while IFS= read -r scenario_owner; do
+    cp "${repository_root}/${scenario_owner}" "${released_root}/${scenario_owner}"
+done < <(jq -r '.shared_scenario_owners[]' "${plan_path}")
 
 test_regex=$(jq -r '.test_names | join("|")' "${plan_path}")
 readonly test_regex
