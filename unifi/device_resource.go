@@ -1178,6 +1178,7 @@ func (r *deviceResource) Create(
 	allowAdoption := plan.AllowAdoption
 	forgetOnDestroy := plan.ForgetOnDestroy
 	plannedPortOverride := plan.PortOverride
+	plannedName := plan.Name
 
 	// Set Type from the API so updateDevice can include it in the PUT body.
 	// We deliberately do NOT call setResourceData here — it would fill the model
@@ -1216,6 +1217,13 @@ func (r *deviceResource) Create(
 	// requires the set length to match the plan. On subsequent Read, the full
 	// port state will be loaded, which may cause a one-time update on next apply.
 	plan.PortOverride = plannedPortOverride
+	// The controller can return its model-default name on the immediate read
+	// after adoption even though it accepted the configured rename. Preserve the
+	// known planned value for Terraform's post-apply consistency check. A later
+	// refresh reconciles state after the controller finishes applying the name.
+	if !plannedName.IsNull() && !plannedName.IsUnknown() {
+		plan.Name = plannedName
+	}
 
 	// Restore plan-only flags
 	plan.AllowAdoption = allowAdoption
@@ -1419,6 +1427,7 @@ func (r *deviceResource) Update(
 	plannedLedOverride := plan.LedOverride
 	plannedLedOverrideColor := plan.LedOverrideColor
 	plannedLedOverrideColorBrightness := plan.LedOverrideColorBrightness
+	plannedName := plan.Name
 
 	// Update the device with only user-configured fields
 	diags = r.updateDevice(ctx, &plan)
@@ -1454,6 +1463,12 @@ func (r *deviceResource) Update(
 	if !plannedLedOverrideColorBrightness.IsNull() &&
 		!plannedLedOverrideColorBrightness.IsUnknown() {
 		plan.LedOverrideColorBrightness = plannedLedOverrideColorBrightness
+	}
+	// Device renames are applied asynchronously too. Keep a configured plan
+	// value across the immediate read, then let the next refresh converge with
+	// the controller once provisioning completes.
+	if !plannedName.IsNull() && !plannedName.IsUnknown() {
+		plan.Name = plannedName
 	}
 	// allow_adoption / forget_on_destroy were resolved before the update and are
 	// not touched by setResourceData; ensure a concrete value (default true)
