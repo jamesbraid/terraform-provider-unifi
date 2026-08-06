@@ -89,6 +89,61 @@
       "state": "policy_complete"
     },
     {
+      "kind": "managed_resource",
+      "name": "unifi_account",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_bgp",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_client_qos_rate",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_rule",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_power_supervisor",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_radius_profile",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_radius_user",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_site_to_site_vpn",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_static_route",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_traffic_route",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_vpn_client",
+      "state": "policy_complete"
+    },
+    {
       "kind": "data_source",
       "name": "unifi_account",
       "state": "policy_complete"

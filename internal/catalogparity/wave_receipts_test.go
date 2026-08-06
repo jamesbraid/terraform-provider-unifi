@@ -169,6 +169,72 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 	}
 }
 
+func TestWave4RemainingManagedReceipt(t *testing.T) {
+	receipt := readStaticWaveReceipt(t, "../../build/wave4/remaining-managed.json")
+	if receipt.FormatVersion != 1 || receipt.Wave != 4 || receipt.Result != "static_pass" || receipt.Promotion != "blocked_evidence" {
+		t.Fatalf("unexpected Wave 4 identity: %+v", receipt)
+	}
+	if receipt.RuntimeChanged || receipt.ControllerExecution != "not_run" {
+		t.Fatalf("Wave 4 execution claims = runtime:%v controller:%q", receipt.RuntimeChanged, receipt.ControllerExecution)
+	}
+	if receipt.SurfaceCount != 11 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 11}) {
+		t.Fatalf("Wave 4 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
+	}
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"policy_complete": 11}) {
+		t.Fatalf("Wave 4 status counts = %v", receipt.StatusCounts)
+	}
+	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
+		"adapter_differential":        11,
+		"locked_controller_lifecycle": 11,
+	}) {
+		t.Fatalf("Wave 4 blocker counts = %v", receipt.BlockerCounts)
+	}
+	requireStaticWaveDigests(t, receipt)
+
+	ledger := parseTestLedger(t)
+	corpus := parseTestCorpus(t)
+	seen := 0
+	for _, contract := range corpus.Contracts {
+		if contract.Wave != 4 {
+			continue
+		}
+		seen++
+		if err := ledger.Require(contract.SurfaceKey, PolicyComplete); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if seen != 11 {
+		t.Fatalf("Wave 4 corpus surfaces = %d, want 11", seen)
+	}
+}
+
+func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
+	ledger := parseTestLedger(t)
+	counts := make(map[AdmissionState]int)
+	for _, entry := range ledger.Entries {
+		counts[entry.State]++
+		if expectedWave(entry.SurfaceKey) <= 4 {
+			switch entry.State {
+			case PolicyComplete, ShadowOnly, Admitted:
+			default:
+				t.Fatalf("Wave 1-4 surface %s/%s remains %q", entry.Kind, entry.Name, entry.State)
+			}
+		}
+	}
+	want := map[AdmissionState]int{
+		PolicyComplete:      63,
+		ShadowOnly:          2,
+		Admitted:            1,
+		LegacyAuthoritative: 1,
+	}
+	if !reflect.DeepEqual(counts, want) {
+		t.Fatalf("checkpoint state counts = %v, want %v", counts, want)
+	}
+	if err := ledger.Require(SurfaceKey{Kind: Action, Name: "unifi_port"}, LegacyAuthoritative); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func readStaticWaveReceipt(t *testing.T, path string) staticWaveReceipt {
 	t.Helper()
 	var receipt staticWaveReceipt
