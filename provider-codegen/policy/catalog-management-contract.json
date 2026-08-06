@@ -3,7 +3,7 @@
   "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
   "downstream": {
     "repository": "infra/ubitofu",
-    "commit": "e459500d52fe260f9ac9442dd993969199933f99",
+    "commit": "1de1960c45cbd1034275019ab77310fe7bec8f73",
     "manifest_path": "src/ubitofu/manifest.py",
     "manifest_sha256": "05e77fcf5d05a2db701cb4abac70ed1c7cd37d1c7e1ff4a6286e14f828a50c5e"
   },
