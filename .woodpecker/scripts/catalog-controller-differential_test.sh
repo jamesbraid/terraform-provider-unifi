@@ -20,6 +20,11 @@ jq -e '
   .waves == [1, 2, 3, 4, 5] and
   .surface_count == 67 and
   .evidence_gap_count == 10 and
+  .allowed_skips == [
+    "TestAccSettingResource_dohCustomServers",
+    "TestAccSettingResource_ipsHoneypot",
+    "TestAccWLANList_basic"
+  ] and
   (.test_names | length) == 150 and
   (.shared_scenario_owners | length) == 40 and
   ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
@@ -35,6 +40,7 @@ CATALOG_ACCEPTANCE_OUTPUT="${work_root}/targeted-plan.json" \
 jq -e '
   .diagnostic_selection == true and
   .test_names == ["TestAccDeviceFramework_basic"] and
+  .allowed_skips == [] and
   .catalog_test_count == 150
 ' "${work_root}/targeted-plan.json" >/dev/null
 

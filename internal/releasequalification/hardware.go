@@ -43,8 +43,7 @@ func BuildHardwareDispositionReceipt(
 		"released":  controller.Released,
 		"candidate": controller.Candidate,
 	} {
-		if suite.Result != "pass" || suite.ExitCode != 0 || len(suite.Skipped) != 0 ||
-			len(suite.Failed) != 0 || len(suite.Missing) != 0 ||
+		if !controllerSuiteComplete(suite, controller.Plan) ||
 			!containsString(suite.Passed, portPersistenceScenario) {
 			return HardwareDispositionReceipt{}, fmt.Errorf("%s suite did not pass the port action persistence scenario", name)
 		}

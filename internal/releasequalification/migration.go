@@ -274,19 +274,51 @@ func validateMigrationController(input MigrationRecoveryInput) error {
 		}
 		planned[surface.SurfaceKey] = struct{}{}
 	}
-	wantTests := append([]string(nil), c.Plan.TestNames...)
-	sort.Strings(wantTests)
 	for name, suite := range map[string]catalogparity.ControllerSuiteReceipt{
 		"released": c.Released, "candidate": c.Candidate,
 	} {
-		passed := append([]string(nil), suite.Passed...)
-		sort.Strings(passed)
-		if suite.Result != "pass" || suite.ExitCode != 0 || len(suite.Skipped) != 0 ||
-			len(suite.Failed) != 0 || len(suite.Missing) != 0 || !reflect.DeepEqual(passed, wantTests) {
+		if !controllerSuiteComplete(suite, c.Plan) {
 			return fmt.Errorf("controller differential %s suite is incomplete", name)
 		}
 	}
 	return nil
+}
+
+func controllerSuiteComplete(
+	suite catalogparity.ControllerSuiteReceipt,
+	plan catalogparity.ControllerPlanReceipt,
+) bool {
+	if suite.Result != "pass" || suite.ExitCode != 0 ||
+		len(suite.Failed) != 0 || len(suite.Missing) != 0 {
+		return false
+	}
+	if len(plan.AllowedSkips) > len(plan.TestNames) {
+		return false
+	}
+	seenAllowed := make(map[string]struct{}, len(plan.AllowedSkips))
+	for _, testName := range plan.AllowedSkips {
+		if !containsString(plan.TestNames, testName) {
+			return false
+		}
+		if _, duplicate := seenAllowed[testName]; duplicate {
+			return false
+		}
+		seenAllowed[testName] = struct{}{}
+	}
+	wantPassed := make([]string, 0, len(plan.TestNames)-len(plan.AllowedSkips))
+	for _, testName := range plan.TestNames {
+		if !containsString(plan.AllowedSkips, testName) {
+			wantPassed = append(wantPassed, testName)
+		}
+	}
+	passed := append([]string(nil), suite.Passed...)
+	skipped := append([]string(nil), suite.Skipped...)
+	allowed := append([]string(nil), plan.AllowedSkips...)
+	sort.Strings(passed)
+	sort.Strings(skipped)
+	sort.Strings(allowed)
+	sort.Strings(wantPassed)
+	return reflect.DeepEqual(passed, wantPassed) && reflect.DeepEqual(skipped, allowed)
 }
 
 func validateMigrationInventory(input MigrationRecoveryInput) error {

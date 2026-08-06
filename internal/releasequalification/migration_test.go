@@ -146,7 +146,7 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 		})
 	}
 	controllerSuite := catalogparity.ControllerSuiteReceipt{
-		Result: "pass", Passed: append([]string(nil), testNames...), Skipped: []string{},
+		Result: "pass", Passed: append([]string(nil), testNames[1:]...), Skipped: []string{testNames[0]},
 		Failed: []string{}, Missing: []string{}, PreTestDiagnostics: []string{},
 	}
 	return MigrationRecoveryInput{
@@ -184,7 +184,7 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			FormatVersion: 1, Gate: "catalog controller differential", Result: "blocked_evidence",
 			PlanSHA256: digest, ReleasedCommit: releasedCommit, CandidateCommit: commit,
 			Target:   catalogparity.ControllerImageReceipt{Image: "controller@sha256:" + digest, ImageID: "sha256:" + digest, PullPolicy: "never"},
-			Plan:     catalogparity.ControllerPlanReceipt{FormatVersion: 1, Gate: "catalog controller differential", Waves: []int{1, 2, 3, 4, 5}, Surfaces: planSurfaces, SurfaceCount: 67, EvidenceGapCount: 1, TestNames: testNames},
+			Plan:     catalogparity.ControllerPlanReceipt{FormatVersion: 1, Gate: "catalog controller differential", Waves: []int{1, 2, 3, 4, 5}, Surfaces: planSurfaces, SurfaceCount: 67, EvidenceGapCount: 1, TestNames: testNames, AllowedSkips: []string{testNames[0]}},
 			Released: controllerSuite, Candidate: controllerSuite,
 		},
 		ControllerSHA256: digest,
