@@ -141,7 +141,7 @@ func validReleaseReadyInput(t *testing.T) ReleaseReadyInput {
 		t.Fatal(err)
 	}
 	downstream := managementcontract.DownstreamManifestIdentity{
-		Repository: "infra/ubitofu", Commit: strings.Repeat("e", 40),
+		Repository: "ubitofu", Commit: strings.Repeat("e", 40),
 		ManifestPath: "src/ubitofu/manifest.py", ManifestSHA256: digest,
 	}
 	management := managementcontract.CatalogManagementContract{
@@ -233,7 +233,7 @@ func validReleaseReadyInput(t *testing.T) ReleaseReadyInput {
 			ProviderCommit: migration.SourceCommit,
 			ModulePath:     "github.com/ubiquiti-community/go-unifi", ModuleVersion: "v1.102.0",
 			ModuleCommit: strings.Repeat("d", 40), ModuleZipSHA256: digest, ModuleDirSHA256: digest,
-			ReplacePresent: false, ResolutionRunner: "skunkworks", NetworkBoundary: "runner_only",
+			ReplacePresent: false, ResolutionRunner: "remote_ci", NetworkBoundary: "remote_ci_only",
 		}, DependencySHA256: digest,
 		Confidentiality: ConfidentialityReceipt{
 			FormatVersion: 1, Gate: "public-export-confidentiality", Result: "pass",

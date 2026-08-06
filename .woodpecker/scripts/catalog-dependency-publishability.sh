@@ -64,10 +64,9 @@ jq --compact-output --null-input \
         module_zip_sha256: $module_zip_sha256,
         module_dir_sha256: $module_dir_sha256,
         replace_present: false,
-        resolution_runner: "skunkworks",
-        network_boundary: "runner_only"
+        resolution_runner: "remote_ci",
+        network_boundary: "remote_ci_only"
     }' >"${temporary}"
 chmod 0600 "${temporary}"
 mv "${temporary}" "${output}"
 trap - EXIT
-

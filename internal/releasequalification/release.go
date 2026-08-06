@@ -448,8 +448,8 @@ func validateDependencyPublishability(input ReleaseReadyInput) error {
 	if d.FormatVersion != 1 || d.Gate != "go-unifi-dependency-publishability" || d.Result != "pass" ||
 		d.ProviderCommit != input.Management.Provider.SourceCommit || d.ModulePath != canonicalGoUnifiModule ||
 		d.ModuleVersion == "" || !validHex(d.ModuleCommit, 40) || !validHex(d.ModuleZipSHA256, 64) ||
-		!validHex(d.ModuleDirSHA256, 64) || d.ReplacePresent || d.ResolutionRunner != "skunkworks" ||
-		d.NetworkBoundary != "runner_only" {
+		!validHex(d.ModuleDirSHA256, 64) || d.ReplacePresent || d.ResolutionRunner != "remote_ci" ||
+		d.NetworkBoundary != "remote_ci_only" {
 		return fmt.Errorf("dependency publishability does not prove a canonical replacement-free module")
 	}
 	return nil
