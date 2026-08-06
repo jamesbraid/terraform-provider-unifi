@@ -56,6 +56,33 @@ if ! jq -e '
     exit 1
 fi
 
+followup_script=${repository_root}/.woodpecker/scripts/catalog-controller-followup.sh
+jq -n --slurpfile plan "${work_root}/plan.json" '
+  {
+    result: "blocked_evidence",
+    plan: $plan[0],
+    released: {result: "pass"},
+    candidate: {result: "pass"}
+  }
+' >"${work_root}/full-receipt.json"
+if [[ $(bash "${followup_script}" "${work_root}/full-receipt.json") != full ]]; then
+    echo "full controller receipt did not continue to downstream evidence" >&2
+    exit 1
+fi
+
+jq -n --slurpfile plan "${work_root}/targeted-plan.json" '
+  {
+    result: "blocked_evidence",
+    plan: $plan[0],
+    released: {result: "pass"},
+    candidate: {result: "pass"}
+  }
+' >"${work_root}/targeted-receipt.json"
+if [[ $(bash "${followup_script}" "${work_root}/targeted-receipt.json") != diagnostic_complete ]]; then
+    echo "targeted controller receipt was not terminated before full-plan evidence" >&2
+    exit 1
+fi
+
 if CATALOG_ACCEPTANCE_PLAN_ONLY=true \
    CATALOG_ACCEPTANCE_TEST_NAMES=TestAccNotInCatalog \
    CATALOG_ACCEPTANCE_OUTPUT="${work_root}/invalid-plan.json" \
