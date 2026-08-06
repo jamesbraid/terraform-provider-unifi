@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
+  "released_provider": {
+    "version": "0.101.2",
+    "commit": "4e677062f23f232be9fda3e559279937a0f3d007"
+  },
+  "sdk": {
+    "module_path": "github.com/jamesbraid/go-unifi",
+    "released_version": "v1.101.0",
+    "released_archive_sha256": "98943833e168567b57308b56dcfdb57ef23e13a794fd6a20c02a05e26fae9587",
+    "candidate_version": "v1.102.0",
+    "candidate_archive_sha256": "8293530e0cb6f87d9f8e274ddd48164e18aba14a9579464bf0ef55f164d8a2e1"
+  }
+}
