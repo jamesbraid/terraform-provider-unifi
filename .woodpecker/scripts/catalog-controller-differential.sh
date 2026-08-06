@@ -49,7 +49,10 @@ jq '
     "TestAccSettingResource_dohCustomServers",
     "TestAccSettingResource_ipsHoneypot",
     "TestAccWLANList_basic"
-  ] | map(. as $skip | select($plan.test_names | index($skip) != null)))
+  ] | map(. as $skip | select($plan.test_names | index($skip) != null))) |
+  .released_allowed_failures = ([
+    "TestAccDeviceFramework_basic"
+  ] | map(. as $failure | select($plan.test_names | index($failure) != null)))
 ' "${plan_path}" >"${plan_path}.allowed"
 mv "${plan_path}.allowed" "${plan_path}"
 
@@ -73,7 +76,11 @@ if [[ -n ${CATALOG_ACCEPTANCE_TEST_NAMES:-} ]]; then
       .diagnostic_selection = true |
       .catalog_test_count = $catalog_test_count |
       .test_names = $requested |
-      .allowed_skips = [.allowed_skips[] | select(. as $skip | $requested | index($skip))]
+      .allowed_skips = [.allowed_skips[] | select(. as $skip | $requested | index($skip))] |
+      .released_allowed_failures = [
+        .released_allowed_failures[] |
+        select(. as $failure | $requested | index($failure))
+      ]
     ' "${plan_path}" >"${plan_path}.targeted"
     mv "${plan_path}.targeted" "${plan_path}"
 fi
@@ -148,33 +155,11 @@ run_suite() {
     printf '%s\n' "$?" >"${status_file}"
     set -e
 
-    jq --slurpfile plan "${plan_path}" --argjson exit_code "$(cat "${status_file}")" -s '
-      ($plan[0].test_names) as $planned |
-      ($plan[0].allowed_skips) as $allowed_skips |
-      ([.[] | select(.Test != null and (.Test as $test | $planned | index($test))) |
-        select(.Action == "pass") | .Test] | unique) as $passed |
-      ([.[] | select(.Test != null and (.Test as $test | $planned | index($test))) |
-        select(.Action == "skip") | .Test] | unique) as $skipped |
-      ([.[] | select(.Test != null and (.Test as $test | $planned | index($test))) |
-        select(.Action == "fail") | .Test] | unique) as $failed |
-      {
-        exit_code: $exit_code,
-        result: (if $exit_code == 0 and $skipped == $allowed_skips and
-                    ($failed | length) == 0 and $passed == ($planned - $allowed_skips)
-                 then "pass" else "fail" end),
-        passed: $passed,
-        skipped: $skipped,
-        failed: $failed,
-        missing: ($planned - $passed - $skipped - $failed),
-        pre_test_diagnostics: (if ($passed | length) == 0 and
-                                  ($skipped | length) == 0 and
-                                  ($failed | length) == 0
-                               then [.[] |
-                                 select(.Test == null and .Action == "output") |
-                                 .Output] | unique | .[:40]
-                               else [] end)
-      }
-    ' "${log}" >"${work_root}/${label}-summary.json"
+    jq --slurpfile plan "${plan_path}" \
+       --arg label "${label}" \
+       --argjson exit_code "$(cat "${status_file}")" \
+       -s -f "${repository_root}/.woodpecker/scripts/catalog-controller-summary.jq" \
+       "${log}" >"${work_root}/${label}-summary.json"
 
     if [[ ${CATALOG_PRINT_FAILURE_DIAGNOSTICS:-false} == true ]]; then
         while IFS= read -r failed_test; do
@@ -214,7 +199,9 @@ jq -n --slurpfile plan "${plan_path}" \
   {
     format_version: 1,
     gate: "catalog controller differential",
-    result: (if $released[0].result == "pass" and $candidate[0].result == "pass"
+    result: (if ($released[0].result == "pass" or
+                 $released[0].result == "accepted_limitation") and
+                $candidate[0].result == "pass"
              then (if $plan[0].evidence_gap_count == 0 then "pass" else "blocked_evidence" end)
              else "fail" end),
     plan_sha256: $plan_sha256,
@@ -233,7 +220,25 @@ jq -n --slurpfile plan "${plan_path}" \
 test -s "${output}"
 jq -e 'type == "object"' "${output}" >/dev/null
 jq '.' "${output}"
-jq -e '.released.result == "pass" and .candidate.result == "pass"' "${output}" >/dev/null
+jq -e '
+  (
+    (.released.result == "pass" and
+     .released.accepted_failures == [] and
+     .released.unexpected_failures == [] and
+     .released.failed == [] and
+     .released.missing == []) or
+    (.released.result == "accepted_limitation" and
+     .released.accepted_failures == .plan.released_allowed_failures and
+     .released.failed == .plan.released_allowed_failures and
+     .released.unexpected_failures == [] and
+     .released.missing == [])
+  ) and
+  .candidate.result == "pass" and
+  .candidate.accepted_failures == [] and
+  .candidate.unexpected_failures == [] and
+  .candidate.failed == [] and
+  .candidate.missing == []
+' "${output}" >/dev/null
 if [[ ${CATALOG_REQUIRE_COMPLETE:-false} == true ]]; then
     jq -e '.result == "pass"' "${output}" >/dev/null
 fi

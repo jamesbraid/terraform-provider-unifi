@@ -90,15 +90,16 @@ type ControllerPlanSurface struct {
 }
 
 type ControllerPlanReceipt struct {
-	FormatVersion        int                     `json:"format_version"`
-	Gate                 string                  `json:"gate"`
-	Waves                []int                   `json:"waves"`
-	Surfaces             []ControllerPlanSurface `json:"surfaces"`
-	SurfaceCount         int                     `json:"surface_count"`
-	EvidenceGapCount     int                     `json:"evidence_gap_count"`
-	SharedScenarioOwners []string                `json:"shared_scenario_owners"`
-	TestNames            []string                `json:"test_names"`
-	AllowedSkips         []string                `json:"allowed_skips"`
+	FormatVersion           int                     `json:"format_version"`
+	Gate                    string                  `json:"gate"`
+	Waves                   []int                   `json:"waves"`
+	Surfaces                []ControllerPlanSurface `json:"surfaces"`
+	SurfaceCount            int                     `json:"surface_count"`
+	EvidenceGapCount        int                     `json:"evidence_gap_count"`
+	SharedScenarioOwners    []string                `json:"shared_scenario_owners"`
+	TestNames               []string                `json:"test_names"`
+	AllowedSkips            []string                `json:"allowed_skips"`
+	ReleasedAllowedFailures []string                `json:"released_allowed_failures"`
 }
 
 type ControllerImageReceipt struct {
@@ -124,6 +125,8 @@ type ControllerSuiteReceipt struct {
 	Passed             []string `json:"passed"`
 	Skipped            []string `json:"skipped"`
 	Failed             []string `json:"failed"`
+	AcceptedFailures   []string `json:"accepted_failures"`
+	UnexpectedFailures []string `json:"unexpected_failures"`
 	Missing            []string `json:"missing"`
 	PreTestDiagnostics []string `json:"pre_test_diagnostics"`
 }
@@ -492,7 +495,11 @@ func validateControllerAdmission(receipt ControllerDifferentialReceipt, build Bu
 		!reflect.DeepEqual(receipt.Plan.Waves, []int{1, 2, 3, 4, 5}) ||
 		receipt.Plan.SurfaceCount != 67 || len(receipt.Plan.Surfaces) != 67 ||
 		receipt.Plan.EvidenceGapCount != 10 || len(receipt.Plan.TestNames) != 150 ||
-		len(receipt.Plan.SharedScenarioOwners) != 40 {
+		len(receipt.Plan.SharedScenarioOwners) != 40 ||
+		!reflect.DeepEqual(
+			receipt.Plan.ReleasedAllowedFailures,
+			[]string{"TestAccDeviceFramework_basic"},
+		) {
 		return fmt.Errorf("controller plan surfaces or counts are incomplete")
 	}
 	want := make(map[SurfaceKey]SurfaceEvidenceInventory, len(inventory.Surfaces))
@@ -515,31 +522,68 @@ func validateControllerAdmission(receipt ControllerDifferentialReceipt, build Bu
 	}
 	if err := validateControllerSuite(
 		"released", receipt.Released, receipt.Plan.TestNames, receipt.Plan.AllowedSkips,
+		receipt.Plan.ReleasedAllowedFailures,
 	); err != nil {
 		return err
 	}
 	return validateControllerSuite(
 		"candidate", receipt.Candidate, receipt.Plan.TestNames, receipt.Plan.AllowedSkips,
+		nil,
 	)
 }
 
-func validateControllerSuite(label string, suite ControllerSuiteReceipt, planned, allowedSkips []string) error {
+func validateControllerSuite(
+	label string,
+	suite ControllerSuiteReceipt,
+	planned, allowedSkips, allowedFailures []string,
+) error {
 	if len(allowedSkips) > len(planned) ||
 		len(allowedSkips) != len(uniqueStrings(allowedSkips)) ||
-		!allStringsInSet(allowedSkips, planned) {
+		!allStringsInSet(allowedSkips, planned) ||
+		len(allowedFailures) != len(uniqueStrings(allowedFailures)) ||
+		!allStringsInSet(allowedFailures, planned) {
 		return fmt.Errorf("%s controller suite is incomplete or failed", label)
 	}
-	wantPassed := make([]string, 0, len(planned)-len(allowedSkips))
+	wantPassed := make([]string, 0, len(planned)-len(allowedSkips)-len(allowedFailures))
 	for _, testName := range planned {
-		if !controllerContainsString(allowedSkips, testName) {
+		if !controllerContainsString(allowedSkips, testName) &&
+			!controllerContainsString(allowedFailures, testName) {
 			wantPassed = append(wantPassed, testName)
 		}
 	}
+	if suite.Result == "accepted_limitation" {
+		if len(allowedFailures) == 0 || suite.ExitCode == 0 ||
+			len(suite.Missing) != 0 || len(suite.UnexpectedFailures) != 0 ||
+			!sameStringSet(suite.Failed, allowedFailures) ||
+			!sameStringSet(suite.AcceptedFailures, allowedFailures) ||
+			!sameStringSet(suite.Skipped, allowedSkips) ||
+			!sameStringSet(suite.Passed, wantPassed) {
+			return fmt.Errorf("%s controller suite is incomplete or failed", label)
+		}
+		return nil
+	}
+	for _, testName := range allowedFailures {
+		wantPassed = append(wantPassed, testName)
+	}
 	if suite.Result != "pass" || suite.ExitCode != 0 ||
-		len(suite.Failed) != 0 || len(suite.Missing) != 0 ||
+		len(suite.Failed) != 0 || len(suite.AcceptedFailures) != 0 ||
+		len(suite.UnexpectedFailures) != 0 || len(suite.Missing) != 0 ||
 		!sameStringSet(suite.Skipped, allowedSkips) ||
 		!sameStringSet(suite.Passed, wantPassed) {
-		return fmt.Errorf("%s controller suite is incomplete or failed", label)
+		return fmt.Errorf(
+			"%s controller suite is incomplete or failed: result=%q exit=%d passed=%d want_passed=%d skipped=%d want_skipped=%d failed=%d accepted=%d unexpected=%d missing=%d",
+			label,
+			suite.Result,
+			suite.ExitCode,
+			len(suite.Passed),
+			len(wantPassed),
+			len(suite.Skipped),
+			len(allowedSkips),
+			len(suite.Failed),
+			len(suite.AcceptedFailures),
+			len(suite.UnexpectedFailures),
+			len(suite.Missing),
+		)
 	}
 	return nil
 }

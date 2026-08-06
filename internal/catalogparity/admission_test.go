@@ -162,6 +162,67 @@ func TestBuildAdmissionRejectsUnboundOrIncompleteEvidence(t *testing.T) {
 	}
 }
 
+func TestBuildAdmissionAcceptsExactReleasedLimitation(t *testing.T) {
+	input := validAdmissionInput(t)
+	failure := "TestAccDeviceFramework_basic"
+	input.Controller.Released.ExitCode = 1
+	input.Controller.Released.Result = "accepted_limitation"
+	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, failure)
+	input.Controller.Released.Failed = []string{failure}
+	input.Controller.Released.AcceptedFailures = []string{failure}
+	if _, err := BuildAdmission(input); err != nil {
+		t.Fatalf("BuildAdmission() error = %v", err)
+	}
+}
+
+func TestValidateControllerSuiteKeepsCleanReleasedPass(t *testing.T) {
+	planned := []string{"TestAccA", "TestAccDeviceFramework_basic"}
+	suite := ControllerSuiteReceipt{
+		ExitCode: 0,
+		Result:   "pass",
+		Passed:   planned,
+	}
+	if err := validateControllerSuite(
+		"released",
+		suite,
+		planned,
+		nil,
+		[]string{"TestAccDeviceFramework_basic"},
+	); err != nil {
+		t.Fatalf("validateControllerSuite() error = %v", err)
+	}
+}
+
+func TestBuildAdmissionRejectsBroaderReleasedLimitation(t *testing.T) {
+	input := validAdmissionInput(t)
+	failures := []string{"TestAccDeviceFramework_basic", "TestAccUnexpected"}
+	input.Controller.Plan.TestNames = append(input.Controller.Plan.TestNames, "TestAccUnexpected")
+	input.Controller.Plan.Surfaces[0].TestNames = append(
+		input.Controller.Plan.Surfaces[0].TestNames,
+		"TestAccUnexpected",
+	)
+	input.Controller.Released.ExitCode = 1
+	input.Controller.Released.Result = "accepted_limitation"
+	for _, failure := range failures {
+		input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, failure)
+	}
+	input.Controller.Released.Failed = failures
+	input.Controller.Released.AcceptedFailures = failures
+	if _, err := BuildAdmission(input); err == nil {
+		t.Fatal("BuildAdmission() accepted a broader released limitation")
+	}
+}
+
+func removeString(values []string, remove string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value != remove {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
 func validAdmissionInput(t *testing.T) AdmissionInput {
 	t.Helper()
 	data, err := os.ReadFile("../../build/release-ready/catalog-evidence-inventory.json")
@@ -229,6 +290,9 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 	allTests := make([]string, 0)
 	for _, surface := range inventory.Surfaces {
 		tests := []string{"TestAcc" + strings.TrimPrefix(surface.Name, "unifi_")}
+		if surface.Kind == ManagedResource && surface.Name == "unifi_device" {
+			tests = []string{"TestAccDeviceFramework_basic"}
+		}
 		planSurfaces = append(planSurfaces, ControllerPlanSurface{
 			SurfaceKey:     surface.SurfaceKey,
 			Wave:           surface.Wave,
@@ -259,14 +323,15 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		Testcontainers:        ControllerRyukReceipt{RyukImage: "ryuk@sha256:" + digest, RyukImageID: "sha256:" + digest},
 		TerraformBinarySHA256: digest,
 		Plan: ControllerPlanReceipt{
-			FormatVersion:        1,
-			Gate:                 "catalog controller differential",
-			Waves:                []int{1, 2, 3, 4, 5},
-			Surfaces:             planSurfaces,
-			SurfaceCount:         67,
-			EvidenceGapCount:     10,
-			SharedScenarioOwners: sharedScenarioOwners,
-			TestNames:            allTests,
+			FormatVersion:           1,
+			Gate:                    "catalog controller differential",
+			Waves:                   []int{1, 2, 3, 4, 5},
+			Surfaces:                planSurfaces,
+			SurfaceCount:            67,
+			EvidenceGapCount:        10,
+			SharedScenarioOwners:    sharedScenarioOwners,
+			TestNames:               allTests,
+			ReleasedAllowedFailures: []string{"TestAccDeviceFramework_basic"},
 		},
 		Released:  controllerSuite,
 		Candidate: controllerSuite,
