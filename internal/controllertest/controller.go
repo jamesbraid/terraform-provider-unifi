@@ -31,6 +31,12 @@ type Logger interface {
 const (
 	controllerUser     = "admin"
 	controllerPassword = "admin"
+
+	// envRemoveControllerImages restores the old teardown behaviour for an
+	// operator that deliberately wants it. Ordinary acceptance runs preserve
+	// their digest-pinned controller image so a released/candidate pair can run
+	// without contacting a registry between attempts.
+	envRemoveControllerImages = "UNIFI_TEST_REMOVE_CONTROLLER_IMAGES"
 )
 
 // Controller is a running controller and the fleet informing it.
@@ -127,11 +133,15 @@ func (c *Controller) Stop(logger Logger) error {
 	logger.Printf("RUNNING TEAR DOWN")
 	// Not the caller's context: teardown has to run even when the context
 	// that started everything is already cancelled.
-	return c.stack.Down(
-		context.Background(),
-		compose.RemoveOrphans(true),
-		compose.RemoveImagesLocal,
-	)
+	options := []compose.StackDownOption{compose.RemoveOrphans(true)}
+	if removeControllerImages() {
+		options = append(options, compose.RemoveImagesLocal)
+	}
+	return c.stack.Down(context.Background(), options...)
+}
+
+func removeControllerImages() bool {
+	return os.Getenv(envRemoveControllerImages) == "true"
 }
 
 // exportProviderEnv points the provider under test at this controller.
