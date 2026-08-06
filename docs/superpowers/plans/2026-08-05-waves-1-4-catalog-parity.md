@@ -1,5 +1,9 @@
 # Waves 1-4 Catalog Parity Implementation Plan
 
+> **Scope correction:** This plan builds the static preflight for Waves 1-4.
+> Its `static_pass` receipts do not complete a wave. A surface completes the
+> program only at `release_ready`; see the release-ready campaign plan.
+
 > Execute this plan continuously after Wave 0. A wave may complete its static
 > construction locally while promotion remains blocked on retained controller
 > evidence. Never turn missing evidence into a passing receipt.
