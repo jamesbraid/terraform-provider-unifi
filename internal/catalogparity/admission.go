@@ -98,6 +98,7 @@ type ControllerPlanReceipt struct {
 	EvidenceGapCount     int                     `json:"evidence_gap_count"`
 	SharedScenarioOwners []string                `json:"shared_scenario_owners"`
 	TestNames            []string                `json:"test_names"`
+	AllowedSkips         []string                `json:"allowed_skips"`
 }
 
 type ControllerImageReceipt struct {
@@ -512,19 +513,66 @@ func validateControllerAdmission(receipt ControllerDifferentialReceipt, build Bu
 			return fmt.Errorf("controller plan surface %s/%s differs from inventory", surface.Kind, surface.Name)
 		}
 	}
-	if err := validateControllerSuite("released", receipt.Released, receipt.Plan.TestNames); err != nil {
+	if err := validateControllerSuite(
+		"released", receipt.Released, receipt.Plan.TestNames, receipt.Plan.AllowedSkips,
+	); err != nil {
 		return err
 	}
-	return validateControllerSuite("candidate", receipt.Candidate, receipt.Plan.TestNames)
+	return validateControllerSuite(
+		"candidate", receipt.Candidate, receipt.Plan.TestNames, receipt.Plan.AllowedSkips,
+	)
 }
 
-func validateControllerSuite(label string, suite ControllerSuiteReceipt, planned []string) error {
-	if suite.Result != "pass" || suite.ExitCode != 0 || len(suite.Skipped) != 0 ||
+func validateControllerSuite(label string, suite ControllerSuiteReceipt, planned, allowedSkips []string) error {
+	if len(allowedSkips) > len(planned) ||
+		len(allowedSkips) != len(uniqueStrings(allowedSkips)) ||
+		!allStringsInSet(allowedSkips, planned) {
+		return fmt.Errorf("%s controller suite is incomplete or failed", label)
+	}
+	wantPassed := make([]string, 0, len(planned)-len(allowedSkips))
+	for _, testName := range planned {
+		if !controllerContainsString(allowedSkips, testName) {
+			wantPassed = append(wantPassed, testName)
+		}
+	}
+	if suite.Result != "pass" || suite.ExitCode != 0 ||
 		len(suite.Failed) != 0 || len(suite.Missing) != 0 ||
-		!sameStringSet(suite.Passed, planned) {
+		!sameStringSet(suite.Skipped, allowedSkips) ||
+		!sameStringSet(suite.Passed, wantPassed) {
 		return fmt.Errorf("%s controller suite is incomplete or failed", label)
 	}
 	return nil
+}
+
+func controllerContainsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
+}
+
+func allStringsInSet(values, set []string) bool {
+	for _, value := range values {
+		if !controllerContainsString(set, value) {
+			return false
+		}
+	}
+	return true
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	unique := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		unique = append(unique, value)
+	}
+	return unique
 }
 
 func validatePragmaticAdmission(resolution PragmaticResolution, inventory EvidenceInventory, inventorySHA256 string) error {

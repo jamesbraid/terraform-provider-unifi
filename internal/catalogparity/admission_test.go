@@ -61,6 +61,24 @@ func TestBuildAdmissionIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestBuildAdmissionAcceptsDeclaredControllerTargetSkips(t *testing.T) {
+	input := validAdmissionInput(t)
+	firstAllowed := len(input.Controller.Plan.TestNames) - 3
+	allowed := append([]string(nil), input.Controller.Plan.TestNames[firstAllowed:]...)
+	input.Controller.Plan.AllowedSkips = allowed
+	for _, suite := range []*ControllerSuiteReceipt{
+		&input.Controller.Released,
+		&input.Controller.Candidate,
+	} {
+		suite.Passed = append([]string(nil), input.Controller.Plan.TestNames[:firstAllowed]...)
+		suite.Skipped = append([]string(nil), allowed...)
+	}
+
+	if _, err := BuildAdmission(input); err != nil {
+		t.Fatalf("BuildAdmission() rejected declared target skips: %v", err)
+	}
+}
+
 func TestBuildAdmissionRejectsUnboundOrIncompleteEvidence(t *testing.T) {
 	tests := map[string]struct {
 		mutate func(*AdmissionInput)
@@ -87,6 +105,26 @@ func TestBuildAdmissionRejectsUnboundOrIncompleteEvidence(t *testing.T) {
 				input.Controller.Candidate.Missing = append(input.Controller.Candidate.Missing, "TestAccMissing")
 			},
 			want: "candidate controller suite",
+		},
+		"undeclared controller skip": {
+			mutate: func(input *AdmissionInput) {
+				name := input.Controller.Candidate.Passed[0]
+				input.Controller.Candidate.Passed = input.Controller.Candidate.Passed[1:]
+				input.Controller.Candidate.Skipped = []string{name}
+			},
+			want: "candidate controller suite",
+		},
+		"declared controller skip was not skipped": {
+			mutate: func(input *AdmissionInput) {
+				input.Controller.Plan.AllowedSkips = []string{input.Controller.Plan.TestNames[0]}
+			},
+			want: "released controller suite",
+		},
+		"allowed skip outside plan": {
+			mutate: func(input *AdmissionInput) {
+				input.Controller.Plan.AllowedSkips = []string{"TestAccNotInPlan"}
+			},
+			want: "released controller suite",
 		},
 		"controller receipt digest": {
 			mutate: func(input *AdmissionInput) {

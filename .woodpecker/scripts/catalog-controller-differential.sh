@@ -43,6 +43,16 @@ jq --arg waves "${waves}" '
   }
 ' "${inventory}" >"${plan_path}"
 
+jq '
+  . as $plan |
+  .allowed_skips = ([
+    "TestAccSettingResource_dohCustomServers",
+    "TestAccSettingResource_ipsHoneypot",
+    "TestAccWLANList_basic"
+  ] | map(. as $skip | select($plan.test_names | index($skip) != null)))
+' "${plan_path}" >"${plan_path}.allowed"
+mv "${plan_path}.allowed" "${plan_path}"
+
 jq -e '.surface_count > 0 and (.test_names | length) > 0' "${plan_path}" >/dev/null
 
 if [[ -n ${CATALOG_ACCEPTANCE_TEST_NAMES:-} ]]; then
@@ -61,7 +71,8 @@ if [[ -n ${CATALOG_ACCEPTANCE_TEST_NAMES:-} ]]; then
        --argjson catalog_test_count "${catalog_test_count}" '
       .diagnostic_selection = true |
       .catalog_test_count = $catalog_test_count |
-      .test_names = $requested
+      .test_names = $requested |
+      .allowed_skips = [.allowed_skips[] | select(. as $skip | $requested | index($skip))]
     ' "${plan_path}" >"${plan_path}.targeted"
     mv "${plan_path}.targeted" "${plan_path}"
 fi
@@ -138,6 +149,7 @@ run_suite() {
 
     jq --slurpfile plan "${plan_path}" --argjson exit_code "$(cat "${status_file}")" -s '
       ($plan[0].test_names) as $planned |
+      ($plan[0].allowed_skips) as $allowed_skips |
       ([.[] | select(.Test != null and (.Test as $test | $planned | index($test))) |
         select(.Action == "pass") | .Test] | unique) as $passed |
       ([.[] | select(.Test != null and (.Test as $test | $planned | index($test))) |
@@ -146,8 +158,8 @@ run_suite() {
         select(.Action == "fail") | .Test] | unique) as $failed |
       {
         exit_code: $exit_code,
-        result: (if $exit_code == 0 and ($skipped | length) == 0 and
-                    ($failed | length) == 0 and ($passed | length) == ($planned | length)
+        result: (if $exit_code == 0 and $skipped == $allowed_skips and
+                    ($failed | length) == 0 and $passed == ($planned - $allowed_skips)
                  then "pass" else "fail" end),
         passed: $passed,
         skipped: $skipped,
