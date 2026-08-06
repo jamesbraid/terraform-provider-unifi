@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "default_state": "legacy_authoritative",
+  "overrides": [
+    {
+      "kind": "managed_resource",
+      "name": "unifi_dns_record",
+      "state": "admitted",
+      "receipt_sha256": "dd3b22d7c5379c5c216c50439b09d6ff5e66c3be908076468f183ce5998dab19"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_port_forward",
+      "state": "shadow_only"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_dns_record",
+      "state": "shadow_only"
+    }
+  ]
+}

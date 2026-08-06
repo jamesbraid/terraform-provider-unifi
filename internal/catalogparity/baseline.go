@@ -2,6 +2,7 @@ package catalogparity
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -99,6 +100,7 @@ func ParseBaseline(data []byte) (Baseline, error) {
 	baseline := Baseline{
 		FormatVersion:         1,
 		ProviderAddress:       document.ProviderAddress,
+		SourceSHA256:          byteSHA256(data),
 		CanonicalSchemaSHA256: document.CanonicalSchemaSHA256,
 		Surfaces:              surfaces,
 	}
@@ -153,6 +155,11 @@ func validSHA256(value string) bool {
 	}
 	_, err := hex.DecodeString(value)
 	return err == nil
+}
+
+func byteSHA256(data []byte) string {
+	digest := sha256.Sum256(data)
+	return hex.EncodeToString(digest[:])
 }
 
 func requireJSONEOF(decoder *json.Decoder) error {
