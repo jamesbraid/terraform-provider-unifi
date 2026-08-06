@@ -26,6 +26,7 @@ type Surface struct {
 type Baseline struct {
 	FormatVersion         int       `json:"format_version"`
 	ProviderAddress       string    `json:"provider_address"`
+	SourceSHA256          string    `json:"source_sha256"`
 	CanonicalSchemaSHA256 string    `json:"canonical_schema_sha256"`
 	Surfaces              []Surface `json:"surfaces"`
 }
