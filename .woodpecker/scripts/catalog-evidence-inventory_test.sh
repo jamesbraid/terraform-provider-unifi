@@ -16,5 +16,5 @@ CATALOG_EVIDENCE_OUTPUT=${output} \
 
 test "$(jq -r '.surfaces | length' "${output}")" = 67
 test "$(jq -r '.coverage_counts.scenario_owner' "${output}")" = 67
-test "$(jq -r '.coverage_counts.action_acceptance' "${output}")" = 0
+test "$(jq -r '.coverage_counts.action_acceptance' "${output}")" = 1
 cmp "${repository_root}/build/release-ready/catalog-evidence-inventory.json" "${output}"

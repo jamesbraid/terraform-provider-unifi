@@ -114,8 +114,8 @@ func validateControllerReceipt(path string) (string, error) {
 	if receipt.FormatVersion != 1 || receipt.Gate != "catalog controller differential" {
 		return "", fmt.Errorf("identity is invalid")
 	}
-	if receipt.Result != "blocked_evidence" || receipt.Plan.EvidenceGapCount != 9 {
-		return "", fmt.Errorf("Wave 1-4 result is %q with %d gaps", receipt.Result, receipt.Plan.EvidenceGapCount)
+	if receipt.Result != "blocked_evidence" || receipt.Plan.EvidenceGapCount != 10 {
+		return "", fmt.Errorf("catalog result is %q with %d gaps", receipt.Result, receipt.Plan.EvidenceGapCount)
 	}
 	if receipt.Released.Result != "pass" || receipt.Candidate.Result != "pass" {
 		return "", fmt.Errorf("released and candidate results must pass")

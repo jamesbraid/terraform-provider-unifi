@@ -11,11 +11,11 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
 
-func TestRunWritesWaveOneThroughFourReferenceResolution(t *testing.T) {
+func TestRunWritesBoundReferenceResolution(t *testing.T) {
 	root := filepath.Join("..", "..")
 	output := filepath.Join(t.TempDir(), "resolution.json")
 	controllerReceipt := filepath.Join(t.TempDir(), "controller.json")
-	controllerData := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":9},"released":{"result":"pass"},"candidate":{"result":"pass"}}` + "\n")
+	controllerData := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":10},"released":{"result":"pass"},"candidate":{"result":"pass"}}` + "\n")
 	if err := os.WriteFile(controllerReceipt, controllerData, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestRunWritesWaveOneThroughFourReferenceResolution(t *testing.T) {
 	if err := json.Unmarshal(data, &resolution); err != nil {
 		t.Fatal(err)
 	}
-	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 9 || resolution.RemainingSignalCount != 2 {
+	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 9 || resolution.RemainingSignalCount != 1 {
 		t.Fatalf("resolution = %+v", resolution)
 	}
 	sum := sha256.Sum256(controllerData)

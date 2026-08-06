@@ -12,8 +12,9 @@ for that surface. It is not a controller capability claim.
 `catalog-pragmatic-resolution.json` binds that summary to the public evidence
 inventory and the reference policy. The resolution accepts references only for
 source-identical runtime paths and only when the referenced surface has no
-missing base evidence. It resolves nine Wave 1-4 signals and deliberately
-leaves the Wave 5 port action and hardware claim blocked.
+missing base evidence. It resolves nine Wave 1-4 signals. The Wave 5 action is
+exercised against the synthetic controller separately. Only its physical
+hardware claim remains blocked.
 
 Regenerate the resolution after either input changes:
 
