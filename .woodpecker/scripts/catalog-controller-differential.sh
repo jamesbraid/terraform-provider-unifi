@@ -156,7 +156,7 @@ run_suite() {
     set -e
 
     jq --slurpfile plan "${plan_path}" \
-       --arg label "${label}" \
+       --arg suite_label "${label}" \
        --argjson exit_code "$(cat "${status_file}")" \
        -s -f "${repository_root}/.woodpecker/scripts/catalog-controller-summary.jq" \
        "${log}" >"${work_root}/${label}-summary.json"
