@@ -40,17 +40,20 @@ The gate performs no dependency or VCS fetch. Final evidence must also set
 `CATALOG_RELEASED_PROVIDER_BINARY` to the verified v0.101.2 binary retained in
 the private evidence store.
 
-`catalog-controller-differential.sh` plans the Wave 1-4 acceptance corpus and
+`catalog-controller-differential.sh` plans the Wave 1-5 acceptance corpus and
 runs those test names against the released and candidate source trees. Both
 attempts use the same digest-pinned, locally cached controller and the same
 source-pinned synthetic fleet and Ryuk helper. Controller registry pulls are
-disabled. A passing differential can still report `blocked_evidence`: missing acceptance,
-import, list, or hardware signals remain blockers until a scenario or a
-pragmatic fleet reference covers them. Only `CATALOG_REQUIRE_COMPLETE=true`
-turns the diagnostic into a promotion gate.
+disabled. The port action adopts a synthetic switch, runs through Terraform's
+action trigger, and must persist the requested port override in the controller.
+That proves the action protocol, not electrical PoE behavior. A passing
+differential can still report `blocked_evidence`: missing acceptance, import,
+list, or hardware signals remain blockers until a scenario or a pragmatic
+fleet reference covers them. Only `CATALOG_REQUIRE_COMPLETE=true` turns the
+diagnostic into a promotion gate.
 
 The private carrier reconciles non-lifecycle Wave 1-4 gaps with
 `cmd/catalog-pragmatic-evidence`. The reconciler requires a value-free fleet
 summary, a digest-bound reference policy, source-identical target runtime, and
-a fully covered source surface. It leaves Wave 5 evidence untouched and cannot
+a fully covered source surface. It cannot resolve the Wave 5 hardware claim or
 promote a ledger entry.

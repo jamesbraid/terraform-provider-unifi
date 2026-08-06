@@ -48,7 +48,7 @@ func TestBuildEvidenceInventoryAccountsForEverySurfaceAndNamesGaps(t *testing.T)
 		"acceptance":        33,
 		"import":            27,
 		"list_acceptance":   25,
-		"action_acceptance": 0,
+		"action_acceptance": 1,
 	}
 	if !reflect.DeepEqual(inventory.CoverageCounts, wantCoverage) {
 		t.Fatalf("coverage counts = %v, want %v", inventory.CoverageCounts, wantCoverage)
@@ -75,7 +75,7 @@ func TestBuildEvidenceInventoryAccountsForEverySurfaceAndNamesGaps(t *testing.T)
 	if portAction == nil {
 		t.Fatal("unifi_port action is missing")
 	}
-	if !reflect.DeepEqual(portAction.MissingSignals, []string{"action_acceptance", "hardware_claim"}) {
+	if !reflect.DeepEqual(portAction.MissingSignals, []string{"hardware_claim"}) {
 		t.Fatalf("port action missing signals = %v", portAction.MissingSignals)
 	}
 }

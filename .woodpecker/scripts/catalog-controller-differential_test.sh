@@ -9,18 +9,19 @@ trap 'rm -rf "${work_root}"' EXIT
 
 cd "${work_root}"
 CATALOG_ACCEPTANCE_PLAN_ONLY=true \
-CATALOG_ACCEPTANCE_WAVES=1,2,3,4 \
+CATALOG_ACCEPTANCE_WAVES=1,2,3,4,5 \
 CATALOG_ACCEPTANCE_OUTPUT="${work_root}/plan.json" \
     "${script}"
 
 jq -e '
   .format_version == 1 and
   .gate == "catalog controller differential" and
-  .waves == [1, 2, 3, 4] and
-  .surface_count == 66 and
-  .evidence_gap_count == 9 and
-  (.test_names | length) == 149 and
-  (.shared_scenario_owners | length) == 39 and
+  .waves == [1, 2, 3, 4, 5] and
+  .surface_count == 67 and
+  .evidence_gap_count == 10 and
+  (.test_names | length) == 150 and
+  (.shared_scenario_owners | length) == 40 and
+  ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
   ([.surfaces[] | select(.name == "unifi_dns_record" and .kind == "managed_resource")] | length) == 1
 ' "${work_root}/plan.json" >/dev/null
 

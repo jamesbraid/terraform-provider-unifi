@@ -206,11 +206,10 @@ func TestPragmaticReferencePolicyResolvesExactlyNineCatalogGaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 9 || resolution.RemainingSignalCount != 2 {
+	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 9 || resolution.RemainingSignalCount != 1 {
 		t.Fatalf("resolution = %+v", resolution)
 	}
 	wantRemaining := []EvidenceGap{
-		{SurfaceKey: SurfaceKey{Kind: Action, Name: "unifi_port"}, Signal: "action_acceptance"},
 		{SurfaceKey: SurfaceKey{Kind: Action, Name: "unifi_port"}, Signal: "hardware_claim"},
 	}
 	if !reflect.DeepEqual(resolution.Remaining, wantRemaining) {
