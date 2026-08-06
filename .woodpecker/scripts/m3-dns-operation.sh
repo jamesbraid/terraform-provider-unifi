@@ -2,9 +2,8 @@
 set -euo pipefail
 
 readonly expected_module=github.com/ubiquiti-community/go-unifi
-readonly expected_replacement=github.com/jamesbraid/go-unifi
 readonly expected_version=v1.102.0
-readonly expected_sum='h1:mi7q/FGi/TIUiM2K5BLv5jdA3T4f1/Tf5icYjGnnd/I='
+readonly expected_sum='h1:/CSJB4rm9aqDrkDB4yw6xAgY8dYAohcv8N4TC/ugLRU='
 readonly expected_catalog_source_commit=62add0c72d932aba663164fd794d510fb56aebae
 readonly expected_catalog_sha256=a07b8a4b91d68aaaf35b7bb8a2d8f3d877531ffff64cbd44a44748ab736b9ac1
 readonly expected_operation_sha256=d004069d8f4d911de2d893c3183e0d9e59a67d66425fcb3d1551caa55c623cbd
@@ -34,9 +33,9 @@ module_json=$(go list -m -json all | jq --compact-output \
     --arg module_path "${expected_module}" \
     'select(.Path == $module_path)')
 readonly module_json
-test "$(jq -r '.Replace.Path' <<<"${module_json}")" = "${expected_replacement}"
-test "$(jq -r '.Replace.Version' <<<"${module_json}")" = "${expected_version}"
-test "$(jq -r '.Replace.Sum' <<<"${module_json}")" = "${expected_sum}"
+test "$(jq -r 'has("Replace")' <<<"${module_json}")" = false
+test "$(jq -r .Version <<<"${module_json}")" = "${expected_version}"
+test "$(jq -r .Sum <<<"${module_json}")" = "${expected_sum}"
 
 test "$(sha256sum "${catalog_path}" | awk '{print $1}')" = "${expected_catalog_sha256}"
 test "$(sha256sum "${operation_path}" | awk '{print $1}')" = "${expected_operation_sha256}"
@@ -120,7 +119,6 @@ jq --indent 2 --null-input \
     --arg source_commit "${source_commit}" \
     --arg execution "${M3_EXECUTION:-local}" \
     --arg module_path "${expected_module}" \
-    --arg replacement "${expected_replacement}" \
     --arg version "${expected_version}" \
     --arg sum "${expected_sum}" \
     --arg catalog_sha256 "${expected_catalog_sha256}" \
@@ -145,7 +143,7 @@ jq --indent 2 --null-input \
         source_commit: $source_commit,
         go_unifi: {
             module: $module_path,
-            replacement: $replacement,
+            replacement: null,
             version: $version,
             sum: $sum
         },
