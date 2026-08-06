@@ -40,6 +40,14 @@ The gate performs no dependency or VCS fetch. Final evidence must also set
 `CATALOG_RELEASED_PROVIDER_BINARY` to the verified v0.101.2 binary retained in
 the private evidence store.
 
+`catalog-unit-differential.sh` extracts the exact v0.101.2 source tree and runs
+the complete released and candidate Go suites. `TF_ACC` is removed so this
+layer covers unit and in-process HTTP-boundary tests without a controller. The
+runner disables module, checksum-database, toolchain, and VCS acquisition,
+keeps raw JSON logs outside the repository, and emits only counts plus hashes
+of the raw logs and normalized package/test outcomes. As with the build/schema
+gate, a non-baseline local toolchain can only produce `diagnostic_pass`.
+
 `catalog-controller-differential.sh` plans the Wave 1-5 acceptance corpus and
 runs those test names against the released and candidate source trees. Both
 attempts use the same digest-pinned, locally cached controller and the same
