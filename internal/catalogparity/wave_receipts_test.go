@@ -73,11 +73,65 @@ func TestWave1ReadSurfaceReceipt(t *testing.T) {
 	}
 }
 
+func TestWave2FleetFoundationReceipt(t *testing.T) {
+	receipt := readStaticWaveReceipt(t, "../../build/wave2/fleet-foundations.json")
+	if receipt.FormatVersion != 1 || receipt.Wave != 2 || receipt.Result != "static_pass" || receipt.Promotion != "blocked_evidence" {
+		t.Fatalf("unexpected Wave 2 identity: %+v", receipt)
+	}
+	if receipt.RuntimeChanged || receipt.ControllerExecution != "not_run" {
+		t.Fatalf("Wave 2 execution claims = runtime:%v controller:%q", receipt.RuntimeChanged, receipt.ControllerExecution)
+	}
+	if receipt.SurfaceCount != 8 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 8}) {
+		t.Fatalf("Wave 2 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
+	}
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"admitted": 1, "policy_complete": 7}) {
+		t.Fatalf("Wave 2 status counts = %v", receipt.StatusCounts)
+	}
+	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
+		"adapter_differential":        7,
+		"locked_controller_lifecycle": 7,
+	}) {
+		t.Fatalf("Wave 2 blocker counts = %v", receipt.BlockerCounts)
+	}
+	requireStaticWaveDigests(t, receipt)
+
+	ledger := parseTestLedger(t)
+	corpus := parseTestCorpus(t)
+	seen := 0
+	for _, contract := range corpus.Contracts {
+		if contract.Wave != 2 {
+			continue
+		}
+		seen++
+		want := PolicyComplete
+		if contract.Name == "unifi_dns_record" {
+			want = Admitted
+		}
+		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
+			t.Fatal(err)
+		}
+		if !containsString(contract.EvidenceGates, "migration") || !containsString(contract.EvidenceGates, "recovery") {
+			t.Fatalf("managed contract %s lacks migration/recovery gates", contract.Name)
+		}
+	}
+	if seen != 8 {
+		t.Fatalf("Wave 2 corpus surfaces = %d, want 8", seen)
+	}
+}
+
 func readStaticWaveReceipt(t *testing.T, path string) staticWaveReceipt {
 	t.Helper()
 	var receipt staticWaveReceipt
 	decodeStrict(t, readFile(t, path), &receipt)
 	return receipt
+}
+
+func requireStaticWaveDigests(t *testing.T, receipt staticWaveReceipt) {
+	t.Helper()
+	requireDigestMatches(t, receipt.SchemaSHA256, "../../provider-contracts/schema/terraform-1.15.8.json")
+	requireDigestMatches(t, receipt.LedgerSHA256, "../../provider-codegen/generated/catalog-parity-ledger.json")
+	requireDigestMatches(t, receipt.SurfaceContractsSHA256, "../../provider-codegen/generated/catalog-surface-contracts.json")
+	requireDigestMatches(t, receipt.MigrationManifestSHA256, "../../provider-codegen/generated/catalog-migration-manifest.json")
 }
 
 func parseTestLedger(t *testing.T) Ledger {
