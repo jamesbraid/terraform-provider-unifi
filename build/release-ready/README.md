@@ -43,7 +43,8 @@ the private evidence store.
 `catalog-controller-differential.sh` plans the Wave 1-4 acceptance corpus and
 runs those test names against the released and candidate source trees. Both
 attempts use the same digest-pinned, locally cached controller and the same
-source-pinned synthetic fleet; controller registry pulls are disabled. A
+source-pinned synthetic fleet and Ryuk helper; controller registry pulls are
+disabled. A
 passing differential can still report `blocked_evidence`: missing acceptance,
 import, list, or hardware signals remain blockers until a scenario or a
 pragmatic fleet reference covers them. Only `CATALOG_REQUIRE_COMPLETE=true`

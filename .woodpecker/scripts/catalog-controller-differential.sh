@@ -52,6 +52,7 @@ fi
 
 readonly controller_image=${CATALOG_CONTROLLER_IMAGE:?CATALOG_CONTROLLER_IMAGE is required}
 readonly synthetic_image=${CATALOG_SYNTHETIC_IMAGE:?CATALOG_SYNTHETIC_IMAGE is required}
+readonly ryuk_image=${CATALOG_RYUK_IMAGE:?CATALOG_RYUK_IMAGE is required}
 readonly herder_bin=${CATALOG_HERDER_BIN:?CATALOG_HERDER_BIN is required}
 readonly terraform_bin=${TERRAFORM_BIN:?TERRAFORM_BIN is required}
 readonly released_ref=${CATALOG_RELEASED_REF:-v0.101.2}
@@ -63,7 +64,7 @@ test -x "${herder_bin}"
 test -x "${terraform_bin}"
 docker image inspect "${controller_image}" >/dev/null
 docker image inspect "${synthetic_image}" >/dev/null
-docker image inspect testcontainers/ryuk:0.13.0 >/dev/null
+docker image inspect "${ryuk_image}" >/dev/null
 git -C "${repository_root}" cat-file -e "${released_ref}^{commit}"
 git -C "${repository_root}" cat-file -e "${candidate_ref}^{commit}"
 
@@ -105,6 +106,7 @@ run_suite() {
             UNIFI_TEST_HERDER_SYNTHETIC_IMAGE="${synthetic_image}" \
             UNIFI_TEST_CONTROLLER_IMAGE="${controller_image}" \
             UNIFI_TEST_CONTROLLER_PULL_POLICY=never \
+            TESTCONTAINERS_RYUK_CONTAINER_IMAGE="${ryuk_image}" \
             GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 \
             GOTOOLCHAIN=local GOCACHE="${cache}" \
             go test -json -count=1 -timeout 90m ./unifi \
@@ -140,6 +142,7 @@ run_suite released "${released_root}"
 mkdir -p "$(dirname "${output}")"
 controller_id=$(docker image inspect --format '{{.Id}}' "${controller_image}")
 synthetic_id=$(docker image inspect --format '{{.Id}}' "${synthetic_image}")
+ryuk_id=$(docker image inspect --format '{{.Id}}' "${ryuk_image}")
 herder_sha256=$(sha256sum "${herder_bin}" | awk '{print $1}')
 terraform_sha256=$(sha256sum "${terraform_bin}" | awk '{print $1}')
 released_commit=$(git -C "${repository_root}" rev-parse "${released_ref}^{commit}")
@@ -154,6 +157,8 @@ jq --slurpfile plan "${plan_path}" \
    --arg controller_id "${controller_id}" \
    --arg synthetic_image "${synthetic_image}" \
    --arg synthetic_id "${synthetic_id}" \
+   --arg ryuk_image "${ryuk_image}" \
+   --arg ryuk_id "${ryuk_id}" \
    --arg herder_sha256 "${herder_sha256}" \
    --arg terraform_sha256 "${terraform_sha256}" \
    --arg plan_sha256 "${plan_sha256}" '
@@ -168,6 +173,7 @@ jq --slurpfile plan "${plan_path}" \
     candidate_commit: $candidate_commit,
     target: {image: $controller_image, image_id: $controller_id, pull_policy: "never"},
     fleet: {image: $synthetic_image, image_id: $synthetic_id, herder_sha256: $herder_sha256},
+    testcontainers: {ryuk_image: $ryuk_image, ryuk_image_id: $ryuk_id},
     terraform_binary_sha256: $terraform_sha256,
     plan: $plan[0],
     released: $released[0],
