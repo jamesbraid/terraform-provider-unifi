@@ -17,11 +17,12 @@ services:
     init: true
     environment:
       TZ: Etc/UTC
-    # Only the API port is published. Devices reach the inform port over the
-    # Compose network, by the controller's address on it, never through the
-    # host.
+    # Only the API port is published, on an ephemeral host port so concurrent
+    # or abruptly cancelled acceptance runs cannot reserve 8443 globally.
+    # Devices reach the inform port over the Compose network, by the
+    # controller's address on it, never through the host.
     ports:
-      - 8443:8443
+      - "0:8443"
     # No container_name and no restart policy on purpose. A fixed name lets one
     # leftover container block every later run, and an ephemeral test
     # controller that restarts itself turns that leftover into a permanent one.
