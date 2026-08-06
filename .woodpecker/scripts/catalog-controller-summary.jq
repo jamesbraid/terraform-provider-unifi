@@ -1,6 +1,6 @@
 ($plan[0].test_names) as $planned |
 ($plan[0].allowed_skips) as $allowed_skips |
-(if $label == "released"
+(if $suite_label == "released"
  then ($plan[0].released_allowed_failures // [])
  else []
  end) as $allowed_failures |
@@ -20,7 +20,7 @@
     if $exit_code == 0 and $skipped == $allowed_skips and
        ($failed | length) == 0 and $passed == ($planned - $allowed_skips)
     then "pass"
-    elif $label == "released" and $exit_code != 0 and
+    elif $suite_label == "released" and $exit_code != 0 and
          ($allowed_failures | length) > 0 and
          $skipped == $allowed_skips and $failed == $allowed_failures and
          $passed == ($planned - $allowed_skips - $allowed_failures) and

@@ -22,7 +22,7 @@ cat >"${work_root}/known-limitation.jsonl" <<'EOF'
 EOF
 
 jq --slurpfile plan "${work_root}/plan.json" \
-   --arg label released --argjson exit_code 1 -s -f "${filter}" \
+   --arg suite_label released --argjson exit_code 1 -s -f "${filter}" \
    "${work_root}/known-limitation.jsonl" >"${work_root}/released.json"
 jq -e '
   .result == "accepted_limitation" and
@@ -35,7 +35,7 @@ jq -e '
 ' "${work_root}/released.json" >/dev/null
 
 jq --slurpfile plan "${work_root}/plan.json" \
-   --arg label candidate --argjson exit_code 1 -s -f "${filter}" \
+   --arg suite_label candidate --argjson exit_code 1 -s -f "${filter}" \
    "${work_root}/known-limitation.jsonl" >"${work_root}/candidate.json"
 jq -e '
   .result == "fail" and
@@ -49,7 +49,7 @@ cat >"${work_root}/extra-failure.jsonl" <<'EOF'
 {"Action":"skip","Test":"TestAccC"}
 EOF
 jq --slurpfile plan "${work_root}/plan.json" \
-   --arg label released --argjson exit_code 1 -s -f "${filter}" \
+   --arg suite_label released --argjson exit_code 1 -s -f "${filter}" \
    "${work_root}/extra-failure.jsonl" >"${work_root}/extra-failure.json"
 jq -e '
   .result == "fail" and
@@ -63,7 +63,7 @@ cat >"${work_root}/missing-test.jsonl" <<'EOF'
 {"Action":"skip","Test":"TestAccC"}
 EOF
 jq --slurpfile plan "${work_root}/plan.json" \
-   --arg label released --argjson exit_code 1 -s -f "${filter}" \
+   --arg suite_label released --argjson exit_code 1 -s -f "${filter}" \
    "${work_root}/missing-test.jsonl" >"${work_root}/missing-test.json"
 jq -e '
   .result == "fail" and
@@ -78,7 +78,7 @@ cat >"${work_root}/pass.jsonl" <<'EOF'
 {"Action":"skip","Test":"TestAccC"}
 EOF
 jq --slurpfile plan "${work_root}/plan.json" \
-   --arg label released --argjson exit_code 0 -s -f "${filter}" \
+   --arg suite_label released --argjson exit_code 0 -s -f "${filter}" \
    "${work_root}/pass.jsonl" >"${work_root}/pass.json"
 jq -e '
   .result == "pass" and
