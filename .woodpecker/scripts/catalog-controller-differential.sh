@@ -148,7 +148,7 @@ terraform_sha256=$(sha256sum "${terraform_bin}" | awk '{print $1}')
 released_commit=$(git -C "${repository_root}" rev-parse "${released_ref}^{commit}")
 plan_sha256=$(sha256sum "${plan_path}" | awk '{print $1}')
 
-jq --slurpfile plan "${plan_path}" \
+jq -n --slurpfile plan "${plan_path}" \
    --slurpfile released "${work_root}/released-summary.json" \
    --slurpfile candidate "${work_root}/candidate-summary.json" \
    --arg released_commit "${released_commit}" \
@@ -179,8 +179,10 @@ jq --slurpfile plan "${plan_path}" \
     released: $released[0],
     candidate: $candidate[0]
   }
-' </dev/null >"${output}"
+' >"${output}"
 
+test -s "${output}"
+jq -e 'type == "object"' "${output}" >/dev/null
 jq '.' "${output}"
 jq -e '.released.result == "pass" and .candidate.result == "pass"' "${output}" >/dev/null
 if [[ ${CATALOG_REQUIRE_COMPLETE:-false} == true ]]; then
