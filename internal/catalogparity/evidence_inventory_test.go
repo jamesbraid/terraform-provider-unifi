@@ -45,9 +45,9 @@ func TestBuildEvidenceInventoryAccountsForEverySurfaceAndNamesGaps(t *testing.T)
 	wantCoverage := map[string]int{
 		"scenario_owner":    67,
 		"constructor":       67,
-		"acceptance":        29,
+		"acceptance":        33,
 		"import":            27,
-		"list_acceptance":   18,
+		"list_acceptance":   25,
 		"action_acceptance": 0,
 	}
 	if !reflect.DeepEqual(inventory.CoverageCounts, wantCoverage) {
