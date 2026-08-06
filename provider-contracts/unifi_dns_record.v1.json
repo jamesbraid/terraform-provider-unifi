@@ -52,9 +52,9 @@
     "result": "pass"
   },
   "provenance": {
-    "policy_sha256": "fe0d90fd006ec65846270fd898ad86e4dac6b1960e30fa0884ebe74ba2177af3",
+    "policy_sha256": "dc502209c5aba73b8b2764cd968ec9728db8b0fa5f943512740dc2ca979932f1",
     "provider_code_spec_sha256": "bcb5a8fa6994d09c5f57fe639b93821325bb95d64801f18481def23ddb40acc4",
-    "mapping_sha256": "329a7b8963bdee63a11f384f3e0ddf6df527e983933344576117646337cfe14b"
+    "mapping_sha256": "3d5cf7475619c7ede7f872a51cd5af197a3dedfdabcda028dd646d8738d72fcb"
   },
   "trust": {
     "kind": "operator-pinned-checksum",

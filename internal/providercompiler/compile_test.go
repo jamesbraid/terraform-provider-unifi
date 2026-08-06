@@ -1,12 +1,15 @@
 package providercompiler
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
 
 const testSpecificationDigest = "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad"
@@ -16,6 +19,7 @@ func TestCompileResolvesCompletePolicy(t *testing.T) {
 		Bootstrap:       testBootstrap(t, dnsFieldNames()),
 		Policy:          testPolicy(t, dnsFieldNames(), testSpecificationDigest),
 		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, catalogparity.Admitted),
 	})
 	if err != nil {
 		t.Fatalf("Compile() error = %v", err)
@@ -108,6 +112,7 @@ func TestCompileFailsClosed(t *testing.T) {
 				Bootstrap:       testBootstrap(t, test.bootstrapFields),
 				Policy:          mustJSON(t, policy),
 				BaselineDigests: testBaseline(t),
+				Ledger:          testLedger(t, catalogparity.Admitted),
 			})
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("Compile() error = %v, want containing %q", err, test.want)
@@ -129,6 +134,7 @@ func TestCompilePinnedDNSInputs(t *testing.T) {
 		Catalog:         read("../../provider-codegen/catalog/go-unifi-v1.102.0-dns-record.catalog.json"),
 		Policy:          read("../../provider-codegen/policy/dns_record.json"),
 		BaselineDigests: read("../../build/m0/provider-schema-digests.json"),
+		Ledger:          read("../../provider-codegen/generated/catalog-parity-ledger.json"),
 	})
 	if err != nil {
 		t.Fatalf("Compile() error = %v", err)
@@ -151,6 +157,7 @@ func TestCompileCatalogMatchesBootstrapSpecification(t *testing.T) {
 		Bootstrap:       testBootstrap(t, dnsFieldNames()),
 		Policy:          policy,
 		BaselineDigests: baseline,
+		Ledger:          testLedger(t, catalogparity.Admitted),
 	})
 	if err != nil {
 		t.Fatalf("bootstrap Compile() error = %v", err)
@@ -159,6 +166,7 @@ func TestCompileCatalogMatchesBootstrapSpecification(t *testing.T) {
 		Catalog:         catalog,
 		Policy:          policy,
 		BaselineDigests: baseline,
+		Ledger:          testLedger(t, catalogparity.Admitted),
 	})
 	if err != nil {
 		t.Fatalf("catalog Compile() error = %v", err)
@@ -316,6 +324,7 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 				Catalog:         catalogBytes,
 				Policy:          mustJSON(t, policy),
 				BaselineDigests: testBaseline(t),
+				Ledger:          testLedger(t, catalogparity.Admitted),
 			})
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("Compile() error = %v, want containing %q", err, test.want)
@@ -379,6 +388,7 @@ func testPolicyObject(fieldNames []string, digest string) map[string]any {
 	}
 	return map[string]any{
 		"format_version":              1,
+		"surface_kind":                "managed_resource",
 		"resource":                    "unifi_dns_record",
 		"source_specification_sha256": digest,
 		"fields":                      fields,
@@ -400,9 +410,9 @@ func testPolicyObject(fieldNames []string, digest string) map[string]any {
 			},
 		},
 		"baseline_digests": map[string]any{
-			"resource":      "resource-digest",
-			"identity":      "identity-digest",
-			"list_resource": "list-digest",
+			"resource":      "1bdb6740d88d68bf232d79874c34d0e3811d382f55948352add15c2a28e5e93c",
+			"identity":      "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+			"list_resource": "c914929e71ab8ce0e8977518615ee3cf81c31a411ec77c9f58a2350145c6ee95",
 		},
 	}
 }
@@ -447,11 +457,117 @@ func testBaseline(t *testing.T) []byte {
 	t.Helper()
 	return mustJSON(t, map[string]any{
 		"schema_sha256": map[string]any{
-			"resource_schemas.unifi_dns_record":          "resource-digest",
-			"resource_identity_schemas.unifi_dns_record": "identity-digest",
-			"list_resource_schemas.unifi_dns_record":     "list-digest",
+			"resource_schemas.unifi_dns_record":          "1bdb6740d88d68bf232d79874c34d0e3811d382f55948352add15c2a28e5e93c",
+			"resource_identity_schemas.unifi_dns_record": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+			"list_resource_schemas.unifi_dns_record":     "c914929e71ab8ce0e8977518615ee3cf81c31a411ec77c9f58a2350145c6ee95",
 		},
 	})
+}
+
+func TestCompileRequiresAdmittedLedgerEntry(t *testing.T) {
+	input := pinnedDNSInput(t)
+	input.Ledger = testLedger(t, catalogparity.LegacyAuthoritative)
+	_, err := Compile(input)
+	if err == nil || !strings.Contains(err.Error(), "admission") {
+		t.Fatalf("Compile() error = %v, want admission failure", err)
+	}
+}
+
+func TestCompileRejectsMissingOrMismatchedLedger(t *testing.T) {
+	tests := map[string]func(*CompileInput){
+		"missing": func(input *CompileInput) {
+			input.Ledger = nil
+		},
+		"shadow": func(input *CompileInput) {
+			input.Ledger = testLedger(t, catalogparity.ShadowOnly)
+		},
+		"baseline digest": func(input *CompileInput) {
+			var ledger catalogparity.Ledger
+			if err := json.Unmarshal(input.Ledger, &ledger); err != nil {
+				t.Fatal(err)
+			}
+			for index := range ledger.Entries {
+				if ledger.Entries[index].Kind == catalogparity.ManagedResource && ledger.Entries[index].Name == "unifi_dns_record" {
+					ledger.Entries[index].BaselineSchemaSHA256 = strings.Repeat("0", 64)
+				}
+			}
+			input.Ledger = mustJSON(t, ledger)
+		},
+	}
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			input := pinnedDNSInput(t)
+			mutate(&input)
+			if _, err := Compile(input); err == nil {
+				t.Fatal("Compile() succeeded")
+			}
+		})
+	}
+}
+
+func TestCompileReportsManagedResourceKind(t *testing.T) {
+	result, err := Compile(pinnedDNSInput(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, report := range map[string][]byte{
+		"impact":  result.ImpactReport,
+		"mapping": result.MappingReport,
+	} {
+		if !bytes.Contains(report, []byte(`"surface_kind": "managed_resource"`)) || !bytes.Contains(report, []byte(`"surface_name": "unifi_dns_record"`)) {
+			t.Fatalf("%s report lacks surface identity: %s", name, report)
+		}
+	}
+}
+
+func pinnedDNSInput(t *testing.T) CompileInput {
+	t.Helper()
+	read := func(path string) []byte {
+		t.Helper()
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return data
+	}
+	return CompileInput{
+		Catalog:         read("../../provider-codegen/catalog/go-unifi-v1.102.0-dns-record.catalog.json"),
+		Policy:          read("../../provider-codegen/policy/dns_record.json"),
+		BaselineDigests: read("../../build/m0/provider-schema-digests.json"),
+		Ledger:          read("../../provider-codegen/generated/catalog-parity-ledger.json"),
+	}
+}
+
+func testLedger(t *testing.T, state catalogparity.AdmissionState) []byte {
+	t.Helper()
+	data, err := os.ReadFile("../../provider-codegen/generated/catalog-parity-ledger.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ledger catalogparity.Ledger
+	if err := json.Unmarshal(data, &ledger); err != nil {
+		t.Fatal(err)
+	}
+	ledger.BaselineSHA256 = byteDigest(testBaseline(t))
+	for index := range ledger.Entries {
+		entry := &ledger.Entries[index]
+		if entry.Kind != catalogparity.ManagedResource || entry.Name != "unifi_dns_record" {
+			continue
+		}
+		entry.State = state
+		switch state {
+		case catalogparity.Admitted, catalogparity.ContractParity, catalogparity.ReleaseReady:
+			entry.ReceiptSHA256 = strings.Repeat("a", 64)
+			entry.Implementation = "candidate"
+		case catalogparity.GeneratedShadow, catalogparity.AdapterParity, catalogparity.ShadowOnly:
+			entry.ReceiptSHA256 = ""
+			entry.Implementation = "shadow"
+		default:
+			entry.ReceiptSHA256 = ""
+			entry.Implementation = "legacy"
+		}
+	}
+	return mustJSON(t, ledger)
 }
 
 func testCatalog(t *testing.T, fieldNames []string) []byte {
