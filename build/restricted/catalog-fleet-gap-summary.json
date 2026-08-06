@@ -1,0 +1,83 @@
+{
+  "format_version": 1,
+  "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
+  "surfaces": [
+    {
+      "kind": "managed_resource",
+      "name": "unifi_account",
+      "count": 0,
+      "configured_attributes": []
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_policy",
+      "count": 16,
+      "configured_attributes": [
+        "action",
+        "create_allow_respond",
+        "destination",
+        "enabled",
+        "ip_group_id",
+        "ip_version",
+        "ips",
+        "logging",
+        "matching_target",
+        "name",
+        "network_ids",
+        "port",
+        "port_matching_type",
+        "protocol",
+        "site",
+        "source",
+        "web_domains",
+        "zone_id"
+      ],
+      "shape_sha256": "1de704ffd35e1272327c6ec59074d788cbf1ef7a993e8e93a1c435fe3f58b21d"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_zone",
+      "count": 4,
+      "configured_attributes": [
+        "name",
+        "network_ids",
+        "site"
+      ],
+      "shape_sha256": "5a581675483c2b0accd48a797339794e08954785c39e1e56499b7f81bcba1ad5"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_power_supervisor",
+      "count": 0,
+      "configured_attributes": []
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_site_to_site_vpn",
+      "count": 0,
+      "configured_attributes": []
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_account",
+      "count": 0,
+      "configured_attributes": []
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_info",
+      "count": 0,
+      "configured_attributes": []
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_firewall_zone",
+      "count": 3,
+      "configured_attributes": [
+        "name",
+        "site"
+      ],
+      "shape_sha256": "4244fa6e7a75c5f570a2e92d74a36c7ec8509d6459b2c1290221bec376138fbb"
+    }
+  ]
+}
