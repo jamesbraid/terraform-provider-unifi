@@ -1,0 +1,36 @@
+when:
+  - event: manual
+  - event: push
+    branch: emdash/control-plane-completion
+
+labels:
+  pool: skunkworks
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.9.2
+    settings:
+      partial: false
+
+steps:
+  - name: exact-released-candidate-schema
+    image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
+    commands:
+      - apt-get update
+      - apt-get install --yes --no-install-recommends ca-certificates curl jq unzip
+      - curl --fail --location --silent --show-error --output /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.15.8/terraform_1.15.8_linux_amd64.zip
+      - echo 'd25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d  /tmp/terraform.zip' | sha256sum --check -
+      - curl --fail --location --silent --show-error --output /tmp/tofu.zip https://github.com/opentofu/opentofu/releases/download/v1.12.1/tofu_1.12.1_linux_amd64.zip
+      - echo '1fc9af962e3632b7cd0ba27076cd9f1ced177567defe9e331ac37f5a40468575  /tmp/tofu.zip' | sha256sum --check -
+      - curl --fail --location --silent --show-error --output /tmp/provider.zip https://github.com/jamesbraid/terraform-provider-unifi/releases/download/v0.101.2/terraform-provider-unifi_0.101.2_linux_amd64.zip
+      - echo '9954f29512f0049f0e86908e2fc11a8a0e3cb11f980f3468d5e3da4005fab4b8  /tmp/provider.zip' | sha256sum --check -
+      - unzip -q /tmp/terraform.zip -d /tmp
+      - unzip -q /tmp/tofu.zip -d /tmp
+      - mkdir -p /tmp/released-provider
+      - unzip -q /tmp/provider.zip -d /tmp/released-provider
+      - chmod +x /tmp/terraform /tmp/tofu /tmp/released-provider/terraform-provider-unifi_v0.101.2
+      - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
+      - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
+      - CATALOG_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json TERRAFORM_BIN=/tmp/terraform TOFU_BIN=/tmp/tofu bash .woodpecker/scripts/catalog-build-schema.sh
+      - jq -e '.result == "pass" and (.promotion_blockers | length) == 0 and .build_network == "none"' /tmp/catalog-build-schema.json
+      - jq '.' /tmp/catalog-build-schema.json
