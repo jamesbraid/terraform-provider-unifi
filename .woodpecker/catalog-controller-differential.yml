@@ -28,11 +28,12 @@ steps:
       - test "$(git -C /tmp/unifi-emu rev-parse HEAD)" = 3df84e841e9dad8e32ad94d341bf8cf64fcf4d55
       - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
+      - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go -C /tmp/unifi-emu mod download all
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local CGO_ENABLED=0 go -C /tmp/unifi-emu build -trimpath -buildvcs=false -o /tmp/unifi-emu-herder ./cmd/unifi-emu-herder
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local CGO_ENABLED=0 go -C /tmp/unifi-emu build -trimpath -buildvcs=false -o /tmp/unifi-emu-bin ./cmd/unifi-emu
       - cp /tmp/unifi-emu-bin .woodpecker/fixtures/catalog-acceptance/unifi-emu
       - cp /tmp/unifi-emu/scripts/devices.fleet.json .woodpecker/fixtures/catalog-acceptance/devices.fleet.json
       - docker build --network=none --tag local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55 .woodpecker/fixtures/catalog-acceptance
-      - docker pull testcontainers/ryuk:0.13.0
-      - CATALOG_CONTROLLER_IMAGE=ghcr.io/jamesbraid/unifi-network@sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4 CATALOG_SYNTHETIC_IMAGE=local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55 CATALOG_HERDER_BIN=/tmp/unifi-emu-herder TERRAFORM_BIN=/tmp/terraform CATALOG_ACCEPTANCE_WAVES=1,2,3,4 CATALOG_ACCEPTANCE_OUTPUT=/tmp/catalog-controller-differential.json CATALOG_REQUIRE_COMPLETE=false bash .woodpecker/scripts/catalog-controller-differential.sh
+      - docker pull docker.io/testcontainers/ryuk@sha256:31b31269d06603366cbfd0284708dcd2e281e8a4188e53fce3d3304439d0df3d
+      - CATALOG_CONTROLLER_IMAGE=ghcr.io/jamesbraid/unifi-network@sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4 CATALOG_SYNTHETIC_IMAGE=local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55 CATALOG_RYUK_IMAGE=docker.io/testcontainers/ryuk@sha256:31b31269d06603366cbfd0284708dcd2e281e8a4188e53fce3d3304439d0df3d CATALOG_HERDER_BIN=/tmp/unifi-emu-herder TERRAFORM_BIN=/tmp/terraform CATALOG_ACCEPTANCE_WAVES=1,2,3,4 CATALOG_ACCEPTANCE_OUTPUT=/tmp/catalog-controller-differential.json CATALOG_REQUIRE_COMPLETE=false bash .woodpecker/scripts/catalog-controller-differential.sh
