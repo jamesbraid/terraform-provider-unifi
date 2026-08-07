@@ -57,6 +57,17 @@ func TestValidateControllerReceiptAcceptsExactReleasedLimitation(t *testing.T) {
 	}
 }
 
+func TestValidateControllerReceiptAcceptsAllowedReleasedFailureThatPasses(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "controller.json")
+	data := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":10,"released_allowed_failures":["TestAccDeviceFramework_basic"],"released_allowed_missing":["TestAccDeviceList_basic"]},"released":{"result":"accepted_limitation","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":["TestAccDeviceList_basic"]},"candidate":{"result":"pass","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":[]}}` + "\n")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateControllerReceipt(path); err != nil {
+		t.Fatalf("validateControllerReceipt() error = %v", err)
+	}
+}
+
 func TestValidateControllerReceiptRejectsBroaderReleasedLimitation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "controller.json")
 	data := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":10,"released_allowed_failures":["TestAccDeviceFramework_basic"],"released_allowed_missing":["TestAccDeviceList_basic"]},"released":{"result":"accepted_limitation","failed":["TestAccDeviceFramework_basic","TestAccUnexpected"],"accepted_failures":["TestAccDeviceFramework_basic","TestAccUnexpected"],"unexpected_failures":[],"missing":["TestAccDeviceList_basic"]},"candidate":{"result":"pass","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":[]}}` + "\n")

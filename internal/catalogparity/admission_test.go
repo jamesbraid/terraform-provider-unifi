@@ -179,6 +179,17 @@ func TestBuildAdmissionAcceptsExactReleasedLimitation(t *testing.T) {
 	}
 }
 
+func TestBuildAdmissionAcceptsAllowedReleasedFailureThatPasses(t *testing.T) {
+	input := validAdmissionInput(t)
+	missing := "TestAccDeviceList_basic"
+	input.Controller.Released.Result = "accepted_limitation"
+	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, missing)
+	input.Controller.Released.Missing = []string{missing}
+	if _, err := BuildAdmission(input); err != nil {
+		t.Fatalf("BuildAdmission() error = %v", err)
+	}
+}
+
 func TestBuildAdmissionRejectsBroaderReleasedMissing(t *testing.T) {
 	input := validAdmissionInput(t)
 	missing := "TestAccDeviceList_basic"

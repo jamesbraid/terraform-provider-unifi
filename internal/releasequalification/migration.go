@@ -326,26 +326,30 @@ func controllerSuiteComplete(
 		}
 		seenMissing[testName] = struct{}{}
 	}
-	wantPassed := make([]string, 0, len(plan.TestNames)-len(plan.AllowedSkips)-len(allowedFailures)-len(allowedMissing))
-	for _, testName := range plan.TestNames {
-		if !containsString(plan.AllowedSkips, testName) &&
-			!containsString(allowedFailures, testName) &&
-			!containsString(allowedMissing, testName) {
-			wantPassed = append(wantPassed, testName)
-		}
-	}
 	if suite.Result == "accepted_limitation" {
-		exitMatches := (len(allowedFailures) > 0 && suite.ExitCode != 0) ||
-			(len(allowedFailures) == 0 && suite.ExitCode == 0)
+		wantPassed := make([]string, 0, len(plan.TestNames)-len(plan.AllowedSkips)-len(suite.Failed)-len(allowedMissing))
+		for _, testName := range plan.TestNames {
+			if !containsString(plan.AllowedSkips, testName) &&
+				!containsString(suite.Failed, testName) &&
+				!containsString(allowedMissing, testName) {
+				wantPassed = append(wantPassed, testName)
+			}
+		}
+		exitMatches := (len(suite.Failed) > 0 && suite.ExitCode != 0) ||
+			(len(suite.Failed) == 0 && suite.ExitCode == 0)
 		return len(allowedFailures)+len(allowedMissing) != 0 && exitMatches &&
-			sameControllerStrings(suite.Failed, allowedFailures) &&
-			sameControllerStrings(suite.AcceptedFailures, allowedFailures) &&
+			allControllerStringsAllowed(suite.Failed, allowedFailures) &&
+			sameControllerStrings(suite.AcceptedFailures, suite.Failed) &&
 			sameControllerStrings(suite.Missing, allowedMissing) &&
 			sameControllerStrings(suite.Skipped, plan.AllowedSkips) &&
 			sameControllerStrings(suite.Passed, wantPassed)
 	}
-	wantPassed = append(wantPassed, allowedFailures...)
-	wantPassed = append(wantPassed, allowedMissing...)
+	wantPassed := make([]string, 0, len(plan.TestNames)-len(plan.AllowedSkips))
+	for _, testName := range plan.TestNames {
+		if !containsString(plan.AllowedSkips, testName) {
+			wantPassed = append(wantPassed, testName)
+		}
+	}
 	if suite.Result != "pass" || suite.ExitCode != 0 ||
 		len(suite.Failed) != 0 || len(suite.AcceptedFailures) != 0 ||
 		len(suite.Missing) != 0 {
@@ -353,6 +357,18 @@ func controllerSuiteComplete(
 	}
 	return sameControllerStrings(suite.Passed, wantPassed) &&
 		sameControllerStrings(suite.Skipped, plan.AllowedSkips)
+}
+
+func allControllerStringsAllowed(values, allowed []string) bool {
+	if len(values) > len(allowed) {
+		return false
+	}
+	for _, value := range values {
+		if !containsString(allowed, value) {
+			return false
+		}
+	}
+	return true
 }
 
 func sameControllerStrings(left, right []string) bool {
