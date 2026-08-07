@@ -406,9 +406,17 @@ func validateMigrationInventory(input MigrationRecoveryInput) error {
 			return fmt.Errorf("surface %s/%s runtime status is invalid", surface.Kind, surface.Name)
 		}
 	}
+	sort.Slice(changed, func(a, b int) bool {
+		if changed[a].Kind != changed[b].Kind {
+			return changed[a].Kind < changed[b].Kind
+		}
+		return changed[a].Name < changed[b].Name
+	})
 	want := []catalogparity.SurfaceKey{
-		{Kind: catalogparity.ManagedResource, Name: "unifi_dns_record"},
+		{Kind: catalogparity.ListResource, Name: "unifi_device"},
 		{Kind: catalogparity.ListResource, Name: "unifi_dns_record"},
+		{Kind: catalogparity.ManagedResource, Name: "unifi_device"},
+		{Kind: catalogparity.ManagedResource, Name: "unifi_dns_record"},
 	}
 	if !reflect.DeepEqual(changed, want) {
 		return fmt.Errorf("catalog runtime change set is %v, want %v", changed, want)
