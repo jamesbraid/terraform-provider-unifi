@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+readonly script_directory=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=m3-evidence-lib.sh
+source "${script_directory}/m3-evidence-lib.sh"
+
 readonly source_commit=${CI_COMMIT_SHA:-$(git rev-parse HEAD)}
+readonly candidate_provider_binary=${M3_CANDIDATE_PROVIDER_BINARY:-}
 readonly old_provider_commit=eaf41ff7dbf39c01690eaca54e99f7f9cec867b9
 readonly provider_version=0.101.2
 readonly old_provider_version=0.41.11
@@ -79,6 +84,11 @@ unzip -q "${work_root}/${terraform_archive}" -d "${work_root}/tools"
 unzip -q "${work_root}/${tofu_archive}" -d "${work_root}/tools"
 chmod +x "${work_root}/tools/terraform" "${work_root}/tools/tofu" \
     "${work_root}/tools/provider-legacy/terraform-provider-unifi_v${provider_version}"
+if [[ -n ${candidate_provider_binary} ]]; then
+    install_prebuilt_candidate \
+        "${candidate_provider_binary}" \
+        "${work_root}/tools/provider/terraform-provider-unifi_v${provider_version}"
+fi
 cat >"${work_root}/tools/cli.tfrc" <<'EOF'
 provider_installation {
   dev_overrides {
@@ -125,20 +135,22 @@ populate_volume() {
 
 populate_volume "${work_root}/tools" "${tools_volume}"
 populate_volume "${work_root}/config" "${config_volume}"
-git archive "${source_commit}" | docker run --rm --interactive \
-    --entrypoint /bin/sh \
-    --mount "type=volume,src=${source_volume},dst=/source" \
-    "${go_image}" -c 'tar -xf - -C /source'
-docker run --rm --platform linux/amd64 \
-    --env CGO_ENABLED=0 \
-    --env GOCACHE=/go/build-cache --env GOMODCACHE=/go/module-cache \
-    --env GOTELEMETRY=off --env GOTOOLCHAIN=local \
-    --mount "type=volume,src=${source_volume},dst=/source,readonly" \
-    --mount "type=volume,src=${go_cache_volume},dst=/go" \
-    --mount "type=volume,src=${tools_volume},dst=/tools" \
-    --workdir /source "${go_image}" \
-    go build -trimpath -buildvcs=false \
-    -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
+if [[ -z ${candidate_provider_binary} ]]; then
+    git archive "${source_commit}" | docker run --rm --interactive \
+        --entrypoint /bin/sh \
+        --mount "type=volume,src=${source_volume},dst=/source" \
+        "${go_image}" -c 'tar -xf - -C /source'
+    docker run --rm --platform linux/amd64 \
+        --env CGO_ENABLED=0 \
+        --env GOCACHE=/go/build-cache --env GOMODCACHE=/go/module-cache \
+        --env GOTELEMETRY=off --env GOTOOLCHAIN=local \
+        --mount "type=volume,src=${source_volume},dst=/source,readonly" \
+        --mount "type=volume,src=${go_cache_volume},dst=/go" \
+        --mount "type=volume,src=${tools_volume},dst=/tools" \
+        --workdir /source "${go_image}" \
+        go build -trimpath -buildvcs=false \
+        -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
+fi
 git archive "${old_provider_commit}" | docker run --rm --interactive \
     --entrypoint /bin/sh \
     --mount "type=volume,src=${old_source_volume},dst=/source" \
