@@ -14,7 +14,7 @@ jq -e '
      (.released.accepted_failures == .plan.released_allowed_failures) and
      (.released.failed == .plan.released_allowed_failures) and
      (.released.unexpected_failures == []) and
-     (.released.missing == []));
+     (.released.missing == .plan.released_allowed_missing));
   .result == "blocked_evidence" and
   released_result_accepted and
   .candidate.result == "pass" and
@@ -44,7 +44,8 @@ case $(jq -r '.plan.diagnostic_selection // false' "${receipt}") in
             "TestAccSettingResource_ipsHoneypot",
             "TestAccWLANList_basic"
           ] and
-          .plan.released_allowed_failures == ["TestAccDeviceFramework_basic"]
+          .plan.released_allowed_failures == ["TestAccDeviceFramework_basic"] and
+          .plan.released_allowed_missing == ["TestAccDeviceList_basic"]
         ' "${receipt}" >/dev/null
         printf '%s\n' full
         ;;

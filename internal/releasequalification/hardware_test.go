@@ -35,6 +35,23 @@ func TestBuildHardwareDispositionReceiptAllowsReleasedLimitation(t *testing.T) {
 	}
 }
 
+func TestBuildHardwareDispositionReceiptAllowsReleasedMissingTest(t *testing.T) {
+	controller, digest := validHardwareController(t)
+	missing := controller.Plan.TestNames[1]
+	controller.Plan.ReleasedAllowedMissing = []string{missing}
+	controller.Released.Result = "accepted_limitation"
+	controller.Released.Passed = removeControllerTest(controller.Released.Passed, missing)
+	controller.Released.Missing = []string{missing}
+
+	receipt, err := BuildHardwareDispositionReceipt(controller, digest)
+	if err != nil {
+		t.Fatalf("BuildHardwareDispositionReceipt() error = %v", err)
+	}
+	if receipt.Result != "pass" {
+		t.Fatalf("receipt = %#v", receipt)
+	}
+}
+
 func TestBuildHardwareDispositionReceiptRejectsCandidateLimitation(t *testing.T) {
 	controller, digest := validHardwareController(t)
 	allowReleasedControllerLimitation(t, &controller)
@@ -107,4 +124,14 @@ func validHardwareController(t *testing.T) (catalogparity.ControllerDifferential
 	}
 	port.MissingSignals = []string{"hardware_claim"}
 	return controller, strings.Repeat("a", 64)
+}
+
+func removeControllerTest(values []string, remove string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value != remove {
+			result = append(result, value)
+		}
+	}
+	return result
 }

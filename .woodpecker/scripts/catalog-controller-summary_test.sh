@@ -9,9 +9,10 @@ trap 'rm -rf "${work_root}"' EXIT
 
 cat >"${work_root}/plan.json" <<'EOF'
 {
-  "test_names": ["TestAccA", "TestAccB", "TestAccC"],
+  "test_names": ["TestAccA", "TestAccB", "TestAccC", "TestAccD"],
   "allowed_skips": ["TestAccC"],
-  "released_allowed_failures": ["TestAccB"]
+  "released_allowed_failures": ["TestAccB"],
+  "released_allowed_missing": ["TestAccD"]
 }
 EOF
 
@@ -31,7 +32,7 @@ jq -e '
   .failed == ["TestAccB"] and
   .accepted_failures == ["TestAccB"] and
   .unexpected_failures == [] and
-  .missing == []
+  .missing == ["TestAccD"]
 ' "${work_root}/released.json" >/dev/null
 
 jq --slurpfile plan "${work_root}/plan.json" \
@@ -55,7 +56,7 @@ jq -e '
   .result == "fail" and
   .accepted_failures == ["TestAccB"] and
   .unexpected_failures == ["TestAccA"] and
-  .missing == []
+  .missing == ["TestAccD"]
 ' "${work_root}/extra-failure.json" >/dev/null
 
 cat >"${work_root}/missing-test.jsonl" <<'EOF'
@@ -69,13 +70,14 @@ jq -e '
   .result == "fail" and
   .accepted_failures == ["TestAccB"] and
   .unexpected_failures == [] and
-  .missing == ["TestAccA"]
+  .missing == ["TestAccA", "TestAccD"]
 ' "${work_root}/missing-test.json" >/dev/null
 
 cat >"${work_root}/pass.jsonl" <<'EOF'
 {"Action":"pass","Test":"TestAccA"}
 {"Action":"pass","Test":"TestAccB"}
 {"Action":"skip","Test":"TestAccC"}
+{"Action":"pass","Test":"TestAccD"}
 EOF
 jq --slurpfile plan "${work_root}/plan.json" \
    --arg suite_label released --argjson exit_code 0 -s -f "${filter}" \

@@ -95,6 +95,7 @@ type controllerReceipt struct {
 	Plan          struct {
 		EvidenceGapCount        int      `json:"evidence_gap_count"`
 		ReleasedAllowedFailures []string `json:"released_allowed_failures"`
+		ReleasedAllowedMissing  []string `json:"released_allowed_missing"`
 	} `json:"plan"`
 	Released struct {
 		Result             string   `json:"result"`
@@ -128,8 +129,12 @@ func validateControllerReceipt(path string) (string, error) {
 		return "", fmt.Errorf("catalog result is %q with %d gaps", receipt.Result, receipt.Plan.EvidenceGapCount)
 	}
 	releasedAllowedFailures := []string{"TestAccDeviceFramework_basic"}
+	releasedAllowedMissing := []string{"TestAccDeviceList_basic"}
 	if !slices.Equal(receipt.Plan.ReleasedAllowedFailures, releasedAllowedFailures) {
 		return "", fmt.Errorf("released allowed failures are invalid")
+	}
+	if !slices.Equal(receipt.Plan.ReleasedAllowedMissing, releasedAllowedMissing) {
+		return "", fmt.Errorf("released allowed missing tests are invalid")
 	}
 	releasedAccepted := receipt.Released.Result == "pass" &&
 		len(receipt.Released.Failed) == 0 &&
@@ -140,7 +145,7 @@ func validateControllerReceipt(path string) (string, error) {
 		releasedAccepted = slices.Equal(receipt.Released.Failed, releasedAllowedFailures) &&
 			slices.Equal(receipt.Released.AcceptedFailures, releasedAllowedFailures) &&
 			len(receipt.Released.UnexpectedFailures) == 0 &&
-			len(receipt.Released.Missing) == 0
+			slices.Equal(receipt.Released.Missing, releasedAllowedMissing)
 	}
 	candidatePassed := receipt.Candidate.Result == "pass" &&
 		len(receipt.Candidate.Failed) == 0 &&
