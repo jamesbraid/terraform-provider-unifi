@@ -266,7 +266,8 @@ func validateMigrationController(input MigrationRecoveryInput) error {
 	admitted := admittedSurfaceSet(input.Admission)
 	planned := make(map[catalogparity.SurfaceKey]struct{}, len(c.Plan.Surfaces))
 	for _, surface := range c.Plan.Surfaces {
-		if _, ok := admitted[surface.SurfaceKey]; !ok || len(surface.TestNames) == 0 {
+		if _, ok := admitted[surface.SurfaceKey]; !ok ||
+			(len(surface.TestNames) == 0 && len(surface.MissingSignals) == 0) {
 			return fmt.Errorf("controller surface set differs from admission at %s/%s", surface.Kind, surface.Name)
 		}
 		if _, duplicate := planned[surface.SurfaceKey]; duplicate {
