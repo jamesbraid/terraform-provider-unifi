@@ -22,6 +22,30 @@ func TestBuildHardwareDispositionReceiptScopesPortClaim(t *testing.T) {
 	}
 }
 
+func TestBuildHardwareDispositionReceiptAllowsReleasedLimitation(t *testing.T) {
+	controller, digest := validHardwareController(t)
+	allowReleasedControllerLimitation(t, &controller)
+
+	receipt, err := BuildHardwareDispositionReceipt(controller, digest)
+	if err != nil {
+		t.Fatalf("BuildHardwareDispositionReceipt() error = %v", err)
+	}
+	if receipt.Result != "pass" || receipt.ResolvedSignal != "hardware_claim" {
+		t.Fatalf("receipt = %#v", receipt)
+	}
+}
+
+func TestBuildHardwareDispositionReceiptRejectsCandidateLimitation(t *testing.T) {
+	controller, digest := validHardwareController(t)
+	allowReleasedControllerLimitation(t, &controller)
+	controller.Candidate = controller.Released
+
+	_, err := BuildHardwareDispositionReceipt(controller, digest)
+	if err == nil || !strings.Contains(err.Error(), "candidate suite") {
+		t.Fatalf("error = %v, want candidate suite failure", err)
+	}
+}
+
 func TestBuildHardwareDispositionReceiptFailsClosed(t *testing.T) {
 	tests := map[string]struct {
 		mutate func(*catalogparity.ControllerDifferentialReceipt, *string)

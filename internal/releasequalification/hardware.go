@@ -39,14 +39,16 @@ func BuildHardwareDispositionReceipt(
 	if !reflect.DeepEqual(port.MissingSignals, []string{"hardware_claim"}) {
 		return HardwareDispositionReceipt{}, fmt.Errorf("port action hardware gap is not the single scoped claim")
 	}
-	for name, suite := range map[string]catalogparity.ControllerSuiteReceipt{
-		"released":  controller.Released,
-		"candidate": controller.Candidate,
-	} {
-		if !controllerSuiteComplete(suite, controller.Plan) ||
-			!containsString(suite.Passed, portPersistenceScenario) {
-			return HardwareDispositionReceipt{}, fmt.Errorf("%s suite did not pass the port action persistence scenario", name)
-		}
+	if !controllerSuiteComplete(
+		controller.Released,
+		controller.Plan,
+		controller.Plan.ReleasedAllowedFailures,
+	) || !containsString(controller.Released.Passed, portPersistenceScenario) {
+		return HardwareDispositionReceipt{}, fmt.Errorf("released suite did not pass the port action persistence scenario")
+	}
+	if !controllerSuiteComplete(controller.Candidate, controller.Plan, nil) ||
+		!containsString(controller.Candidate.Passed, portPersistenceScenario) {
+		return HardwareDispositionReceipt{}, fmt.Errorf("candidate suite did not pass the port action persistence scenario")
 	}
 	return HardwareDispositionReceipt{
 		FormatVersion: 1, Gate: "unifi-port-hardware-disposition", Result: "pass",
