@@ -100,6 +100,7 @@ type ControllerPlanReceipt struct {
 	TestNames               []string                `json:"test_names"`
 	AllowedSkips            []string                `json:"allowed_skips"`
 	ReleasedAllowedFailures []string                `json:"released_allowed_failures"`
+	ReleasedAllowedMissing  []string                `json:"released_allowed_missing"`
 }
 
 type ControllerImageReceipt struct {
@@ -495,10 +496,14 @@ func validateControllerAdmission(receipt ControllerDifferentialReceipt, build Bu
 		!reflect.DeepEqual(receipt.Plan.Waves, []int{1, 2, 3, 4, 5}) ||
 		receipt.Plan.SurfaceCount != 67 || len(receipt.Plan.Surfaces) != 67 ||
 		receipt.Plan.EvidenceGapCount != 10 || len(receipt.Plan.TestNames) != 150 ||
-		len(receipt.Plan.SharedScenarioOwners) != 40 ||
+		len(receipt.Plan.SharedScenarioOwners) != 39 ||
 		!reflect.DeepEqual(
 			receipt.Plan.ReleasedAllowedFailures,
 			[]string{"TestAccDeviceFramework_basic"},
+		) ||
+		!reflect.DeepEqual(
+			receipt.Plan.ReleasedAllowedMissing,
+			[]string{"TestAccDeviceList_basic"},
 		) {
 		return fmt.Errorf("controller plan surfaces or counts are incomplete")
 	}
@@ -522,40 +527,48 @@ func validateControllerAdmission(receipt ControllerDifferentialReceipt, build Bu
 	}
 	if err := validateControllerSuite(
 		"released", receipt.Released, receipt.Plan.TestNames, receipt.Plan.AllowedSkips,
-		receipt.Plan.ReleasedAllowedFailures,
+		receipt.Plan.ReleasedAllowedFailures, receipt.Plan.ReleasedAllowedMissing,
 	); err != nil {
 		return err
 	}
 	return validateControllerSuite(
 		"candidate", receipt.Candidate, receipt.Plan.TestNames, receipt.Plan.AllowedSkips,
-		nil,
+		nil, nil,
 	)
 }
 
 func validateControllerSuite(
 	label string,
 	suite ControllerSuiteReceipt,
-	planned, allowedSkips, allowedFailures []string,
+	planned, allowedSkips, allowedFailures, allowedMissing []string,
 ) error {
 	if len(allowedSkips) > len(planned) ||
 		len(allowedSkips) != len(uniqueStrings(allowedSkips)) ||
 		!allStringsInSet(allowedSkips, planned) ||
 		len(allowedFailures) != len(uniqueStrings(allowedFailures)) ||
-		!allStringsInSet(allowedFailures, planned) {
+		!allStringsInSet(allowedFailures, planned) ||
+		len(allowedMissing) != len(uniqueStrings(allowedMissing)) ||
+		!allStringsInSet(allowedMissing, planned) ||
+		stringsOverlap(allowedSkips, allowedMissing) ||
+		stringsOverlap(allowedFailures, allowedMissing) {
 		return fmt.Errorf("%s controller suite is incomplete or failed", label)
 	}
-	wantPassed := make([]string, 0, len(planned)-len(allowedSkips)-len(allowedFailures))
+	wantPassed := make([]string, 0, len(planned)-len(allowedSkips)-len(allowedFailures)-len(allowedMissing))
 	for _, testName := range planned {
 		if !controllerContainsString(allowedSkips, testName) &&
-			!controllerContainsString(allowedFailures, testName) {
+			!controllerContainsString(allowedFailures, testName) &&
+			!controllerContainsString(allowedMissing, testName) {
 			wantPassed = append(wantPassed, testName)
 		}
 	}
 	if suite.Result == "accepted_limitation" {
-		if len(allowedFailures) == 0 || suite.ExitCode == 0 ||
-			len(suite.Missing) != 0 || len(suite.UnexpectedFailures) != 0 ||
+		if len(allowedFailures)+len(allowedMissing) == 0 ||
+			(len(allowedFailures) > 0 && suite.ExitCode == 0) ||
+			(len(allowedFailures) == 0 && suite.ExitCode != 0) ||
+			len(suite.UnexpectedFailures) != 0 ||
 			!sameStringSet(suite.Failed, allowedFailures) ||
 			!sameStringSet(suite.AcceptedFailures, allowedFailures) ||
+			!sameStringSet(suite.Missing, allowedMissing) ||
 			!sameStringSet(suite.Skipped, allowedSkips) ||
 			!sameStringSet(suite.Passed, wantPassed) {
 			return fmt.Errorf("%s controller suite is incomplete or failed", label)
@@ -563,6 +576,9 @@ func validateControllerSuite(
 		return nil
 	}
 	for _, testName := range allowedFailures {
+		wantPassed = append(wantPassed, testName)
+	}
+	for _, testName := range allowedMissing {
 		wantPassed = append(wantPassed, testName)
 	}
 	if suite.Result != "pass" || suite.ExitCode != 0 ||
@@ -586,6 +602,15 @@ func validateControllerSuite(
 		)
 	}
 	return nil
+}
+
+func stringsOverlap(left, right []string) bool {
+	for _, value := range left {
+		if controllerContainsString(right, value) {
+			return true
+		}
+	}
+	return false
 }
 
 func controllerContainsString(values []string, target string) bool {

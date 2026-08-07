@@ -34,8 +34,9 @@ if ! jq -e '
     "TestAccWLANList_basic"
   ] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
+  .released_allowed_missing == ["TestAccDeviceList_basic"] and
   (.test_names | length) == 150 and
-  (.shared_scenario_owners | length) == 40 and
+  (.shared_scenario_owners | length) == 39 and
   ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
   ([.surfaces[] | select(.name == "unifi_dns_record" and .kind == "managed_resource")] | length) == 1
 ' "${work_root}/plan.json" >/dev/null; then
@@ -55,6 +56,7 @@ if ! jq -e '
   .test_names == ["TestAccDeviceFramework_basic"] and
   .allowed_skips == [] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
+  .released_allowed_missing == [] and
   .catalog_test_count == 150
 ' "${work_root}/targeted-plan.json" >/dev/null; then
     echo "targeted controller plan self-test failed" >&2
@@ -76,6 +78,7 @@ if ! jq -e '
   .test_names == ["TestAccDeviceFramework_basic", "TestAccDeviceList_basic"] and
   .allowed_skips == [] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
+  .released_allowed_missing == ["TestAccDeviceList_basic"] and
   .catalog_test_count == 150
 ' "${work_root}/targeted-multiple-plan.json" >/dev/null; then
     echo "semicolon-separated controller selection did not preserve every test" >&2
@@ -93,7 +96,7 @@ jq -n --slurpfile plan "${work_root}/plan.json" '
       failed: ["TestAccDeviceFramework_basic"],
       accepted_failures: ["TestAccDeviceFramework_basic"],
       unexpected_failures: [],
-      missing: []
+      missing: ["TestAccDeviceList_basic"]
     },
     candidate: {
       result: "pass",
@@ -113,6 +116,13 @@ jq '.released.accepted_failures = ["TestAccDeviceFramework_basic", "TestAccUnexp
     "${work_root}/full-receipt.json" >"${work_root}/invalid-limitation-receipt.json"
 if bash "${followup_script}" "${work_root}/invalid-limitation-receipt.json" >/dev/null 2>&1; then
     echo "full controller receipt accepted an unexpected released limitation" >&2
+    exit 1
+fi
+
+jq '.released.missing = ["TestAccDeviceList_basic", "TestAccUnexpected"]' \
+    "${work_root}/full-receipt.json" >"${work_root}/invalid-missing-receipt.json"
+if bash "${followup_script}" "${work_root}/invalid-missing-receipt.json" >/dev/null 2>&1; then
+    echo "full controller receipt accepted an unexpected released missing test" >&2
     exit 1
 fi
 

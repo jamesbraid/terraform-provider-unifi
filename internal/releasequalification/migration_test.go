@@ -43,6 +43,19 @@ func TestBuildMigrationRecoveryReceiptAllowsReleasedLimitation(t *testing.T) {
 	}
 }
 
+func TestBuildMigrationRecoveryReceiptAllowsReleasedMissingTest(t *testing.T) {
+	input := validMigrationInput(t)
+	allowReleasedControllerMissing(t, &input.Controller)
+
+	receipt, err := BuildMigrationRecoveryReceipt(input)
+	if err != nil {
+		t.Fatalf("BuildMigrationRecoveryReceipt() error = %v", err)
+	}
+	if receipt.Result != "pass" || receipt.RecoveryCount != 67 {
+		t.Fatalf("receipt result/count = %q/%d", receipt.Result, receipt.RecoveryCount)
+	}
+}
+
 func TestBuildMigrationRecoveryReceiptFailsClosed(t *testing.T) {
 	tests := map[string]struct {
 		mutate func(*MigrationRecoveryInput)
@@ -255,6 +268,24 @@ func allowReleasedControllerLimitation(
 	passed := make([]string, 0, len(controller.Released.Passed)-1)
 	for _, testName := range controller.Released.Passed {
 		if testName != failure {
+			passed = append(passed, testName)
+		}
+	}
+	controller.Released.Passed = passed
+}
+
+func allowReleasedControllerMissing(
+	t *testing.T,
+	controller *catalogparity.ControllerDifferentialReceipt,
+) {
+	t.Helper()
+	missing := controller.Plan.TestNames[1]
+	controller.Plan.ReleasedAllowedMissing = []string{missing}
+	controller.Released.Result = "accepted_limitation"
+	controller.Released.Missing = []string{missing}
+	passed := make([]string, 0, len(controller.Released.Passed)-1)
+	for _, testName := range controller.Released.Passed {
+		if testName != missing {
 			passed = append(passed, testName)
 		}
 	}

@@ -274,10 +274,10 @@ func validateMigrationController(input MigrationRecoveryInput) error {
 		}
 		planned[surface.SurfaceKey] = struct{}{}
 	}
-	if !controllerSuiteComplete(c.Released, c.Plan, c.Plan.ReleasedAllowedFailures) {
+	if !controllerSuiteComplete(c.Released, c.Plan, c.Plan.ReleasedAllowedFailures, c.Plan.ReleasedAllowedMissing) {
 		return fmt.Errorf("controller differential released suite is incomplete")
 	}
-	if !controllerSuiteComplete(c.Candidate, c.Plan, nil) {
+	if !controllerSuiteComplete(c.Candidate, c.Plan, nil, nil) {
 		return fmt.Errorf("controller differential candidate suite is incomplete")
 	}
 	return nil
@@ -286,11 +286,12 @@ func validateMigrationController(input MigrationRecoveryInput) error {
 func controllerSuiteComplete(
 	suite catalogparity.ControllerSuiteReceipt,
 	plan catalogparity.ControllerPlanReceipt,
-	allowedFailures []string,
+	allowedFailures, allowedMissing []string,
 ) bool {
-	if len(suite.Missing) != 0 || len(suite.UnexpectedFailures) != 0 ||
+	if len(suite.UnexpectedFailures) != 0 ||
 		len(plan.AllowedSkips) > len(plan.TestNames) ||
-		len(allowedFailures) > len(plan.TestNames) {
+		len(allowedFailures) > len(plan.TestNames) ||
+		len(allowedMissing) > len(plan.TestNames) {
 		return false
 	}
 	seenAllowed := make(map[string]struct{}, len(plan.AllowedSkips))
@@ -313,23 +314,41 @@ func controllerSuiteComplete(
 		}
 		seenFailures[testName] = struct{}{}
 	}
-	wantPassed := make([]string, 0, len(plan.TestNames)-len(plan.AllowedSkips)-len(allowedFailures))
+	seenMissing := make(map[string]struct{}, len(allowedMissing))
+	for _, testName := range allowedMissing {
+		if !containsString(plan.TestNames, testName) ||
+			containsString(plan.AllowedSkips, testName) ||
+			containsString(allowedFailures, testName) {
+			return false
+		}
+		if _, duplicate := seenMissing[testName]; duplicate {
+			return false
+		}
+		seenMissing[testName] = struct{}{}
+	}
+	wantPassed := make([]string, 0, len(plan.TestNames)-len(plan.AllowedSkips)-len(allowedFailures)-len(allowedMissing))
 	for _, testName := range plan.TestNames {
 		if !containsString(plan.AllowedSkips, testName) &&
-			!containsString(allowedFailures, testName) {
+			!containsString(allowedFailures, testName) &&
+			!containsString(allowedMissing, testName) {
 			wantPassed = append(wantPassed, testName)
 		}
 	}
 	if suite.Result == "accepted_limitation" {
-		return len(allowedFailures) != 0 && suite.ExitCode != 0 &&
+		exitMatches := (len(allowedFailures) > 0 && suite.ExitCode != 0) ||
+			(len(allowedFailures) == 0 && suite.ExitCode == 0)
+		return len(allowedFailures)+len(allowedMissing) != 0 && exitMatches &&
 			sameControllerStrings(suite.Failed, allowedFailures) &&
 			sameControllerStrings(suite.AcceptedFailures, allowedFailures) &&
+			sameControllerStrings(suite.Missing, allowedMissing) &&
 			sameControllerStrings(suite.Skipped, plan.AllowedSkips) &&
 			sameControllerStrings(suite.Passed, wantPassed)
 	}
 	wantPassed = append(wantPassed, allowedFailures...)
+	wantPassed = append(wantPassed, allowedMissing...)
 	if suite.Result != "pass" || suite.ExitCode != 0 ||
-		len(suite.Failed) != 0 || len(suite.AcceptedFailures) != 0 {
+		len(suite.Failed) != 0 || len(suite.AcceptedFailures) != 0 ||
+		len(suite.Missing) != 0 {
 		return false
 	}
 	return sameControllerStrings(suite.Passed, wantPassed) &&

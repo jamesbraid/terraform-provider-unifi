@@ -170,8 +170,24 @@ func TestBuildAdmissionAcceptsExactReleasedLimitation(t *testing.T) {
 	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, failure)
 	input.Controller.Released.Failed = []string{failure}
 	input.Controller.Released.AcceptedFailures = []string{failure}
+	missing := "TestAccDeviceList_basic"
+	input.Controller.Plan.ReleasedAllowedMissing = []string{missing}
+	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, missing)
+	input.Controller.Released.Missing = []string{missing}
 	if _, err := BuildAdmission(input); err != nil {
 		t.Fatalf("BuildAdmission() error = %v", err)
+	}
+}
+
+func TestBuildAdmissionRejectsBroaderReleasedMissing(t *testing.T) {
+	input := validAdmissionInput(t)
+	missing := "TestAccDeviceList_basic"
+	input.Controller.Plan.ReleasedAllowedMissing = []string{missing}
+	input.Controller.Released.Result = "accepted_limitation"
+	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, missing)
+	input.Controller.Released.Missing = []string{missing, "TestAccUnexpected"}
+	if _, err := BuildAdmission(input); err == nil {
+		t.Fatal("BuildAdmission() accepted a broader released missing set")
 	}
 }
 
@@ -188,6 +204,7 @@ func TestValidateControllerSuiteKeepsCleanReleasedPass(t *testing.T) {
 		planned,
 		nil,
 		[]string{"TestAccDeviceFramework_basic"},
+		nil,
 	); err != nil {
 		t.Fatalf("validateControllerSuite() error = %v", err)
 	}
@@ -292,6 +309,8 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		tests := []string{"TestAcc" + strings.TrimPrefix(surface.Name, "unifi_")}
 		if surface.Kind == ManagedResource && surface.Name == "unifi_device" {
 			tests = []string{"TestAccDeviceFramework_basic"}
+		} else if surface.Kind == ListResource && surface.Name == "unifi_device" {
+			tests = []string{"TestAccDeviceList_basic"}
 		}
 		planSurfaces = append(planSurfaces, ControllerPlanSurface{
 			SurfaceKey:     surface.SurfaceKey,
@@ -306,7 +325,7 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		planSurfaces[0].TestNames = append(planSurfaces[0].TestNames, name)
 		allTests = append(allTests, name)
 	}
-	sharedScenarioOwners := make([]string, 40)
+	sharedScenarioOwners := make([]string, 39)
 	for index := range sharedScenarioOwners {
 		sharedScenarioOwners[index] = fmt.Sprintf("unifi/scenario_%02d_test.go", index)
 	}
@@ -332,6 +351,7 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 			SharedScenarioOwners:    sharedScenarioOwners,
 			TestNames:               allTests,
 			ReleasedAllowedFailures: []string{"TestAccDeviceFramework_basic"},
+			ReleasedAllowedMissing:  []string{"TestAccDeviceList_basic"},
 		},
 		Released:  controllerSuite,
 		Candidate: controllerSuite,

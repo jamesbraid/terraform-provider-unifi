@@ -52,7 +52,10 @@ jq '
   ] | map(. as $skip | select($plan.test_names | index($skip) != null))) |
   .released_allowed_failures = ([
     "TestAccDeviceFramework_basic"
-  ] | map(. as $failure | select($plan.test_names | index($failure) != null)))
+  ] | map(. as $failure | select($plan.test_names | index($failure) != null))) |
+  .released_allowed_missing = ([
+    "TestAccDeviceList_basic"
+  ] | map(. as $missing | select($plan.test_names | index($missing) != null)))
 ' "${plan_path}" >"${plan_path}.allowed"
 mv "${plan_path}.allowed" "${plan_path}"
 
@@ -80,6 +83,10 @@ if [[ -n ${CATALOG_ACCEPTANCE_TEST_NAMES:-} ]]; then
       .released_allowed_failures = [
         .released_allowed_failures[] |
         select(. as $failure | $requested | index($failure))
+      ] |
+      .released_allowed_missing = [
+        .released_allowed_missing[] |
+        select(. as $missing | $requested | index($missing))
       ]
     ' "${plan_path}" >"${plan_path}.targeted"
     mv "${plan_path}.targeted" "${plan_path}"
@@ -231,7 +238,7 @@ jq -e '
      .released.accepted_failures == .plan.released_allowed_failures and
      .released.failed == .plan.released_allowed_failures and
      .released.unexpected_failures == [] and
-     .released.missing == [])
+     .released.missing == .plan.released_allowed_missing)
   ) and
   .candidate.result == "pass" and
   .candidate.accepted_failures == [] and

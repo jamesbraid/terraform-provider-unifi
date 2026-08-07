@@ -43,10 +43,11 @@ func BuildHardwareDispositionReceipt(
 		controller.Released,
 		controller.Plan,
 		controller.Plan.ReleasedAllowedFailures,
+		controller.Plan.ReleasedAllowedMissing,
 	) || !containsString(controller.Released.Passed, portPersistenceScenario) {
 		return HardwareDispositionReceipt{}, fmt.Errorf("released suite did not pass the port action persistence scenario")
 	}
-	if !controllerSuiteComplete(controller.Candidate, controller.Plan, nil) ||
+	if !controllerSuiteComplete(controller.Candidate, controller.Plan, nil, nil) ||
 		!containsString(controller.Candidate.Passed, portPersistenceScenario) {
 		return HardwareDispositionReceipt{}, fmt.Errorf("candidate suite did not pass the port action persistence scenario")
 	}
