@@ -35,6 +35,25 @@ jq -e '
   .missing == ["TestAccD"]
 ' "${work_root}/released.json" >/dev/null
 
+cat >"${work_root}/allowed-failure-passed.jsonl" <<'EOF'
+{"Action":"pass","Test":"TestAccA"}
+{"Action":"pass","Test":"TestAccB"}
+{"Action":"skip","Test":"TestAccC"}
+EOF
+
+jq --slurpfile plan "${work_root}/plan.json" \
+   --arg suite_label released --argjson exit_code 0 -s -f "${filter}" \
+   "${work_root}/allowed-failure-passed.jsonl" >"${work_root}/allowed-failure-passed.json"
+jq -e '
+  .result == "accepted_limitation" and
+  .passed == ["TestAccA", "TestAccB"] and
+  .skipped == ["TestAccC"] and
+  .failed == [] and
+  .accepted_failures == [] and
+  .unexpected_failures == [] and
+  .missing == ["TestAccD"]
+' "${work_root}/allowed-failure-passed.json" >/dev/null
+
 jq --slurpfile plan "${work_root}/plan.json" \
    --arg suite_label candidate --argjson exit_code 1 -s -f "${filter}" \
    "${work_root}/known-limitation.jsonl" >"${work_root}/candidate.json"

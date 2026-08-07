@@ -112,6 +112,15 @@ if [[ $(bash "${followup_script}" "${work_root}/full-receipt.json") != full ]]; 
     exit 1
 fi
 
+jq '
+  .released.failed = [] |
+  .released.accepted_failures = []
+' "${work_root}/full-receipt.json" >"${work_root}/allowed-failure-passed-receipt.json"
+if [[ $(bash "${followup_script}" "${work_root}/allowed-failure-passed-receipt.json") != full ]]; then
+    echo "full controller receipt rejected an allowed failure that passed" >&2
+    exit 1
+fi
+
 jq '.released.accepted_failures = ["TestAccDeviceFramework_basic", "TestAccUnexpected"]' \
     "${work_root}/full-receipt.json" >"${work_root}/invalid-limitation-receipt.json"
 if bash "${followup_script}" "${work_root}/invalid-limitation-receipt.json" >/dev/null 2>&1; then

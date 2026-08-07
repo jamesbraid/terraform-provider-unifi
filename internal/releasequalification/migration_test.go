@@ -56,6 +56,25 @@ func TestBuildMigrationRecoveryReceiptAllowsReleasedMissingTest(t *testing.T) {
 	}
 }
 
+func TestBuildMigrationRecoveryReceiptAllowsReleasedFailureThatPasses(t *testing.T) {
+	input := validMigrationInput(t)
+	allowedFailure := input.Controller.Plan.TestNames[1]
+	missing := input.Controller.Plan.TestNames[2]
+	input.Controller.Plan.ReleasedAllowedFailures = []string{allowedFailure}
+	input.Controller.Plan.ReleasedAllowedMissing = []string{missing}
+	input.Controller.Released.Result = "accepted_limitation"
+	input.Controller.Released.Passed = removeControllerTest(input.Controller.Released.Passed, missing)
+	input.Controller.Released.Missing = []string{missing}
+
+	receipt, err := BuildMigrationRecoveryReceipt(input)
+	if err != nil {
+		t.Fatalf("BuildMigrationRecoveryReceipt() error = %v", err)
+	}
+	if receipt.Result != "pass" || receipt.RecoveryCount != 67 {
+		t.Fatalf("receipt result/count = %q/%d", receipt.Result, receipt.RecoveryCount)
+	}
+}
+
 func TestBuildMigrationRecoveryReceiptFailsClosed(t *testing.T) {
 	tests := map[string]struct {
 		mutate func(*MigrationRecoveryInput)

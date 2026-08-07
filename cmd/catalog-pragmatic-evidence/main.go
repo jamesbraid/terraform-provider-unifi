@@ -142,8 +142,12 @@ func validateControllerReceipt(path string) (string, error) {
 		len(receipt.Released.UnexpectedFailures) == 0 &&
 		len(receipt.Released.Missing) == 0
 	if receipt.Released.Result == "accepted_limitation" {
-		releasedAccepted = slices.Equal(receipt.Released.Failed, releasedAllowedFailures) &&
-			slices.Equal(receipt.Released.AcceptedFailures, releasedAllowedFailures) &&
+		failuresAllowed := len(receipt.Released.Failed) <= len(releasedAllowedFailures)
+		for _, failure := range receipt.Released.Failed {
+			failuresAllowed = failuresAllowed && slices.Contains(releasedAllowedFailures, failure)
+		}
+		releasedAccepted = failuresAllowed &&
+			slices.Equal(receipt.Released.AcceptedFailures, receipt.Released.Failed) &&
 			len(receipt.Released.UnexpectedFailures) == 0 &&
 			slices.Equal(receipt.Released.Missing, releasedAllowedMissing)
 	}

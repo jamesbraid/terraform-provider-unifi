@@ -553,21 +553,22 @@ func validateControllerSuite(
 		stringsOverlap(allowedFailures, allowedMissing) {
 		return fmt.Errorf("%s controller suite is incomplete or failed", label)
 	}
-	wantPassed := make([]string, 0, len(planned)-len(allowedSkips)-len(allowedFailures)-len(allowedMissing))
-	for _, testName := range planned {
-		if !controllerContainsString(allowedSkips, testName) &&
-			!controllerContainsString(allowedFailures, testName) &&
-			!controllerContainsString(allowedMissing, testName) {
-			wantPassed = append(wantPassed, testName)
-		}
-	}
 	if suite.Result == "accepted_limitation" {
+		wantPassed := make([]string, 0, len(planned)-len(allowedSkips)-len(suite.Failed)-len(allowedMissing))
+		for _, testName := range planned {
+			if !controllerContainsString(allowedSkips, testName) &&
+				!controllerContainsString(suite.Failed, testName) &&
+				!controllerContainsString(allowedMissing, testName) {
+				wantPassed = append(wantPassed, testName)
+			}
+		}
 		if len(allowedFailures)+len(allowedMissing) == 0 ||
-			(len(allowedFailures) > 0 && suite.ExitCode == 0) ||
-			(len(allowedFailures) == 0 && suite.ExitCode != 0) ||
+			(len(suite.Failed) > 0 && suite.ExitCode == 0) ||
+			(len(suite.Failed) == 0 && suite.ExitCode != 0) ||
 			len(suite.UnexpectedFailures) != 0 ||
-			!sameStringSet(suite.Failed, allowedFailures) ||
-			!sameStringSet(suite.AcceptedFailures, allowedFailures) ||
+			len(suite.Failed) != len(uniqueStrings(suite.Failed)) ||
+			!allStringsInSet(suite.Failed, allowedFailures) ||
+			!sameStringSet(suite.AcceptedFailures, suite.Failed) ||
 			!sameStringSet(suite.Missing, allowedMissing) ||
 			!sameStringSet(suite.Skipped, allowedSkips) ||
 			!sameStringSet(suite.Passed, wantPassed) {
@@ -575,11 +576,11 @@ func validateControllerSuite(
 		}
 		return nil
 	}
-	for _, testName := range allowedFailures {
-		wantPassed = append(wantPassed, testName)
-	}
-	for _, testName := range allowedMissing {
-		wantPassed = append(wantPassed, testName)
+	wantPassed := make([]string, 0, len(planned)-len(allowedSkips))
+	for _, testName := range planned {
+		if !controllerContainsString(allowedSkips, testName) {
+			wantPassed = append(wantPassed, testName)
+		}
 	}
 	if suite.Result != "pass" || suite.ExitCode != 0 ||
 		len(suite.Failed) != 0 || len(suite.AcceptedFailures) != 0 ||

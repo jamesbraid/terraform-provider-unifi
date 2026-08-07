@@ -26,10 +26,10 @@
     then "pass"
     elif $suite_label == "released" and
          (($allowed_failures | length) > 0 or ($allowed_missing | length) > 0) and
-         ((($allowed_failures | length) > 0 and $exit_code != 0) or
-          (($allowed_failures | length) == 0 and $exit_code == 0)) and
-         $skipped == $allowed_skips and $failed == $allowed_failures and
-         $passed == ($planned - $allowed_skips - $allowed_failures - $allowed_missing) and
+         ((($failed | length) > 0 and $exit_code != 0) or
+          (($failed | length) == 0 and $exit_code == 0)) and
+         $skipped == $allowed_skips and $unexpected_failures == [] and
+         $passed == ($planned - $allowed_skips - $failed - $allowed_missing) and
          $missing == $allowed_missing
     then "accepted_limitation"
     else "fail"

@@ -11,8 +11,8 @@ jq -e '
      ((.released.failed // []) == []) and
      ((.released.missing // []) == [])) or
     ((.released.result == "accepted_limitation") and
-     (.released.accepted_failures == .plan.released_allowed_failures) and
-     (.released.failed == .plan.released_allowed_failures) and
+     (.released.accepted_failures == .released.failed) and
+     ((.released.failed - .plan.released_allowed_failures) == []) and
      (.released.unexpected_failures == []) and
      (.released.missing == .plan.released_allowed_missing));
   .result == "blocked_evidence" and
