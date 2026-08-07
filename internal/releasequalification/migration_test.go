@@ -88,7 +88,7 @@ func TestBuildMigrationRecoveryReceiptFailsClosed(t *testing.T) {
 		},
 		"extra runtime change": {
 			mutate: func(input *MigrationRecoveryInput) {
-				input.Inventory.Surfaces[1].Runtime.Status = catalogparity.FileChanged
+				input.Inventory.Surfaces[2].Runtime.Status = catalogparity.FileChanged
 			},
 			want: "runtime change set",
 		},
@@ -165,7 +165,7 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			AdapterParitySHA256: digest, State: catalogparity.Admitted, ReceiptSHA256: digest,
 		})
 		status := catalogparity.FileIdentical
-		if key.Name == "unifi_dns_record" &&
+		if (key.Name == "unifi_dns_record" || key.Name == "unifi_device") &&
 			(key.Kind == catalogparity.ManagedResource || key.Kind == catalogparity.ListResource) {
 			status = catalogparity.FileChanged
 		}
@@ -317,6 +317,8 @@ func migrationSurfaceKeys() []catalogparity.SurfaceKey {
 		name := fmt.Sprintf("unifi_resource_%02d", index)
 		if index == 0 {
 			name = "unifi_dns_record"
+		} else if index == 1 {
+			name = "unifi_device"
 		}
 		keys = append(keys, catalogparity.SurfaceKey{Kind: catalogparity.ManagedResource, Name: name})
 	}
@@ -327,6 +329,8 @@ func migrationSurfaceKeys() []catalogparity.SurfaceKey {
 		name := fmt.Sprintf("unifi_list_%02d", index)
 		if index == 0 {
 			name = "unifi_dns_record"
+		} else if index == 1 {
+			name = "unifi_device"
 		}
 		keys = append(keys, catalogparity.SurfaceKey{Kind: catalogparity.ListResource, Name: name})
 	}
