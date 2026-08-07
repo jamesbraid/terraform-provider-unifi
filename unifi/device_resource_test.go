@@ -714,6 +714,18 @@ func Test_deviceResource_Create(t *testing.T) {
 	}
 }
 
+func Test_restoreCreatePlanValues_preservesSuccessfulAdoption(t *testing.T) {
+	model := deviceResourceModel{
+		Adopted: types.BoolValue(false),
+	}
+
+	restoreCreatePlanValues(&model, types.BoolValue(true), types.BoolValue(false), types.StringNull(), types.SetNull(types.ObjectType{AttrTypes: portOverrideAttrTypes()}))
+
+	if !model.Adopted.ValueBool() {
+		t.Fatal("Adopted = false, want true after successful create")
+	}
+}
+
 func Test_deviceResource_Read(t *testing.T) {
 	type args struct {
 		ctx  context.Context

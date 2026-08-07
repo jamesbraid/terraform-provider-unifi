@@ -1212,27 +1212,32 @@ func (r *deviceResource) Create(
 			return
 		}
 	}
-	// Restore port_override from plan. The API returns ALL ports (e.g. 32) but we
-	// only manage a subset (e.g. 27). Terraform's post-apply consistency check
-	// requires the set length to match the plan. On subsequent Read, the full
-	// port state will be loaded, which may cause a one-time update on next apply.
-	plan.PortOverride = plannedPortOverride
-	// The controller can return its model-default name on the immediate read
-	// after adoption even though it accepted the configured rename. Preserve the
-	// known planned value for Terraform's post-apply consistency check. A later
-	// refresh reconciles state after the controller finishes applying the name.
-	if !plannedName.IsNull() && !plannedName.IsUnknown() {
-		plan.Name = plannedName
-	}
-
-	// Restore plan-only flags
-	plan.AllowAdoption = allowAdoption
-	plan.ForgetOnDestroy = forgetOnDestroy
+	restoreCreatePlanValues(&plan, allowAdoption, forgetOnDestroy, plannedName, plannedPortOverride)
 
 	// Set state
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), plan.ID)...)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
+}
+
+// restoreCreatePlanValues reapplies values that must survive the controller's
+// immediate post-adoption read. The controller can briefly return stale
+// computed fields while it finishes provisioning; a successful Create must
+// still hand Terraform the state established by the operation itself.
+func restoreCreatePlanValues(
+	plan *deviceResourceModel,
+	allowAdoption, forgetOnDestroy types.Bool,
+	plannedName types.String,
+	plannedPortOverride types.Set,
+) {
+	// The API returns ALL ports (e.g. 32) but the plan manages only a subset.
+	plan.PortOverride = plannedPortOverride
+	if !plannedName.IsNull() && !plannedName.IsUnknown() {
+		plan.Name = plannedName
+	}
+	plan.Adopted = types.BoolValue(true)
+	plan.AllowAdoption = allowAdoption
+	plan.ForgetOnDestroy = forgetOnDestroy
 }
 
 func (r *deviceResource) Read(
