@@ -30,6 +30,19 @@ func TestBuildMigrationRecoveryReceipt(t *testing.T) {
 	}
 }
 
+func TestBuildMigrationRecoveryReceiptAllowsReleasedLimitation(t *testing.T) {
+	input := validMigrationInput(t)
+	allowReleasedControllerLimitation(t, &input.Controller)
+
+	receipt, err := BuildMigrationRecoveryReceipt(input)
+	if err != nil {
+		t.Fatalf("BuildMigrationRecoveryReceipt() error = %v", err)
+	}
+	if receipt.Result != "pass" || receipt.RecoveryCount != 67 {
+		t.Fatalf("receipt result/count = %q/%d", receipt.Result, receipt.RecoveryCount)
+	}
+}
+
 func TestBuildMigrationRecoveryReceiptFailsClosed(t *testing.T) {
 	tests := map[string]struct {
 		mutate func(*MigrationRecoveryInput)
@@ -223,6 +236,29 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 		},
 		DNSLifecycleSHA256: digest,
 	}
+}
+
+func allowReleasedControllerLimitation(
+	t *testing.T,
+	controller *catalogparity.ControllerDifferentialReceipt,
+) {
+	t.Helper()
+	failure := controller.Plan.TestNames[1]
+	if failure == portPersistenceScenario {
+		t.Fatalf("released limitation unexpectedly selected port persistence scenario")
+	}
+	controller.Plan.ReleasedAllowedFailures = []string{failure}
+	controller.Released.Result = "accepted_limitation"
+	controller.Released.ExitCode = 1
+	controller.Released.Failed = []string{failure}
+	controller.Released.AcceptedFailures = []string{failure}
+	passed := make([]string, 0, len(controller.Released.Passed)-1)
+	for _, testName := range controller.Released.Passed {
+		if testName != failure {
+			passed = append(passed, testName)
+		}
+	}
+	controller.Released.Passed = passed
 }
 
 func migrationSurfaceKeys() []catalogparity.SurfaceKey {

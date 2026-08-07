@@ -274,12 +274,11 @@ func validateMigrationController(input MigrationRecoveryInput) error {
 		}
 		planned[surface.SurfaceKey] = struct{}{}
 	}
-	for name, suite := range map[string]catalogparity.ControllerSuiteReceipt{
-		"released": c.Released, "candidate": c.Candidate,
-	} {
-		if !controllerSuiteComplete(suite, c.Plan) {
-			return fmt.Errorf("controller differential %s suite is incomplete", name)
-		}
+	if !controllerSuiteComplete(c.Released, c.Plan, c.Plan.ReleasedAllowedFailures) {
+		return fmt.Errorf("controller differential released suite is incomplete")
+	}
+	if !controllerSuiteComplete(c.Candidate, c.Plan, nil) {
+		return fmt.Errorf("controller differential candidate suite is incomplete")
 	}
 	return nil
 }
@@ -287,12 +286,11 @@ func validateMigrationController(input MigrationRecoveryInput) error {
 func controllerSuiteComplete(
 	suite catalogparity.ControllerSuiteReceipt,
 	plan catalogparity.ControllerPlanReceipt,
+	allowedFailures []string,
 ) bool {
-	if suite.Result != "pass" || suite.ExitCode != 0 ||
-		len(suite.Failed) != 0 || len(suite.Missing) != 0 {
-		return false
-	}
-	if len(plan.AllowedSkips) > len(plan.TestNames) {
+	if len(suite.Missing) != 0 || len(suite.UnexpectedFailures) != 0 ||
+		len(plan.AllowedSkips) > len(plan.TestNames) ||
+		len(allowedFailures) > len(plan.TestNames) {
 		return false
 	}
 	seenAllowed := make(map[string]struct{}, len(plan.AllowedSkips))
@@ -305,20 +303,48 @@ func controllerSuiteComplete(
 		}
 		seenAllowed[testName] = struct{}{}
 	}
-	wantPassed := make([]string, 0, len(plan.TestNames)-len(plan.AllowedSkips))
+	seenFailures := make(map[string]struct{}, len(allowedFailures))
+	for _, testName := range allowedFailures {
+		if !containsString(plan.TestNames, testName) || containsString(plan.AllowedSkips, testName) {
+			return false
+		}
+		if _, duplicate := seenFailures[testName]; duplicate {
+			return false
+		}
+		seenFailures[testName] = struct{}{}
+	}
+	wantPassed := make([]string, 0, len(plan.TestNames)-len(plan.AllowedSkips)-len(allowedFailures))
 	for _, testName := range plan.TestNames {
-		if !containsString(plan.AllowedSkips, testName) {
+		if !containsString(plan.AllowedSkips, testName) &&
+			!containsString(allowedFailures, testName) {
 			wantPassed = append(wantPassed, testName)
 		}
 	}
-	passed := append([]string(nil), suite.Passed...)
-	skipped := append([]string(nil), suite.Skipped...)
-	allowed := append([]string(nil), plan.AllowedSkips...)
-	sort.Strings(passed)
-	sort.Strings(skipped)
-	sort.Strings(allowed)
-	sort.Strings(wantPassed)
-	return reflect.DeepEqual(passed, wantPassed) && reflect.DeepEqual(skipped, allowed)
+	if suite.Result == "accepted_limitation" {
+		return len(allowedFailures) != 0 && suite.ExitCode != 0 &&
+			sameControllerStrings(suite.Failed, allowedFailures) &&
+			sameControllerStrings(suite.AcceptedFailures, allowedFailures) &&
+			sameControllerStrings(suite.Skipped, plan.AllowedSkips) &&
+			sameControllerStrings(suite.Passed, wantPassed)
+	}
+	wantPassed = append(wantPassed, allowedFailures...)
+	if suite.Result != "pass" || suite.ExitCode != 0 ||
+		len(suite.Failed) != 0 || len(suite.AcceptedFailures) != 0 {
+		return false
+	}
+	return sameControllerStrings(suite.Passed, wantPassed) &&
+		sameControllerStrings(suite.Skipped, plan.AllowedSkips)
+}
+
+func sameControllerStrings(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	left = append([]string(nil), left...)
+	right = append([]string(nil), right...)
+	sort.Strings(left)
+	sort.Strings(right)
+	return reflect.DeepEqual(left, right)
 }
 
 func validateMigrationInventory(input MigrationRecoveryInput) error {
