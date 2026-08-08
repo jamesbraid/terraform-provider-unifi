@@ -37,6 +37,22 @@ type portActionModel struct {
 	Timeouts   timeouts.Value     `tfsdk:"timeouts"`
 }
 
+func mergePortOverride(
+	existing []ui.DevicePortOverrides,
+	portNumber int64,
+	poeMode string,
+) []ui.DevicePortOverrides {
+	merged := slices.Clone(existing)
+	for i := range merged {
+		if merged[i].PortIDX != nil && *merged[i].PortIDX == portNumber {
+			merged[i].PoeMode = poeMode
+			return merged
+		}
+	}
+	port := portNumber
+	return append(merged, ui.DevicePortOverrides{PortIDX: &port, PoeMode: poeMode})
+}
+
 func (a *portAction) Metadata(
 	ctx context.Context,
 	req action.MetadataRequest,
@@ -146,36 +162,14 @@ func (a *portAction) Invoke(
 		return
 	}
 
-	// Update the device with port override for PoE configuration
-	portOverride := ui.DevicePortOverrides{
-		PortIDX: config.PortNumber.ValueInt64Pointer(),
-		PoeMode: poeMode,
-	}
-
 	// Check if the device already has port overrides
 	existingOverrides := device.PortOverrides
 	if existingOverrides == nil {
 		existingOverrides = []ui.DevicePortOverrides{}
 	}
 
-	// Find and update existing override or add new one
-	found := false
-	for i, override := range existingOverrides {
-		if override.PortIDX == config.PortNumber.ValueInt64Pointer() {
-			// Update existing override
-			existingOverrides[i].PoeMode = poeMode
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		// Add new override
-		existingOverrides = append(existingOverrides, portOverride)
-	}
-
 	// Update the device
-	device.PortOverrides = existingOverrides
+	device.PortOverrides = mergePortOverride(existingOverrides, portNumber, poeMode)
 	_, err = a.client.UpdateDevice(ctx, a.client.Site, device)
 	if err != nil {
 		resp.Diagnostics.AddError(

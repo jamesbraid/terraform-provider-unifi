@@ -326,6 +326,9 @@ func (r *firewallZoneResource) Delete(
 
 	err := r.client.DeleteFirewallZone(ctx, site, data.ID.ValueString())
 	if err != nil {
+		if _, ok := err.(*unifi.NotFoundError); ok {
+			return
+		}
 		resp.Diagnostics.AddError("Error Deleting Firewall Zone", err.Error())
 		return
 	}
