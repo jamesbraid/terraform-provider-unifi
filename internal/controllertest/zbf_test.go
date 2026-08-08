@@ -36,6 +36,9 @@ func TestMigrateZoneBasedFirewall(t *testing.T) {
 			}
 			migrated = true
 			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/proxy/network/v2/api/site/default/firewall/zone":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[{"_id":"z1","name":"Internal","zone_key":"internal"}]`))
 		default:
 			http.NotFound(w, r)
 		}
@@ -79,6 +82,9 @@ func TestMigrateZoneBasedFirewall_StandaloneController(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/proxy/network/"):
 			t.Fatalf("standalone controller must not see console path %s", r.URL.Path)
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/api/site/default/firewall/zone":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[{"_id":"z1","name":"Internal","zone_key":"internal"}]`))
 		default:
 			http.NotFound(w, r)
 		}
@@ -106,6 +112,9 @@ func TestMigrateZoneBasedFirewall_AllowsControllerCertificate(t *testing.T) {
 		case r.Method == http.MethodPost && r.URL.Path == "/proxy/network/v2/api/site/default/firewall/migrate":
 			migrated = true
 			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/proxy/network/v2/api/site/default/firewall/zone":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[{"_id":"z1","name":"Internal","zone_key":"internal"}]`))
 		default:
 			http.NotFound(w, r)
 		}
@@ -145,6 +154,9 @@ func TestMigrateZoneBasedFirewall_RetriesUnauthorizedLogin(t *testing.T) {
 		case r.Method == http.MethodPost && r.URL.Path == "/proxy/network/v2/api/site/default/firewall/migrate":
 			migrated = true
 			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/proxy/network/v2/api/site/default/firewall/zone":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[{"_id":"z1","name":"Internal","zone_key":"internal"}]`))
 		default:
 			http.NotFound(w, r)
 		}
