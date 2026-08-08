@@ -42,6 +42,39 @@ func migrateZoneBasedFirewallWithClient(
 	transportClient.Jar = jar
 	client = &transportClient
 
+	baseURL := strings.TrimRight(endpoint, "/")
+
+	// A UniFi OS console and a standalone Network controller expose different
+	// login and API paths. Probe the way go-unifi does: "/" is served directly
+	// (200) on UniFi OS and redirects to /manage (302) on a standalone
+	// controller. Hardcoding either style gets a 401 from the other.
+	loginPath := "/api/auth/login"
+	migratePath := "/proxy/network/v2/api/site/" + site + "/firewall/migrate"
+	probeClient := *client
+	probeClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	probeReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/", nil)
+	if err != nil {
+		return fmt.Errorf("create controller style probe: %w", err)
+	}
+	probeResp, err := probeClient.Do(probeReq)
+	if err != nil {
+		return fmt.Errorf("probe controller style: %w", err)
+	}
+	probeStatus := probeResp.StatusCode
+	_, _ = io.Copy(io.Discard, probeResp.Body)
+	_ = probeResp.Body.Close()
+	switch {
+	case probeStatus == http.StatusFound:
+		loginPath = "/api/login"
+		migratePath = "/v2/api/site/" + site + "/firewall/migrate"
+	case probeStatus >= http.StatusOK && probeStatus < http.StatusMultipleChoices:
+		// UniFi OS serves "/": keep the console paths.
+	default:
+		return fmt.Errorf("controller style probe returned HTTP %d", probeStatus)
+	}
+
 	loginBody, err := json.Marshal(map[string]string{
 		"username": username,
 		"password": password,
@@ -49,13 +82,12 @@ func migrateZoneBasedFirewallWithClient(
 	if err != nil {
 		return fmt.Errorf("encode controller login: %w", err)
 	}
-	baseURL := strings.TrimRight(endpoint, "/")
 	var loginResp *http.Response
 	for attempt := 0; attempt < 8; attempt++ {
 		loginReq, err := http.NewRequestWithContext(
 			ctx,
 			http.MethodPost,
-			baseURL+"/api/auth/login",
+			baseURL+loginPath,
 			bytes.NewReader(loginBody),
 		)
 		if err != nil {
@@ -76,12 +108,15 @@ func migrateZoneBasedFirewallWithClient(
 		if loginResp.StatusCode >= http.StatusOK && loginResp.StatusCode < http.StatusMultipleChoices {
 			break
 		}
+		status := loginResp.StatusCode
+		retryable := status == http.StatusUnauthorized || status == http.StatusTooManyRequests
+		if !retryable || attempt == 7 {
+			snippet := responseSnippet(loginResp)
+			_ = loginResp.Body.Close()
+			return fmt.Errorf("controller login at %s returned HTTP %d%s", loginPath, status, snippet)
+		}
 		_, _ = io.Copy(io.Discard, loginResp.Body)
 		_ = loginResp.Body.Close()
-		if (loginResp.StatusCode != http.StatusUnauthorized &&
-			loginResp.StatusCode != http.StatusTooManyRequests) || attempt == 7 {
-			return fmt.Errorf("controller login returned HTTP %d", loginResp.StatusCode)
-		}
 		wait := time.Second << attempt
 		if wait > 30*time.Second {
 			wait = 30 * time.Second
@@ -102,7 +137,7 @@ func migrateZoneBasedFirewallWithClient(
 	migrateReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		baseURL+"/proxy/network/v2/api/site/"+site+"/firewall/migrate",
+		baseURL+migratePath,
 		nil,
 	)
 	if err != nil {
@@ -117,10 +152,25 @@ func migrateZoneBasedFirewallWithClient(
 	if err != nil {
 		return fmt.Errorf("migrate zone-based firewall: %w", err)
 	}
+	if migrateResp.StatusCode < http.StatusOK || migrateResp.StatusCode >= http.StatusMultipleChoices {
+		snippet := responseSnippet(migrateResp)
+		_ = migrateResp.Body.Close()
+		return fmt.Errorf("zone-based firewall migration at %s returned HTTP %d%s",
+			migratePath, migrateResp.StatusCode, snippet)
+	}
 	_, _ = io.Copy(io.Discard, migrateResp.Body)
 	_ = migrateResp.Body.Close()
-	if migrateResp.StatusCode < http.StatusOK || migrateResp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("zone-based firewall migration returned HTTP %d", migrateResp.StatusCode)
-	}
 	return nil
+}
+
+// responseSnippet reads a short prefix of a response body so a failing
+// controller call reports what the controller said, not just a bare status.
+func responseSnippet(resp *http.Response) string {
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 512))
+	_, _ = io.Copy(io.Discard, resp.Body)
+	trimmed := bytes.TrimSpace(body)
+	if err != nil || len(trimmed) == 0 {
+		return ""
+	}
+	return ": " + string(trimmed)
 }
