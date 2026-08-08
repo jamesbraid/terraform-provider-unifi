@@ -55,6 +55,11 @@ resource "unifi_network" "firewall_zone_test" {
   name   = "Firewall Zone Test Network"
   subnet = "192.168.250.1/24"
   vlan   = 250
+
+  # A zone claiming this network flips it to manual controller-side, while the
+  # schema default asks for auto. Declare the end state so the post-apply
+  # refresh plan stays empty.
+  setting_preference = "manual"
 }
 
 resource "unifi_firewall_zone" "test" {
@@ -73,6 +78,11 @@ resource "unifi_network" "firewall_zone_test" {
   name   = "Firewall Zone Test Network"
   subnet = "192.168.250.1/24"
   vlan   = 250
+
+  # A zone claiming this network flips it to manual controller-side, while the
+  # schema default asks for auto. Declare the end state so the post-apply
+  # refresh plan stays empty.
+  setting_preference = "manual"
 }
 
 resource "unifi_firewall_zone" "test" {
