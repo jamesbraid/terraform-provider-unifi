@@ -206,7 +206,7 @@ func TestPragmaticReferencePolicyResolvesExactlyNineCatalogGaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 9 || resolution.RemainingSignalCount != 1 {
+	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 7 || resolution.RemainingSignalCount != 1 {
 		t.Fatalf("resolution = %+v", resolution)
 	}
 	wantRemaining := []EvidenceGap{
@@ -217,7 +217,7 @@ func TestPragmaticReferencePolicyResolvesExactlyNineCatalogGaps(t *testing.T) {
 	}
 	wantKinds := map[PragmaticReferenceKind]int{
 		AliasReference:           3,
-		FleetShapeReference:      3,
+		FleetShapeReference:      1,
 		SiblingReadReference:     1,
 		ZeroUseEndpointReference: 2,
 	}

@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
-  "inventory_sha256": "d272c0f41fdbf5357c5a7e964494f741addab56d152b64740347f8dffa43b744",
+  "inventory_sha256": "52d6dc16eae9fc8dff20a34d42764344073457b24b31d710fab09480ad3449ad",
   "fleet_summary_sha256": "12f576f11f670ad4df4fce32fa6b0913faa285a427c08f26d719de7f478ba922",
   "references": [
     {
@@ -43,23 +43,6 @@
       },
       "fleet_count": 16,
       "shape_sha256": "1de704ffd35e1272327c6ec59074d788cbf1ef7a993e8e93a1c435fe3f58b21d",
-      "required_evidence": [
-        "controller_list",
-        "mapping",
-        "plan_shape"
-      ]
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_firewall_zone",
-      "signal": "acceptance",
-      "reference_kind": "fleet_shape",
-      "source": {
-        "kind": "list_resource",
-        "name": "unifi_firewall_zone"
-      },
-      "fleet_count": 4,
-      "shape_sha256": "5a581675483c2b0accd48a797339794e08954785c39e1e56499b7f81bcba1ad5",
       "required_evidence": [
         "controller_list",
         "mapping",
@@ -125,23 +108,6 @@
       "required_evidence": [
         "mapping",
         "sibling_read"
-      ]
-    },
-    {
-      "kind": "data_source",
-      "name": "unifi_firewall_zone",
-      "signal": "acceptance",
-      "reference_kind": "fleet_shape",
-      "source": {
-        "kind": "list_resource",
-        "name": "unifi_firewall_zone"
-      },
-      "fleet_count": 3,
-      "shape_sha256": "4244fa6e7a75c5f570a2e92d74a36c7ec8509d6459b2c1290221bec376138fbb",
-      "required_evidence": [
-        "controller_list",
-        "mapping",
-        "plan_shape"
       ]
     }
   ]

@@ -44,6 +44,55 @@ list "unifi_firewall_zone" "test" {
 	})
 }
 
+func TestAccFirewallZoneFramework_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "unifi_network" "firewall_zone_test" {
+  name   = "Firewall Zone Test Network"
+  subnet = "192.168.250.1/24"
+  vlan   = 250
+}
+
+resource "unifi_firewall_zone" "test" {
+  name        = "Firewall Zone Test"
+  network_ids = [unifi_network.firewall_zone_test.id]
+}
+`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_firewall_zone.test", "id"),
+					resource.TestCheckResourceAttr("unifi_firewall_zone.test", "name", "Firewall Zone Test"),
+				),
+			},
+			{
+				Config: `
+resource "unifi_network" "firewall_zone_test" {
+  name   = "Firewall Zone Test Network"
+  subnet = "192.168.250.1/24"
+  vlan   = 250
+}
+
+resource "unifi_firewall_zone" "test" {
+  name        = "Firewall Zone Test Updated"
+  network_ids = [unifi_network.firewall_zone_test.id]
+}
+`,
+				Check: resource.TestCheckResourceAttr(
+					"unifi_firewall_zone.test", "name", "Firewall Zone Test Updated",
+				),
+			},
+			{
+				ResourceName:      "unifi_firewall_zone.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func TestFirewallZoneDeleteIgnoresNotFound(t *testing.T) {
 	t.Parallel()
 

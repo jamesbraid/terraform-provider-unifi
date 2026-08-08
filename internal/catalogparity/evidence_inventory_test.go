@@ -45,7 +45,7 @@ func TestBuildEvidenceInventoryAccountsForEverySurfaceAndNamesGaps(t *testing.T)
 	wantCoverage := map[string]int{
 		"scenario_owner":    67,
 		"constructor":       67,
-		"acceptance":        33,
+		"acceptance":        35,
 		"import":            27,
 		"list_acceptance":   25,
 		"action_acceptance": 1,
