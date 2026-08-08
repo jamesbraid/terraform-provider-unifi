@@ -40,6 +40,7 @@ readonly source_volume=${prefix}-source
 readonly go_cache_volume=${prefix}-go-cache
 readonly old_source_volume=${prefix}-old-source
 readonly old_go_cache_volume=${prefix}-old-go-cache
+readonly go_unifi_proxy_root=${GO_UNIFI_PROXY_ROOT:-/tmp/go-unifi-proxy}
 work_root=$(mktemp -d "${TMPDIR:-/tmp}/provider-m3q.XXXXXX")
 readonly work_root
 readonly dns_name=m0-dns.example.invalid
@@ -136,6 +137,13 @@ populate_volume() {
 populate_volume "${work_root}/tools" "${tools_volume}"
 populate_volume "${work_root}/config" "${config_volume}"
 if [[ -z ${candidate_provider_binary} ]]; then
+    # The candidate depends on the unreleased go-unifi module.  The workflow
+    # bootstraps that module into a file GOPROXY on the host, but this build
+    # runs inside a separate Docker container.  Keep the acquisition boundary
+    # explicit by mounting the retained proxy read-only; otherwise Go falls
+    # through to a direct GitHub lookup for v1.102.0, which is both fragile and
+    # unavailable on the isolated build network.
+    test -d "${go_unifi_proxy_root}"
     git archive "${source_commit}" | docker run --rm --interactive \
         --entrypoint /bin/sh \
         --mount "type=volume,src=${source_volume},dst=/source" \
@@ -144,9 +152,12 @@ if [[ -z ${candidate_provider_binary} ]]; then
         --env CGO_ENABLED=0 \
         --env GOCACHE=/go/build-cache --env GOMODCACHE=/go/module-cache \
         --env GOTELEMETRY=off --env GOTOOLCHAIN=local \
+        --env GOPROXY=file:///go-unifi-proxy,https://proxy.golang.org \
+        --env GOSUMDB=off --env GOVCS=*:off --env GIT_TERMINAL_PROMPT=0 \
         --mount "type=volume,src=${source_volume},dst=/source,readonly" \
         --mount "type=volume,src=${go_cache_volume},dst=/go" \
         --mount "type=volume,src=${tools_volume},dst=/tools" \
+        --mount "type=bind,src=${go_unifi_proxy_root},dst=/go-unifi-proxy,readonly" \
         --workdir /source "${go_image}" \
         go build -trimpath -buildvcs=false \
         -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
