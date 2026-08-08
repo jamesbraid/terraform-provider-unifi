@@ -143,7 +143,12 @@ if [[ -z ${candidate_provider_binary} ]]; then
     # explicit by mounting the retained proxy read-only; otherwise Go falls
     # through to a direct GitHub lookup for v1.102.0, which is both fragile and
     # unavailable on the isolated build network.
-    test -d "${go_unifi_proxy_root}"
+    if [[ ! -d ${go_unifi_proxy_root} ]]; then
+        echo "go-unifi proxy root ${go_unifi_proxy_root} is missing:" \
+            "bootstrap it on this host with bootstrap-go-unifi-proxy.sh or" \
+            "pass a prebuilt candidate via M3_CANDIDATE_PROVIDER_BINARY" >&2
+        exit 1
+    fi
     git archive "${source_commit}" | docker run --rm --interactive \
         --entrypoint /bin/sh \
         --mount "type=volume,src=${source_volume},dst=/source" \

@@ -11,6 +11,22 @@ clone:
       partial: false
 
 steps:
+  # The candidate depends on the unreleased go-unifi module, so its build needs
+  # the bootstrapped file proxy. The lifecycle step runs in a docker-cli image
+  # sharing the host daemon, where a bind mount of a step-local proxy cannot
+  # work. Build the candidate here instead and hand the lifecycle step a
+  # prebuilt binary, exactly like the differential workflow and the carrier do.
+  - name: build-candidate
+    # yamllint disable-line rule:line-length
+    image: >-
+      golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
+    commands:
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
+      - mkdir -p m3-candidate
+      - env CGO_ENABLED=0 GOFLAGS=-mod=readonly GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go build -trimpath -buildvcs=false -ldflags=-buildid= -o m3-candidate/terraform-provider-unifi .
+
   - name: locked-network-lifecycle
     image: docker:27.5.1-cli
     volumes:
@@ -18,7 +34,7 @@ steps:
     commands:
       - apk add --no-cache bash coreutils curl git jq tar unzip
       - bash .woodpecker/scripts/m3-evidence-lib_test.sh
-      - M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
+      - M3_CANDIDATE_PROVIDER_BINARY=$(pwd)/m3-candidate/terraform-provider-unifi M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
       - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true' build/m3/network-dns-qualification-ci.json
 
   - name: promotion-receipt
