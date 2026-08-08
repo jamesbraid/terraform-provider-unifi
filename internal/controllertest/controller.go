@@ -9,9 +9,11 @@
 package controllertest
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/docker/compose/v2/pkg/api"
@@ -37,6 +39,10 @@ const (
 	// their digest-pinned controller image so a released/candidate pair can run
 	// without contacting a registry between attempts.
 	envRemoveControllerImages = "UNIFI_TEST_REMOVE_CONTROLLER_IMAGES"
+
+	// controllerLogTailLines bounds the startup-failure dump: enough to show
+	// why the controller stalled, not so much that it floods the run log.
+	controllerLogTailLines = 60
 )
 
 // Controller is a running controller and the fleet informing it.
@@ -67,6 +73,11 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 	// what decides it is up; waitForAPI then waits for the API behind it.
 	if err := stack.WithOsEnv().
 		Up(ctx, compose.Wait(true), compose.WithRecreate(api.RecreateDiverged)); err != nil {
+		// A failed healthcheck reports only "container is unhealthy", and the
+		// container is reaped before anyone can inspect it. Say what the
+		// controller itself was doing, or the next occurrence costs another
+		// run to diagnose.
+		logControllerStartupFailure(ctx, logger, stack)
 		return c, fmt.Errorf("compose up: %w", err)
 	}
 
@@ -145,6 +156,54 @@ func (c *Controller) Stop(logger Logger) error {
 
 func removeControllerImages() bool {
 	return os.Getenv(envRemoveControllerImages) == "true"
+}
+
+// logControllerStartupFailure reports what the controller was doing when its
+// healthcheck never went green. Compose says only that the container is
+// unhealthy, and teardown removes it, so without this the run leaves nothing
+// to diagnose. Every step is best-effort: this runs on a path that has already
+// failed, and losing the original error to a diagnostic would be worse than
+// reporting nothing.
+func logControllerStartupFailure(ctx context.Context, logger Logger, stack compose.ComposeStack) {
+	container, err := stack.ServiceContainer(ctx, "unifi")
+	if err != nil {
+		logger.Printf("controller startup failed and its container is gone: %v", err)
+		return
+	}
+	if state, err := container.State(ctx); err == nil {
+		logger.Printf(
+			"controller container state: status=%s running=%t exit=%d oom=%t error=%q",
+			state.Status, state.Running, state.ExitCode, state.OOMKilled, state.Error,
+		)
+		if state.Health != nil {
+			logger.Printf("controller healthcheck: status=%s failing streak=%d",
+				state.Health.Status, state.Health.FailingStreak)
+			for _, probe := range state.Health.Log {
+				logger.Printf("controller healthcheck probe: exit=%d output=%s",
+					probe.ExitCode, strings.TrimSpace(probe.Output))
+			}
+		}
+	}
+	readCloser, err := container.Logs(ctx)
+	if err != nil {
+		logger.Printf("controller logs unavailable: %v", err)
+		return
+	}
+	defer func() { _ = readCloser.Close() }()
+	// The controller is chatty; its last lines are the ones that say why
+	// startup stalled.
+	scanner := bufio.NewScanner(readCloser)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	tail := make([]string, 0, controllerLogTailLines)
+	for scanner.Scan() {
+		if len(tail) == controllerLogTailLines {
+			tail = tail[1:]
+		}
+		tail = append(tail, scanner.Text())
+	}
+	for _, line := range tail {
+		logger.Printf("controller log: %s", strings.TrimSpace(line))
+	}
 }
 
 // exportProviderEnv points the provider under test at this controller.
