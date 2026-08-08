@@ -495,8 +495,8 @@ func validateControllerAdmission(receipt ControllerDifferentialReceipt, build Bu
 	if receipt.Plan.FormatVersion != 1 || receipt.Plan.Gate != receipt.Gate ||
 		!reflect.DeepEqual(receipt.Plan.Waves, []int{1, 2, 3, 4, 5}) ||
 		receipt.Plan.SurfaceCount != 67 || len(receipt.Plan.Surfaces) != 67 ||
-		receipt.Plan.EvidenceGapCount != 10 || len(receipt.Plan.TestNames) != 150 ||
-		len(receipt.Plan.SharedScenarioOwners) != 39 ||
+		receipt.Plan.EvidenceGapCount != 8 || len(receipt.Plan.TestNames) != 152 ||
+		len(receipt.Plan.SharedScenarioOwners) != 37 ||
 		!reflect.DeepEqual(
 			receipt.Plan.ReleasedAllowedFailures,
 			[]string{"TestAccDeviceFramework_basic"},

@@ -27,7 +27,7 @@ if ! jq -e '
   .gate == "catalog controller differential" and
   .waves == [1, 2, 3, 4, 5] and
   .surface_count == 67 and
-  .evidence_gap_count == 10 and
+  .evidence_gap_count == 8 and
   .allowed_skips == [
     "TestAccSettingResource_dohCustomServers",
     "TestAccSettingResource_ipsHoneypot",
@@ -35,8 +35,8 @@ if ! jq -e '
   ] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
   .released_allowed_missing == ["TestAccDeviceList_basic"] and
-  (.test_names | length) == 150 and
-  (.shared_scenario_owners | length) == 39 and
+  (.test_names | length) == 152 and
+  (.shared_scenario_owners | length) == 37 and
   ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
   ([.surfaces[] | select(.name == "unifi_dns_record" and .kind == "managed_resource")] | length) == 1
 ' "${work_root}/plan.json" >/dev/null; then
@@ -57,7 +57,7 @@ if ! jq -e '
   .allowed_skips == [] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
   .released_allowed_missing == [] and
-  .catalog_test_count == 150
+  .catalog_test_count == 152
 ' "${work_root}/targeted-plan.json" >/dev/null; then
     echo "targeted controller plan self-test failed" >&2
     jq '.' "${work_root}/targeted-plan.json" >&2
@@ -79,7 +79,7 @@ if ! jq -e '
   .allowed_skips == [] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
   .released_allowed_missing == ["TestAccDeviceList_basic"] and
-  .catalog_test_count == 150
+  .catalog_test_count == 152
 ' "${work_root}/targeted-multiple-plan.json" >/dev/null; then
     echo "semicolon-separated controller selection did not preserve every test" >&2
     jq '.' "${work_root}/targeted-multiple-plan.json" >&2

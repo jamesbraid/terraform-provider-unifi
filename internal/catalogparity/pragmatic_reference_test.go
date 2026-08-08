@@ -174,7 +174,7 @@ func TestResolvePragmaticReferencesRejectsUnsafeOrUnmeasuredSubstitutions(t *tes
 	}
 }
 
-func TestPragmaticReferencePolicyResolvesExactlyNineCatalogGaps(t *testing.T) {
+func TestPragmaticReferencePolicyResolvesExactlyEightCatalogGaps(t *testing.T) {
 	inventoryData, err := os.ReadFile("../../build/release-ready/catalog-evidence-inventory.json")
 	if err != nil {
 		t.Fatal(err)

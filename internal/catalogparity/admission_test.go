@@ -331,12 +331,12 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		})
 		allTests = append(allTests, tests...)
 	}
-	for len(allTests) < 150 {
+	for len(allTests) < 152 {
 		name := fmt.Sprintf("TestAccSynthetic%03d", len(allTests))
 		planSurfaces[0].TestNames = append(planSurfaces[0].TestNames, name)
 		allTests = append(allTests, name)
 	}
-	sharedScenarioOwners := make([]string, 39)
+	sharedScenarioOwners := make([]string, 37)
 	for index := range sharedScenarioOwners {
 		sharedScenarioOwners[index] = fmt.Sprintf("unifi/scenario_%02d_test.go", index)
 	}
@@ -358,7 +358,7 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 			Waves:                   []int{1, 2, 3, 4, 5},
 			Surfaces:                planSurfaces,
 			SurfaceCount:            67,
-			EvidenceGapCount:        10,
+			EvidenceGapCount:        8,
 			SharedScenarioOwners:    sharedScenarioOwners,
 			TestNames:               allTests,
 			ReleasedAllowedFailures: []string{"TestAccDeviceFramework_basic"},
