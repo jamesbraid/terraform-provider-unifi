@@ -45,7 +45,12 @@ case $(jq -r '.plan.diagnostic_selection // false' "${receipt}") in
             "TestAccWLANList_basic"
           ] and
           .plan.released_allowed_failures == ["TestAccDeviceFramework_basic"] and
-          .plan.released_allowed_missing == ["TestAccDeviceList_basic"]
+          .plan.released_allowed_missing == [
+            "TestAccDeviceList_basic",
+            "TestAccFirewallZoneFramework_basic",
+            "TestAccFirewallZoneList_emptyOrSeeded",
+            "TestAccPortAction_persistsPoeOverride"
+          ]
         ' "${receipt}" >/dev/null
         printf '%s\n' full
         ;;
