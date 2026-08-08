@@ -1,7 +1,5 @@
 when:
   - event: manual
-  - event: push
-    branch: emdash/control-plane-completion
 
 labels:
   pool: skunkworks

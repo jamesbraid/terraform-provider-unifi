@@ -1,7 +1,5 @@
 when:
   - event: manual
-  - event: push
-    branch: emdash/m1-dns-compiler
 
 labels:
   pool: skunkworks

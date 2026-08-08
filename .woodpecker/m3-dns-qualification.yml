@@ -1,7 +1,5 @@
 when:
   - event: manual
-  - event: push
-    branch: emdash/m3-dns-operation
 
 labels:
   pool: skunkworks
