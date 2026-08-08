@@ -23,13 +23,13 @@ jq -e '
   ((.candidate.failed // []) == []) and
   ((.candidate.missing // []) == []) and
   .plan.surface_count == 67 and
-  .plan.evidence_gap_count == 10
+  .plan.evidence_gap_count == 8
 ' "${receipt}" >/dev/null
 
 case $(jq -r '.plan.diagnostic_selection // false' "${receipt}") in
     true)
         jq -e '
-          .plan.catalog_test_count == 150 and
+          .plan.catalog_test_count == 152 and
           (.plan.test_names | length) > 0 and
           (.plan.test_names | length) < .plan.catalog_test_count
         ' "${receipt}" >/dev/null
@@ -38,7 +38,7 @@ case $(jq -r '.plan.diagnostic_selection // false' "${receipt}") in
     false)
         jq -e '
           (.plan | has("diagnostic_selection") | not) and
-          (.plan.test_names | length) == 150 and
+          (.plan.test_names | length) == 152 and
           .plan.allowed_skips == [
             "TestAccSettingResource_dohCustomServers",
             "TestAccSettingResource_ipsHoneypot",

@@ -125,7 +125,7 @@ func validateControllerReceipt(path string) (string, error) {
 	if receipt.FormatVersion != 1 || receipt.Gate != "catalog controller differential" {
 		return "", fmt.Errorf("identity is invalid")
 	}
-	if receipt.Result != "blocked_evidence" || receipt.Plan.EvidenceGapCount != 10 {
+	if receipt.Result != "blocked_evidence" || receipt.Plan.EvidenceGapCount != 8 {
 		return "", fmt.Errorf("catalog result is %q with %d gaps", receipt.Result, receipt.Plan.EvidenceGapCount)
 	}
 	releasedAllowedFailures := []string{"TestAccDeviceFramework_basic"}
