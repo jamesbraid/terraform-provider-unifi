@@ -3,12 +3,17 @@ package unifi
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -37,6 +42,68 @@ list "unifi_firewall_zone" "test" {
 			},
 		}},
 	})
+}
+
+func TestFirewallZoneDeleteIgnoresNotFound(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/proxy/network/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"meta":{"server_version":"10.4.57"}}`))
+			return
+		}
+		if req.Method != http.MethodDelete {
+			t.Errorf("request method = %s, want DELETE", req.Method)
+		}
+		if req.URL.Path != "/proxy/network/v2/api/site/default/firewall/zone/missing-zone" {
+			t.Errorf("request path = %s, want firewall zone delete path", req.URL.Path)
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	apiClient, err := unifi.New(
+		context.Background(),
+		&unifi.Config{BaseURL: server.URL, APIKey: "test-key"},
+	)
+	if err != nil {
+		t.Fatalf("create API client: %v", err)
+	}
+
+	r := &firewallZoneResource{client: &Client{ApiClient: apiClient, Site: "default"}}
+	schemaResp := &fwresource.SchemaResponse{}
+	r.Schema(context.Background(), fwresource.SchemaRequest{}, schemaResp)
+	state := tfsdk.State{Schema: schemaResp.Schema}
+	timeoutTypes := map[string]attr.Type{
+		"create": types.StringType,
+		"read":   types.StringType,
+		"update": types.StringType,
+		"delete": types.StringType,
+	}
+	diags := state.Set(context.Background(), &firewallZoneResourceModel{
+		ID:          types.StringValue("missing-zone"),
+		Site:        types.StringValue("default"),
+		Name:        types.StringValue("Missing Zone"),
+		NetworkIDs:  types.ListNull(types.StringType),
+		ZoneKey:     types.StringNull(),
+		DefaultZone: types.BoolNull(),
+		Timeouts:    timeouts.Value{Object: types.ObjectNull(timeoutTypes)},
+	})
+	if diags.HasError() {
+		t.Fatalf("set delete state: %v", diags)
+	}
+
+	resp := &fwresource.DeleteResponse{State: state}
+	r.Delete(
+		context.Background(),
+		fwresource.DeleteRequest{State: state},
+		resp,
+	)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Delete returned error diagnostics for an absent zone: %v", resp.Diagnostics)
+	}
 }
 
 func boolPtr(b bool) *bool { return &b }
