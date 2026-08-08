@@ -134,11 +134,13 @@ func migrateZoneBasedFirewallWithClient(
 	if csrf == "" {
 		csrf = loginResp.Header.Get("X-Csrf-Token")
 	}
+	// The body is the JSON literal null, matching go-unifi's proven migrate
+	// call (a marshalled nil), not an empty body.
 	migrateReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
 		baseURL+migratePath,
-		nil,
+		strings.NewReader("null"),
 	)
 	if err != nil {
 		return fmt.Errorf("create zone migration request: %w", err)
@@ -160,7 +162,54 @@ func migrateZoneBasedFirewallWithClient(
 	}
 	_, _ = io.Copy(io.Discard, migrateResp.Body)
 	_ = migrateResp.Body.Close()
-	return nil
+
+	// A controller can answer the migration with 204 without migrating (the
+	// no-op service documented in go-unifi's drift harness). Only the zone
+	// collection itself proves the feature is on: migration seeds six default
+	// zones synchronously, so an empty list means it did not take.
+	zonePath := strings.Replace(migratePath, "/firewall/migrate", "/firewall/zone", 1)
+	var lastZoneErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(2 * time.Second):
+			}
+		}
+		zoneReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+zonePath, nil)
+		if err != nil {
+			return fmt.Errorf("create zone list request: %w", err)
+		}
+		zoneReq.Header.Set("Accept", "application/json")
+		if csrf != "" {
+			zoneReq.Header.Set("X-Csrf-Token", csrf)
+		}
+		zoneResp, err := client.Do(zoneReq)
+		if err != nil {
+			return fmt.Errorf("list firewall zones: %w", err)
+		}
+		body, readErr := io.ReadAll(io.LimitReader(zoneResp.Body, 1<<20))
+		_ = zoneResp.Body.Close()
+		if readErr != nil {
+			return fmt.Errorf("read firewall zone list: %w", readErr)
+		}
+		if zoneResp.StatusCode != http.StatusOK {
+			lastZoneErr = fmt.Errorf("zone list at %s returned HTTP %d after migration: %s",
+				zonePath, zoneResp.StatusCode, bytes.TrimSpace(body))
+			continue
+		}
+		var zones []json.RawMessage
+		if err := json.Unmarshal(body, &zones); err != nil {
+			return fmt.Errorf("decode firewall zone list: %w (body: %s)", err, bytes.TrimSpace(body))
+		}
+		if len(zones) > 0 {
+			return nil
+		}
+		lastZoneErr = fmt.Errorf(
+			"zone collection still empty after migration answered 2xx: the controller wired a no-op migration")
+	}
+	return lastZoneErr
 }
 
 // responseSnippet reads a short prefix of a response body so a failing
