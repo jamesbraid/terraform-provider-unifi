@@ -54,7 +54,10 @@ jq '
     "TestAccDeviceFramework_basic"
   ] | map(. as $failure | select($plan.test_names | index($failure) != null))) |
   .released_allowed_missing = ([
-    "TestAccDeviceList_basic"
+    "TestAccDeviceList_basic",
+    "TestAccFirewallZoneFramework_basic",
+    "TestAccFirewallZoneList_emptyOrSeeded",
+    "TestAccPortAction_persistsPoeOverride"
   ] | map(. as $missing | select($plan.test_names | index($missing) != null)))
 ' "${plan_path}" >"${plan_path}.allowed"
 mv "${plan_path}.allowed" "${plan_path}"

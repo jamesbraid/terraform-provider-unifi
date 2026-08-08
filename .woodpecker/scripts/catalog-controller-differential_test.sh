@@ -34,7 +34,12 @@ if ! jq -e '
     "TestAccWLANList_basic"
   ] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
-  .released_allowed_missing == ["TestAccDeviceList_basic"] and
+  .released_allowed_missing == [
+    "TestAccDeviceList_basic",
+    "TestAccFirewallZoneFramework_basic",
+    "TestAccFirewallZoneList_emptyOrSeeded",
+    "TestAccPortAction_persistsPoeOverride"
+  ] and
   (.test_names | length) == 152 and
   (.shared_scenario_owners | length) == 37 and
   ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
@@ -96,7 +101,12 @@ jq -n --slurpfile plan "${work_root}/plan.json" '
       failed: ["TestAccDeviceFramework_basic"],
       accepted_failures: ["TestAccDeviceFramework_basic"],
       unexpected_failures: [],
-      missing: ["TestAccDeviceList_basic"]
+      missing: [
+        "TestAccDeviceList_basic",
+        "TestAccFirewallZoneFramework_basic",
+        "TestAccFirewallZoneList_emptyOrSeeded",
+        "TestAccPortAction_persistsPoeOverride"
+      ]
     },
     candidate: {
       result: "pass",
