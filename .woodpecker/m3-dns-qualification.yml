@@ -38,7 +38,9 @@ steps:
       - unzip -q /tmp/tofu.zip -d /usr/local/bin
       - mkdir -p /tmp/released-provider
       - unzip -q /tmp/provider.zip -d /tmp/released-provider
-      - go mod download all
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
       - bash .woodpecker/scripts/m1-evidence-lib_test.sh
       - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 M1_EVIDENCE_OUTPUT_DIRECTORY=/tmp/provider-m1-evidence M1_EVIDENCE_ARCHIVE=/tmp/provider-m1-evidence.tar.gz M1_PRINT_EVIDENCE_BUNDLE=true M3_EXECUTION=woodpecker M3_LIFECYCLE_RECEIPT=build/m3/network-dns-qualification-ci.json M3_MANAGEMENT_SIDECAR_OUTPUT=build/m5/provider-contract-ci.json M3_RECEIPT_OUTPUT=build/m3/dns-operation-ci.json TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m3-dns-operation.sh
       - jq -e '.promotion == "qualified" and .lifecycle.locked_target_result == "pass"' build/m3/dns-operation-ci.json
