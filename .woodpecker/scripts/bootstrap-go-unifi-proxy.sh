@@ -21,7 +21,6 @@ test "${proxy_root}" != /tmp
 test "${proxy_root}" != /
 
 if [[ ! -d ${source_root}/.git ]]; then
-    test "${source_root}" = /tmp/go-unifi-v1.102.0-source
     git clone --branch "${module_version}" --depth 1 "${source_url}" "${source_root}"
 fi
 

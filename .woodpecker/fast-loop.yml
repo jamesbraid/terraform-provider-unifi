@@ -17,9 +17,16 @@ steps:
   - name: fast-deterministic-loop
     image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
     timeout: 5m
+    # The skunkworks guest's Docker volume lives on its persistent cache disk.
+    # Keep Go's build/module cache and the locked go-unifi checkout between
+    # jobs; the workflow still verifies the checkout and source commit on each
+    # run. This requires the repository's trusted-volumes setting.
+    volumes:
+      - unifi-provider-fast-loop-cache:/ci-cache
     commands:
       - apt-get update
       - apt-get install --yes --no-install-recommends jq
+      - export GOCACHE=/ci-cache/go-build GOMODCACHE=/ci-cache/go-mod GO_UNIFI_SOURCE_ROOT=/ci-cache/go-unifi-v1.102.0-source
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
       - export GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org GOVCS='*:off' GOTOOLCHAIN=local
