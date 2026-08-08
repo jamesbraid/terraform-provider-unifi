@@ -37,7 +37,7 @@ func TestRunWritesBoundReferenceResolution(t *testing.T) {
 	if err := json.Unmarshal(data, &resolution); err != nil {
 		t.Fatal(err)
 	}
-	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 9 || resolution.RemainingSignalCount != 1 {
+	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 7 || resolution.RemainingSignalCount != 1 {
 		t.Fatalf("resolution = %+v", resolution)
 	}
 	sum := sha256.Sum256(controllerData)

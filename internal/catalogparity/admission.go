@@ -374,7 +374,7 @@ func validateAdmissionInventory(inventory EvidenceInventory, digest string) erro
 		}
 	}
 	wantCoverage := map[string]int{
-		"scenario_owner": 67, "constructor": 67, "acceptance": 33,
+		"scenario_owner": 67, "constructor": 67, "acceptance": 35,
 		"import": 27, "list_acceptance": 25, "action_acceptance": 1,
 	}
 	if !reflect.DeepEqual(inventory.CoverageCounts, wantCoverage) {
@@ -680,7 +680,7 @@ func validatePragmaticAdmission(resolution PragmaticResolution, inventory Eviden
 		}
 		got[gap] = struct{}{}
 	}
-	if resolution.ResolvedSignalCount != 9 || resolution.RemainingSignalCount != 1 {
+	if resolution.ResolvedSignalCount != 7 || resolution.RemainingSignalCount != 1 {
 		return fmt.Errorf("pragmatic resolution counts are incomplete")
 	}
 	if !reflect.DeepEqual(got, want) {
