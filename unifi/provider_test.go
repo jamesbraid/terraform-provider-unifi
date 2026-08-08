@@ -60,7 +60,6 @@ func runAcceptanceTests(m *testing.M) int {
 	if err != nil {
 		panic(err)
 	}
-
 	return m.Run()
 }
 

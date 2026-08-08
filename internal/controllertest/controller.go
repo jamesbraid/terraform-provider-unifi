@@ -118,6 +118,9 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 			return c, fmt.Errorf("publish %s: %w", member.Env, err)
 		}
 	}
+	if err := MigrateZoneBasedFirewall(ctx, c.Endpoint, "default", controllerUser, controllerPassword); err != nil {
+		return c, fmt.Errorf("migrate zone-based firewall: %w", err)
+	}
 	return c, nil
 }
 
