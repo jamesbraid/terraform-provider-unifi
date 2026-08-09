@@ -20,7 +20,7 @@ GIT_AUTHOR_EMAIL='fixture@example.invalid' \
 GIT_COMMITTER_NAME='module proxy fixture' \
 GIT_COMMITTER_EMAIL='fixture@example.invalid' \
     git -C "${work_root}/source" commit --quiet -m fixture
-git -C "${work_root}/source" tag v1.102.0
+git -C "${work_root}/source" tag v1.103.0
 readonly commit=$(git -C "${work_root}/source" rev-parse HEAD)
 
 GO_UNIFI_SOURCE_ROOT="${work_root}/source" \
@@ -32,6 +32,6 @@ GO_UNIFI_EXPECTED_SUM=skip \
 readonly module_json=$(cd "${work_root}" && env GOMODCACHE="${work_root}/cache" \
     GOPROXY="file://${work_root}/proxy" GOSUMDB=off 'GOVCS=*:off' \
     GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local \
-    go mod download -json github.com/ubiquiti-community/go-unifi@v1.102.0)
+    go mod download -json github.com/ubiquiti-community/go-unifi@v1.103.0)
 test "$(jq -r .Path <<<"${module_json}")" = github.com/ubiquiti-community/go-unifi
-test "$(jq -r .Version <<<"${module_json}")" = v1.102.0
+test "$(jq -r .Version <<<"${module_json}")" = v1.103.0

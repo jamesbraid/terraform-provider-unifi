@@ -2,11 +2,11 @@
 set -euo pipefail
 
 readonly module_path=github.com/ubiquiti-community/go-unifi
-readonly module_version=v1.102.0
+readonly module_version=v1.103.0
 readonly source_url=https://github.com/jamesbraid/go-unifi.git
-readonly expected_commit=${GO_UNIFI_EXPECTED_COMMIT:-e255518385e0104eb838be56c2a491de158f3194}
-readonly expected_sum=${GO_UNIFI_EXPECTED_SUM:-h1:/CSJB4rm9aqDrkDB4yw6xAgY8dYAohcv8N4TC/ugLRU=}
-readonly source_root=${GO_UNIFI_SOURCE_ROOT:-/tmp/go-unifi-v1.102.0-source}
+readonly expected_commit=${GO_UNIFI_EXPECTED_COMMIT:-a58839fe296859bbb0e91bd57efe54f9e954fe4e}
+readonly expected_sum=${GO_UNIFI_EXPECTED_SUM:-h1:12Qa0zjI2Rn8FT4lnieWrpXYdy29ALIDoy/afKXOohY=}
+readonly source_root=${GO_UNIFI_SOURCE_ROOT:-/tmp/go-unifi-v1.103.0-source}
 readonly proxy_root=${GO_UNIFI_PROXY_ROOT:-/tmp/go-unifi-proxy}
 
 case ${source_root} in
@@ -40,7 +40,7 @@ git -C "${source_root}" archive \
     "${module_version}"
 printf '%s\n' "${module_version}" >"${version_root}/list"
 printf '%s\n' \
-    "{\"Version\":\"${module_version}\",\"Time\":\"2026-08-03T04:59:13Z\",\"Origin\":{\"VCS\":\"git\",\"URL\":\"https://github.com/ubiquiti-community/go-unifi\",\"Hash\":\"${expected_commit}\",\"Ref\":\"refs/tags/${module_version}\"}}" \
+    "{\"Version\":\"${module_version}\",\"Time\":\"2026-08-09T07:07:00Z\",\"Origin\":{\"VCS\":\"git\",\"URL\":\"https://github.com/ubiquiti-community/go-unifi\",\"Hash\":\"${expected_commit}\",\"Ref\":\"refs/tags/${module_version}\"}}" \
     >"${version_root}/${module_version}.info"
 
 validation_cache=$(mktemp -d /tmp/go-unifi-proxy-validation.XXXXXX)
