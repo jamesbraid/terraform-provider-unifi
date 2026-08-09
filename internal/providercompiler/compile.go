@@ -224,7 +224,20 @@ func validateAdmission(input CompileInput, rules policy, baseline baselineManife
 		return fmt.Errorf("catalog admission ledger baseline digest mismatch")
 	}
 	key := catalogparity.SurfaceKey{Kind: rules.SurfaceKind, Name: rules.Resource}
-	if err := ledger.Require(key, catalogparity.Admitted, catalogparity.ContractParity, catalogparity.ReleaseReady); err != nil {
+	// GeneratedShadow may compile; Admitted may ship. Admission needs a
+	// campaign receipt, the campaign diffs a candidate binary, and the
+	// candidate binary is what compiling produces, so requiring admission to
+	// compile is circular and only dns_record ever escaped it. GeneratedShadow
+	// breaks the cycle because stateRequiresReceipt exempts it: a shadow
+	// candidate carries no receipt, so it does not wait on the campaign it
+	// feeds. States below it still cannot compile.
+	if err := ledger.Require(
+		key,
+		catalogparity.GeneratedShadow,
+		catalogparity.Admitted,
+		catalogparity.ContractParity,
+		catalogparity.ReleaseReady,
+	); err != nil {
 		return fmt.Errorf("catalog admission: %w", err)
 	}
 	expected := baseline.SchemaSHA256[surfaceBaselineKey(key)]

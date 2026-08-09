@@ -464,12 +464,59 @@ func testBaseline(t *testing.T) []byte {
 	})
 }
 
+// admissionGateInput pairs the synthetic baseline with the synthetic ledger.
+// pinnedDNSInput reads the committed baseline digests instead, which never
+// match testLedger's baseline, so Compile fails on the digest comparison
+// before it ever reaches the state gate.
+func admissionGateInput(t *testing.T, state catalogparity.AdmissionState) CompileInput {
+	t.Helper()
+	return CompileInput{
+		Bootstrap:       testBootstrap(t, dnsFieldNames()),
+		Policy:          testPolicy(t, dnsFieldNames(), testSpecificationDigest),
+		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, state),
+	}
+}
+
 func TestCompileRequiresAdmittedLedgerEntry(t *testing.T) {
-	input := pinnedDNSInput(t)
-	input.Ledger = testLedger(t, catalogparity.LegacyAuthoritative)
-	_, err := Compile(input)
-	if err == nil || !strings.Contains(err.Error(), "admission") {
-		t.Fatalf("Compile() error = %v, want admission failure", err)
+	_, err := Compile(admissionGateInput(t, catalogparity.LegacyAuthoritative))
+	// Assert the state gate's own wording. "admission" alone also matches the
+	// baseline digest mismatch, which would let this pass without the gate
+	// running at all.
+	if err == nil || !strings.Contains(err.Error(), "state is") {
+		t.Fatalf("Compile() error = %v, want admission state failure", err)
+	}
+}
+
+// A shadow candidate is the first thing the compiler emits for an existing
+// resource, so requiring admission to compile could never be satisfied: the
+// receipt admission wants comes from a campaign that diffs the very binary
+// compiling produces.
+func TestCompileAcceptsGeneratedShadowLedgerEntry(t *testing.T) {
+	if _, err := Compile(admissionGateInput(t, catalogparity.GeneratedShadow)); err != nil {
+		t.Fatalf("Compile() rejected a generated shadow surface: %v", err)
+	}
+}
+
+// The gate keys on the specific state, not on "anything the ledger calls a
+// shadow implementation". ShadowOnly and AdapterParity both map to
+// implementation "shadow" via implementationForState, so without this a future
+// refactor could widen the gate to every shadow state without a test noticing.
+func TestCompileRejectsStatesBelowGeneratedShadow(t *testing.T) {
+	for name, state := range map[string]catalogparity.AdmissionState{
+		"baseline":             catalogparity.BaselineState,
+		"cataloged":            catalogparity.Cataloged,
+		"policy complete":      catalogparity.PolicyComplete,
+		"legacy authoritative": catalogparity.LegacyAuthoritative,
+		"shadow only":          catalogparity.ShadowOnly,
+		"adapter parity":       catalogparity.AdapterParity,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(admissionGateInput(t, state))
+			if err == nil || !strings.Contains(err.Error(), "state is") {
+				t.Fatalf("Compile() error = %v, want admission state failure for %q", err, state)
+			}
+		})
 	}
 }
 
