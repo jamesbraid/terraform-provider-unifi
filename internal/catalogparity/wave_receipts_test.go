@@ -131,7 +131,7 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 9 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 9}) {
 		t.Fatalf("Wave 3 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"policy_complete": 8, "shadow_only": 1}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 1, "policy_complete": 7, "shadow_only": 1}) {
 		t.Fatalf("Wave 3 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -154,11 +154,17 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 		}
 		seen++
 		want := PolicyComplete
-		if contract.Name == "unifi_port_forward" {
+		switch contract.Name {
+		case "unifi_port_forward":
 			want = ShadowOnly
 			if contract.BaselineSchemaSHA256 != "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6" {
 				t.Fatalf("port-forward schema digest = %q", contract.BaselineSchemaSHA256)
 			}
+		// The first surface compiled from a catalog and a policy. It rests at
+		// generated_shadow until a campaign run can compare the generated
+		// resource against the hand-written one it replaces.
+		case "unifi_firewall_policy":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -235,7 +241,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      63,
+		PolicyComplete:      62,
+		GeneratedShadow:     1,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
