@@ -1269,6 +1269,7 @@ func surfaceKindInput(t *testing.T, kind catalogparity.SurfaceKind) CompileInput
 		}
 		entry.State = catalogparity.GeneratedShadow
 		entry.ReceiptSHA256 = ""
+		entry.Migration = testMigrationReason
 		entry.Implementation = "shadow"
 		entry.BaselineSchemaSHA256 = dnsDataSourceBaselineDigest
 	}
@@ -1531,6 +1532,11 @@ func pinnedDNSInput(t *testing.T) CompileInput {
 	}
 }
 
+// testMigrationReason stands in for the declaration a real in-flight surface
+// carries. Its content does not matter to the compiler, only that the ledger
+// is valid without it having been made valid by loosening the rule.
+const testMigrationReason = "fixture surface held at a migration waypoint"
+
 func testLedger(t *testing.T, state catalogparity.AdmissionState) []byte {
 	t.Helper()
 	data, err := os.ReadFile("../../provider-codegen/generated/catalog-parity-ledger.json")
@@ -1548,6 +1554,7 @@ func testLedger(t *testing.T, state catalogparity.AdmissionState) []byte {
 			continue
 		}
 		entry.State = state
+		entry.Migration = ""
 		switch state {
 		case catalogparity.Admitted, catalogparity.ContractParity, catalogparity.ReleaseReady:
 			entry.ReceiptSHA256 = strings.Repeat("a", 64)
@@ -1558,6 +1565,13 @@ func testLedger(t *testing.T, state catalogparity.AdmissionState) []byte {
 		default:
 			entry.ReceiptSHA256 = ""
 			entry.Implementation = "legacy"
+		}
+		// An in-flight state is only valid when it says why, so a fixture that
+		// wants to reach the compiler's own gate has to declare too. Without
+		// this the ledger is rejected first and the admission tests below pass
+		// on the wrong error.
+		if state == catalogparity.GeneratedShadow || state == catalogparity.AdapterParity {
+			entry.Migration = testMigrationReason
 		}
 	}
 	return mustJSON(t, ledger)

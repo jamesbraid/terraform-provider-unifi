@@ -208,16 +208,29 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 	}
 }
 
+// The checkpoint asserts that no Wave 1-4 surface sits in limbo: each is either
+// settled or declared to be in flight. Migration requires the in-flight states,
+// so treating them as limbo would contradict the design; accepting them
+// silently would give up the property the checkpoint exists for. Declaring them
+// keeps both.
 func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 	ledger := parseTestLedger(t)
 	counts := make(map[AdmissionState]int)
 	for _, entry := range ledger.Entries {
 		counts[entry.State]++
-		if expectedWave(entry.SurfaceKey) <= 4 {
-			switch entry.State {
-			case PolicyComplete, ShadowOnly, Admitted:
-			default:
-				t.Fatalf("Wave 1-4 surface %s/%s remains %q", entry.Kind, entry.Name, entry.State)
+		if expectedWave(entry.SurfaceKey) > 4 {
+			continue
+		}
+		switch entry.State {
+		case PolicyComplete, ShadowOnly, Admitted:
+		default:
+			if !stateIsInFlight(entry.State) {
+				t.Fatalf("Wave 1-4 surface %s/%s remains %q, which is neither settled nor a migration waypoint",
+					entry.Kind, entry.Name, entry.State)
+			}
+			if entry.Migration == "" {
+				t.Fatalf("Wave 1-4 surface %s/%s is %q with no declaration of why it rests there",
+					entry.Kind, entry.Name, entry.State)
 			}
 		}
 	}
