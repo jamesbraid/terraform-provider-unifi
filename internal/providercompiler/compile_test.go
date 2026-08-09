@@ -1027,6 +1027,204 @@ func TestMappingRecordsAnInventedMemberAsInvented(t *testing.T) {
 	t.Fatal("mapping report does not mention the invented member")
 }
 
+// flatteningInput models power_supervisor's real shape: an observed nested
+// struct whose members the schema presents as top-level attributes.
+func flatteningInput(t *testing.T, mutate func(rules map[string]any)) CompileInput {
+	t.Helper()
+	names := append(dnsFieldNames(), "settings")
+	rules := testPolicyObject(names, testSpecificationDigest)
+
+	kept := []any{}
+	for _, raw := range rules["fields"].([]any) {
+		field := raw.(map[string]any)
+		if field["structural_name"] == "settings" {
+			continue
+		}
+		kept = append(kept, field)
+	}
+	rules["fields"] = kept
+	rules["flattenings"] = []any{
+		map[string]any{
+			"structural_name": "settings",
+			"members": []any{
+				map[string]any{
+					"structural_name": "heartbeat_interval", "terraform_name": "heartbeat_interval",
+					"disposition": "managed",
+					"attribute":   map[string]any{"computed_optional_required": "computed_optional"},
+				},
+				map[string]any{
+					"structural_name": "silence_threshold", "terraform_name": "silence_threshold",
+					"disposition": "managed",
+					"attribute":   map[string]any{"computed_optional_required": "computed_optional"},
+				},
+			},
+		},
+	}
+
+	var source map[string]any
+	if err := json.Unmarshal(testBootstrap(t, names), &source); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range source["resource"].(map[string]any)["fields"].([]any) {
+		field := raw.(map[string]any)
+		if field["name"] != "settings" {
+			continue
+		}
+		field["type"] = "object"
+		field["fields"] = []any{
+			map[string]any{"name": "heartbeat_interval", "type": "int64"},
+			map[string]any{"name": "silence_threshold", "type": "int64"},
+		}
+	}
+	if mutate != nil {
+		mutate(rules)
+	}
+	return CompileInput{
+		Bootstrap:       mustJSON(t, source),
+		Policy:          mustJSON(t, rules),
+		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, catalogparity.Admitted),
+	}
+}
+
+func firstFlattening(rules map[string]any) map[string]any {
+	return rules["flattenings"].([]any)[0].(map[string]any)
+}
+
+func flattenedMembers(rules map[string]any) []any {
+	return firstFlattening(rules)["members"].([]any)
+}
+
+// A flattened member becomes a top-level attribute, taking its type from the
+// catalog member it promotes, and the struct itself is not emitted.
+func TestCompileFlattensAnObservedStructOutward(t *testing.T) {
+	result, err := Compile(flatteningInput(t, nil))
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	for _, name := range []string{"heartbeat_interval", "silence_threshold"} {
+		attribute := collectionAttribute(t, result.ProviderCodeSpec, name)
+		if _, ok := attribute["int64"]; !ok {
+			t.Fatalf("%s is %v, want int64 taken from the promoted member", name, attributeMembers(attribute))
+		}
+	}
+	var document struct {
+		Resources []struct {
+			Schema struct {
+				Attributes []map[string]json.RawMessage `json:"attributes"`
+			} `json:"schema"`
+		} `json:"resources"`
+	}
+	if err := json.Unmarshal(result.ProviderCodeSpec, &document); err != nil {
+		t.Fatal(err)
+	}
+	for _, attribute := range document.Resources[0].Schema.Attributes {
+		var name string
+		if err := json.Unmarshal(attribute["name"], &name); err != nil {
+			t.Fatal(err)
+		}
+		if name == "settings" {
+			t.Fatal("the spread struct is still emitted as an attribute of its own")
+		}
+	}
+}
+
+// The accounting, in the other direction. A member may not be promoted twice,
+// dropped without a decision, or promoted alongside the struct itself.
+func TestCompileRejectsFlatteningsThatLoseTrackOfMembers(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(rules map[string]any)
+		want   string
+	}{
+		"member the object does not carry": {
+			mutate: func(rules map[string]any) {
+				flattenedMembers(rules)[0].(map[string]any)["structural_name"] = "nonexistent"
+			},
+			want: `promotes "nonexistent", which that object does not carry`,
+		},
+		"member left undecided": {
+			mutate: func(rules map[string]any) {
+				firstFlattening(rules)["members"] = []any{flattenedMembers(rules)[0]}
+			},
+			want: `leaves member "silence_threshold" undecided: promote it or omit it`,
+		},
+		"member promoted twice": {
+			mutate: func(rules map[string]any) {
+				members := flattenedMembers(rules)
+				duplicate := map[string]any{
+					"structural_name": "heartbeat_interval", "terraform_name": "again",
+					"disposition": "managed",
+					"attribute":   map[string]any{"computed_optional_required": "optional"},
+				}
+				firstFlattening(rules)["members"] = append(members, duplicate)
+			},
+			want: `promotes "heartbeat_interval" twice`,
+		},
+		"struct also classified at the top level": {
+			mutate: func(rules map[string]any) {
+				rules["fields"] = append(rules["fields"].([]any), map[string]any{
+					"structural_name": "settings", "terraform_name": "settings_too",
+					"disposition": "managed",
+					"attribute":   map[string]any{"computed_optional_required": "optional"},
+				})
+			},
+			want: "spread by a flattening and also classified at the top level",
+		},
+		"spreads something that is not an object": {
+			mutate: func(rules map[string]any) {
+				firstFlattening(rules)["structural_name"] = "enabled"
+				firstFlattening(rules)["members"] = []any{map[string]any{
+					"structural_name": "x", "terraform_name": "x", "disposition": "managed",
+				}}
+			},
+			want: `which is type "bool" rather than an object`,
+		},
+		"spreads something unobserved": {
+			mutate: func(rules map[string]any) {
+				firstFlattening(rules)["structural_name"] = "nonexistent"
+			},
+			want: `spreads "nonexistent", which the catalog does not observe`,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(flatteningInput(t, test.mutate))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+// Omitting a member is a decision and must be allowed, so long as it is stated.
+func TestCompileAcceptsAnOmittedFlattenedMember(t *testing.T) {
+	result, err := Compile(flatteningInput(t, func(rules map[string]any) {
+		flattenedMembers(rules)[1].(map[string]any)["disposition"] = "omitted"
+	}))
+	if err != nil {
+		t.Fatalf("Compile() rejected an omitted member: %v", err)
+	}
+	var document struct {
+		Resources []struct {
+			Schema struct {
+				Attributes []map[string]json.RawMessage `json:"attributes"`
+			} `json:"schema"`
+		} `json:"resources"`
+	}
+	if err := json.Unmarshal(result.ProviderCodeSpec, &document); err != nil {
+		t.Fatal(err)
+	}
+	for _, attribute := range document.Resources[0].Schema.Attributes {
+		var name string
+		if err := json.Unmarshal(attribute["name"], &name); err != nil {
+			t.Fatal(err)
+		}
+		if name == "silence_threshold" {
+			t.Fatal("an omitted member was still emitted")
+		}
+	}
+}
+
 const dnsDataSourceBaselineDigest = "e9217234de7678441bcdd4db0fd285d32d6856ddaf9748cc2b69cb7b82f44646"
 
 // dataSourceBaseline mirrors the committed ledger's data_source digest for

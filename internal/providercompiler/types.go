@@ -133,6 +133,7 @@ type policy struct {
 	CatalogSource             catalogPolicySource       `json:"catalog_source,omitempty"`
 	CatalogTarget             catalogTarget             `json:"catalog_target,omitempty"`
 	Groupings                 []groupingPolicy          `json:"groupings,omitempty"`
+	Flattenings               []flatteningPolicy        `json:"flattenings,omitempty"`
 	CatalogSources            catalogSources            `json:"catalog_sources,omitempty"`
 	OperationDigest           string                    `json:"operation_digest,omitempty"`
 	Description               string                    `json:"description"`
@@ -193,6 +194,35 @@ type groupedMember struct {
 	// so the ledger cannot report them as derived, and the reason is required
 	// so the claim is legible rather than a flag someone sets to pass a gate.
 	Invented string `json:"invented,omitempty"`
+}
+
+// flatteningPolicy declares an observed nested struct whose members the
+// provider presents as top-level Terraform attributes.
+//
+// This is grouping inverted. A grouping invents a nested shape over flat
+// observed fields; a flattening spreads an observed nested shape outward.
+// power_supervisor does the second: the SDK carries a Settings struct and the
+// schema presents its three members as heartbeat_interval, silence_threshold
+// and power_off_duration at the top level.
+//
+// The accounting is the same in both directions — every member of the struct is
+// either flattened or omitted, and each is consumed exactly once — because the
+// risk is the same: a member silently presented twice, or dropped without
+// anyone deciding to drop it.
+type flatteningPolicy struct {
+	// StructuralName is the observed object field being spread.
+	StructuralName string            `json:"structural_name"`
+	Members        []flattenedMember `json:"members"`
+}
+
+// flattenedMember promotes one member of a nested struct to a top-level
+// attribute. It carries the same decisions a top-level field policy does.
+type flattenedMember struct {
+	StructuralName string          `json:"structural_name"`
+	TerraformName  string          `json:"terraform_name"`
+	TerraformType  string          `json:"terraform_type,omitempty"`
+	Disposition    string          `json:"disposition"`
+	Attribute      json.RawMessage `json:"attribute,omitempty"`
 }
 
 type providerOwnedPolicy struct {

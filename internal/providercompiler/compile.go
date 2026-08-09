@@ -110,10 +110,16 @@ func Compile(input CompileInput) (Result, error) {
 			)
 		}
 	}
+	flattened, err := flattenedStructuralFields(rules.Flattenings, sourceFields, policyFields, grouped, terraformNames)
+	if err != nil {
+		return Result{}, err
+	}
+
 	for name := range sourceFields {
 		_, classified := policyFields[name]
 		_, consumed := grouped[name]
-		if !classified && !consumed {
+		_, spread := flattened[name]
+		if !classified && !consumed && !spread {
 			return Result{}, fmt.Errorf("unclassified structural field %q", name)
 		}
 	}
@@ -190,6 +196,44 @@ func Compile(input CompileInput) (Result, error) {
 			attributes = append(attributes, attribute)
 		}
 	}
+	flattenings := append([]flatteningPolicy(nil), rules.Flattenings...)
+	sort.Slice(flattenings, func(i, j int) bool { return flattenings[i].StructuralName < flattenings[j].StructuralName })
+	for _, flattening := range flattenings {
+		structural := sourceFields[flattening.StructuralName]
+		members := append([]flattenedMember(nil), flattening.Members...)
+		sort.Slice(members, func(i, j int) bool { return members[i].TerraformName < members[j].TerraformName })
+		for _, member := range members {
+			inner := bootstrapField{}
+			for _, candidate := range structural.Fields {
+				if candidate.Name == member.StructuralName {
+					inner = candidate
+					break
+				}
+			}
+			mapping.Fields = append(mapping.Fields, mappingField{
+				StructuralName: flattening.StructuralName + "." + member.StructuralName,
+				TerraformName:  member.TerraformName,
+				StructuralType: inner.Type,
+				TerraformType:  member.TerraformType,
+				Disposition:    member.Disposition,
+			})
+			if member.Disposition != "managed" && member.Disposition != "computed" {
+				continue
+			}
+			attribute, err := buildCodeAttribute(fieldPolicy{
+				StructuralName: member.StructuralName,
+				TerraformName:  member.TerraformName,
+				TerraformType:  member.TerraformType,
+				Disposition:    member.Disposition,
+				Attribute:      member.Attribute,
+			}, inner, terraformNames)
+			if err != nil {
+				return Result{}, fmt.Errorf("flattening of %q: %w", flattening.StructuralName, err)
+			}
+			attributes = append(attributes, attribute)
+		}
+	}
+
 	groupings := append([]groupingPolicy(nil), rules.Groupings...)
 	sort.Slice(groupings, func(i, j int) bool { return groupings[i].TerraformName < groupings[j].TerraformName })
 	for _, grouping := range groupings {
@@ -423,6 +467,102 @@ func groupedStructuralFields(
 				)
 			}
 			consumed[member.StructuralName] = grouping.TerraformName
+		}
+	}
+	return consumed, nil
+}
+
+// flattenedStructuralFields validates every declared flattening and returns
+// which observed object field each one spreads.
+//
+// The mirror of groupedStructuralFields. A flattening consumes an observed
+// object, and every member of that object must be accounted for — promoted to
+// a top-level attribute or explicitly omitted — so a member cannot be dropped
+// without someone deciding to drop it, and cannot be promoted twice.
+func flattenedStructuralFields(
+	flattenings []flatteningPolicy,
+	sourceFields map[string]bootstrapField,
+	policyFields map[string]fieldPolicy,
+	grouped map[string]string,
+	terraformNames map[string]string,
+) (map[string]string, error) {
+	consumed := map[string]string{}
+	for _, flattening := range flattenings {
+		if flattening.StructuralName == "" {
+			return nil, fmt.Errorf("flattening has no structural_name")
+		}
+		structural, observed := sourceFields[flattening.StructuralName]
+		if !observed {
+			return nil, fmt.Errorf(
+				"flattening spreads %q, which the catalog does not observe",
+				flattening.StructuralName,
+			)
+		}
+		if !structuralIsObject(structural.Type) {
+			return nil, fmt.Errorf(
+				"flattening spreads %q, which is type %q rather than an object",
+				flattening.StructuralName, structural.Type,
+			)
+		}
+		if _, top := policyFields[flattening.StructuralName]; top {
+			return nil, fmt.Errorf(
+				"structural field %q is spread by a flattening and also classified at the top level",
+				flattening.StructuralName,
+			)
+		}
+		if owner, taken := grouped[flattening.StructuralName]; taken {
+			return nil, fmt.Errorf(
+				"structural field %q is spread by a flattening and also consumed by grouping %q",
+				flattening.StructuralName, owner,
+			)
+		}
+		if owner, taken := consumed[flattening.StructuralName]; taken {
+			return nil, fmt.Errorf(
+				"structural field %q is spread by two flattenings, %q and %q",
+				flattening.StructuralName, owner, flattening.StructuralName,
+			)
+		}
+		consumed[flattening.StructuralName] = flattening.StructuralName
+
+		decided := map[string]struct{}{}
+		for _, member := range flattening.Members {
+			if member.StructuralName == "" {
+				return nil, fmt.Errorf(
+					"flattening of %q has a member with no structural_name",
+					flattening.StructuralName,
+				)
+			}
+			if !structuralHasMember(structural, member.StructuralName) {
+				return nil, fmt.Errorf(
+					"flattening of %q promotes %q, which that object does not carry",
+					flattening.StructuralName, member.StructuralName,
+				)
+			}
+			if _, twice := decided[member.StructuralName]; twice {
+				return nil, fmt.Errorf(
+					"flattening of %q promotes %q twice",
+					flattening.StructuralName, member.StructuralName,
+				)
+			}
+			decided[member.StructuralName] = struct{}{}
+			if err := validateDisposition(member.Disposition, member.TerraformName); err != nil {
+				return nil, err
+			}
+			if member.Disposition == "omitted" {
+				continue
+			}
+			if err := claimTerraformName(terraformNames, member.TerraformName,
+				flattening.StructuralName+"."+member.StructuralName); err != nil {
+				return nil, err
+			}
+		}
+		for _, member := range structural.Fields {
+			if _, ok := decided[member.Name]; !ok {
+				return nil, fmt.Errorf(
+					"flattening of %q leaves member %q undecided: promote it or omit it",
+					flattening.StructuralName, member.Name,
+				)
+			}
 		}
 	}
 	return consumed, nil
