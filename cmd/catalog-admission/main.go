@@ -21,6 +21,7 @@ func main() {
 func run(args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("catalog-admission", flag.ContinueOnError)
 	flags.SetOutput(stderr)
+	policyPath := flags.String("policy", "", "campaign policy")
 	inventoryPath := flags.String("inventory", "", "catalog evidence inventory")
 	buildSchemaPath := flags.String("build-schema", "", "exact build and schema receipt")
 	unitPath := flags.String("unit", "", "unit and HTTP-boundary differential receipt")
@@ -30,9 +31,9 @@ func run(args []string, stderr io.Writer) int {
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if *inventoryPath == "" || *buildSchemaPath == "" || *unitPath == "" ||
+	if *policyPath == "" || *inventoryPath == "" || *buildSchemaPath == "" || *unitPath == "" ||
 		*controllerPath == "" || *pragmaticPath == "" || *outputPath == "" {
-		fmt.Fprintln(stderr, "inventory, build-schema, unit, controller, pragmatic, and output are required")
+		fmt.Fprintln(stderr, "policy, inventory, build-schema, unit, controller, pragmatic, and output are required")
 		return 2
 	}
 	if flags.NArg() != 0 {
@@ -42,6 +43,10 @@ func run(args []string, stderr io.Writer) int {
 
 	var input catalogparity.AdmissionInput
 	var err error
+	if _, err := decodeStrictFile(*policyPath, &input.Policy); err != nil {
+		fmt.Fprintf(stderr, "campaign policy: %v\n", err)
+		return 1
+	}
 	input.InventorySHA256, err = decodeStrictFile(*inventoryPath, &input.Inventory)
 	if err != nil {
 		fmt.Fprintf(stderr, "inventory: %v\n", err)

@@ -22,6 +22,7 @@ func main() {
 func run(args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("catalog-pragmatic-evidence", flag.ContinueOnError)
 	flags.SetOutput(stderr)
+	policyPath := flags.String("policy", "", "campaign policy")
 	inventoryPath := flags.String("inventory", "", "catalog evidence inventory")
 	fleetSummaryPath := flags.String("fleet-summary", "", "restricted value-free fleet summary")
 	referencesPath := flags.String("references", "", "pragmatic reference policy")
@@ -30,8 +31,9 @@ func run(args []string, stderr io.Writer) int {
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if *inventoryPath == "" || *fleetSummaryPath == "" || *referencesPath == "" || *outputPath == "" {
-		fmt.Fprintln(stderr, "inventory, fleet-summary, references, and output are required")
+	if *policyPath == "" || *inventoryPath == "" || *fleetSummaryPath == "" ||
+		*referencesPath == "" || *outputPath == "" {
+		fmt.Fprintln(stderr, "policy, inventory, fleet-summary, references, and output are required")
 		return 2
 	}
 	if flags.NArg() != 0 {
@@ -39,6 +41,15 @@ func run(args []string, stderr io.Writer) int {
 		return 2
 	}
 
+	var policy catalogparity.CampaignPolicy
+	if _, err := decodeStrictFile(*policyPath, &policy); err != nil {
+		fmt.Fprintf(stderr, "campaign policy: %v\n", err)
+		return 1
+	}
+	if err := policy.Validate(); err != nil {
+		fmt.Fprintf(stderr, "campaign policy: %v\n", err)
+		return 1
+	}
 	var inventory catalogparity.EvidenceInventory
 	inventoryDigest, err := decodeStrictFile(*inventoryPath, &inventory)
 	if err != nil {
@@ -69,7 +80,7 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	if *controllerReceiptPath != "" {
-		controllerReceiptSHA256, err := validateControllerReceipt(*controllerReceiptPath)
+		controllerReceiptSHA256, err := validateControllerReceipt(*controllerReceiptPath, policy)
 		if err != nil {
 			fmt.Fprintf(stderr, "controller receipt: %v\n", err)
 			return 1
@@ -113,7 +124,7 @@ type controllerReceipt struct {
 	} `json:"candidate"`
 }
 
-func validateControllerReceipt(path string) (string, error) {
+func validateControllerReceipt(path string, policy catalogparity.CampaignPolicy) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -125,19 +136,11 @@ func validateControllerReceipt(path string) (string, error) {
 	if receipt.FormatVersion != 1 || receipt.Gate != "catalog controller differential" {
 		return "", fmt.Errorf("identity is invalid")
 	}
-	if receipt.Result != "blocked_evidence" || receipt.Plan.EvidenceGapCount != 8 {
+	if receipt.Result != "blocked_evidence" || receipt.Plan.EvidenceGapCount != policy.EvidenceGapCount {
 		return "", fmt.Errorf("catalog result is %q with %d gaps", receipt.Result, receipt.Plan.EvidenceGapCount)
 	}
-	releasedAllowedFailures := []string{"TestAccDeviceFramework_basic"}
-	// Kept in step with the plan builder and the followup gate. The port
-	// action scenario is absent from this list because the campaign now
-	// shares it with the released suite, which the hardware disposition
-	// requires.
-	releasedAllowedMissing := []string{
-		"TestAccDeviceList_basic",
-		"TestAccFirewallZoneFramework_basic",
-		"TestAccFirewallZoneList_emptyOrSeeded",
-	}
+	releasedAllowedFailures := policy.ReleasedAllowedFailures
+	releasedAllowedMissing := policy.ReleasedAllowedMissing
 	if !slices.Equal(receipt.Plan.ReleasedAllowedFailures, releasedAllowedFailures) {
 		return "", fmt.Errorf("released allowed failures are invalid")
 	}

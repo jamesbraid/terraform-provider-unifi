@@ -164,16 +164,16 @@ func TestBuildAdmissionRejectsUnboundOrIncompleteEvidence(t *testing.T) {
 
 func TestBuildAdmissionAcceptsExactReleasedLimitation(t *testing.T) {
 	input := validAdmissionInput(t)
-	failure := "TestAccDeviceFramework_basic"
+	failures := input.Policy.ReleasedAllowedFailures
+	missing := input.Policy.ReleasedAllowedMissing
 	input.Controller.Released.ExitCode = 1
 	input.Controller.Released.Result = "accepted_limitation"
-	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, failure)
-	input.Controller.Released.Failed = []string{failure}
-	input.Controller.Released.AcceptedFailures = []string{failure}
-	missing := "TestAccDeviceList_basic"
-	input.Controller.Plan.ReleasedAllowedMissing = []string{missing}
-	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, missing)
-	input.Controller.Released.Missing = []string{missing}
+	for _, name := range append(append([]string(nil), failures...), missing...) {
+		input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, name)
+	}
+	input.Controller.Released.Failed = failures
+	input.Controller.Released.AcceptedFailures = failures
+	input.Controller.Released.Missing = missing
 	if _, err := BuildAdmission(input); err != nil {
 		t.Fatalf("BuildAdmission() error = %v", err)
 	}
@@ -181,10 +181,12 @@ func TestBuildAdmissionAcceptsExactReleasedLimitation(t *testing.T) {
 
 func TestBuildAdmissionAcceptsAllowedReleasedFailureThatPasses(t *testing.T) {
 	input := validAdmissionInput(t)
-	missing := "TestAccDeviceList_basic"
+	missing := input.Policy.ReleasedAllowedMissing
 	input.Controller.Released.Result = "accepted_limitation"
-	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, missing)
-	input.Controller.Released.Missing = []string{missing}
+	for _, name := range missing {
+		input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, name)
+	}
+	input.Controller.Released.Missing = missing
 	if _, err := BuildAdmission(input); err != nil {
 		t.Fatalf("BuildAdmission() error = %v", err)
 	}
@@ -192,11 +194,12 @@ func TestBuildAdmissionAcceptsAllowedReleasedFailureThatPasses(t *testing.T) {
 
 func TestBuildAdmissionRejectsBroaderReleasedMissing(t *testing.T) {
 	input := validAdmissionInput(t)
-	missing := "TestAccDeviceList_basic"
-	input.Controller.Plan.ReleasedAllowedMissing = []string{missing}
+	missing := input.Policy.ReleasedAllowedMissing
 	input.Controller.Released.Result = "accepted_limitation"
-	input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, missing)
-	input.Controller.Released.Missing = []string{missing, "TestAccUnexpected"}
+	for _, name := range missing {
+		input.Controller.Released.Passed = removeString(input.Controller.Released.Passed, name)
+	}
+	input.Controller.Released.Missing = append(append([]string(nil), missing...), "TestAccUnexpected")
 	if _, err := BuildAdmission(input); err == nil {
 		t.Fatal("BuildAdmission() accepted a broader released missing set")
 	}
@@ -251,8 +254,25 @@ func removeString(values []string, remove string) []string {
 	return result
 }
 
+func testCampaignPolicy(t *testing.T) CampaignPolicy {
+	t.Helper()
+	data, err := os.ReadFile("../../provider-codegen/policy/catalog-campaign.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var policy CampaignPolicy
+	if err := json.Unmarshal(data, &policy); err != nil {
+		t.Fatal(err)
+	}
+	if err := policy.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	return policy
+}
+
 func validAdmissionInput(t *testing.T) AdmissionInput {
 	t.Helper()
+	policy := testCampaignPolicy(t)
 	data, err := os.ReadFile("../../build/release-ready/catalog-evidence-inventory.json")
 	if err != nil {
 		t.Fatal(err)
@@ -317,11 +337,19 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 	planSurfaces := make([]ControllerPlanSurface, 0, len(inventory.Surfaces))
 	allTests := make([]string, 0)
 	for _, surface := range inventory.Surfaces {
+		// The surfaces named by the campaign policy carry their real test
+		// names so the policy's allowed failures and allowed missing tests
+		// resolve against this plan the way they do against a real one.
 		tests := []string{"TestAcc" + strings.TrimPrefix(surface.Name, "unifi_")}
-		if surface.Kind == ManagedResource && surface.Name == "unifi_device" {
+		switch {
+		case surface.Kind == ManagedResource && surface.Name == "unifi_device":
 			tests = []string{"TestAccDeviceFramework_basic"}
-		} else if surface.Kind == ListResource && surface.Name == "unifi_device" {
+		case surface.Kind == ListResource && surface.Name == "unifi_device":
 			tests = []string{"TestAccDeviceList_basic"}
+		case surface.Kind == ManagedResource && surface.Name == "unifi_firewall_zone":
+			tests = []string{"TestAccFirewallZoneFramework_basic"}
+		case surface.Kind == ListResource && surface.Name == "unifi_firewall_zone":
+			tests = []string{"TestAccFirewallZoneList_emptyOrSeeded"}
 		}
 		planSurfaces = append(planSurfaces, ControllerPlanSurface{
 			SurfaceKey:     surface.SurfaceKey,
@@ -331,12 +359,12 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		})
 		allTests = append(allTests, tests...)
 	}
-	for len(allTests) < 152 {
+	for len(allTests) < policy.TestNameCount {
 		name := fmt.Sprintf("TestAccSynthetic%03d", len(allTests))
 		planSurfaces[0].TestNames = append(planSurfaces[0].TestNames, name)
 		allTests = append(allTests, name)
 	}
-	sharedScenarioOwners := make([]string, 37)
+	sharedScenarioOwners := make([]string, policy.SharedScenarioOwnerCount)
 	for index := range sharedScenarioOwners {
 		sharedScenarioOwners[index] = fmt.Sprintf("unifi/scenario_%02d_test.go", index)
 	}
@@ -357,12 +385,12 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 			Gate:                    "catalog controller differential",
 			Waves:                   []int{1, 2, 3, 4, 5},
 			Surfaces:                planSurfaces,
-			SurfaceCount:            67,
-			EvidenceGapCount:        8,
+			SurfaceCount:            policy.SurfaceCount,
+			EvidenceGapCount:        policy.EvidenceGapCount,
 			SharedScenarioOwners:    sharedScenarioOwners,
 			TestNames:               allTests,
-			ReleasedAllowedFailures: []string{"TestAccDeviceFramework_basic"},
-			ReleasedAllowedMissing:  []string{"TestAccDeviceList_basic"},
+			ReleasedAllowedFailures: policy.ReleasedAllowedFailures,
+			ReleasedAllowedMissing:  policy.ReleasedAllowedMissing,
 		},
 		Released:  controllerSuite,
 		Candidate: controllerSuite,
@@ -379,6 +407,7 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 	pragmatic.ControllerReceiptSHA256 = controllerSHA256
 
 	return AdmissionInput{
+		Policy:            policy,
 		Inventory:         inventory,
 		InventorySHA256:   inventorySHA256,
 		BuildSchema:       build,

@@ -11,6 +11,22 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
 
+func testCampaignPolicy(t *testing.T) catalogparity.CampaignPolicy {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "..", "provider-codegen", "policy", "catalog-campaign.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var policy catalogparity.CampaignPolicy
+	if err := json.Unmarshal(data, &policy); err != nil {
+		t.Fatal(err)
+	}
+	if err := policy.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	return policy
+}
+
 func TestRunWritesBoundReferenceResolution(t *testing.T) {
 	root := filepath.Join("..", "..")
 	output := filepath.Join(t.TempDir(), "resolution.json")
@@ -20,6 +36,7 @@ func TestRunWritesBoundReferenceResolution(t *testing.T) {
 		t.Fatal(err)
 	}
 	args := []string{
+		"-policy", filepath.Join(root, "provider-codegen", "policy", "catalog-campaign.json"),
 		"-inventory", filepath.Join(root, "build", "release-ready", "catalog-evidence-inventory.json"),
 		"-fleet-summary", filepath.Join(root, "build", "restricted", "catalog-fleet-gap-summary.json"),
 		"-references", filepath.Join(root, "provider-codegen", "policy", "catalog-pragmatic-references.json"),
@@ -52,7 +69,7 @@ func TestValidateControllerReceiptAcceptsExactReleasedLimitation(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := validateControllerReceipt(path); err != nil {
+	if _, err := validateControllerReceipt(path, testCampaignPolicy(t)); err != nil {
 		t.Fatalf("validateControllerReceipt() error = %v", err)
 	}
 }
@@ -63,7 +80,7 @@ func TestValidateControllerReceiptAcceptsAllowedReleasedFailureThatPasses(t *tes
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := validateControllerReceipt(path); err != nil {
+	if _, err := validateControllerReceipt(path, testCampaignPolicy(t)); err != nil {
 		t.Fatalf("validateControllerReceipt() error = %v", err)
 	}
 }
@@ -74,7 +91,7 @@ func TestValidateControllerReceiptRejectsBroaderReleasedLimitation(t *testing.T)
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := validateControllerReceipt(path); err == nil {
+	if _, err := validateControllerReceipt(path, testCampaignPolicy(t)); err == nil {
 		t.Fatal("validateControllerReceipt() accepted a broader released limitation")
 	}
 }
@@ -85,7 +102,7 @@ func TestValidateControllerReceiptRejectsBroaderReleasedMissing(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := validateControllerReceipt(path); err == nil {
+	if _, err := validateControllerReceipt(path, testCampaignPolicy(t)); err == nil {
 		t.Fatal("validateControllerReceipt() accepted a broader released missing set")
 	}
 }
