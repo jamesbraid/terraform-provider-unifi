@@ -4,7 +4,7 @@
   "resource": "unifi_firewall_policy",
   "generator_name": "firewall_policy",
   "source_specification_sha256": "1cb710f191516240f339f94e66e5b250ee80585bbe795c982cdedcc52d7ed722",
-  "description": "Manages a firewall policy.",
+  "description": "Manages a UniFi zone-based firewall policy (UniFi Network 8.x+). Zone-based firewall policies replace the legacy firewall rules and are displayed under Settings → Security → Firewall Policies in the UniFi UI.",
   "fields": [
     {
       "structural_name": "action",
@@ -12,7 +12,19 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The action to take when the policy matches: `ALLOW`, `BLOCK`, or `REJECT`."
+        "description": "The action to take when the policy matches: `ALLOW`, `BLOCK`, or `REJECT`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"ALLOW\", \"BLOCK\", \"REJECT\")"
+            }
+          }
+        ]
       }
     },
     {
@@ -21,7 +33,31 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Connection-state matching mode: `ALL` (any state), `RESPOND_ONLY` (established/related returns), or `CUSTOM` (match the states listed in `connection_states`). Optional: if omitted the controller assigns it (defaults to `ALL`) and the provider round-trips the value so updates are accepted."
+        "description": "Connection-state matching mode: `ALL` (any state), `RESPOND_ONLY` (established/related returns), or `CUSTOM` (match the states listed in `connection_states`). Optional: if omitted the controller assigns it (defaults to `ALL`) and the provider round-trips the value so updates are accepted.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"ALL\", \"RESPOND_ONLY\", \"CUSTOM\")"
+            }
+          }
+        ],
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       }
     },
     {
@@ -34,7 +70,34 @@
         "description": "Connection states matched when `connection_state_type` is `CUSTOM` (`NEW`, `ESTABLISHED`, `RELATED`, `INVALID`). Optional: leave unset for `ALL`/`RESPOND_ONLY` and the controller manages it; the provider round-trips the value so a `CUSTOM` policy's states are not dropped on update (which the firmware rejects with HTTP 400).",
         "element_type": {
           "string": {}
-        }
+        },
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                },
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "listvalidator.ValueStringsAre(stringvalidator.OneOf(\"NEW\", \"ESTABLISHED\", \"RELATED\", \"INVALID\"))"
+            }
+          }
+        ],
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                }
+              ],
+              "schema_definition": "listplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       }
     },
     {
@@ -43,7 +106,10 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "When `true`, UniFi automatically creates a matching rule to allow established/related return traffic. Recommended for `ALLOW` policies. Defaults to `false`."
+        "description": "When `true`, UniFi automatically creates a matching rule to allow established/related return traffic. Recommended for `ALLOW` policies. Defaults to `false`.",
+        "default": {
+          "static": false
+        }
       }
     },
     {
@@ -52,7 +118,10 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "A description for the policy."
+        "description": "A description for the policy.",
+        "default": {
+          "static": ""
+        }
       }
     },
     {
@@ -75,7 +144,19 @@
             "description": "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
             "element_type": {
               "string": {}
-            }
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -84,7 +165,10 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`."
+            "description": "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.",
+            "default": {
+              "static": ""
+            }
           }
         },
         {
@@ -97,7 +181,19 @@
             "description": "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
             "element_type": {
               "string": {}
-            }
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -126,7 +222,19 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "required",
-            "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN)."
+            "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"ANY\", \"NETWORK\", \"CLIENT\", \"IP\", \"DEVICE\", \"MAC\", \"WEB\")"
+                }
+              }
+            ]
           }
         },
         {
@@ -135,7 +243,19 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed",
-            "description": "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted."
+            "description": "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -148,7 +268,19 @@
             "description": "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
             "element_type": {
               "string": {}
-            }
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -157,7 +289,34 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match."
+            "description": "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "regexp"
+                    },
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9]{1,5}(-[0-9]{1,5})?(,[0-9]{1,5}(-[0-9]{1,5})?)*$`), \"must be a port number or a comma-separated list of ports/ranges (e.g. \\\"80,443\\\" or \\\"8000-8100\\\")\")"
+                }
+              }
+            ],
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -166,7 +325,10 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`."
+            "description": "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.",
+            "default": {
+              "static": ""
+            }
           }
         },
         {
@@ -175,7 +337,22 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group)."
+            "description": "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"ANY\", \"SPECIFIC\", \"OBJECT\")"
+                }
+              }
+            ],
+            "default": {
+              "static": "ANY"
+            }
           }
         },
         {
@@ -188,7 +365,19 @@
             "description": "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
             "element_type": {
               "string": {}
-            }
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -208,7 +397,10 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Whether the policy is enabled. Defaults to `true`."
+        "description": "Whether the policy is enabled. Defaults to `true`.",
+        "default": {
+          "static": true
+        }
       }
     },
     {
@@ -217,7 +409,19 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed",
-        "description": "ICMP type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted."
+        "description": "ICMP type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       }
     },
     {
@@ -226,7 +430,19 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed",
-        "description": "ICMPv6 type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted."
+        "description": "ICMPv6 type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       }
     },
     {
@@ -235,7 +451,19 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed",
-        "description": "The ordering index of the policy within its zone-pair, assigned by the controller. **Read-only:** UniFi does not accept a client-supplied index on create or update (the policy is always appended to the end of its source/destination zone-pair), and the supported API exposes no reorder operation, so policy ordering cannot be managed through this provider. Reorder policies in the UniFi UI if needed."
+        "description": "The ordering index of the policy within its zone-pair, assigned by the controller. **Read-only:** UniFi does not accept a client-supplied index on create or update (the policy is always appended to the end of its source/destination zone-pair), and the supported API exposes no reorder operation, so policy ordering cannot be managed through this provider. Reorder policies in the UniFi UI if needed.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                }
+              ],
+              "schema_definition": "int64planmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       }
     },
     {
@@ -244,7 +472,10 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Whether to log packets matching this policy. Defaults to `false`."
+        "description": "Whether to log packets matching this policy. Defaults to `false`.",
+        "default": {
+          "static": false
+        }
       }
     },
     {
@@ -277,7 +508,22 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply."
+        "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"all\", \"tcp\", \"udp\", \"tcp_udp\", \"icmp\", \"icmpv6\")"
+            }
+          }
+        ],
+        "default": {
+          "static": "all"
+        }
       }
     },
     {
@@ -305,7 +551,19 @@
             "description": "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
             "element_type": {
               "string": {}
-            }
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -314,7 +572,10 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`."
+            "description": "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.",
+            "default": {
+              "static": ""
+            }
           }
         },
         {
@@ -327,7 +588,19 @@
             "description": "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
             "element_type": {
               "string": {}
-            }
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -356,7 +629,19 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "required",
-            "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN)."
+            "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"ANY\", \"NETWORK\", \"CLIENT\", \"IP\", \"DEVICE\", \"MAC\", \"WEB\")"
+                }
+              }
+            ]
           }
         },
         {
@@ -365,7 +650,19 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed",
-            "description": "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted."
+            "description": "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -378,7 +675,19 @@
             "description": "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
             "element_type": {
               "string": {}
-            }
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -387,7 +696,34 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match."
+            "description": "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "regexp"
+                    },
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9]{1,5}(-[0-9]{1,5})?(,[0-9]{1,5}(-[0-9]{1,5})?)*$`), \"must be a port number or a comma-separated list of ports/ranges (e.g. \\\"80,443\\\" or \\\"8000-8100\\\")\")"
+                }
+              }
+            ],
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -396,7 +732,10 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`."
+            "description": "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.",
+            "default": {
+              "static": ""
+            }
           }
         },
         {
@@ -405,7 +744,22 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group)."
+            "description": "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"ANY\", \"SPECIFIC\", \"OBJECT\")"
+                }
+              }
+            ],
+            "default": {
+              "static": "ANY"
+            }
           }
         },
         {
@@ -418,7 +772,19 @@
             "description": "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
             "element_type": {
               "string": {}
-            }
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
           }
         },
         {
@@ -438,7 +804,22 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`."
+        "description": "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"BOTH\", \"IPV4\", \"IPV6\")"
+            }
+          }
+        ],
+        "default": {
+          "static": "IPV4"
+        }
       }
     }
   ],
@@ -450,7 +831,19 @@
       "generated": true,
       "attribute": {
         "computed_optional_required": "computed",
-        "description": "The ID of the firewall policy."
+        "description": "The ID of the firewall policy.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       }
     },
     {
@@ -460,7 +853,19 @@
       "generated": true,
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "The name of the site the firewall policy belongs to."
+        "description": "The name of the UniFi site. Defaults to the site configured in the provider.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       }
     },
     {

@@ -5,11 +5,21 @@ package resource_firewall_policy
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -22,12 +32,21 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The action to take when the policy matches: `ALLOW`, `BLOCK`, or `REJECT`.",
 				MarkdownDescription: "The action to take when the policy matches: `ALLOW`, `BLOCK`, or `REJECT`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("ALLOW", "BLOCK", "REJECT"),
+				},
 			},
 			"connection_state_type": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
 				Description:         "Connection-state matching mode: `ALL` (any state), `RESPOND_ONLY` (established/related returns), or `CUSTOM` (match the states listed in `connection_states`). Optional: if omitted the controller assigns it (defaults to `ALL`) and the provider round-trips the value so updates are accepted.",
 				MarkdownDescription: "Connection-state matching mode: `ALL` (any state), `RESPOND_ONLY` (established/related returns), or `CUSTOM` (match the states listed in `connection_states`). Optional: if omitted the controller assigns it (defaults to `ALL`) and the provider round-trips the value so updates are accepted.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.String{
+					stringvalidator.OneOf("ALL", "RESPOND_ONLY", "CUSTOM"),
+				},
 			},
 			"connection_states": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -35,18 +54,26 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Connection states matched when `connection_state_type` is `CUSTOM` (`NEW`, `ESTABLISHED`, `RELATED`, `INVALID`). Optional: leave unset for `ALL`/`RESPOND_ONLY` and the controller manages it; the provider round-trips the value so a `CUSTOM` policy's states are not dropped on update (which the firmware rejects with HTTP 400).",
 				MarkdownDescription: "Connection states matched when `connection_state_type` is `CUSTOM` (`NEW`, `ESTABLISHED`, `RELATED`, `INVALID`). Optional: leave unset for `ALL`/`RESPOND_ONLY` and the controller manages it; the provider round-trips the value so a `CUSTOM` policy's states are not dropped on update (which the firmware rejects with HTTP 400).",
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(stringvalidator.OneOf("NEW", "ESTABLISHED", "RELATED", "INVALID")),
+				},
 			},
 			"create_allow_respond": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
 				Description:         "When `true`, UniFi automatically creates a matching rule to allow established/related return traffic. Recommended for `ALLOW` policies. Defaults to `false`.",
 				MarkdownDescription: "When `true`, UniFi automatically creates a matching rule to allow established/related return traffic. Recommended for `ALLOW` policies. Defaults to `false`.",
+				Default:             booldefault.StaticBool(false),
 			},
 			"description": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
 				Description:         "A description for the policy.",
 				MarkdownDescription: "A description for the policy.",
+				Default:             stringdefault.StaticString(""),
 			},
 			"destination": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -56,12 +83,16 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
 						MarkdownDescription: "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"ip_group_id": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.",
 						MarkdownDescription: "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.",
+						Default:             stringdefault.StaticString(""),
 					},
 					"ips": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -69,16 +100,25 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
 						MarkdownDescription: "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"matching_target": schema.StringAttribute{
 						Required:            true,
 						Description:         "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
+						Validators: []validator.String{
+							stringvalidator.OneOf("ANY", "NETWORK", "CLIENT", "IP", "DEVICE", "MAC", "WEB"),
+						},
 					},
 					"matching_target_type": schema.StringAttribute{
 						Computed:            true,
 						Description:         "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
 						MarkdownDescription: "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"network_ids": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -86,24 +126,38 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
 						MarkdownDescription: "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"port": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match.",
 						MarkdownDescription: "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9]{1,5}(-[0-9]{1,5})?(,[0-9]{1,5}(-[0-9]{1,5})?)*$`), "must be a port number or a comma-separated list of ports/ranges (e.g. \"80,443\" or \"8000-8100\")"),
+						},
 					},
 					"port_group_id": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.",
 						MarkdownDescription: "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.",
+						Default:             stringdefault.StaticString(""),
 					},
 					"port_matching_type": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						MarkdownDescription: "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
+						Validators: []validator.String{
+							stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT"),
+						},
+						Default: stringdefault.StaticString("ANY"),
 					},
 					"web_domains": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -111,6 +165,9 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
 						MarkdownDescription: "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"zone_id": schema.StringAttribute{
 						Required:            true,
@@ -132,38 +189,56 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Whether the policy is enabled. Defaults to `true`.",
 				MarkdownDescription: "Whether the policy is enabled. Defaults to `true`.",
+				Default:             booldefault.StaticBool(true),
 			},
 			"icmp_typename": schema.StringAttribute{
 				Computed:            true,
 				Description:         "ICMP type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
 				MarkdownDescription: "ICMP type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"icmp_v6_typename": schema.StringAttribute{
 				Computed:            true,
 				Description:         "ICMPv6 type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
 				MarkdownDescription: "ICMPv6 type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The ID of the firewall policy.",
 				MarkdownDescription: "The ID of the firewall policy.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"index": schema.Int64Attribute{
 				Computed:            true,
 				Description:         "The ordering index of the policy within its zone-pair, assigned by the controller. **Read-only:** UniFi does not accept a client-supplied index on create or update (the policy is always appended to the end of its source/destination zone-pair), and the supported API exposes no reorder operation, so policy ordering cannot be managed through this provider. Reorder policies in the UniFi UI if needed.",
 				MarkdownDescription: "The ordering index of the policy within its zone-pair, assigned by the controller. **Read-only:** UniFi does not accept a client-supplied index on create or update (the policy is always appended to the end of its source/destination zone-pair), and the supported API exposes no reorder operation, so policy ordering cannot be managed through this provider. Reorder policies in the UniFi UI if needed.",
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
 			},
 			"ip_version": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
 				Description:         "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.",
 				MarkdownDescription: "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("BOTH", "IPV4", "IPV6"),
+				},
+				Default: stringdefault.StaticString("IPV4"),
 			},
 			"logging": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
 				Description:         "Whether to log packets matching this policy. Defaults to `false`.",
 				MarkdownDescription: "Whether to log packets matching this policy. Defaults to `false`.",
+				Default:             booldefault.StaticBool(false),
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -175,12 +250,19 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
 				MarkdownDescription: "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("all", "tcp", "udp", "tcp_udp", "icmp", "icmpv6"),
+				},
+				Default: stringdefault.StaticString("all"),
 			},
 			"site": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "The name of the site the firewall policy belongs to.",
-				MarkdownDescription: "The name of the site the firewall policy belongs to.",
+				Description:         "The name of the UniFi site. Defaults to the site configured in the provider.",
+				MarkdownDescription: "The name of the UniFi site. Defaults to the site configured in the provider.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"source": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -190,12 +272,16 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
 						MarkdownDescription: "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"ip_group_id": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.",
 						MarkdownDescription: "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.",
+						Default:             stringdefault.StaticString(""),
 					},
 					"ips": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -203,16 +289,25 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
 						MarkdownDescription: "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"matching_target": schema.StringAttribute{
 						Required:            true,
 						Description:         "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
+						Validators: []validator.String{
+							stringvalidator.OneOf("ANY", "NETWORK", "CLIENT", "IP", "DEVICE", "MAC", "WEB"),
+						},
 					},
 					"matching_target_type": schema.StringAttribute{
 						Computed:            true,
 						Description:         "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
 						MarkdownDescription: "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"network_ids": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -220,24 +315,38 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
 						MarkdownDescription: "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"port": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match.",
 						MarkdownDescription: "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9]{1,5}(-[0-9]{1,5})?(,[0-9]{1,5}(-[0-9]{1,5})?)*$`), "must be a port number or a comma-separated list of ports/ranges (e.g. \"80,443\" or \"8000-8100\")"),
+						},
 					},
 					"port_group_id": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.",
 						MarkdownDescription: "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.",
+						Default:             stringdefault.StaticString(""),
 					},
 					"port_matching_type": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						MarkdownDescription: "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
+						Validators: []validator.String{
+							stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT"),
+						},
+						Default: stringdefault.StaticString("ANY"),
 					},
 					"web_domains": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -245,6 +354,9 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
 						MarkdownDescription: "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"zone_id": schema.StringAttribute{
 						Required:            true,
@@ -262,7 +374,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The source endpoint of the policy.",
 			},
 		},
-		MarkdownDescription: "Manages a firewall policy.",
+		MarkdownDescription: "Manages a UniFi zone-based firewall policy (UniFi Network 8.x+). Zone-based firewall policies replace the legacy firewall rules and are displayed under Settings → Security → Firewall Policies in the UniFi UI.",
 	}
 }
 
