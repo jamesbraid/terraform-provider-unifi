@@ -787,6 +787,246 @@ func TestCompileRejectsUnderivableNesting(t *testing.T) {
 	}
 }
 
+// groupingInput models the real shape: two observed flat fields grouped into a
+// nested attribute the SDK does not have, which is what port_forward's wan does
+// with PfwdInterface, DestinationIP and DstPort.
+func groupingInput(t *testing.T, mutate func(rules map[string]any)) CompileInput {
+	t.Helper()
+	names := dnsFieldNames()
+	rules := testPolicyObject(names, testSpecificationDigest)
+
+	// port and priority move out of the top level and into the grouping.
+	kept := []any{}
+	for _, raw := range rules["fields"].([]any) {
+		field := raw.(map[string]any)
+		if field["structural_name"] == "port" || field["structural_name"] == "priority" {
+			continue
+		}
+		kept = append(kept, field)
+	}
+	rules["fields"] = kept
+	rules["groupings"] = []any{
+		map[string]any{
+			"terraform_name": "endpoint",
+			"terraform_type": "single_nested",
+			"attribute":      map[string]any{"computed_optional_required": "optional"},
+			"members": []any{
+				map[string]any{
+					"structural_name": "port", "terraform_name": "port", "disposition": "managed",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+				},
+				map[string]any{
+					"structural_name": "priority", "terraform_name": "priority", "disposition": "managed",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+				},
+			},
+		},
+	}
+	if mutate != nil {
+		mutate(rules)
+	}
+	return CompileInput{
+		Bootstrap:       testBootstrap(t, names),
+		Policy:          mustJSON(t, rules),
+		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, catalogparity.Admitted),
+	}
+}
+
+func firstGrouping(rules map[string]any) map[string]any {
+	return rules["groupings"].([]any)[0].(map[string]any)
+}
+
+func groupingMembers(rules map[string]any) []any {
+	return firstGrouping(rules)["members"].([]any)
+}
+
+func TestCompileEmitsADeclaredGrouping(t *testing.T) {
+	result, err := Compile(groupingInput(t, nil))
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	attribute := collectionAttribute(t, result.ProviderCodeSpec, "endpoint")
+	body, present := attribute["single_nested"]
+	if !present {
+		t.Fatalf("grouping emitted as %v, want single_nested", attributeMembers(attribute))
+	}
+	var definition struct {
+		Attributes []map[string]json.RawMessage `json:"attributes"`
+	}
+	if err := json.Unmarshal(body, &definition); err != nil {
+		t.Fatal(err)
+	}
+	if len(definition.Attributes) != 2 {
+		t.Fatalf("grouping has %d members, want 2", len(definition.Attributes))
+	}
+	// Member types come from the catalog, not from the policy: both fields are
+	// int64 in the bootstrap and must arrive that way.
+	for _, member := range definition.Attributes {
+		if _, ok := member["int64"]; !ok {
+			t.Fatalf("member %v did not take its type from the catalog", attributeMembers(member))
+		}
+	}
+	// The grouped fields must not also appear at the top level.
+	if _, found := attribute["port"]; found {
+		t.Fatal("a grouped field is still emitted as a top-level attribute")
+	}
+}
+
+// The guard that makes a grouping a migration rather than hand-authoring.
+func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(rules map[string]any)
+		want   string
+	}{
+		"member names no observed field": {
+			mutate: func(rules map[string]any) {
+				groupingMembers(rules)[0].(map[string]any)["structural_name"] = "nonexistent"
+			},
+			want: `consumes "nonexistent", which the catalog does not observe`,
+		},
+		"member claims a field also classified at the top level": {
+			mutate: func(rules map[string]any) {
+				rules["fields"] = append(rules["fields"].([]any), map[string]any{
+					"structural_name": "port", "semantic_id": "unifi.network.dns_record.field.port",
+					"terraform_name": "port_again", "disposition": "managed",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+				})
+			},
+			want: "consumed by grouping \"endpoint\" and also classified at the top level",
+		},
+		"two groupings consume the same field": {
+			mutate: func(rules map[string]any) {
+				rules["groupings"] = append(rules["groupings"].([]any), map[string]any{
+					"terraform_name": "other", "terraform_type": "single_nested",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+					"members": []any{map[string]any{
+						"structural_name": "port", "terraform_name": "port", "disposition": "managed",
+						"attribute": map[string]any{"computed_optional_required": "optional"},
+					}},
+				})
+			},
+			want: `is consumed by groupings`,
+		},
+		"member names nothing and is not declared invented": {
+			mutate: func(rules map[string]any) {
+				delete(groupingMembers(rules)[0].(map[string]any), "structural_name")
+			},
+			want: "names no structural field and is not declared invented",
+		},
+		"invented member also claims an observed field": {
+			mutate: func(rules map[string]any) {
+				member := groupingMembers(rules)[0].(map[string]any)
+				member["invented"] = "computed from whether a group is set"
+			},
+			want: "declared invented and also names structural field",
+		},
+		"grouping hand-authors its member list": {
+			mutate: func(rules map[string]any) {
+				firstGrouping(rules)["attribute"] = map[string]any{
+					"computed_optional_required": "optional",
+					"attributes":                 []any{},
+				}
+			},
+			want: "hand-authors \"attributes\"; members come from its declared member list",
+		},
+		"grouping declares no nesting kind": {
+			mutate: func(rules map[string]any) {
+				delete(firstGrouping(rules), "terraform_type")
+			},
+			want: "must declare terraform_type as single_nested, list_nested or set_nested",
+		},
+		"grouping declares a scalar kind": {
+			mutate: func(rules map[string]any) {
+				firstGrouping(rules)["terraform_type"] = "string"
+			},
+			want: `declares terraform_type "string", which is not a nested member`,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(groupingInput(t, test.mutate))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+// An invented attribute corresponds to no observed field and must say so.
+// port_forward's source_limiting.type and bgp's peers are the two in the
+// estate; both are computed by the provider from something the catalog cannot
+// describe, so they are admitted by declaration rather than by weakening the
+// observed-fields guard.
+func TestCompileAdmitsAnInventedMemberOnlyWhenDeclared(t *testing.T) {
+	declared := func(rules map[string]any) {
+		firstGrouping(rules)["members"] = append(groupingMembers(rules), map[string]any{
+			"terraform_name": "kind", "terraform_type": "string", "disposition": "managed",
+			"invented":  "computed from whether a firewall group is set; no wire field carries it",
+			"attribute": map[string]any{"computed_optional_required": "computed"},
+		})
+	}
+	result, err := Compile(groupingInput(t, declared))
+	if err != nil {
+		t.Fatalf("Compile() rejected a declared invented member: %v", err)
+	}
+	attribute := collectionAttribute(t, result.ProviderCodeSpec, "endpoint")
+	var definition struct {
+		Attributes []map[string]json.RawMessage `json:"attributes"`
+	}
+	if err := json.Unmarshal(attribute["single_nested"], &definition); err != nil {
+		t.Fatal(err)
+	}
+	if len(definition.Attributes) != 3 {
+		t.Fatalf("grouping has %d members, want 3 with the invented one", len(definition.Attributes))
+	}
+
+	// Without a type there is nothing to emit, since no observed field supplies one.
+	_, err = Compile(groupingInput(t, func(rules map[string]any) {
+		declared(rules)
+		members := groupingMembers(rules)
+		delete(members[len(members)-1].(map[string]any), "terraform_type")
+	}))
+	if err == nil || !strings.Contains(err.Error(), "must declare terraform_type") {
+		t.Fatalf("Compile() error = %v, want a missing type failure", err)
+	}
+}
+
+// The mapping report must not claim an invented member came from the wire.
+func TestMappingRecordsAnInventedMemberAsInvented(t *testing.T) {
+	result, err := Compile(groupingInput(t, func(rules map[string]any) {
+		firstGrouping(rules)["members"] = append(groupingMembers(rules), map[string]any{
+			"terraform_name": "kind", "terraform_type": "string", "disposition": "managed",
+			"invented":  "computed by the provider",
+			"attribute": map[string]any{"computed_optional_required": "computed"},
+		})
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mapping struct {
+		Fields []struct {
+			TerraformName  string `json:"terraform_name"`
+			StructuralName string `json:"structural_name"`
+			StructuralType string `json:"structural_type"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(result.MappingReport, &mapping); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range mapping.Fields {
+		if field.TerraformName != "endpoint.kind" {
+			continue
+		}
+		if field.StructuralName != "" || field.StructuralType != "invented" {
+			t.Fatalf("invented member recorded as structural %q/%q, want empty and \"invented\"",
+				field.StructuralName, field.StructuralType)
+		}
+		return
+	}
+	t.Fatal("mapping report does not mention the invented member")
+}
+
 const dnsDataSourceBaselineDigest = "e9217234de7678441bcdd4db0fd285d32d6856ddaf9748cc2b69cb7b82f44646"
 
 // dataSourceBaseline mirrors the committed ledger's data_source digest for

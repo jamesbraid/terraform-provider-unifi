@@ -92,8 +92,28 @@ func Compile(input CompileInput) (Result, error) {
 		policyFields[field.StructuralName] = field
 	}
 
+	// A grouped field is classified by the grouping that consumes it, not at
+	// the top level, so gather those before checking coverage.
+	grouped, err := groupedStructuralFields(rules.Groupings, policyFields, terraformNames)
+	if err != nil {
+		return Result{}, err
+	}
+
+	// Checked before coverage: a grouping naming a field that does not exist
+	// also leaves whatever it should have consumed unclassified, and reporting
+	// that consequence sends the reader to the wrong field.
+	for _, name := range sortedKeys(grouped) {
+		if _, exists := sourceFields[name]; !exists {
+			return Result{}, fmt.Errorf(
+				"grouping %q consumes %q, which the catalog does not observe",
+				grouped[name], name,
+			)
+		}
+	}
 	for name := range sourceFields {
-		if _, exists := policyFields[name]; !exists {
+		_, classified := policyFields[name]
+		_, consumed := grouped[name]
+		if !classified && !consumed {
 			return Result{}, fmt.Errorf("unclassified structural field %q", name)
 		}
 	}
@@ -170,6 +190,25 @@ func Compile(input CompileInput) (Result, error) {
 			attributes = append(attributes, attribute)
 		}
 	}
+	groupings := append([]groupingPolicy(nil), rules.Groupings...)
+	sort.Slice(groupings, func(i, j int) bool { return groupings[i].TerraformName < groupings[j].TerraformName })
+	for _, grouping := range groupings {
+		attribute, err := buildGroupingAttribute(grouping, sourceFields, terraformNames)
+		if err != nil {
+			return Result{}, err
+		}
+		attributes = append(attributes, attribute)
+		for _, member := range grouping.Members {
+			mapping.Fields = append(mapping.Fields, mappingField{
+				StructuralName: member.StructuralName,
+				TerraformName:  grouping.TerraformName + "." + member.TerraformName,
+				StructuralType: groupedStructuralType(sourceFields, member),
+				TerraformType:  member.TerraformType,
+				Disposition:    member.Disposition,
+			})
+		}
+	}
+
 	for _, seam := range providerOwned {
 		mapping.ProviderOwned = append(mapping.ProviderOwned, providerOwnedMapping{
 			TerraformName: seam.TerraformName,
@@ -300,6 +339,195 @@ func validSurfaceKind(kind catalogparity.SurfaceKind) bool {
 	default:
 		return false
 	}
+}
+
+// groupedStructuralFields validates every declared grouping and returns which
+// observed field each one consumes, mapped to the grouping that consumed it.
+//
+// The guard this enforces is what keeps a grouping a migration: every member
+// either names a field the catalog observed, consumed exactly once across the
+// whole policy, or declares itself invented and says why. Nothing else is
+// admitted. Without the exactly-once rule a grouping could quietly duplicate a
+// field that also appears at the top level, and the schema would claim two
+// attributes back one wire field.
+func groupedStructuralFields(
+	groupings []groupingPolicy,
+	policyFields map[string]fieldPolicy,
+	terraformNames map[string]string,
+) (map[string]string, error) {
+	consumed := map[string]string{}
+	for _, grouping := range groupings {
+		if grouping.TerraformName == "" {
+			return nil, fmt.Errorf("grouping has no terraform_name")
+		}
+		switch grouping.TerraformType {
+		case "single_nested", "list_nested", "set_nested":
+		case "":
+			return nil, fmt.Errorf(
+				"grouping %q must declare terraform_type as single_nested, list_nested or set_nested",
+				grouping.TerraformName,
+			)
+		default:
+			return nil, fmt.Errorf(
+				"grouping %q declares terraform_type %q, which is not a nested member",
+				grouping.TerraformName, grouping.TerraformType,
+			)
+		}
+		if err := claimTerraformName(terraformNames, grouping.TerraformName, "grouping "+grouping.TerraformName); err != nil {
+			return nil, err
+		}
+		if len(grouping.Members) == 0 {
+			return nil, fmt.Errorf("grouping %q has no members", grouping.TerraformName)
+		}
+		seen := map[string]struct{}{}
+		for _, member := range grouping.Members {
+			if member.TerraformName == "" {
+				return nil, fmt.Errorf("grouping %q has a member with no terraform_name", grouping.TerraformName)
+			}
+			if _, duplicate := seen[member.TerraformName]; duplicate {
+				return nil, fmt.Errorf(
+					"grouping %q repeats member %q", grouping.TerraformName, member.TerraformName,
+				)
+			}
+			seen[member.TerraformName] = struct{}{}
+			if err := validateDisposition(member.Disposition, member.TerraformName); err != nil {
+				return nil, err
+			}
+			if member.Invented != "" {
+				// An invented member corresponds to nothing observed, so it
+				// must not also claim a field, and it must say why it exists.
+				if member.StructuralName != "" {
+					return nil, fmt.Errorf(
+						"grouping %q member %q is declared invented and also names structural field %q",
+						grouping.TerraformName, member.TerraformName, member.StructuralName,
+					)
+				}
+				continue
+			}
+			if member.StructuralName == "" {
+				return nil, fmt.Errorf(
+					"grouping %q member %q names no structural field and is not declared invented",
+					grouping.TerraformName, member.TerraformName,
+				)
+			}
+			if owner, taken := consumed[member.StructuralName]; taken {
+				return nil, fmt.Errorf(
+					"structural field %q is consumed by groupings %q and %q",
+					member.StructuralName, owner, grouping.TerraformName,
+				)
+			}
+			if _, top := policyFields[member.StructuralName]; top {
+				return nil, fmt.Errorf(
+					"structural field %q is consumed by grouping %q and also classified at the top level",
+					member.StructuralName, grouping.TerraformName,
+				)
+			}
+			consumed[member.StructuralName] = grouping.TerraformName
+		}
+	}
+	return consumed, nil
+}
+
+// sortedKeys orders map keys so diagnostics do not depend on iteration order.
+func sortedKeys(values map[string]string) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// groupedStructuralType reports the observed type a grouped member consumes.
+// An invented member consumes nothing, and the mapping report says so rather
+// than borrowing a type it does not have.
+func groupedStructuralType(sourceFields map[string]bootstrapField, member groupedMember) string {
+	if member.Invented != "" {
+		return "invented"
+	}
+	return sourceFields[member.StructuralName].Type
+}
+
+// buildGroupingAttribute emits a declared grouping. Member types come from the
+// catalog for observed members; an invented member has no observed type, so its
+// policy must supply one.
+func buildGroupingAttribute(
+	grouping groupingPolicy,
+	sourceFields map[string]bootstrapField,
+	names map[string]string,
+) (codeAttribute, error) {
+	members := make([]codeAttribute, 0, len(grouping.Members))
+	for _, member := range grouping.Members {
+		if member.Disposition == "omitted" {
+			continue
+		}
+		owner := grouping.TerraformName + "." + member.TerraformName
+		if err := claimTerraformName(names, owner, owner); err != nil {
+			return codeAttribute{}, err
+		}
+		if member.Invented != "" {
+			if member.TerraformType == "" {
+				return codeAttribute{}, fmt.Errorf(
+					"invented member %q must declare terraform_type: no observed field supplies one", owner,
+				)
+			}
+			attribute, err := makeCodeAttribute(member.TerraformName, member.TerraformType, member.Attribute)
+			if err != nil {
+				return codeAttribute{}, fmt.Errorf("invented member %q: %w", owner, err)
+			}
+			members = append(members, attribute)
+			continue
+		}
+		structural := sourceFields[member.StructuralName]
+		attribute, err := buildCodeAttribute(fieldPolicy{
+			StructuralName: member.StructuralName,
+			TerraformName:  member.TerraformName,
+			TerraformType:  member.TerraformType,
+			Disposition:    member.Disposition,
+			Attribute:      member.Attribute,
+		}, structural, names)
+		if err != nil {
+			return codeAttribute{}, fmt.Errorf("grouping %q: %w", grouping.TerraformName, err)
+		}
+		members = append(members, attribute)
+	}
+	if len(members) == 0 {
+		return codeAttribute{}, fmt.Errorf("grouping %q generates no members", grouping.TerraformName)
+	}
+	sort.Slice(members, func(i, j int) bool { return members[i].Name < members[j].Name })
+
+	body := map[string]json.RawMessage{}
+	if len(grouping.Attribute) > 0 {
+		if err := json.Unmarshal(grouping.Attribute, &body); err != nil {
+			return codeAttribute{}, fmt.Errorf("grouping %q attribute: %w", grouping.TerraformName, err)
+		}
+	}
+	for _, reserved := range []string{"attributes", "nested_object"} {
+		if _, present := body[reserved]; present {
+			return codeAttribute{}, fmt.Errorf(
+				"grouping %q hand-authors %q; members come from its declared member list",
+				grouping.TerraformName, reserved,
+			)
+		}
+	}
+	encoded, err := json.Marshal(members)
+	if err != nil {
+		return codeAttribute{}, err
+	}
+	if grouping.TerraformType == "single_nested" {
+		body["attributes"] = encoded
+	} else {
+		nested, err := json.Marshal(map[string]json.RawMessage{"attributes": encoded})
+		if err != nil {
+			return codeAttribute{}, err
+		}
+		body["nested_object"] = nested
+	}
+	definition, err := json.Marshal(body)
+	if err != nil {
+		return codeAttribute{}, err
+	}
+	return codeAttribute{Name: grouping.TerraformName, Type: grouping.TerraformType, Definition: definition}, nil
 }
 
 // emittableSurfaceKind reports whether codeSpecification has a member the
