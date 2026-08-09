@@ -21,6 +21,7 @@ func main() {
 func run(args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("catalog-migration-recovery", flag.ContinueOnError)
 	flags.SetOutput(stderr)
+	policyPath := flags.String("policy", "", "campaign policy")
 	admissionPath := flags.String("admission", "", "passing catalog admission receipt")
 	buildSchemaPath := flags.String("build-schema", "", "exact build and schema receipt")
 	controllerPath := flags.String("controller", "", "complete controller differential receipt")
@@ -31,9 +32,9 @@ func run(args []string, stderr io.Writer) int {
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if *admissionPath == "" || *buildSchemaPath == "" || *controllerPath == "" ||
+	if *policyPath == "" || *admissionPath == "" || *buildSchemaPath == "" || *controllerPath == "" ||
 		*inventoryPath == "" || *manifestPath == "" || *dnsLifecyclePath == "" || *outputPath == "" {
-		fmt.Fprintln(stderr, "admission, build-schema, controller, inventory, migration-manifest, dns-lifecycle, and output are required")
+		fmt.Fprintln(stderr, "policy, admission, build-schema, controller, inventory, migration-manifest, dns-lifecycle, and output are required")
 		return 2
 	}
 	if flags.NArg() != 0 {
@@ -43,6 +44,10 @@ func run(args []string, stderr io.Writer) int {
 
 	var input releasequalification.MigrationRecoveryInput
 	var err error
+	if _, err := decodeStrictFile(*policyPath, &input.Policy); err != nil {
+		fmt.Fprintf(stderr, "campaign policy: %v\n", err)
+		return 1
+	}
 	input.AdmissionSHA256, err = decodeStrictFile(*admissionPath, &input.Admission)
 	if err != nil {
 		fmt.Fprintf(stderr, "admission: %v\n", err)

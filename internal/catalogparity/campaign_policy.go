@@ -20,6 +20,12 @@ type CampaignPolicy struct {
 	AllowedSkips             []string `json:"allowed_skips"`
 	ReleasedAllowedFailures  []string `json:"released_allowed_failures"`
 	ReleasedAllowedMissing   []string `json:"released_allowed_missing"`
+
+	// RuntimeChangeSet declares which surfaces are expected to differ from the
+	// released provider at runtime. Migration recovery compares the generated
+	// inventory against this list, so a runtime change nobody declared still
+	// fails the gate. Sorted by kind then name to match the comparison order.
+	RuntimeChangeSet []SurfaceKey `json:"runtime_change_set"`
 }
 
 // Validate reports whether the policy document is self-consistent. It cannot
@@ -49,5 +55,37 @@ func (policy CampaignPolicy) Validate() error {
 		stringsOverlap(policy.AllowedSkips, policy.ReleasedAllowedFailures) {
 		return fmt.Errorf("campaign policy dispositions overlap")
 	}
+	seen := make(map[SurfaceKey]struct{}, len(policy.RuntimeChangeSet))
+	for _, key := range policy.RuntimeChangeSet {
+		if !validSurfaceKind(key.Kind) || key.Name == "" {
+			return fmt.Errorf("campaign policy runtime change set has an invalid surface")
+		}
+		if _, duplicate := seen[key]; duplicate {
+			return fmt.Errorf("campaign policy runtime change set repeats %s/%s", key.Kind, key.Name)
+		}
+		seen[key] = struct{}{}
+	}
+	if !sortedSurfaceKeys(policy.RuntimeChangeSet) {
+		return fmt.Errorf("campaign policy runtime change set is not sorted by kind then name")
+	}
 	return nil
+}
+
+// sortedSurfaceKeys reports whether keys are in the kind-then-name order that
+// migration recovery compares against, so a hand-edited policy cannot fail the
+// gate an hour into a campaign purely because an entry was appended.
+func sortedSurfaceKeys(keys []SurfaceKey) bool {
+	for index := 1; index < len(keys); index++ {
+		previous, current := keys[index-1], keys[index]
+		if previous.Kind != current.Kind {
+			if previous.Kind > current.Kind {
+				return false
+			}
+			continue
+		}
+		if previous.Name > current.Name {
+			return false
+		}
+	}
+	return true
 }

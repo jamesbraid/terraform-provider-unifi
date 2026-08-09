@@ -17,5 +17,14 @@
     "TestAccDeviceList_basic",
     "TestAccFirewallZoneFramework_basic",
     "TestAccFirewallZoneList_emptyOrSeeded"
+  ],
+  "runtime_change_set": [
+    {"kind": "action", "name": "unifi_port"},
+    {"kind": "list_resource", "name": "unifi_device"},
+    {"kind": "list_resource", "name": "unifi_dns_record"},
+    {"kind": "list_resource", "name": "unifi_firewall_zone"},
+    {"kind": "managed_resource", "name": "unifi_device"},
+    {"kind": "managed_resource", "name": "unifi_dns_record"},
+    {"kind": "managed_resource", "name": "unifi_firewall_zone"}
   ]
 }

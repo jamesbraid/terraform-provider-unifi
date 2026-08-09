@@ -195,6 +195,21 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 		Failed: []string{}, Missing: []string{}, PreTestDiagnostics: []string{},
 	}
 	return MigrationRecoveryInput{
+		// Declares exactly the surfaces this fixture marks FileChanged above.
+		// The policy document shipped under provider-codegen/policy is bound to
+		// the real inventory by catalogparity's own test; what matters here is
+		// the gate logic, so this fixture stays self-contained.
+		Policy: catalogparity.CampaignPolicy{
+			FormatVersion: 1, Gate: "catalog controller differential",
+			SurfaceCount: 67, EvidenceGapCount: 8,
+			TestNameCount: 152, SharedScenarioOwnerCount: 38,
+			RuntimeChangeSet: []catalogparity.SurfaceKey{
+				{Kind: catalogparity.ListResource, Name: "unifi_device"},
+				{Kind: catalogparity.ListResource, Name: "unifi_dns_record"},
+				{Kind: catalogparity.ManagedResource, Name: "unifi_device"},
+				{Kind: catalogparity.ManagedResource, Name: "unifi_dns_record"},
+			},
+		},
 		Admission: catalogparity.AdmissionReceipt{
 			FormatVersion: 1, Gate: "catalog-admission", Result: "pass",
 			ProviderAddress: catalogparity.CanonicalProviderAddress, SourceCommit: commit,
