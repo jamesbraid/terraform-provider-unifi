@@ -134,11 +134,19 @@ func Compile(input CompileInput) (Result, error) {
 	for _, name := range fieldNames {
 		structural := sourceFields[name]
 		field := policyFields[name]
+		// Resolved through the shared builder so a scalar, a collection and an
+		// object all take one path. A structural type with no specification
+		// member must fail here rather than fall through: "array<string>" and
+		// "object" are not members, and emitting one produces a document the
+		// generator reads while generating no attribute.
 		terraformType := field.TerraformType
-		if element, isCollection := structuralElementType(structural.Type); isCollection {
-			// Must not fall through to the structural type: "array<string>"
-			// is not a specification member, so emitting it would produce a
-			// document the generator reads without generating the attribute.
+		if structuralIsObject(structural.Type) {
+			resolved, err := objectTerraformType(field, structural.Type)
+			if err != nil {
+				return Result{}, err
+			}
+			terraformType = resolved
+		} else if element, isCollection := structuralElementType(structural.Type); isCollection {
 			resolved, err := collectionTerraformType(field, element)
 			if err != nil {
 				return Result{}, err
@@ -155,7 +163,7 @@ func Compile(input CompileInput) (Result, error) {
 			Disposition:    field.Disposition,
 		})
 		if field.Disposition == "managed" || field.Disposition == "computed" {
-			attribute, err := makeCodeAttribute(field.TerraformName, terraformType, field.Attribute)
+			attribute, err := buildCodeAttribute(field, structural, terraformNames)
 			if err != nil {
 				return Result{}, fmt.Errorf("field %q: %w", name, err)
 			}
@@ -581,8 +589,24 @@ var structuralElementTypes = map[string]string{
 	"array<int64>":  "int64",
 }
 
+// Object structural types carry their members in bootstrapField.Fields rather
+// than in the type string. Whether the SDK exposes one struct or a slice of
+// them is observable, so it lives here; whether a slice becomes a list or a set
+// is not, so policy decides that.
+const (
+	structuralObject      = "object"
+	structuralObjectArray = "array<object>"
+)
+
+func structuralIsObject(structuralType string) bool {
+	return structuralType == structuralObject || structuralType == structuralObjectArray
+}
+
 func providerStructuralType(jsonType string) (string, error) {
 	if _, ok := structuralElementTypes[jsonType]; ok {
+		return jsonType, nil
+	}
+	if structuralIsObject(jsonType) {
 		return jsonType, nil
 	}
 	switch jsonType {
@@ -593,6 +617,185 @@ func providerStructuralType(jsonType string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported structural type %q", jsonType)
 	}
+}
+
+// objectTerraformType resolves an object field's specification member.
+//
+// A single struct can only be single_nested. A slice of structs could be
+// either list_nested or set_nested, and the SDK cannot say which: it is []T
+// regardless of whether order carries meaning. That is the same decision the
+// scalar collections require, so it is made the same way, by policy.
+func objectTerraformType(field fieldPolicy, structuralType string) (string, error) {
+	if structuralType == structuralObject {
+		switch field.TerraformType {
+		case "", "single_nested":
+			return "single_nested", nil
+		default:
+			return "", fmt.Errorf(
+				"object field %q declares terraform_type %q, want single_nested",
+				field.StructuralName, field.TerraformType,
+			)
+		}
+	}
+	switch field.TerraformType {
+	case "list_nested", "set_nested":
+		return field.TerraformType, nil
+	case "":
+		return "", fmt.Errorf(
+			"object collection field %q must declare terraform_type as list_nested or set_nested: the SDK type cannot distinguish them and order sensitivity is a semantic decision",
+			field.StructuralName,
+		)
+	default:
+		return "", fmt.Errorf(
+			"object collection field %q declares terraform_type %q, want list_nested or set_nested",
+			field.StructuralName, field.TerraformType,
+		)
+	}
+}
+
+// nestedDefinition builds an object attribute's specification body: the policy
+// supplies the leaf decisions, the catalog supplies the members, and this joins
+// them. The member list is generated rather than authored, which is what makes
+// this a migration instead of hand-writing moved to another file.
+func nestedDefinition(
+	field fieldPolicy,
+	structural bootstrapField,
+	terraformType string,
+	names map[string]string,
+) (json.RawMessage, error) {
+	if len(structural.Fields) == 0 {
+		return nil, fmt.Errorf("object field %q has no members in the catalog", field.StructuralName)
+	}
+	members, err := nestedAttributes(field, structural, names)
+	if err != nil {
+		return nil, err
+	}
+	body := map[string]json.RawMessage{}
+	if len(field.Attribute) > 0 {
+		if err := json.Unmarshal(field.Attribute, &body); err != nil {
+			return nil, fmt.Errorf("object field %q attribute: %w", field.StructuralName, err)
+		}
+	}
+	for _, reserved := range []string{"attributes", "nested_object"} {
+		if _, present := body[reserved]; present {
+			return nil, fmt.Errorf(
+				"object field %q hand-authors %q; the member list is derived from the catalog",
+				field.StructuralName, reserved,
+			)
+		}
+	}
+	encoded, err := json.Marshal(members)
+	if err != nil {
+		return nil, err
+	}
+	if terraformType == "single_nested" {
+		body["attributes"] = encoded
+	} else {
+		nested, err := json.Marshal(map[string]json.RawMessage{"attributes": encoded})
+		if err != nil {
+			return nil, err
+		}
+		body["nested_object"] = nested
+	}
+	return json.Marshal(body)
+}
+
+// nestedAttributes walks one object's members, pairing each catalog member with
+// its policy decision. It recurses, so nesting depth is bounded by the catalog
+// rather than by this code.
+func nestedAttributes(
+	field fieldPolicy,
+	structural bootstrapField,
+	names map[string]string,
+) ([]codeAttribute, error) {
+	decisions := make(map[string]fieldPolicy, len(field.Fields))
+	for _, member := range field.Fields {
+		decisions[member.StructuralName] = member
+	}
+	for name := range decisions {
+		if !structuralHasMember(structural, name) {
+			return nil, fmt.Errorf(
+				"object field %q has a policy for member %q that the catalog does not observe",
+				field.StructuralName, name,
+			)
+		}
+	}
+	members := make([]codeAttribute, 0, len(structural.Fields))
+	for _, member := range structural.Fields {
+		decision, classified := decisions[member.Name]
+		if !classified {
+			return nil, fmt.Errorf(
+				"object field %q member %q is unclassified: every member needs a policy decision",
+				field.StructuralName, member.Name,
+			)
+		}
+		if err := validateDisposition(decision.Disposition, decision.TerraformName); err != nil {
+			return nil, err
+		}
+		if decision.Disposition == "omitted" {
+			continue
+		}
+		owner := field.StructuralName + "." + member.Name
+		if err := claimTerraformName(names, owner+"/"+decision.TerraformName, owner); err != nil {
+			return nil, err
+		}
+		attribute, err := buildCodeAttribute(decision, member, names)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, attribute)
+	}
+	if len(members) == 0 {
+		return nil, fmt.Errorf("object field %q generates no members", field.StructuralName)
+	}
+	sort.Slice(members, func(i, j int) bool { return members[i].Name < members[j].Name })
+	return members, nil
+}
+
+func structuralHasMember(structural bootstrapField, name string) bool {
+	for _, member := range structural.Fields {
+		if member.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// buildCodeAttribute resolves one field, scalar or object, to its
+// specification attribute.
+func buildCodeAttribute(
+	field fieldPolicy,
+	structural bootstrapField,
+	names map[string]string,
+) (codeAttribute, error) {
+	if structuralIsObject(structural.Type) {
+		terraformType, err := objectTerraformType(field, structural.Type)
+		if err != nil {
+			return codeAttribute{}, err
+		}
+		definition, err := nestedDefinition(field, structural, terraformType, names)
+		if err != nil {
+			return codeAttribute{}, err
+		}
+		return codeAttribute{Name: field.TerraformName, Type: terraformType, Definition: definition}, nil
+	}
+	if len(structural.Fields) > 0 {
+		return codeAttribute{}, fmt.Errorf(
+			"field %q is type %q but the catalog gives it members; only %s and %s carry members",
+			field.StructuralName, structural.Type, structuralObject, structuralObjectArray,
+		)
+	}
+	terraformType := field.TerraformType
+	if element, isCollection := structuralElementType(structural.Type); isCollection {
+		resolved, err := collectionTerraformType(field, element)
+		if err != nil {
+			return codeAttribute{}, err
+		}
+		terraformType = resolved
+	} else if terraformType == "" {
+		terraformType = structural.Type
+	}
+	return makeCodeAttribute(field.TerraformName, terraformType, field.Attribute)
 }
 
 // structuralElementType reports the element type of a collection structural

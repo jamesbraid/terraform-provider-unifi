@@ -609,16 +609,181 @@ func TestCompileRejectsCollectionsWithoutASemanticDecision(t *testing.T) {
 // The vocabulary stops at the element types the estate measurably uses. An
 // unmeasured one must be reported by name rather than coerced to string.
 func TestProviderStructuralTypeAcceptsOnlyMeasuredCollections(t *testing.T) {
-	for _, accepted := range []string{"array<string>", "array<int64>"} {
+	// object and array<object> carry their members in bootstrapField.Fields
+	// rather than in the type string, so they are accepted here and resolved
+	// to a specification member by objectTerraformType.
+	for _, accepted := range []string{"array<string>", "array<int64>", "object", "array<object>"} {
 		resolved, err := providerStructuralType(accepted)
 		if err != nil || resolved != accepted {
 			t.Fatalf("providerStructuralType(%q) = %q, %v", accepted, resolved, err)
 		}
 	}
-	for _, rejected := range []string{"array", "array<bool>", "array<object>", "array<array<string>>", "map<string>"} {
+	for _, rejected := range []string{"array", "array<bool>", "array<array<string>>", "map<string>", "object<string>"} {
 		if _, err := providerStructuralType(rejected); err == nil {
 			t.Fatalf("providerStructuralType(%q) was accepted", rejected)
 		}
+	}
+}
+
+// nestedInput adds one object field to the dns_record fixture. The member list
+// comes from the bootstrap, i.e. the catalog side, and the per-member decisions
+// from the policy — the split that makes this a derivation rather than a
+// hand-authored body.
+func nestedInput(t *testing.T, structuralType string, mutate func(field map[string]any)) CompileInput {
+	t.Helper()
+	names := append(dnsFieldNames(), "endpoint")
+	rules := testPolicyObject(names, testSpecificationDigest)
+	for _, raw := range rules["fields"].([]any) {
+		field, ok := raw.(map[string]any)
+		if !ok || field["structural_name"] != "endpoint" {
+			continue
+		}
+		field["attribute"] = map[string]any{"computed_optional_required": "optional"}
+		if structuralType == "array<object>" {
+			field["terraform_type"] = "list_nested"
+		}
+		field["fields"] = []any{
+			map[string]any{
+				"structural_name": "host", "terraform_name": "host", "disposition": "managed",
+				"attribute": map[string]any{"computed_optional_required": "required"},
+			},
+			map[string]any{
+				"structural_name": "port", "terraform_name": "port", "disposition": "managed",
+				"attribute": map[string]any{"computed_optional_required": "optional"},
+			},
+		}
+		if mutate != nil {
+			mutate(field)
+		}
+	}
+
+	var source map[string]any
+	if err := json.Unmarshal(testBootstrap(t, names), &source); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range source["resource"].(map[string]any)["fields"].([]any) {
+		field, ok := raw.(map[string]any)
+		if !ok || field["name"] != "endpoint" {
+			continue
+		}
+		field["type"] = structuralType
+		field["fields"] = []any{
+			map[string]any{"name": "host", "type": "string"},
+			map[string]any{"name": "port", "type": "int64"},
+		}
+	}
+
+	return CompileInput{
+		Bootstrap:       mustJSON(t, source),
+		Policy:          mustJSON(t, rules),
+		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, catalogparity.Admitted),
+	}
+}
+
+// The member list must be DERIVED from the catalog. A policy that hand-authors
+// it is the failure this exists to prevent: it would look like a migration
+// while carrying the same hand-written schema in a different file.
+func TestCompileDerivesNestedMembersFromTheCatalog(t *testing.T) {
+	for structuralType, member := range map[string]string{
+		"object":        "single_nested",
+		"array<object>": "list_nested",
+	} {
+		t.Run(structuralType, func(t *testing.T) {
+			result, err := Compile(nestedInput(t, structuralType, nil))
+			if err != nil {
+				t.Fatalf("Compile() error = %v", err)
+			}
+			attribute := collectionAttribute(t, result.ProviderCodeSpec, "endpoint")
+			body, present := attribute[member]
+			if !present {
+				t.Fatalf("attribute has no %q member, got %v", member, attributeMembers(attribute))
+			}
+			var definition struct {
+				Attributes   []map[string]json.RawMessage `json:"attributes"`
+				NestedObject struct {
+					Attributes []map[string]json.RawMessage `json:"attributes"`
+				} `json:"nested_object"`
+			}
+			if err := json.Unmarshal(body, &definition); err != nil {
+				t.Fatal(err)
+			}
+			members := definition.Attributes
+			if member == "list_nested" {
+				members = definition.NestedObject.Attributes
+			}
+			if len(members) != 2 {
+				t.Fatalf("derived %d members, want 2 (host, port)", len(members))
+			}
+			var first, second string
+			if err := json.Unmarshal(members[0]["name"], &first); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(members[1]["name"], &second); err != nil {
+				t.Fatal(err)
+			}
+			if first != "host" || second != "port" {
+				t.Fatalf("members = %q, %q; want host, port", first, second)
+			}
+			// The member's own type must be derived too, not defaulted.
+			if _, ok := members[1]["int64"]; !ok {
+				t.Fatalf("port member is %v, want int64 from the catalog", attributeMembers(members[1]))
+			}
+		})
+	}
+}
+
+func TestCompileRejectsUnderivableNesting(t *testing.T) {
+	tests := map[string]struct {
+		structuralType string
+		mutate         func(field map[string]any)
+		want           string
+	}{
+		"object collection without a semantic decision": {
+			structuralType: "array<object>",
+			mutate:         func(field map[string]any) { delete(field, "terraform_type") },
+			want:           "must declare terraform_type as list_nested or set_nested",
+		},
+		"single object declared as a collection": {
+			structuralType: "object",
+			mutate:         func(field map[string]any) { field["terraform_type"] = "list_nested" },
+			want:           `declares terraform_type "list_nested", want single_nested`,
+		},
+		"member the catalog does not observe": {
+			structuralType: "object",
+			mutate: func(field map[string]any) {
+				field["fields"] = append(field["fields"].([]any), map[string]any{
+					"structural_name": "ghost", "terraform_name": "ghost", "disposition": "managed",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+				})
+			},
+			want: `policy for member "ghost" that the catalog does not observe`,
+		},
+		"unclassified member": {
+			structuralType: "object",
+			mutate: func(field map[string]any) {
+				field["fields"] = []any{field["fields"].([]any)[0]}
+			},
+			want: `member "port" is unclassified`,
+		},
+		"hand-authored member list": {
+			structuralType: "object",
+			mutate: func(field map[string]any) {
+				field["attribute"] = map[string]any{
+					"computed_optional_required": "optional",
+					"attributes":                 []any{},
+				}
+			},
+			want: "hand-authors \"attributes\"; the member list is derived from the catalog",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(nestedInput(t, test.structuralType, test.mutate))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want %q", err, test.want)
+			}
+		})
 	}
 }
 
