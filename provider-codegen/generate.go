@@ -4,3 +4,6 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -catalog catalog/go-unifi-v1.102.0-dns-record.catalog.json -policy policy/dns_record.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix dns_record -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/dns_record.provider-code-spec.json --output ../internal/generated/resource_dns_record --package resource_dns_record
 //go:generate gofmt -w ../internal/generated/resource_dns_record/dns_record_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-firewall-policy.json -policy policy/firewall_policy.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix firewall_policy -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/firewall_policy.provider-code-spec.json --output ../internal/generated/resource_firewall_policy --package resource_firewall_policy
+//go:generate gofmt -w ../internal/generated/resource_firewall_policy/firewall_policy_resource_gen.go
