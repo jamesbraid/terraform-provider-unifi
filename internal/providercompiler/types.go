@@ -43,6 +43,11 @@ type bootstrapSchema struct {
 type bootstrapField struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
+	// Fields carries the members of an object or array<object>. It is the
+	// observed shape of the SDK struct, so it comes from the catalog rather
+	// than from policy; what each member becomes in Terraform is still a
+	// policy decision.
+	Fields []bootstrapField `json:"fields,omitempty"`
 }
 
 type observedCatalog struct {
@@ -148,6 +153,10 @@ type fieldPolicy struct {
 	TerraformType  string          `json:"terraform_type,omitempty"`
 	Disposition    string          `json:"disposition"`
 	Attribute      json.RawMessage `json:"attribute,omitempty"`
+	// Fields holds the per-member decisions for an object or array<object>.
+	// The catalog supplies the members; this supplies what each one becomes,
+	// exactly as the top level does for scalars.
+	Fields []fieldPolicy `json:"fields,omitempty"`
 }
 
 type providerOwnedPolicy struct {
