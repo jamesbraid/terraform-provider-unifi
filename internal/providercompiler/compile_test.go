@@ -464,6 +464,191 @@ func testBaseline(t *testing.T) []byte {
 	})
 }
 
+const dnsDataSourceBaselineDigest = "e9217234de7678441bcdd4db0fd285d32d6856ddaf9748cc2b69cb7b82f44646"
+
+// dataSourceBaseline mirrors the committed ledger's data_source digest for
+// unifi_dns_record so admission's per-surface digest check lines up.
+func dataSourceBaseline(t *testing.T) []byte {
+	t.Helper()
+	return mustJSON(t, map[string]any{
+		"schema_sha256": map[string]any{
+			"data_source_schemas.unifi_dns_record": dnsDataSourceBaselineDigest,
+		},
+	})
+}
+
+// surfaceKindInput builds a self-consistent compile input for one surface
+// kind: the policy, the baseline manifest and the ledger all agree, so a
+// failure is attributable to the code under test rather than to the fixture.
+func surfaceKindInput(t *testing.T, kind catalogparity.SurfaceKind) CompileInput {
+	t.Helper()
+	baseline := dataSourceBaseline(t)
+
+	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+	rules["surface_kind"] = string(kind)
+	rules["generator_name"] = "dns_record"
+	rules["baseline_digests"] = map[string]any{
+		"resource":    dnsDataSourceBaselineDigest,
+		"data_source": dnsDataSourceBaselineDigest,
+	}
+
+	data, err := os.ReadFile("../../provider-codegen/generated/catalog-parity-ledger.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ledger catalogparity.Ledger
+	if err := json.Unmarshal(data, &ledger); err != nil {
+		t.Fatal(err)
+	}
+	ledger.BaselineSHA256 = byteDigest(baseline)
+	for index := range ledger.Entries {
+		entry := &ledger.Entries[index]
+		if entry.Kind != kind || entry.Name != "unifi_dns_record" {
+			continue
+		}
+		entry.State = catalogparity.GeneratedShadow
+		entry.ReceiptSHA256 = ""
+		entry.Implementation = "shadow"
+		entry.BaselineSchemaSHA256 = dnsDataSourceBaselineDigest
+	}
+	return CompileInput{
+		Bootstrap:       testBootstrap(t, dnsFieldNames()),
+		Policy:          mustJSON(t, rules),
+		BaselineDigests: baseline,
+		Ledger:          mustJSON(t, ledger),
+	}
+}
+
+// A data source must be emitted under the specification's "datasources"
+// member. Emitted under "resources" the generator accepts the file, generates
+// nothing, and go generate stays green, so the mistake only appears several
+// steps later as an undefined symbol.
+func TestCompileEmitsDataSourceUnderDataSourcesMember(t *testing.T) {
+	result, err := Compile(surfaceKindInput(t, catalogparity.DataSource))
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	var specification struct {
+		Resources []struct {
+			Name string `json:"name"`
+		} `json:"resources"`
+		DataSources []struct {
+			Name string `json:"name"`
+		} `json:"datasources"`
+	}
+	if err := json.Unmarshal(result.ProviderCodeSpec, &specification); err != nil {
+		t.Fatal(err)
+	}
+	if len(specification.DataSources) != 1 || specification.DataSources[0].Name != "dns_record" {
+		t.Fatalf("datasources = %+v, want one entry named dns_record", specification.DataSources)
+	}
+	if len(specification.Resources) != 0 {
+		t.Fatalf("resources = %+v, want none for a data source", specification.Resources)
+	}
+}
+
+// A surface kind with no emission path must fail loudly. Emitting it under
+// whichever member happens to exist is the silent-wrong-answer case.
+func TestCompileRejectsSurfaceKindsWithoutAnEmissionPath(t *testing.T) {
+	for _, kind := range []catalogparity.SurfaceKind{
+		catalogparity.ListResource,
+		catalogparity.Action,
+	} {
+		t.Run(string(kind), func(t *testing.T) {
+			_, err := Compile(surfaceKindInput(t, kind))
+			if err == nil || !strings.Contains(err.Error(), "no code specification member") {
+				t.Fatalf("Compile() error = %v, want a missing emission path failure", err)
+			}
+		})
+	}
+}
+
+func TestValidateBaselineTreatsCompanionsAsPerSurfaceOptional(t *testing.T) {
+	const (
+		resource = "aaaa000000000000000000000000000000000000000000000000000000000000"
+		identity = "bbbb000000000000000000000000000000000000000000000000000000000000"
+		list     = "cccc000000000000000000000000000000000000000000000000000000000000"
+	)
+	managed := catalogparity.SurfaceKey{Kind: catalogparity.ManagedResource, Name: "unifi_bgp"}
+
+	tests := map[string]struct {
+		expected baselineDigestSet
+		actual   map[string]string
+		want     string
+	}{
+		// unifi_bgp has neither companion. Before this, it failed with
+		// "baseline identity digest mismatch" and sent the reader looking for
+		// a digest to regenerate that never existed.
+		"no companions declared or present": {
+			expected: baselineDigestSet{Resource: resource},
+			actual:   map[string]string{"resource_schemas.unifi_bgp": resource},
+		},
+		"both companions declared and present": {
+			expected: baselineDigestSet{Resource: resource, Identity: identity, ListResource: list},
+			actual: map[string]string{
+				"resource_schemas.unifi_bgp":          resource,
+				"resource_identity_schemas.unifi_bgp": identity,
+				"list_resource_schemas.unifi_bgp":     list,
+			},
+		},
+		"companion present but undeclared": {
+			expected: baselineDigestSet{Resource: resource},
+			actual: map[string]string{
+				"resource_schemas.unifi_bgp":          resource,
+				"resource_identity_schemas.unifi_bgp": identity,
+			},
+			want: "declares no identity schema for unifi_bgp but the baseline has one",
+		},
+		"companion declared but absent": {
+			expected: baselineDigestSet{Resource: resource, ListResource: list},
+			actual:   map[string]string{"resource_schemas.unifi_bgp": resource},
+			want:     "declares a list resource schema for unifi_bgp but the baseline has none",
+		},
+		"companion declared and stale": {
+			expected: baselineDigestSet{Resource: resource, Identity: identity},
+			actual: map[string]string{
+				"resource_schemas.unifi_bgp":          resource,
+				"resource_identity_schemas.unifi_bgp": list,
+			},
+			want: "baseline identity digest mismatch for unifi_bgp",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := validateBaseline(test.expected, test.actual, managed)
+			if test.want == "" {
+				if err != nil {
+					t.Fatalf("validateBaseline() error = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("validateBaseline() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+// A data source has no identity or list companion, so it must be validated
+// against its own schema key rather than the managed resource's.
+func TestValidateBaselineUsesTheSurfaceKindsOwnKey(t *testing.T) {
+	const digest = "dddd000000000000000000000000000000000000000000000000000000000000"
+	key := catalogparity.SurfaceKey{Kind: catalogparity.DataSource, Name: "unifi_dns_record"}
+	expected := baselineDigestSet{DataSource: digest}
+	actual := map[string]string{"data_source_schemas.unifi_dns_record": digest}
+	if err := validateBaseline(expected, actual, key); err != nil {
+		t.Fatalf("validateBaseline() error = %v, want nil", err)
+	}
+	// The managed resource digest must not stand in for the data source one.
+	if err := validateBaseline(
+		baselineDigestSet{Resource: digest},
+		map[string]string{"resource_schemas.unifi_dns_record": digest},
+		key,
+	); err == nil {
+		t.Fatal("validateBaseline() accepted a managed resource digest for a data source")
+	}
+}
+
 // admissionGateInput pairs the synthetic baseline with the synthetic ledger.
 // pinnedDNSInput reads the committed baseline digests instead, which never
 // match testLedger's baseline, so Compile fails on the digest comparison
