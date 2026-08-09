@@ -1,0 +1,247 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "1cb710f191516240f339f94e66e5b250ee80585bbe795c982cdedcc52d7ed722"
+  },
+  "resource": {
+    "name": "unifi_firewall_policy",
+    "fields": [
+      {
+        "name": "action",
+        "type": "string"
+      },
+      {
+        "name": "connection_state_type",
+        "type": "string"
+      },
+      {
+        "name": "connection_states",
+        "type": "array<string>"
+      },
+      {
+        "name": "create_allow_respond",
+        "type": "bool"
+      },
+      {
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "name": "destination",
+        "type": "object",
+        "fields": [
+          {
+            "name": "client_macs",
+            "type": "array<string>"
+          },
+          {
+            "name": "ip_group_id",
+            "type": "string"
+          },
+          {
+            "name": "ips",
+            "type": "array<string>"
+          },
+          {
+            "name": "match_mac",
+            "type": "bool"
+          },
+          {
+            "name": "match_opposite_ips",
+            "type": "bool"
+          },
+          {
+            "name": "match_opposite_networks",
+            "type": "bool"
+          },
+          {
+            "name": "match_opposite_ports",
+            "type": "bool"
+          },
+          {
+            "name": "matching_target",
+            "type": "string"
+          },
+          {
+            "name": "matching_target_type",
+            "type": "string"
+          },
+          {
+            "name": "network_ids",
+            "type": "array<string>"
+          },
+          {
+            "name": "port",
+            "type": "string"
+          },
+          {
+            "name": "port_group_id",
+            "type": "string"
+          },
+          {
+            "name": "port_matching_type",
+            "type": "string"
+          },
+          {
+            "name": "web_domains",
+            "type": "array<string>"
+          },
+          {
+            "name": "zone_id",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "enabled",
+        "type": "bool"
+      },
+      {
+        "name": "icmp_typename",
+        "type": "string"
+      },
+      {
+        "name": "icmp_v6_typename",
+        "type": "string"
+      },
+      {
+        "name": "index",
+        "type": "int64"
+      },
+      {
+        "name": "logging",
+        "type": "bool"
+      },
+      {
+        "name": "match_ip_sec",
+        "type": "bool"
+      },
+      {
+        "name": "match_opposite_protocol",
+        "type": "bool"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "predefined",
+        "type": "bool"
+      },
+      {
+        "name": "protocol",
+        "type": "string"
+      },
+      {
+        "name": "schedule",
+        "type": "object",
+        "fields": [
+          {
+            "name": "date",
+            "type": "string"
+          },
+          {
+            "name": "date_end",
+            "type": "string"
+          },
+          {
+            "name": "date_start",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "type": "string"
+          },
+          {
+            "name": "repeat_on_days",
+            "type": "array<string>"
+          },
+          {
+            "name": "time_all_day",
+            "type": "*bool"
+          },
+          {
+            "name": "time_range_end",
+            "type": "string"
+          },
+          {
+            "name": "time_range_start",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "source",
+        "type": "object",
+        "fields": [
+          {
+            "name": "client_macs",
+            "type": "array<string>"
+          },
+          {
+            "name": "ip_group_id",
+            "type": "string"
+          },
+          {
+            "name": "ips",
+            "type": "array<string>"
+          },
+          {
+            "name": "match_mac",
+            "type": "bool"
+          },
+          {
+            "name": "match_opposite_ips",
+            "type": "bool"
+          },
+          {
+            "name": "match_opposite_networks",
+            "type": "bool"
+          },
+          {
+            "name": "match_opposite_ports",
+            "type": "bool"
+          },
+          {
+            "name": "matching_target",
+            "type": "string"
+          },
+          {
+            "name": "matching_target_type",
+            "type": "string"
+          },
+          {
+            "name": "network_ids",
+            "type": "array<string>"
+          },
+          {
+            "name": "port",
+            "type": "string"
+          },
+          {
+            "name": "port_group_id",
+            "type": "string"
+          },
+          {
+            "name": "port_matching_type",
+            "type": "string"
+          },
+          {
+            "name": "web_domains",
+            "type": "array<string>"
+          },
+          {
+            "name": "zone_id",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "ip_version",
+        "type": "string"
+      }
+    ]
+  }
+}
