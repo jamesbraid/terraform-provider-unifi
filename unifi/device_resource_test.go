@@ -357,10 +357,15 @@ func TestAccDeviceFramework_basic(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:            "unifi_device.test",
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"allow_adoption", "forget_on_destroy"},
+				ResourceName:      "unifi_device.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// state is live controller telemetry, not configuration: a
+				// device that is still provisioning reports 5 and settles to 1
+				// on its own schedule. Comparing it across the two reads that
+				// import performs is a race, and it has failed both suites
+				// intermittently.
+				ImportStateVerifyIgnore: []string{"allow_adoption", "forget_on_destroy", "state"},
 			},
 		},
 	})
