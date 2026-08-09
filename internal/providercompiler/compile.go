@@ -135,7 +135,16 @@ func Compile(input CompileInput) (Result, error) {
 		structural := sourceFields[name]
 		field := policyFields[name]
 		terraformType := field.TerraformType
-		if terraformType == "" {
+		if element, isCollection := structuralElementType(structural.Type); isCollection {
+			// Must not fall through to the structural type: "array<string>"
+			// is not a specification member, so emitting it would produce a
+			// document the generator reads without generating the attribute.
+			resolved, err := collectionTerraformType(field, element)
+			if err != nil {
+				return Result{}, err
+			}
+			terraformType = resolved
+		} else if terraformType == "" {
 			terraformType = structural.Type
 		}
 		mapping.Fields = append(mapping.Fields, mappingField{
@@ -561,7 +570,21 @@ func validSHA256(value string, prefixed bool) bool {
 	return err == nil
 }
 
+// Collection element types deliberately stop at the two the estate actually
+// uses. Measured across every surface, element types appear 60 times as
+// string, once as int64, and once as a MAC address. The MAC case is a custom
+// type over string, so it travels in the policy's attribute definition rather
+// than in this vocabulary, and no general element-type system is needed for a
+// population that small.
+var structuralElementTypes = map[string]string{
+	"array<string>": "string",
+	"array<int64>":  "int64",
+}
+
 func providerStructuralType(jsonType string) (string, error) {
+	if _, ok := structuralElementTypes[jsonType]; ok {
+		return jsonType, nil
+	}
 	switch jsonType {
 	case "number":
 		return "int64", nil
@@ -570,6 +593,71 @@ func providerStructuralType(jsonType string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported structural type %q", jsonType)
 	}
+}
+
+// structuralElementType reports the element type of a collection structural
+// type, and whether the type is a collection at all.
+func structuralElementType(structuralType string) (string, bool) {
+	element, ok := structuralElementTypes[structuralType]
+	return element, ok
+}
+
+// collectionTerraformType resolves a collection field's Terraform type.
+//
+// The SDK cannot answer set versus list: it is []string either way. Only a
+// human knows whether order carries meaning, and getting it wrong produces a
+// spurious diff on every plan, so the policy must say and the compiler must
+// refuse to guess. The declared element type is then checked against the
+// catalog, which is the ground truth for what the SDK actually returns.
+func collectionTerraformType(field fieldPolicy, element string) (string, error) {
+	switch field.TerraformType {
+	case "list", "set":
+	case "":
+		return "", fmt.Errorf(
+			"collection field %q must declare terraform_type as list or set: the SDK type cannot distinguish them and order sensitivity is a semantic decision",
+			field.StructuralName,
+		)
+	default:
+		return "", fmt.Errorf(
+			"collection field %q declares terraform_type %q, want list or set",
+			field.StructuralName, field.TerraformType,
+		)
+	}
+	declared, err := declaredElementType(field)
+	if err != nil {
+		return "", err
+	}
+	if declared != element {
+		return "", fmt.Errorf(
+			"collection field %q declares element type %q but the catalog observed %q",
+			field.StructuralName, declared, element,
+		)
+	}
+	return field.TerraformType, nil
+}
+
+// declaredElementType reads element_type from the policy's attribute
+// definition. A custom type over an element, such as a MAC address, still
+// declares its underlying element here.
+func declaredElementType(field fieldPolicy) (string, error) {
+	var attribute struct {
+		ElementType map[string]json.RawMessage `json:"element_type"`
+	}
+	if len(field.Attribute) > 0 {
+		if err := json.Unmarshal(field.Attribute, &attribute); err != nil {
+			return "", fmt.Errorf("collection field %q attribute: %w", field.StructuralName, err)
+		}
+	}
+	if len(attribute.ElementType) != 1 {
+		return "", fmt.Errorf(
+			"collection field %q must declare exactly one element_type, found %d",
+			field.StructuralName, len(attribute.ElementType),
+		)
+	}
+	for name := range attribute.ElementType {
+		return name, nil
+	}
+	return "", nil
 }
 
 func policyFieldByStructuralName(fields []fieldPolicy, name string) (fieldPolicy, bool) {
