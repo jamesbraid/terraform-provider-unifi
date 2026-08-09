@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly expected_module=github.com/ubiquiti-community/go-unifi
-readonly expected_version=v1.102.0
-readonly expected_sum='h1:/CSJB4rm9aqDrkDB4yw6xAgY8dYAohcv8N4TC/ugLRU='
+m3_repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+readonly m3_repository_root
+# shellcheck source=.woodpecker/scripts/go-unifi-pin.sh
+source "${m3_repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
+
+# The module version and its hash are read from go.mod and go.sum. They used to
+# be pinned here as well, which made this the fourth home for one fact and the
+# reason a repoint that updated go.mod left this script asserting the previous
+# release. The catalog path below stays literal on purpose: that artifact is
+# keyed on the controller it was captured from, not on the module.
+readonly expected_module=${go_unifi_module_path}
+expected_version=$(go_unifi_declared_version "${m3_repository_root}")
+readonly expected_version
+expected_sum=$(go_unifi_declared_sum "${m3_repository_root}" "${expected_version}")
+readonly expected_sum
 readonly expected_catalog_source_commit=62add0c72d932aba663164fd794d510fb56aebae
 readonly expected_catalog_sha256=a07b8a4b91d68aaaf35b7bb8a2d8f3d877531ffff64cbd44a44748ab736b9ac1
 readonly expected_operation_sha256=d004069d8f4d911de2d893c3183e0d9e59a67d66425fcb3d1551caa55c623cbd
