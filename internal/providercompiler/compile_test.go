@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 
@@ -347,6 +348,10 @@ func testBootstrap(t *testing.T, fieldNames []string) []byte {
 			fieldType = "bool"
 		case "key", "record_type", "value", "new_field":
 			fieldType = "string"
+		case "tags":
+			fieldType = "array<string>"
+		case "ports":
+			fieldType = "array<int64>"
 		}
 		fields = append(fields, map[string]any{"name": name, "type": fieldType})
 	}
@@ -462,6 +467,159 @@ func testBaseline(t *testing.T) []byte {
 			"list_resource_schemas.unifi_dns_record":     "c914929e71ab8ce0e8977518615ee3cf81c31a411ec77c9f58a2350145c6ee95",
 		},
 	})
+}
+
+// collectionInput compiles the dns_record fixture plus one collection field,
+// letting a test alter that field's policy to exercise the semantics the SDK
+// type cannot supply.
+func collectionInput(t *testing.T, mutate func(field map[string]any)) CompileInput {
+	t.Helper()
+	names := append(dnsFieldNames(), "tags")
+	rules := testPolicyObject(names, testSpecificationDigest)
+	for _, raw := range rules["fields"].([]any) {
+		field, ok := raw.(map[string]any)
+		if !ok || field["structural_name"] != "tags" {
+			continue
+		}
+		field["terraform_type"] = "set"
+		field["attribute"] = map[string]any{
+			"computed_optional_required": "optional",
+			"element_type":               map[string]any{"string": map[string]any{}},
+		}
+		if mutate != nil {
+			mutate(field)
+		}
+	}
+	return CompileInput{
+		Bootstrap:       testBootstrap(t, names),
+		Policy:          mustJSON(t, rules),
+		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, catalogparity.Admitted),
+	}
+}
+
+func collectionAttribute(t *testing.T, spec []byte, name string) map[string]json.RawMessage {
+	t.Helper()
+	var document struct {
+		Resources []struct {
+			Schema struct {
+				Attributes []map[string]json.RawMessage `json:"attributes"`
+			} `json:"schema"`
+		} `json:"resources"`
+	}
+	if err := json.Unmarshal(spec, &document); err != nil {
+		t.Fatal(err)
+	}
+	if len(document.Resources) != 1 {
+		t.Fatalf("resources = %d, want 1", len(document.Resources))
+	}
+	for _, attribute := range document.Resources[0].Schema.Attributes {
+		var attributeName string
+		if err := json.Unmarshal(attribute["name"], &attributeName); err != nil {
+			t.Fatal(err)
+		}
+		if attributeName == name {
+			return attribute
+		}
+	}
+	t.Fatalf("attribute %q is absent from the specification", name)
+	return nil
+}
+
+// The specification member and the element type both have to survive to the
+// emitted document; a collection that lands under the wrong member generates
+// nothing, exactly as a misplaced data source would.
+func TestCompileEmitsCollectionUnderThePolicyDeclaredMember(t *testing.T) {
+	for _, declared := range []string{"set", "list"} {
+		t.Run(declared, func(t *testing.T) {
+			result, err := Compile(collectionInput(t, func(field map[string]any) {
+				field["terraform_type"] = declared
+			}))
+			if err != nil {
+				t.Fatalf("Compile() error = %v", err)
+			}
+			attribute := collectionAttribute(t, result.ProviderCodeSpec, "tags")
+			body, present := attribute[declared]
+			if !present {
+				t.Fatalf("attribute has no %q member, got members %v", declared, attributeMembers(attribute))
+			}
+			var definition struct {
+				ElementType map[string]json.RawMessage `json:"element_type"`
+			}
+			if err := json.Unmarshal(body, &definition); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := definition.ElementType["string"]; !ok || len(definition.ElementType) != 1 {
+				t.Fatalf("element_type = %v, want exactly string", definition.ElementType)
+			}
+		})
+	}
+}
+
+func attributeMembers(attribute map[string]json.RawMessage) []string {
+	members := make([]string, 0, len(attribute))
+	for member := range attribute {
+		members = append(members, member)
+	}
+	sort.Strings(members)
+	return members
+}
+
+// Order sensitivity is a human decision. The compiler must refuse to pick,
+// rather than defaulting to either and producing a spurious diff on every plan.
+func TestCompileRejectsCollectionsWithoutASemanticDecision(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(field map[string]any)
+		want   string
+	}{
+		"no terraform type": {
+			mutate: func(field map[string]any) { delete(field, "terraform_type") },
+			want:   "must declare terraform_type as list or set",
+		},
+		"scalar terraform type": {
+			mutate: func(field map[string]any) { field["terraform_type"] = "string" },
+			want:   `declares terraform_type "string", want list or set`,
+		},
+		"element type disagrees with the catalog": {
+			mutate: func(field map[string]any) {
+				field["attribute"] = map[string]any{
+					"computed_optional_required": "optional",
+					"element_type":               map[string]any{"int64": map[string]any{}},
+				}
+			},
+			want: `declares element type "int64" but the catalog observed "string"`,
+		},
+		"no element type": {
+			mutate: func(field map[string]any) {
+				field["attribute"] = map[string]any{"computed_optional_required": "optional"}
+			},
+			want: "must declare exactly one element_type, found 0",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(collectionInput(t, test.mutate))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+// The vocabulary stops at the element types the estate measurably uses. An
+// unmeasured one must be reported by name rather than coerced to string.
+func TestProviderStructuralTypeAcceptsOnlyMeasuredCollections(t *testing.T) {
+	for _, accepted := range []string{"array<string>", "array<int64>"} {
+		resolved, err := providerStructuralType(accepted)
+		if err != nil || resolved != accepted {
+			t.Fatalf("providerStructuralType(%q) = %q, %v", accepted, resolved, err)
+		}
+	}
+	for _, rejected := range []string{"array", "array<bool>", "array<object>", "array<array<string>>", "map<string>"} {
+		if _, err := providerStructuralType(rejected); err == nil {
+			t.Fatalf("providerStructuralType(%q) was accepted", rejected)
+		}
+	}
 }
 
 const dnsDataSourceBaselineDigest = "e9217234de7678441bcdd4db0fd285d32d6856ddaf9748cc2b69cb7b82f44646"
