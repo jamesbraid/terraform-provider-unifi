@@ -132,6 +132,7 @@ type policy struct {
 	CatalogSHA256             string                    `json:"catalog_sha256,omitempty"`
 	CatalogSource             catalogPolicySource       `json:"catalog_source,omitempty"`
 	CatalogTarget             catalogTarget             `json:"catalog_target,omitempty"`
+	Groupings                 []groupingPolicy          `json:"groupings,omitempty"`
 	CatalogSources            catalogSources            `json:"catalog_sources,omitempty"`
 	OperationDigest           string                    `json:"operation_digest,omitempty"`
 	Description               string                    `json:"description"`
@@ -157,6 +158,41 @@ type fieldPolicy struct {
 	// The catalog supplies the members; this supplies what each one becomes,
 	// exactly as the top level does for scalars.
 	Fields []fieldPolicy `json:"fields,omitempty"`
+}
+
+// groupingPolicy declares a nested Terraform attribute the SDK does not have.
+//
+// Most nested attributes mirror an SDK struct and their members are derived
+// from the catalog. Thirty-three do not: the provider invented the shape over
+// flat SDK fields, so there is no struct to observe and the grouping has to be
+// declared. It is still a migration rather than hand-authoring, because every
+// member names a field the catalog observed, and the compiler proves each
+// observed field is consumed exactly once across the whole policy.
+type groupingPolicy struct {
+	TerraformName string `json:"terraform_name"`
+	// TerraformType is single_nested, list_nested or set_nested. As with
+	// collections, the SDK cannot say whether order matters.
+	TerraformType string          `json:"terraform_type"`
+	Attribute     json.RawMessage `json:"attribute,omitempty"`
+	Members       []groupedMember `json:"members"`
+}
+
+// groupedMember is one member of a declared grouping.
+type groupedMember struct {
+	// StructuralName names the observed flat field this member consumes. It is
+	// empty only for an invented member, which must say why.
+	StructuralName string          `json:"structural_name,omitempty"`
+	TerraformName  string          `json:"terraform_name"`
+	TerraformType  string          `json:"terraform_type,omitempty"`
+	Disposition    string          `json:"disposition"`
+	Attribute      json.RawMessage `json:"attribute,omitempty"`
+	// Invented records that this member corresponds to no observed field at
+	// all. Two exist in the estate: port_forward's source_limiting.type, which
+	// is computed from whether a firewall group is set, and bgp's peers, which
+	// the provider parses out of an opaque config string. Both are stated here
+	// so the ledger cannot report them as derived, and the reason is required
+	// so the claim is legible rather than a flag someone sets to pass a gate.
+	Invented string `json:"invented,omitempty"`
 }
 
 type providerOwnedPolicy struct {
