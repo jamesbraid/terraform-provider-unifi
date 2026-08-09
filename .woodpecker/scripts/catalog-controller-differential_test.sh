@@ -37,11 +37,10 @@ if ! jq -e '
   .released_allowed_missing == [
     "TestAccDeviceList_basic",
     "TestAccFirewallZoneFramework_basic",
-    "TestAccFirewallZoneList_emptyOrSeeded",
-    "TestAccPortAction_persistsPoeOverride"
+    "TestAccFirewallZoneList_emptyOrSeeded"
   ] and
   (.test_names | length) == 152 and
-  (.shared_scenario_owners | length) == 37 and
+  (.shared_scenario_owners | length) == 38 and
   ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
   ([.surfaces[] | select(.name == "unifi_dns_record" and .kind == "managed_resource")] | length) == 1
 ' "${work_root}/plan.json" >/dev/null; then
@@ -104,8 +103,7 @@ jq -n --slurpfile plan "${work_root}/plan.json" '
       missing: [
         "TestAccDeviceList_basic",
         "TestAccFirewallZoneFramework_basic",
-        "TestAccFirewallZoneList_emptyOrSeeded",
-        "TestAccPortAction_persistsPoeOverride"
+        "TestAccFirewallZoneList_emptyOrSeeded"
       ]
     },
     candidate: {
