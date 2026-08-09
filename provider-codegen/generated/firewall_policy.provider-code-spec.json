@@ -1,0 +1,320 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "firewall_policy",
+      "schema": {
+        "attributes": [
+          {
+            "name": "action",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The action to take when the policy matches: `ALLOW`, `BLOCK`, or `REJECT`."
+            }
+          },
+          {
+            "name": "connection_state_type",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Connection-state matching mode: `ALL` (any state), `RESPOND_ONLY` (established/related returns), or `CUSTOM` (match the states listed in `connection_states`). Optional: if omitted the controller assigns it (defaults to `ALL`) and the provider round-trips the value so updates are accepted."
+            }
+          },
+          {
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "description": "Connection states matched when `connection_state_type` is `CUSTOM` (`NEW`, `ESTABLISHED`, `RELATED`, `INVALID`). Optional: leave unset for `ALL`/`RESPOND_ONLY` and the controller manages it; the provider round-trips the value so a `CUSTOM` policy's states are not dropped on update (which the firmware rejects with HTTP 400).",
+              "element_type": {
+                "string": {}
+              }
+            },
+            "name": "connection_states"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "When `true`, UniFi automatically creates a matching rule to allow established/related return traffic. Recommended for `ALLOW` policies. Defaults to `false`."
+            },
+            "name": "create_allow_respond"
+          },
+          {
+            "name": "description",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "A description for the policy."
+            }
+          },
+          {
+            "name": "destination",
+            "single_nested": {
+              "attributes": [
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
+                    "element_type": {
+                      "string": {}
+                    }
+                  },
+                  "name": "client_macs"
+                },
+                {
+                  "name": "ip_group_id",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`."
+                  }
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
+                    "element_type": {
+                      "string": {}
+                    }
+                  },
+                  "name": "ips"
+                },
+                {
+                  "name": "matching_target",
+                  "string": {
+                    "computed_optional_required": "required",
+                    "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN)."
+                  }
+                },
+                {
+                  "name": "matching_target_type",
+                  "string": {
+                    "computed_optional_required": "computed",
+                    "description": "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted."
+                  }
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
+                    "element_type": {
+                      "string": {}
+                    }
+                  },
+                  "name": "network_ids"
+                },
+                {
+                  "name": "port",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match."
+                  }
+                },
+                {
+                  "name": "port_group_id",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`."
+                  }
+                },
+                {
+                  "name": "port_matching_type",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group)."
+                  }
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
+                    "element_type": {
+                      "string": {}
+                    }
+                  },
+                  "name": "web_domains"
+                },
+                {
+                  "name": "zone_id",
+                  "string": {
+                    "computed_optional_required": "required",
+                    "description": "The ID of the firewall zone this endpoint belongs to. Use the `unifi_firewall_zone` data source to look up zone IDs by name."
+                  }
+                }
+              ],
+              "computed_optional_required": "required",
+              "description": "The destination endpoint of the policy."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether the policy is enabled. Defaults to `true`."
+            },
+            "name": "enabled"
+          },
+          {
+            "name": "icmp_typename",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "ICMP type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted."
+            }
+          },
+          {
+            "name": "icmp_v6_typename",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "ICMPv6 type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted."
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the firewall policy."
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed",
+              "description": "The ordering index of the policy within its zone-pair, assigned by the controller. **Read-only:** UniFi does not accept a client-supplied index on create or update (the policy is always appended to the end of its source/destination zone-pair), and the supported API exposes no reorder operation, so policy ordering cannot be managed through this provider. Reorder policies in the UniFi UI if needed."
+            },
+            "name": "index"
+          },
+          {
+            "name": "ip_version",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether to log packets matching this policy. Defaults to `false`."
+            },
+            "name": "logging"
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the firewall policy."
+            }
+          },
+          {
+            "name": "protocol",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site the firewall policy belongs to."
+            }
+          },
+          {
+            "name": "source",
+            "single_nested": {
+              "attributes": [
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
+                    "element_type": {
+                      "string": {}
+                    }
+                  },
+                  "name": "client_macs"
+                },
+                {
+                  "name": "ip_group_id",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`."
+                  }
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
+                    "element_type": {
+                      "string": {}
+                    }
+                  },
+                  "name": "ips"
+                },
+                {
+                  "name": "matching_target",
+                  "string": {
+                    "computed_optional_required": "required",
+                    "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN)."
+                  }
+                },
+                {
+                  "name": "matching_target_type",
+                  "string": {
+                    "computed_optional_required": "computed",
+                    "description": "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted."
+                  }
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
+                    "element_type": {
+                      "string": {}
+                    }
+                  },
+                  "name": "network_ids"
+                },
+                {
+                  "name": "port",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match."
+                  }
+                },
+                {
+                  "name": "port_group_id",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`."
+                  }
+                },
+                {
+                  "name": "port_matching_type",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group)."
+                  }
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
+                    "element_type": {
+                      "string": {}
+                    }
+                  },
+                  "name": "web_domains"
+                },
+                {
+                  "name": "zone_id",
+                  "string": {
+                    "computed_optional_required": "required",
+                    "description": "The ID of the firewall zone this endpoint belongs to. Use the `unifi_firewall_zone` data source to look up zone IDs by name."
+                  }
+                }
+              ],
+              "computed_optional_required": "required",
+              "description": "The source endpoint of the policy."
+            }
+          }
+        ],
+        "markdown_description": "Manages a firewall policy."
+      }
+    }
+  ]
+}
