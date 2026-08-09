@@ -66,7 +66,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_firewall_policy",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy and matches the released schema attribute for attribute, including both nested shapes. Admission waits on a campaign run, which is the only thing that can say whether the generated resource behaves as the hand-written one did."
     },
     {
       "kind": "managed_resource",
