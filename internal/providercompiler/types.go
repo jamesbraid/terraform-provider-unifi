@@ -159,19 +159,32 @@ type providerOwnedPolicy struct {
 }
 
 type baselineDigestSet struct {
-	Resource     string `json:"resource"`
-	Identity     string `json:"identity"`
-	ListResource string `json:"list_resource"`
+	Resource   string `json:"resource"`
+	DataSource string `json:"data_source,omitempty"`
+	// Identity and ListResource are companions of a managed resource and are
+	// per-surface optional: unifi_bgp and unifi_setting carry no identity
+	// schema, and unifi_account, unifi_bgp and unifi_setting carry no list
+	// resource. An omitted digest declares the companion absent, and
+	// validateBaseline cross-checks that declaration against the baseline
+	// manifest so an omission cannot silently skip a check.
+	Identity     string `json:"identity,omitempty"`
+	ListResource string `json:"list_resource,omitempty"`
 }
 
 type baselineManifest struct {
 	SchemaSHA256 map[string]string `json:"schema_sha256"`
 }
 
+// codeSpecification mirrors the root of the Provider Code Specification that
+// tfplugingen-framework consumes. The member names are the generator's
+// contract rather than ours: it reads "datasources" as one word, and a
+// specification that puts a surface under the wrong member is not rejected,
+// it simply yields no generated code.
 type codeSpecification struct {
-	Version   string         `json:"version"`
-	Provider  codeProvider   `json:"provider"`
-	Resources []codeResource `json:"resources"`
+	Version     string           `json:"version"`
+	Provider    codeProvider     `json:"provider"`
+	Resources   []codeResource   `json:"resources,omitempty"`
+	DataSources []codeDataSource `json:"datasources,omitempty"`
 }
 
 type codeProvider struct {
@@ -179,6 +192,11 @@ type codeProvider struct {
 }
 
 type codeResource struct {
+	Name   string     `json:"name"`
+	Schema codeSchema `json:"schema"`
+}
+
+type codeDataSource struct {
 	Name   string     `json:"name"`
 	Schema codeSchema `json:"schema"`
 }

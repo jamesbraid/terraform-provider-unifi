@@ -49,7 +49,17 @@ func Compile(input CompileInput) (Result, error) {
 			rules.SourceSpecificationSHA256,
 		)
 	}
-	if err := validateBaseline(rules.BaselineDigests, baseline.SchemaSHA256, rules.Resource); err != nil {
+	surfaceKey := catalogparity.SurfaceKey{Kind: rules.SurfaceKind, Name: rules.Resource}
+	// Reject an unsupported surface kind before any digest check, so the
+	// operator is told the kind cannot be emitted rather than being sent
+	// hunting for a baseline digest that was never the problem.
+	if !emittableSurfaceKind(rules.SurfaceKind) {
+		return Result{}, fmt.Errorf(
+			"no code specification member for surface kind %q: emitting it would generate no code",
+			rules.SurfaceKind,
+		)
+	}
+	if err := validateBaseline(rules.BaselineDigests, baseline.SchemaSHA256, surfaceKey); err != nil {
 		return Result{}, err
 	}
 	if err := validateAdmission(input, rules, baseline); err != nil {
@@ -164,16 +174,29 @@ func Compile(input CompileInput) (Result, error) {
 	if generatorName == "" {
 		generatorName = rules.Resource
 	}
+	schema := codeSchema{
+		Attributes:          attributes,
+		MarkdownDescription: rules.Description,
+	}
 	specification := codeSpecification{
 		Version:  "0.1",
 		Provider: codeProvider{Name: "unifi"},
-		Resources: []codeResource{{
-			Name: generatorName,
-			Schema: codeSchema{
-				Attributes:          attributes,
-				MarkdownDescription: rules.Description,
-			},
-		}},
+	}
+	// Emit under the member the generator reads for this surface kind. A kind
+	// with no emission path must fail here: putting it under the wrong member
+	// produces a specification the generator accepts and silently generates
+	// nothing from, so the mistake would surface much later as an undefined
+	// symbol rather than as a compile error.
+	switch rules.SurfaceKind {
+	case catalogparity.ManagedResource:
+		specification.Resources = []codeResource{{Name: generatorName, Schema: schema}}
+	case catalogparity.DataSource:
+		specification.DataSources = []codeDataSource{{Name: generatorName, Schema: schema}}
+	default:
+		return Result{}, fmt.Errorf(
+			"no code specification member for surface kind %q: emitting it would generate no code",
+			rules.SurfaceKind,
+		)
 	}
 	impact := impactReport{
 		FormatVersion:     1,
@@ -260,6 +283,13 @@ func validSurfaceKind(kind catalogparity.SurfaceKind) bool {
 	default:
 		return false
 	}
+}
+
+// emittableSurfaceKind reports whether codeSpecification has a member the
+// generator reads for this kind. List resources and actions do not yet, and
+// must fail rather than be emitted under a member that generates nothing.
+func emittableSurfaceKind(kind catalogparity.SurfaceKind) bool {
+	return kind == catalogparity.ManagedResource || kind == catalogparity.DataSource
 }
 
 func surfaceBaselineKey(key catalogparity.SurfaceKey) string {
@@ -618,19 +648,55 @@ func claimTerraformName(names map[string]string, terraformName, owner string) er
 	return nil
 }
 
-func validateBaseline(expected baselineDigestSet, actual map[string]string, resourceName string) error {
-	checks := []struct {
+// validateBaseline checks the surface's own schema digest, then the companion
+// schemas that only a managed resource has.
+//
+// Companions are per-surface optional. Requiring all three unconditionally
+// failed unifi_bgp and unifi_setting (no identity schema) and unifi_account,
+// unifi_bgp and unifi_setting (no list resource) with "baseline identity
+// digest mismatch", which reads as a stale digest and sends the reader hunting
+// for one to regenerate that never existed.
+//
+// An omitted digest declares the companion absent, and that declaration is
+// checked against the baseline manifest in both directions, so neither a
+// forgotten digest nor a stale declaration can pass unnoticed.
+func validateBaseline(expected baselineDigestSet, actual map[string]string, key catalogparity.SurfaceKey) error {
+	primaryKey := surfaceBaselineKey(key)
+	if primaryKey == "" {
+		return fmt.Errorf("no baseline schema key for surface kind %q", key.Kind)
+	}
+	primary := expected.Resource
+	if key.Kind == catalogparity.DataSource {
+		primary = expected.DataSource
+	}
+	if primary == "" || actual[primaryKey] != primary {
+		return fmt.Errorf("baseline %s digest mismatch for %s", key.Kind, key.Name)
+	}
+	if key.Kind != catalogparity.ManagedResource {
+		return nil
+	}
+	for _, companion := range []struct {
 		label string
 		key   string
 		want  string
 	}{
-		{"resource", "resource_schemas." + resourceName, expected.Resource},
-		{"identity", "resource_identity_schemas." + resourceName, expected.Identity},
-		{"list resource", "list_resource_schemas." + resourceName, expected.ListResource},
-	}
-	for _, check := range checks {
-		if check.want == "" || actual[check.key] != check.want {
-			return fmt.Errorf("baseline %s digest mismatch", check.label)
+		{"identity", "resource_identity_schemas." + key.Name, expected.Identity},
+		{"list resource", "list_resource_schemas." + key.Name, expected.ListResource},
+	} {
+		have, present := actual[companion.key]
+		switch {
+		case companion.want == "" && present:
+			return fmt.Errorf(
+				"policy declares no %s schema for %s but the baseline has one",
+				companion.label, key.Name,
+			)
+		case companion.want != "" && !present:
+			return fmt.Errorf(
+				"policy declares a %s schema for %s but the baseline has none",
+				companion.label, key.Name,
+			)
+		case companion.want != "" && have != companion.want:
+			return fmt.Errorf("baseline %s digest mismatch for %s", companion.label, key.Name)
 		}
 	}
 	return nil
