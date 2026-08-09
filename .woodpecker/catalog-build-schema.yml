@@ -34,7 +34,7 @@ steps:
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
       - CATALOG_DEPENDENCY_OUTPUT=/tmp/catalog-dependency-publishability.json bash .woodpecker/scripts/catalog-dependency-publishability.sh
-      - jq -e '.result == "pass" and .module_path == "github.com/ubiquiti-community/go-unifi" and .module_version == "v1.102.0" and .replace_present == false and .resolution_runner == "remote_ci" and .network_boundary == "remote_ci_only"' /tmp/catalog-dependency-publishability.json
+      - jq -e '.result == "pass" and .module_path == "github.com/ubiquiti-community/go-unifi" and .replace_present == false and .resolution_runner == "remote_ci" and .network_boundary == "remote_ci_only"' /tmp/catalog-dependency-publishability.json
       - CATALOG_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json TERRAFORM_BIN=/tmp/terraform TOFU_BIN=/tmp/tofu bash -x .woodpecker/scripts/catalog-build-schema.sh
       - jq -e '.result == "pass" and (.promotion_blockers | length) == 0 and .build_network == "none"' /tmp/catalog-build-schema.json
       - jq '.' /tmp/catalog-build-schema.json

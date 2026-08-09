@@ -26,6 +26,14 @@ esac
 test "${proxy_root}" != /tmp
 test "${proxy_root}" != /
 
+# A cached checkout left by an earlier pin is stale, not broken. The CI cache
+# path no longer carries the version, so without this a bump would fail the
+# commit assertion below on every run until someone cleared the cache by hand.
+if [[ -d ${source_root}/.git ]] &&
+    [[ $(git -C "${source_root}" rev-parse HEAD 2>/dev/null) != "${expected_commit}" ]]; then
+    rm -rf "${source_root}"
+fi
+
 if [[ ! -d ${source_root}/.git ]]; then
     git clone --branch "${module_version}" --depth 1 "${source_url}" "${source_root}"
 fi
