@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type AdmissionState string
@@ -30,6 +31,7 @@ type LedgerEntry struct {
 	Surface
 	State          AdmissionState `json:"state"`
 	ReceiptSHA256  string         `json:"receipt_sha256,omitempty"`
+	Migration      string         `json:"migration,omitempty"`
 	Implementation string         `json:"implementation"`
 }
 
@@ -37,6 +39,15 @@ type StatusOverride struct {
 	SurfaceKey
 	State         AdmissionState `json:"state"`
 	ReceiptSHA256 string         `json:"receipt_sha256,omitempty"`
+	// Migration says why this surface rests in an in-flight state. A surface
+	// being migrated must pass through generated_shadow: the compiler admits a
+	// shadow at that state, and admission needs a campaign run it cannot have
+	// yet. So the state is a waypoint on the designed path, not limbo — but
+	// only when someone says so. The reason is required rather than a flag,
+	// for the same cause an invented grouping member states its reason: a flag
+	// is something set to pass a gate, and a surface left in limbo by accident
+	// is exactly what the wave checkpoint exists to catch.
+	Migration string `json:"migration,omitempty"`
 }
 
 type StatusOverlay struct {
@@ -78,6 +89,9 @@ func BuildLedger(baseline Baseline, overlay StatusOverlay) (Ledger, error) {
 	if stateRequiresReceipt(overlay.DefaultState) {
 		return Ledger{}, fmt.Errorf("default admission state %q requires per-surface receipts", overlay.DefaultState)
 	}
+	if stateIsInFlight(overlay.DefaultState) {
+		return Ledger{}, fmt.Errorf("default admission state %q is in flight and must be declared per surface", overlay.DefaultState)
+	}
 
 	overrides := make(map[SurfaceKey]StatusOverride, len(overlay.Overrides))
 	for _, override := range overlay.Overrides {
@@ -93,6 +107,9 @@ func BuildLedger(baseline Baseline, overlay StatusOverlay) (Ledger, error) {
 		if err := validateReceipt(override.State, override.ReceiptSHA256); err != nil {
 			return Ledger{}, fmt.Errorf("surface %s/%s: %w", override.Kind, override.Name, err)
 		}
+		if err := validateMigration(override.State, override.Migration); err != nil {
+			return Ledger{}, fmt.Errorf("surface %s/%s: %w", override.Kind, override.Name, err)
+		}
 		overrides[override.SurfaceKey] = override
 	}
 
@@ -100,14 +117,17 @@ func BuildLedger(baseline Baseline, overlay StatusOverlay) (Ledger, error) {
 	for _, surface := range baseline.Surfaces {
 		state := overlay.DefaultState
 		receipt := ""
+		migration := ""
 		if override, exists := overrides[surface.SurfaceKey]; exists {
 			state = override.State
 			receipt = override.ReceiptSHA256
+			migration = override.Migration
 		}
 		entries = append(entries, LedgerEntry{
 			Surface:        surface,
 			State:          state,
 			ReceiptSHA256:  receipt,
+			Migration:      migration,
 			Implementation: implementationForState(state),
 		})
 	}
@@ -195,6 +215,9 @@ func validateLedger(ledger Ledger) error {
 		if err := validateReceipt(entry.State, entry.ReceiptSHA256); err != nil {
 			return fmt.Errorf("surface %s/%s: %w", entry.Kind, entry.Name, err)
 		}
+		if err := validateMigration(entry.State, entry.Migration); err != nil {
+			return fmt.Errorf("surface %s/%s: %w", entry.Kind, entry.Name, err)
+		}
 		if entry.Implementation != implementationForState(entry.State) {
 			return fmt.Errorf("surface %s/%s implementation %q does not match state %q", entry.Kind, entry.Name, entry.Implementation, entry.State)
 		}
@@ -220,6 +243,37 @@ func validateReceipt(state AdmissionState, receipt string) error {
 
 func stateRequiresReceipt(state AdmissionState) bool {
 	return state == Admitted || state == ContractParity || state == ReleaseReady
+}
+
+// validateMigration enforces that an in-flight state is a declared one.
+//
+// Both directions matter. Without a reason the surface is indistinguishable
+// from one abandoned mid-migration, which is the condition the wave checkpoint
+// protects against. With a reason on a state that is not in flight the
+// declaration is stale, and a stale declaration is worse than none: it reads
+// as current and nothing would contradict it.
+func validateMigration(state AdmissionState, migration string) error {
+	declared := strings.TrimSpace(migration) != ""
+	if stateIsInFlight(state) && !declared {
+		return fmt.Errorf("state %q is in flight and requires a migration reason saying why the surface rests there", state)
+	}
+	if declared && !stateIsInFlight(state) {
+		return fmt.Errorf("state %q is not in flight, so it must not carry a migration reason", state)
+	}
+	return nil
+}
+
+// stateIsInFlight reports whether a surface at this state is partway through
+// migration rather than settled.
+//
+// generated_shadow is the motivating case: the compiler emits a schema there,
+// and admission cannot follow until a campaign run says the runtime agrees.
+// adapter_parity is the same shape — neither terminal nor legacy, an
+// implementation that exists but does not yet serve — so it carries the same
+// obligation. shadow_only is deliberately absent: a shadow built to study a
+// surface that stays legacy is a settled position, not a waypoint.
+func stateIsInFlight(state AdmissionState) bool {
+	return state == GeneratedShadow || state == AdapterParity
 }
 
 func implementationForState(state AdmissionState) string {
