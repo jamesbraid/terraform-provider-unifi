@@ -29,7 +29,8 @@ jq --arg waves "${waves}" '
     {kind, name, wave, missing_signals, test_names: acceptance_tests}] as $surfaces |
   [.surfaces[] |
     select(.wave as $wave | $selected | index($wave)) |
-    select(.runtime.status == "identical") |
+    select(.runtime.status == "identical" or
+           (.kind == "action" and .name == "unifi_port")) |
     .scenario_owner] | unique as $shared_scenario_owners |
   {
     format_version: 1,
@@ -56,8 +57,7 @@ jq '
   .released_allowed_missing = ([
     "TestAccDeviceList_basic",
     "TestAccFirewallZoneFramework_basic",
-    "TestAccFirewallZoneList_emptyOrSeeded",
-    "TestAccPortAction_persistsPoeOverride"
+    "TestAccFirewallZoneList_emptyOrSeeded"
   ] | map(. as $missing | select($plan.test_names | index($missing) != null)))
 ' "${plan_path}" >"${plan_path}.allowed"
 mv "${plan_path}.allowed" "${plan_path}"

@@ -48,8 +48,7 @@ case $(jq -r '.plan.diagnostic_selection // false' "${receipt}") in
           .plan.released_allowed_missing == [
             "TestAccDeviceList_basic",
             "TestAccFirewallZoneFramework_basic",
-            "TestAccFirewallZoneList_emptyOrSeeded",
-            "TestAccPortAction_persistsPoeOverride"
+            "TestAccFirewallZoneList_emptyOrSeeded"
           ]
         ' "${receipt}" >/dev/null
         printf '%s\n' full
