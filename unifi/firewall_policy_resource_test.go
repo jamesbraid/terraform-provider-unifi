@@ -1606,3 +1606,37 @@ func TestFirewallPolicyEndpointListsUseStateForUnknown(t *testing.T) {
 		}
 	}
 }
+
+// The v0 schema is derived from the live one by swapping source/destination
+// `port` back to an integer, which is the only structural difference between
+// the versions. Since the schema is now generated, that attribute arrives
+// wrapped in a custom object type, and a custom type is what the framework asks
+// for the object's shape — so replacing the attribute without dropping the
+// custom type leaves the prior schema still calling `port` a string.
+//
+// Nothing else catches it. The upgrade path runs only against real v0 state, so
+// the fault would first appear as a decode failure in somebody's plan, long
+// after the change that caused it.
+func TestFirewallPolicyV0SchemaDescribesPortAsAnInteger(t *testing.T) {
+	ctx := context.Background()
+	upgrader, ok := (&firewallPolicyResource{}).UpgradeState(ctx)[0]
+	if !ok {
+		t.Fatal("no v0 state upgrader is registered")
+	}
+	if upgrader.PriorSchema == nil {
+		t.Fatal("the v0 upgrader carries no prior schema, so v0 state cannot be decoded")
+	}
+	for _, key := range []string{"source", "destination"} {
+		object, ok := upgrader.PriorSchema.Attributes[key].GetType().(attr.TypeWithAttributeTypes)
+		if !ok {
+			t.Fatalf("v0 %q is %T, which does not describe attribute types", key, upgrader.PriorSchema.Attributes[key].GetType())
+		}
+		port, exists := object.AttributeTypes()["port"]
+		if !exists {
+			t.Fatalf("v0 %q has no port attribute", key)
+		}
+		if port != types.Int64Type {
+			t.Errorf("v0 %s.port is %v, want types.Int64Type — v0 state stores it as a number", key, port)
+		}
+	}
+}
