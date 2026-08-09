@@ -4,6 +4,7 @@ set -euo pipefail
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 readonly repository_root
 readonly script=${repository_root}/.woodpecker/scripts/catalog-controller-differential.sh
+readonly campaign_policy=${repository_root}/provider-codegen/policy/catalog-campaign.json
 work_root=$(mktemp -d "${TMPDIR:-/tmp}/catalog-controller-differential-test.XXXXXX")
 trap 'rm -rf "${work_root}"' EXIT
 
@@ -22,25 +23,18 @@ CATALOG_ACCEPTANCE_TEST_NAMES='' \
 CATALOG_ACCEPTANCE_OUTPUT="${work_root}/plan.json" \
     "${script}"
 
-if ! jq -e '
+if ! jq -e --slurpfile policy "${campaign_policy}" '
+  $policy[0] as $campaign |
   .format_version == 1 and
-  .gate == "catalog controller differential" and
+  .gate == $campaign.gate and
   .waves == [1, 2, 3, 4, 5] and
-  .surface_count == 67 and
-  .evidence_gap_count == 8 and
-  .allowed_skips == [
-    "TestAccSettingResource_dohCustomServers",
-    "TestAccSettingResource_ipsHoneypot",
-    "TestAccWLANList_basic"
-  ] and
-  .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
-  .released_allowed_missing == [
-    "TestAccDeviceList_basic",
-    "TestAccFirewallZoneFramework_basic",
-    "TestAccFirewallZoneList_emptyOrSeeded"
-  ] and
-  (.test_names | length) == 152 and
-  (.shared_scenario_owners | length) == 38 and
+  .surface_count == $campaign.surface_count and
+  .evidence_gap_count == $campaign.evidence_gap_count and
+  .allowed_skips == $campaign.allowed_skips and
+  .released_allowed_failures == $campaign.released_allowed_failures and
+  .released_allowed_missing == $campaign.released_allowed_missing and
+  (.test_names | length) == $campaign.test_name_count and
+  (.shared_scenario_owners | length) == $campaign.shared_scenario_owner_count and
   ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
   ([.surfaces[] | select(.name == "unifi_dns_record" and .kind == "managed_resource")] | length) == 1
 ' "${work_root}/plan.json" >/dev/null; then
@@ -55,13 +49,14 @@ CATALOG_ACCEPTANCE_TEST_NAMES=TestAccDeviceFramework_basic \
 CATALOG_ACCEPTANCE_OUTPUT="${work_root}/targeted-plan.json" \
     "${script}"
 
-if ! jq -e '
+if ! jq -e --slurpfile policy "${campaign_policy}" '
+  $policy[0] as $campaign |
   .diagnostic_selection == true and
   .test_names == ["TestAccDeviceFramework_basic"] and
   .allowed_skips == [] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
   .released_allowed_missing == [] and
-  .catalog_test_count == 152
+  .catalog_test_count == $campaign.test_name_count
 ' "${work_root}/targeted-plan.json" >/dev/null; then
     echo "targeted controller plan self-test failed" >&2
     jq '.' "${work_root}/targeted-plan.json" >&2
@@ -77,13 +72,14 @@ CATALOG_ACCEPTANCE_TEST_NAMES='TestAccDeviceList_basic;TestAccDeviceFramework_ba
 CATALOG_ACCEPTANCE_OUTPUT="${work_root}/targeted-multiple-plan.json" \
     "${script}"
 
-if ! jq -e '
+if ! jq -e --slurpfile policy "${campaign_policy}" '
+  $policy[0] as $campaign |
   .diagnostic_selection == true and
   .test_names == ["TestAccDeviceFramework_basic", "TestAccDeviceList_basic"] and
   .allowed_skips == [] and
   .released_allowed_failures == ["TestAccDeviceFramework_basic"] and
   .released_allowed_missing == ["TestAccDeviceList_basic"] and
-  .catalog_test_count == 152
+  .catalog_test_count == $campaign.test_name_count
 ' "${work_root}/targeted-multiple-plan.json" >/dev/null; then
     echo "semicolon-separated controller selection did not preserve every test" >&2
     jq '.' "${work_root}/targeted-multiple-plan.json" >&2
@@ -91,20 +87,18 @@ if ! jq -e '
 fi
 
 followup_script=${repository_root}/.woodpecker/scripts/catalog-controller-followup.sh
-jq -n --slurpfile plan "${work_root}/plan.json" '
+jq -n --slurpfile plan "${work_root}/plan.json" \
+      --slurpfile policy "${campaign_policy}" '
+  $policy[0] as $campaign |
   {
     result: "blocked_evidence",
     plan: $plan[0],
     released: {
       result: "accepted_limitation",
-      failed: ["TestAccDeviceFramework_basic"],
-      accepted_failures: ["TestAccDeviceFramework_basic"],
+      failed: $campaign.released_allowed_failures,
+      accepted_failures: $campaign.released_allowed_failures,
       unexpected_failures: [],
-      missing: [
-        "TestAccDeviceList_basic",
-        "TestAccFirewallZoneFramework_basic",
-        "TestAccFirewallZoneList_emptyOrSeeded"
-      ]
+      missing: $campaign.released_allowed_missing
     },
     candidate: {
       result: "pass",

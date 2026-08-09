@@ -4,6 +4,7 @@ set -euo pipefail
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 readonly repository_root
 readonly inventory=${CATALOG_EVIDENCE_INVENTORY:-${repository_root}/build/release-ready/catalog-evidence-inventory.json}
+readonly campaign_policy=${CATALOG_CAMPAIGN_POLICY:-${repository_root}/provider-codegen/policy/catalog-campaign.json}
 readonly waves=${CATALOG_ACCEPTANCE_WAVES:-1,2,3,4}
 readonly output=${CATALOG_ACCEPTANCE_OUTPUT:-${repository_root}/build/release-ready/controller-differential.json}
 
@@ -44,21 +45,17 @@ jq --arg waves "${waves}" '
   }
 ' "${inventory}" >"${plan_path}"
 
-jq '
+# The dispositions come from the committed campaign policy so the plan
+# builder, the followup gate, and Go admission cannot drift apart.
+jq --slurpfile policy "${campaign_policy}" '
   . as $plan |
-  .allowed_skips = ([
-    "TestAccSettingResource_dohCustomServers",
-    "TestAccSettingResource_ipsHoneypot",
-    "TestAccWLANList_basic"
-  ] | map(. as $skip | select($plan.test_names | index($skip) != null))) |
-  .released_allowed_failures = ([
-    "TestAccDeviceFramework_basic"
-  ] | map(. as $failure | select($plan.test_names | index($failure) != null))) |
-  .released_allowed_missing = ([
-    "TestAccDeviceList_basic",
-    "TestAccFirewallZoneFramework_basic",
-    "TestAccFirewallZoneList_emptyOrSeeded"
-  ] | map(. as $missing | select($plan.test_names | index($missing) != null)))
+  $policy[0] as $campaign |
+  .allowed_skips = ($campaign.allowed_skips |
+    map(. as $skip | select($plan.test_names | index($skip) != null))) |
+  .released_allowed_failures = ($campaign.released_allowed_failures |
+    map(. as $failure | select($plan.test_names | index($failure) != null))) |
+  .released_allowed_missing = ($campaign.released_allowed_missing |
+    map(. as $missing | select($plan.test_names | index($missing) != null)))
 ' "${plan_path}" >"${plan_path}.allowed"
 mv "${plan_path}.allowed" "${plan_path}"
 

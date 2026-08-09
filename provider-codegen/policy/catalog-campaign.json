@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "gate": "catalog controller differential",
+  "surface_count": 67,
+  "evidence_gap_count": 8,
+  "test_name_count": 152,
+  "shared_scenario_owner_count": 38,
+  "allowed_skips": [
+    "TestAccSettingResource_dohCustomServers",
+    "TestAccSettingResource_ipsHoneypot",
+    "TestAccWLANList_basic"
+  ],
+  "released_allowed_failures": [
+    "TestAccDeviceFramework_basic"
+  ],
+  "released_allowed_missing": [
+    "TestAccDeviceList_basic",
+    "TestAccFirewallZoneFramework_basic",
+    "TestAccFirewallZoneList_emptyOrSeeded"
+  ]
+}

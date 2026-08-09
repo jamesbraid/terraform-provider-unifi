@@ -149,6 +149,7 @@ type ControllerDifferentialReceipt struct {
 }
 
 type AdmissionInput struct {
+	Policy            CampaignPolicy
 	Inventory         EvidenceInventory
 	InventorySHA256   string
 	BuildSchema       BuildSchemaReceipt
@@ -299,6 +300,9 @@ func validateAdmissionInput(input AdmissionInput) error {
 			return fmt.Errorf("%s receipt SHA-256 is invalid", label)
 		}
 	}
+	if err := input.Policy.Validate(); err != nil {
+		return err
+	}
 	if err := validateAdmissionInventory(input.Inventory, input.InventorySHA256); err != nil {
 		return err
 	}
@@ -311,7 +315,7 @@ func validateAdmissionInput(input AdmissionInput) error {
 	if err := validateUnitAdmission(input.Unit, input.BuildSchema, input.InventorySHA256); err != nil {
 		return err
 	}
-	if err := validateControllerAdmission(input.Controller, input.BuildSchema, input.Inventory); err != nil {
+	if err := validateControllerAdmission(input.Controller, input.BuildSchema, input.Inventory, input.Policy); err != nil {
 		return err
 	}
 	if input.ControllerSHA256 != input.Pragmatic.ControllerReceiptSHA256 {
@@ -474,7 +478,12 @@ func validateUnitSuite(label string, suite UnitSuiteReceipt) error {
 	return nil
 }
 
-func validateControllerAdmission(receipt ControllerDifferentialReceipt, build BuildSchemaReceipt, inventory EvidenceInventory) error {
+func validateControllerAdmission(
+	receipt ControllerDifferentialReceipt,
+	build BuildSchemaReceipt,
+	inventory EvidenceInventory,
+	policy CampaignPolicy,
+) error {
 	if receipt.FormatVersion != 1 || receipt.Gate != "catalog controller differential" {
 		return fmt.Errorf("controller differential identity is invalid")
 	}
@@ -494,17 +503,13 @@ func validateControllerAdmission(receipt ControllerDifferentialReceipt, build Bu
 	}
 	if receipt.Plan.FormatVersion != 1 || receipt.Plan.Gate != receipt.Gate ||
 		!reflect.DeepEqual(receipt.Plan.Waves, []int{1, 2, 3, 4, 5}) ||
-		receipt.Plan.SurfaceCount != 67 || len(receipt.Plan.Surfaces) != 67 ||
-		receipt.Plan.EvidenceGapCount != 8 || len(receipt.Plan.TestNames) != 152 ||
-		len(receipt.Plan.SharedScenarioOwners) != 37 ||
-		!reflect.DeepEqual(
-			receipt.Plan.ReleasedAllowedFailures,
-			[]string{"TestAccDeviceFramework_basic"},
-		) ||
-		!reflect.DeepEqual(
-			receipt.Plan.ReleasedAllowedMissing,
-			[]string{"TestAccDeviceList_basic"},
-		) {
+		receipt.Plan.SurfaceCount != policy.SurfaceCount ||
+		len(receipt.Plan.Surfaces) != policy.SurfaceCount ||
+		receipt.Plan.EvidenceGapCount != policy.EvidenceGapCount ||
+		len(receipt.Plan.TestNames) != policy.TestNameCount ||
+		len(receipt.Plan.SharedScenarioOwners) != policy.SharedScenarioOwnerCount ||
+		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedFailures, policy.ReleasedAllowedFailures) ||
+		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedMissing, policy.ReleasedAllowedMissing) {
 		return fmt.Errorf("controller plan surfaces or counts are incomplete")
 	}
 	want := make(map[SurfaceKey]SurfaceEvidenceInventory, len(inventory.Surfaces))
