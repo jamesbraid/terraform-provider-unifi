@@ -129,7 +129,15 @@ func validateControllerReceipt(path string) (string, error) {
 		return "", fmt.Errorf("catalog result is %q with %d gaps", receipt.Result, receipt.Plan.EvidenceGapCount)
 	}
 	releasedAllowedFailures := []string{"TestAccDeviceFramework_basic"}
-	releasedAllowedMissing := []string{"TestAccDeviceList_basic"}
+	// Kept in step with the plan builder and the followup gate. The port
+	// action scenario is absent from this list because the campaign now
+	// shares it with the released suite, which the hardware disposition
+	// requires.
+	releasedAllowedMissing := []string{
+		"TestAccDeviceList_basic",
+		"TestAccFirewallZoneFramework_basic",
+		"TestAccFirewallZoneList_emptyOrSeeded",
+	}
 	if !slices.Equal(receipt.Plan.ReleasedAllowedFailures, releasedAllowedFailures) {
 		return "", fmt.Errorf("released allowed failures are invalid")
 	}
