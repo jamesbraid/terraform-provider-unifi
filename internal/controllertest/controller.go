@@ -69,14 +69,14 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 	}
 	c := &Controller{stack: stack}
 
-	// The controller image declares its own healthcheck, so compose.Wait is
-	// what decides it is up; waitForAPI then waits for the API behind it.
+	// Readiness is waitForAPI's job, not the image healthcheck's. The image
+	// gives the controller a fixed retry budget that a slow JVM start can
+	// exhaust while it is still configuring its logging, which failed whole
+	// campaign runs with nothing but "container is unhealthy". Waiting on the
+	// API the tests actually use is both a stronger signal and one this
+	// fixture controls.
 	if err := stack.WithOsEnv().
-		Up(ctx, compose.Wait(true), compose.WithRecreate(api.RecreateDiverged)); err != nil {
-		// A failed healthcheck reports only "container is unhealthy", and the
-		// container is reaped before anyone can inspect it. Say what the
-		// controller itself was doing, or the next occurrence costs another
-		// run to diagnose.
+		Up(ctx, compose.WithRecreate(api.RecreateDiverged)); err != nil {
 		logControllerStartupFailure(ctx, logger, stack)
 		return c, fmt.Errorf("compose up: %w", err)
 	}
@@ -102,6 +102,7 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 
 	client, err := waitForAPI(ctx, logger, c.Endpoint, controllerUser, controllerPassword)
 	if err != nil {
+		logControllerStartupFailure(ctx, logger, stack)
 		return c, err
 	}
 	c.Client = client
@@ -223,14 +224,17 @@ func exportProviderEnv(endpoint string) error {
 }
 
 // waitForAPI waits for the controller API to be ready and accepting JSON
-// requests. The container healthcheck says the process is up; this says the
-// API behind it is initialized.
+// requests. This is the fixture's readiness gate: it proves the API the tests
+// drive is initialized, which the container healthcheck alone never did.
 func waitForAPI(
 	ctx context.Context,
 	logger Logger,
 	endpoint, user, password string,
 ) (client *unifi.ApiClient, err error) {
-	maxRetries := 60
+	// Generous on purpose: this is now the only readiness gate, and a cold
+	// controller on a busy runner has been seen spending minutes in JVM
+	// startup before it serves anything.
+	maxRetries := 120
 	retryDelay := 3 * time.Second
 
 	logger.Printf(
