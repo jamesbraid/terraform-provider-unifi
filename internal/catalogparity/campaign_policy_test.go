@@ -3,7 +3,9 @@ package catalogparity
 import (
 	"encoding/json"
 	"os"
+	"reflect"
 	"slices"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -33,9 +35,13 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 	evidenceGapCount := 0
 	testNames := make([]string, 0)
 	sharedScenarioOwners := make([]string, 0)
+	runtimeChanged := make([]SurfaceKey, 0)
 	for _, surface := range inventory.Surfaces {
 		if !slices.Contains(waves, surface.Wave) {
 			continue
+		}
+		if surface.Runtime.Status == FileChanged {
+			runtimeChanged = append(runtimeChanged, surface.SurfaceKey)
 		}
 		surfaceCount++
 		evidenceGapCount += len(surface.MissingSignals)
@@ -81,6 +87,19 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 		if check.got != check.want {
 			t.Errorf("inventory yields %s = %d, policy says %d", check.field, check.got, check.want)
 		}
+	}
+
+	// Migration recovery compares this exact set, sorted by kind then name, an
+	// hour into a campaign. Catching a stale entry here costs a second.
+	sort.Slice(runtimeChanged, func(a, b int) bool {
+		if runtimeChanged[a].Kind != runtimeChanged[b].Kind {
+			return runtimeChanged[a].Kind < runtimeChanged[b].Kind
+		}
+		return runtimeChanged[a].Name < runtimeChanged[b].Name
+	})
+	if !reflect.DeepEqual(runtimeChanged, policy.RuntimeChangeSet) {
+		t.Errorf("inventory runtime change set is %v, policy declares %v",
+			runtimeChanged, policy.RuntimeChangeSet)
 	}
 
 	// Every disposition has to name a test the campaign actually plans to run,

@@ -68,6 +68,7 @@ type DNSLifecycleReceipt struct {
 }
 
 type MigrationRecoveryInput struct {
+	Policy             catalogparity.CampaignPolicy
 	Admission          catalogparity.AdmissionReceipt
 	AdmissionSHA256    string
 	BuildSchema        catalogparity.BuildSchemaReceipt
@@ -176,6 +177,9 @@ func validateMigrationInputs(input MigrationRecoveryInput) error {
 		if !validHex(digest, 64) {
 			return fmt.Errorf("%s SHA-256 is invalid", label)
 		}
+	}
+	if err := input.Policy.Validate(); err != nil {
+		return err
 	}
 	if err := validateMigrationAdmission(input); err != nil {
 		return err
@@ -412,12 +416,12 @@ func validateMigrationInventory(input MigrationRecoveryInput) error {
 		}
 		return changed[a].Name < changed[b].Name
 	})
-	want := []catalogparity.SurfaceKey{
-		{Kind: catalogparity.ListResource, Name: "unifi_device"},
-		{Kind: catalogparity.ListResource, Name: "unifi_dns_record"},
-		{Kind: catalogparity.ManagedResource, Name: "unifi_device"},
-		{Kind: catalogparity.ManagedResource, Name: "unifi_dns_record"},
-	}
+	// The expectation is declared in the campaign policy rather than inline, so
+	// a surface whose runtime legitimately changes is recorded in one place
+	// instead of being discovered an hour into a campaign. The comparison is
+	// still against a human-declared list, so an undeclared runtime change
+	// fails the gate exactly as before.
+	want := input.Policy.RuntimeChangeSet
 	if !reflect.DeepEqual(changed, want) {
 		return fmt.Errorf("catalog runtime change set is %v, want %v", changed, want)
 	}
