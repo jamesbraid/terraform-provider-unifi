@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly module_path=github.com/ubiquiti-community/go-unifi
-readonly module_version=v1.103.0
+repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+readonly repository_root
+# shellcheck source=.woodpecker/scripts/go-unifi-pin.sh
+source "${repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
+
+readonly module_path=${go_unifi_module_path}
+module_version=$(go_unifi_declared_version "${repository_root}")
+readonly module_version
 readonly source_url=https://github.com/jamesbraid/go-unifi.git
-readonly expected_commit=${GO_UNIFI_EXPECTED_COMMIT:-a58839fe296859bbb0e91bd57efe54f9e954fe4e}
-readonly expected_sum=${GO_UNIFI_EXPECTED_SUM:-h1:12Qa0zjI2Rn8FT4lnieWrpXYdy29ALIDoy/afKXOohY=}
-readonly source_root=${GO_UNIFI_SOURCE_ROOT:-/tmp/go-unifi-v1.103.0-source}
+readonly expected_commit=${go_unifi_expected_commit}
+readonly expected_sum=${go_unifi_expected_sum}
+readonly source_root=${GO_UNIFI_SOURCE_ROOT:-/tmp/go-unifi-${module_version}-source}
 readonly proxy_root=${GO_UNIFI_PROXY_ROOT:-/tmp/go-unifi-proxy}
 
 case ${source_root} in
