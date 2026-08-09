@@ -45,9 +45,7 @@ work_root=$(mktemp -d "${TMPDIR:-/tmp}/provider-m3q.XXXXXX")
 readonly work_root
 readonly dns_name=m0-dns.example.invalid
 
-cleanup() {
-    local result=$1
-    trap - EXIT
+discard_scoped_resources() {
     docker rm --force "${controller}" >/dev/null 2>&1 || true
     docker network rm "${network}" >/dev/null 2>&1 || true
     docker volume rm "${tools_volume}" "${config_volume}" \
@@ -56,9 +54,28 @@ cleanup() {
         "${terraform_legacy_state_volume}" "${tofu_legacy_state_volume}" \
         "${source_volume}" "${go_cache_volume}" \
         "${old_source_volume}" "${old_go_cache_volume}" >/dev/null 2>&1 || true
+}
+
+cleanup() {
+    local result=$1
+    trap - EXIT
+    discard_scoped_resources
     exit "${result}"
 }
 trap 'cleanup $?' EXIT
+
+# Every resource here is named after the pipeline number, and a killed run
+# leaves all of them behind because a SIGKILL never runs the EXIT trap.
+# Woodpecker re-queues the task under the same number, so the previous
+# attempt's remains are already in the way.
+#
+# The network collides loudly, which is how this was found. The volumes do not.
+# docker volume create returns success for a name that already exists, so a
+# retry would silently reattach the killed run's Terraform and OpenTofu state
+# and produce a lifecycle receipt describing a run that never finished. Discard
+# the whole set before creating any of it, so a retry starts from nothing
+# rather than from half of a previous attempt.
+discard_scoped_resources
 
 test "$(docker info --format '{{.Architecture}}')" = x86_64
 git cat-file -e "${source_commit}^{commit}"
