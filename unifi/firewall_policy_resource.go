@@ -3,14 +3,11 @@ package unifi
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
@@ -19,16 +16,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
 )
 
 var (
@@ -154,247 +145,13 @@ func (r *firewallPolicyResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	endpointAttrs := map[string]schema.Attribute{
-		"zone_id": schema.StringAttribute{
-			MarkdownDescription: "The ID of the firewall zone this endpoint belongs to. Use the `unifi_firewall_zone` data source to look up zone IDs by name.",
-			Required:            true,
-		},
-		"matching_target": schema.StringAttribute{
-			MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
-			Required:            true,
-			Validators: []validator.String{
-				stringvalidator.OneOf("ANY", "NETWORK", "CLIENT", "IP", "DEVICE", "MAC", "WEB"),
-			},
-		},
-		"network_ids": schema.ListAttribute{
-			MarkdownDescription: "List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.",
-			Optional:            true,
-			Computed:            true,
-			ElementType:         types.StringType,
-			PlanModifiers: []planmodifier.List{
-				listplanmodifier.UseStateForUnknown(),
-			},
-		},
-		"client_macs": schema.ListAttribute{
-			MarkdownDescription: "List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.",
-			Optional:            true,
-			Computed:            true,
-			ElementType:         types.StringType,
-			PlanModifiers: []planmodifier.List{
-				listplanmodifier.UseStateForUnknown(),
-			},
-		},
-		"ips": schema.ListAttribute{
-			MarkdownDescription: "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
-			Optional:            true,
-			Computed:            true,
-			ElementType:         types.StringType,
-			PlanModifiers: []planmodifier.List{
-				listplanmodifier.UseStateForUnknown(),
-			},
-		},
-		"web_domains": schema.ListAttribute{
-			MarkdownDescription: "List of domains/FQDNs to match. Used when `matching_target` is `WEB`.",
-			Optional:            true,
-			Computed:            true,
-			ElementType:         types.StringType,
-			PlanModifiers: []planmodifier.List{
-				listplanmodifier.UseStateForUnknown(),
-			},
-		},
-		"port": schema.StringAttribute{
-			MarkdownDescription: "Port(s) to match when `port_matching_type` is `SPECIFIC`. " +
-				"A single port (`161`) or a comma-separated list of ports/ranges " +
-				"(`80,443`, `8000-8100`). Leave unset for no port match.",
-			Optional: true,
-			Computed: true,
-			Validators: []validator.String{
-				stringvalidator.RegexMatches(
-					regexp.MustCompile(`^[0-9]{1,5}(-[0-9]{1,5})?(,[0-9]{1,5}(-[0-9]{1,5})?)*$`),
-					"must be a port number or a comma-separated list of ports/ranges "+
-						`(e.g. "80,443" or "8000-8100")`,
-				),
-			},
-			PlanModifiers: []planmodifier.String{
-				stringplanmodifier.UseStateForUnknown(),
-			},
-		},
-		"port_group_id": schema.StringAttribute{
-			MarkdownDescription: "ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.",
-			Optional:            true,
-			Computed:            true,
-			Default:             stringdefault.StaticString(""),
-		},
-		"ip_group_id": schema.StringAttribute{
-			MarkdownDescription: "ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.",
-			Optional:            true,
-			Computed:            true,
-			Default:             stringdefault.StaticString(""),
-		},
-		"port_matching_type": schema.StringAttribute{
-			MarkdownDescription: "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
-			Optional:            true,
-			Computed:            true,
-			Default:             stringdefault.StaticString("ANY"),
-			Validators: []validator.String{
-				stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT"),
-			},
-		},
-		"matching_target_type": schema.StringAttribute{
-			MarkdownDescription: "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
-			Computed:            true,
-			PlanModifiers: []planmodifier.String{
-				stringplanmodifier.UseStateForUnknown(),
-			},
-		},
-	}
-
-	resp.Schema = schema.Schema{
-		Version: 1,
-		MarkdownDescription: "Manages a UniFi zone-based firewall policy (UniFi Network 8.x+). " +
-			"Zone-based firewall policies replace the legacy firewall rules and are displayed " +
-			"under Settings → Security → Firewall Policies in the UniFi UI.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the firewall policy.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the UniFi site. Defaults to the site configured in the provider.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the firewall policy.",
-				Required:            true,
-			},
-			"action": schema.StringAttribute{
-				MarkdownDescription: "The action to take when the policy matches: `ALLOW`, `BLOCK`, or `REJECT`.",
-				Required:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("ALLOW", "BLOCK", "REJECT"),
-				},
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the policy is enabled. Defaults to `true`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"protocol": schema.StringAttribute{
-				MarkdownDescription: "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, " +
-					"`icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` " +
-					"policies the controller rejects `create_allow_respond = true` " +
-					"(`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it " +
-					"`false` and add an explicit reverse policy if you need the reply.",
-				Optional: true,
-				Computed: true,
-				Default:  stringdefault.StaticString("all"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("all", "tcp", "udp", "tcp_udp", "icmp", "icmpv6"),
-				},
-			},
-			"description": schema.StringAttribute{
-				MarkdownDescription: "A description for the policy.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString(""),
-			},
-			"logging": schema.BoolAttribute{
-				MarkdownDescription: "Whether to log packets matching this policy. Defaults to `false`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"index": schema.Int64Attribute{
-				MarkdownDescription: "The ordering index of the policy within its zone-pair, " +
-					"assigned by the controller. **Read-only:** UniFi does not accept a " +
-					"client-supplied index on create or update (the policy is always appended " +
-					"to the end of its source/destination zone-pair), and the supported API " +
-					"exposes no reorder operation, so policy ordering cannot be managed through " +
-					"this provider. Reorder policies in the UniFi UI if needed.",
-				Computed: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
-			},
-			"create_allow_respond": schema.BoolAttribute{
-				MarkdownDescription: "When `true`, UniFi automatically creates a matching rule to allow established/related return traffic. Recommended for `ALLOW` policies. Defaults to `false`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"ip_version": schema.StringAttribute{
-				MarkdownDescription: "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("IPV4"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("BOTH", "IPV4", "IPV6"),
-				},
-			},
-			"connection_state_type": schema.StringAttribute{
-				MarkdownDescription: "Connection-state matching mode: `ALL` (any state), `RESPOND_ONLY` (established/related returns), or `CUSTOM` (match the states listed in `connection_states`). Optional: if omitted the controller assigns it (defaults to `ALL`) and the provider round-trips the value so updates are accepted.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("ALL", "RESPOND_ONLY", "CUSTOM"),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"connection_states": schema.ListAttribute{
-				MarkdownDescription: "Connection states matched when `connection_state_type` is `CUSTOM` (`NEW`, `ESTABLISHED`, `RELATED`, `INVALID`). Optional: leave unset for `ALL`/`RESPOND_ONLY` and the controller manages it; the provider round-trips the value so a `CUSTOM` policy's states are not dropped on update (which the firmware rejects with HTTP 400).",
-				ElementType:         types.StringType,
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.List{
-					listvalidator.ValueStringsAre(
-						stringvalidator.OneOf("NEW", "ESTABLISHED", "RELATED", "INVALID"),
-					),
-				},
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"icmp_typename": schema.StringAttribute{
-				MarkdownDescription: "ICMP type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"icmp_v6_typename": schema.StringAttribute{
-				MarkdownDescription: "ICMPv6 type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"source": schema.SingleNestedAttribute{
-				MarkdownDescription: "The source endpoint of the policy.",
-				Required:            true,
-				Attributes:          endpointAttrs,
-			},
-			"destination": schema.SingleNestedAttribute{
-				MarkdownDescription: "The destination endpoint of the policy.",
-				Required:            true,
-				Attributes:          endpointAttrs,
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_firewall_policy.FirewallPolicyResourceSchema(ctx)
+	// v1: source and destination `port` changed from Int64 to String.
+	resp.Schema.Version = 1
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *firewallPolicyResource) Configure(
@@ -673,8 +430,17 @@ func (r *firewallPolicyResource) UpgradeState(
 	for _, key := range []string{"source", "destination"} {
 		nested, ok := priorSchema.Attributes[key].(schema.SingleNestedAttribute)
 		if !ok {
-			continue
+			// Silently leaving `port` as a string would decode v0 state against
+			// the wrong type at upgrade time, on a path no unit test exercises.
+			// Refusing to build the upgrader surfaces it at provider start.
+			panic(fmt.Sprintf("firewall policy %q is not a single nested attribute, so the v0 schema cannot be derived", key))
 		}
+		// The generated schema attaches a custom object type, and that type is
+		// what GetType reports — so replacing the attribute alone leaves the
+		// prior schema still describing `port` as a string. Dropping the custom
+		// type makes the framework derive the object from these attributes,
+		// which is the whole point of rewriting one of them.
+		nested.CustomType = nil
 		attrs := make(map[string]schema.Attribute, len(nested.Attributes))
 		for k, v := range nested.Attributes {
 			attrs[k] = v
