@@ -10,13 +10,31 @@ import (
 )
 
 // factCoverage says, for one key the provider code specification can carry,
-// which referee reads it — or why nothing does.
+// what FAILS if it changes and nobody intended the change.
+//
+// Every entry must name a mechanism that fails. A mechanism that merely reports
+// is not coverage, and this type gives no way to claim otherwise: blocks were
+// recorded here as needing nothing because the projection test "already names
+// them on every run". That line was printed on every run for weeks, and
+// migrating wlan would still have deleted its schedule block. Being named in a
+// log is not being compared.
+//
+// Two of the six keys once recorded as needing no comparison turned out to be
+// live hazards, so a claim now has to be demonstrable rather than plausible.
 type factCoverage struct {
-	// By names the test that would fail if this fact moved. Empty means
-	// nothing checks it, which is allowed only with a Because.
+	// By names the test that fails when this fact moves.
 	By string
-	// Because justifies an unchecked key. It is required when By is empty, so
-	// "nothing checks this" cannot be expressed by omission.
+	// Compiles records that a wrong value cannot build. That is real coverage,
+	// but "it would fail to compile" is the sort of claim that is obvious,
+	// plausible and occasionally false, so each key claiming it was
+	// demonstrated rather than assumed: an import path pointed at a package
+	// that does not exist, and a value_type pointed at a type that does not
+	// exist, each regenerated and each refused by go build.
+	Compiles bool
+	// Unused records a key this estate never emits, so no mechanism has ever
+	// been exercised on it. Honest, and not the same as covered.
+	Unused bool
+	// Because carries the reasoning, and is required whenever no test is named.
 	Because string
 }
 
@@ -63,10 +81,10 @@ var specFactCoverage = map[string]factCoverage{
 	"name":          {By: "TestBuiltSchemaMatchesReleasedBaseline"},
 	"schema":        {By: "TestBuiltSchemaMatchesReleasedBaseline"},
 
-	// Deliberately unchecked.
-	"blocks": {Because: "Blocks are not projected. Three surfaces carry block_types " +
-		"and TestBuiltSchemaMatchesReleasedBaseline names them on every run rather than " +
-		"passing over them silently."},
+	// Compared since the generator made blocks reachable. This entry once read
+	// "the projection test names them on every run", which was true and was not
+	// coverage.
+	"blocks": {By: "TestBuiltSchemaMatchesReleasedBaseline"},
 	// Reclassified when power_supervisor was migrated. It was recorded as
 	// unchecked and guarded per surface, on the reasoning that a custom type
 	// produces no schema fact. That is true and was the wrong conclusion:
@@ -81,22 +99,23 @@ var specFactCoverage = map[string]factCoverage{
 	// type names would have caught that. See
 	// TestFirewallPolicyV0SchemaDescribesPortAsAnInteger.
 	"custom_type": {By: "Test_schemaBehaviourInventory"},
-	"associated_external_type": {Because: "Generates conversion helpers between the framework " +
-		"model and an SDK struct. It produces no schema fact and no runtime behaviour; a " +
-		"mistake here fails to compile."},
-	"import":  {Because: "Import paths for a custom validator, plan modifier or default. Wrong ones fail to compile, and the behaviour they carry is compared by Test_schemaBehaviourInventory."},
-	"imports": {Because: "As import."},
-	"path":    {Because: "The package path within an import. As import."},
-	"alias": {Because: "An optional package alias within an import, used in Go to avoid a name " +
-		"collision or to import for side effects only. It changes how generated code spells a " +
-		"reference, never what the reference does; a wrong alias fails to compile."},
-	"custom": {Because: "Wrapper around a custom validator, plan modifier or default. Its contents are compared by Test_schemaBehaviourInventory."},
-	"schema_definition": {Because: "The Go expression for a custom validator, plan modifier or " +
-		"default. Comparing the text would pin how a behaviour is spelled rather than what it " +
-		"does; Test_schemaBehaviourInventory compares the behaviour's own description instead, " +
-		"which carries its values."},
-	"value_type": {Because: "The Go type a custom default returns. A mismatch fails to compile."},
-	"type":       {Because: "Names an associated external type. Schema types are carried by the per-kind keys above."},
+	"associated_external_type": {Unused: true, Because: "Generates conversion helpers between the " +
+		"framework model and an SDK struct. No policy in this estate declares one, so whether a " +
+		"wrong one converts silently or refuses to build is untested. Answer that before the " +
+		"first policy uses it."},
+	"import":  {Compiles: true, Because: "An import path for a custom validator, plan modifier or default. A wrong one names a package that does not exist."},
+	"imports": {Compiles: true, Because: "As import."},
+	"path":    {Compiles: true, Because: "The package path within an import. As import."},
+	"alias": {Unused: true, Because: "An optional package alias within an import. No policy here sets " +
+		"one, so the claim that a wrong alias fails to compile has never been exercised and is " +
+		"not asserted."},
+	"custom": {By: "Test_schemaBehaviourInventory", Because: "Wrapper around a custom validator, plan modifier or default; its contents are what the inventory reads."},
+	"schema_definition": {By: "Test_schemaBehaviourInventory", Because: "The Go expression for a " +
+		"custom behaviour. The inventory does not compare this text — that would pin how a " +
+		"behaviour is spelled rather than what it does — but it compares the resulting " +
+		"behaviour's own description, which carries its values."},
+	"value_type": {Compiles: true, Because: "The Go type behind a custom type. A wrong one does not typecheck against the framework's interfaces."},
+	"type":       {Unused: true, Because: "Names an associated external type, which nothing here declares."},
 }
 
 // Test_everySpecFactIsAccountedFor walks the provider code specification's own
@@ -120,8 +139,12 @@ func Test_everySpecFactIsAccountedFor(t *testing.T) {
 		switch {
 		case !known:
 			unaccounted = append(unaccounted, key)
+		case coverage.By == "" && !coverage.Compiles && !coverage.Unused:
+			t.Errorf("specification key %q names no mechanism that fails when it changes. "+
+				"Name the test, or record that a wrong value cannot compile, or say the key is "+
+				"unused. A key that is merely reported somewhere is not covered.", key)
 		case coverage.By == "" && coverage.Because == "":
-			t.Errorf("specification key %q is recorded as unchecked with no reason given", key)
+			t.Errorf("specification key %q claims coverage without naming a test, and gives no reasoning", key)
 		}
 	}
 	if len(unaccounted) > 0 {
