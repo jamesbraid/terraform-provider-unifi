@@ -10,3 +10,6 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-power-supervisor.json -policy policy/power_supervisor.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix power_supervisor -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/power_supervisor.provider-code-spec.json --output ../internal/generated/resource_power_supervisor --package resource_power_supervisor
 //go:generate gofmt -w ../internal/generated/resource_power_supervisor/power_supervisor_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-firewall-zone.json -policy policy/firewall_zone.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix firewall_zone -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/firewall_zone.provider-code-spec.json --output ../internal/generated/resource_firewall_zone --package resource_firewall_zone
+//go:generate gofmt -w ../internal/generated/resource_firewall_zone/firewall_zone_resource_gen.go

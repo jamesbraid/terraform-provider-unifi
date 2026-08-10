@@ -85,7 +85,7 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 8 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 8}) {
 		t.Fatalf("Wave 2 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"admitted": 1, "policy_complete": 7}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"admitted": 1, "generated_shadow": 1, "policy_complete": 6}) {
 		t.Fatalf("Wave 2 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -105,8 +105,13 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 		}
 		seen++
 		want := PolicyComplete
-		if contract.Name == "unifi_dns_record" {
+		switch contract.Name {
+		case "unifi_dns_record":
 			want = Admitted
+		// Nine of its twelve SDK fields are controller bookkeeping the released
+		// schema never exposed, so the policy omits them by name.
+		case "unifi_firewall_zone":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -248,8 +253,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      61,
-		GeneratedShadow:     2,
+		PolicyComplete:      60,
+		GeneratedShadow:     3,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,

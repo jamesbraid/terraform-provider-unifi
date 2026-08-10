@@ -21,7 +21,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_firewall_zone",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy. Nine of the twelve SDK fields are controller bookkeeping the released schema never exposed and the policy omits by name. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
