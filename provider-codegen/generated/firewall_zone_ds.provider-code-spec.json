@@ -1,0 +1,54 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "datasources": [
+    {
+      "name": "firewall_zone_ds",
+      "schema": {
+        "attributes": [
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the firewall zone."
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The display name of the firewall zone (e.g. `Internal`, `External`)."
+            }
+          },
+          {
+            "list": {
+              "computed_optional_required": "computed",
+              "description": "List of network IDs assigned to this zone.",
+              "element_type": {
+                "string": {}
+              }
+            },
+            "name": "network_ids"
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the UniFi site."
+            }
+          },
+          {
+            "name": "zone_key",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The internal key of the zone (e.g. `lan`, `wan`)."
+            }
+          }
+        ],
+        "markdown_description": "Data source for UniFi firewall zones (zone-based firewall, UniFi Network 8.x+). Use this to look up zone IDs by name for use in `unifi_firewall_policy` resources."
+      }
+    }
+  ]
+}
