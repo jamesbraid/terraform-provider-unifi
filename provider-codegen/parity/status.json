@@ -117,7 +117,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_firewall_rule",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy: 32 released attributes over 37 SDK fields, flat, with no invented shape anywhere. Ten renames read from the conversion code, and every one of them is a spelling the SDK chose and the schema did not: src_network_id and dst_network_id from the networkconf_id pair, their _type companions likewise, src_firewall_group_ids and dst_firewall_group_ids from the unseparated firewallgroup_ids, src_mac from src_mac_address, icmp_v6_typename from icmpv6_typename, ip_sec from ipsec, and id from _id. All 21 remaining attributes bind by name, and each was confirmed against modelToFirewallRule rather than accepted from the scaffold. Six SDK fields are omitted: site_id and the four attr_ flags. src_mac keeps its hwtypes.MACAddress custom type, which neither referee can see. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
