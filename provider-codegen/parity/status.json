@@ -142,7 +142,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_site_to_site_vpn",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. This surface fronts unifi.Network, the estate's widest SDK struct, and serves 23 attributes over it: 260 of the 281 fields are omitted, which is the largest omission set so far and is what a purpose-scoped view of a shared struct looks like. Eighteen renames read from modelToNetwork, and all but two are the ipsec_ prefix the released schema drops -- ike_encryption from ipsec_encryption, esp_hash from ipsec_esp_hash, and so on. The other two are id from _id and pre_shared_key from x_ipsec_pre_shared_key, which stays sensitive as the secret guard requires. ike_lifetime and esp_lifetime are int64 seconds in the SDK and GoDuration strings in the schema, so the resource keeps schema version 1 and its RawState upgrader. pre_shared_key_wo is grafted rather than generated: the code specification has no write_only member, so generating it would silently drop the one property it exists for. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",

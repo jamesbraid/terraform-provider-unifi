@@ -9,8 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
@@ -19,18 +17,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site_to_site_vpn"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -130,206 +122,27 @@ func (r *siteToSiteVPNResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	cipherValues := []string{"aes128", "aes192", "aes256", "3des"}
-	hashValues := []string{"sha1", "md5", "sha256", "sha384", "sha512"}
-
-	resp.Schema = schema.Schema{
-		// v1: ike_lifetime/esp_lifetime changed from Int64 (seconds) to GoDuration.
-		Version: 1,
-		MarkdownDescription: "Manages a manual site-to-site IPsec VPN (the UniFi " +
-			"`Settings → VPN → Site-to-Site` network, `purpose = site-vpn`, " +
-			"`vpn_type = ipsec-vpn`). The advanced IKE/ESP attributes only apply " +
-			"when `profile = customized`.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the site-to-site VPN network.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the VPN with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the site-to-site VPN.",
-				Required:            true,
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the tunnel is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"interface": schema.StringAttribute{
-				MarkdownDescription: "The local WAN interface the tunnel binds to (e.g. `wan`, `wan2`).",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("wan"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("wan", "wan2"),
-				},
-			},
-			"peer_ip": schema.StringAttribute{
-				MarkdownDescription: "The public IP address of the remote VPN gateway (peer).",
-				CustomType:          iptypes.IPv4AddressType{},
-				Required:            true,
-				Validators: []validator.String{
-					validators.IPv4Validator(),
-				},
-			},
-			"local_ip": schema.StringAttribute{
-				MarkdownDescription: "The local IP used for the tunnel. Defaults to the WAN address when omitted.",
-				CustomType:          iptypes.IPv4AddressType{},
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"key_exchange": schema.StringAttribute{
-				MarkdownDescription: "IKE key-exchange version. One of `ikev1` or `ikev2`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("ikev2"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("ikev1", "ikev2"),
-				},
-			},
-			"pre_shared_key": schema.StringAttribute{
-				MarkdownDescription: "The IPsec pre-shared key. Stored in state — use " +
-					"`pre_shared_key_wo` to avoid persisting the secret.",
-				Optional:  true,
-				Sensitive: true,
-			},
-			"pre_shared_key_wo": schema.StringAttribute{
-				MarkdownDescription: "Write-only equivalent of `pre_shared_key` (Terraform 1.11+). " +
-					"Used at apply time but never written to state, so it can be sourced from " +
-					"an ephemeral resource (e.g. a Vault secret). Mutually exclusive with " +
-					"`pre_shared_key`.",
-				Optional:  true,
-				Sensitive: true,
-				WriteOnly: true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.MatchRoot("pre_shared_key")),
-				},
-			},
-			"remote_subnets": schema.ListAttribute{
-				MarkdownDescription: "The remote site's subnets reachable through the tunnel (CIDR).",
-				ElementType:         types.StringType,
-				Required:            true,
-				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
-					listvalidator.ValueStringsAre(validators.CIDRValidator()),
-				},
-			},
-			"profile": schema.StringAttribute{
-				MarkdownDescription: "IPsec profile. One of `customized`, `azure_dynamic`, or " +
-					"`azure_static`. Set to `customized` to tune the IKE/ESP attributes below; " +
-					"the controller may derive the ESP values from the IKE ones.",
-				Optional: true,
-				Computed: true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("customized", "azure_dynamic", "azure_static"),
-				},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"ike_encryption": schema.StringAttribute{
-				MarkdownDescription: "IKE (phase 1) encryption. Only used when `profile = customized`.",
-				Optional:            true,
-				Computed:            true,
-				Validators:          []validator.String{stringvalidator.OneOf(cipherValues...)},
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"ike_hash": schema.StringAttribute{
-				MarkdownDescription: "IKE (phase 1) hash. Only used when `profile = customized`.",
-				Optional:            true,
-				Computed:            true,
-				Validators:          []validator.String{stringvalidator.OneOf(hashValues...)},
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"ike_dh_group": schema.Int64Attribute{
-				MarkdownDescription: "IKE (phase 1) Diffie-Hellman group. Only used when `profile = customized`.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
-			},
-			"ike_lifetime": schema.StringAttribute{
-				MarkdownDescription: "IKE (phase 1) security-association lifetime, as a Go " +
-					"duration string (e.g. `8h`, `28800s`). Must be a whole number of seconds " +
-					"between `30s` and `86400s` (24h).",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Validators: []validator.String{
-					validators.GoDurationBetween(30*time.Second, 86400*time.Second),
-					validators.GoDurationMultipleOf(time.Second),
-				},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"esp_encryption": schema.StringAttribute{
-				MarkdownDescription: "ESP (phase 2) encryption. Only used when `profile = customized`.",
-				Optional:            true,
-				Computed:            true,
-				Validators:          []validator.String{stringvalidator.OneOf(cipherValues...)},
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"esp_hash": schema.StringAttribute{
-				MarkdownDescription: "ESP (phase 2) hash. Only used when `profile = customized`.",
-				Optional:            true,
-				Computed:            true,
-				Validators:          []validator.String{stringvalidator.OneOf(hashValues...)},
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"esp_dh_group": schema.Int64Attribute{
-				MarkdownDescription: "ESP (phase 2) Diffie-Hellman group (PFS). Only used when `profile = customized`.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
-			},
-			"esp_lifetime": schema.StringAttribute{
-				MarkdownDescription: "ESP (phase 2) security-association lifetime, as a Go " +
-					"duration string (e.g. `1h`, `3600s`). Must be a whole number of seconds " +
-					"between `30s` and `86400s` (24h).",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Validators: []validator.String{
-					validators.GoDurationBetween(30*time.Second, 86400*time.Second),
-					validators.GoDurationMultipleOf(time.Second),
-				},
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"pfs": schema.BoolAttribute{
-				MarkdownDescription: "Whether Perfect Forward Secrecy is enabled.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-			},
-			"dynamic_routing": schema.BoolAttribute{
-				MarkdownDescription: "Whether IPsec dynamic routing is enabled.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-			},
-			"route_distance": schema.Int64Attribute{
-				MarkdownDescription: "The route distance (administrative metric) for tunnel routes (1-255).",
-				Optional:            true,
-				Computed:            true,
-				Validators:          []validator.Int64{int64validator.Between(1, 255)},
-				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
+	resp.Schema = resource_site_to_site_vpn.SiteToSiteVpnResourceSchema(ctx)
+	// v1: ike_lifetime and esp_lifetime changed from Int64 (seconds) to
+	// GoDuration strings.
+	resp.Schema.Version = 1
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
+	// Grafted rather than generated: the provider code specification has no
+	// write_only member, so a generated pre_shared_key_wo would silently lose
+	// the property that is its entire reason for existing.
+	resp.Schema.Attributes["pre_shared_key_wo"] = schema.StringAttribute{
+		MarkdownDescription: "Write-only equivalent of `pre_shared_key` (Terraform 1.11+). " +
+			"Used at apply time but never written to state, so it can be sourced from " +
+			"an ephemeral resource (e.g. a Vault secret). Mutually exclusive with " +
+			"`pre_shared_key`.",
+		Optional:  true,
+		Sensitive: true,
+		WriteOnly: true,
+		Validators: []validator.String{
+			stringvalidator.ConflictsWith(path.MatchRoot("pre_shared_key")),
 		},
 	}
 }

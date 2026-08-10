@@ -221,7 +221,7 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 11 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 11}) {
 		t.Fatalf("Wave 4 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 8, "policy_complete": 3}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 9, "policy_complete": 2}) {
 		t.Fatalf("Wave 4 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -279,6 +279,11 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		// and the schema did not -- networkconf_id, firewallgroup_ids, ipsec.
 		case "unifi_firewall_rule":
 			want = GeneratedShadow
+		// Serves 23 attributes over unifi.Network, the widest SDK struct in
+		// the estate, and omits 260 of its 281 fields. Its write-only
+		// pre_shared_key_wo is grafted, as wlan's passphrase_wo is.
+		case "unifi_site_to_site_vpn":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -316,8 +321,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      46,
-		GeneratedShadow:     17,
+		PolicyComplete:      45,
+		GeneratedShadow:     18,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
