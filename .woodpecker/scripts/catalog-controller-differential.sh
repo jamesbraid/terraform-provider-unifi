@@ -3,6 +3,12 @@ set -euo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 readonly repository_root
+
+# This receipt attests a differential run against a live controller. Generated
+# from a dirty tree it attests a comparison of code that is in no commit.
+# shellcheck source=.woodpecker/scripts/tree-state.sh
+source "${repository_root}/.woodpecker/scripts/tree-state.sh"
+evidence_tree_state "the controller differential receipt"
 readonly inventory=${CATALOG_EVIDENCE_INVENTORY:-${repository_root}/build/release-ready/catalog-evidence-inventory.json}
 readonly campaign_policy=${CATALOG_CAMPAIGN_POLICY:-${repository_root}/provider-codegen/policy/catalog-campaign.json}
 readonly waves=${CATALOG_ACCEPTANCE_WAVES:-1,2,3,4}
