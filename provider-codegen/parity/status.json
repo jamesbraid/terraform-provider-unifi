@@ -16,7 +16,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_firewall_group",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, type from group_type, members from group_members. site is provider-owned rather than the SDK's site_id — firewallGroupToModel sets it from a parameter, and the update path's SiteID assignment writes the site name into that field rather than reading it. Descriptions are grafted back to plain, the second surface to need that. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
