@@ -144,7 +144,7 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 9 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 9}) {
 		t.Fatalf("Wave 3 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 3, "policy_complete": 5, "shadow_only": 1}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 4, "policy_complete": 4, "shadow_only": 1}) {
 		t.Fatalf("Wave 3 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -186,6 +186,10 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 		// generated code could name it, and the first whose released
 		// descriptions are plain rather than Markdown.
 		case "unifi_ap_group":
+			want = GeneratedShadow
+		// The first surface generated with no omissions at all: every SDK
+		// field it carries is served.
+		case "unifi_wireguard_peer":
 			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
@@ -275,8 +279,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      55,
-		GeneratedShadow:     8,
+		PolicyComplete:      54,
+		GeneratedShadow:     9,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
