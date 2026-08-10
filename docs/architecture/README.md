@@ -19,6 +19,11 @@ Read the documents in this order:
    repository evidence behind the accepted starting point and disposes every
    commit on the obsolete `provider-prereqs` side line.
 
+The [surface migration recipe](surface-migration-recipe.md) is method rather
+than design: the order to move a surface from a hand-written schema to a
+generated one, and the traps that let a migration drop behavior while every gate
+stays green. Read it before migrating a surface.
+
 The [research and compatibility annex](2026-08-03-unifi-control-plane-design-review.md)
 preserves experimental evidence, repository comparisons, and historical
 proposals. It is supporting material, not an authority for product or runtime
