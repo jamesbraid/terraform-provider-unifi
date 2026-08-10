@@ -254,6 +254,98 @@ func Test_mergeReportsBehaviourWithNowhereToGo(t *testing.T) {
 	}
 }
 
+// Test_mergeWritesBehaviourIntoAProviderOwnedAttribute covers the half of a
+// policy that has no structural field behind it. site carries two plan
+// modifiers on every migrated surface and bgp's asn and router_id carry
+// validators; all of them were being reported as omitted and typed in by hand.
+func Test_mergeWritesBehaviourIntoAProviderOwnedAttribute(t *testing.T) {
+	path := writePolicy(t, `{
+      "format_version": 1, "resource": "unifi_thing",
+      "fields": [],
+      "provider_owned": [
+        {"terraform_name": "rekey", "terraform_type": "int64", "disposition": "managed",
+         "generated": true,
+         "attribute": {"computed_optional_required": "computed_optional", "description": "d"}}
+      ]
+    }`)
+	report, err := MergeIntoPolicy(path, derived(t))
+	if err != nil {
+		t.Fatalf("MergeIntoPolicy: %v", err)
+	}
+	attribute := attributeAt(t, readPolicy(t, path), []string{"provider_owned"}, "rekey")
+	fault, ok := attribute["default"].(map[string]any)
+	if !ok || fault["static"] == nil {
+		t.Fatalf("a provider-owned attribute's derived default was not written; it has %v\n%s",
+			attribute, report)
+	}
+	if reportSection(report, "NOWHERE TO GO")["rekey"] {
+		t.Errorf("a provider-owned attribute that was written into was still reported "+
+			"as one the policy omits:\n%s", report)
+	}
+}
+
+// reportSection returns the entries listed under the first heading containing
+// title. The report is what a policy author reads, so a test that asserts on a
+// substring of the whole thing cannot tell which heading an entry appeared
+// under -- which is the entire distinction these two tests exist for.
+func reportSection(report, title string) map[string]bool {
+	entries := map[string]bool{}
+	inside := false
+	for _, line := range strings.Split(report, "\n") {
+		trimmed := strings.TrimSpace(line)
+		switch {
+		case strings.HasSuffix(trimmed, ":") && strings.Contains(trimmed, "("):
+			inside = strings.Contains(trimmed, title)
+		case trimmed == "":
+		case inside:
+			entries[trimmed] = true
+		}
+	}
+	return entries
+}
+
+// Test_mergeSeparatesAProviderOwnedNestedMember keeps the one case the walk
+// cannot reach from reading as the case it looks like. A provider-owned
+// attribute's members are written in specification form, so behaviour under one
+// has to be transcribed -- but reporting it as an attribute the policy omits
+// sends the reader to move it into fields, where it has no structural_name to
+// give.
+func Test_mergeSeparatesAProviderOwnedNestedMember(t *testing.T) {
+	surface := derived(t)
+	nested := ""
+	for _, behaviour := range surface.Behaviours {
+		if root, _, found := strings.Cut(behaviour.Path, "."); found {
+			nested, _ = behaviour.Path, root
+			break
+		}
+	}
+	if nested == "" {
+		t.Fatal("the fixture derives no nested behaviour, so this proves nothing")
+	}
+	root, _, _ := strings.Cut(nested, ".")
+
+	path := writePolicy(t, `{
+      "format_version": 1, "resource": "unifi_thing",
+      "fields": [],
+      "provider_owned": [
+        {"terraform_name": "`+root+`", "terraform_type": "single_nested",
+         "disposition": "managed", "generated": true,
+         "attribute": {"computed_optional_required": "required", "description": "d"}}
+      ]
+    }`)
+	report, err := MergeIntoPolicy(path, surface)
+	if err != nil {
+		t.Fatalf("MergeIntoPolicy: %v", err)
+	}
+	if !reportSection(report, "NESTED INSIDE A PROVIDER-OWNED ATTRIBUTE")[nested] {
+		t.Errorf("%s was not reported as nested inside a provider-owned attribute:\n%s",
+			nested, report)
+	}
+	if reportSection(report, "NOWHERE TO GO")[nested] {
+		t.Errorf("%s is still reported as an attribute the policy omits:\n%s", nested, report)
+	}
+}
+
 // Test_mergeRefusesAGeneratedSurface stops the merge that cannot mean anything:
 // a surface already serving generated code has no hand-written schema, so
 // anything read from its source is not what it serves.
