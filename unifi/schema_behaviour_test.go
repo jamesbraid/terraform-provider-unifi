@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -110,12 +112,20 @@ func Test_schemaBehaviourInventory(t *testing.T) {
 	}
 }
 
-// schemaBehaviourFacts walks every registered managed resource and returns one
-// sorted line per behaviour, plus the attribute types it could not read.
+// schemaBehaviourFacts walks every registered managed resource and data source
+// and returns one sorted line per behaviour, plus the attribute types it could
+// not read.
 //
 // Reflection rather than a type switch over the ten concrete attribute types:
 // a switch silently ignores any type added later, which is the same class of
-// hole this test exists to close.
+// hole this test exists to close. The same reflection reads a data source's
+// attributes without changes, because it looks for the Validators, PlanModifiers
+// and Default FIELDS rather than for a known type.
+//
+// Data sources are prefixed "data." so they cannot collide with the resource of
+// the same name. unifi_account is registered as both, and without the prefix
+// their lines would be indistinguishable -- which would let a validator move
+// from one to the other and keep the inventory identical.
 func schemaBehaviourFacts(ctx context.Context, t *testing.T) ([]string, []string) {
 	t.Helper()
 	var facts []string
@@ -133,6 +143,23 @@ func schemaBehaviourFacts(ctx context.Context, t *testing.T) ([]string, []string
 		facts = append(facts, blockBehaviour(ctx, meta.TypeName+".", got.Schema.Blocks, opaque)...)
 	}
 
+	// Data sources carry fifteen validators between them and were covered by
+	// nothing until they were migrated -- the schema referee reads them
+	// (baseline_projection_datasource_test.go) but a validator is invisible to
+	// the protocol, so losing one during a migration would have looked exactly
+	// like success. That is the fault firewall_policy already shipped once.
+	for _, newDataSource := range (&unifiProvider{}).DataSources(ctx) {
+		ds := newDataSource()
+		var meta datasource.MetadataResponse
+		ds.Metadata(ctx, datasource.MetadataRequest{ProviderTypeName: "unifi"}, &meta)
+
+		var got datasource.SchemaResponse
+		ds.Schema(ctx, datasource.SchemaRequest{}, &got)
+
+		prefix := "data." + meta.TypeName + "."
+		facts = append(facts, dataSourceAttributeBehaviour(ctx, prefix, got.Schema.Attributes, opaque)...)
+	}
+
 	sort.Strings(facts)
 	names := make([]string, 0, len(opaque))
 	for name := range opaque {
@@ -140,6 +167,39 @@ func schemaBehaviourFacts(ctx context.Context, t *testing.T) ([]string, []string
 	}
 	sort.Strings(names)
 	return facts, names
+}
+
+// dataSourceAttributeBehaviour mirrors attributeBehaviour over the data source
+// attribute types. The two trees share no interface -- datasource/schema and
+// resource/schema declare separate Attribute types -- so the descent has to be
+// written twice even though behaviourOf reads both.
+func dataSourceAttributeBehaviour(
+	ctx context.Context,
+	prefix string,
+	attrs map[string]dschema.Attribute,
+	opaque map[string]bool,
+) []string {
+	var facts []string
+	for name, attribute := range attrs {
+		path := prefix + name
+		lines, read := behaviourOf(ctx, path, attribute)
+		facts = append(facts, lines...)
+		if !read {
+			opaque[fmt.Sprintf("%T", attribute)] = true
+		}
+
+		switch nested := attribute.(type) {
+		case dschema.SingleNestedAttribute:
+			facts = append(facts, dataSourceAttributeBehaviour(ctx, path+".", nested.Attributes, opaque)...)
+		case dschema.ListNestedAttribute:
+			facts = append(facts, dataSourceAttributeBehaviour(ctx, path+".", nested.NestedObject.Attributes, opaque)...)
+		case dschema.SetNestedAttribute:
+			facts = append(facts, dataSourceAttributeBehaviour(ctx, path+".", nested.NestedObject.Attributes, opaque)...)
+		case dschema.MapNestedAttribute:
+			facts = append(facts, dataSourceAttributeBehaviour(ctx, path+".", nested.NestedObject.Attributes, opaque)...)
+		}
+	}
+	return facts
 }
 
 func attributeBehaviour(

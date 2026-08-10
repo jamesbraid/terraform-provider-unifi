@@ -94,9 +94,25 @@ func Test_schemaBehaviourIsDerivable(t *testing.T) {
 	}
 
 	setAside := 0
+	dataSourceFacts := 0
 	var missing []string
 	for fact, count := range observed {
 		path := strings.SplitN(fact, "\t", 2)[0]
+		// The deriver reads resource.Schema methods and nothing else: it pairs
+		// Metadata and Schema by matching resource.MetadataResponse and
+		// resource.SchemaResponse parameters, so a data source is invisible to
+		// it by construction rather than by oversight.
+		//
+		// Set aside and COUNTED rather than skipped. The inventory covers data
+		// sources so that a migration cannot drop one of their validators
+		// silently; this comparison is about whether the DERIVER sees what the
+		// provider applies, and for data sources the honest answer is "it does
+		// not, and here is how many".
+		if strings.HasPrefix(path, "data.") {
+			dataSourceFacts += count
+			setAside += count
+			continue
+		}
 		if excused(path, delegatedPrefixes) || excused(path, opaquePrefixes) {
 			setAside += count
 			continue
@@ -135,6 +151,11 @@ func Test_schemaBehaviourIsDerivable(t *testing.T) {
 	}
 
 	t.Logf("%d behaviour(s) matched across %d managed resource(s)", len(observed)-setAside, len(surfaces))
+	if dataSourceFacts > 0 {
+		t.Logf("%d data source behaviour(s) set aside: the deriver reads resource.Schema "+
+			"methods only, so migrating a data source has to transcribe its behaviour by "+
+			"hand -- the inventory is what catches a mistake there", dataSourceFacts)
+	}
 	if len(delegated) > 0 {
 		t.Logf("%d surface(s) already serve a generated schema, so there is no hand-written "+
 			"schema to derive from:\n    %s", len(delegated), strings.Join(delegated, "\n    "))
