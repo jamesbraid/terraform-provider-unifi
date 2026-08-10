@@ -77,7 +77,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_port_profile",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy: 42 released attributes over 56 SDK fields, flat, and all but one bind on the SDK's own json name. The Go field names diverge freely -- NATiveNetworkID, Dot1XIDleTimeout, StpPortMode -- but the policy binds on json names and those agree, which was checked field by field rather than assumed from the count. id renames from _id. dot1x_idle_timeout is *int64 seconds in the SDK and a GoDuration string in the schema, so the policy declares terraform_type string and the resource keeps schema version 1 with its RawState upgrader, as radius_profile does. tagged_networkconf_ids is provider-owned and has no go-unifi field at all: the controller expresses tagged VLANs as tagged_vlan_mgmt plus excluded_networkconf_ids, and the provider presents the exact set instead, deriving it in portProfileActualTaggedNetworkIDs. Seventeen SDK fields are omitted. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
