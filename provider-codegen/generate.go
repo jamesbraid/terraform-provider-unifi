@@ -48,3 +48,7 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-radius-user.json -policy policy/radius_user.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix radius_user -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/radius_user.provider-code-spec.json --output ../internal/generated/resource_radius_user --package resource_radius_user
 //go:generate gofmt -w ../internal/generated/resource_radius_user/radius_user_resource_gen.go
+//go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct BGPConfig -resource unifi_bgp -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-bgp.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-bgp.json -policy policy/bgp.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix bgp -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/bgp.provider-code-spec.json --output ../internal/generated/resource_bgp --package resource_bgp
+//go:generate gofmt -w ../internal/generated/resource_bgp/bgp_resource_gen.go
