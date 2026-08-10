@@ -691,6 +691,7 @@ func buildGroupingAttribute(
 			TerraformType:  member.TerraformType,
 			Disposition:    member.Disposition,
 			Attribute:      member.Attribute,
+			Fields:         member.Fields,
 		}, structural, names)
 		if err != nil {
 			return codeAttribute{}, fmt.Errorf("grouping %q: %w", grouping.TerraformName, err)

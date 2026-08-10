@@ -197,6 +197,22 @@ type groupedMember struct {
 	TerraformType  string          `json:"terraform_type,omitempty"`
 	Disposition    string          `json:"disposition"`
 	Attribute      json.RawMessage `json:"attribute,omitempty"`
+	// Fields holds the per-member decisions when the observed field this member
+	// consumes is itself an object or array<object>.
+	//
+	// Without it a grouping could only consume flat fields. wan needs both:
+	// dhcp.options consumes wan_dhcp_options, an array of NetworkWANDHCPOptions,
+	// and dhcpv6.options does the same one level along. The descent already
+	// existed for a top-level field -- buildCodeAttribute reaches
+	// nestedDefinition either way -- so the member type simply had no way to
+	// carry the decisions to it, and the compiler refused with "member
+	// optionNumber is unclassified".
+	//
+	// This is the same member list a top-level object field declares, and it is
+	// governed by the same rule: every member of the observed struct is either
+	// classified or omitted, so nothing is dropped without someone deciding to
+	// drop it.
+	Fields []fieldPolicy `json:"fields,omitempty"`
 	// Invented records that this member corresponds to no observed field at
 	// all. Two exist in the estate: port_forward's source_limiting.type, which
 	// is computed from whether a firewall group is set, and bgp's peers, which
