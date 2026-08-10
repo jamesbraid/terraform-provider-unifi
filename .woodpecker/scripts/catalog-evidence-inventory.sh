@@ -3,6 +3,15 @@ set -euo pipefail
 
 repository_root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)
 readonly repository_root
+
+# Before anything else. This inventory is the artifact that was generated from a
+# dirty tree once: it digested evidence files that had not been committed, so it
+# pinned content in no commit, and it healed silently when they landed. The
+# guard runs first so a refusal costs nothing and reaches no dependency.
+# shellcheck source=.woodpecker/scripts/tree-state.sh
+source "${repository_root}/.woodpecker/scripts/tree-state.sh"
+evidence_tree_state "the catalog evidence inventory"
+
 policy=${repository_root}/provider-codegen/policy/catalog-evidence.json
 readonly policy
 output=${CATALOG_EVIDENCE_OUTPUT:-${repository_root}/build/release-ready/catalog-evidence-inventory.json}
