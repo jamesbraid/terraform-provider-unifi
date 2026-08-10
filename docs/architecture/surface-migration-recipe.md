@@ -4,6 +4,10 @@ Surfaces compile from a catalog and a policy one at a time, and the ledger is
 the count — this document is the method, not the tally, because a number
 written here is wrong by the next landing.
 
+Most of it describes a **managed resource**. List resources and actions are not
+projections of an SDK struct and diverge from step 2 onward; see *The other
+surface kinds*.
+
 It was assembled from the commits that did the first several (`d78e7a56`
 onward) so the rest do not have to rediscover it.
 
@@ -222,6 +226,114 @@ record that a wrong value cannot build, or say the key is unused here.
 The question to ask of any such entry is *what would go wrong if this changed
 and nothing noticed*, not whether the stated reason sounds right.
 
+## The other surface kinds
+
+Everything above describes a **managed resource**, whose schema is a projection
+of an SDK struct. Two kinds are not, and the steps that assume a struct do not
+transfer.
+
+### List resources
+
+A list resource's config schema is a **query**, not a projection: which site to
+look in, and which filters to apply. **No attribute comes from the wire.** All
+twenty-five are one optional `site` string and one `filter` block of two
+required strings, with three exceptions — `unifi_site` takes no site selector,
+`unifi_client` adds a `group`, and `unifi_wireguard_peer` requires a
+`network_id`.
+
+**Nothing upstream generates them.** `terraform-plugin-codegen-spec` v0.2.0
+carries exactly `DataSources`, `Provider`, `Resources` and `Version`, and
+`tfplugingen-framework` v0.4.1 offers `all`, `data-sources`, `provider` and
+`resources`. There is no member to emit into and no step to call, at any
+published version. Both halves are ours: the `listresources` member is added in
+`internal/providercompiler`, and `cmd/list-resource-gen` renders it into Go.
+
+**Derive the policy from the released schema, not from the Go.** This is the
+one instruction that differs from step 2 above, and the reason is not
+convenience. The golden a generated schema is checked against was itself cut
+from the provider. Deriving the policy from the same source would mean the
+policy and its check came from one place, and **a transcription mistake would
+agree with itself**. `cmd/list-policy-scaffold` reads
+`provider-contracts/schema/terraform-1.15.8.json` — the contract — so the two
+can disagree, which is the only reason their agreement means anything. It
+produced sixteen policies with no hand editing, and the three outliers fell out
+on their own; an outlier table written by hand from attribute names had
+`wireguard_peer.network_id` wrong.
+
+Shape of the policy: **every SDK field of the listed type omitted by name**, the
+site selector `provider_owned` with `generated: true`, and the filter block a
+**grouping whose members are all `invented`**, declared as `list_nested_block`.
+Groupings could not be blocks before this; blocks were only routed from observed
+fields, and a filter block has no observed field behind it. Emitted under
+`attributes` instead, the generator accepts it and renders a nested attribute —
+**the same data with different configuration syntax, and every practitioner's
+HCL breaks.**
+
+**A filter member is a KEY, not a field.** `filter.name` holds the *name of the
+field to select on*; the sibling `value` is what gets compared against it. It
+collides with an SDK field on most surfaces and is still invented. The scaffold
+refuses a member only when the block is not the key/value shape: refusing on the
+collision alone would refuse twenty-one of the twenty-five, and **a guard that fires
+on the normal case is one people learn to route around.**
+
+**Three referees, none of which subsumes another.** Uniformity compares
+structure across all twenty-five and deliberately ignores prose. The golden
+pins all hundred and one strings including descriptions. The contract
+comparison reads the released projection. Proven distinct by mutation: drop a
+description and the golden fails while uniformity stays green; change a
+disposition and both fail; **reword a description and then do what the golden's
+own message tells you — regenerate it — and the golden goes green while the
+contract comparison still fails.**
+
+That last one is why the third exists. **A golden cut from the implementation is
+a regression test; a comparison against the contract is a conformance test.**
+Only the second survives someone asking how you know the golden was right the
+day it was written.
+
+**The rename referee does not apply.** A list policy binds no SDK field, so it
+has no rename to check — but its generator name matches the managed surface it
+lists, so the default mapping found that surface's conversion file and counted
+twenty-five surfaces as checked. Nothing went red; the reported coverage simply
+doubled while the claim count stayed at 224. `conversionFile` now allow-lists
+`managed_resource` and returns empty otherwise.
+
+### Actions
+
+The estate has one, `unifi_port`. Its schema is **its arguments**, not a
+projection of the `Device` it acts on, so all 109 SDK fields are omitted and the
+three arguments are provider-owned. `cmd/action-gen` emits it; there is no
+action subcommand upstream either.
+
+**`device_mac` carries a `hwtypes.MACAddressType`, and that custom type IS the
+validation.** The protocol renders it as a plain string, so the released
+baseline records `"string"` — a generated schema that dropped the type satisfies
+every schema comparison and accepts any string as a MAC address. This is the
+same class as the three traps above, and it is the failure a *generator*
+actually produces: rewording a description is a human mistake, while silently
+restating a policy without its custom type is what code generation does.
+
+**Derive the behaviour half; do not type it.** `cmd/schema-behaviour` merges the
+custom type into the policy with its import and value type. It read only
+`resource.SchemaResponse` and `resource.MetadataResponse` methods until this
+surface needed it, so a policy it wrote for the action would have omitted the
+MAC type without saying so. That gap surfaced by composition rather than search:
+widening the behaviour inventory to walk actions made
+`Test_schemaBehaviourIsDerivable` fail, and that test named the tool.
+
+**`timeouts` stays `provider_owned` with `generated: false`**, grafted by the
+kernel as everywhere else. The deriver reports it as unreadable from source,
+which is correct — its value is `timeouts.Attributes(ctx)`, not a literal.
+
+### Two emitters, deliberately not one
+
+`cmd/list-resource-gen` and `cmd/action-gen` are separate straight-line tools.
+They overlap only in "write a schema literal": a list config schema is strings
+and one fixed block with a constant import pair, while an action schema has no
+blocks, mixes scalar kinds, and carries custom types whose imports must be
+collected. Merging them would put twenty-five working surfaces behind a change
+made for one new one, for a shared core of a dozen lines. **A third use case
+should merge them, not the second.**
+
 ## Smaller things that cost an afternoon
 
 - **`tfplugingen-framework` does not create its output directory.** A new
@@ -256,6 +368,32 @@ and nothing noticed*, not whether the stated reason sounds right.
   out seven of its twelve SDK fields because they are controller bookkeeping the
   released schema never exposed; the policy names each one.
 
+- **A generated file with no generator never changes, so determinism cannot see
+  it.** A list surface landed outside its batch had its artifacts committed with
+  no `//go:generate` directive producing them. `go generate ./... && git diff
+  --exit-code` — the strongest routine check here — passed, because an orphan is
+  trivially reproducible. **It was found by auditing all twenty-five from the
+  artifact side**, which is the only direction that can find a missing producer:
+  nothing you do from the generator side will ever mention a file no generator
+  names.
+- **Resolve a derived artifact by regenerating it, even when it merged cleanly.**
+  The trigger is being *derived*, not being *conflicted*. During the branch merge
+  `unifi/testdata/schema_behaviour.txt` merged with no conflict at all, because
+  both sides only added lines — and a clean text merge of a generated file is not
+  evidence the result is what the generator would produce. It is also exactly
+  where nobody checks, because a golden is compared against itself.
+- **"Both sides are additive" is true about intent and false about syntax.**
+  Resolving two additive conflicts mechanically by keeping both sides produced a
+  file that did not parse: two loop bodies whose closing braces collided. `gofmt`
+  caught it. Two independent statements would have compiled and been wrong.
+- **A receipt's counts must be compared against what they describe.** The wave
+  receipts carried hand-maintained `status_counts` constants, and one had been
+  wrong since the first surface moved — 37 `policy_complete` against a ledger
+  holding 24 `generated_shadow`, green throughout. A constant answers *does this
+  file still say what it said when the test was written*, which stays true
+  through exactly the change that makes it wrong. They compare against the ledger
+  they pin now, which also removed an edit that had been made once per landing.
+
 ## Before you call a surface migrated
 
 - the behaviour inventory taken beforehand is unchanged
@@ -268,3 +406,15 @@ and nothing noticed*, not whether the stated reason sounds right.
   the five wave receipts re-cut in the same commit
 - if it had a `PriorSchema` upgrader, a test asserts the prior type directly
 - every rename came from the conversion code, and none was matched on a name
+- there is a `//go:generate` line producing every artifact you committed —
+  checked from the artifact side, because determinism cannot see an orphan
+
+For a **list resource** or an **action**, three of the above read differently:
+
+- the behaviour inventory is not the check that matters for a list surface,
+  because it has no validators; the prose golden and the contract comparison are
+- "every rename came from the conversion code" is satisfied vacuously — they
+  bind no SDK field, and the rename referee reports them as unchecked by name
+  rather than counting them
+- an action's custom types ARE its behaviour, and only the inventory can see
+  them
