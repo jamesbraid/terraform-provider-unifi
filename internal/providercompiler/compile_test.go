@@ -1231,11 +1231,53 @@ const dnsDataSourceBaselineDigest = "e9217234de7678441bcdd4db0fd285d32d6856ddaf9
 // unifi_dns_record so admission's per-surface digest check lines up.
 func dataSourceBaseline(t *testing.T) []byte {
 	t.Helper()
+	return surfaceKindBaseline(t, catalogparity.DataSource)
+}
+
+// surfaceKindBaseline names the manifest key the compiler reads for this kind,
+// so a fixture cannot pass by declaring a digest under a key the code never
+// looks at.
+func surfaceKindBaseline(t *testing.T, kind catalogparity.SurfaceKind) []byte {
+	t.Helper()
+	prefixes := map[catalogparity.SurfaceKind]string{
+		catalogparity.ManagedResource: "resource_schemas.",
+		catalogparity.DataSource:      "data_source_schemas.",
+		catalogparity.ListResource:    "list_resource_schemas.",
+		catalogparity.Action:          "action_schemas.",
+	}
+	prefix, known := prefixes[kind]
+	if !known {
+		prefix = "data_source_schemas."
+	}
 	return mustJSON(t, map[string]any{
-		"schema_sha256": map[string]any{
-			"data_source_schemas.unifi_dns_record": dnsDataSourceBaselineDigest,
-		},
+		"schema_sha256": map[string]any{prefix + surfaceKindSubject(kind): dnsDataSourceBaselineDigest},
 	})
+}
+
+// surfaceKindSubject names a surface that actually exists for the kind. The
+// estate has exactly one action and it is not called dns_record, so a fixture
+// reusing that name fails on a missing ledger entry rather than on the code
+// under test.
+func surfaceKindSubject(kind catalogparity.SurfaceKind) string {
+	if kind == catalogparity.Action {
+		return "unifi_port"
+	}
+	return "unifi_dns_record"
+}
+
+// surfaceKindDigestMember is the policy member each kind declares its baseline
+// under. They differ, and a fixture that guessed would fail for the wrong reason.
+func surfaceKindDigestMember(kind catalogparity.SurfaceKind) string {
+	switch kind {
+	case catalogparity.DataSource:
+		return "data_source"
+	case catalogparity.ListResource:
+		return "list_resource"
+	case catalogparity.Action:
+		return "action"
+	default:
+		return "resource"
+	}
 }
 
 // surfaceKindInput builds a self-consistent compile input for one surface
@@ -1243,14 +1285,14 @@ func dataSourceBaseline(t *testing.T) []byte {
 // failure is attributable to the code under test rather than to the fixture.
 func surfaceKindInput(t *testing.T, kind catalogparity.SurfaceKind) CompileInput {
 	t.Helper()
-	baseline := dataSourceBaseline(t)
+	baseline := surfaceKindBaseline(t, kind)
 
 	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
 	rules["surface_kind"] = string(kind)
+	rules["resource"] = surfaceKindSubject(kind)
 	rules["generator_name"] = "dns_record"
 	rules["baseline_digests"] = map[string]any{
-		"resource":    dnsDataSourceBaselineDigest,
-		"data_source": dnsDataSourceBaselineDigest,
+		surfaceKindDigestMember(kind): dnsDataSourceBaselineDigest,
 	}
 
 	data, err := os.ReadFile("../../provider-codegen/generated/catalog-parity-ledger.json")
@@ -1264,7 +1306,7 @@ func surfaceKindInput(t *testing.T, kind catalogparity.SurfaceKind) CompileInput
 	ledger.BaselineSHA256 = byteDigest(baseline)
 	for index := range ledger.Entries {
 		entry := &ledger.Entries[index]
-		if entry.Kind != kind || entry.Name != "unifi_dns_record" {
+		if entry.Kind != kind || entry.Name != surfaceKindSubject(kind) {
 			continue
 		}
 		entry.State = catalogparity.GeneratedShadow
@@ -1273,8 +1315,14 @@ func surfaceKindInput(t *testing.T, kind catalogparity.SurfaceKind) CompileInput
 		entry.Implementation = "shadow"
 		entry.BaselineSchemaSHA256 = dnsDataSourceBaselineDigest
 	}
+	var source map[string]any
+	if err := json.Unmarshal(testBootstrap(t, dnsFieldNames()), &source); err != nil {
+		t.Fatal(err)
+	}
+	source["resource"].(map[string]any)["name"] = surfaceKindSubject(kind)
+
 	return CompileInput{
-		Bootstrap:       testBootstrap(t, dnsFieldNames()),
+		Bootstrap:       mustJSON(t, source),
 		Policy:          mustJSON(t, rules),
 		BaselineDigests: baseline,
 		Ledger:          mustJSON(t, ledger),
@@ -1310,18 +1358,18 @@ func TestCompileEmitsDataSourceUnderDataSourcesMember(t *testing.T) {
 }
 
 // A surface kind with no emission path must fail loudly. Emitting it under
-// whichever member happens to exist is the silent-wrong-answer case.
+// whichever member happens to exist is the silent-wrong-answer case, and it is
+// the reason every kind is named explicitly rather than defaulted.
+//
+// list_resource and action used to be the examples here, because the code
+// specification had no member for either. They have members now, so the
+// guarantee is asserted with a kind that genuinely has none — otherwise this
+// test would have been deleted along with the limitation it described, and the
+// property would have gone with it.
 func TestCompileRejectsSurfaceKindsWithoutAnEmissionPath(t *testing.T) {
-	for _, kind := range []catalogparity.SurfaceKind{
-		catalogparity.ListResource,
-		catalogparity.Action,
-	} {
-		t.Run(string(kind), func(t *testing.T) {
-			_, err := Compile(surfaceKindInput(t, kind))
-			if err == nil || !strings.Contains(err.Error(), "no code specification member") {
-				t.Fatalf("Compile() error = %v, want a missing emission path failure", err)
-			}
-		})
+	_, err := Compile(surfaceKindInput(t, catalogparity.SurfaceKind("provider_meta")))
+	if err == nil || !strings.Contains(err.Error(), "no code specification member") {
+		t.Fatalf("Compile() error = %v, want a missing emission path failure", err)
 	}
 }
 
@@ -1991,4 +2039,56 @@ func TestCompileAdmitsAnInventedNestedMemberOnlyWhenDeclared(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A list resource and an action each emit under their own member. Emitting a
+// list surface under "resources" would generate a managed resource with the
+// wrong schema and nothing would say so — that is the case emittableSurfaceKind
+// was built to prevent, and it stays prevented by naming every kind.
+//
+// listresources and actions are ours rather than HashiCorp's: the specification
+// format has carried the same four members since September 2024 while the
+// framework grew list and action packages, and offers no extension point. They
+// are siblings of resources, not a new grammar, so the divergence is a key
+// rename away from being undone if the concept is ever defined upstream.
+func TestCompileEmitsEachSurfaceKindUnderItsOwnMember(t *testing.T) {
+	for kind, member := range map[catalogparity.SurfaceKind]string{
+		catalogparity.ManagedResource: "resources",
+		catalogparity.DataSource:      "datasources",
+		catalogparity.ListResource:    "listresources",
+		catalogparity.Action:          "actions",
+	} {
+		t.Run(string(kind), func(t *testing.T) {
+			result, err := Compile(surfaceKindInput(t, kind))
+			if err != nil {
+				t.Fatalf("Compile() error = %v", err)
+			}
+			var document map[string]json.RawMessage
+			if err := json.Unmarshal(result.ProviderCodeSpec, &document); err != nil {
+				t.Fatal(err)
+			}
+			if _, present := document[member]; !present {
+				t.Fatalf("a %s surface emitted no %q member; document has %v",
+					kind, member, sortedKeysOf(document))
+			}
+			for _, other := range []string{"resources", "datasources", "listresources", "actions"} {
+				if other == member {
+					continue
+				}
+				if _, present := document[other]; present {
+					t.Fatalf("a %s surface also emitted %q, so one document describes two kinds",
+						kind, other)
+				}
+			}
+		})
+	}
+}
+
+func sortedKeysOf(m map[string]json.RawMessage) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

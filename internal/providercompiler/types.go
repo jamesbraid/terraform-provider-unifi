@@ -254,6 +254,9 @@ type baselineDigestSet struct {
 	// manifest so an omission cannot silently skip a check.
 	Identity     string `json:"identity,omitempty"`
 	ListResource string `json:"list_resource,omitempty"`
+	// Action is the primary digest when the surface is an action. There is one
+	// action in the estate and it has no companions.
+	Action string `json:"action,omitempty"`
 }
 
 type baselineManifest struct {
@@ -265,11 +268,27 @@ type baselineManifest struct {
 // contract rather than ours: it reads "datasources" as one word, and a
 // specification that puts a surface under the wrong member is not rejected,
 // it simply yields no generated code.
+// codeSpecification is our document, not HashiCorp's. resources, datasources,
+// provider and version are theirs and mean what their schema says. listresources
+// and actions are ours, added because the format has carried the same four
+// members since 0.2.0 in September 2024 while terraform-plugin-framework grew
+// list and action packages, and the format offers no sanctioned extension point.
+//
+// They are siblings of resources rather than a new grammar: a list config schema
+// is a string attribute and one nested block, which the existing vocabulary
+// already expresses. So if the concept is ever defined upstream this is a key
+// rename, not a redesign.
+//
+// tfplugingen-framework ignores members it does not know — verified, not assumed:
+// a document carrying listresources still generates its resources cleanly, so one
+// document serves both the generator and our own emitter.
 type codeSpecification struct {
-	Version     string           `json:"version"`
-	Provider    codeProvider     `json:"provider"`
-	Resources   []codeResource   `json:"resources,omitempty"`
-	DataSources []codeDataSource `json:"datasources,omitempty"`
+	Version       string             `json:"version"`
+	Provider      codeProvider       `json:"provider"`
+	Resources     []codeResource     `json:"resources,omitempty"`
+	DataSources   []codeDataSource   `json:"datasources,omitempty"`
+	ListResources []codeListResource `json:"listresources,omitempty"`
+	Actions       []codeAction       `json:"actions,omitempty"`
 }
 
 type codeProvider struct {
@@ -282,6 +301,22 @@ type codeResource struct {
 }
 
 type codeDataSource struct {
+	Name   string     `json:"name"`
+	Schema codeSchema `json:"schema"`
+}
+
+// codeListResource carries a list surface's CONFIG schema — how a practitioner
+// asks for a list, not what comes back. Every one in this estate is an optional
+// site string plus a filter block, and none of it derives from the SDK, so a
+// list policy is entirely provider-owned.
+type codeListResource struct {
+	Name   string     `json:"name"`
+	Schema codeSchema `json:"schema"`
+}
+
+// codeAction carries an action's schema, which is shaped like a resource's
+// rather than like a list's.
+type codeAction struct {
 	Name   string     `json:"name"`
 	Schema codeSchema `json:"schema"`
 }
