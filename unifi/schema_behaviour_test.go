@@ -129,6 +129,7 @@ func schemaBehaviourFacts(ctx context.Context, t *testing.T) ([]string, []string
 		res.Schema(ctx, resource.SchemaRequest{}, &got)
 
 		facts = append(facts, attributeBehaviour(ctx, meta.TypeName+".", got.Schema.Attributes, opaque)...)
+		facts = append(facts, blockBehaviour(ctx, meta.TypeName+".", got.Schema.Blocks, opaque)...)
 	}
 
 	sort.Strings(facts)
@@ -169,11 +170,45 @@ func attributeBehaviour(
 	return facts
 }
 
+// blockBehaviour walks blocks, which hold their own validators and plan
+// modifiers and contain attributes that hold theirs. Reading only
+// Schema.Attributes missed all of it: the estate has four blocks carrying
+// fifty-six attributes between them, and nothing here saw any of them.
+func blockBehaviour(
+	ctx context.Context,
+	prefix string,
+	blocks map[string]rschema.Block,
+	opaque map[string]bool,
+) []string {
+	var facts []string
+	for name, block := range blocks {
+		path := prefix + name
+		lines, read := behaviourOf(ctx, path, block)
+		facts = append(facts, lines...)
+		if !read {
+			opaque[fmt.Sprintf("%T", block)] = true
+		}
+
+		switch shaped := block.(type) {
+		case rschema.ListNestedBlock:
+			facts = append(facts, attributeBehaviour(ctx, path+".", shaped.NestedObject.Attributes, opaque)...)
+			facts = append(facts, blockBehaviour(ctx, path+".", shaped.NestedObject.Blocks, opaque)...)
+		case rschema.SetNestedBlock:
+			facts = append(facts, attributeBehaviour(ctx, path+".", shaped.NestedObject.Attributes, opaque)...)
+			facts = append(facts, blockBehaviour(ctx, path+".", shaped.NestedObject.Blocks, opaque)...)
+		case rschema.SingleNestedBlock:
+			facts = append(facts, attributeBehaviour(ctx, path+".", shaped.Attributes, opaque)...)
+			facts = append(facts, blockBehaviour(ctx, path+".", shaped.Blocks, opaque)...)
+		}
+	}
+	return facts
+}
+
 // behaviourOf reads one attribute's validators, plan modifiers and default. The
 // second return says whether any of the three fields existed, which is what
 // separates "this attribute has no behaviour" from "this attribute type keeps
 // its behaviour somewhere this test does not look".
-func behaviourOf(ctx context.Context, path string, attribute rschema.Attribute) ([]string, bool) {
+func behaviourOf(ctx context.Context, path string, attribute any) ([]string, bool) {
 	value := reflect.ValueOf(attribute)
 	if value.Kind() == reflect.Pointer {
 		value = value.Elem()

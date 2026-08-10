@@ -43,6 +43,11 @@ type attrFact struct {
 	// deprecated flag and its text, and losing the text is as much a public
 	// change as losing the flag.
 	Deprecation string
+	// IsBlock separates a block from a nested attribute. Both carry a nesting
+	// mode, so without this a block silently turning into an attribute of the
+	// same name and shape would compare equal — and that is a protocol-level
+	// change, since configuration written for one does not parse as the other.
+	IsBlock bool
 }
 
 // TestBuiltSchemaMatchesReleasedBaseline compares each registered surface's
@@ -73,11 +78,9 @@ type attrFact struct {
 // This test fails fast at authoring time so that gate is not where a
 // schema change is first discovered.
 //
-// Coverage today is managed resources and their attributes, including nested
-// attributes at any depth. Blocks are not projected: three surfaces carry
-// block_types and this test reports them as uncovered rather than passing
-// silently over them. Data sources, identity and list-resource schemas are
-// separate fact sets and are not read here.
+// Coverage today is managed resources, their attributes at any depth, and their
+// blocks. Data sources, identity and list-resource schemas are separate fact
+// sets and are not read here.
 func TestBuiltSchemaMatchesReleasedBaseline(t *testing.T) {
 	ctx := context.Background()
 
@@ -86,8 +89,6 @@ func TestBuiltSchemaMatchesReleasedBaseline(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s: resource_schemas missing or not an object", baselinePath)
 	}
-
-	var uncoveredBlocks []string
 
 	for _, newResource := range (&unifiProvider{}).Resources(ctx) {
 		res := newResource()
@@ -111,23 +112,102 @@ func TestBuiltSchemaMatchesReleasedBaseline(t *testing.T) {
 		}
 		block, _ := entry["block"].(map[string]any)
 
-		if len(baselineObject(block["block_types"])) > 0 {
-			uncoveredBlocks = append(uncoveredBlocks, name)
-		}
-
 		compareBaselineVersion(t, name, got.Schema.Version, entry["version"])
 		compareBaselineRootDescription(t, name, got.Schema, block)
 
 		want := baselineAttrFacts(t, name, baselineObject(block["attributes"]), "")
+		for path, fact := range baselineBlockFacts(t, name, baselineObject(block["block_types"]), "") {
+			want[path] = fact
+		}
 		have := frameworkAttrFacts(ctx, t, name, got.Schema.Attributes, "")
+		for path, fact := range frameworkBlockFacts(ctx, t, name, got.Schema.Blocks, "") {
+			have[path] = fact
+		}
 		compareBaselineFacts(t, name, want, have)
 	}
+}
 
-	if len(uncoveredBlocks) > 0 {
-		sort.Strings(uncoveredBlocks)
-		t.Logf("blocks are not projected by this test; %d surface(s) carry block_types "+
-			"whose contents nothing here compares: %v", len(uncoveredBlocks), uncoveredBlocks)
+// baselineBlockFacts projects block_types into the same fact set as attributes.
+//
+// Blocks used to be reported as uncovered and passed over. That was safe only
+// while every surface was hand-written: a generated schema simply omits what the
+// compiler cannot describe, and the compiler has no concept of a block, so
+// migrating one of the three surfaces that carry them would have deleted the
+// block and left this test logging its usual note and passing.
+func baselineBlockFacts(t *testing.T, surface string, blocks map[string]any, prefix string) map[string]attrFact {
+	t.Helper()
+	out := map[string]attrFact{}
+	for name, raw := range blocks {
+		declaration := baselineObject(raw)
+		path := prefix + name
+		inner := baselineObject(declaration["block"])
+
+		out[path] = attrFact{
+			NestingMode:     baselineString(declaration["nesting_mode"]),
+			Description:     baselineString(inner["description"]),
+			DescriptionKind: baselineString(inner["description_kind"]),
+			Deprecation:     baselineString(inner["deprecation_message"]),
+			IsBlock:         true,
+		}
+		for key, fact := range baselineAttrFacts(t, surface, baselineObject(inner["attributes"]), path+".") {
+			out[key] = fact
+		}
+		for key, fact := range baselineBlockFacts(t, surface, baselineObject(inner["block_types"]), path+".") {
+			out[key] = fact
+		}
 	}
+	return out
+}
+
+// frameworkBlockFacts is the in-process counterpart. Nesting mode comes from the
+// concrete type, as it does for nested attributes.
+func frameworkBlockFacts(
+	ctx context.Context,
+	t *testing.T,
+	surface string,
+	blocks map[string]rschema.Block,
+	prefix string,
+) map[string]attrFact {
+	t.Helper()
+	out := map[string]attrFact{}
+	for name, block := range blocks {
+		path := prefix + name
+
+		fact := attrFact{
+			Description:     block.GetDescription(),
+			DescriptionKind: "plain",
+			Deprecation:     block.GetDeprecationMessage(),
+			IsBlock:         true,
+		}
+		if markdown := block.GetMarkdownDescription(); markdown != "" {
+			fact.DescriptionKind, fact.Description = "markdown", markdown
+		}
+
+		var attributes map[string]rschema.Attribute
+		var nested map[string]rschema.Block
+		switch shaped := block.(type) {
+		case rschema.ListNestedBlock:
+			fact.NestingMode = "list"
+			attributes, nested = shaped.NestedObject.Attributes, shaped.NestedObject.Blocks
+		case rschema.SetNestedBlock:
+			fact.NestingMode = "set"
+			attributes, nested = shaped.NestedObject.Attributes, shaped.NestedObject.Blocks
+		case rschema.SingleNestedBlock:
+			fact.NestingMode = "single"
+			attributes, nested = shaped.Attributes, shaped.Blocks
+		default:
+			t.Fatalf("%s: block %q has unhandled type %T", surface, path, block)
+		}
+
+		out[path] = fact
+		for key, value := range frameworkAttrFacts(ctx, t, surface, attributes, path+".") {
+			out[key] = value
+		}
+		for key, value := range frameworkBlockFacts(ctx, t, surface, nested, path+".") {
+			out[key] = value
+		}
+	}
+	return out
 }
 
 func loadBaselineSchemas(t *testing.T) map[string]any {
@@ -327,6 +407,7 @@ func compareBaselineFacts(t *testing.T, surface string, want, have map[string]at
 			{"description", w.Description, h.Description},
 			{"description_kind", w.DescriptionKind, h.DescriptionKind},
 			{"nesting_mode", w.NestingMode, h.NestingMode},
+			{"is_block", fmt.Sprint(w.IsBlock), fmt.Sprint(h.IsBlock)},
 			{"deprecation_message", w.Deprecation, h.Deprecation},
 		} {
 			if f.want != f.have {
