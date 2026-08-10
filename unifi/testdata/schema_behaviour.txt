@@ -1,5 +1,5 @@
 # Validators, plan modifiers, defaults and custom types, per attribute, for
-# every managed resource and every action the provider registers.
+# every managed resource, data source and action the provider registers.
 #
 # These never appear in a Terraform schema. The protocol carries types,
 # dispositions, descriptions and deprecation, and nothing else -- so the

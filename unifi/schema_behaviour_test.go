@@ -20,7 +20,7 @@ import (
 const goldenSchemaBehaviour = "testdata/schema_behaviour.txt"
 
 const behaviourHeader = `# Validators, plan modifiers, defaults and custom types, per attribute, for
-# every managed resource and every action the provider registers.
+# every managed resource, data source and action the provider registers.
 #
 # These never appear in a Terraform schema. The protocol carries types,
 # dispositions, descriptions and deprecation, and nothing else -- so the
@@ -66,9 +66,9 @@ const behaviourHeader = `# Validators, plan modifiers, defaults and custom types
 // is not a gap in the projection test's thoroughness; it is a fact about what a
 // schema is. This inventory is the second referee those facts need.
 //
-// Coverage is managed resources at every attribute depth, and actions at their
-// single depth. Data sources, list resources and identity schemas are separate
-// schemas and are reported as uncovered rather than passed over.
+// Coverage is managed resources and data sources at every attribute depth, and
+// actions at their single depth. List resources and identity schemas are
+// separate schemas and are reported as uncovered rather than passed over.
 func Test_schemaBehaviourInventory(t *testing.T) {
 	ctx := context.Background()
 	got, opaque := schemaBehaviourFacts(ctx, t)
@@ -120,9 +120,9 @@ func Test_schemaBehaviourInventory(t *testing.T) {
 	}
 }
 
-// schemaBehaviourFacts walks every registered managed resource and data source
-// and returns one sorted line per behaviour, plus the attribute types it could
-// not read.
+// schemaBehaviourFacts walks every registered managed resource, data source and
+// action, and returns one sorted line per behaviour, plus the attribute types it
+// could not read.
 //
 // Reflection rather than a type switch over the ten concrete attribute types:
 // a switch silently ignores any type added later, which is the same class of

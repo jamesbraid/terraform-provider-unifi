@@ -17,8 +17,6 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-firewall-zone.json -policy policy/firewall_zone.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix firewall_zone -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/firewall_zone.provider-code-spec.json --output ../internal/generated/resource_firewall_zone --package resource_firewall_zone
 //go:generate gofmt -w ../internal/generated/resource_firewall_zone/firewall_zone_resource_gen.go
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-firewall-zone.json -policy policy/firewall_zone_list.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix firewall_zone_list -output-dir generated
-//go:generate go run ../cmd/list-resource-gen --input generated/firewall_zone_list.provider-code-spec.json --output ../internal/generated/listresource_firewall_zone --package listresource_firewall_zone
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wlan.json -policy policy/wlan.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix wlan -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/wlan.provider-code-spec.json --output ../internal/generated/resource_wlan --package resource_wlan
 //go:generate gofmt -w ../internal/generated/resource_wlan/wlan_resource_gen.go
@@ -78,7 +76,8 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-ap-group-ds.json -policy policy/ap_group_ds.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix ap_group_ds -output-dir generated
 //go:generate go tool tfplugingen-framework generate data-sources --input generated/ap_group_ds.provider-code-spec.json --output ../internal/generated/datasource_ap_group --package datasource_ap_group
 //go:generate gofmt -w ../internal/generated/datasource_ap_group/ap_group_ds_data_source_gen.go
-
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-firewall-zone.json -policy policy/firewall_zone_list.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix firewall_zone_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/firewall_zone_list.provider-code-spec.json --output ../internal/generated/listresource_firewall_zone --package listresource_firewall_zone
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Client -resource unifi_client -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-client.json
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Device -resource unifi_device -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-device.json
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Network -resource unifi_network -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-network.json
@@ -87,7 +86,6 @@ package providercodegen
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Network -resource unifi_wan -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-wan.json
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Network -resource unifi_vpn_client -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-vpn-client.json
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Network -resource unifi_vpn_server -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-vpn-server.json
-//go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Network -resource unifi_site_to_site_vpn -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-site-to-site-vpn.json
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-ap-group.json -policy policy/ap_group_list.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix ap_group_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/ap_group_list.provider-code-spec.json --output ../internal/generated/listresource_ap_group --package listresource_ap_group
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-client.json -policy policy/client_list.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix client_list -output-dir generated
