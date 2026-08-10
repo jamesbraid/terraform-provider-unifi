@@ -1915,3 +1915,80 @@ func TestCompileRejectsADispositionOnABlock(t *testing.T) {
 		}
 	}
 }
+
+// A nested shape can present a member no observed field supplies. wlan's
+// schedule block shows a single day_of_week string over an SDK array of them —
+// the provider chooses one, and no derivation produces that. The declaration is
+// the same one a grouped member already carries, because the risk is the same:
+// without it, an invented member is indistinguishable from a policy naming a
+// field that does not exist.
+func TestCompileAdmitsAnInventedNestedMemberOnlyWhenDeclared(t *testing.T) {
+	withMember := func(member map[string]any) CompileInput {
+		input := blockInput(t, "list_nested_block")
+		var rules map[string]any
+		if err := json.Unmarshal(input.Policy, &rules); err != nil {
+			t.Fatal(err)
+		}
+		for _, raw := range rules["fields"].([]any) {
+			field := raw.(map[string]any)
+			if field["terraform_name"] == "settings" {
+				field["fields"] = append(field["fields"].([]any), member)
+			}
+		}
+		input.Policy = mustJSON(t, rules)
+		return input
+	}
+
+	// Declared, with a type of its own: emitted.
+	result, err := Compile(withMember(map[string]any{
+		"structural_name": "day_of_week", "terraform_name": "day_of_week",
+		"terraform_type": "string", "disposition": "managed",
+		"invented":  "the controller sends an array of days; the provider presents the first",
+		"attribute": map[string]any{"computed_optional_required": "optional"},
+	}))
+	if err != nil {
+		t.Fatalf("a declared invented member was rejected: %v", err)
+	}
+	if !strings.Contains(string(result.ProviderCodeSpec), `"day_of_week"`) {
+		t.Fatal("the invented member was not emitted")
+	}
+
+	tests := map[string]struct {
+		member map[string]any
+		wants  []string
+	}{
+		// Undeclared, it is just a policy naming something the catalog does not
+		// have — and the error should say the declaration exists.
+		"undeclared": {
+			member: map[string]any{
+				"structural_name": "day_of_week", "terraform_name": "day_of_week",
+				"terraform_type": "string", "disposition": "managed",
+				"attribute": map[string]any{"computed_optional_required": "optional"},
+			},
+			wants: []string{"day_of_week", "does not observe", "invented and a reason"},
+		},
+		// Declared but with no type. There is no observed field to take one
+		// from, so the policy must supply it.
+		"declared with no type": {
+			member: map[string]any{
+				"structural_name": "day_of_week", "terraform_name": "day_of_week",
+				"disposition": "managed", "invented": "the provider picks one",
+				"attribute": map[string]any{"computed_optional_required": "optional"},
+			},
+			wants: []string{"day_of_week", "must declare terraform_type"},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(withMember(test.member))
+			if err == nil {
+				t.Fatal("Compile() succeeded")
+			}
+			for _, want := range test.wants {
+				if !strings.Contains(err.Error(), want) {
+					t.Fatalf("error %q does not say %q", err, want)
+				}
+			}
+		})
+	}
+}

@@ -1166,10 +1166,14 @@ func nestedAttributes(
 	for _, member := range field.Fields {
 		decisions[member.StructuralName] = member
 	}
-	for name := range decisions {
+	for name, decision := range decisions {
+		if decision.Invented != "" {
+			continue
+		}
 		if !structuralHasMember(structural, name) {
 			return nil, fmt.Errorf(
-				"object field %q has a policy for member %q that the catalog does not observe",
+				"object field %q has a policy for member %q that the catalog does not observe; "+
+					"if the provider invents it, say so with invented and a reason",
 				field.StructuralName, name,
 			)
 		}
@@ -1196,6 +1200,25 @@ func nestedAttributes(
 		attribute, err := buildCodeAttribute(decision, member, names)
 		if err != nil {
 			return nil, err
+		}
+		members = append(members, attribute)
+	}
+	for _, decision := range field.Fields {
+		if decision.Invented == "" || decision.Disposition == "omitted" {
+			continue
+		}
+		owner := field.StructuralName + "." + decision.TerraformName
+		if decision.TerraformType == "" {
+			return nil, fmt.Errorf(
+				"invented member %q must declare terraform_type: no observed field supplies one", owner,
+			)
+		}
+		if err := claimTerraformName(names, owner+"/"+decision.TerraformName, owner); err != nil {
+			return nil, err
+		}
+		attribute, err := makeCodeAttribute(decision.TerraformName, decision.TerraformType, decision.Attribute)
+		if err != nil {
+			return nil, fmt.Errorf("invented member %q: %w", owner, err)
 		}
 		members = append(members, attribute)
 	}

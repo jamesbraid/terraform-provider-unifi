@@ -159,6 +159,16 @@ type fieldPolicy struct {
 	// The catalog supplies the members; this supplies what each one becomes,
 	// exactly as the top level does for scalars.
 	Fields []fieldPolicy `json:"fields,omitempty"`
+	// Invented records that this member corresponds to no observed field, and
+	// says why. It is the same declaration a grouped member already carries,
+	// permitted here because a nested shape can invent a member too: wlan's
+	// schedule block presents a single day_of_week string over an SDK array of
+	// them, which no derivation produces and no cardinality rule may allow.
+	//
+	// The reason is required for the same cause as everywhere else — a flag is
+	// something set to pass a gate — and an invented member must declare its
+	// own terraform_type, because there is no observed field to take one from.
+	Invented string `json:"invented,omitempty"`
 }
 
 // groupingPolicy declares a nested Terraform attribute the SDK does not have.
