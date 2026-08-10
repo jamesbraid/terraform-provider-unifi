@@ -11,7 +11,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_dynamic_dns",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Two renames read from the resource conversion code: id from _id, and password from the SDK's x_password, which the policy also marks sensitive so the secret guard stays satisfied. site is provider-owned rather than the SDK's site_id — dynamicDNSToModel takes the site name as a parameter and site_id is never read or written here, so matching on the name would have bound the wrong field. Seven SDK fields are omitted: the four attr_ bookkeeping flags, site_id, and custom_service and options, none of which the released schema ever exposed. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
