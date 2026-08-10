@@ -134,3 +134,6 @@ package providercodegen
 //go:generate go run ../cmd/list-resource-gen --input generated/wireguard_peer_list.provider-code-spec.json --output ../internal/generated/listresource_wireguard_peer --package listresource_wireguard_peer
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wlan.json -policy policy/wlan_list.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix wlan_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/wlan_list.provider-code-spec.json --output ../internal/generated/listresource_wlan --package listresource_wlan
+//go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Device -resource unifi_port -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-port.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-port.json -policy policy/port_action.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix port_action -output-dir generated
+//go:generate go run ../cmd/action-gen --input generated/port_action.provider-code-spec.json --output ../internal/generated/action_port --package action_port

@@ -1,0 +1,284 @@
+// Command action-gen turns the actions member of a provider code specification
+// into Go.
+//
+// Same reason cmd/list-resource-gen exists: tfplugingen-framework's subcommands
+// are all, data-sources, provider and resources, and the specification format
+// has carried the same four members since September 2024 while the framework
+// grew action and list packages. Nothing upstream turns an action schema into
+// code.
+//
+// It is a SECOND straight-line emitter rather than a generalisation of the list
+// one, and that is a deliberate call worth recording. The two overlap only in
+// "write a schema literal": a list config schema is strings and one fixed block
+// with no custom types and a constant import pair, while an action schema has
+// no blocks, mixes scalar kinds, and carries custom types whose imports have to
+// be collected and emitted. Merging them today would produce a parameterised
+// renderer whose shared core is a dozen lines, at the cost of putting
+// twenty-four working surfaces behind a change made for one new one. A THIRD
+// use case, or a second one that actually shares this shape, is what should
+// merge them.
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"go/format"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+type specification struct {
+	Actions []actionSurface `json:"actions"`
+}
+
+type actionSurface struct {
+	Name   string       `json:"name"`
+	Schema actionSchema `json:"schema"`
+}
+
+type actionSchema struct {
+	Attributes          []attribute `json:"attributes"`
+	Blocks              []struct{}  `json:"blocks"`
+	MarkdownDescription string      `json:"markdown_description"`
+}
+
+// attribute carries one scalar kind at a time. The member that is present is
+// the attribute's type, which is how the specification encodes it.
+type attribute struct {
+	Name    string  `json:"name"`
+	String  *scalar `json:"string"`
+	Bool    *scalar `json:"bool"`
+	Int64   *scalar `json:"int64"`
+	Number  *scalar `json:"number"`
+	Float64 *scalar `json:"float64"`
+}
+
+type scalar struct {
+	ComputedOptionalRequired string      `json:"computed_optional_required"`
+	Description              string      `json:"description"`
+	Sensitive                bool        `json:"sensitive"`
+	CustomType               *customType `json:"custom_type"`
+}
+
+type customType struct {
+	Import *struct {
+		Path string `json:"path"`
+	} `json:"import"`
+	Type string `json:"type"`
+}
+
+func main() { os.Exit(run(os.Args[1:], os.Stderr)) }
+
+func run(args []string, stderr io.Writer) int {
+	flags := flag.NewFlagSet("action-gen", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	input := flags.String("input", "", "provider code specification carrying an actions member")
+	output := flags.String("output", "", "directory for the generated file")
+	pkg := flags.String("package", "", "package name for the generated file")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if *input == "" || *output == "" || *pkg == "" {
+		fmt.Fprintln(stderr, "input, output and package are required")
+		return 2
+	}
+
+	data, err := os.ReadFile(*input)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	var document specification
+	if err := json.Unmarshal(data, &document); err != nil {
+		fmt.Fprintf(stderr, "parse %s: %v\n", *input, err)
+		return 1
+	}
+	if len(document.Actions) == 0 {
+		fmt.Fprintf(stderr, "%s carries no actions member; nothing to generate\n", *input)
+		return 1
+	}
+
+	source, err := render(*pkg, document.Actions)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	formatted, err := format.Source(source)
+	if err != nil {
+		fmt.Fprintf(stderr, "generated source does not parse: %v\n---\n%s\n", err, source)
+		return 1
+	}
+	if err := os.MkdirAll(*output, 0o755); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	name := strings.ReplaceAll(document.Actions[0].Name, "-", "_") + "_action_gen.go"
+	if err := os.WriteFile(filepath.Join(*output, name), formatted, 0o644); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	return 0
+}
+
+func render(pkg string, surfaces []actionSurface) ([]byte, error) {
+	body := &bytes.Buffer{}
+	imports := map[string]bool{}
+
+	for _, surface := range surfaces {
+		if len(surface.Schema.Blocks) > 0 {
+			return nil, fmt.Errorf(
+				"%s: action schemas here carry no blocks; one that does is a decision "+
+					"rather than a case to add silently", surface.Name)
+		}
+		fmt.Fprintf(body, "\nfunc %sActionSchema(ctx context.Context) schema.Schema {\n",
+			exportedName(surface.Name))
+		fmt.Fprintf(body, "\treturn schema.Schema{\n")
+		if surface.Schema.MarkdownDescription != "" {
+			fmt.Fprintf(body, "\t\tMarkdownDescription: %q,\n", surface.Schema.MarkdownDescription)
+		}
+		if err := renderAttributes(body, imports, surface); err != nil {
+			return nil, err
+		}
+		fmt.Fprintf(body, "\t}\n}\n")
+	}
+
+	out := &bytes.Buffer{}
+	fmt.Fprintf(out, "// Code generated by cmd/action-gen. DO NOT EDIT.\n\npackage %s\n\n", pkg)
+	fmt.Fprintf(out, "import (\n\t%q\n\n\t%q\n",
+		"context", "github.com/hashicorp/terraform-plugin-framework/action/schema")
+	// A custom type's import is emitted because the type is unusable without
+	// it. Collected rather than assumed: the estate has one today, and a
+	// hard-coded import would make the second one a compile error in generated
+	// code rather than a rendered line.
+	for _, path := range sortedKeys(imports) {
+		fmt.Fprintf(out, "\t%q\n", path)
+	}
+	fmt.Fprintf(out, ")\n")
+	out.Write(body.Bytes())
+	return out.Bytes(), nil
+}
+
+func renderAttributes(out *bytes.Buffer, imports map[string]bool, surface actionSurface) error {
+	if len(surface.Schema.Attributes) == 0 {
+		return fmt.Errorf("%s: the action schema has no attributes", surface.Name)
+	}
+	fmt.Fprintf(out, "\t\tAttributes: map[string]schema.Attribute{\n")
+	for _, entry := range sortedAttributes(surface.Schema.Attributes) {
+		kind, body, err := scalarOf(surface.Name, entry)
+		if err != nil {
+			return err
+		}
+		disposition, err := dispositionField(surface.Name, entry.Name, body.ComputedOptionalRequired)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(out, "\t\t\t%q: schema.%sAttribute{\n", entry.Name, kind)
+		if body.CustomType != nil {
+			if body.CustomType.Type == "" {
+				return fmt.Errorf("%s: attribute %q declares a custom type with no type expression",
+					surface.Name, entry.Name)
+			}
+			// A custom type without its import renders code that does not
+			// compile. Refusing here names the attribute; letting it through
+			// names a package.
+			if body.CustomType.Import == nil || body.CustomType.Import.Path == "" {
+				return fmt.Errorf(
+					"%s: attribute %q declares custom type %s with no import path",
+					surface.Name, entry.Name, body.CustomType.Type)
+			}
+			imports[body.CustomType.Import.Path] = true
+			fmt.Fprintf(out, "\t\t\t\tCustomType: %s,\n", body.CustomType.Type)
+		}
+		if body.Description != "" {
+			fmt.Fprintf(out, "\t\t\t\tMarkdownDescription: %q,\n", body.Description)
+		}
+		if body.Sensitive {
+			fmt.Fprintf(out, "\t\t\t\tSensitive: true,\n")
+		}
+		fmt.Fprintf(out, "\t\t\t\t%s: true,\n\t\t\t},\n", disposition)
+	}
+	fmt.Fprintf(out, "\t\t},\n")
+	return nil
+}
+
+// scalarOf reports which kind the attribute declares, refusing one that
+// declares none or several. Several would otherwise be resolved by field order,
+// which is a silent choice between two things the author asked for.
+func scalarOf(surface string, entry attribute) (string, *scalar, error) {
+	kinds := []struct {
+		name string
+		body *scalar
+	}{
+		{"Bool", entry.Bool}, {"Float64", entry.Float64}, {"Int64", entry.Int64},
+		{"Number", entry.Number}, {"String", entry.String},
+	}
+	var found []string
+	var chosen struct {
+		name string
+		body *scalar
+	}
+	for _, kind := range kinds {
+		if kind.body != nil {
+			found = append(found, kind.name)
+			chosen = kind
+		}
+	}
+	switch len(found) {
+	case 1:
+		return chosen.name, chosen.body, nil
+	case 0:
+		return "", nil, fmt.Errorf(
+			"%s: attribute %q declares no scalar type; only scalars are handled here, "+
+				"and a collection or nested attribute is a decision rather than a case to add",
+			surface, entry.Name)
+	default:
+		return "", nil, fmt.Errorf("%s: attribute %q declares %d types (%s)",
+			surface, entry.Name, len(found), strings.Join(found, ", "))
+	}
+}
+
+func dispositionField(surface, attribute, disposition string) (string, error) {
+	switch disposition {
+	case "required":
+		return "Required", nil
+	case "optional", "computed_optional":
+		return "Optional", nil
+	case "computed":
+		return "Computed", nil
+	default:
+		return "", fmt.Errorf("%s: attribute %q declares disposition %q, which has no field",
+			surface, attribute, disposition)
+	}
+}
+
+func exportedName(surface string) string {
+	parts := strings.Split(surface, "_")
+	for index, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[index] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, "")
+}
+
+func sortedAttributes(in []attribute) []attribute {
+	out := append([]attribute(nil), in...)
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+func sortedKeys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}

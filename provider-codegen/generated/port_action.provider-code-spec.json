@@ -1,0 +1,44 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "actions": [
+    {
+      "name": "port",
+      "schema": {
+        "attributes": [
+          {
+            "name": "device_mac",
+            "string": {
+              "computed_optional_required": "required",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+                },
+                "type": "hwtypes.MACAddressType{}",
+                "value_type": "hwtypes.MACAddress"
+              },
+              "description": "MAC address of the device containing the port to configure."
+            }
+          },
+          {
+            "name": "poe_mode",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "PoE mode to set for the port. Valid values are `auto`, `pasv24`, `passthrough`, and `off`."
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "required",
+              "description": "Port number (index) on the device to configure. Typically starts at 1."
+            },
+            "name": "port_number"
+          }
+        ],
+        "markdown_description": "Performs an action on a UniFi device port, allowing configuration of PoE state and other port settings."
+      }
+    }
+  ]
+}
