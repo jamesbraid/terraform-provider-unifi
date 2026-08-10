@@ -42,6 +42,16 @@ func Compile(input CompileInput) (Result, error) {
 	if source.Resource.Name != rules.Resource {
 		return Result{}, fmt.Errorf("resource mismatch: bootstrap %q, policy %q", source.Resource.Name, rules.Resource)
 	}
+	// Both sides must name a source. Comparing two empty strings succeeds and
+	// says nothing, so a bootstrap and policy that simply omit the field would
+	// have been treated as bound to each other.
+	if source.Source.SpecificationSHA256 == "" || rules.SourceSpecificationSHA256 == "" {
+		return Result{}, fmt.Errorf(
+			"bootstrap and policy must both record the source specification they were derived from; bootstrap %q, policy %q",
+			source.Source.SpecificationSHA256,
+			rules.SourceSpecificationSHA256,
+		)
+	}
 	if source.Source.SpecificationSHA256 != rules.SourceSpecificationSHA256 {
 		return Result{}, fmt.Errorf(
 			"bootstrap digest mismatch: bootstrap %q, policy %q",
@@ -732,6 +742,14 @@ func structuralSource(input CompileInput, rules policy) (bootstrap, error) {
 	if catalog.Admission.State != "admitted" {
 		return bootstrap{}, fmt.Errorf("catalog admission state %q is not admitted", catalog.Admission.State)
 	}
+	// A catalog that records no specification digest is not unbound. Its source
+	// is pinned by the four capture digests compared below — the capture lock,
+	// the structural projection, the semantic predecessor and the semantic IDs
+	// — which are recomputed from the catalog itself. The policy's
+	// source_specification_sha256 is a bootstrap-path field, and on this path it
+	// is not what ties the policy to its source, so a silent catalog is not the
+	// hole it appears to be. The comparison below still applies when a catalog
+	// does record one.
 	if catalog.Sources.SpecificationSHA256 != "" && catalog.Sources.SpecificationSHA256 != rules.SourceSpecificationSHA256 {
 		return bootstrap{}, fmt.Errorf(
 			"catalog specification digest mismatch: catalog %q, policy %q",
@@ -1162,8 +1180,42 @@ func buildCodeAttribute(
 		terraformType = resolved
 	} else if terraformType == "" {
 		terraformType = structural.Type
+	} else if err := requireScalarOverride(field.StructuralName, structural.Type, terraformType); err != nil {
+		return codeAttribute{}, err
 	}
 	return makeCodeAttribute(field.TerraformName, terraformType, field.Attribute)
+}
+
+// terraformScalarTypes are the specification members that hold a single value.
+// Everything else changes how many values an attribute holds, not how one is
+// spelled.
+var terraformScalarTypes = map[string]bool{
+	"bool": true, "string": true, "int64": true, "number": true, "float64": true,
+}
+
+// requireScalarOverride rejects a declared terraform_type that changes an
+// attribute's cardinality.
+//
+// Overriding the representation of a single value is established practice and
+// nothing else can express it: dns_record presents a numeric ttl as a duration
+// string, power_supervisor does the same for three integer second counts. Those
+// are scalar for scalar, and the conversion lives in the resource.
+//
+// Declaring a list over a scalar field is a different act. It says the
+// controller sends many values where the SDK says it sends one, and no
+// conversion can make that true — the generated schema simply would not
+// marshal. Until this check existed the compiler took the declaration at its
+// word, so an SDK field that changed from a slice to a plain string compiled
+// clean and left the policy describing a list that no longer exists.
+func requireScalarOverride(name, structuralType, declared string) error {
+	if terraformScalarTypes[structuralType] && terraformScalarTypes[declared] {
+		return nil
+	}
+	return fmt.Errorf(
+		"field %q is observed as %q and declares terraform_type %q: an override may change how a "+
+			"single value is represented, not how many values there are",
+		name, structuralType, declared,
+	)
 }
 
 // structuralElementType reports the element type of a collection structural
