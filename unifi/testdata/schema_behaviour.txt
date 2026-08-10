@@ -780,6 +780,7 @@ unifi_wlan.iapp_enabled	plan_modifier	boolplanmodifier.useStateForUnknownModifie
 unifi_wlan.id	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wlan.is_guest	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_wlan.l2_isolation	default	booldefault.staticBoolDefault	"value defaults to false"
+unifi_wlan.mac_filter	custom_type	resource_wlan.MacFilterType	"<carries no description>"
 unifi_wlan.mac_filter	plan_modifier	objectplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wlan.mac_filter.enabled	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_wlan.mac_filter.policy	default	stringdefault.staticStringDefault	"value defaults to deny"

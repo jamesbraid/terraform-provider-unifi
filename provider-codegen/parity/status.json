@@ -88,7 +88,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_wlan",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy: 55 released attributes over 109 SDK fields, ten renames read from the resource conversion code, a mac_filter grouping, a schedule block bound to schedule_with_duration rather than the SDK field of the same name, one invented block member, and 54 named omissions. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
