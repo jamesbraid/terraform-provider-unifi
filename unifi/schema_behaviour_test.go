@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/action"
+	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -17,8 +19,8 @@ import (
 
 const goldenSchemaBehaviour = "testdata/schema_behaviour.txt"
 
-const behaviourHeader = `# Validators, plan modifiers and defaults, per attribute, for every managed
-# resource the provider registers.
+const behaviourHeader = `# Validators, plan modifiers, defaults and custom types, per attribute, for
+# every managed resource and every action the provider registers.
 #
 # These never appear in a Terraform schema. The protocol carries types,
 # dispositions, descriptions and deprecation, and nothing else -- so the
@@ -34,7 +36,13 @@ const behaviourHeader = `# Validators, plan modifiers and defaults, per attribut
 # did. firewall_policy lost nine validators that way and the whole suite
 # stayed green.
 #
-# Each line is "<resource>.<attribute path>  <kind>  <implementation>  <description>".
+# A custom type is here for the same reason: it is the validation on the
+# attribute it sits on -- unifi_port.device_mac is a hwtypes.MACAddressType,
+# and the protocol renders that as a plain string, so the released baseline
+# records "string" and a schema that dropped the type compares equal to the
+# contract while accepting any string as a MAC address.
+#
+# Each line is "<surface>.<attribute path>  <kind>  <implementation>  <description>".
 # The description is the validator's own, so it carries the VALUES: changing
 # an enum member changes the line rather than leaving the count intact.
 #
@@ -58,9 +66,9 @@ const behaviourHeader = `# Validators, plan modifiers and defaults, per attribut
 // is not a gap in the projection test's thoroughness; it is a fact about what a
 // schema is. This inventory is the second referee those facts need.
 //
-// Coverage is managed resources at every attribute depth. Data sources, list
-// resources and identity schemas are separate schemas and are reported as
-// uncovered rather than passed over.
+// Coverage is managed resources at every attribute depth, and actions at their
+// single depth. Data sources, list resources and identity schemas are separate
+// schemas and are reported as uncovered rather than passed over.
 func Test_schemaBehaviourInventory(t *testing.T) {
 	ctx := context.Background()
 	got, opaque := schemaBehaviourFacts(ctx, t)
@@ -158,6 +166,35 @@ func schemaBehaviourFacts(ctx context.Context, t *testing.T) ([]string, []string
 
 		prefix := "data." + meta.TypeName + "."
 		facts = append(facts, dataSourceAttributeBehaviour(ctx, prefix, got.Schema.Attributes, opaque)...)
+	}
+
+	// Actions carry the same kind of invisible behaviour and were not read
+	// here. The estate has one, and its device_mac attribute is a
+	// hwtypes.MACAddressType: the protocol renders that as a plain string, so
+	// the released baseline records "string" and a generated schema that
+	// dropped the custom type would compare equal to the contract. The type IS
+	// the validation on that attribute -- losing it means accepting any string
+	// as a MAC address -- and until this loop existed nothing in the package
+	// would have noticed.
+	//
+	// behaviourOf reads by reflection and takes any, so action attributes need
+	// no separate reader; only the walk is new.
+	for _, newAction := range (&unifiProvider{}).Actions(ctx) {
+		act := newAction()
+
+		var meta action.MetadataResponse
+		act.Metadata(ctx, action.MetadataRequest{ProviderTypeName: "unifi"}, &meta)
+
+		var got action.SchemaResponse
+		act.Schema(ctx, action.SchemaRequest{}, &got)
+
+		for _, name := range sortedActionAttributes(got.Schema.Attributes) {
+			lines, read := behaviourOf(ctx, meta.TypeName+"."+name, got.Schema.Attributes[name])
+			facts = append(facts, lines...)
+			if !read {
+				opaque[fmt.Sprintf("%T", got.Schema.Attributes[name])] = true
+			}
+		}
 	}
 
 	sort.Strings(facts)
@@ -322,4 +359,15 @@ func behaviourLine(ctx context.Context, path, kind string, behaviour any) string
 		description = describer.Description(ctx)
 	}
 	return fmt.Sprintf("%s\t%s\t%T\t%q", path, kind, behaviour, description)
+}
+
+// sortedActionAttributes keeps the walk deterministic. Go map order would make
+// the inventory differ run to run and every regeneration a diff.
+func sortedActionAttributes(m map[string]actionschema.Attribute) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
