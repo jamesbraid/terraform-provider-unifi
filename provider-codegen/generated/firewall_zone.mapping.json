@@ -15,35 +15,35 @@
       "structural_name": "attr_hidden",
       "terraform_name": "attr_hidden",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "attr_hidden_id",
       "terraform_name": "attr_hidden_id",
       "structural_type": "string",
-      "terraform_type": "string",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "attr_no_delete",
       "terraform_name": "attr_no_delete",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "attr_no_edit",
       "terraform_name": "attr_no_edit",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "cloud_template",
       "terraform_name": "cloud_template",
       "structural_type": "string",
-      "terraform_type": "string",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
@@ -57,7 +57,7 @@
       "structural_name": "external_id",
       "terraform_name": "external_id",
       "structural_type": "string",
-      "terraform_type": "string",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
@@ -78,7 +78,7 @@
       "structural_name": "site_id",
       "terraform_name": "site_id",
       "structural_type": "string",
-      "terraform_type": "string",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {

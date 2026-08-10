@@ -40,17 +40,10 @@
       "disposition": "managed"
     },
     {
-      "structural_name": "settings",
-      "terraform_name": "",
-      "structural_type": "object",
-      "terraform_type": "single_nested",
-      "disposition": ""
-    },
-    {
       "structural_name": "site_id",
       "terraform_name": "site_id",
       "structural_type": "string",
-      "terraform_type": "string",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {

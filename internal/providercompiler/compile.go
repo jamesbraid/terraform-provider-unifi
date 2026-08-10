@@ -169,6 +169,18 @@ func Compile(input CompileInput) (Result, error) {
 	attributes := make([]codeAttribute, 0, len(fieldNames)+len(providerOwned))
 	blocks := make([]codeAttribute, 0, len(fieldNames))
 	for _, name := range fieldNames {
+		// A field consumed by a grouping or spread by a flattening is emitted
+		// and recorded by that mechanism, not here. Falling through resolved a
+		// Terraform type for it anyway, which is meaningless for a field this
+		// loop will not emit — and for a collection it demanded a list-or-set
+		// decision, so a grouped scalar passed and a grouped collection failed
+		// with no name to blame.
+		if _, consumed := grouped[name]; consumed {
+			continue
+		}
+		if _, spread := flattened[name]; spread {
+			continue
+		}
 		structural := sourceFields[name]
 		field := policyFields[name]
 		// Resolved through the shared builder so a scalar, a collection and an
@@ -177,20 +189,30 @@ func Compile(input CompileInput) (Result, error) {
 		// "object" are not members, and emitting one produces a document the
 		// generator reads while generating no attribute.
 		terraformType := field.TerraformType
-		if structuralIsObject(structural.Type) {
+		// An omitted field is not emitted, so it has no Terraform type and
+		// resolving one asks for a decision with no consequence. That is not
+		// merely wasted: a wide surface omits dozens of fields, and requiring a
+		// list-or-set choice for each buries the omissions a reader should be
+		// checking under choices that mean nothing.
+		switch {
+		case field.Disposition == "omitted":
+			terraformType = ""
+		case structuralIsObject(structural.Type):
 			resolved, err := objectTerraformType(field, structural.Type)
 			if err != nil {
 				return Result{}, err
 			}
 			terraformType = resolved
-		} else if element, isCollection := structuralElementType(structural.Type); isCollection {
-			resolved, err := collectionTerraformType(field, element)
-			if err != nil {
-				return Result{}, err
+		default:
+			if element, isCollection := structuralElementType(structural.Type); isCollection {
+				resolved, err := collectionTerraformType(field, element)
+				if err != nil {
+					return Result{}, err
+				}
+				terraformType = resolved
+			} else if terraformType == "" {
+				terraformType = structural.Type
 			}
-			terraformType = resolved
-		} else if terraformType == "" {
-			terraformType = structural.Type
 		}
 		mapping.Fields = append(mapping.Fields, mappingField{
 			StructuralName: structural.Name,
@@ -1279,17 +1301,27 @@ func structuralElementType(structuralType string) (string, bool) {
 // refuse to guess. The declared element type is then checked against the
 // catalog, which is the ground truth for what the SDK actually returns.
 func collectionTerraformType(field fieldPolicy, element string) (string, error) {
+	// A grouped or flattened member carries no structural name of its own, so
+	// naming only that leaves the reader with `collection field ""` and no way
+	// to find the field. Fall back to whatever identifies it.
+	named := field.StructuralName
+	if named == "" {
+		named = field.TerraformName
+	}
+	if named == "" {
+		named = "(unnamed)"
+	}
 	switch field.TerraformType {
 	case "list", "set":
 	case "":
 		return "", fmt.Errorf(
 			"collection field %q must declare terraform_type as list or set: the SDK type cannot distinguish them and order sensitivity is a semantic decision",
-			field.StructuralName,
+			named,
 		)
 	default:
 		return "", fmt.Errorf(
 			"collection field %q declares terraform_type %q, want list or set",
-			field.StructuralName, field.TerraformType,
+			named, field.TerraformType,
 		)
 	}
 	declared, err := declaredElementType(field)
@@ -1299,7 +1331,7 @@ func collectionTerraformType(field fieldPolicy, element string) (string, error) 
 	if declared != element {
 		return "", fmt.Errorf(
 			"collection field %q declares element type %q but the catalog observed %q",
-			field.StructuralName, declared, element,
+			named, declared, element,
 		)
 	}
 	return field.TerraformType, nil
