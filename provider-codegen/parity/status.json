@@ -99,7 +99,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_account",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Served by the generated schema without a policy of its own. deprecatedAccountResource embeds radiusUserResource and calls its Schema, adding only a DeprecationMessage, so migrating unifi_radius_user migrated this surface in the same edit. It has no bootstrap, policy or generated package, and it must not acquire one: a second policy over the same SDK struct would be a second source of truth for one schema. The baseline projection reads it as a registered resource and compares it against the released contract like any other, which is what says the alias still inherits what it did. Admission waits on the same campaign run as unifi_radius_user."
     },
     {
       "kind": "managed_resource",
@@ -131,7 +132,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_radius_user",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, password from x_password — sensitive, as the compiler's secret guard requires — and network_id from networkconf_id, which no name match would have found. site is provider-owned rather than the SDK's site_id, set from a parameter in accountToModel. Eleven of the sixteen SDK fields are omitted, including filter_ids, ip and ulp_user_id, none of which the released schema exposed. unifi_account serves this same schema through its deprecated alias, so its fifteen behaviour-inventory lines are the check that the alias still inherits what it did. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
