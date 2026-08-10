@@ -85,7 +85,7 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 8 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 8}) {
 		t.Fatalf("Wave 2 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"admitted": 1, "generated_shadow": 2, "policy_complete": 5}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"admitted": 1, "generated_shadow": 3, "policy_complete": 4}) {
 		t.Fatalf("Wave 2 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -115,6 +115,10 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 		// The smallest surface in the estate: three SDK fields, two of them
 		// renamed.
 		case "unifi_site":
+			want = GeneratedShadow
+		// Three renames, and the second surface whose released descriptions
+		// are plain rather than Markdown.
+		case "unifi_firewall_group":
 			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
@@ -266,8 +270,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      57,
-		GeneratedShadow:     6,
+		PolicyComplete:      56,
+		GeneratedShadow:     7,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
