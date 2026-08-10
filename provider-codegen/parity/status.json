@@ -128,7 +128,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_radius_profile",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy, and is the second surface whose released type differs from the SDK's. interim_update_interval is *int64 seconds in the SDK and a GoDuration string in the schema, so the resource keeps schema version 1 and its RawState upgrader, which the kernel re-sets after the generated schema call exactly as dns_record does. Three renames read from the conversion code: id from _id, and the auth_server and acct_server blocks from the SDK's plural auth_servers and acct_servers arrays. Inside both blocks secret renames from x_secret and stays sensitive, which the compiler's secret guard requires. Fifteen of the twenty-three SDK fields are omitted, including tls_enabled and the six x_ certificate and private-key fields, none of which the released schema exposed. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",

@@ -8,25 +8,16 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_radius_profile"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 var (
@@ -116,152 +107,13 @@ func (r *radiusProfileResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		// v1: interim_update_interval changed from Int64 (seconds) to GoDuration.
-		Version:             1,
-		MarkdownDescription: "Manages RADIUS profiles.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the settings.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the settings with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the profile.",
-				Required:            true,
-			},
-			"accounting_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to use RADIUS accounting.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"interim_update_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to use interim_update.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"interim_update_interval": schema.StringAttribute{
-				MarkdownDescription: "Specifies the RADIUS interim update interval, as a Go " +
-					"duration string (e.g. `1h`, `3600s`). Defaults to `1h0m0s`.",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Default:    stringdefault.StaticString("1h0m0s"),
-				Validators: []validator.String{
-					validators.GoDurationMultipleOf(time.Second),
-				},
-			},
-			"use_usg_acct_server": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to use usg as a RADIUS accounting server.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"use_usg_auth_server": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to use usg as a RADIUS authentication server.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"vlan_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to use vlan on wired connections.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"vlan_wlan_mode": schema.StringAttribute{
-				MarkdownDescription: "Specifies whether to use vlan on wireless connections. Must be one of `disabled`, `optional`, or `required`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString(""),
-				Validators: []validator.String{
-					stringvalidator.OneOf("disabled", "optional", "required"),
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-		Blocks: map[string]schema.Block{
-			"auth_server": schema.ListNestedBlock{
-				MarkdownDescription: "RADIUS authentication servers.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"ip": schema.StringAttribute{
-							MarkdownDescription: "IP address of the authentication server. " +
-								"Optional: the controller-managed default profile (e.g. the " +
-								"one created when a gateway RADIUS/VPN service is enabled, with " +
-								"`use_usg_auth_server = true`) returns a server entry without an " +
-								"IP, so importing it must not force one.",
-							Optional: true,
-							Validators: []validator.String{
-								validators.IPv4Validator(),
-							},
-						},
-						"port": schema.Int64Attribute{
-							MarkdownDescription: "Port of authentication service.",
-							Optional:            true,
-							Computed:            true,
-							Default:             int64default.StaticInt64(1812),
-							Validators: []validator.Int64{
-								int64validator.Between(1, 65535),
-							},
-						},
-						"secret": schema.StringAttribute{
-							MarkdownDescription: "Shared secret for authentication server.",
-							Required:            true,
-							Sensitive:           true,
-						},
-					},
-				},
-			},
-			"acct_server": schema.ListNestedBlock{
-				MarkdownDescription: "RADIUS accounting servers.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"ip": schema.StringAttribute{
-							MarkdownDescription: "IP address of the accounting server. " +
-								"Optional: the controller-managed default profile returns a " +
-								"server entry without an IP, so importing it must not force one.",
-							Optional: true,
-							Validators: []validator.String{
-								validators.IPv4Validator(),
-							},
-						},
-						"port": schema.Int64Attribute{
-							MarkdownDescription: "Port of accounting service.",
-							Optional:            true,
-							Computed:            true,
-							Default:             int64default.StaticInt64(1813),
-							Validators: []validator.Int64{
-								int64validator.Between(1, 65535),
-							},
-						},
-						"secret": schema.StringAttribute{
-							MarkdownDescription: "Shared secret for accounting server.",
-							Required:            true,
-							Sensitive:           true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = resource_radius_profile.RadiusProfileResourceSchema(ctx)
+	// v1: interim_update_interval changed from Int64 (seconds) to GoDuration.
+	resp.Schema.Version = 1
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 // UpgradeState migrates v0 state (interim_update_interval stored as integer
