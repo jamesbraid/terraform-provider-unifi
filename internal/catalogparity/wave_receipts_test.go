@@ -63,16 +63,16 @@ func TestWave1ReadSurfaceReceipt(t *testing.T) {
 		}
 		seen++
 		// policy_complete is where a wave-1 surface starts, and the in-flight
-		// states are where it goes as it is migrated. Naming them here rather
-		// than adding a surface to an exception list each time is what stops
-		// this receipt from having to be edited once per landing -- and an
-		// in-flight state is not a loophole, because the ledger refuses one that
-		// does not declare why the surface rests there.
-		want := []AdmissionState{PolicyComplete, GeneratedShadow, AdapterParity}
-		if contract.Kind == ListResource && contract.Name == "unifi_dns_record" {
-			want = []AdmissionState{ShadowOnly}
-		}
-		if err := ledger.Require(contract.SurfaceKey, want...); err != nil {
+		// states are where it goes as it is migrated. Naming the states rather
+		// than the surfaces is what stops this receipt from needing an edit once
+		// per landing -- and an in-flight state is not a loophole, because the
+		// ledger refuses one that does not declare why the surface rests there.
+		//
+		// There is no per-surface exception left. unifi_dns_record's list surface
+		// was the only one, held at shadow_only; it is now in flight like the
+		// rest and these states cover it without naming it.
+		if err := ledger.Require(contract.SurfaceKey,
+			PolicyComplete, GeneratedShadow, AdapterParity); err != nil {
 			t.Fatal(err)
 		}
 		if contract.Kind == ListResource && !containsString(contract.EvidenceGates, "pagination_filter") {
@@ -326,8 +326,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 	}
 	want := map[AdmissionState]int{
 		PolicyComplete:  20,
-		GeneratedShadow: 44,
-		ShadowOnly:      2,
+		GeneratedShadow: 45,
+		ShadowOnly:      1,
 		Admitted:        1,
 	}
 	if !reflect.DeepEqual(counts, want) {

@@ -254,7 +254,8 @@
     {
       "kind": "list_resource",
       "name": "unifi_dns_record",
-      "state": "shadow_only"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema. This surface rested in shadow_only and NO SHADOW ARTIFACT EXISTS FOR IT: provider-codegen/shadow/ holds only port_forward.schema-shadow.json. What shadow_only was intended to mean for this surface is not recoverable from anything in the tree, and this move does not recover it -- the information was already lost. It moves because generation now reproduces the released list schema exactly, which the uniformity gate, the prose golden and the contract comparison against terraform-1.15.8.json each enforce independently. The M1 evidence is unaffected: the dns-compiler receipt carries no ledger digest and pins schema_sha256.list_resource, the released schema's digest, which generation reproduces. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
