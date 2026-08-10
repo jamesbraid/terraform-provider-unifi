@@ -217,7 +217,7 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 11 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 11}) {
 		t.Fatalf("Wave 4 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 6, "policy_complete": 5}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 7, "policy_complete": 4}) {
 		t.Fatalf("Wave 4 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -266,6 +266,11 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		// static-route_type, and the released type attribute is the second.
 		case "unifi_static_route":
 			want = GeneratedShadow
+		// The second surface whose released type differs from the SDK's:
+		// interim_update_interval is int64 seconds in go-unifi and a
+		// GoDuration string in the schema, so it keeps schema version 1.
+		case "unifi_radius_profile":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -303,8 +308,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      49,
-		GeneratedShadow:     14,
+		PolicyComplete:      48,
+		GeneratedShadow:     15,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
