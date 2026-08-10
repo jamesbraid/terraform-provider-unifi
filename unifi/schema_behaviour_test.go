@@ -188,6 +188,12 @@ func behaviourOf(ctx context.Context, path string, attribute rschema.Attribute) 
 		{"Validators", "validator"},
 		{"PlanModifiers", "plan_modifier"},
 		{"Default", "default"},
+		// A custom type carries parsing and validation of its own and never
+		// changes the wire type -- timetypes.GoDurationType and
+		// hwtypes.MACAddressType are both strings to Terraform. So losing one
+		// is invisible to a schema comparison and silently stops a value being
+		// checked, which is the same failure as losing a validator.
+		{"CustomType", "custom_type"},
 	} {
 		found := value.FieldByName(field.name)
 		if !found.IsValid() {
