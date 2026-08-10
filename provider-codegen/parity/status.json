@@ -144,7 +144,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_static_route",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy, and carries the estate's second collision trap. The SDK's Routing struct has both type and static-route_type. The released type attribute is the route kind — interface-route, nexthop-route or blackhole — and comes from static-route_type; the SDK's own type is the record discriminator, which modelToRouting sets to the constant \"static-route\" and routingToModel never reads. Binding by name picks the discriminator, and no referee would catch it: both compare the Terraform schema, which is identical either way, and only the mapping report records which field is written. Five more renames read from the conversion code: id from _id, network, distance, next_hop and interface each from their static-route_ prefixed field. Six of the sixteen SDK fields are omitted: site_id, the four attr_ flags, and the type discriminator. next_hop keeps its iptypes.IPAddress custom type, and the CIDR, MAC and IP validators resolve to unifi/validators, which is a leaf package and so reachable from generated code. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
