@@ -879,6 +879,54 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 		mutate func(rules map[string]any)
 		want   string
 	}{
+		// A member consuming SEVERAL fields is the many-to-one capability.
+		// Each of these is a way a policy could be ambiguous about which
+		// fields it takes, and every one is refused rather than defaulted --
+		// there is no division that is obviously right, and picking one
+		// silently is how a wrong binding survives.
+		"a multi-field member with no split function": {
+			mutate: func(rules map[string]any) {
+				member := groupingMembers(rules)[0].(map[string]any)
+				delete(member, "structural_name")
+				member["structural_names"] = []any{"port", "priority"}
+			},
+			want: "declares no split function",
+		},
+		"a member declaring both one field and several": {
+			mutate: func(rules map[string]any) {
+				member := groupingMembers(rules)[0].(map[string]any)
+				member["structural_names"] = []any{"port", "priority"}
+				member["split"] = "splitEndpoint"
+			},
+			want: "declares both structural_name and structural_names",
+		},
+		"a split declared on a single-field member": {
+			mutate: func(rules map[string]any) {
+				groupingMembers(rules)[0].(map[string]any)["split"] = "splitEndpoint"
+			},
+			want: "there is nothing to split",
+		},
+		"structural_names used for exactly one field": {
+			mutate: func(rules map[string]any) {
+				member := groupingMembers(rules)[0].(map[string]any)
+				delete(member, "structural_name")
+				member["structural_names"] = []any{"port"}
+				member["split"] = "splitEndpoint"
+			},
+			want: "use structural_name",
+		},
+		// The accounting property. Widening what a member may claim must not
+		// widen what may go unclaimed, so a field listed twice by one member
+		// is a conflict rather than a harmless repetition.
+		"a member listing the same field twice": {
+			mutate: func(rules map[string]any) {
+				member := groupingMembers(rules)[0].(map[string]any)
+				delete(member, "structural_name")
+				member["structural_names"] = []any{"port", "port"}
+				member["split"] = "splitEndpoint"
+			},
+			want: "twice",
+		},
 		"member names no observed field": {
 			mutate: func(rules map[string]any) {
 				groupingMembers(rules)[0].(map[string]any)["structural_name"] = "nonexistent"
