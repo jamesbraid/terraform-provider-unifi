@@ -742,7 +742,7 @@ func TestCompileRejectsUnderivableNesting(t *testing.T) {
 		"object collection without a semantic decision": {
 			structuralType: "array<object>",
 			mutate:         func(field map[string]any) { delete(field, "terraform_type") },
-			want:           "must declare terraform_type as list_nested or set_nested",
+			want:           "must declare terraform_type as list_nested, set_nested, list_nested_block or set_nested_block",
 		},
 		"single object declared as a collection": {
 			structuralType: "object",
@@ -1771,5 +1771,147 @@ func scalarOverrideInput(t *testing.T, structural, declared string) CompileInput
 		Policy:          mustJSON(t, rules),
 		BaselineDigests: testBaseline(t),
 		Ledger:          testLedger(t, catalogparity.Admitted),
+	}
+}
+
+// A repeated object can be written as a block or as a nested attribute, and the
+// SDK says []T either way. Three surfaces in the estate use blocks, and until
+// the compiler could emit them a migration would have dropped them entirely —
+// the generated schema simply omits what the compiler cannot describe.
+func TestCompileEmitsBlocksUnderTheBlocksMember(t *testing.T) {
+	for declared, want := range map[string]string{
+		"list_nested_block":   "list_nested",
+		"set_nested_block":    "set_nested",
+		"single_nested_block": "single_nested",
+	} {
+		t.Run(declared, func(t *testing.T) {
+			result, err := Compile(blockInput(t, declared))
+			if err != nil {
+				t.Fatalf("Compile() error = %v", err)
+			}
+			var specification struct {
+				Resources []struct {
+					Schema struct {
+						Attributes []struct {
+							Name string `json:"name"`
+						} `json:"attributes"`
+						Blocks []map[string]json.RawMessage `json:"blocks"`
+					} `json:"schema"`
+				} `json:"resources"`
+			}
+			if err := json.Unmarshal(result.ProviderCodeSpec, &specification); err != nil {
+				t.Fatal(err)
+			}
+			schema := specification.Resources[0].Schema
+			if len(schema.Blocks) != 1 {
+				t.Fatalf("blocks = %d, want 1", len(schema.Blocks))
+			}
+			if _, ok := schema.Blocks[0][want]; !ok {
+				t.Fatalf("block does not use the %q member; got keys %v", want, keysOf(schema.Blocks[0]))
+			}
+			for _, attribute := range schema.Attributes {
+				if attribute.Name == "settings" {
+					t.Fatal("the block was also emitted as an attribute; it must appear once, as a block")
+				}
+			}
+		})
+	}
+
+	// The same field declared as a nested attribute must stay an attribute.
+	// Blocks and nested attributes are different syntax, so routing on the
+	// declaration is the whole point.
+	result, err := Compile(blockInput(t, "single_nested"))
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	if strings.Contains(string(result.ProviderCodeSpec), `"blocks"`) {
+		t.Fatal("a nested attribute was emitted under blocks")
+	}
+}
+
+func keysOf(m map[string]json.RawMessage) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// blockInput reuses the flattening fixture's observed settings struct, since it
+// is the one object in the fixtures, and declares it as the given type.
+func blockInput(t *testing.T, declared string) CompileInput {
+	t.Helper()
+	input := flatteningInput(t, nil)
+
+	var rules map[string]any
+	if err := json.Unmarshal(input.Policy, &rules); err != nil {
+		t.Fatal(err)
+	}
+	delete(rules, "flattenings")
+	structural := "settings"
+	if declared == "list_nested_block" || declared == "set_nested_block" {
+		structural = "settings"
+	}
+	rules["fields"] = append(rules["fields"].([]any), map[string]any{
+		"structural_name": structural,
+		"terraform_name":  "settings",
+		"terraform_type":  declared,
+		"disposition":     "managed",
+		"attribute":       map[string]any{},
+		"fields": []any{
+			map[string]any{"structural_name": "heartbeat_interval", "terraform_name": "heartbeat_interval",
+				"disposition": "managed", "attribute": map[string]any{"computed_optional_required": "optional"}},
+			map[string]any{"structural_name": "silence_threshold", "terraform_name": "silence_threshold",
+				"disposition": "managed", "attribute": map[string]any{"computed_optional_required": "optional"}},
+		},
+	})
+	input.Policy = mustJSON(t, rules)
+
+	if declared == "list_nested_block" || declared == "set_nested_block" {
+		var source map[string]any
+		if err := json.Unmarshal(input.Bootstrap, &source); err != nil {
+			t.Fatal(err)
+		}
+		for _, raw := range source["resource"].(map[string]any)["fields"].([]any) {
+			if field := raw.(map[string]any); field["name"] == "settings" {
+				field["type"] = "array<object>"
+			}
+		}
+		input.Bootstrap = mustJSON(t, source)
+	}
+	return input
+}
+
+// The specification's Go type carries ComputedOptionalRequired on a block, and
+// the specification's JSON schema forbids it. So a policy giving a block a
+// disposition produces a document that type-checks, marshals, satisfies every
+// assertion this package makes about its own output, and is then rejected by
+// the generator with a message naming a JSON path rather than a field.
+//
+// It is refused here instead, by field name, because the compiler is where the
+// policy author's mistake is still legible.
+func TestCompileRejectsADispositionOnABlock(t *testing.T) {
+	input := blockInput(t, "list_nested_block")
+	var rules map[string]any
+	if err := json.Unmarshal(input.Policy, &rules); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range rules["fields"].([]any) {
+		field := raw.(map[string]any)
+		if field["terraform_name"] == "settings" {
+			field["attribute"] = map[string]any{"computed_optional_required": "optional"}
+		}
+	}
+	input.Policy = mustJSON(t, rules)
+
+	_, err := Compile(input)
+	if err == nil {
+		t.Fatal("Compile() accepted a block with a disposition")
+	}
+	for _, want := range []string{"settings", "computed_optional_required", "how many times it is written"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %q does not say %q", err, want)
+		}
 	}
 }

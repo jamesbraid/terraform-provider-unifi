@@ -167,6 +167,7 @@ func Compile(input CompileInput) (Result, error) {
 		ProviderOwned: make([]providerOwnedMapping, 0, len(providerOwned)),
 	}
 	attributes := make([]codeAttribute, 0, len(fieldNames)+len(providerOwned))
+	blocks := make([]codeAttribute, 0, len(fieldNames))
 	for _, name := range fieldNames {
 		structural := sourceFields[name]
 		field := policyFields[name]
@@ -203,7 +204,11 @@ func Compile(input CompileInput) (Result, error) {
 			if err != nil {
 				return Result{}, fmt.Errorf("field %q: %w", name, err)
 			}
-			attributes = append(attributes, attribute)
+			if blockNesting(field.TerraformType) != "" {
+				blocks = append(blocks, attribute)
+			} else {
+				attributes = append(attributes, attribute)
+			}
 		}
 	}
 	flattenings := append([]flatteningPolicy(nil), rules.Flattenings...)
@@ -279,6 +284,7 @@ func Compile(input CompileInput) (Result, error) {
 		}
 	}
 	sort.Slice(attributes, func(i, j int) bool { return attributes[i].Name < attributes[j].Name })
+	sort.Slice(blocks, func(i, j int) bool { return blocks[i].Name < blocks[j].Name })
 
 	generatorName := rules.GeneratorName
 	if generatorName == "" {
@@ -286,6 +292,7 @@ func Compile(input CompileInput) (Result, error) {
 	}
 	schema := codeSchema{
 		Attributes:          attributes,
+		Blocks:              blocks,
 		MarkdownDescription: rules.Description,
 	}
 	specification := codeSpecification{
@@ -1011,14 +1018,36 @@ func providerStructuralType(jsonType string) (string, error) {
 // either list_nested or set_nested, and the SDK cannot say which: it is []T
 // regardless of whether order carries meaning. That is the same decision the
 // scalar collections require, so it is made the same way, by policy.
+// blockNesting maps a declared block type to the specification member that
+// carries it, and returns empty for anything that is not a block.
+//
+// A block is declared explicitly rather than inferred from the SDK, for the
+// same reason list and set are: the SDK says []T either way, and whether a
+// repeated object is written as a block or as a nested attribute is a decision
+// about configuration syntax that no struct can express.
+func blockNesting(declared string) string {
+	switch declared {
+	case "list_nested_block":
+		return "list_nested"
+	case "set_nested_block":
+		return "set_nested"
+	case "single_nested_block":
+		return "single_nested"
+	default:
+		return ""
+	}
+}
+
 func objectTerraformType(field fieldPolicy, structuralType string) (string, error) {
 	if structuralType == structuralObject {
 		switch field.TerraformType {
 		case "", "single_nested":
 			return "single_nested", nil
+		case "single_nested_block":
+			return "single_nested", nil
 		default:
 			return "", fmt.Errorf(
-				"object field %q declares terraform_type %q, want single_nested",
+				"object field %q declares terraform_type %q, want single_nested or single_nested_block",
 				field.StructuralName, field.TerraformType,
 			)
 		}
@@ -1026,14 +1055,16 @@ func objectTerraformType(field fieldPolicy, structuralType string) (string, erro
 	switch field.TerraformType {
 	case "list_nested", "set_nested":
 		return field.TerraformType, nil
+	case "list_nested_block", "set_nested_block":
+		return blockNesting(field.TerraformType), nil
 	case "":
 		return "", fmt.Errorf(
-			"object collection field %q must declare terraform_type as list_nested or set_nested: the SDK type cannot distinguish them and order sensitivity is a semantic decision",
+			"object collection field %q must declare terraform_type as list_nested, set_nested, list_nested_block or set_nested_block: the SDK type distinguishes none of them, and both order sensitivity and block-versus-attribute syntax are semantic decisions",
 			field.StructuralName,
 		)
 	default:
 		return "", fmt.Errorf(
-			"object collection field %q declares terraform_type %q, want list_nested or set_nested",
+			"object collection field %q declares terraform_type %q, want list_nested, set_nested, list_nested_block or set_nested_block",
 			field.StructuralName, field.TerraformType,
 		)
 	}
@@ -1073,6 +1104,21 @@ func nestedDefinition(
 	encoded, err := json.Marshal(members)
 	if err != nil {
 		return nil, err
+	}
+	// A block has no computed_optional_required. Terraform expresses a block's
+	// presence by how many times it is written in configuration, not by a
+	// disposition, and the specification schema rejects the member outright.
+	// The Go type in the specification library does carry the field, so this
+	// only shows up when real code is generated — which is why it is refused
+	// here by name rather than left to surface as a parse error from the
+	// generator with no field to blame.
+	if blockNesting(field.TerraformType) != "" {
+		if _, present := body["computed_optional_required"]; present {
+			return nil, fmt.Errorf(
+				"block %q declares computed_optional_required; a block has no disposition, its presence is how many times it is written",
+				field.StructuralName,
+			)
+		}
 	}
 	if terraformType == "single_nested" {
 		body["attributes"] = encoded
