@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_client_qos_rate",
+  "resource": "unifi_client_qos_rate",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "0dcf734f4053f020c987ac2d9b5a82ddb1c0881103778b386f8e4f0ec70d244d"
+  },
+  "baseline_digests": {
+    "resource": "c9dd771f5228d615823efe89cee2970f6f403bcf370221541e2428344abfb926",
+    "identity": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+    "list_resource": "a2e7ca17b26a56ea81962de086edacfde971d48cdb7e8a9bd0d34f240417eda0"
+  },
+  "structural_fields": 9,
+  "generated_attributes": 5,
+  "provider_owned_seams": 2,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

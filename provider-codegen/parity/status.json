@@ -107,7 +107,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_client_qos_rate",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. The surface fronts the SDK's ClientGroup, not a struct of its own name, so the bootstrap is derived from that type. id renames to _id; site is provider-owned rather than site_id, which this resource never reads or writes. Both rate defaults are int64default.StaticInt64(-1), transcribed by hand because the behaviour deriver stops at the unary minus rather than guessing. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
