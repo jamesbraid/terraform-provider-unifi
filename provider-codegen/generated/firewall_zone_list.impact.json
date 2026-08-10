@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_firewall_zone",
+  "resource": "unifi_firewall_zone",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "9f534c5182ba4b375d85ef11510270a5f0d390f1f377598ce1d80bbad49649de"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "list_resource": "16b2d0a4bf0074530128d9278a387ede026e483e4a9a7c40f83294c9fd16650a"
+  },
+  "structural_fields": 12,
+  "generated_attributes": 1,
+  "provider_owned_seams": 1,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

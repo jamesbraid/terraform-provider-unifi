@@ -58,18 +58,17 @@ func TestWave1ReadSurfaceReceipt(t *testing.T) {
 			continue
 		}
 		seen++
-		want := PolicyComplete
+		// policy_complete is where a wave-1 surface starts, and the in-flight
+		// states are where it goes as it is migrated. Naming them here rather
+		// than adding a surface to an exception list each time is what stops
+		// this receipt from having to be edited once per landing -- and an
+		// in-flight state is not a loophole, because the ledger refuses one that
+		// does not declare why the surface rests there.
+		want := []AdmissionState{PolicyComplete, GeneratedShadow, AdapterParity}
 		if contract.Kind == ListResource && contract.Name == "unifi_dns_record" {
-			want = ShadowOnly
+			want = []AdmissionState{ShadowOnly}
 		}
-		// The estate's first generated data source, and the first wave 1
-		// surface to move at all. It is what says the data_source path works
-		// end to end: a different baseline subtree, a different digest key,
-		// and the generator's data-sources subcommand rather than resources.
-		if contract.Kind == DataSource && contract.Name == "unifi_ap_group" {
-			want = GeneratedShadow
-		}
-		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
+		if err := ledger.Require(contract.SurfaceKey, want...); err != nil {
 			t.Fatal(err)
 		}
 		if contract.Kind == ListResource && !containsString(contract.EvidenceGates, "pagination_filter") {
@@ -328,8 +327,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      44,
-		GeneratedShadow:     19,
+		PolicyComplete:      43,
+		GeneratedShadow:     20,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,

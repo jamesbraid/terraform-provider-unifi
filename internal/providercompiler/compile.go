@@ -286,7 +286,16 @@ func Compile(input CompileInput) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
-		attributes = append(attributes, attribute)
+		// The same routing an observed field gets above. Without it a grouping
+		// declared as a block would be emitted under "attributes", which the
+		// generator accepts and renders as a nested attribute -- the same data
+		// with different configuration syntax, and a silently breaking change to
+		// every practitioner's HCL.
+		if blockNesting(grouping.TerraformType) != "" {
+			blocks = append(blocks, attribute)
+		} else {
+			attributes = append(attributes, attribute)
+		}
 		for _, member := range grouping.Members {
 			mapping.Fields = append(mapping.Fields, mappingField{
 				StructuralName: member.StructuralName,
@@ -456,10 +465,16 @@ func groupedStructuralFields(
 			return nil, fmt.Errorf("grouping has no terraform_name")
 		}
 		switch grouping.TerraformType {
-		case "single_nested", "list_nested", "set_nested":
+		case "single_nested", "list_nested", "set_nested",
+			// The block spellings. A grouping presents its members as one nested
+			// member; whether that member is written as a block or as a nested
+			// attribute is the same configuration-syntax decision an observed
+			// field already declares, so the same vocabulary expresses it.
+			"single_nested_block", "list_nested_block", "set_nested_block":
 		case "":
 			return nil, fmt.Errorf(
-				"grouping %q must declare terraform_type as single_nested, list_nested or set_nested",
+				"grouping %q must declare terraform_type as single_nested, list_nested or "+
+					"set_nested, or the _block spelling of one of those",
 				grouping.TerraformName,
 			)
 		default:
@@ -705,7 +720,18 @@ func buildGroupingAttribute(
 	if err != nil {
 		return codeAttribute{}, err
 	}
-	if grouping.TerraformType == "single_nested" {
+	// A block declares itself with the _block spelling, but the specification
+	// member is named the same either way: a list_nested_block grouping is
+	// emitted as "list_nested" under "blocks". This is the same mapping an
+	// observed block field goes through, and doing it here rather than at the
+	// call site keeps the emitted key and the routing decision reading from one
+	// function.
+	nesting := grouping.TerraformType
+	if block := blockNesting(grouping.TerraformType); block != "" {
+		nesting = block
+	}
+
+	if nesting == "single_nested" {
 		body["attributes"] = encoded
 	} else {
 		nested, err := json.Marshal(map[string]json.RawMessage{"attributes": encoded})
@@ -718,7 +744,7 @@ func buildGroupingAttribute(
 	if err != nil {
 		return codeAttribute{}, err
 	}
-	return codeAttribute{Name: grouping.TerraformName, Type: grouping.TerraformType, Definition: definition}, nil
+	return codeAttribute{Name: grouping.TerraformName, Type: nesting, Definition: definition}, nil
 }
 
 // emittableSurfaceKind reports whether codeSpecification has a member for this
