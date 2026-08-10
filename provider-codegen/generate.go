@@ -68,3 +68,7 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-port-profile.json -policy policy/port_profile.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix port_profile -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/port_profile.provider-code-spec.json --output ../internal/generated/resource_port_profile --package resource_port_profile
 //go:generate gofmt -w ../internal/generated/resource_port_profile/port_profile_resource_gen.go
+//go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Network -resource unifi_site_to_site_vpn -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-site-to-site-vpn.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-site-to-site-vpn.json -policy policy/site_to_site_vpn.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix site_to_site_vpn -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/site_to_site_vpn.provider-code-spec.json --output ../internal/generated/resource_site_to_site_vpn --package resource_site_to_site_vpn
+//go:generate gofmt -w ../internal/generated/resource_site_to_site_vpn/site_to_site_vpn_resource_gen.go
