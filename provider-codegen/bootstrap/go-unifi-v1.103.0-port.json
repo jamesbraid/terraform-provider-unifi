@@ -1,0 +1,1483 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "94d1da57d4d875127b29d16787ec56a3aea46ae407966dc8816719c3b353be21"
+  },
+  "resource": {
+    "name": "unifi_port",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string"
+      },
+      {
+        "name": "adopted",
+        "type": "bool"
+      },
+      {
+        "name": "afc_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "atf_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool"
+      },
+      {
+        "name": "audio_info",
+        "type": "object",
+        "fields": [
+          {
+            "name": "channel",
+            "type": "int64"
+          },
+          {
+            "name": "role",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "bandsteering_mode",
+        "type": "string"
+      },
+      {
+        "name": "baresip_auth_user",
+        "type": "string"
+      },
+      {
+        "name": "baresip_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "baresip_extension",
+        "type": "string"
+      },
+      {
+        "name": "beep_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "config_network",
+        "type": "object",
+        "fields": [
+          {
+            "name": "bonding_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "dns1",
+            "type": "string"
+          },
+          {
+            "name": "dns2",
+            "type": "string"
+          },
+          {
+            "name": "dnssuffix",
+            "type": "string"
+          },
+          {
+            "name": "gateway",
+            "type": "string"
+          },
+          {
+            "name": "ip",
+            "type": "string"
+          },
+          {
+            "name": "netmask",
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "disabled",
+        "type": "bool"
+      },
+      {
+        "name": "dot1x_fallback_networkconf_id",
+        "type": "string"
+      },
+      {
+        "name": "dot1x_portctrl_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dpi_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "eav_bridge_role",
+        "type": "string"
+      },
+      {
+        "name": "ether_lighting",
+        "type": "object",
+        "fields": [
+          {
+            "name": "behavior",
+            "type": "string"
+          },
+          {
+            "name": "brightness",
+            "type": "int64"
+          },
+          {
+            "name": "led_mode",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "ethernet_overrides",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "disabled",
+            "type": "bool"
+          },
+          {
+            "name": "ifname",
+            "type": "string"
+          },
+          {
+            "name": "networkgroup",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "fan_mode_override",
+        "type": "string"
+      },
+      {
+        "name": "flowctrl_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "gateway_vrrp_mode",
+        "type": "string"
+      },
+      {
+        "name": "gateway_vrrp_priority",
+        "type": "int64"
+      },
+      {
+        "name": "green_ap_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "hardware_offload",
+        "type": "bool"
+      },
+      {
+        "name": "hdmi_ports",
+        "type": "object",
+        "fields": [
+          {
+            "name": "color_format",
+            "type": "string"
+          },
+          {
+            "name": "connected",
+            "type": "bool"
+          },
+          {
+            "name": "latency",
+            "type": "string"
+          },
+          {
+            "name": "port_index",
+            "type": "string"
+          },
+          {
+            "name": "refresh_rate",
+            "type": "string"
+          },
+          {
+            "name": "resolution",
+            "type": "string"
+          },
+          {
+            "name": "state",
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "type": "string"
+          },
+          {
+            "name": "up",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "heightInMeters",
+        "type": "number"
+      },
+      {
+        "name": "hostname",
+        "type": "string"
+      },
+      {
+        "name": "inform_ip",
+        "type": "string"
+      },
+      {
+        "name": "ip",
+        "type": "string"
+      },
+      {
+        "name": "jumboframe_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "lcm_brightness",
+        "type": "int64"
+      },
+      {
+        "name": "lcm_brightness_override",
+        "type": "bool"
+      },
+      {
+        "name": "lcm_idle_timeout",
+        "type": "int64"
+      },
+      {
+        "name": "lcm_idle_timeout_override",
+        "type": "bool"
+      },
+      {
+        "name": "lcm_night_mode_begins",
+        "type": "string"
+      },
+      {
+        "name": "lcm_night_mode_ends",
+        "type": "string"
+      },
+      {
+        "name": "lcm_orientation_override",
+        "type": "int64"
+      },
+      {
+        "name": "lcm_settings_restricted_access",
+        "type": "bool"
+      },
+      {
+        "name": "lcm_tracker_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "lcm_tracker_seed",
+        "type": "string"
+      },
+      {
+        "name": "led_override",
+        "type": "string"
+      },
+      {
+        "name": "led_override_color",
+        "type": "string"
+      },
+      {
+        "name": "led_override_color_brightness",
+        "type": "int64"
+      },
+      {
+        "name": "locked",
+        "type": "bool"
+      },
+      {
+        "name": "loopback_override",
+        "type": "bool"
+      },
+      {
+        "name": "lowpfmode_override",
+        "type": "bool"
+      },
+      {
+        "name": "lte_apn",
+        "type": "string"
+      },
+      {
+        "name": "lte_auth_type",
+        "type": "string"
+      },
+      {
+        "name": "lte_data_limit_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "lte_data_warning_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "lte_ext_ant",
+        "type": "bool"
+      },
+      {
+        "name": "lte_hard_limit",
+        "type": "int64"
+      },
+      {
+        "name": "lte_password",
+        "type": "string"
+      },
+      {
+        "name": "lte_poe",
+        "type": "bool"
+      },
+      {
+        "name": "lte_roaming_allowed",
+        "type": "bool"
+      },
+      {
+        "name": "lte_sim_pin",
+        "type": "int64"
+      },
+      {
+        "name": "lte_soft_limit",
+        "type": "int64"
+      },
+      {
+        "name": "lte_username",
+        "type": "string"
+      },
+      {
+        "name": "mac",
+        "type": "string"
+      },
+      {
+        "name": "map_id",
+        "type": "string"
+      },
+      {
+        "name": "mbb_overrides",
+        "type": "object",
+        "fields": [
+          {
+            "name": "primary_slot",
+            "type": "int64"
+          },
+          {
+            "name": "sim",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "current_apn",
+                "type": "object",
+                "fields": [
+                  {
+                    "name": "apn",
+                    "type": "string"
+                  },
+                  {
+                    "name": "auth_type",
+                    "type": "string"
+                  },
+                  {
+                    "name": "password",
+                    "type": "string"
+                  },
+                  {
+                    "name": "pdp_type",
+                    "type": "string"
+                  },
+                  {
+                    "name": "roaming",
+                    "type": "bool"
+                  },
+                  {
+                    "name": "username",
+                    "type": "string"
+                  }
+                ]
+              },
+              {
+                "name": "data_hard_limit_bytes",
+                "type": "int64"
+              },
+              {
+                "name": "data_limit_enabled",
+                "type": "bool"
+              },
+              {
+                "name": "data_soft_limit_bytes",
+                "type": "int64"
+              },
+              {
+                "name": "data_soft_limit_display_unit",
+                "type": "string"
+              },
+              {
+                "name": "data_warning_threshold",
+                "type": "int64"
+              },
+              {
+                "name": "reset_date",
+                "type": "int64"
+              },
+              {
+                "name": "reset_policy",
+                "type": "string"
+              },
+              {
+                "name": "slot",
+                "type": "int64"
+              },
+              {
+                "name": "use_custom_apn",
+                "type": "bool"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "mesh_mlo_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mesh_sta_vap_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mgmt_network_id",
+        "type": "string"
+      },
+      {
+        "name": "model",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "nut_server",
+        "type": "object",
+        "fields": [
+          {
+            "name": "credential_required",
+            "type": "bool"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "id",
+            "type": "string"
+          },
+          {
+            "name": "password",
+            "type": "string"
+          },
+          {
+            "name": "port",
+            "type": "int64"
+          },
+          {
+            "name": "username",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "oob_port_config",
+        "type": "object",
+        "fields": [
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "ipv4",
+            "type": "object",
+            "fields": [
+              {
+                "name": "ip",
+                "type": "string"
+              },
+              {
+                "name": "netmask",
+                "type": "int64"
+              },
+              {
+                "name": "type",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "ipv6",
+            "type": "object",
+            "fields": [
+              {
+                "name": "ip",
+                "type": "string"
+              },
+              {
+                "name": "netmask",
+                "type": "int64"
+              },
+              {
+                "name": "type",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "outdoor_mode_override",
+        "type": "string"
+      },
+      {
+        "name": "outlet_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "outlet_overrides",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "cycle_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "index",
+            "type": "int64"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "relay_state",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "outlet_power_cycle_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "outlet_power_cycle_on_ac_recovery_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "outlet_power_cycle_on_ac_recovery_seconds",
+        "type": "int64"
+      },
+      {
+        "name": "peer_to_peer_mode",
+        "type": "string"
+      },
+      {
+        "name": "poe_mode",
+        "type": "string"
+      },
+      {
+        "name": "port_overrides",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "aggregate_members",
+            "type": "array<int64>"
+          },
+          {
+            "name": "autoneg",
+            "type": "bool"
+          },
+          {
+            "name": "dot1x_ctrl",
+            "type": "string"
+          },
+          {
+            "name": "dot1x_idle_timeout",
+            "type": "int64"
+          },
+          {
+            "name": "eee_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "egress_rate_limit_kbps",
+            "type": "int64"
+          },
+          {
+            "name": "egress_rate_limit_kbps_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "excluded_networkconf_ids",
+            "type": "array<string>"
+          },
+          {
+            "name": "fec_mode",
+            "type": "string"
+          },
+          {
+            "name": "flow_control_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "forward",
+            "type": "string"
+          },
+          {
+            "name": "full_duplex",
+            "type": "bool"
+          },
+          {
+            "name": "isolation",
+            "type": "bool"
+          },
+          {
+            "name": "link_debounce",
+            "type": "int64"
+          },
+          {
+            "name": "link_debounce_auto",
+            "type": "bool"
+          },
+          {
+            "name": "lldpmed_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "lldpmed_notify_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "mirror_port_idx",
+            "type": "int64"
+          },
+          {
+            "name": "multicast_router_mode",
+            "type": "string"
+          },
+          {
+            "name": "multicast_router_networkconf_ids",
+            "type": "array<string>"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "native_networkconf_id",
+            "type": "string"
+          },
+          {
+            "name": "op_mode",
+            "type": "string"
+          },
+          {
+            "name": "poe_mode",
+            "type": "string"
+          },
+          {
+            "name": "port_idx",
+            "type": "int64"
+          },
+          {
+            "name": "port_keepalive_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "port_security_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "port_security_mac_address",
+            "type": "array<string>"
+          },
+          {
+            "name": "portconf_id",
+            "type": "string"
+          },
+          {
+            "name": "precision_time_protocol_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "priority_queue1_level",
+            "type": "int64"
+          },
+          {
+            "name": "priority_queue2_level",
+            "type": "int64"
+          },
+          {
+            "name": "priority_queue3_level",
+            "type": "int64"
+          },
+          {
+            "name": "priority_queue4_level",
+            "type": "int64"
+          },
+          {
+            "name": "qos_profile",
+            "type": "object",
+            "fields": [
+              {
+                "name": "qos_policies",
+                "type": "array<object>",
+                "fields": [
+                  {
+                    "name": "qos_marking",
+                    "type": "object",
+                    "fields": [
+                      {
+                        "name": "cos_code",
+                        "type": "int64"
+                      },
+                      {
+                        "name": "dscp_code",
+                        "type": "int64"
+                      },
+                      {
+                        "name": "ip_precedence_code",
+                        "type": "int64"
+                      },
+                      {
+                        "name": "queue",
+                        "type": "int64"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "qos_matching",
+                    "type": "object",
+                    "fields": [
+                      {
+                        "name": "cos_code",
+                        "type": "int64"
+                      },
+                      {
+                        "name": "dscp_code",
+                        "type": "int64"
+                      },
+                      {
+                        "name": "dst_port",
+                        "type": "int64"
+                      },
+                      {
+                        "name": "ip_precedence_code",
+                        "type": "int64"
+                      },
+                      {
+                        "name": "protocol",
+                        "type": "string"
+                      },
+                      {
+                        "name": "src_port",
+                        "type": "int64"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "qos_profile_mode",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "routed_networkconf_id",
+            "type": "string"
+          },
+          {
+            "name": "setting_preference",
+            "type": "string"
+          },
+          {
+            "name": "speed",
+            "type": "int64"
+          },
+          {
+            "name": "stable_port_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "stormctrl_bcast_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "stormctrl_bcast_level",
+            "type": "int64"
+          },
+          {
+            "name": "stormctrl_bcast_rate",
+            "type": "int64"
+          },
+          {
+            "name": "stormctrl_mcast_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "stormctrl_mcast_level",
+            "type": "int64"
+          },
+          {
+            "name": "stormctrl_mcast_rate",
+            "type": "int64"
+          },
+          {
+            "name": "stormctrl_type",
+            "type": "string"
+          },
+          {
+            "name": "stormctrl_ucast_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "stormctrl_ucast_level",
+            "type": "int64"
+          },
+          {
+            "name": "stormctrl_ucast_rate",
+            "type": "int64"
+          },
+          {
+            "name": "stp_bpdu_guard_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "stp_edge_state",
+            "type": "string"
+          },
+          {
+            "name": "stp_port_mode",
+            "type": "bool"
+          },
+          {
+            "name": "stp_uplink",
+            "type": "bool"
+          },
+          {
+            "name": "tagged_networkconf_ids",
+            "type": "array<string>"
+          },
+          {
+            "name": "tagged_vlan_mgmt",
+            "type": "string"
+          },
+          {
+            "name": "voice_networkconf_id",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "port_table",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "aggregated_by",
+            "type": "int64"
+          },
+          {
+            "name": "anomalies",
+            "type": "int64"
+          },
+          {
+            "name": "autoneg",
+            "type": "bool"
+          },
+          {
+            "name": "bytes-r",
+            "type": "number"
+          },
+          {
+            "name": "dot1x_mode",
+            "type": "string"
+          },
+          {
+            "name": "dot1x_status",
+            "type": "string"
+          },
+          {
+            "name": "enable",
+            "type": "bool"
+          },
+          {
+            "name": "flow_control_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "flowctrl_rx",
+            "type": "bool"
+          },
+          {
+            "name": "flowctrl_tx",
+            "type": "bool"
+          },
+          {
+            "name": "forward",
+            "type": "string"
+          },
+          {
+            "name": "full_duplex",
+            "type": "bool"
+          },
+          {
+            "name": "is_uplink",
+            "type": "bool"
+          },
+          {
+            "name": "jumbo",
+            "type": "bool"
+          },
+          {
+            "name": "last_connection",
+            "type": "object",
+            "fields": [
+              {
+                "name": "last_seen",
+                "type": "int64"
+              },
+              {
+                "name": "mac",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "mac_table_count",
+            "type": "int64"
+          },
+          {
+            "name": "masked",
+            "type": "bool"
+          },
+          {
+            "name": "media",
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "native_networkconf_id",
+            "type": "string"
+          },
+          {
+            "name": "op_mode",
+            "type": "string"
+          },
+          {
+            "name": "poe_caps",
+            "type": "int64"
+          },
+          {
+            "name": "poe_class",
+            "type": "string"
+          },
+          {
+            "name": "poe_current",
+            "type": "string"
+          },
+          {
+            "name": "poe_enable",
+            "type": "bool"
+          },
+          {
+            "name": "poe_good",
+            "type": "bool"
+          },
+          {
+            "name": "poe_mode",
+            "type": "string"
+          },
+          {
+            "name": "poe_power",
+            "type": "string"
+          },
+          {
+            "name": "poe_voltage",
+            "type": "string"
+          },
+          {
+            "name": "port_idx",
+            "type": "int64"
+          },
+          {
+            "name": "port_poe",
+            "type": "bool"
+          },
+          {
+            "name": "rx_broadcast",
+            "type": "int64"
+          },
+          {
+            "name": "rx_bytes",
+            "type": "int64"
+          },
+          {
+            "name": "rx_bytes-r",
+            "type": "number"
+          },
+          {
+            "name": "rx_dropped",
+            "type": "int64"
+          },
+          {
+            "name": "rx_errors",
+            "type": "int64"
+          },
+          {
+            "name": "rx_multicast",
+            "type": "int64"
+          },
+          {
+            "name": "rx_packets",
+            "type": "int64"
+          },
+          {
+            "name": "satisfaction",
+            "type": "int64"
+          },
+          {
+            "name": "satisfaction_reason",
+            "type": "int64"
+          },
+          {
+            "name": "setting_preference",
+            "type": "string"
+          },
+          {
+            "name": "speed",
+            "type": "int64"
+          },
+          {
+            "name": "speed_caps",
+            "type": "int64"
+          },
+          {
+            "name": "stormctrl_bcast_rate",
+            "type": "int64"
+          },
+          {
+            "name": "stormctrl_mcast_rate",
+            "type": "int64"
+          },
+          {
+            "name": "stormctrl_ucast_rate",
+            "type": "int64"
+          },
+          {
+            "name": "stp_pathcost",
+            "type": "int64"
+          },
+          {
+            "name": "stp_state",
+            "type": "string"
+          },
+          {
+            "name": "tagged_vlan_mgmt",
+            "type": "string"
+          },
+          {
+            "name": "tx_broadcast",
+            "type": "int64"
+          },
+          {
+            "name": "tx_bytes",
+            "type": "int64"
+          },
+          {
+            "name": "tx_bytes-r",
+            "type": "number"
+          },
+          {
+            "name": "tx_dropped",
+            "type": "int64"
+          },
+          {
+            "name": "tx_errors",
+            "type": "int64"
+          },
+          {
+            "name": "tx_multicast",
+            "type": "int64"
+          },
+          {
+            "name": "tx_packets",
+            "type": "int64"
+          },
+          {
+            "name": "up",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "power_source_ctrl",
+        "type": "string"
+      },
+      {
+        "name": "power_source_ctrl_budget",
+        "type": "int64"
+      },
+      {
+        "name": "power_source_ctrl_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "precision_time_protocol_config",
+        "type": "object",
+        "fields": [
+          {
+            "name": "clock_mode",
+            "type": "string"
+          },
+          {
+            "name": "custom_announce_interval",
+            "type": "int64"
+          },
+          {
+            "name": "custom_announce_timeout",
+            "type": "int64"
+          },
+          {
+            "name": "custom_delay_req_interval",
+            "type": "int64"
+          },
+          {
+            "name": "custom_domain",
+            "type": "int64"
+          },
+          {
+            "name": "custom_sync_interval",
+            "type": "int64"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "priority1",
+            "type": "int64"
+          },
+          {
+            "name": "priority2",
+            "type": "int64"
+          },
+          {
+            "name": "profile",
+            "type": "string"
+          },
+          {
+            "name": "transport_type",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "ptmp_ap_mac",
+        "type": "string"
+      },
+      {
+        "name": "ptp_ap_mac",
+        "type": "string"
+      },
+      {
+        "name": "radio_table",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "antenna_gain",
+            "type": "int64"
+          },
+          {
+            "name": "antenna_id",
+            "type": "int64"
+          },
+          {
+            "name": "channel",
+            "type": "string"
+          },
+          {
+            "name": "dfs",
+            "type": "bool"
+          },
+          {
+            "name": "hard_noise_floor_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "ht",
+            "type": "int64"
+          },
+          {
+            "name": "loadbalance_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "maxsta",
+            "type": "int64"
+          },
+          {
+            "name": "min_rssi",
+            "type": "int64"
+          },
+          {
+            "name": "min_rssi_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "radio",
+            "type": "string"
+          },
+          {
+            "name": "radio_identifiers",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "device_id",
+                "type": "string"
+              },
+              {
+                "name": "radio_name",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "sens_level",
+            "type": "int64"
+          },
+          {
+            "name": "sens_level_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "tx_power",
+            "type": "string"
+          },
+          {
+            "name": "tx_power_mode",
+            "type": "string"
+          },
+          {
+            "name": "vwire_enabled",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "radiusprofile_id",
+        "type": "string"
+      },
+      {
+        "name": "resetbtn_enabled",
+        "type": "string"
+      },
+      {
+        "name": "rps_override",
+        "type": "object",
+        "fields": [
+          {
+            "name": "power_management_mode",
+            "type": "string"
+          },
+          {
+            "name": "rps_port_table",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "port_idx",
+                "type": "int64"
+              },
+              {
+                "name": "port_mode",
+                "type": "string"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "site_id",
+        "type": "string"
+      },
+      {
+        "name": "sma_port_config",
+        "type": "object",
+        "fields": [
+          {
+            "name": "clock_source",
+            "type": "string"
+          },
+          {
+            "name": "delay_ns",
+            "type": "number"
+          },
+          {
+            "name": "display",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "snmp_contact",
+        "type": "string"
+      },
+      {
+        "name": "snmp_location",
+        "type": "string"
+      },
+      {
+        "name": "state",
+        "type": "int64"
+      },
+      {
+        "name": "station_mode",
+        "type": "string"
+      },
+      {
+        "name": "stp_priority",
+        "type": "int64"
+      },
+      {
+        "name": "stp_version",
+        "type": "string"
+      },
+      {
+        "name": "switch_vlan_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "type",
+        "type": "string"
+      },
+      {
+        "name": "ubb_pair_name",
+        "type": "string"
+      },
+      {
+        "name": "ups_shutdown_remaining_minutes",
+        "type": "int64"
+      },
+      {
+        "name": "video_info",
+        "type": "object",
+        "fields": [
+          {
+            "name": "audio_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "audio_mode",
+            "type": "string"
+          },
+          {
+            "name": "channel",
+            "type": "int64"
+          },
+          {
+            "name": "color_format",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "type": "string"
+          },
+          {
+            "name": "refresh_rate",
+            "type": "string"
+          },
+          {
+            "name": "resolution",
+            "type": "string"
+          },
+          {
+            "name": "role",
+            "type": "string"
+          },
+          {
+            "name": "tvwall_end_x",
+            "type": "int64"
+          },
+          {
+            "name": "tvwall_end_y",
+            "type": "int64"
+          },
+          {
+            "name": "tvwall_layout_x",
+            "type": "int64"
+          },
+          {
+            "name": "tvwall_layout_y",
+            "type": "int64"
+          },
+          {
+            "name": "tvwall_start_x",
+            "type": "int64"
+          },
+          {
+            "name": "tvwall_start_y",
+            "type": "int64"
+          }
+        ]
+      },
+      {
+        "name": "volume",
+        "type": "int64"
+      },
+      {
+        "name": "x",
+        "type": "number"
+      },
+      {
+        "name": "x_baresip_password",
+        "type": "string"
+      },
+      {
+        "name": "y",
+        "type": "number"
+      }
+    ]
+  }
+}

@@ -325,16 +325,20 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      20,
-		GeneratedShadow:     43,
-		ShadowOnly:          2,
-		Admitted:            1,
-		LegacyAuthoritative: 1,
+		PolicyComplete:  20,
+		GeneratedShadow: 44,
+		ShadowOnly:      2,
+		Admitted:        1,
 	}
 	if !reflect.DeepEqual(counts, want) {
 		t.Fatalf("checkpoint state counts = %v, want %v", counts, want)
 	}
-	if err := ledger.Require(SurfaceKey{Kind: Action, Name: "unifi_port"}, LegacyAuthoritative); err != nil {
+	// The estate's one action. It was legacy_authoritative -- the only surface
+	// in that state, and the last surface whose schema was hand-written with no
+	// generated counterpart at all. It is now in flight like any other, which is
+	// what James's override means by 67: not sixty-six and a special case.
+	if err := ledger.Require(SurfaceKey{Kind: Action, Name: "unifi_port"},
+		GeneratedShadow, AdapterParity, Admitted); err != nil {
 		t.Fatal(err)
 	}
 }

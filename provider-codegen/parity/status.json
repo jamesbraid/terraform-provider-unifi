@@ -375,6 +375,12 @@
       "name": "unifi_wlan",
       "state": "generated_shadow",
       "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
+    },
+    {
+      "kind": "action",
+      "name": "unifi_port",
+      "state": "generated_shadow",
+      "migration": "Generated. The action's schema is its arguments, not a projection of the Device record it acts on, so all 109 SDK fields are omitted and the three arguments are provider-owned. device_mac carries a hwtypes.MACAddressType derived by cmd/schema-behaviour: the protocol renders it as a plain string, so no schema comparison can see it and the behaviour inventory is what holds it. tfplugingen-framework has no action subcommand, so cmd/action-gen renders the actions member into Go. Admission waits on a campaign run."
     }
   ]
 }
