@@ -39,6 +39,11 @@ const behaviourHeader = `# Validators, plan modifiers and defaults, per attribut
 # A removal here is a behaviour regression until someone says otherwise.
 #
 # Regenerate with: UPDATE_GOLDEN=1 go test ./unifi/ -run Test_schemaBehaviourInventory
+#
+# That refuses to drop an entry. A rewrite that would remove one has to say
+# so with UPDATE_GOLDEN_ALLOW_REMOVAL=1 as well, because removing a line here
+# is the direction a regression takes and rewriting the file is what erases
+# the evidence of it.
 `
 
 // Test_schemaBehaviourInventory pins every validator, plan modifier and default
@@ -58,12 +63,8 @@ func Test_schemaBehaviourInventory(t *testing.T) {
 	ctx := context.Background()
 	got, opaque := schemaBehaviourFacts(ctx, t)
 
-	if os.Getenv("UPDATE_GOLDEN") != "" {
-		body := behaviourHeader + strings.Join(got, "\n") + "\n"
-		if err := os.WriteFile(goldenSchemaBehaviour, []byte(body), 0o644); err != nil {
-			t.Fatalf("writing %s: %v", goldenSchemaBehaviour, err)
-		}
-		t.Logf("wrote %d entries to %s", len(got), goldenSchemaBehaviour)
+	if os.Getenv(updateGoldenEnv) != "" {
+		writeGolden(t, goldenSchemaBehaviour, behaviourHeader, got)
 		return
 	}
 
