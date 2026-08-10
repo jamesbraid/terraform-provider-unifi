@@ -3,6 +3,13 @@ set -euo pipefail
 
 repository_root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)
 readonly repository_root
+
+# Reads the baseline manifest and the evidence inventory and writes its own
+# receipt, so a dirty run makes it disagree with two artifacts it did not
+# produce -- which reads as their fault rather than its own.
+# shellcheck source=.woodpecker/scripts/tree-state.sh
+source "${repository_root}/.woodpecker/scripts/tree-state.sh"
+evidence_tree_state "the unit differential receipt"
 readonly output=${CATALOG_UNIT_OUTPUT:?CATALOG_UNIT_OUTPUT is required}
 readonly baseline_manifest=${repository_root}/build/m0/provider-baseline.json
 readonly inventory=${repository_root}/build/release-ready/catalog-evidence-inventory.json
