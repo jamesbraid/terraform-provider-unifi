@@ -49,7 +49,8 @@
     {
       "kind": "data_source",
       "name": "unifi_dns_record",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Three renames read from internal/renamecheck's bindings: id from _id, name from key and type from record_type -- the same set the admitted managed surface uses. Eight of the fourteen SDK fields are omitted. ttl is int64 seconds in the SDK and a GoDuration string here, exactly as on the managed resource, so the policy declares terraform_type string and the custom type by hand; the deriver cannot read a data source, so nothing derived it. The data source carries no schema version, because it never stored the integer form and so has no state to upgrade. Admission waits on a campaign run."
     },
     {
       "kind": "data_source",
@@ -65,12 +66,14 @@
     {
       "kind": "data_source",
       "name": "unifi_port_profile",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy: six attributes over 56 SDK fields, with fifty omitted, which is what a lookup surface over a wide struct looks like. id renames from _id and the rest bind by name, each confirmed against the conversion code. tagged_networkconf_ids is provider-owned and has no go-unifi field at all, exactly as on the managed surface: the controller expresses tagged VLANs as tagged_vlan_mgmt plus excluded_networkconf_ids. Admission waits on a campaign run."
     },
     {
       "kind": "data_source",
       "name": "unifi_radius_profile",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Only id renames, from _id. interim_update_interval is *int64 seconds in the SDK and a GoDuration string here, so the policy declares terraform_type string and the custom type by hand -- the deriver cannot read a data source, so nothing derived it. The data source carries no schema version: it never stored the integer form, so there is no state to upgrade. Fourteen of the twenty-three SDK fields are omitted, the six x_ certificate fields among them. Admission waits on a campaign run."
     },
     {
       "kind": "data_source",

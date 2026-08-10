@@ -1,0 +1,72 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "datasources": [
+    {
+      "name": "dns_record_ds",
+      "schema": {
+        "attributes": [
+          {
+            "bool": {
+              "computed_optional_required": "computed",
+              "description": "Whether the DNS record is enabled."
+            },
+            "name": "enabled"
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of this DNS record."
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the DNS record to look up."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site the DNS record is associated with."
+            }
+          },
+          {
+            "name": "ttl",
+            "string": {
+              "computed_optional_required": "computed",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "description": "The TTL of the DNS record, as a Go duration string."
+            }
+          },
+          {
+            "name": "type",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The type of the DNS record."
+            }
+          },
+          {
+            "name": "value",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The value of the DNS record."
+            }
+          }
+        ],
+        "markdown_description": "Data source for DNS records."
+      }
+    }
+  ]
+}
