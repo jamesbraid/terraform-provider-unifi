@@ -328,8 +328,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:  20,
-		GeneratedShadow: 45,
+		PolicyComplete:  19,
+		GeneratedShadow: 46,
 		ShadowOnly:      1,
 		Admitted:        1,
 	}
