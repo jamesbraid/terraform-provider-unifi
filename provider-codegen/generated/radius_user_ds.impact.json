@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "data_source",
+  "surface_name": "unifi_radius_user",
+  "resource": "unifi_radius_user",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "ffffa1d603eb9e4e529abb2ed5c0a27420b21a7294984e84db3ed5cdfafedcc0"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "data_source": "a77ac975e8507ee74946206e4a6a5a37f38a49c946d4870af90db37e65434c4c"
+  },
+  "structural_fields": 16,
+  "generated_attributes": 7,
+  "provider_owned_seams": 2,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}
