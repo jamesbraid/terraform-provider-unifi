@@ -105,7 +105,7 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 	}
 
 	var contradicted, unchecked []string
-	checked, surfaces := 0, 0
+	checked, surfaces, claimless := 0, 0, 0
 
 	for _, path := range policies {
 		body, err := os.ReadFile(path)
@@ -121,7 +121,23 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 			continue
 		}
 
+		claims := claimsOf(policy)
+		if len(claims) == 0 {
+			// A list resource or action claims no SDK field at all: its schema is
+			// site plus filter, all provider-owned. Counting it as a checked
+			// surface would overstate this referee's reach, which is the kind of
+			// false confidence it exists to remove.
+			claimless++
+			continue
+		}
+
 		file := conversionFile(policy)
+		if file == "" {
+			unchecked = append(unchecked, fmt.Sprintf(
+				"%s (%s): no conversion file is defined for this surface kind, so its %d "+
+					"claim(s) are not checked", policy.Resource, policy.SurfaceKind, len(claims)))
+			continue
+		}
 		if _, err := os.Stat(file); err != nil {
 			// Named rather than skipped: a policy whose conversion code cannot
 			// be found is unchecked, and silence would read as checked.
@@ -133,7 +149,7 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 		surfaces++
 		byName := paired[filepath.Base(file)]
 
-		for _, c := range claimsOf(policy) {
+		for _, c := range claims {
 			targets, mentioned := byName[c.terraform]
 			if !mentioned {
 				unchecked = append(unchecked, fmt.Sprintf(
@@ -168,8 +184,9 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 	if surfaces == 0 {
 		t.Fatal("no policy was matched to a conversion file, so nothing was compared")
 	}
-	t.Logf("%d rename claim(s) checked against the conversion code across %d surface(s)",
-		checked, surfaces)
+	t.Logf("%d rename claim(s) checked against the conversion code across %d surface(s); "+
+		"%d further surface(s) claim no SDK field at all and so have nothing to check",
+		checked, surfaces, claimless)
 	if len(unchecked) > 0 {
 		t.Logf("%d claim(s) not checked, because the conversion code does not pair the "+
 			"attribute with a field directly:\n    %s",
@@ -177,15 +194,25 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 	}
 }
 
-// conversionFile maps a policy to the resource file that converts it. The
-// convention holds for every surface in the estate and is asserted rather than
-// assumed: a policy whose file is missing is reported, not skipped.
+// conversionFile maps a policy to the file that converts it, or "" when the
+// kind has no such file.
+//
+// The kind is matched explicitly rather than defaulted. A list policy's
+// generator_name is the MANAGED surface's name -- ap_group_list.json declares
+// generator_name "ap_group" -- so falling through to "<name>_resource.go" would
+// silently compare a list policy's claims against the managed resource's
+// bindings. That is harmless today only because list policies omit every SDK
+// field; it would become a false failure the moment one did not.
 func conversionFile(policy policyDocument) string {
 	name := policy.GeneratorName
-	if policy.SurfaceKind == "data_source" {
+	switch policy.SurfaceKind {
+	case "managed_resource":
+		return filepath.Join(".", name+"_resource.go")
+	case "data_source":
 		return filepath.Join(".", strings.TrimSuffix(name, "_ds")+"_data_source.go")
+	default:
+		return ""
 	}
-	return filepath.Join(".", name+"_resource.go")
 }
 
 // claimsOf collects every managed attribute the policy says comes from a named
