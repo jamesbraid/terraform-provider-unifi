@@ -208,7 +208,7 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 11 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 11}) {
 		t.Fatalf("Wave 4 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 1, "policy_complete": 10}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 2, "policy_complete": 9}) {
 		t.Fatalf("Wave 4 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -228,10 +228,15 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		}
 		seen++
 		want := PolicyComplete
+		switch contract.Name {
 		// The first surface whose schema needed a capability no earlier one
 		// did: its SDK carries a Settings struct that the released schema
 		// presents as three top-level durations.
-		if contract.Name == "unifi_power_supervisor" {
+		case "unifi_power_supervisor":
+			want = GeneratedShadow
+		// Fronts the SDK's ClientGroup rather than a struct of its own name,
+		// and carries the estate's first negative default.
+		case "unifi_client_qos_rate":
 			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
@@ -270,8 +275,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      56,
-		GeneratedShadow:     7,
+		PolicyComplete:      55,
+		GeneratedShadow:     8,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,

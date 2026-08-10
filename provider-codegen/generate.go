@@ -32,3 +32,7 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-firewall-group.json -policy policy/firewall_group.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix firewall_group -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/firewall_group.provider-code-spec.json --output ../internal/generated/resource_firewall_group --package resource_firewall_group
 //go:generate gofmt -w ../internal/generated/resource_firewall_group/firewall_group_resource_gen.go
+//go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct ClientGroup -resource unifi_client_qos_rate -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-client-qos-rate.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-client-qos-rate.json -policy policy/client_qos_rate.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix client_qos_rate -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/client_qos_rate.provider-code-spec.json --output ../internal/generated/resource_client_qos_rate --package resource_client_qos_rate
+//go:generate gofmt -w ../internal/generated/resource_client_qos_rate/client_qos_rate_resource_gen.go
