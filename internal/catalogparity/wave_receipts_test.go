@@ -217,7 +217,7 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 11 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 11}) {
 		t.Fatalf("Wave 4 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 7, "policy_complete": 4}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 8, "policy_complete": 3}) {
 		t.Fatalf("Wave 4 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -271,6 +271,10 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		// GoDuration string in the schema, so it keeps schema version 1.
 		case "unifi_radius_profile":
 			want = GeneratedShadow
+		// Flat, and every one of its ten renames is a spelling the SDK chose
+		// and the schema did not -- networkconf_id, firewallgroup_ids, ipsec.
+		case "unifi_firewall_rule":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -308,8 +312,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      48,
-		GeneratedShadow:     15,
+		PolicyComplete:      47,
+		GeneratedShadow:     16,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
