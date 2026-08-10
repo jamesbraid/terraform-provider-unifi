@@ -11,7 +11,8 @@
     {
       "kind": "data_source",
       "name": "unifi_account",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Served by the generated schema without a policy of its own. deprecatedAccountDataSource embeds radiusUserDataSource and calls its Schema, adding only a DeprecationMessage, so migrating the unifi_radius_user data source migrated this surface in the same edit. It must not acquire a policy: a second one over the same SDK struct would be a second source of truth for one schema. The data source baseline projection reads it like any other registered data source. Admission waits on the same campaign run."
     },
     {
       "kind": "data_source",
@@ -42,7 +43,8 @@
     {
       "kind": "data_source",
       "name": "unifi_client_qos_rate",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. The surface fronts the SDK's ClientGroup rather than a struct of its own name, as the managed surface does. id renames from _id; the other three attributes bind by name and were confirmed against the conversion code. Five of the nine SDK fields are omitted. Admission waits on a campaign run."
     },
     {
       "kind": "data_source",
@@ -73,7 +75,8 @@
     {
       "kind": "data_source",
       "name": "unifi_radius_user",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Three renames read from internal/renamecheck's bindings, which is the same set the managed surface uses: id from _id, network_id from networkconf_id and password from x_password. Ten of the sixteen SDK fields are omitted. unifi_account's data source is the deprecated alias of this one — deprecatedAccountDataSource embeds radiusUserDataSource and adds only a DeprecationMessage — so it is served by this schema and moves with it, exactly as the managed pair does. The deriver cannot read data sources, so the behaviour was transcribed by hand and the inventory checks it. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
