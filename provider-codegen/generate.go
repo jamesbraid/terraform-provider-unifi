@@ -20,3 +20,7 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wlan.json -policy policy/wlan.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix wlan -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/wlan.provider-code-spec.json --output ../internal/generated/resource_wlan --package resource_wlan
 //go:generate gofmt -w ../internal/generated/resource_wlan/wlan_resource_gen.go
+//go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Site -resource unifi_site -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-site.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-site.json -policy policy/site.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix site -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/site.provider-code-spec.json --output ../internal/generated/resource_site --package resource_site
+//go:generate gofmt -w ../internal/generated/resource_site/site_resource_gen.go
