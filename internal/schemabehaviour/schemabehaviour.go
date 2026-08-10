@@ -301,8 +301,13 @@ func providerTypeName(files []*parsedFile) (string, error) {
 			"names cannot be built from the source")
 }
 
-// metadataSuffixes returns, per receiver type, the resource name suffix its
+// metadataSuffixes returns, per receiver type, the surface name suffix its
 // Metadata method appends to the provider type name.
+//
+// Actions are accepted alongside managed resources, for the same reason
+// resourceSchemas accepts them: an action whose schema is read but whose name
+// cannot be resolved is not a partial success, it is an error that stops the
+// whole derivation.
 func (p *parsedFile) metadataSuffixes() map[string]string {
 	suffixes := map[string]string{}
 	for _, decl := range p.file.Decls {
@@ -310,7 +315,8 @@ func (p *parsedFile) metadataSuffixes() map[string]string {
 		if !ok || function.Name.Name != "Metadata" || function.Recv == nil {
 			continue
 		}
-		if !p.paramIsPointerTo(function, 2, "resource", "MetadataResponse") {
+		if !p.paramIsPointerTo(function, 2, "resource", "MetadataResponse") &&
+			!p.paramIsPointerTo(function, 2, "action", "MetadataResponse") {
 			continue
 		}
 		receiver := receiverType(function)
@@ -404,13 +410,20 @@ func localValues(body *ast.BlockStmt) map[string]ast.Expr {
 	return values
 }
 
-// resourceSchemas returns, per receiver type, where its managed resource schema
-// comes from.
+// resourceSchemas returns, per receiver type, where its schema comes from.
 //
 // The response parameter's type is what separates a managed resource from a
 // data source, a list resource or an ephemeral resource, all of which have a
-// method called Schema. The behaviour inventory covers managed resources, so
-// this covers the same set.
+// method called Schema. This covers the same set as the behaviour inventory,
+// which is managed resources AND actions.
+//
+// Actions were added when the inventory grew to read them. They had been
+// invisible to both, so nothing noticed that the estate's one action carries a
+// hwtypes.MACAddressType on device_mac -- a custom type that IS the validation
+// on that attribute, and that a policy written by this tool would have omitted
+// without saying so. The derivability test is what tied the two together: it
+// compares what the provider applies against what this reads, so widening the
+// inventory alone turned a silent gap into a failure.
 func (p *parsedFile) resourceSchemas() map[string]schemaSource {
 	sources := map[string]schemaSource{}
 	for _, decl := range p.file.Decls {
@@ -418,7 +431,8 @@ func (p *parsedFile) resourceSchemas() map[string]schemaSource {
 		if !ok || function.Name.Name != "Schema" || function.Recv == nil {
 			continue
 		}
-		if !p.paramIsPointerTo(function, 2, "resource", "SchemaResponse") {
+		if !p.paramIsPointerTo(function, 2, "resource", "SchemaResponse") &&
+			!p.paramIsPointerTo(function, 2, "action", "SchemaResponse") {
 			continue
 		}
 		receiver := receiverType(function)

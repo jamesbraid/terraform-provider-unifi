@@ -20,8 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site_to_site_vpn"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_site_to_site_vpn"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site_to_site_vpn"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 

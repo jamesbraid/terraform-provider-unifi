@@ -1,5 +1,5 @@
-# Validators, plan modifiers and defaults, per attribute, for every managed
-# resource the provider registers.
+# Validators, plan modifiers, defaults and custom types, per attribute, for
+# every managed resource and every action the provider registers.
 #
 # These never appear in a Terraform schema. The protocol carries types,
 # dispositions, descriptions and deprecation, and nothing else -- so the
@@ -15,7 +15,13 @@
 # did. firewall_policy lost nine validators that way and the whole suite
 # stayed green.
 #
-# Each line is "<resource>.<attribute path>  <kind>  <implementation>  <description>".
+# A custom type is here for the same reason: it is the validation on the
+# attribute it sits on -- unifi_port.device_mac is a hwtypes.MACAddressType,
+# and the protocol renders that as a plain string, so the released baseline
+# records "string" and a schema that dropped the type compares equal to the
+# contract while accepting any string as a MAC address.
+#
+# Each line is "<surface>.<attribute path>  <kind>  <implementation>  <description>".
 # The description is the validator's own, so it carries the VALUES: changing
 # an enum member changes the line rather than leaving the count intact.
 #
@@ -379,6 +385,8 @@ unifi_network.timeouts.delete	validator	validators.timeDurationValidator	"must b
 unifi_network.timeouts.read	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_network.timeouts.update	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_network.vlan	validator	int64validator.betweenValidator	"value must be between 1 and 4094"
+unifi_port.device_mac	custom_type	hwtypes.MACAddressType	"<carries no description>"
+unifi_port.timeouts	custom_type	timeouts.Type	"<carries no description>"
 unifi_port_forward.destination_ips.destination_ip	validator	*validators.ipv4Validator	"value must be a valid IPv4 address or \"any\""
 unifi_port_forward.destination_ips.interface	validator	stringvalidator.oneOfValidator	"value must be one of: [\"wan\" \"wan2\"]"
 unifi_port_forward.enabled	default	booldefault.staticBoolDefault	"value defaults to true"
