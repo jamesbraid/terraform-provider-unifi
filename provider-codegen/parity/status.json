@@ -42,7 +42,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_site",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy. Two renames read from the resource conversion code: the SDK stores the description as desc and the ID as _id. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
