@@ -1,0 +1,48 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "listresources": [
+    {
+      "name": "power_supervisor",
+      "schema": {
+        "attributes": [
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The name of the site to list power supervisors from."
+            }
+          }
+        ],
+        "blocks": [
+          {
+            "list_nested": {
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "name",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "The name of the filter to apply. Supported values are: `device_mac`."
+                    }
+                  },
+                  {
+                    "name": "value",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "The value to filter by."
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "filter"
+          }
+        ],
+        "markdown_description": "List power supervisors in a site."
+      }
+    }
+  ]
+}

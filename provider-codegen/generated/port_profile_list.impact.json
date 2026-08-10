@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_port_profile",
+  "resource": "unifi_port_profile",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "a6b5f260c00d3f2cf636bf72a8d7d7a0d29ff5973d3a06fe9fd93a638288a85b"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "list_resource": "83d37485abcc97da8113ba39119afb56c9a0ca8a2fade0e37d541b2dc6d74b25"
+  },
+  "structural_fields": 56,
+  "generated_attributes": 1,
+  "provider_owned_seams": 1,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_wireguard_peer",
+  "resource": "unifi_wireguard_peer",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "2eb0fe60a1ae7821ab6f7b9b4690bd5cd92d29d8c2a980451ce194f1b5402420"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "list_resource": "3b1a29759282efc39af2d280b2c7491f8586ce11e181790e5e520fb1c9c2262e"
+  },
+  "structural_fields": 6,
+  "generated_attributes": 2,
+  "provider_owned_seams": 2,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

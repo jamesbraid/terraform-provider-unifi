@@ -35,9 +35,13 @@ func TestWave1ReadSurfaceReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 38 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"data_source": 13, "list_resource": 25}) {
 		t.Fatalf("Wave 1 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 1, "policy_complete": 36, "shadow_only": 1}) {
-		t.Fatalf("Wave 1 status counts = %v", receipt.StatusCounts)
-	}
+	// Compared against the LEDGER rather than against a constant. A receipt's
+	// status_counts is a claim about the ledger it pins by digest, and a
+	// constant expectation cannot tell a correct claim from a stale one -- it
+	// only says the receipt still says what it used to say. This wave's counts
+	// went stale the moment its first surface migrated, and the constant here
+	// went on passing.
+	requireStatusCountsMatchLedger(t, 1, receipt.StatusCounts)
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
 		"adapter_differential":        38,
 		"locked_controller_lifecycle": 38,
@@ -91,9 +95,7 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 8 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 8}) {
 		t.Fatalf("Wave 2 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"admitted": 1, "generated_shadow": 4, "policy_complete": 3}) {
-		t.Fatalf("Wave 2 status counts = %v", receipt.StatusCounts)
-	}
+	requireStatusCountsMatchLedger(t, 2, receipt.StatusCounts)
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
 		"adapter_differential":        7,
 		"locked_controller_lifecycle": 7,
@@ -155,9 +157,7 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 9 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 9}) {
 		t.Fatalf("Wave 3 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 5, "policy_complete": 3, "shadow_only": 1}) {
-		t.Fatalf("Wave 3 status counts = %v", receipt.StatusCounts)
-	}
+	requireStatusCountsMatchLedger(t, 3, receipt.StatusCounts)
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
 		"adapter_differential":        9,
 		"locked_controller_lifecycle": 9,
@@ -227,9 +227,7 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 11 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 11}) {
 		t.Fatalf("Wave 4 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 9, "policy_complete": 2}) {
-		t.Fatalf("Wave 4 status counts = %v", receipt.StatusCounts)
-	}
+	requireStatusCountsMatchLedger(t, 4, receipt.StatusCounts)
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
 		"adapter_differential":        11,
 		"locked_controller_lifecycle": 11,
@@ -327,8 +325,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      43,
-		GeneratedShadow:     20,
+		PolicyComplete:      20,
+		GeneratedShadow:     43,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
@@ -381,4 +379,44 @@ func containsString(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// requireStatusCountsMatchLedger checks a wave receipt's status_counts against
+// the ledger the receipt pins, rather than against a number written down beside
+// it.
+//
+// The two are not the same check. A constant expectation answers "does this
+// file still say what it said when someone wrote the test", which stays true
+// through exactly the change that makes the receipt wrong: a surface moves
+// state, the ledger digest is re-cut in the same commit, and the distribution
+// the receipt claims quietly stops describing it. Wave 1 sat like that -- 37
+// policy_complete against a ledger holding 24 generated_shadow -- and every
+// gate stayed green, because nothing compared the claim to its subject.
+func requireStatusCountsMatchLedger(t *testing.T, wave int, claimed map[string]int) {
+	t.Helper()
+	ledger := parseTestLedger(t)
+	corpus := parseTestCorpus(t)
+
+	inWave := map[SurfaceKey]bool{}
+	for _, contract := range corpus.Contracts {
+		if contract.Wave == wave {
+			inWave[contract.SurfaceKey] = true
+		}
+	}
+	if len(inWave) == 0 {
+		t.Fatalf("wave %d has no surfaces in the corpus, so this check would pass on nothing", wave)
+	}
+
+	actual := map[string]int{}
+	for _, entry := range ledger.Entries {
+		if inWave[entry.SurfaceKey] {
+			actual[string(entry.State)]++
+		}
+	}
+	if !reflect.DeepEqual(claimed, actual) {
+		t.Fatalf("wave %d receipt claims status counts %v, ledger holds %v\n\n"+
+			"    The receipt pins that ledger by digest, so the two describe the same\n"+
+			"    surfaces and must agree. Re-cut the receipt rather than adjusting this.",
+			wave, claimed, actual)
+	}
 }
