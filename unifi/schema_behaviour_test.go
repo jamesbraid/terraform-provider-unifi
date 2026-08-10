@@ -1,0 +1,223 @@
+package unifi
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"reflect"
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+)
+
+const goldenSchemaBehaviour = "testdata/schema_behaviour.txt"
+
+const behaviourHeader = `# Validators, plan modifiers and defaults, per attribute, for every managed
+# resource the provider registers.
+#
+# These never appear in a Terraform schema. The protocol carries types,
+# dispositions, descriptions and deprecation, and nothing else -- so the
+# baseline projection test cannot see any of this, however far it is extended.
+# The released v0.101.2 baseline contains no validators, plan_modifiers or
+# default key anywhere in the document.
+#
+# They are still public behaviour. A lost OneOf accepts configuration the
+# controller will reject; a lost UseStateForUnknown plans a change on every
+# refresh; a lost Default changes what an absent attribute means. Migrating a
+# surface from a hand-written schema to a generated one drops all three
+# silently, because the policy has to restate them and nothing checks that it
+# did. firewall_policy lost nine validators that way and the whole suite
+# stayed green.
+#
+# Each line is "<resource>.<attribute path>  <kind>  <implementation>  <description>".
+# The description is the validator's own, so it carries the VALUES: changing
+# an enum member changes the line rather than leaving the count intact.
+#
+# A removal here is a behaviour regression until someone says otherwise.
+#
+# Regenerate with: UPDATE_GOLDEN=1 go test ./unifi/ -run Test_schemaBehaviourInventory
+`
+
+// Test_schemaBehaviourInventory pins every validator, plan modifier and default
+// the provider serves, so migrating a surface cannot drop one silently.
+//
+// It exists because the baseline projection test cannot cover this and no
+// extension of it could. Terraform's schema protocol does not carry validators,
+// plan modifiers or defaults -- they run inside the provider and are invisible
+// to the CLI -- so the released baseline has nothing to compare against. That
+// is not a gap in the projection test's thoroughness; it is a fact about what a
+// schema is. This inventory is the second referee those facts need.
+//
+// Coverage is managed resources at every attribute depth. Data sources, list
+// resources and identity schemas are separate schemas and are reported as
+// uncovered rather than passed over.
+func Test_schemaBehaviourInventory(t *testing.T) {
+	ctx := context.Background()
+	got, opaque := schemaBehaviourFacts(ctx, t)
+
+	if os.Getenv("UPDATE_GOLDEN") != "" {
+		body := behaviourHeader + strings.Join(got, "\n") + "\n"
+		if err := os.WriteFile(goldenSchemaBehaviour, []byte(body), 0o644); err != nil {
+			t.Fatalf("writing %s: %v", goldenSchemaBehaviour, err)
+		}
+		t.Logf("wrote %d entries to %s", len(got), goldenSchemaBehaviour)
+		return
+	}
+
+	want, err := os.ReadFile(goldenSchemaBehaviour)
+	if err != nil {
+		t.Fatalf("reading %s: %v", goldenSchemaBehaviour, err)
+	}
+	added, removed := diffSorted(splitNonEmpty(string(want)), got)
+
+	// Removals are reported first and in full. A migration drops behaviour; it
+	// rarely invents any, so this is the direction that matters.
+	if len(removed) > 0 {
+		t.Errorf(
+			"%d behaviour(s) the provider no longer applies:\n    %s\n\n"+
+				"    Each of these ran in the released provider and does not run now.\n"+
+				"    A migrated surface must restate its validators, plan modifiers and\n"+
+				"    defaults in its policy -- the generator cannot infer them from a\n"+
+				"    catalog, and no schema comparison can see that they are gone.\n"+
+				"    If a removal is intended, it is a behaviour change: land it on its\n"+
+				"    own with its own evidence, not inside a migration.",
+			len(removed), strings.Join(removed, "\n    "),
+		)
+	}
+	if len(added) > 0 {
+		t.Errorf(
+			"%d behaviour(s) the provider did not previously apply:\n    %s\n\n"+
+				"    Adding one is a public change. Confirm it is intended, then update\n"+
+				"    %s.",
+			len(added), strings.Join(added, "\n    "), goldenSchemaBehaviour,
+		)
+	}
+
+	// An attribute type that carries its behaviour through differently named
+	// fields would contribute nothing and look identical to one that carries no
+	// behaviour at all. Naming them keeps the absence deliberate.
+	if len(opaque) > 0 {
+		t.Logf("attribute types exposing none of Validators/PlanModifiers/Default, "+
+			"so nothing here reads their behaviour: %v", opaque)
+	}
+	if len(got) == 0 {
+		t.Fatal("the inventory is empty, so the reflection below found nothing — " +
+			"the framework's field names have most likely changed")
+	}
+}
+
+// schemaBehaviourFacts walks every registered managed resource and returns one
+// sorted line per behaviour, plus the attribute types it could not read.
+//
+// Reflection rather than a type switch over the ten concrete attribute types:
+// a switch silently ignores any type added later, which is the same class of
+// hole this test exists to close.
+func schemaBehaviourFacts(ctx context.Context, t *testing.T) ([]string, []string) {
+	t.Helper()
+	var facts []string
+	opaque := map[string]bool{}
+
+	for _, newResource := range (&unifiProvider{}).Resources(ctx) {
+		res := newResource()
+		var meta resource.MetadataResponse
+		res.Metadata(ctx, resource.MetadataRequest{ProviderTypeName: "unifi"}, &meta)
+
+		var got resource.SchemaResponse
+		res.Schema(ctx, resource.SchemaRequest{}, &got)
+
+		facts = append(facts, attributeBehaviour(ctx, meta.TypeName+".", got.Schema.Attributes, opaque)...)
+	}
+
+	sort.Strings(facts)
+	names := make([]string, 0, len(opaque))
+	for name := range opaque {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return facts, names
+}
+
+func attributeBehaviour(
+	ctx context.Context,
+	prefix string,
+	attrs map[string]rschema.Attribute,
+	opaque map[string]bool,
+) []string {
+	var facts []string
+	for name, attribute := range attrs {
+		path := prefix + name
+		lines, read := behaviourOf(ctx, path, attribute)
+		facts = append(facts, lines...)
+		if !read {
+			opaque[fmt.Sprintf("%T", attribute)] = true
+		}
+
+		switch nested := attribute.(type) {
+		case rschema.SingleNestedAttribute:
+			facts = append(facts, attributeBehaviour(ctx, path+".", nested.Attributes, opaque)...)
+		case rschema.ListNestedAttribute:
+			facts = append(facts, attributeBehaviour(ctx, path+".", nested.NestedObject.Attributes, opaque)...)
+		case rschema.SetNestedAttribute:
+			facts = append(facts, attributeBehaviour(ctx, path+".", nested.NestedObject.Attributes, opaque)...)
+		case rschema.MapNestedAttribute:
+			facts = append(facts, attributeBehaviour(ctx, path+".", nested.NestedObject.Attributes, opaque)...)
+		}
+	}
+	return facts
+}
+
+// behaviourOf reads one attribute's validators, plan modifiers and default. The
+// second return says whether any of the three fields existed, which is what
+// separates "this attribute has no behaviour" from "this attribute type keeps
+// its behaviour somewhere this test does not look".
+func behaviourOf(ctx context.Context, path string, attribute rschema.Attribute) ([]string, bool) {
+	value := reflect.ValueOf(attribute)
+	if value.Kind() == reflect.Pointer {
+		value = value.Elem()
+	}
+	if value.Kind() != reflect.Struct {
+		return nil, false
+	}
+
+	var facts []string
+	read := false
+	for _, field := range []struct{ name, kind string }{
+		{"Validators", "validator"},
+		{"PlanModifiers", "plan_modifier"},
+		{"Default", "default"},
+	} {
+		found := value.FieldByName(field.name)
+		if !found.IsValid() {
+			continue
+		}
+		read = true
+		switch found.Kind() {
+		case reflect.Slice:
+			for index := range found.Len() {
+				facts = append(facts, behaviourLine(ctx, path, field.kind, found.Index(index).Interface()))
+			}
+		case reflect.Interface:
+			if !found.IsNil() {
+				facts = append(facts, behaviourLine(ctx, path, field.kind, found.Interface()))
+			}
+		}
+	}
+	return facts, read
+}
+
+// behaviourLine renders one fact. The description is quoted rather than written
+// bare: a default of the empty string describes itself as "value defaults to "
+// with a trailing space, and reading the golden file back trims it, so an
+// unquoted line would report seven behaviours as lost on every run.
+func behaviourLine(ctx context.Context, path, kind string, behaviour any) string {
+	description := "<carries no description>"
+	if describer, ok := behaviour.(interface {
+		Description(context.Context) string
+	}); ok {
+		description = describer.Description(ctx)
+	}
+	return fmt.Sprintf("%s\t%s\t%T\t%q", path, kind, behaviour, description)
+}
