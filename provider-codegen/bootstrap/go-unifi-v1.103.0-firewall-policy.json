@@ -9,8 +9,28 @@
     "name": "unifi_firewall_policy",
     "fields": [
       {
+        "name": "_id",
+        "type": "string"
+      },
+      {
         "name": "action",
         "type": "string"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool"
       },
       {
         "name": "connection_state_type",
@@ -111,6 +131,10 @@
         "type": "int64"
       },
       {
+        "name": "ip_version",
+        "type": "string"
+      },
+      {
         "name": "logging",
         "type": "bool"
       },
@@ -160,7 +184,7 @@
           },
           {
             "name": "time_all_day",
-            "type": "*bool"
+            "type": "bool"
           },
           {
             "name": "time_range_end",
@@ -171,6 +195,10 @@
             "type": "string"
           }
         ]
+      },
+      {
+        "name": "site_id",
+        "type": "string"
       },
       {
         "name": "source",
@@ -237,10 +265,6 @@
             "type": "string"
           }
         ]
-      },
-      {
-        "name": "ip_version",
-        "type": "string"
       }
     ]
   }

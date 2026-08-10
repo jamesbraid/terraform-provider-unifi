@@ -13,7 +13,7 @@
     "identity": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
     "list_resource": "7d18023ec0b74f839e859242baa54f0823ee43bae903f99833fe242f9b08c4d4"
   },
-  "structural_fields": 19,
+  "structural_fields": 25,
   "generated_attributes": 17,
   "provider_owned_seams": 3,
   "unresolved_fields": [],

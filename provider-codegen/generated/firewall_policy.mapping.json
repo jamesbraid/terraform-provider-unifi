@@ -5,11 +5,46 @@
   "resource": "unifi_firewall_policy",
   "fields": [
     {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "omitted"
+    },
+    {
       "structural_name": "action",
       "terraform_name": "action",
       "structural_type": "string",
       "terraform_type": "string",
       "disposition": "managed"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "omitted"
     },
     {
       "structural_name": "connection_state_type",
@@ -128,6 +163,13 @@
       "terraform_name": "schedule",
       "structural_type": "object",
       "terraform_type": "single_nested",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "string",
       "disposition": "omitted"
     },
     {
