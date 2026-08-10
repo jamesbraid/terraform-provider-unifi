@@ -1,0 +1,47 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "datasources": [
+    {
+      "name": "ap_group_ds",
+      "schema": {
+        "attributes": [
+          {
+            "list": {
+              "computed_optional_required": "computed",
+              "description": "List of device MAC addresses in the AP group.",
+              "element_type": {
+                "string": {}
+              }
+            },
+            "name": "device_macs"
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of this AP group."
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the AP group to look up."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site the AP group is associated with."
+            }
+          }
+        ],
+        "markdown_description": "Data source for access point groups."
+      }
+    }
+  ]
+}

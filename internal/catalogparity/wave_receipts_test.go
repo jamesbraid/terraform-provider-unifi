@@ -35,7 +35,7 @@ func TestWave1ReadSurfaceReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 38 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"data_source": 13, "list_resource": 25}) {
 		t.Fatalf("Wave 1 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"policy_complete": 37, "shadow_only": 1}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 1, "policy_complete": 36, "shadow_only": 1}) {
 		t.Fatalf("Wave 1 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -61,6 +61,13 @@ func TestWave1ReadSurfaceReceipt(t *testing.T) {
 		want := PolicyComplete
 		if contract.Kind == ListResource && contract.Name == "unifi_dns_record" {
 			want = ShadowOnly
+		}
+		// The estate's first generated data source, and the first wave 1
+		// surface to move at all. It is what says the data_source path works
+		// end to end: a different baseline subtree, a different digest key,
+		// and the generator's data-sources subcommand rather than resources.
+		if contract.Kind == DataSource && contract.Name == "unifi_ap_group" {
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -321,8 +328,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      45,
-		GeneratedShadow:     18,
+		PolicyComplete:      44,
+		GeneratedShadow:     19,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
