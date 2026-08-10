@@ -1,0 +1,278 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "power_supervisor",
+      "schema": {
+        "attributes": [
+          {
+            "int64": {
+              "computed_optional_required": "computed",
+              "description": "Number of consecutive heartbeat failures observed by the controller (read-only).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                      }
+                    ],
+                    "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "consecutive_failures"
+          },
+          {
+            "name": "device_mac",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "MAC address of the supervised device (the controller keys supervisors per device). Changing it replaces the supervisor.",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+                },
+                "type": "hwtypes.MACAddressType{}",
+                "value_type": "hwtypes.MACAddress"
+              },
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      }
+                    ],
+                    "schema_definition": "validators.MACAddressValidator()"
+                  }
+                }
+              ],
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether supervision is enabled. Defaults to `true`.",
+              "default": {
+                "static": true
+              }
+            },
+            "name": "enabled"
+          },
+          {
+            "name": "heartbeat_interval",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "How often the controller probes the device, as a Go duration string (e.g. `60s`, `1m`). Defaults to `1m0s`.",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "default": {
+                "static": "1m0s"
+              },
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The controller-assigned ID of the power supervisor.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "power_off_duration",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "How long the upstream PoE source stays off during a power-cycle, as a Go duration string (e.g. `2m`). Defaults to `2m0s`.",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "default": {
+                "static": "2m0s"
+              },
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "list_nested": {
+              "computed_optional_required": "computed",
+              "description": "The upstream power source(s) the controller resolved for the device and will cycle on recovery (read-only).",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "Index of the supervised device's PSU."
+                    },
+                    "name": "client_psu_index"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "Port/outlet index on the upstream source."
+                    },
+                    "name": "power_source_index"
+                  },
+                  {
+                    "name": "power_source_mac",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "MAC of the upstream source (e.g. the PoE switch)."
+                    }
+                  },
+                  {
+                    "name": "power_source_type",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "Type of the upstream source (e.g. `poe_port`)."
+                    }
+                  }
+                ]
+              },
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "power_sources"
+          },
+          {
+            "name": "silence_threshold",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "How long the device may be silent before the controller power-cycles its upstream PoE source, as a Go duration string (e.g. `15m`). Defaults to `15m0s`.",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "default": {
+                "static": "15m0s"
+              },
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site the supervisor belongs to.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "markdown_description": "Manages a UniFi **Device Supervisor** (UniFi Network 10.2+): heartbeat monitoring of a device plus automatic power-cycling of its upstream PoE source after a silence threshold. The supervised device is referenced by its MAC; the controller resolves the upstream PoE port automatically."
+      }
+    }
+  ]
+}

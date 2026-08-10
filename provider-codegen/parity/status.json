@@ -112,7 +112,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_power_supervisor",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy, spreading the SDK Settings struct into the three duration attributes the released schema presents at the top level. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
