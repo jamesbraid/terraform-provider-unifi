@@ -41,6 +41,40 @@ type bootstrapField struct {
 	Fields []bootstrapField `json:"fields,omitempty"`
 }
 
+// surfaceKind carries the three things that differ between a managed resource
+// and a data source: which baseline subtree describes it, what the policy calls
+// it, and which digests it declares. A data source has no identity or list
+// companion, and declaring empty ones is not the same as omitting them --
+// validateBaseline cross-checks a declared digest in both directions.
+type surfaceKind struct {
+	name            string
+	baselineSubtree string
+	digests         func(all map[string]string, resource string) map[string]any
+}
+
+var surfaceKinds = map[string]surfaceKind{
+	"managed_resource": {
+		name:            "managed_resource",
+		baselineSubtree: "resource_schemas",
+		digests: func(all map[string]string, resource string) map[string]any {
+			return map[string]any{
+				"resource":      all["resource_schemas."+resource],
+				"identity":      all["resource_identity_schemas."+resource],
+				"list_resource": all["list_resource_schemas."+resource],
+			}
+		},
+	},
+	"data_source": {
+		name:            "data_source",
+		baselineSubtree: "data_source_schemas",
+		digests: func(all map[string]string, resource string) map[string]any {
+			return map[string]any{
+				"data_source": all["data_source_schemas."+resource],
+			}
+		},
+	},
+}
+
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -52,7 +86,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 	generator := flags.String("generator-name", "", "generator name, e.g. site")
 	digestsPath := flags.String("digests", "", "M0 schema digest manifest")
 	output := flags.String("output", "", "policy to write")
+	surfaceKind := flags.String("surface-kind", "managed_resource",
+		"managed_resource or data_source")
 	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	// A data source reads a different subtree of the baseline, declares its
+	// digest under a different key, and is emitted under a different member of
+	// the code specification. Scaffolding one as a managed resource produces a
+	// policy that looks right and fails at compile with "baseline data_source
+	// digest mismatch", which reads as a stale digest rather than as the wrong
+	// kind. Naming the kind up front is one flag; correcting it afterwards is
+	// two edits per surface across thirteen of them.
+	surface, ok := surfaceKinds[*surfaceKind]
+	if !ok {
+		fmt.Fprintf(stderr, "unsupported surface kind %q; want managed_resource or data_source\n",
+			*surfaceKind)
 		return 2
 	}
 	for name, value := range map[string]string{
@@ -83,10 +132,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	schemas, _ := baseline["resource_schemas"].(map[string]any)
+	schemas, _ := baseline[surface.baselineSubtree].(map[string]any)
 	entry, found := schemas[*resource].(map[string]any)
 	if !found {
-		fmt.Fprintf(stderr, "%s is not in the released baseline\n", *resource)
+		fmt.Fprintf(stderr, "%s is not in the released baseline under %s\n",
+			*resource, surface.baselineSubtree)
 		return 1
 	}
 	block, _ := entry["block"].(map[string]any)
@@ -146,7 +196,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	policy := map[string]any{
 		"format_version":              1,
-		"surface_kind":                "managed_resource",
+		"surface_kind":                surface.name,
 		"resource":                    *resource,
 		"generator_name":              *generator,
 		"source_specification_sha256": source.Source.SpecificationSHA256,
@@ -155,11 +205,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		"provider_owned": []map[string]any{
 			{"terraform_name": "timeouts", "disposition": "managed", "generated": false},
 		},
-		"baseline_digests": map[string]any{
-			"resource":      digests.SchemaSHA256["resource_schemas."+*resource],
-			"identity":      digests.SchemaSHA256["resource_identity_schemas."+*resource],
-			"list_resource": digests.SchemaSHA256["list_resource_schemas."+*resource],
-		},
+		"baseline_digests": surface.digests(digests.SchemaSHA256, *resource),
 	}
 
 	encoded, err := json.MarshalIndent(policy, "", "  ")
