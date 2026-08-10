@@ -2092,3 +2092,137 @@ func sortedKeysOf(m map[string]json.RawMessage) []string {
 	sort.Strings(out)
 	return out
 }
+
+// TestCompileEmitsAGroupedMemberBackedByAnObject covers the shape wan needs and
+// nothing before it did: a grouping whose member consumes an observed
+// array<object> rather than a flat field.
+//
+// wan.dhcp is a grouping the SDK does not have, and one of its members is
+// wan_dhcp_options -- an array of NetworkWANDHCPOptions. The descent already
+// worked for a top-level object field, because buildCodeAttribute reaches
+// nestedDefinition either way; groupedMember simply had no Fields to carry the
+// per-member decisions to it, and the compiler refused with "member optionNumber
+// is unclassified".
+func TestCompileEmitsAGroupedMemberBackedByAnObject(t *testing.T) {
+	input := groupingInput(t, func(rules map[string]any) {
+		members := groupingMembers(rules)
+		firstGrouping(rules)["members"] = append(members, map[string]any{
+			"structural_name": "options",
+			"terraform_name":  "options",
+			"terraform_type":  "list_nested",
+			"disposition":     "managed",
+			"attribute":       map[string]any{"computed_optional_required": "optional"},
+			"fields": []any{
+				map[string]any{
+					"structural_name": "optionNumber", "terraform_name": "option_number",
+					"disposition": "managed",
+					"attribute":   map[string]any{"computed_optional_required": "optional"},
+				},
+				map[string]any{
+					"structural_name": "value", "terraform_name": "value",
+					"disposition": "managed",
+					"attribute":   map[string]any{"computed_optional_required": "optional"},
+				},
+			},
+		})
+	})
+	input.Bootstrap = bootstrapWithObjectMember(t)
+
+	result, err := Compile(input)
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+
+	attribute := collectionAttribute(t, result.ProviderCodeSpec, "endpoint")
+	var definition struct {
+		Attributes []map[string]json.RawMessage `json:"attributes"`
+	}
+	if err := json.Unmarshal(attribute["single_nested"], &definition); err != nil {
+		t.Fatal(err)
+	}
+
+	var options map[string]json.RawMessage
+	for _, member := range definition.Attributes {
+		var named struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(mustJSON(t, member), &named); err == nil && named.Name == "options" {
+			options = member
+		}
+	}
+	if options == nil {
+		t.Fatalf("the object-backed member was not emitted; grouping has %d members",
+			len(definition.Attributes))
+	}
+
+	// Its members must come from the catalog, exactly as a top-level object
+	// field's do -- that is what keeps this a migration rather than a hand
+	// written attribute that happens to live in a policy.
+	var nested struct {
+		NestedObject struct {
+			Attributes []map[string]json.RawMessage `json:"attributes"`
+		} `json:"nested_object"`
+	}
+	if err := json.Unmarshal(options["list_nested"], &nested); err != nil {
+		t.Fatalf("object-backed member emitted as %v, want list_nested: %v",
+			attributeMembers(options), err)
+	}
+	if len(nested.NestedObject.Attributes) != 2 {
+		t.Fatalf("object-backed member has %d attributes, want 2 from the catalog",
+			len(nested.NestedObject.Attributes))
+	}
+}
+
+// TestCompileRejectsAnUnclassifiedGroupedObjectMember is the other half: the
+// accounting that applies to a top-level object field applies inside a grouping
+// too. Every member of the observed struct is classified or omitted, so nothing
+// is dropped without someone deciding to drop it.
+func TestCompileRejectsAnUnclassifiedGroupedObjectMember(t *testing.T) {
+	input := groupingInput(t, func(rules map[string]any) {
+		members := groupingMembers(rules)
+		firstGrouping(rules)["members"] = append(members, map[string]any{
+			"structural_name": "options",
+			"terraform_name":  "options",
+			"terraform_type":  "list_nested",
+			"disposition":     "managed",
+			"attribute":       map[string]any{"computed_optional_required": "optional"},
+			// value is left undecided.
+			"fields": []any{
+				map[string]any{
+					"structural_name": "optionNumber", "terraform_name": "option_number",
+					"disposition": "managed",
+					"attribute":   map[string]any{"computed_optional_required": "optional"},
+				},
+			},
+		})
+	})
+	input.Bootstrap = bootstrapWithObjectMember(t)
+
+	_, err := Compile(input)
+	if err == nil {
+		t.Fatal("a grouped object member with an undecided field was accepted")
+	}
+	if !strings.Contains(err.Error(), "value") {
+		t.Errorf("the refusal does not name the undecided member: %v", err)
+	}
+}
+
+// bootstrapWithObjectMember adds an observed array<object> the grouping can
+// consume, since the shared fixture is all flat fields.
+func bootstrapWithObjectMember(t *testing.T) []byte {
+	t.Helper()
+	var document map[string]any
+	if err := json.Unmarshal(testBootstrap(t, dnsFieldNames()), &document); err != nil {
+		t.Fatal(err)
+	}
+	resource := document["resource"].(map[string]any)
+	resource["fields"] = append(resource["fields"].([]any), map[string]any{
+		"name": "options",
+		"type": "array<object>",
+		"fields": []any{
+			map[string]any{"name": "optionNumber", "type": "int64"},
+			map[string]any{"name": "value", "type": "string"},
+		},
+	})
+	return mustJSON(t, document)
+}
