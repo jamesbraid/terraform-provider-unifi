@@ -86,7 +86,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_wireguard_peer",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy with no omissions: every SDK field is served. id renames to _id, and site is provider-owned — this SDK struct carries no site_id at all, so the site name only ever arrives as a parameter. allowed_ips keeps its empty-list default, transcribed as a custom default because ListDefault has no static form in the specification. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
