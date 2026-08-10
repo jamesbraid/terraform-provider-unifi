@@ -44,8 +44,10 @@ func (p *parsedFile) derive(typeName string, assigned ast.Expr, pkg map[string]s
 		return left.Expression < right.Expression
 	})
 	sort.Slice(walker.unread, func(i, j int) bool { return walker.unread[i].Path < walker.unread[j].Path })
+	sort.Strings(walker.seen)
 
 	surface.Behaviours = walker.found
+	surface.Attributes = walker.seen
 	surface.Opaque = walker.unread
 	return surface, nil
 }
@@ -54,6 +56,7 @@ type walker struct {
 	file   *parsedFile
 	pkg    map[string]symbol
 	found  []Behaviour
+	seen   []string
 	unread []Opaque
 	err    error
 }
@@ -111,6 +114,11 @@ func (w *walker) attributes(prefix string, attributes *ast.CompositeLit, from *p
 			continue
 		}
 		path := prefix + name
+		// Recorded before the value is resolved, because the schema has this
+		// attribute whether or not its literal can be read. The name is the
+		// only thing that separates an attribute carrying no behaviour from
+		// one a policy renamed onto nothing.
+		w.seen = append(w.seen, path)
 		literal, in, ok := resolveComposite(value, from, w.pkg)
 		if !ok {
 			w.opaque(path, "value is "+w.describe(value, from)+

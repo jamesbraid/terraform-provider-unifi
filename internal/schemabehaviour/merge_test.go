@@ -185,6 +185,53 @@ func Test_mergeReportsAPolicyAttributeTheSchemaLacks(t *testing.T) {
 	}
 }
 
+// Test_mergeAcceptsADeclaredAttributeCarryingNoBehaviour is the other half of
+// the rename check, and the half that decides whether anyone still reads it.
+//
+// Most attributes carry no validator, plan modifier, default or custom type.
+// Indexing behaviour alone made every one of those read as a policy attribute
+// the schema does not have: firewall_group, client_qos_rate and wireguard_peer
+// each had correct renames reported that way, and a check that is wrong three
+// surfaces running is a check people learn to skip -- which is when a real
+// wrong rename gets through.
+//
+// source is declared by the fixture schema and carries no behaviour of its own,
+// only children that do. It must not be reported, while not_in_the_schema above
+// still must be. A change that simply stopped reporting would pass one of these
+// two tests and fail the other.
+func Test_mergeAcceptsADeclaredAttributeCarryingNoBehaviour(t *testing.T) {
+	surface := derived(t)
+
+	declared := false
+	for _, attribute := range surface.Attributes {
+		if attribute == "source" {
+			declared = true
+		}
+	}
+	if !declared {
+		t.Fatalf("the fixture no longer declares source, so this proves nothing: %v",
+			surface.Attributes)
+	}
+	for _, behaviour := range surface.Behaviours {
+		if behaviour.Path == "source" {
+			t.Fatalf("source now carries behaviour (%s), so it is no longer the case "+
+				"this test was written for", behaviour.Kind)
+		}
+	}
+
+	path := writePolicy(t, mergePolicy)
+	report, err := MergeIntoPolicy(path, surface)
+	if err != nil {
+		t.Fatalf("MergeIntoPolicy: %v", err)
+	}
+	for _, line := range strings.Split(report, "\n") {
+		if strings.TrimSpace(line) == "source" {
+			t.Errorf("a declared attribute carrying no behaviour was reported as a "+
+				"suspect rename:\n%s", report)
+		}
+	}
+}
+
 // Test_mergeReportsBehaviourWithNowhereToGo is the other direction: the schema
 // has behaviour and the policy has no attribute for it. Silence there means a
 // validator the released provider applies is dropped and the policy looks

@@ -54,7 +54,12 @@ func MergeIntoPolicy(path string, surface Surface) (string, error) {
 		byPath[behaviour.Path] = append(byPath[behaviour.Path], behaviour)
 	}
 
-	merge := &merger{available: byPath, applied: map[string]bool{}}
+	declared := make(map[string]bool, len(surface.Attributes))
+	for _, attribute := range surface.Attributes {
+		declared[attribute] = true
+	}
+
+	merge := &merger{available: byPath, declared: declared, applied: map[string]bool{}}
 	merge.walkFields(document, "fields", "")
 	merge.walkFields(document, "groupings", "")
 	merge.walkFields(document, "flattenings", "")
@@ -81,6 +86,7 @@ func MergeIntoPolicy(path string, surface Surface) (string, error) {
 
 type merger struct {
 	available map[string][]Behaviour
+	declared  map[string]bool
 	applied   map[string]bool
 	written   []string
 	kept      []string
@@ -126,8 +132,11 @@ func (m *merger) apply(field map[string]any, path string) {
 	if !ok {
 		// A managed attribute the schema has no behaviour for is ordinary --
 		// most attributes carry none. An attribute the SCHEMA does not have at
-		// all is not, and is the shape a wrong rename takes.
-		if disposition, _ := field["disposition"].(string); disposition == "managed" {
+		// all is not, and is the shape a wrong rename takes. The schema's own
+		// attribute list is what separates them; without it every plain
+		// attribute read as a suspect rename.
+		if disposition, _ := field["disposition"].(string); disposition == "managed" &&
+			!m.declared[path] {
 			m.unmatched = append(m.unmatched, path)
 		}
 		return
