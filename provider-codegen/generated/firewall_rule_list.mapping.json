@@ -1,0 +1,282 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_firewall_rule",
+  "resource": "unifi_firewall_rule",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "action",
+      "terraform_name": "action",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dst_address",
+      "terraform_name": "dst_address",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dst_address_ipv6",
+      "terraform_name": "dst_address_ipv6",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dst_firewallgroup_ids",
+      "terraform_name": "dst_firewallgroup_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dst_networkconf_id",
+      "terraform_name": "dst_networkconf_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dst_networkconf_type",
+      "terraform_name": "dst_networkconf_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dst_port",
+      "terraform_name": "dst_port",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "icmp_typename",
+      "terraform_name": "icmp_typename",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "icmpv6_typename",
+      "terraform_name": "icmpv6_typename",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec",
+      "terraform_name": "ipsec",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "logging",
+      "terraform_name": "logging",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "protocol",
+      "terraform_name": "protocol",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "protocol_match_excepted",
+      "terraform_name": "protocol_match_excepted",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "protocol_v6",
+      "terraform_name": "protocol_v6",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "rule_index",
+      "terraform_name": "rule_index",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ruleset",
+      "terraform_name": "ruleset",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "src_address",
+      "terraform_name": "src_address",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "src_address_ipv6",
+      "terraform_name": "src_address_ipv6",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "src_firewallgroup_ids",
+      "terraform_name": "src_firewallgroup_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "src_mac_address",
+      "terraform_name": "src_mac_address",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "src_networkconf_id",
+      "terraform_name": "src_networkconf_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "src_networkconf_type",
+      "terraform_name": "src_networkconf_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "src_port",
+      "terraform_name": "src_port",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "state_established",
+      "terraform_name": "state_established",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "state_invalid",
+      "terraform_name": "state_invalid",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "state_new",
+      "terraform_name": "state_new",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "state_related",
+      "terraform_name": "state_related",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.name",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.value",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    }
+  ]
+}

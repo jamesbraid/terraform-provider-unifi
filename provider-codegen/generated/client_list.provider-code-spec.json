@@ -1,0 +1,55 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "listresources": [
+    {
+      "name": "client",
+      "schema": {
+        "attributes": [
+          {
+            "name": "group",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "Filter clients by network members group name."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The name of the site to list clients from."
+            }
+          }
+        ],
+        "blocks": [
+          {
+            "list_nested": {
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "name",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "The name of the filter to apply. Supported values are: `site`, `network_id`, `network_name`, `group`, `wired`, `blocked`, `oui`."
+                    }
+                  },
+                  {
+                    "name": "value",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "The value to filter by."
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "filter"
+          }
+        ],
+        "markdown_description": "List clients in a site, optionally filtered by network, group, connection type, or vendor."
+      }
+    }
+  ]
+}

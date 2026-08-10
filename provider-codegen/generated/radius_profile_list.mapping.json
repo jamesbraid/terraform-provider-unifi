@@ -1,0 +1,191 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_radius_profile",
+  "resource": "unifi_radius_profile",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "accounting_enabled",
+      "terraform_name": "accounting_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "acct_servers",
+      "terraform_name": "acct_servers",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "auth_servers",
+      "terraform_name": "auth_servers",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "interim_update_enabled",
+      "terraform_name": "interim_update_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "interim_update_interval",
+      "terraform_name": "interim_update_interval",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "tls_enabled",
+      "terraform_name": "tls_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "use_usg_acct_server",
+      "terraform_name": "use_usg_acct_server",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "use_usg_auth_server",
+      "terraform_name": "use_usg_auth_server",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vlan_enabled",
+      "terraform_name": "vlan_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vlan_wlan_mode",
+      "terraform_name": "vlan_wlan_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_ca_crts",
+      "terraform_name": "x_ca_crts",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_client_crt",
+      "terraform_name": "x_client_crt",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_client_crt_filename",
+      "terraform_name": "x_client_crt_filename",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_client_private_key",
+      "terraform_name": "x_client_private_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_client_private_key_filename",
+      "terraform_name": "x_client_private_key_filename",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_client_private_key_password",
+      "terraform_name": "x_client_private_key_password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.name",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.value",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    }
+  ]
+}

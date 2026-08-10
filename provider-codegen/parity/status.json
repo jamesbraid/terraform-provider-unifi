@@ -230,22 +230,26 @@
     {
       "kind": "list_resource",
       "name": "unifi_ap_group",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_client",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_client_qos_rate",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_device",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
@@ -255,22 +259,26 @@
     {
       "kind": "list_resource",
       "name": "unifi_dynamic_dns",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_firewall_group",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_firewall_policy",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_firewall_rule",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
@@ -281,77 +289,92 @@
     {
       "kind": "list_resource",
       "name": "unifi_network",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_port_forward",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_port_profile",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_power_supervisor",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_radius_profile",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_radius_user",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_site",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_site_to_site_vpn",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_static_route",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_traffic_route",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_vpn_client",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_vpn_server",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_wan",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_wireguard_peer",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
       "kind": "list_resource",
       "name": "unifi_wlan",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     }
   ]
 }

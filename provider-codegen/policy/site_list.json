@@ -1,0 +1,57 @@
+{
+  "baseline_digests": {
+    "list_resource": "cb84065eaf0c4c916e6957daefeb738bad58466662c7a770b9e03c5cdfee9d3d"
+  },
+  "description": "List sites in the UniFi controller.",
+  "fields": [
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "terraform_name": "_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "desc",
+      "terraform_name": "desc"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "name",
+      "terraform_name": "name"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "site",
+  "groupings": [
+    {
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `name`, `description`."
+          },
+          "disposition": "managed",
+          "invented": "The filter KEY: it holds the name of the field to select on, not that field's value. Nothing on the wire carries it. The listed resource has a field of the same name, and this member is still not bound to it -- the key names the field, the sibling value is what gets compared against it.",
+          "terraform_name": "name",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          },
+          "disposition": "managed",
+          "invented": "The filter VALUE: what the key's field is compared against. A term the practitioner writes, carried by no wire field.",
+          "terraform_name": "value",
+          "terraform_type": "string"
+        }
+      ],
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block"
+    }
+  ],
+  "provider_owned": [],
+  "resource": "unifi_site",
+  "source_specification_sha256": "182e17fe96d0cbdeaf16ee5ad39844ad89d746dee867919f5a1e40070e90a293",
+  "surface_kind": "list_resource"
+}

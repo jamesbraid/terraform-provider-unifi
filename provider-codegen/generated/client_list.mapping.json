@@ -1,0 +1,211 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_client",
+  "resource": "unifi_client",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "blocked",
+      "terraform_name": "blocked",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "display_name",
+      "terraform_name": "display_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "fixed_ap_enabled",
+      "terraform_name": "fixed_ap_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "fixed_ap_mac",
+      "terraform_name": "fixed_ap_mac",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "fixed_ip",
+      "terraform_name": "fixed_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "hostname",
+      "terraform_name": "hostname",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "last_ip",
+      "terraform_name": "last_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "last_seen",
+      "terraform_name": "last_seen",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "local_dns_record",
+      "terraform_name": "local_dns_record",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "local_dns_record_enabled",
+      "terraform_name": "local_dns_record_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mac",
+      "terraform_name": "mac",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "network_id",
+      "terraform_name": "network_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "network_members_group_ids",
+      "terraform_name": "network_members_group_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "note",
+      "terraform_name": "note",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "use_fixedip",
+      "terraform_name": "use_fixedip",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "usergroup_id",
+      "terraform_name": "usergroup_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "virtual_network_override_enabled",
+      "terraform_name": "virtual_network_override_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "virtual_network_override_id",
+      "terraform_name": "virtual_network_override_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.name",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.value",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "group",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    }
+  ]
+}

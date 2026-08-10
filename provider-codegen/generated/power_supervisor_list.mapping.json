@@ -1,0 +1,79 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_power_supervisor",
+  "resource": "unifi_power_supervisor",
+  "fields": [
+    {
+      "structural_name": "client_mac",
+      "terraform_name": "client_mac",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "consecutive_failures",
+      "terraform_name": "consecutive_failures",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "power_sources",
+      "terraform_name": "power_sources",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "settings",
+      "terraform_name": "settings",
+      "structural_type": "object",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.name",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.value",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    }
+  ]
+}
