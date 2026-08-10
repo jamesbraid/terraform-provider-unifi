@@ -339,6 +339,10 @@ func Compile(input CompileInput) (Result, error) {
 		specification.Resources = []codeResource{{Name: generatorName, Schema: schema}}
 	case catalogparity.DataSource:
 		specification.DataSources = []codeDataSource{{Name: generatorName, Schema: schema}}
+	case catalogparity.ListResource:
+		specification.ListResources = []codeListResource{{Name: generatorName, Schema: schema}}
+	case catalogparity.Action:
+		specification.Actions = []codeAction{{Name: generatorName, Schema: schema}}
 	default:
 		return Result{}, fmt.Errorf(
 			"no code specification member for surface kind %q: emitting it would generate no code",
@@ -717,11 +721,18 @@ func buildGroupingAttribute(
 	return codeAttribute{Name: grouping.TerraformName, Type: grouping.TerraformType, Definition: definition}, nil
 }
 
-// emittableSurfaceKind reports whether codeSpecification has a member the
-// generator reads for this kind. List resources and actions do not yet, and
-// must fail rather than be emitted under a member that generates nothing.
+// emittableSurfaceKind reports whether codeSpecification has a member for this
+// kind. All four have one now: resources and datasources are HashiCorp's,
+// listresources and actions are ours. A kind with no member must fail rather
+// than be emitted under whichever member happens to exist.
 func emittableSurfaceKind(kind catalogparity.SurfaceKind) bool {
-	return kind == catalogparity.ManagedResource || kind == catalogparity.DataSource
+	switch kind {
+	case catalogparity.ManagedResource, catalogparity.DataSource,
+		catalogparity.ListResource, catalogparity.Action:
+		return true
+	default:
+		return false
+	}
 }
 
 func surfaceBaselineKey(key catalogparity.SurfaceKey) string {
@@ -1485,9 +1496,21 @@ func validateBaseline(expected baselineDigestSet, actual map[string]string, key 
 	if primaryKey == "" {
 		return fmt.Errorf("no baseline schema key for surface kind %q", key.Kind)
 	}
-	primary := expected.Resource
-	if key.Kind == catalogparity.DataSource {
+	// Which member carries the primary digest depends on the kind. list_resource
+	// is a companion when a managed resource declares it and the primary when the
+	// surface IS a list resource — the same key means different things depending
+	// on what is being compiled, so it is selected explicitly rather than
+	// defaulted to Resource.
+	var primary string
+	switch key.Kind {
+	case catalogparity.DataSource:
 		primary = expected.DataSource
+	case catalogparity.ListResource:
+		primary = expected.ListResource
+	case catalogparity.Action:
+		primary = expected.Action
+	default:
+		primary = expected.Resource
 	}
 	if primary == "" || actual[primaryKey] != primary {
 		return fmt.Errorf("baseline %s digest mismatch for %s", key.Kind, key.Name)
