@@ -277,7 +277,12 @@ type codeDataSource struct {
 }
 
 type codeSchema struct {
-	Attributes          []codeAttribute `json:"attributes"`
+	Attributes []codeAttribute `json:"attributes"`
+	// Blocks are a separate member of the specification, not a kind of
+	// attribute. Terraform treats the two differently — configuration written
+	// for one does not parse as the other — so a surface that carries blocks
+	// must emit them here or lose them entirely.
+	Blocks              []codeAttribute `json:"blocks,omitempty"`
 	MarkdownDescription string          `json:"markdown_description,omitempty"`
 }
 
