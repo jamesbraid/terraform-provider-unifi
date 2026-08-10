@@ -8,9 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/models"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_info"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -84,14 +83,8 @@ func (d *clientInfoDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	attributes := models.ClientInfoDataSourceSchema()
-	attributes["timeouts"] = timeouts.Attributes(ctx)
-
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Retrieves information about a specific client by MAC address.",
-
-		Attributes: attributes,
-	}
+	resp.Schema = datasource_client_info.ClientInfoDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *clientInfoDataSource) Configure(

@@ -1,0 +1,415 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "4236d72d4a65af052de0100492d37ee96fa7e6b2c19897998815349d8a659e62"
+  },
+  "resource": {
+    "name": "unifi_client_info",
+    "fields": [
+      {
+        "name": "anomalies",
+        "type": "int64"
+      },
+      {
+        "name": "ap_mac",
+        "type": "string"
+      },
+      {
+        "name": "assoc_time",
+        "type": "int64"
+      },
+      {
+        "name": "authorized",
+        "type": "bool"
+      },
+      {
+        "name": "blocked",
+        "type": "bool"
+      },
+      {
+        "name": "bssid",
+        "type": "string"
+      },
+      {
+        "name": "ccq",
+        "type": "int64"
+      },
+      {
+        "name": "channel",
+        "type": "int64"
+      },
+      {
+        "name": "channel_width",
+        "type": "string"
+      },
+      {
+        "name": "detailed_states",
+        "type": "object",
+        "fields": [
+          {
+            "name": "uplink_near_power_limit",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "dhcpend_time",
+        "type": "int64"
+      },
+      {
+        "name": "display_name",
+        "type": "string"
+      },
+      {
+        "name": "essid",
+        "type": "string"
+      },
+      {
+        "name": "fingerprint",
+        "type": "object",
+        "fields": [
+          {
+            "name": "computed_dev_id",
+            "type": "int64"
+          },
+          {
+            "name": "computed_engine",
+            "type": "int64"
+          },
+          {
+            "name": "confidence",
+            "type": "int64"
+          },
+          {
+            "name": "dev_cat",
+            "type": "int64"
+          },
+          {
+            "name": "dev_family",
+            "type": "int64"
+          },
+          {
+            "name": "dev_id",
+            "type": "int64"
+          },
+          {
+            "name": "dev_id_override",
+            "type": "int64"
+          },
+          {
+            "name": "dev_vendor",
+            "type": "int64"
+          },
+          {
+            "name": "has_override",
+            "type": "bool"
+          },
+          {
+            "name": "os_name",
+            "type": "int64"
+          }
+        ]
+      },
+      {
+        "name": "first_seen",
+        "type": "int64"
+      },
+      {
+        "name": "fixed_ap_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "fixed_ip",
+        "type": "string"
+      },
+      {
+        "name": "gw_mac",
+        "type": "string"
+      },
+      {
+        "name": "hostname",
+        "type": "string"
+      },
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "idletime",
+        "type": "int64"
+      },
+      {
+        "name": "ip",
+        "type": "string"
+      },
+      {
+        "name": "ipv4_lease_expiration_timestamp_seconds",
+        "type": "int64"
+      },
+      {
+        "name": "ipv6_address",
+        "type": "array<string>"
+      },
+      {
+        "name": "is_allowed_in_visual_programming",
+        "type": "bool"
+      },
+      {
+        "name": "is_guest",
+        "type": "bool"
+      },
+      {
+        "name": "is_mlo",
+        "type": "bool"
+      },
+      {
+        "name": "is_wired",
+        "type": "bool"
+      },
+      {
+        "name": "last_connection_network_id",
+        "type": "string"
+      },
+      {
+        "name": "last_connection_network_name",
+        "type": "string"
+      },
+      {
+        "name": "last_ip",
+        "type": "string"
+      },
+      {
+        "name": "last_ipv6",
+        "type": "array<string>"
+      },
+      {
+        "name": "last_radio",
+        "type": "string"
+      },
+      {
+        "name": "last_seen",
+        "type": "int64"
+      },
+      {
+        "name": "last_uplink_mac",
+        "type": "string"
+      },
+      {
+        "name": "last_uplink_name",
+        "type": "string"
+      },
+      {
+        "name": "last_uplink_remote_port",
+        "type": "int64"
+      },
+      {
+        "name": "latest_assoc_time",
+        "type": "int64"
+      },
+      {
+        "name": "local_dns_record",
+        "type": "string"
+      },
+      {
+        "name": "local_dns_record_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mac",
+        "type": "string"
+      },
+      {
+        "name": "mimo",
+        "type": "string"
+      },
+      {
+        "name": "model_name",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "network_id",
+        "type": "string"
+      },
+      {
+        "name": "network_name",
+        "type": "string"
+      },
+      {
+        "name": "noise",
+        "type": "int64"
+      },
+      {
+        "name": "noted",
+        "type": "bool"
+      },
+      {
+        "name": "oui",
+        "type": "string"
+      },
+      {
+        "name": "powersave_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "radio",
+        "type": "string"
+      },
+      {
+        "name": "radio_name",
+        "type": "string"
+      },
+      {
+        "name": "radio_proto",
+        "type": "string"
+      },
+      {
+        "name": "rate_imbalance",
+        "type": "int64"
+      },
+      {
+        "name": "rssi",
+        "type": "int64"
+      },
+      {
+        "name": "rx_bytes",
+        "type": "int64"
+      },
+      {
+        "name": "rx_bytes-r",
+        "type": "int64"
+      },
+      {
+        "name": "rx_packets",
+        "type": "int64"
+      },
+      {
+        "name": "rx_rate",
+        "type": "int64"
+      },
+      {
+        "name": "signal",
+        "type": "int64"
+      },
+      {
+        "name": "site_id",
+        "type": "string"
+      },
+      {
+        "name": "status",
+        "type": "string"
+      },
+      {
+        "name": "sw_port",
+        "type": "int64"
+      },
+      {
+        "name": "tags",
+        "type": "array<string>"
+      },
+      {
+        "name": "tx_bytes",
+        "type": "int64"
+      },
+      {
+        "name": "tx_bytes-r",
+        "type": "int64"
+      },
+      {
+        "name": "tx_mcs_index",
+        "type": "int64"
+      },
+      {
+        "name": "tx_packets",
+        "type": "int64"
+      },
+      {
+        "name": "tx_rate",
+        "type": "int64"
+      },
+      {
+        "name": "type",
+        "type": "string"
+      },
+      {
+        "name": "unifi_device",
+        "type": "bool"
+      },
+      {
+        "name": "unifi_device_info",
+        "type": "object",
+        "fields": [
+          {
+            "name": "icon_filename",
+            "type": "string"
+          },
+          {
+            "name": "icon_resolutions",
+            "type": "array<array<int64>>"
+          },
+          {
+            "name": "view_in_application",
+            "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "uplink_mac",
+        "type": "string"
+      },
+      {
+        "name": "uptime",
+        "type": "int64"
+      },
+      {
+        "name": "use_fixedip",
+        "type": "bool"
+      },
+      {
+        "name": "user_id",
+        "type": "string"
+      },
+      {
+        "name": "usergroup_id",
+        "type": "string"
+      },
+      {
+        "name": "virtual_network_override_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "virtual_network_override_id",
+        "type": "string"
+      },
+      {
+        "name": "wifi_experience_average",
+        "type": "int64"
+      },
+      {
+        "name": "wifi_experience_score",
+        "type": "int64"
+      },
+      {
+        "name": "wifi_tx_attempts",
+        "type": "int64"
+      },
+      {
+        "name": "wifi_tx_retries_percentage",
+        "type": "number"
+      },
+      {
+        "name": "wired_rate_mbps",
+        "type": "int64"
+      },
+      {
+        "name": "wlanconf_id",
+        "type": "string"
+      }
+    ]
+  }
+}

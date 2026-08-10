@@ -28,7 +28,8 @@
     {
       "kind": "data_source",
       "name": "unifi_client_info",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy with no renames at all — the widest surface in the estate to manage that. 42 attributes bind on the SDK's own json names and 43 fields are omitted. One type differs: uptime is int64 seconds in the SDK and a GoDuration string here, declared by hand because the deriver cannot read a data source. It was found by the data source baseline projection rather than by reading, which is the second time that referee has caught a duration this session. A read-only view of ClientInfo, so there is no conversion back to the SDK and every binding the rename verifier checks comes from the read direction. Admission waits on a campaign run."
     },
     {
       "kind": "data_source",
