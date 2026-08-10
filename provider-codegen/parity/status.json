@@ -169,7 +169,8 @@
     {
       "kind": "data_source",
       "name": "unifi_ap_group",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "The estate's first generated data source. Schema compiles from the bootstrap and policy: two attributes bind by name, id renames from _id, and site and timeouts are provider-owned. Seven of the nine SDK fields are omitted. device_macs is a plain list of strings here, not the hwtypes.MACAddress the managed resource uses, which is a real difference between the two surfaces rather than something lost in the move. The behaviour inventory covers data sources as of the preceding commit; the deriver does not read them, so this policy's behaviour was transcribed by hand and the inventory is what checks it. Admission waits on a campaign run."
     },
     {
       "kind": "data_source",
