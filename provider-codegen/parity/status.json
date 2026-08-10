@@ -53,7 +53,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_ap_group",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. id renames to the SDK's _id. site is provider-owned, not the SDK's site_id: the site name reaches the model as a function parameter and site_id is never read or written here, so matching on the name would have bound the wrong field. device_macs keeps its hwtypes.MACAddress element type, which neither referee can see, and its plan modifier moved to unifi/planmodifiers to be reachable from generated code. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",

@@ -7,20 +7,15 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_ap_group"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
@@ -105,56 +100,14 @@ func (r *apGroupResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		Description: "`unifi_ap_group` manages a group of access points, which can be referenced from wireless networks (`unifi_wlan`) to control where an SSID is broadcast. The controller's built-in default group (\"All APs\") is read-only; updating or deleting it through this resource fails with a controller error.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description: "The ID of the AP group.",
-				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				Description: "The name of the site to associate the AP group with.",
-				Computed:    true,
-				Optional:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				Description: "The name of the AP group.",
-				Required:    true,
-				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
-				},
-			},
-			"device_macs": schema.SetAttribute{
-				Description: "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members. Omit it to leave the membership as the controller has it.",
-				// Optional + Computed rather than Required so the plan modifier
-				// below may keep the prior value: Terraform rejects a planned
-				// value that differs from config for a Required attribute, and
-				// keeping the prior spelling of a MAC is exactly that.
-				Optional: true,
-				Computed: true,
-				// hwtypes.MACAddressType gives each element semantic equality,
-				// which settles the value the controller reports against the one
-				// in state. It does not reach the set itself: see the modifier.
-				ElementType: hwtypes.MACAddressType{},
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.UseStateForUnknown(),
-					planmodifiers.KeepEquivalentMACs{},
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_ap_group.ApGroupResourceSchema(ctx)
+	// The released schema describes this surface in plain text, which a
+	// generated schema cannot express; see plainDescriptions.
+	plainDescriptions(&resp.Schema)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *apGroupResource) Configure(

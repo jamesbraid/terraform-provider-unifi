@@ -24,3 +24,7 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-site.json -policy policy/site.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix site -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/site.provider-code-spec.json --output ../internal/generated/resource_site --package resource_site
 //go:generate gofmt -w ../internal/generated/resource_site/site_resource_gen.go
+//go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct APGroup -resource unifi_ap_group -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-ap-group.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-ap-group.json -policy policy/ap_group.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix ap_group -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/ap_group.provider-code-spec.json --output ../internal/generated/resource_ap_group --package resource_ap_group
+//go:generate gofmt -w ../internal/generated/resource_ap_group/ap_group_resource_gen.go
