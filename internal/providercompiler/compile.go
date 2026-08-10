@@ -96,8 +96,16 @@ func Compile(input CompileInput) (Result, error) {
 		if err := validateDisposition(field.Disposition, field.StructuralName); err != nil {
 			return Result{}, err
 		}
-		if err := claimTerraformName(terraformNames, field.TerraformName, field.StructuralName); err != nil {
-			return Result{}, err
+		// An omitted field occupies no Terraform name, because it is never
+		// emitted. Claiming one made a name collide with an attribute that
+		// does exist: wlan omits the SDK's legacy `schedule` and presents a
+		// `schedule` block built from schedule_with_duration, and the omission
+		// took the name the block needs. Naming the omitted field something
+		// else would be inventing a fact to satisfy a check.
+		if field.Disposition != "omitted" {
+			if err := claimTerraformName(terraformNames, field.TerraformName, field.StructuralName); err != nil {
+				return Result{}, err
+			}
 		}
 		policyFields[field.StructuralName] = field
 	}
