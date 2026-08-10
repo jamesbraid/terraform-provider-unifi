@@ -506,33 +506,48 @@ func groupedStructuralFields(
 			if member.Invented != "" {
 				// An invented member corresponds to nothing observed, so it
 				// must not also claim a field, and it must say why it exists.
-				if member.StructuralName != "" {
+				// The claimed field is NAMED, not merely reported as present:
+				// the reader's next question is always which one, and an
+				// existing test holds this message to that standard.
+				if claimed := member.StructuralName; claimed != "" {
 					return nil, fmt.Errorf(
 						"grouping %q member %q is declared invented and also names structural field %q",
-						grouping.TerraformName, member.TerraformName, member.StructuralName,
+						grouping.TerraformName, member.TerraformName, claimed,
+					)
+				}
+				if len(member.StructuralNames) > 0 {
+					return nil, fmt.Errorf(
+						"grouping %q member %q is declared invented and also names structural field(s) %s",
+						grouping.TerraformName, member.TerraformName,
+						strings.Join(member.StructuralNames, ", "),
 					)
 				}
 				continue
 			}
-			if member.StructuralName == "" {
-				return nil, fmt.Errorf(
-					"grouping %q member %q names no structural field and is not declared invented",
-					grouping.TerraformName, member.TerraformName,
-				)
+
+			claims, err := memberStructuralNames(grouping.TerraformName, member)
+			if err != nil {
+				return nil, err
 			}
-			if owner, taken := consumed[member.StructuralName]; taken {
-				return nil, fmt.Errorf(
-					"structural field %q is consumed by groupings %q and %q",
-					member.StructuralName, owner, grouping.TerraformName,
-				)
+			// Every claimed field goes through the SAME two checks a single
+			// claim always did. Consuming several fields widens what a member
+			// may claim; it must not widen what may go unclaimed, so the
+			// accounting stays per name rather than becoming per member.
+			for _, name := range claims {
+				if owner, taken := consumed[name]; taken {
+					return nil, fmt.Errorf(
+						"structural field %q is consumed by groupings %q and %q",
+						name, owner, grouping.TerraformName,
+					)
+				}
+				if _, top := policyFields[name]; top {
+					return nil, fmt.Errorf(
+						"structural field %q is consumed by grouping %q and also classified at the top level",
+						name, grouping.TerraformName,
+					)
+				}
+				consumed[name] = grouping.TerraformName
 			}
-			if _, top := policyFields[member.StructuralName]; top {
-				return nil, fmt.Errorf(
-					"structural field %q is consumed by grouping %q and also classified at the top level",
-					member.StructuralName, grouping.TerraformName,
-				)
-			}
-			consumed[member.StructuralName] = grouping.TerraformName
 		}
 	}
 	return consumed, nil
@@ -1581,4 +1596,76 @@ func marshalCanonical(value any) ([]byte, error) {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
+}
+
+// memberStructuralNames returns the observed fields one grouping member
+// consumes, refusing every way a policy could be ambiguous about it.
+//
+// A member names exactly one field or several, never both and never neither.
+// Several requires a named split function, because the compiler cannot see how
+// a provider divides one value across two fields and a rule inferred from field
+// names is the mistake this pipeline has already shipped twice -- static_route's
+// `type` matched the record discriminator rather than the route kind, and wlan's
+// `schedule` matched a legacy field of a plausible type. Both produced a
+// byte-identical schema and the wrong request.
+//
+// The split is a NAME, not an expression: something a reader can open and check
+// against the conversion code. A member declaring several fields with no split
+// is refused rather than defaulted, because there is no division that is
+// obviously right, and picking one silently is how a wrong binding survives.
+func memberStructuralNames(grouping string, member groupedMember) ([]string, error) {
+	single := member.StructuralName != ""
+	several := len(member.StructuralNames) > 0
+
+	switch {
+	case single && several:
+		return nil, fmt.Errorf(
+			"grouping %q member %q declares both structural_name and structural_names; "+
+				"a member consumes one field or several, and saying both leaves which "+
+				"fields it takes undecided",
+			grouping, member.TerraformName)
+	case !single && !several:
+		return nil, fmt.Errorf(
+			"grouping %q member %q names no structural field and is not declared invented",
+			grouping, member.TerraformName)
+	case single:
+		if member.Split != "" {
+			return nil, fmt.Errorf(
+				"grouping %q member %q declares split %q while consuming a single field; "+
+					"there is nothing to split",
+				grouping, member.TerraformName, member.Split)
+		}
+		return []string{member.StructuralName}, nil
+	}
+
+	if member.Split == "" {
+		return nil, fmt.Errorf(
+			"grouping %q member %q consumes %d fields (%s) and declares no split function; "+
+				"how one value divides across them is a decision the compiler cannot see, "+
+				"and inferring it from names is what bound static_route's type and wlan's "+
+				"schedule to the wrong field",
+			grouping, member.TerraformName, len(member.StructuralNames),
+			strings.Join(member.StructuralNames, ", "))
+	}
+	if len(member.StructuralNames) < 2 {
+		return nil, fmt.Errorf(
+			"grouping %q member %q uses structural_names for a single field (%s); "+
+				"use structural_name, so a reader can tell the two cases apart",
+			grouping, member.TerraformName, member.StructuralNames[0])
+	}
+	seen := map[string]bool{}
+	for _, name := range member.StructuralNames {
+		if name == "" {
+			return nil, fmt.Errorf("grouping %q member %q lists an empty structural name",
+				grouping, member.TerraformName)
+		}
+		if seen[name] {
+			return nil, fmt.Errorf(
+				"grouping %q member %q lists structural field %q twice; exactly-once "+
+					"accounting would then report it consumed by one member and count it two",
+				grouping, member.TerraformName, name)
+		}
+		seen[name] = true
+	}
+	return append([]string(nil), member.StructuralNames...), nil
 }

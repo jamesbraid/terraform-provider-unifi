@@ -220,6 +220,26 @@ type groupedMember struct {
 	// so the ledger cannot report them as derived, and the reason is required
 	// so the claim is legible rather than a flag someone sets to pass a gate.
 	Invented string `json:"invented,omitempty"`
+	// StructuralNames names SEVERAL observed fields this one member consumes,
+	// where StructuralName names exactly one. traffic_route's destination.ip is
+	// the case: the released attribute is one list, and the SDK carries
+	// ip_addresses and ip_ranges.
+	//
+	// The two are mutually exclusive, so a policy cannot half-say which fields a
+	// member takes. Exactly-once accounting is unchanged and deliberately so:
+	// every name here is consumed, so a field claimed by two members is still a
+	// conflict and a field claimed by none is still unclassified. Widening what
+	// a member may claim must not widen what may go unclaimed.
+	StructuralNames []string `json:"structural_names,omitempty"`
+	// Split names the function that divides the attribute's value across those
+	// fields, and is required whenever StructuralNames is used.
+	//
+	// It is a NAME, never an inference. The compiler cannot see how a provider
+	// splits a value, and a rule guessed from field names is the mistake this
+	// pipeline has already made twice -- static_route's `type` and wlan's
+	// `schedule` both matched a plausible name and bound the wrong field. A
+	// named function is a claim someone wrote down and that a reader can check.
+	Split string `json:"split,omitempty"`
 }
 
 // flatteningPolicy declares an observed nested struct whose members the
