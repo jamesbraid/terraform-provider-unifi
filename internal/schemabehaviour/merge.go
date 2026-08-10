@@ -59,15 +59,26 @@ func MergeIntoPolicy(path string, surface Surface) (string, error) {
 		declared[attribute] = true
 	}
 
-	merge := &merger{available: byPath, declared: declared, applied: map[string]bool{}}
+	merge := &merger{
+		available:     byPath,
+		declared:      declared,
+		applied:       map[string]bool{},
+		providerOwned: map[string]bool{},
+	}
 	merge.walkFields(document, "fields", "")
 	merge.walkFields(document, "groupings", "")
 	merge.walkFields(document, "flattenings", "")
+	merge.walkProviderOwned(document)
 
 	for path := range byPath {
-		if !merge.applied[path] {
-			merge.unplaced = append(merge.unplaced, path)
+		if merge.applied[path] {
+			continue
 		}
+		if root, _, nested := strings.Cut(path, "."); nested && merge.providerOwned[root] {
+			merge.providerOwnedNested = append(merge.providerOwnedNested, path)
+			continue
+		}
+		merge.unplaced = append(merge.unplaced, path)
 	}
 
 	if len(merge.written) > 0 {
@@ -88,10 +99,48 @@ type merger struct {
 	available map[string][]Behaviour
 	declared  map[string]bool
 	applied   map[string]bool
-	written   []string
-	kept      []string
-	unmatched []string
-	unplaced  []string
+	// providerOwned records which top-level names the policy owns rather than
+	// derives, so behaviour under one can be told apart from behaviour with no
+	// home at all. The two need different answers and read identically without
+	// this.
+	providerOwned       map[string]bool
+	written             []string
+	kept                []string
+	unmatched           []string
+	unplaced            []string
+	providerOwnedNested []string
+}
+
+// walkProviderOwned fills the provider-owned half of a policy.
+//
+// These attributes have no structural field to derive from -- site is a request
+// parameter, timeouts is grafted, and bgp's asn, router_id and peers are
+// configuration the controller never stores -- but they are still attributes of
+// the released schema, and they still carry validators, defaults and plan
+// modifiers. Reading only the derived half left every one of those to be typed
+// out by hand, which is the thing deriving the policy exists to stop.
+//
+// It reports them as unplaced too, under a message saying the policy omitted
+// them, which was false: the policy had them in the other half. Following that
+// message meant moving a provider-owned attribute into fields, where it has no
+// structural_name to give.
+func (m *merger) walkProviderOwned(node map[string]any) {
+	entries, ok := node["provider_owned"].([]any)
+	if !ok {
+		return
+	}
+	for _, entry := range entries {
+		seam, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := seam["terraform_name"].(string)
+		if name == "" {
+			continue
+		}
+		m.providerOwned[name] = true
+		m.apply(seam, name)
+	}
 }
 
 // walkFields descends the policy's field lists. Groupings, flattenings and
@@ -252,6 +301,7 @@ func (m *merger) report(surface Surface, path string) string {
 	sort.Strings(m.kept)
 	sort.Strings(m.unmatched)
 	sort.Strings(m.unplaced)
+	sort.Strings(m.providerOwnedNested)
 
 	var out strings.Builder
 	fmt.Fprintf(&out, "%s: %d behaviour(s) derived from %s\n",
@@ -260,6 +310,16 @@ func (m *merger) report(surface Surface, path string) string {
 	section(&out, "already present, left alone", m.kept)
 	section(&out, "POLICY ATTRIBUTES THE SCHEMA DOES NOT HAVE — check the rename", m.unmatched)
 	section(&out, "SCHEMA BEHAVIOUR WITH NOWHERE TO GO — the policy omits these attributes", m.unplaced)
+	// A provider-owned attribute's members are written in specification form --
+	// {"name": x, "<type>": {...}} -- not in the policy's own field form, so the
+	// walk above cannot reach them. Saying which attribute owns them and why
+	// they are out of reach is the whole answer; a second walker over a second
+	// shape, for the one attribute in the estate that has this, would be more
+	// mechanism than the problem has.
+	section(&out,
+		"NESTED INSIDE A PROVIDER-OWNED ATTRIBUTE — transcribe these by hand, "+
+			"their members are written in specification form and are not walked",
+		m.providerOwnedNested)
 	if len(surface.Opaque) > 0 {
 		var lines []string
 		for _, unread := range surface.Opaque {
