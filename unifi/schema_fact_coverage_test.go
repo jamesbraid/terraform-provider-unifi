@@ -67,12 +67,20 @@ var specFactCoverage = map[string]factCoverage{
 	"blocks": {Because: "Blocks are not projected. Three surfaces carry block_types " +
 		"and TestBuiltSchemaMatchesReleasedBaseline names them on every run rather than " +
 		"passing over them silently."},
-	"custom_type": {Because: "Names the Go type the generator emits, which the protocol " +
-		"never sees, so no schema comparison can reach it. It is not inert: a custom object " +
-		"type overrides an attribute map, which is what broke firewall_policy's v0 state " +
-		"upgrader. Guarded per surface where it matters — see " +
-		"TestFirewallPolicyV0SchemaDescribesPortAsAnInteger — because what a custom type " +
-		"means depends on what the surrounding code does with it."},
+	// Reclassified when power_supervisor was migrated. It was recorded as
+	// unchecked and guarded per surface, on the reasoning that a custom type
+	// produces no schema fact. That is true and was the wrong conclusion:
+	// timetypes.GoDurationType and hwtypes.MACAddressType parse and validate
+	// their values while staying strings on the wire, so dropping one stops a
+	// value being checked and no schema comparison can see it. Sixty-eight
+	// were unguarded. The behaviour inventory records them by type.
+	//
+	// The per-surface guard still matters for what a custom type does to the
+	// code around it -- a custom object type overrides an attribute map, which
+	// is what broke firewall_policy's v0 state upgrader, and no inventory of
+	// type names would have caught that. See
+	// TestFirewallPolicyV0SchemaDescribesPortAsAnInteger.
+	"custom_type": {By: "Test_schemaBehaviourInventory"},
 	"associated_external_type": {Because: "Generates conversion helpers between the framework " +
 		"model and an SDK struct. It produces no schema fact and no runtime behaviour; a " +
 		"mistake here fails to compile."},
