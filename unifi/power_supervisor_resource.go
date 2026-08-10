@@ -17,18 +17,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_power_supervisor"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -122,126 +114,14 @@ func (r *powerSupervisorResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		// v1: heartbeat_interval/silence_threshold/power_off_duration changed
-		// from Int64 (seconds) to GoDuration strings. See UpgradeState.
-		Version: 1,
-		MarkdownDescription: "Manages a UniFi **Device Supervisor** (UniFi Network 10.2+): " +
-			"heartbeat monitoring of a device plus automatic power-cycling of its upstream " +
-			"PoE source after a silence threshold. The supervised device is referenced by " +
-			"its MAC; the controller resolves the upstream PoE port automatically.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The controller-assigned ID of the power supervisor.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the supervisor belongs to.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"device_mac": schema.StringAttribute{
-				MarkdownDescription: "MAC address of the supervised device (the controller keys " +
-					"supervisors per device). Changing it replaces the supervisor.",
-				CustomType: hwtypes.MACAddressType{},
-				Required:   true,
-				Validators: []validator.String{
-					validators.MACAddressValidator(),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether supervision is enabled. Defaults to `true`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"heartbeat_interval": schema.StringAttribute{
-				MarkdownDescription: "How often the controller probes the device, as a Go " +
-					"duration string (e.g. `60s`, `1m`). Defaults to `1m0s`.",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Default:    stringdefault.StaticString("1m0s"),
-				Validators: []validator.String{
-					validators.GoDurationMultipleOf(time.Second),
-				},
-			},
-			"silence_threshold": schema.StringAttribute{
-				MarkdownDescription: "How long the device may be silent before the controller " +
-					"power-cycles its upstream PoE source, as a Go duration string (e.g. `15m`). " +
-					"Defaults to `15m0s`.",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Default:    stringdefault.StaticString("15m0s"),
-				Validators: []validator.String{
-					validators.GoDurationMultipleOf(time.Second),
-				},
-			},
-			"power_off_duration": schema.StringAttribute{
-				MarkdownDescription: "How long the upstream PoE source stays off during a " +
-					"power-cycle, as a Go duration string (e.g. `2m`). Defaults to `2m0s`.",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Default:    stringdefault.StaticString("2m0s"),
-				Validators: []validator.String{
-					validators.GoDurationMultipleOf(time.Second),
-				},
-			},
-			"consecutive_failures": schema.Int64Attribute{
-				MarkdownDescription: "Number of consecutive heartbeat failures observed by the " +
-					"controller (read-only).",
-				Computed: true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
-			},
-			"power_sources": schema.ListNestedAttribute{
-				MarkdownDescription: "The upstream power source(s) the controller resolved for the " +
-					"device and will cycle on recovery (read-only).",
-				Computed: true,
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
-				},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"client_psu_index": schema.Int64Attribute{
-							MarkdownDescription: "Index of the supervised device's PSU.",
-							Computed:            true,
-						},
-						"power_source_index": schema.Int64Attribute{
-							MarkdownDescription: "Port/outlet index on the upstream source.",
-							Computed:            true,
-						},
-						"power_source_mac": schema.StringAttribute{
-							MarkdownDescription: "MAC of the upstream source (e.g. the PoE switch).",
-							Computed:            true,
-						},
-						"power_source_type": schema.StringAttribute{
-							MarkdownDescription: "Type of the upstream source (e.g. `poe_port`).",
-							Computed:            true,
-						},
-					},
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_power_supervisor.PowerSupervisorResourceSchema(ctx)
+	// v1: the three settings durations changed from Int64 seconds to
+	// GoDuration strings. See UpgradeState.
+	resp.Schema.Version = 1
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 // UpgradeState migrates v0 state (heartbeat_interval/silence_threshold/
