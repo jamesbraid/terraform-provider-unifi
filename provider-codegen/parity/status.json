@@ -105,7 +105,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_bgp",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, config from frr_bgpd_config and upload_file_name from uploaded_file_name, none of which a name match would have found. Five of the ten SDK fields are omitted: site_id and the four attr_ bookkeeping flags. Four of the nine released attributes are provider-owned rather than derived — site, and asn, router_id and peers, which the controller never stores: modelToBGP renders them into the FRR config string and bgpToModel preserves them from state rather than parsing them back. peers is the estate's only provider-owned nested attribute, so its members are written in specification form and its one validator was transcribed by hand, which the deriver now says rather than reporting it as omitted. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",

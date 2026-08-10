@@ -1,0 +1,19 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_bgp",
+  "resource": "unifi_bgp",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "817a66a4ab764708970b1f8f15e1f051e5433ade63b378be4c0b6199a692b431"
+  },
+  "baseline_digests": {
+    "resource": "549a9fa273acebbc4cfd2d37d97f17ad2094c61fb1548ff404de67f2e2b4d606"
+  },
+  "structural_fields": 10,
+  "generated_attributes": 9,
+  "provider_owned_seams": 5,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

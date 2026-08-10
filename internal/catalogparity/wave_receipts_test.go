@@ -217,7 +217,7 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 11 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 11}) {
 		t.Fatalf("Wave 4 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 4, "policy_complete": 7}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 5, "policy_complete": 6}) {
 		t.Fatalf("Wave 4 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -257,6 +257,11 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		// same edit that migrated unifi_radius_user.
 		case "unifi_account":
 			want = GeneratedShadow
+		// The estate's only surface with a provider-owned nested attribute:
+		// peers is configuration rendered into an opaque FRR config string,
+		// which the controller stores and never gives back.
+		case "unifi_bgp":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -294,8 +299,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      51,
-		GeneratedShadow:     12,
+		PolicyComplete:      50,
+		GeneratedShadow:     13,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
