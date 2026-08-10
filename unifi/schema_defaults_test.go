@@ -30,6 +30,11 @@ const header = `# Optional + Computed attributes that also carry a Default.
 # UseStateForUnknown for anything the controller reports.
 #
 # Regenerate with: UPDATE_GOLDEN=1 go test ./unifi/ -run Test_schemaOptionalComputedDefaults
+#
+# That refuses to drop an entry. A rewrite that would remove one has to say
+# so with UPDATE_GOLDEN_ALLOW_REMOVAL=1 as well, because removing a line here
+# is the direction a regression takes and rewriting the file is what erases
+# the evidence of it.
 `
 
 // Test_schemaOptionalComputedDefaults is a ratchet on a whole class of bug, not
@@ -60,12 +65,8 @@ func Test_schemaOptionalComputedDefaults(t *testing.T) {
 	// UPDATE_GOLDEN=1 rewrites the inventory. Only reach for it after deciding
 	// each new entry is correct — the point of the list is that adding to it is
 	// a conscious act.
-	if os.Getenv("UPDATE_GOLDEN") != "" {
-		body := header + strings.Join(got, "\n") + "\n"
-		if err := os.WriteFile(goldenOptionalComputedDefaults, []byte(body), 0o644); err != nil {
-			t.Fatalf("writing %s: %v", goldenOptionalComputedDefaults, err)
-		}
-		t.Logf("wrote %d entries to %s", len(got), goldenOptionalComputedDefaults)
+	if os.Getenv(updateGoldenEnv) != "" {
+		writeGolden(t, goldenOptionalComputedDefaults, header, got)
 		return
 	}
 

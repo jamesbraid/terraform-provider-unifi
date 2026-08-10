@@ -11,6 +11,11 @@
 # UseStateForUnknown for anything the controller reports.
 #
 # Regenerate with: UPDATE_GOLDEN=1 go test ./unifi/ -run Test_schemaOptionalComputedDefaults
+#
+# That refuses to drop an entry. A rewrite that would remove one has to say
+# so with UPDATE_GOLDEN_ALLOW_REMOVAL=1 as well, because removing a line here
+# is the direction a regression takes and rewriting the file is what erases
+# the evidence of it.
 unifi_account.tunnel_medium_type
 unifi_account.tunnel_type
 unifi_bgp.description
