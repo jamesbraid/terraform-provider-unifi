@@ -68,9 +68,12 @@ func TestWave1ReadSurfaceReceipt(t *testing.T) {
 		// per landing -- and an in-flight state is not a loophole, because the
 		// ledger refuses one that does not declare why the surface rests there.
 		//
-		// There is no per-surface exception left. unifi_dns_record's list surface
-		// was the only one, held at shadow_only; it is now in flight like the
-		// rest and these states cover it without naming it.
+		// There is no per-surface exception left. Two were merged away here:
+		// unifi_dns_record's list surface, held at shadow_only, and
+		// unifi_ap_group's data source, the first wave-1 surface to move at all.
+		// Both are in flight, and the states below accept them without naming
+		// them -- which is the point. An exception list grows once per landing;
+		// a set of admissible states does not.
 		if err := ledger.Require(contract.SurfaceKey,
 			PolicyComplete, GeneratedShadow, AdapterParity); err != nil {
 			t.Fatal(err)

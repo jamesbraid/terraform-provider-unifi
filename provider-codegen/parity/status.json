@@ -3,163 +3,10 @@
   "default_state": "legacy_authoritative",
   "overrides": [
     {
-      "kind": "managed_resource",
-      "name": "unifi_dns_record",
-      "state": "admitted",
-      "receipt_sha256": "dd3b22d7c5379c5c216c50439b09d6ff5e66c3be908076468f183ce5998dab19"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_dynamic_dns",
+      "kind": "action",
+      "name": "unifi_port",
       "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy. Two renames read from the resource conversion code: id from _id, and password from the SDK's x_password, which the policy also marks sensitive so the secret guard stays satisfied. site is provider-owned rather than the SDK's site_id \u2014 dynamicDNSToModel takes the site name as a parameter and site_id is never read or written here, so matching on the name would have bound the wrong field. Seven SDK fields are omitted: the four attr_ bookkeeping flags, site_id, and custom_service and options, none of which the released schema ever exposed. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_firewall_group",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, type from group_type, members from group_members. site is provider-owned rather than the SDK's site_id \u2014 firewallGroupToModel sets it from a parameter, and the update path's SiteID assignment writes the site name into that field rather than reading it. Descriptions are grafted back to plain, the second surface to need that. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_firewall_zone",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the catalog and policy. Nine of the twelve SDK fields are controller bookkeeping the released schema never exposed and the policy omits by name. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_network",
-      "state": "policy_complete"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_port_forward",
-      "state": "shadow_only"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_setting",
-      "state": "policy_complete"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_site",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the catalog and policy. Two renames read from the resource conversion code: the SDK stores the description as desc and the ID as _id. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_wan",
-      "state": "policy_complete"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_ap_group",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy. id renames to the SDK's _id. site is provider-owned, not the SDK's site_id: the site name reaches the model as a function parameter and site_id is never read or written here, so matching on the name would have bound the wrong field. device_macs keeps its hwtypes.MACAddress element type, which neither referee can see, and its plan modifier moved to unifi/planmodifiers to be reachable from generated code. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_client",
-      "state": "policy_complete"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_device",
-      "state": "policy_complete"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_firewall_policy",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the catalog and policy and matches the released schema attribute for attribute, including both nested shapes. Admission waits on a campaign run, which is the only thing that can say whether the generated resource behaves as the hand-written one did."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_port_profile",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy: 42 released attributes over 56 SDK fields, flat, and all but one bind on the SDK's own json name. The Go field names diverge freely -- NATiveNetworkID, Dot1XIDleTimeout, StpPortMode -- but the policy binds on json names and those agree, which was checked field by field rather than assumed from the count. id renames from _id. dot1x_idle_timeout is *int64 seconds in the SDK and a GoDuration string in the schema, so the policy declares terraform_type string and the resource keeps schema version 1 with its RawState upgrader, as radius_profile does. tagged_networkconf_ids is provider-owned and has no go-unifi field at all: the controller expresses tagged VLANs as tagged_vlan_mgmt plus excluded_networkconf_ids, and the provider presents the exact set instead, deriving it in portProfileActualTaggedNetworkIDs. Seventeen SDK fields are omitted. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_vpn_server",
-      "state": "policy_complete"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_wireguard_peer",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy with no omissions: every SDK field is served. id renames to _id, and site is provider-owned \u2014 this SDK struct carries no site_id at all, so the site name only ever arrives as a parameter. allowed_ips keeps its empty-list default, transcribed as a custom default because ListDefault has no static form in the specification. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_wlan",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the catalog and policy: 55 released attributes over 109 SDK fields, ten renames read from the resource conversion code, a mac_filter grouping, a schedule block bound to schedule_with_duration rather than the SDK field of the same name, one invented block member, and 54 named omissions. One of the 54 omissions is DERIVED rather than unused: modelToWLAN sets name_combine_enabled to the constant true. The provider computes it, no configuration reaches it, and it is not a field the schema forgot. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_account",
-      "state": "generated_shadow",
-      "migration": "Served by the generated schema without a policy of its own. deprecatedAccountResource embeds radiusUserResource and calls its Schema, adding only a DeprecationMessage, so migrating unifi_radius_user migrated this surface in the same edit. It has no bootstrap, policy or generated package, and it must not acquire one: a second policy over the same SDK struct would be a second source of truth for one schema. The baseline projection reads it as a registered resource and compares it against the released contract like any other, which is what says the alias still inherits what it did. Admission waits on the same campaign run as unifi_radius_user."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_bgp",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, config from frr_bgpd_config and upload_file_name from uploaded_file_name, none of which a name match would have found. Five of the ten SDK fields are omitted: site_id and the four attr_ bookkeeping flags. Four of the nine released attributes are provider-owned rather than derived \u2014 site, and asn, router_id and peers, which the controller never stores: modelToBGP renders them into the FRR config string and bgpToModel preserves them from state rather than parsing them back. peers is the estate's only provider-owned nested attribute, so its members are written in specification form and its one validator was transcribed by hand, which the deriver now says rather than reporting it as omitted. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_client_qos_rate",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy. The surface fronts the SDK's ClientGroup, not a struct of its own name, so the bootstrap is derived from that type. id renames to _id; site is provider-owned rather than site_id, which this resource never reads or writes. Both rate defaults are int64default.StaticInt64(-1), transcribed by hand because the behaviour deriver stops at the unary minus rather than guessing. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_firewall_rule",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy: 32 released attributes over 37 SDK fields, flat, with no invented shape anywhere. Ten renames read from the conversion code, and every one of them is a spelling the SDK chose and the schema did not: src_network_id and dst_network_id from the networkconf_id pair, their _type companions likewise, src_firewall_group_ids and dst_firewall_group_ids from the unseparated firewallgroup_ids, src_mac from src_mac_address, icmp_v6_typename from icmpv6_typename, ip_sec from ipsec, and id from _id. All 21 remaining attributes bind by name, and each was confirmed against modelToFirewallRule rather than accepted from the scaffold. Six SDK fields are omitted: site_id and the four attr_ flags. src_mac keeps its hwtypes.MACAddress custom type, which neither referee can see. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_power_supervisor",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the catalog and policy, spreading the SDK Settings struct into the three duration attributes the released schema presents at the top level. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_radius_profile",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy, and is the second surface whose released type differs from the SDK's. interim_update_interval is *int64 seconds in the SDK and a GoDuration string in the schema, so the resource keeps schema version 1 and its RawState upgrader, which the kernel re-sets after the generated schema call exactly as dns_record does. Three renames read from the conversion code: id from _id, and the auth_server and acct_server blocks from the SDK's plural auth_servers and acct_servers arrays. Inside both blocks secret renames from x_secret and stays sensitive, which the compiler's secret guard requires. Fifteen of the twenty-three SDK fields are omitted, including tls_enabled and the six x_ certificate and private-key fields, none of which the released schema exposed. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_radius_user",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, password from x_password \u2014 sensitive, as the compiler's secret guard requires \u2014 and network_id from networkconf_id, which no name match would have found. site is provider-owned rather than the SDK's site_id, set from a parameter in accountToModel. Eleven of the sixteen SDK fields are omitted, including filter_ids, ip and ulp_user_id, none of which the released schema exposed. unifi_account serves this same schema through its deprecated alias, so its fifteen behaviour-inventory lines are the check that the alias still inherits what it did. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_site_to_site_vpn",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy. This surface fronts unifi.Network, the estate's widest SDK struct, and serves 23 attributes over it: 260 of the 281 fields are omitted, which is the largest omission set so far and is what a purpose-scoped view of a shared struct looks like. Eighteen renames read from modelToNetwork, and all but two are the ipsec_ prefix the released schema drops -- ike_encryption from ipsec_encryption, esp_hash from ipsec_esp_hash, and so on. The other two are id from _id and pre_shared_key from x_ipsec_pre_shared_key, which stays sensitive as the secret guard requires. ike_lifetime and esp_lifetime are int64 seconds in the SDK and GoDuration strings in the schema, so the resource keeps schema version 1 and its RawState upgrader. pre_shared_key_wo is grafted rather than generated: the code specification has no write_only member, so generating it would silently drop the one property it exists for. Two of the 260 omissions are DERIVED rather than unused: modelToNetwork sets purpose to the constant PurposeSiteVPN and vpn_type to \"ipsec-vpn\". They are how the controller knows which kind of Network this is, the provider computes both, and no configuration can reach them. Recorded here so a later reader does not take them for fields the schema forgot. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_static_route",
-      "state": "generated_shadow",
-      "migration": "Schema compiles from the bootstrap and policy, and carries the estate's second collision trap. The SDK's Routing struct has both type and static-route_type. The released type attribute is the route kind \u2014 interface-route, nexthop-route or blackhole \u2014 and comes from static-route_type; the SDK's own type is the record discriminator, which modelToRouting sets to the constant \"static-route\" and routingToModel never reads. Binding by name picks the discriminator, and no referee would catch it: both compare the Terraform schema, which is identical either way, and only the mapping report records which field is written. Five more renames read from the conversion code: id from _id, network, distance, next_hop and interface each from their static-route_ prefixed field. Six of the sixteen SDK fields are omitted: site_id, the four attr_ flags, and the type discriminator. next_hop keeps its iptypes.IPAddress custom type, and the CIDR, MAC and IP validators resolve to unifi/validators, which is a leaf package and so reachable from generated code. Admission waits on a campaign run."
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_traffic_route",
-      "state": "policy_complete"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_vpn_client",
-      "state": "policy_complete"
+      "migration": "Generated. The action's schema is its arguments, not a projection of the Device record it acts on, so all 109 SDK fields are omitted and the three arguments are provider-owned. device_mac carries a hwtypes.MACAddressType derived by cmd/schema-behaviour: the protocol renders it as a plain string, so no schema comparison can see it and the behaviour inventory is what holds it. tfplugingen-framework has no action subcommand, so cmd/action-gen renders the actions member into Go. Admission waits on a campaign run."
     },
     {
       "kind": "data_source",
@@ -378,10 +225,163 @@
       "migration": "Generated from a policy derived from the released schema by cmd/list-policy-scaffold and emitted by cmd/list-resource-gen. The config schema is a query, not a projection: every SDK field of the listed type is recorded as omitted, the site selector is provider-owned, and the filter block's members are invented query terms. Admission waits on a campaign run."
     },
     {
-      "kind": "action",
-      "name": "unifi_port",
+      "kind": "managed_resource",
+      "name": "unifi_account",
       "state": "generated_shadow",
-      "migration": "Generated. The action's schema is its arguments, not a projection of the Device record it acts on, so all 109 SDK fields are omitted and the three arguments are provider-owned. device_mac carries a hwtypes.MACAddressType derived by cmd/schema-behaviour: the protocol renders it as a plain string, so no schema comparison can see it and the behaviour inventory is what holds it. tfplugingen-framework has no action subcommand, so cmd/action-gen renders the actions member into Go. Admission waits on a campaign run."
+      "migration": "Served by the generated schema without a policy of its own. deprecatedAccountResource embeds radiusUserResource and calls its Schema, adding only a DeprecationMessage, so migrating unifi_radius_user migrated this surface in the same edit. It has no bootstrap, policy or generated package, and it must not acquire one: a second policy over the same SDK struct would be a second source of truth for one schema. The baseline projection reads it as a registered resource and compares it against the released contract like any other, which is what says the alias still inherits what it did. Admission waits on the same campaign run as unifi_radius_user."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_ap_group",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. id renames to the SDK's _id. site is provider-owned, not the SDK's site_id: the site name reaches the model as a function parameter and site_id is never read or written here, so matching on the name would have bound the wrong field. device_macs keeps its hwtypes.MACAddress element type, which neither referee can see, and its plan modifier moved to unifi/planmodifiers to be reachable from generated code. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_bgp",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, config from frr_bgpd_config and upload_file_name from uploaded_file_name, none of which a name match would have found. Five of the ten SDK fields are omitted: site_id and the four attr_ bookkeeping flags. Four of the nine released attributes are provider-owned rather than derived \u2014 site, and asn, router_id and peers, which the controller never stores: modelToBGP renders them into the FRR config string and bgpToModel preserves them from state rather than parsing them back. peers is the estate's only provider-owned nested attribute, so its members are written in specification form and its one validator was transcribed by hand, which the deriver now says rather than reporting it as omitted. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_client",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_client_qos_rate",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. The surface fronts the SDK's ClientGroup, not a struct of its own name, so the bootstrap is derived from that type. id renames to _id; site is provider-owned rather than site_id, which this resource never reads or writes. Both rate defaults are int64default.StaticInt64(-1), transcribed by hand because the behaviour deriver stops at the unary minus rather than guessing. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_device",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_dns_record",
+      "state": "admitted",
+      "receipt_sha256": "dd3b22d7c5379c5c216c50439b09d6ff5e66c3be908076468f183ce5998dab19"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_dynamic_dns",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Two renames read from the resource conversion code: id from _id, and password from the SDK's x_password, which the policy also marks sensitive so the secret guard stays satisfied. site is provider-owned rather than the SDK's site_id \u2014 dynamicDNSToModel takes the site name as a parameter and site_id is never read or written here, so matching on the name would have bound the wrong field. Seven SDK fields are omitted: the four attr_ bookkeeping flags, site_id, and custom_service and options, none of which the released schema ever exposed. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_group",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, type from group_type, members from group_members. site is provider-owned rather than the SDK's site_id \u2014 firewallGroupToModel sets it from a parameter, and the update path's SiteID assignment writes the site name into that field rather than reading it. Descriptions are grafted back to plain, the second surface to need that. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_policy",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy and matches the released schema attribute for attribute, including both nested shapes. Admission waits on a campaign run, which is the only thing that can say whether the generated resource behaves as the hand-written one did."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_rule",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy: 32 released attributes over 37 SDK fields, flat, with no invented shape anywhere. Ten renames read from the conversion code, and every one of them is a spelling the SDK chose and the schema did not: src_network_id and dst_network_id from the networkconf_id pair, their _type companions likewise, src_firewall_group_ids and dst_firewall_group_ids from the unseparated firewallgroup_ids, src_mac from src_mac_address, icmp_v6_typename from icmpv6_typename, ip_sec from ipsec, and id from _id. All 21 remaining attributes bind by name, and each was confirmed against modelToFirewallRule rather than accepted from the scaffold. Six SDK fields are omitted: site_id and the four attr_ flags. src_mac keeps its hwtypes.MACAddress custom type, which neither referee can see. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_zone",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy. Nine of the twelve SDK fields are controller bookkeeping the released schema never exposed and the policy omits by name. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_network",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_port_forward",
+      "state": "shadow_only"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_port_profile",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy: 42 released attributes over 56 SDK fields, flat, and all but one bind on the SDK's own json name. The Go field names diverge freely -- NATiveNetworkID, Dot1XIDleTimeout, StpPortMode -- but the policy binds on json names and those agree, which was checked field by field rather than assumed from the count. id renames from _id. dot1x_idle_timeout is *int64 seconds in the SDK and a GoDuration string in the schema, so the policy declares terraform_type string and the resource keeps schema version 1 with its RawState upgrader, as radius_profile does. tagged_networkconf_ids is provider-owned and has no go-unifi field at all: the controller expresses tagged VLANs as tagged_vlan_mgmt plus excluded_networkconf_ids, and the provider presents the exact set instead, deriving it in portProfileActualTaggedNetworkIDs. Seventeen SDK fields are omitted. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_power_supervisor",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy, spreading the SDK Settings struct into the three duration attributes the released schema presents at the top level. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_radius_profile",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy, and is the second surface whose released type differs from the SDK's. interim_update_interval is *int64 seconds in the SDK and a GoDuration string in the schema, so the resource keeps schema version 1 and its RawState upgrader, which the kernel re-sets after the generated schema call exactly as dns_record does. Three renames read from the conversion code: id from _id, and the auth_server and acct_server blocks from the SDK's plural auth_servers and acct_servers arrays. Inside both blocks secret renames from x_secret and stays sensitive, which the compiler's secret guard requires. Fifteen of the twenty-three SDK fields are omitted, including tls_enabled and the six x_ certificate and private-key fields, none of which the released schema exposed. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_radius_user",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. Three renames read from the resource conversion code: id from _id, password from x_password \u2014 sensitive, as the compiler's secret guard requires \u2014 and network_id from networkconf_id, which no name match would have found. site is provider-owned rather than the SDK's site_id, set from a parameter in accountToModel. Eleven of the sixteen SDK fields are omitted, including filter_ids, ip and ulp_user_id, none of which the released schema exposed. unifi_account serves this same schema through its deprecated alias, so its fifteen behaviour-inventory lines are the check that the alias still inherits what it did. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_setting",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_site",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy. Two renames read from the resource conversion code: the SDK stores the description as desc and the ID as _id. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_site_to_site_vpn",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. This surface fronts unifi.Network, the estate's widest SDK struct, and serves 23 attributes over it: 260 of the 281 fields are omitted, which is the largest omission set so far and is what a purpose-scoped view of a shared struct looks like. Eighteen renames read from modelToNetwork, and all but two are the ipsec_ prefix the released schema drops -- ike_encryption from ipsec_encryption, esp_hash from ipsec_esp_hash, and so on. The other two are id from _id and pre_shared_key from x_ipsec_pre_shared_key, which stays sensitive as the secret guard requires. ike_lifetime and esp_lifetime are int64 seconds in the SDK and GoDuration strings in the schema, so the resource keeps schema version 1 and its RawState upgrader. pre_shared_key_wo is grafted rather than generated: the code specification has no write_only member, so generating it would silently drop the one property it exists for. Two of the 260 omissions are DERIVED rather than unused: modelToNetwork sets purpose to the constant PurposeSiteVPN and vpn_type to \"ipsec-vpn\". They are how the controller knows which kind of Network this is, the provider computes both, and no configuration can reach them. Recorded here so a later reader does not take them for fields the schema forgot. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_static_route",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy, and carries the estate's second collision trap. The SDK's Routing struct has both type and static-route_type. The released type attribute is the route kind \u2014 interface-route, nexthop-route or blackhole \u2014 and comes from static-route_type; the SDK's own type is the record discriminator, which modelToRouting sets to the constant \"static-route\" and routingToModel never reads. Binding by name picks the discriminator, and no referee would catch it: both compare the Terraform schema, which is identical either way, and only the mapping report records which field is written. Five more renames read from the conversion code: id from _id, network, distance, next_hop and interface each from their static-route_ prefixed field. Six of the sixteen SDK fields are omitted: site_id, the four attr_ flags, and the type discriminator. next_hop keeps its iptypes.IPAddress custom type, and the CIDR, MAC and IP validators resolve to unifi/validators, which is a leaf package and so reachable from generated code. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_traffic_route",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_vpn_client",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_vpn_server",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wan",
+      "state": "policy_complete"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wireguard_peer",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy with no omissions: every SDK field is served. id renames to _id, and site is provider-owned \u2014 this SDK struct carries no site_id at all, so the site name only ever arrives as a parameter. allowed_ips keeps its empty-list default, transcribed as a custom default because ListDefault has no static form in the specification. Admission waits on a campaign run."
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wlan",
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the catalog and policy: 55 released attributes over 109 SDK fields, ten renames read from the resource conversion code, a mac_filter grouping, a schedule block bound to schedule_with_duration rather than the SDK field of the same name, one invented block member, and 54 named omissions. One of the 54 omissions is DERIVED rather than unused: modelToWLAN sets name_combine_enabled to the constant true. The provider computes it, no configuration reaches it, and it is not a field the schema forgot. Admission waits on a campaign run."
     }
   ]
 }
