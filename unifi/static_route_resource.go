@@ -9,23 +9,15 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_static_route"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -111,91 +103,11 @@ func (r *staticRouteFrameworkResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a static route for the USG.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the static route.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the static route with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the static route.",
-				Required:            true,
-			},
-			"network": schema.StringAttribute{
-				MarkdownDescription: "The network subnet address.",
-				Required:            true,
-				Validators: []validator.String{
-					validators.CIDRValidator(),
-				},
-			},
-			"type": schema.StringAttribute{
-				MarkdownDescription: "The type of static route. Can be `interface-route`, `nexthop-route`, or `blackhole`.",
-				Required:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("interface-route", "nexthop-route", "blackhole"),
-				},
-			},
-			"distance": schema.Int64Attribute{
-				MarkdownDescription: "The distance of the static route.",
-				Required:            true,
-				Validators: []validator.Int64{
-					int64validator.Between(1, 255),
-				},
-			},
-			"next_hop": schema.StringAttribute{
-				MarkdownDescription: "The next hop of the static route (only valid for `nexthop-route` type). Accepts IPv4 or IPv6 addresses.",
-				CustomType:          iptypes.IPAddressType{},
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.Any(validators.IPv4Validator(), validators.IPv6Validator()),
-				},
-			},
-			"interface": schema.StringAttribute{
-				MarkdownDescription: "The interface of the static route (only valid for `interface-route` type). This can be `WAN1`, `WAN2`, or a network ID.",
-				Optional:            true,
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the static route is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"gateway_device": schema.StringAttribute{
-				MarkdownDescription: "The MAC address of the gateway device, used when `gateway_type` is `switch`.",
-				Optional:            true,
-				Validators: []validator.String{
-					validators.MACAddressValidator(),
-				},
-			},
-			"gateway_type": schema.StringAttribute{
-				MarkdownDescription: "The type of gateway for the static route. Can be `default` or `switch`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("default"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("default", "switch"),
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_static_route.StaticRouteResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *staticRouteFrameworkResource) Configure(
