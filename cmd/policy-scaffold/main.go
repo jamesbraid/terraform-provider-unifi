@@ -174,16 +174,40 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	fmt.Fprintf(stdout, "%s: %d attribute(s) mapped by name, %d SDK field(s) omitted\n",
 		*resource, len(placed), len(omitted))
+	// Every automatic bind is listed, not just counted. A name match is a guess
+	// the scaffold made without reading anything, and it is the guess that goes
+	// wrong silently: static_route's type matched the SDK's type, which is the
+	// record discriminator set to the constant "static-route", while the route
+	// kind the schema serves lives in static-route_type. Both referees compare
+	// the Terraform schema, which is identical either way, so nothing downstream
+	// can catch it -- only the mapping report records which field is written.
+	//
+	// A count cannot be checked against anything. A list can, and it sends the
+	// reader to the same conversion code the unplaced ones already send them to.
+	if len(placed) > 0 {
+		fmt.Fprintf(stdout, "\n  BOUND BY NAME — confirm each against the conversion code (%d):\n    %s\n",
+			len(placed), strings.Join(sortedNamesOf(placed), "\n    "))
+	}
 	if len(unplaced) > 0 {
 		fmt.Fprintf(stdout, "\n  NOT PLACED — resolve each from the resource's conversion code, not by name (%d):\n    %s\n",
 			len(unplaced), strings.Join(unplaced, "\n    "))
-		fmt.Fprintln(stdout, "\n  A rename is the one mistake here that does not announce itself. Read the\n"+
-			"  model-to-SDK assignments in the resource and write the structural_name in.\n"+
-			"  Do not match on a name that merely looks right: wlan's schedule block\n"+
-			"  matches an SDK field of the same name and of a plausible type, and that\n"+
-			"  field is the legacy one.")
 	}
+	fmt.Fprintln(stdout, "\n  A rename is the one mistake here that does not announce itself. Read the\n"+
+		"  model-to-SDK assignments in the resource and write the structural_name in.\n"+
+		"  Do not match on a name that merely looks right: wlan's schedule block\n"+
+		"  matches an SDK field of the same name and of a plausible type, and that\n"+
+		"  field is the legacy one; and static_route's type matches the SDK's\n"+
+		"  record discriminator rather than the route kind it serves.")
 	return 0
+}
+
+func sortedNamesOf(set map[string]bool) []string {
+	names := make([]string, 0, len(set))
+	for name := range set {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func nestedMembers(members map[string]any, field bootstrapField) []map[string]any {
