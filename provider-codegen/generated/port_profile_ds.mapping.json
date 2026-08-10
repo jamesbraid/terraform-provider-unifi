@@ -1,0 +1,419 @@
+{
+  "format_version": 1,
+  "surface_kind": "data_source",
+  "surface_name": "unifi_port_profile",
+  "resource": "unifi_port_profile",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "autoneg",
+      "terraform_name": "autoneg",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dot1x_ctrl",
+      "terraform_name": "dot1x_ctrl",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dot1x_idle_timeout",
+      "terraform_name": "dot1x_idle_timeout",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "eee_enabled",
+      "terraform_name": "eee_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "egress_rate_limit_kbps",
+      "terraform_name": "egress_rate_limit_kbps",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "egress_rate_limit_kbps_enabled",
+      "terraform_name": "egress_rate_limit_kbps_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "excluded_networkconf_ids",
+      "terraform_name": "excluded_networkconf_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "set",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "fec_mode",
+      "terraform_name": "fec_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "flow_control_enabled",
+      "terraform_name": "flow_control_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "forward",
+      "terraform_name": "forward",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "full_duplex",
+      "terraform_name": "full_duplex",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "isolation",
+      "terraform_name": "isolation",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "link_debounce",
+      "terraform_name": "link_debounce",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "link_debounce_auto",
+      "terraform_name": "link_debounce_auto",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "lldpmed_enabled",
+      "terraform_name": "lldpmed_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "lldpmed_notify_enabled",
+      "terraform_name": "lldpmed_notify_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "multicast_router_mode",
+      "terraform_name": "multicast_router_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "multicast_router_networkconf_ids",
+      "terraform_name": "multicast_router_networkconf_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "native_networkconf_id",
+      "terraform_name": "native_networkconf_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "op_mode",
+      "terraform_name": "op_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "poe_mode",
+      "terraform_name": "poe_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "port_keepalive_enabled",
+      "terraform_name": "port_keepalive_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "port_security_enabled",
+      "terraform_name": "port_security_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "port_security_mac_address",
+      "terraform_name": "port_security_mac_address",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "precision_time_protocol_enabled",
+      "terraform_name": "precision_time_protocol_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "priority_queue1_level",
+      "terraform_name": "priority_queue1_level",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "priority_queue2_level",
+      "terraform_name": "priority_queue2_level",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "priority_queue3_level",
+      "terraform_name": "priority_queue3_level",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "priority_queue4_level",
+      "terraform_name": "priority_queue4_level",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "qos_profile",
+      "terraform_name": "qos_profile",
+      "structural_type": "object",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "speed",
+      "terraform_name": "speed",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stable_port_enabled",
+      "terraform_name": "stable_port_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_bcast_enabled",
+      "terraform_name": "stormctrl_bcast_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_bcast_level",
+      "terraform_name": "stormctrl_bcast_level",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_bcast_rate",
+      "terraform_name": "stormctrl_bcast_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_mcast_enabled",
+      "terraform_name": "stormctrl_mcast_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_mcast_level",
+      "terraform_name": "stormctrl_mcast_level",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_mcast_rate",
+      "terraform_name": "stormctrl_mcast_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_type",
+      "terraform_name": "stormctrl_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_ucast_enabled",
+      "terraform_name": "stormctrl_ucast_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_ucast_level",
+      "terraform_name": "stormctrl_ucast_level",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stormctrl_ucast_rate",
+      "terraform_name": "stormctrl_ucast_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stp_bpdu_guard_enabled",
+      "terraform_name": "stp_bpdu_guard_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stp_edge_state",
+      "terraform_name": "stp_edge_state",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stp_port_mode",
+      "terraform_name": "stp_port_mode",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "stp_uplink",
+      "terraform_name": "stp_uplink",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "tagged_vlan_mgmt",
+      "terraform_name": "tagged_vlan_mgmt",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "voice_networkconf_id",
+      "terraform_name": "voice_networkconf_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "tagged_networkconf_ids",
+      "terraform_type": "set",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "datasources": [
+    {
+      "name": "radius_profile_ds",
+      "schema": {
+        "attributes": [
+          {
+            "bool": {
+              "computed_optional_required": "computed",
+              "description": "Whether RADIUS accounting is enabled."
+            },
+            "name": "accounting_enabled"
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of this RADIUS profile."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed",
+              "description": "Whether interim updates are enabled."
+            },
+            "name": "interim_update_enabled"
+          },
+          {
+            "name": "interim_update_interval",
+            "string": {
+              "computed_optional_required": "computed",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "description": "The interim update interval, as a Go duration string."
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the RADIUS profile to look up."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site the RADIUS profile is associated with."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed",
+              "description": "Whether to use USG as accounting server."
+            },
+            "name": "use_usg_acct_server"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed",
+              "description": "Whether to use USG as authentication server."
+            },
+            "name": "use_usg_auth_server"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed",
+              "description": "Whether VLAN is enabled."
+            },
+            "name": "vlan_enabled"
+          },
+          {
+            "name": "vlan_wlan_mode",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The VLAN WLAN mode."
+            }
+          }
+        ],
+        "markdown_description": "Data source for RADIUS profiles."
+      }
+    }
+  ]
+}

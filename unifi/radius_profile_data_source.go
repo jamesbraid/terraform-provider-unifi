@@ -8,9 +8,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_radius_profile"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -52,55 +52,8 @@ func (d *radiusProfileDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Data source for RADIUS profiles.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of this RADIUS profile.",
-				Computed:            true,
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the RADIUS profile is associated with.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the RADIUS profile to look up.",
-				Required:            true,
-			},
-			"accounting_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether RADIUS accounting is enabled.",
-				Computed:            true,
-			},
-			"interim_update_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether interim updates are enabled.",
-				Computed:            true,
-			},
-			"interim_update_interval": schema.StringAttribute{
-				MarkdownDescription: "The interim update interval, as a Go duration string.",
-				CustomType:          timetypes.GoDurationType{},
-				Computed:            true,
-			},
-			"use_usg_acct_server": schema.BoolAttribute{
-				MarkdownDescription: "Whether to use USG as accounting server.",
-				Computed:            true,
-			},
-			"use_usg_auth_server": schema.BoolAttribute{
-				MarkdownDescription: "Whether to use USG as authentication server.",
-				Computed:            true,
-			},
-			"vlan_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether VLAN is enabled.",
-				Computed:            true,
-			},
-			"vlan_wlan_mode": schema.StringAttribute{
-				MarkdownDescription: "The VLAN WLAN mode.",
-				Computed:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
+	resp.Schema = datasource_radius_profile.RadiusProfileDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *radiusProfileDataSource) Configure(
