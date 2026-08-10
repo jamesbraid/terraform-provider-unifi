@@ -101,6 +101,16 @@ type Surface struct {
 	// DelegatedTo is the expression the Schema method assigns, when Delegated.
 	DelegatedTo string      `json:"delegated_to,omitempty"`
 	Behaviours  []Behaviour `json:"behaviours"`
+	// Attributes names every attribute path the schema declares, whether or not
+	// it carries behaviour.
+	//
+	// A merge needs the difference. An attribute with no validators, plan
+	// modifiers, defaults or custom type is ordinary, and most attributes are
+	// one; an attribute the schema does not declare at all is the shape a wrong
+	// rename takes. Indexing behaviour alone cannot tell those apart, and
+	// reported every correct rename onto a plain attribute as a suspect one --
+	// on three consecutive surfaces, which is how a check stops being read.
+	Attributes []string `json:"attributes,omitempty"`
 	// Opaque names attribute paths whose value this package could not read,
 	// with what stopped it. A behaviour under one of these is invisible here
 	// and must not be mistaken for a behaviour that does not exist.
