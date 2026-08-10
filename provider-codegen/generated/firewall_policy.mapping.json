@@ -8,7 +8,7 @@
       "structural_name": "_id",
       "terraform_name": "_id",
       "structural_type": "string",
-      "terraform_type": "string",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
@@ -22,28 +22,28 @@
       "structural_name": "attr_hidden",
       "terraform_name": "attr_hidden",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "attr_hidden_id",
       "terraform_name": "attr_hidden_id",
       "structural_type": "string",
-      "terraform_type": "string",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "attr_no_delete",
       "terraform_name": "attr_no_delete",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "attr_no_edit",
       "terraform_name": "attr_no_edit",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
@@ -127,14 +127,14 @@
       "structural_name": "match_ip_sec",
       "terraform_name": "match_ip_sec",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "match_opposite_protocol",
       "terraform_name": "match_opposite_protocol",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
@@ -148,7 +148,7 @@
       "structural_name": "predefined",
       "terraform_name": "predefined",
       "structural_type": "bool",
-      "terraform_type": "bool",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
@@ -162,14 +162,14 @@
       "structural_name": "schedule",
       "terraform_name": "schedule",
       "structural_type": "object",
-      "terraform_type": "single_nested",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
       "structural_name": "site_id",
       "terraform_name": "site_id",
       "structural_type": "string",
-      "terraform_type": "string",
+      "terraform_type": "",
       "disposition": "omitted"
     },
     {
