@@ -6,6 +6,13 @@ readonly m3_repository_root
 # shellcheck source=.woodpecker/scripts/go-unifi-pin.sh
 source "${m3_repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
 
+# This receipt attests a controller operation actually ran. Generated from a
+# dirty tree it would attest the run against code that is in no commit, which is
+# the one claim an operation receipt exists to make.
+# shellcheck source=.woodpecker/scripts/tree-state.sh
+source "${m3_repository_root}/.woodpecker/scripts/tree-state.sh"
+evidence_tree_state "the M3 DNS operation receipt"
+
 # The module version and its hash are read from go.mod and go.sum. They used to
 # be pinned here as well, which made this the fourth home for one fact and the
 # reason a repoint that updated go.mod left this script asserting the previous

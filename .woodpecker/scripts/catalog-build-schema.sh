@@ -5,6 +5,15 @@ repository_root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && p
 readonly repository_root
 # shellcheck source=.woodpecker/scripts/m1-evidence-lib.sh
 source "${repository_root}/.woodpecker/scripts/m1-evidence-lib.sh"
+
+# Before the toolchain is touched. This script writes the schema digests every
+# other gate compares against, so a dirty run poisons the comparison rather than
+# just one artifact -- and it would do it while every downstream check stayed
+# green, because they would all agree with the same wrong baseline.
+# shellcheck source=.woodpecker/scripts/tree-state.sh
+source "${repository_root}/.woodpecker/scripts/tree-state.sh"
+evidence_tree_state "the released schema baseline and digests"
+
 terraform_bin=${TERRAFORM_BIN:-terraform}
 tofu_bin=${TOFU_BIN:-tofu}
 output=${CATALOG_BUILD_SCHEMA_OUTPUT:?CATALOG_BUILD_SCHEMA_OUTPUT is required}
