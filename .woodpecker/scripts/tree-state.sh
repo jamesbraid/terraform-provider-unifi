@@ -26,6 +26,31 @@
 #   source "${repository_root}/.woodpecker/scripts/tree-state.sh"
 #   evidence_tree_state "the M1 compiler receipt"
 #   ... then include ${evidence_tree_*} in the receipt JSON.
+#
+# WHAT THIS DOES NOT COVER. Five of the eight evidence generators call it. These
+# three do not, and the reason is the same in each: the guard has to run before
+# anything it protects, and there is no usable repository root at that point.
+#
+#   m1-dns-compiler.sh           resolves its root at line 145, inside a
+#                                function
+#   m0-uos-dns-qualification.sh  establishes no root variable at all; writes
+#                                only when M0_UOS_RECEIPT_OUTPUT is set
+#   m3-dns-qualification.sh      the same, gated on M3_LIFECYCLE_RECEIPT_OUTPUT
+#
+# What unblocks them is being able to EXECUTE them. The five that are wired were
+# each watched refusing on a real dirty tree; these three cannot be, because the
+# pipeline that exercises them is down. A call site never seen to run is the
+# shape of change that looks like coverage and is not, so they are left undone
+# and written down rather than done blind.
+#
+# tree-state-coverage_test.sh enforces this list: it fails if one of the three
+# quietly gains the guard, or if a new evidence generator appears in neither
+# list.
+#
+# SEPARATELY: thirteen of the nineteen evidence artifacts under build/ have no
+# producer at all, including all five wave receipts, which are maintained by
+# hand. A guard on generators cannot protect an artifact that has none. That is
+# a different defect and is recorded as its own item.
 
 # evidence_tree_state sets evidence_tree_status, evidence_tree_commit and
 # evidence_tree_dirty_files, or ends the run.
