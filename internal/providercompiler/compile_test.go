@@ -1661,3 +1661,115 @@ func mustJSON(t *testing.T, value any) []byte {
 	}
 	return data
 }
+
+// An SDK field that changes from a slice to a scalar used to compile clean.
+// The policy kept declaring a list with a string element type, the compiler
+// took the declaration at its word, and the generated schema described a
+// collection the controller no longer sends. Neither the exactly-once
+// accounting nor the source digest catches it: the field is still present and
+// still classified, and the digest is only ever compared against the policy's
+// own copy of itself.
+func TestCompileRejectsAnOverrideThatChangesCardinality(t *testing.T) {
+	tests := map[string]struct {
+		structural, declared string
+		wants                []string
+	}{
+		"list declared over a scalar": {
+			structural: "string", declared: "list",
+			wants: []string{"observed as \"string\"", "terraform_type \"list\"", "not how many values there are"},
+		},
+		"set declared over a scalar": {
+			structural: "string", declared: "set",
+			wants: []string{"terraform_type \"set\"", "not how many values there are"},
+		},
+		"nested declared over a scalar": {
+			structural: "int64", declared: "single_nested",
+			wants: []string{"terraform_type \"single_nested\"", "not how many values there are"},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			input := scalarOverrideInput(t, test.structural, test.declared)
+			_, err := Compile(input)
+			if err == nil {
+				t.Fatal("Compile() accepted an override that changes cardinality")
+			}
+			for _, want := range test.wants {
+				if !strings.Contains(err.Error(), want) {
+					t.Fatalf("error %q does not say %q", err, want)
+				}
+			}
+		})
+	}
+
+	// The control. Representing one value differently is established practice —
+	// dns_record's ttl is a number presented as a duration string — so the rule
+	// must not reach it.
+	if _, err := Compile(scalarOverrideInput(t, "number", "string")); err != nil {
+		t.Fatalf("a scalar-for-scalar override was rejected: %v", err)
+	}
+}
+
+// A bootstrap and a policy that both omit the source they were derived from
+// used to satisfy the binding, because two empty strings compare equal.
+func TestCompileRequiresBothSidesToNameTheirSource(t *testing.T) {
+	input := scalarOverrideInput(t, "string", "")
+	var source map[string]any
+	if err := json.Unmarshal(input.Bootstrap, &source); err != nil {
+		t.Fatal(err)
+	}
+	source["source"].(map[string]any)["specification_sha256"] = ""
+	input.Bootstrap = mustJSON(t, source)
+
+	var rules map[string]any
+	if err := json.Unmarshal(input.Policy, &rules); err != nil {
+		t.Fatal(err)
+	}
+	rules["source_specification_sha256"] = ""
+	input.Policy = mustJSON(t, rules)
+
+	_, err := Compile(input)
+	if err == nil {
+		t.Fatal("Compile() accepted a bootstrap and policy that name no source at all")
+	}
+	if !strings.Contains(err.Error(), "must both record the source specification") {
+		t.Fatalf("error %q does not name the missing binding", err)
+	}
+}
+
+// scalarOverrideInput builds a surface whose "value" field is observed as
+// structural and whose policy declares terraform_type declared. An empty
+// declared leaves the policy silent, which is the ordinary case.
+func scalarOverrideInput(t *testing.T, structural, declared string) CompileInput {
+	t.Helper()
+	names := dnsFieldNames()
+	rules := testPolicyObject(names, testSpecificationDigest)
+	for _, raw := range rules["fields"].([]any) {
+		field := raw.(map[string]any)
+		if field["structural_name"] != "value" {
+			continue
+		}
+		if declared == "" {
+			delete(field, "terraform_type")
+			continue
+		}
+		field["terraform_type"] = declared
+	}
+
+	var source map[string]any
+	if err := json.Unmarshal(testBootstrap(t, names), &source); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range source["resource"].(map[string]any)["fields"].([]any) {
+		field := raw.(map[string]any)
+		if field["name"] == "value" {
+			field["type"] = structural
+		}
+	}
+	return CompileInput{
+		Bootstrap:       mustJSON(t, source),
+		Policy:          mustJSON(t, rules),
+		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, catalogparity.Admitted),
+	}
+}
