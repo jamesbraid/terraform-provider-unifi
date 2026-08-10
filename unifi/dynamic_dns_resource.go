@@ -6,20 +6,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dynamic_dns"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -92,68 +87,11 @@ func (r *dynamicDNSResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages dynamic DNS settings for different providers.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the dynamic DNS.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate with the dynamic DNS resource.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseNonNullStateForUnknown(),
-				},
-			},
-			"interface": schema.StringAttribute{
-				MarkdownDescription: "The interface for the dynamic DNS. Can be `wan` or `wan2`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("wan"),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-				Validators: []validator.String{
-					stringvalidator.OneOf("wan", "wan2"),
-				},
-			},
-			"service": schema.StringAttribute{
-				MarkdownDescription: "The Dynamic DNS service provider, various values are supported (for example `dyndns`, etc.).",
-				Required:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"host_name": schema.StringAttribute{
-				MarkdownDescription: "The host name to update in the dynamic DNS service.",
-				Required:            true,
-			},
-			"server": schema.StringAttribute{
-				MarkdownDescription: "The server for the dynamic DNS service.",
-				Optional:            true,
-			},
-			"login": schema.StringAttribute{
-				MarkdownDescription: "The login for the dynamic DNS service.",
-				Optional:            true,
-			},
-			"password": schema.StringAttribute{
-				MarkdownDescription: "The password for the dynamic DNS service.",
-				Optional:            true,
-				Sensitive:           true,
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_dynamic_dns.DynamicDnsResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *dynamicDNSResource) IdentitySchema(

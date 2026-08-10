@@ -85,7 +85,7 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 8 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 8}) {
 		t.Fatalf("Wave 2 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"admitted": 1, "generated_shadow": 3, "policy_complete": 4}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"admitted": 1, "generated_shadow": 4, "policy_complete": 3}) {
 		t.Fatalf("Wave 2 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -119,6 +119,11 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 		// Three renames, and the second surface whose released descriptions
 		// are plain rather than Markdown.
 		case "unifi_firewall_group":
+			want = GeneratedShadow
+		// Two renames, one of them a secret: the SDK stores the password as
+		// x_password, and the policy marks it sensitive so the compiler's
+		// secret guard stays satisfied.
+		case "unifi_dynamic_dns":
 			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
@@ -279,8 +284,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      54,
-		GeneratedShadow:     9,
+		PolicyComplete:      53,
+		GeneratedShadow:     10,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
