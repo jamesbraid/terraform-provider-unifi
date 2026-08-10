@@ -1,0 +1,180 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "radius_user",
+      "schema": {
+        "attributes": [
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the account.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the account."
+            }
+          },
+          {
+            "name": "network_id",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "ID of the network for this account. When set and `vlan` is omitted, the account inherits that network's VLAN (so RADIUS/MAB VLAN assignment is applied)."
+            }
+          },
+          {
+            "name": "password",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The password of the account.",
+              "sensitive": true
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the account with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "tunnel_config_type",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The tunnel configuration type. Can be `vpn`, `802.1x`, or `custom`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"vpn\", \"802.1x\", \"custom\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": 6
+              },
+              "description": "See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.2",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(1, 15)"
+                  }
+                }
+              ]
+            },
+            "name": "tunnel_medium_type"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": 3
+              },
+              "description": "See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.1. Valid values are 1-13; `13` (VLAN) is the most common.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(1, 13)"
+                  }
+                }
+              ]
+            },
+            "name": "tunnel_type"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "description": "VLAN assigned to the account. If omitted but `network_id` is set, it is derived from that network's VLAN. If neither is set, the client falls back to the untagged VLAN.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                      }
+                    ],
+                    "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(2, 4009)"
+                  }
+                }
+              ]
+            },
+            "name": "vlan"
+          }
+        ],
+        "markdown_description": "Manages a RADIUS user account\n\nTo authenticate devices based on MAC address, use the MAC address as the username and password under client creation.\nConvert lowercase letters to uppercase, and also remove colons or periods from the MAC address.\n\nATTENTION: If the user profile does not include a VLAN, the client will fall back to the untagged VLAN.\n\nNOTE: MAC-based authentication accounts can only be used for wireless and wired clients. L2TP remote access does not apply."
+      }
+    }
+  ]
+}

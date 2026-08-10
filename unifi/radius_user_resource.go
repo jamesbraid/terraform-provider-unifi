@@ -7,22 +7,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_radius_user"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -105,89 +98,11 @@ func (r *radiusUserResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: `Manages a RADIUS user account
-
-To authenticate devices based on MAC address, use the MAC address as the username and password under client creation.
-Convert lowercase letters to uppercase, and also remove colons or periods from the MAC address.
-
-ATTENTION: If the user profile does not include a VLAN, the client will fall back to the untagged VLAN.
-
-NOTE: MAC-based authentication accounts can only be used for wireless and wired clients. L2TP remote access does not apply.`,
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the account.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the account with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the account.",
-				Required:            true,
-			},
-			"password": schema.StringAttribute{
-				MarkdownDescription: "The password of the account.",
-				Required:            true,
-				Sensitive:           true,
-			},
-			"tunnel_type": schema.Int64Attribute{
-				MarkdownDescription: "See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.1. " +
-					"Valid values are 1-13; `13` (VLAN) is the most common.",
-				Optional: true,
-				Computed: true,
-				Default:  int64default.StaticInt64(3),
-				Validators: []validator.Int64{
-					int64validator.Between(1, 13),
-				},
-			},
-			"tunnel_medium_type": schema.Int64Attribute{
-				MarkdownDescription: "See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.2",
-				Optional:            true,
-				Computed:            true,
-				Default:             int64default.StaticInt64(6),
-				Validators: []validator.Int64{
-					int64validator.Between(1, 15),
-				},
-			},
-			"network_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the network for this account. When set and `vlan` is omitted, the account inherits that network's VLAN (so RADIUS/MAB VLAN assignment is applied).",
-				Optional:            true,
-			},
-			"vlan": schema.Int64Attribute{
-				MarkdownDescription: "VLAN assigned to the account. If omitted but `network_id` is set, it is derived from that network's VLAN. If neither is set, the client falls back to the untagged VLAN.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.Int64{
-					int64validator.Between(2, 4009),
-				},
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
-			},
-			"tunnel_config_type": schema.StringAttribute{
-				MarkdownDescription: "The tunnel configuration type. Can be `vpn`, `802.1x`, or `custom`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("vpn", "802.1x", "custom"),
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_radius_user.RadiusUserResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *radiusUserResource) Configure(

@@ -217,7 +217,7 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 	if receipt.SurfaceCount != 11 || !reflect.DeepEqual(receipt.SurfaceCounts, map[string]int{"managed_resource": 11}) {
 		t.Fatalf("Wave 4 surface counts = %d %v", receipt.SurfaceCount, receipt.SurfaceCounts)
 	}
-	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 2, "policy_complete": 9}) {
+	if !reflect.DeepEqual(receipt.StatusCounts, map[string]int{"generated_shadow": 4, "policy_complete": 7}) {
 		t.Fatalf("Wave 4 status counts = %v", receipt.StatusCounts)
 	}
 	if !reflect.DeepEqual(receipt.BlockerCounts, map[string]int{
@@ -246,6 +246,16 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		// Fronts the SDK's ClientGroup rather than a struct of its own name,
 		// and carries the estate's first negative default.
 		case "unifi_client_qos_rate":
+			want = GeneratedShadow
+		// Renames network_id from networkconf_id, which no name match would
+		// have found, and serves the deprecated unifi_account alias off the
+		// same schema.
+		case "unifi_radius_user":
+			want = GeneratedShadow
+		// Has no policy of its own: deprecatedAccountResource embeds
+		// radiusUserResource and calls its Schema, so it moved state in the
+		// same edit that migrated unifi_radius_user.
+		case "unifi_account":
 			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
@@ -284,8 +294,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:      53,
-		GeneratedShadow:     10,
+		PolicyComplete:      51,
+		GeneratedShadow:     12,
 		ShadowOnly:          2,
 		Admitted:            1,
 		LegacyAuthoritative: 1,
