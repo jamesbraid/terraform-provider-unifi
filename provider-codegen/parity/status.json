@@ -377,7 +377,8 @@
     {
       "kind": "managed_resource",
       "name": "unifi_wan",
-      "state": "policy_complete"
+      "state": "generated_shadow",
+      "migration": "Schema compiles from the bootstrap and policy. wan fronts unifi.Network, the same struct site_to_site_vpn and network front, and serves 15 top-level attributes plus 9 declared groupings over it; 219 of the 263 SDK fields are omitted. Two renames are traps the name cannot survive: the SDK carries both networkgroup and wan_networkgroup and the conversion uses the second, and it carries vlan, wan_vlan and wan_vlan_enabled while the released vlan object is built from the last two. Both were read from unifi/wan_resource.go via internal/renamecheck, and policy-scaffold had bound both by name -- wrongly -- which is exactly the failure that referee exists to catch. dhcp.options and dhcpv6.options are the estate's first grouped members consuming an array<object>, which is what the Fields member added in 0af9388e carries. Their two Go object types are emitted twice under one name by tfplugingen-framework, which names a nested object type from the attribute name rather than its path; cmd/nested-type-dedup removes the duplicate declaration after asserting the two are byte-identical. Admission waits on a campaign run."
     },
     {
       "kind": "managed_resource",
