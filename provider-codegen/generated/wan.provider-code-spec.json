@@ -1,0 +1,1197 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "wan",
+      "schema": {
+        "attributes": [
+          {
+            "name": "dhcp",
+            "single_nested": {
+              "attributes": [
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "DHCP Class of Service",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                            }
+                          ],
+                          "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(0, 7)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "cos"
+                },
+                {
+                  "list_nested": {
+                    "computed_optional_required": "optional",
+                    "description": "DHCP options",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "int64": {
+                            "computed_optional_required": "required",
+                            "description": "DHCP option number"
+                          },
+                          "name": "option_number"
+                        },
+                        {
+                          "name": "value",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "DHCP option value"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "options"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "DHCP configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "dhcpv6",
+            "single_nested": {
+              "attributes": [
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "DHCPv6 Class of Service",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                            }
+                          ],
+                          "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(0, 7)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "cos"
+                },
+                {
+                  "list_nested": {
+                    "computed_optional_required": "optional",
+                    "description": "DHCPv6 options",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "int64": {
+                            "computed_optional_required": "required",
+                            "description": "DHCPv6 option number (1, 11, 15, 16, or 17)",
+                            "validators": [
+                              {
+                                "custom": {
+                                  "imports": [
+                                    {
+                                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                                    }
+                                  ],
+                                  "schema_definition": "int64validator.OneOf(1, 11, 15, 16, 17)"
+                                }
+                              }
+                            ]
+                          },
+                          "name": "option_number"
+                        },
+                        {
+                          "name": "value",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "DHCPv6 option value"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "options"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "DHCPv6 prefix delegation size",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                            }
+                          ],
+                          "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(48, 64)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "pd_size"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Whether DHCPv6 PD size is automatic",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "pd_size_auto"
+                },
+                {
+                  "name": "wan_delegation_type",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "IPv6 WAN delegation type (pd, single_network, none)",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"pd\", \"single_network\", \"none\")"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "DHCPv6 configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "dns",
+            "single_nested": {
+              "attributes": [
+                {
+                  "name": "ipv6_preference",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "IPv6 DNS preference (auto, manual)",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "ipv6_primary",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "Primary IPv6 DNS server"
+                  }
+                },
+                {
+                  "name": "ipv6_secondary",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "Secondary IPv6 DNS server"
+                  }
+                },
+                {
+                  "name": "preference",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "DNS preference (auto, manual)",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "primary",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "Primary DNS server",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                            }
+                          ],
+                          "schema_definition": "validators.IPv4Validator()"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "secondary",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "Secondary DNS server",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                            }
+                          ],
+                          "schema_definition": "validators.IPv4Validator()"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "DNS configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "egress_qos",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether egress QoS is enabled"
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": 0
+                    },
+                    "description": "Egress QoS priority",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(0, 7)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "priority"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Egress QoS configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Whether the WAN network is enabled"
+            },
+            "name": "enabled"
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the WAN network",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "igmp_proxy",
+            "single_nested": {
+              "attributes": [
+                {
+                  "name": "downstream",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "IGMP proxy downstream target (none, lan, guest)",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"none\", \"lan\", \"guest\")"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Whether IGMP proxy upstream is enabled",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "upstream"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "IGMP proxy configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "list": {
+              "computed_optional_required": "optional",
+              "description": "IP aliases",
+              "element_type": {
+                "string": {}
+              }
+            },
+            "name": "ip_aliases"
+          },
+          {
+            "name": "ipv6_setting_preference",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether WAN IPv6 settings are managed automatically by the controller or manually. Can be one of `auto` or `manual`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "load_balance",
+            "single_nested": {
+              "attributes": [
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Failover priority",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                            }
+                          ],
+                          "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(1, 10)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "failover_priority"
+                },
+                {
+                  "name": "type",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Load balance type (failover-only, weighted)",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"failover-only\", \"weighted\")"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Load balance weight",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                            }
+                          ],
+                          "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(1, 100)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "weight"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Load balance configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether the WAN interface MAC address is overridden.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "mac_override_enabled"
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the WAN network"
+            }
+          },
+          {
+            "name": "networkgroup",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The WAN network group this interface belongs to (`WAN`, `WAN2`, …). The primary uplink is `WAN`; a secondary/SFP uplink is `WAN2`. Computed from the controller when unset (so an imported `WAN2` is preserved), defaulting to `WAN` on create. Required to manage multi-WAN (WAN2+) setups, where a hard-coded `WAN` collides with the primary (`api.err.WanConfigurationForNetworkGroupAlreadyExists`).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      },
+                      {
+                        "path": "regexp"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^WAN([2-9])?$|^WAN_LTE_FAILOVER$`), \"must be WAN, WAN2-WAN9, or WAN_LTE_FAILOVER\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "provider_capabilities",
+            "single_nested": {
+              "attributes": [
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Download speed in kilobits per second",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                            }
+                          ],
+                          "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "download_kilobits_per_second"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Upload speed in kilobits per second",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                            }
+                          ],
+                          "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "upload_kilobits_per_second"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "WAN provider capabilities (line rate). Detected/populated by the controller; preserved when not set in config.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether to report WAN events",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "report_wan_event"
+          },
+          {
+            "name": "setting_preference",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether WAN settings are managed automatically by the controller or manually. Can be one of `auto` or `manual`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "single_network_lan",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The LAN network used for IPv6 single-network prefix delegation (used when the IPv6 delegation type is `single_network`).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the WAN network with",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "smartq",
+            "single_nested": {
+              "attributes": [
+                {
+                  "int64": {
+                    "computed_optional_required": "optional",
+                    "description": "Smart Queue download rate in kbps"
+                  },
+                  "name": "down_rate"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether Smart Queue is enabled"
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "optional",
+                    "description": "Smart Queue upload rate in kbps"
+                  },
+                  "name": "up_rate"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Smart Queue configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "dhcp"
+              },
+              "description": "The WAN type (dhcp, static, pppoe)",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"dhcp\", \"static\", \"pppoe\", \"disabled\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "type_v6",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The IPv6 WAN type. One of `dhcpv6`, `slaac`, `static`, or `disabled`. Note: the controller requires `slaac` when the IPv6 delegation type is `single_network` (`api.err.SingleNetworkMustBeSLAAC` otherwise) — common with ISPs that deliver IPv6 by Router Advertisement, e.g. Free/Freebox in bridge mode.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"dhcpv6\", \"slaac\", \"static\", \"disabled\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "upnp",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Whether UPnP is enabled",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Whether UPnP NAT-PMP is enabled",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "nat_pmp_enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Whether UPnP secure mode is enabled",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "secure_mode"
+                },
+                {
+                  "name": "wan_interface",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "UPnP WAN interface"
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "UPnP configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "vlan",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether VLAN is enabled"
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": 0
+                    },
+                    "description": "The VLAN ID",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(0, 4094)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "id"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "VLAN configuration",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "wan_dslite_remote_host",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The DS-Lite AFTR remote host. Only used when `wan_dslite_remote_host_auto` is disabled.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether the DS-Lite AFTR remote host is detected automatically.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "wan_dslite_remote_host_auto"
+          }
+        ],
+        "markdown_description": "WAN network resource"
+      }
+    }
+  ]
+}

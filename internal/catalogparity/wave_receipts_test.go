@@ -136,6 +136,12 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 		// secret guard stays satisfied.
 		case "unifi_dynamic_dns":
 			want = GeneratedShadow
+		// Two renames the name cannot survive: the SDK carries networkgroup
+		// beside wan_networkgroup, and vlan beside wan_vlan and
+		// wan_vlan_enabled. policy-scaffold bound both by name, wrongly, and
+		// internal/renamecheck read the right ones out of the conversion code.
+		case "unifi_wan":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -291,6 +297,14 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		// pre_shared_key_wo is grafted, as wlan's passphrase_wo is.
 		case "unifi_site_to_site_vpn":
 			want = GeneratedShadow
+		// Fifteen top-level attributes and nine declared groupings over the
+		// same unifi.Network, omitting 219 of its 263 fields. The first
+		// surface whose grouped members consume an array<object>, and the
+		// first to need cmd/nested-type-dedup: dhcp.options and
+		// dhcpv6.options are both called `options`, and the generator names a
+		// nested object type from the attribute name rather than its path.
+		case "unifi_wan":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -328,8 +342,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:  12,
-		GeneratedShadow: 53,
+		PolicyComplete:  11,
+		GeneratedShadow: 54,
 		ShadowOnly:      1,
 		Admitted:        1,
 	}
