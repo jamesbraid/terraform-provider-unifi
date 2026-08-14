@@ -236,14 +236,34 @@ surface. A large gap is usually omissions, which are fine; a gap in the other
 direction — more attributes than fields — means a second source, and the shape
 of this method does not reach it yet.
 
-## At scale, the mechanism holds and review quality does not
+## At scale, what degrades is readability, not correctness
 
-`wlan` omits 54 SDK fields against 55 released attributes. The exactly-once
-accounting still fails an unclassified new field, so nothing slips through
-silently — **the protection against a *missing* omission is intact.** What
-degrades is that nobody reads 54 omission lines carefully, so the protection
-against a *wrong* one is weaker. That is a real limitation of this method and
-it is not solved here.
+`wlan` omits 54 SDK fields against 55 released attributes. `network` omits 196
+of 263 and its data source 185. Nobody reads those lines, and for a while this
+section said that made the protection against a *wrong* omission weaker. **That
+was wrong, and the distinction matters because it changes what a large surface
+costs to land.**
+
+**An omission is not a decision.** A field is omitted if and only if the released
+schema does not expose it, and the released schema is the contract. So the
+omission set is DERIVED from the contract rather than chosen — and a wrong one is
+caught mechanically: the built schema would be missing an attribute the baseline
+has, and **the projection referee names it**. Two hundred omissions are one
+decision, *expose exactly what shipped*, applied two hundred times and verified
+by comparison.
+
+**What human review would add is a different question and not this method's job.**
+It would find fields that *should* be exposed and are not in the released schema
+either. That is a pre-existing gap in the provider, not a migration defect, and
+it deserves its own pass across all sixty-seven surfaces rather than being
+smuggled into whichever one happens to be large.
+
+So say the accurate thing in the ledger rather than the cautious one: the
+omission set is derived from the contract and verified by the projection referee,
+it was not hand-reviewed, and hand-review would not have added a correctness
+guarantee. **What a wide surface genuinely costs is that its policy is unreadable
+in review — which is a reason to trust the referees, not to distrust the
+result.**
 
 ## Why there are two referees
 
