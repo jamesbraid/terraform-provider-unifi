@@ -507,6 +507,25 @@ should merge them, not the second.**
 - there is a `//go:generate` line producing every artifact you committed —
   checked from the artifact side, because determinism cannot see an orphan
 
+### What "migrated" does not mean, and what green does not cover
+
+**A migrated surface rests at `generated_shadow`, and that state IS the caveat.**
+It says the schema compiles, both referees pass and the artifacts are current.
+It says nothing about the surface having been exercised against a controller —
+admission needs a campaign receipt, and the campaign diffs a candidate binary
+that compiling is what produces. **So "sixty-four surfaces are generated" and
+"sixty-four surfaces are verified against a controller" are different claims, and
+the ledger only ever made the first.**
+
+The CI signal has the same shape and is easier to over-read. A push runs
+`fast-loop` alone — the other four workflows are `event: manual` — so a green
+branch means **`go test`, `go vet`, `go generate` and `git diff --exit-code`
+passed.** That is the strongest routine check here and it is still unit-level.
+The controller-dependent workflows do not run on a push at all.
+
+Neither of these is a gap. **Both are worth saying in those words when a release
+decision is being made, because green reads broader than it is.**
+
 For a **list resource** or an **action**, three of the above read differently:
 
 - the behaviour inventory is not the check that matters for a list surface,
