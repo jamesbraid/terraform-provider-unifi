@@ -375,8 +375,9 @@
   },
   {
    "kind": "managed_resource",
+   "migration": "Schema compiles from the bootstrap and policy. It fronts unifi.Network for a sixth purpose and omits 254 of the 263 SDK fields, serving five nested blocks over the rest. FOUR CLAIMS, and one of them is the case that decided the vocabulary. local_port is a single observed field claimed by wireguard.port AND openvpn.port -- members of DIFFERENT groupings -- because the controller carries one port and the released schema exposes it under whichever VPN type is configured. No member-scoped declaration reaches across sibling groupings, and per-arm accounting could not either: the two members are not arms of one union, they are members of two. Listing them in one claim is what says they relate to the one field. wan.ip and wan.interface are each one released member over THREE observed fields, one per VPN type, written to whichever type is configured and read back from whichever is set. dns.servers is one released list distributed positionally into dhcpd_dns_1 and dhcpd_dns_2. vpn_type is omitted: the provider derives it from which of wireguard, l2tp and openvpn is present, and no released attribute exposes it. purpose and setting_preference are constants the provider assigns, already declared. Admission waits on a campaign run.",
    "name": "unifi_vpn_server",
-   "state": "policy_complete"
+   "state": "generated_shadow"
   },
   {
    "kind": "managed_resource",

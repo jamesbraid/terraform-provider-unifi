@@ -20,7 +20,7 @@
     "pagination_filter": 25
   },
   "schema_sha256": "e054aef83f2cf19c82968951342d3daf46b0b8071c15c5c076201aa0c5d93317",
-  "ledger_sha256": "de0d81fbc193a50c76a578f3e3cb0bae74a9f03a5d2ac6be0e863cf73d8c4195",
+  "ledger_sha256": "65d2169076547be0f716baf529cdbc849d84278d2c6bfafed00bcb9a219ba88d",
   "surface_contracts_sha256": "53fc2acb437aa5f4fdcb7e765f067c46eb6cf84b80bd06be81c182a88b58030c",
   "migration_manifest_sha256": "a1fc6357e4994a2a725602e65ed0393c0cae9cf1b1258ca8d1d33463d635bb0e"
 }
