@@ -367,8 +367,9 @@
   },
   {
    "kind": "managed_resource",
+   "migration": "Schema compiles from the bootstrap and policy. It fronts unifi.Network for a fourth purpose -- network, site_to_site_vpn and wan front the same struct -- serving 7 top-level attributes and one wireguard grouping over it, and omitting 254 of the 263 SDK fields. Two claims carry the relations the wire does not keep one to one: wireguard.peer is one released object over the three flat wireguard_client_peer_* fields, and wireguard.dns_servers is one released list distributed positionally into dhcpd_dns_1 and dhcpd_dns_2 and read back by collecting the non-empty ones. wireguard.configuration is declared INVENTED rather than treated as a rival claimant on the peer fields, and the reason is the point: it is an alternative INPUT form. The controller's own file mode is not supported consistently across versions, so the provider parses the base64 .conf with parseWireGuardBase64Config and fills the peer fields from it. No wire field carries content or filename, and peer is the schema home for what the parse produces. wireguard_client_mode is omitted: the provider sets it to \"manual\" whichever form was used, and reads it back only to choose which arm to populate, so no attribute exposes it. wireguard.peer.port's int64validator.Between(1, 65535) is transcribed into the claimed member's nested attributes by hand, because cmd/schema-behaviour indexes the policy's own member lists and a claimed member's nested object is hand-authored. The behaviour inventory is what confirms it survived. Admission waits on a campaign run.",
    "name": "unifi_vpn_client",
-   "state": "policy_complete"
+   "state": "generated_shadow"
   },
   {
    "kind": "managed_resource",
