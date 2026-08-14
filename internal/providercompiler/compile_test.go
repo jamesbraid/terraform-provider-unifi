@@ -1075,6 +1075,166 @@ func TestMappingRecordsAnInventedMemberAsInvented(t *testing.T) {
 	t.Fatal("mapping report does not mention the invented member")
 }
 
+// multiFieldMemberInput folds both grouped fields into ONE member, which is the
+// shape traffic_route's destination.ip has over ip_addresses and ip_ranges.
+func multiFieldMemberInput(t *testing.T, mutate func(member map[string]any)) CompileInput {
+	t.Helper()
+	return groupingInput(t, func(rules map[string]any) {
+		member := groupingMembers(rules)[0].(map[string]any)
+		delete(member, "structural_name")
+		member["structural_names"] = []any{"port", "priority"}
+		member["split"] = "splitEndpoint"
+		member["terraform_type"] = "string"
+		if mutate != nil {
+			mutate(member)
+		}
+		firstGrouping(rules)["members"] = []any{member}
+	})
+}
+
+// A member consuming several fields has no one observed field behind it, so the
+// policy declares its type and the compiler does not compare one -- there is no
+// comparison that holds across the estate's two cases, a PARTITION
+// (traffic_route's ip over ip_addresses and ip_ranges) and a BROADCAST
+// (vpn_server's wan.ip over three *_local_wan_ip fields).
+func TestCompileConstructsAMultiFieldMember(t *testing.T) {
+	result, err := Compile(multiFieldMemberInput(t, nil))
+	if err != nil {
+		t.Fatalf("Compile() rejected a multi-field member: %v", err)
+	}
+	attribute := collectionAttribute(t, result.ProviderCodeSpec, "endpoint")
+	var definition struct {
+		Attributes []map[string]json.RawMessage `json:"attributes"`
+	}
+	if err := json.Unmarshal(attribute["single_nested"], &definition); err != nil {
+		t.Fatal(err)
+	}
+	if len(definition.Attributes) != 1 {
+		t.Fatalf("grouping has %d members, want 1", len(definition.Attributes))
+	}
+	// The DECLARED type, not either observed one: both fields are int64 and the
+	// member is a string. Taking a type from the catalog here would have to pick
+	// one of the two fields, and neither is more right than the other.
+	if _, declared := definition.Attributes[0]["string"]; !declared {
+		t.Fatalf("member emitted as %v, want the declared string type",
+			attributeMembers(definition.Attributes[0]))
+	}
+}
+
+// The failure that used to reach requireScalarOverride and report
+// `field "" is observed as ""` -- naming neither the member, nor the grouping,
+// nor any field. A refusal that names nothing is treated as a defect here.
+func TestCompileRefusesAMultiFieldMemberWithNoDeclaredType(t *testing.T) {
+	_, err := Compile(multiFieldMemberInput(t, func(member map[string]any) {
+		delete(member, "terraform_type")
+	}))
+	if err == nil {
+		t.Fatal("Compile() accepted a multi-field member with no terraform_type")
+	}
+	for _, want := range []string{"endpoint.port", "must declare terraform_type", "port, priority"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("Compile() error = %v, want it to name %q", err, want)
+		}
+	}
+}
+
+// The mapping report is where the exactly-once accounting is reviewed, so a
+// member consuming two fields owes it two rows. One row naming one field would
+// leave the other invisible in the artifact -- which is a field nobody
+// classified, as far as any reader can tell.
+func TestMappingReportsEveryFieldAMultiFieldMemberConsumes(t *testing.T) {
+	result, err := Compile(multiFieldMemberInput(t, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mapping struct {
+		Fields []struct {
+			TerraformName  string `json:"terraform_name"`
+			StructuralName string `json:"structural_name"`
+			StructuralType string `json:"structural_type"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(result.MappingReport, &mapping); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]string{}
+	for _, field := range mapping.Fields {
+		if field.TerraformName == "endpoint.port" {
+			seen[field.StructuralName] = field.StructuralType
+		}
+	}
+	if len(seen) != 2 || seen["port"] != "int64" || seen["priority"] != "int64" {
+		t.Fatalf("endpoint.port maps from %v, want port and priority both int64", seen)
+	}
+}
+
+// The referee on the artifact itself. The exactly-once rule is enforced while
+// the policy is read and the report is written afterwards from the same policy;
+// nothing compared the two until this existed, so a reporting mistake could
+// hide a field the accounting had already counted.
+func TestMappingCoverageRefereeNamesWhatIsWrong(t *testing.T) {
+	sourceFields := map[string]bootstrapField{
+		"port":     {Name: "port", Type: "int64"},
+		"priority": {Name: "priority", Type: "int64"},
+	}
+	complete := mappingReport{Fields: []mappingField{
+		{StructuralName: "port"}, {StructuralName: "priority"},
+	}}
+	if err := mappingCoversEveryObservedField(complete, sourceFields, nil, nil); err != nil {
+		t.Fatalf("a complete report was refused: %v", err)
+	}
+
+	tests := map[string]struct {
+		report mappingReport
+		want   string
+	}{
+		"a field with no row": {
+			report: mappingReport{Fields: []mappingField{{StructuralName: "port"}}},
+			want:   `no row for structural field "priority"`,
+		},
+		"a field reported twice": {
+			report: mappingReport{Fields: []mappingField{
+				{StructuralName: "port"}, {StructuralName: "port"}, {StructuralName: "priority"},
+			}},
+			want: `2 rows for structural field "port", want 1`,
+		},
+		"a row for a field the catalog does not observe": {
+			report: mappingReport{Fields: []mappingField{
+				{StructuralName: "port"}, {StructuralName: "priority"}, {StructuralName: "invented_by_a_typo"},
+			}},
+			want: `row for "invented_by_a_typo", which is neither an observed field`,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := mappingCoversEveryObservedField(test.report, sourceFields, nil, nil)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("mappingCoversEveryObservedField() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+
+	// A flattened field is spread rather than emitted, so its members carry the
+	// rows and the parent carries none. Counting rows would refuse
+	// power_supervisor, which is why this compares against a constructed
+	// expectation instead.
+	spread := map[string]bootstrapField{"settings": {Name: "settings", Type: "object"}}
+	flattened := map[string]string{"settings": "settings"}
+	flattenings := []flatteningPolicy{{
+		StructuralName: "settings",
+		Members:        []flattenedMember{{StructuralName: "heartbeat_interval"}},
+	}}
+	report := mappingReport{Fields: []mappingField{{StructuralName: "settings.heartbeat_interval"}}}
+	if err := mappingCoversEveryObservedField(report, spread, flattened, flattenings); err != nil {
+		t.Fatalf("a flattened surface was refused: %v", err)
+	}
+	if err := mappingCoversEveryObservedField(
+		mappingReport{}, spread, flattened, flattenings,
+	); err == nil {
+		t.Fatal("a flattening whose member lost its row was accepted")
+	}
+}
+
 // flatteningInput models power_supervisor's real shape: an observed nested
 // struct whose members the schema presents as top-level attributes.
 func flatteningInput(t *testing.T, mutate func(rules map[string]any)) CompileInput {

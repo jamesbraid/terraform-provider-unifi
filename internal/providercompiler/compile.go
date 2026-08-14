@@ -297,14 +297,26 @@ func Compile(input CompileInput) (Result, error) {
 			attributes = append(attributes, attribute)
 		}
 		for _, member := range grouping.Members {
-			mapping.Fields = append(mapping.Fields, mappingField{
-				StructuralName: member.StructuralName,
-				TerraformName:  grouping.TerraformName + "." + member.TerraformName,
-				StructuralType: groupedStructuralType(sourceFields, member),
-				TerraformType:  member.TerraformType,
-				Disposition:    member.Disposition,
-			})
+			// One row per field the member consumes, not one row per member. A
+			// member taking several fields and reporting one would drop the rest
+			// out of the artifact the exactly-once accounting is reviewed from --
+			// and every surface in the estate carries one row per observed field,
+			// so a missing row reads as a field nobody classified rather than as a
+			// reporting shortcut.
+			for _, claim := range groupedClaims(member) {
+				mapping.Fields = append(mapping.Fields, mappingField{
+					StructuralName: claim,
+					TerraformName:  grouping.TerraformName + "." + member.TerraformName,
+					StructuralType: groupedStructuralType(sourceFields, member, claim),
+					TerraformType:  member.TerraformType,
+					Disposition:    member.Disposition,
+				})
+			}
 		}
+	}
+
+	if err := mappingCoversEveryObservedField(mapping, sourceFields, flattened, rules.Flattenings); err != nil {
+		return Result{}, err
 	}
 
 	for _, seam := range providerOwned {
@@ -659,14 +671,105 @@ func sortedKeys(values map[string]string) []string {
 	return keys
 }
 
-// groupedStructuralType reports the observed type a grouped member consumes.
-// An invented member consumes nothing, and the mapping report says so rather
+// groupedClaims lists the observed fields one member consumes, for reporting.
+//
+// It returns a single empty name for an invented member, because that member
+// still earns a row: the mapping report has to show that the attribute exists
+// and came from nowhere, which is a different fact from the attribute being
+// absent. memberStructuralNames is the validating reader of the same two
+// members; this one only reports, and is deliberately total so a mapping row is
+// never skipped by a shape it did not expect.
+func groupedClaims(member groupedMember) []string {
+	if len(member.StructuralNames) > 0 {
+		return member.StructuralNames
+	}
+	return []string{member.StructuralName}
+}
+
+// groupedStructuralType reports the observed type behind one row of the mapping
+// report. An invented member consumes nothing, and the report says so rather
 // than borrowing a type it does not have.
-func groupedStructuralType(sourceFields map[string]bootstrapField, member groupedMember) string {
+func groupedStructuralType(sourceFields map[string]bootstrapField, member groupedMember, claim string) string {
 	if member.Invented != "" {
 		return "invented"
 	}
-	return sourceFields[member.StructuralName].Type
+	return sourceFields[claim].Type
+}
+
+// mappingCoversEveryObservedField checks the artifact against the accounting it
+// is supposed to show.
+//
+// The exactly-once rule is enforced while the policy is read, and the mapping
+// report is written afterwards from the same policy. Those are two passes over
+// one fact, and until this check existed nothing compared them: a member could
+// consume two fields and report one row, and the compiler would refuse nothing
+// while the reviewable artifact showed a field short. That is precisely the
+// failure the accounting exists to prevent, moved one step downstream.
+//
+// A flattened field is spread rather than emitted, so its members carry the
+// rows under parent.member names and the parent carries none -- which is why
+// this compares against a constructed expectation rather than counting rows.
+func mappingCoversEveryObservedField(
+	mapping mappingReport,
+	sourceFields map[string]bootstrapField,
+	flattened map[string]string,
+	flattenings []flatteningPolicy,
+) error {
+	expected := map[string]int{}
+	for name := range sourceFields {
+		if _, spread := flattened[name]; spread {
+			continue
+		}
+		expected[name] = 1
+	}
+	for _, flattening := range flattenings {
+		for _, member := range flattening.Members {
+			expected[flattening.StructuralName+"."+member.StructuralName]++
+		}
+	}
+
+	actual := map[string]int{}
+	for _, row := range mapping.Fields {
+		// An invented member has no observed field behind it and is reported
+		// with an empty structural name; it is counted by neither side.
+		if row.StructuralName == "" {
+			continue
+		}
+		actual[row.StructuralName]++
+	}
+
+	for _, name := range sortedCountKeys(expected) {
+		switch got := actual[name]; {
+		case got == expected[name]:
+		case got == 0:
+			return fmt.Errorf(
+				"mapping report has no row for structural field %q: the policy accounts for it "+
+					"and the artifact a reviewer reads does not show it",
+				name)
+		default:
+			return fmt.Errorf(
+				"mapping report has %d rows for structural field %q, want %d",
+				got, name, expected[name])
+		}
+	}
+	for _, name := range sortedCountKeys(actual) {
+		if _, wanted := expected[name]; !wanted {
+			return fmt.Errorf(
+				"mapping report has a row for %q, which is neither an observed field nor a "+
+					"member of a flattened one",
+				name)
+		}
+	}
+	return nil
+}
+
+func sortedCountKeys(values map[string]int) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // buildGroupingAttribute emits a declared grouping. Member types come from the
@@ -695,6 +798,39 @@ func buildGroupingAttribute(
 			attribute, err := makeCodeAttribute(member.TerraformName, member.TerraformType, member.Attribute)
 			if err != nil {
 				return codeAttribute{}, fmt.Errorf("invented member %q: %w", owner, err)
+			}
+			members = append(members, attribute)
+			continue
+		}
+		// A member consuming SEVERAL fields has no one observed field to take a
+		// type from, so the policy supplies it -- the same treatment an invented
+		// member gets, for the same reason, and the observed-type comparison is
+		// skipped because there is no single observed type to compare against.
+		//
+		// There is also no rule that could compare them. traffic_route's
+		// destination.ip is one list over ip_addresses AND ip_ranges, which is a
+		// partition; vpn_server's wan.ip is one STRING over three
+		// *_local_wan_ip fields, which is a broadcast. Nothing relates the
+		// declared type to the observed ones across both.
+		//
+		// Until this branch existed the member fell through to sourceFields[""],
+		// the zero bootstrapField, and requireScalarOverride reported
+		//   field "" is observed as "" and declares terraform_type "list_nested"
+		// naming neither the member nor the grouping nor any field.
+		if len(member.StructuralNames) > 0 {
+			if member.TerraformType == "" {
+				return codeAttribute{}, fmt.Errorf(
+					"member %q consumes %d fields (%s) and must declare terraform_type: "+
+						"no one observed field supplies it",
+					owner, len(member.StructuralNames), strings.Join(member.StructuralNames, ", "),
+				)
+			}
+			attribute, err := makeCodeAttribute(member.TerraformName, member.TerraformType, member.Attribute)
+			if err != nil {
+				return codeAttribute{}, fmt.Errorf(
+					"member %q consuming %s: %w",
+					owner, strings.Join(member.StructuralNames, ", "), err,
+				)
 			}
 			members = append(members, attribute)
 			continue
