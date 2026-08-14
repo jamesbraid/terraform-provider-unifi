@@ -17,7 +17,7 @@
     "locked_controller_lifecycle": 11
   },
   "schema_sha256": "e054aef83f2cf19c82968951342d3daf46b0b8071c15c5c076201aa0c5d93317",
-  "ledger_sha256": "f819deac8d41cccba9e91889a77a466423ce5d54b1638bf3f6a7aafa5b238f7b",
+  "ledger_sha256": "c749fb5aa6df37f67bb505ac48e9644f2a56612027c28fbe56385f2d5998d51a",
   "surface_contracts_sha256": "53fc2acb437aa5f4fdcb7e765f067c46eb6cf84b80bd06be81c182a88b58030c",
   "migration_manifest_sha256": "a1fc6357e4994a2a725602e65ed0393c0cae9cf1b1258ca8d1d33463d635bb0e"
 }
