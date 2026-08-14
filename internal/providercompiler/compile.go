@@ -471,7 +471,11 @@ func groupedStructuralFields(
 	policyFields map[string]fieldPolicy,
 	terraformNames map[string]string,
 ) (map[string]string, error) {
+	// The grouping alone is what the caller needs; the member is carried
+	// alongside it only so a conflict can name both sides of itself.
+	type claimant struct{ grouping, member string }
 	consumed := map[string]string{}
+	claimants := map[string]claimant{}
 	for _, grouping := range groupings {
 		if grouping.TerraformName == "" {
 			return nil, fmt.Errorf("grouping has no terraform_name")
@@ -546,10 +550,23 @@ func groupedStructuralFields(
 			// may claim; it must not widen what may go unclaimed, so the
 			// accounting stays per name rather than becoming per member.
 			for _, name := range claims {
-				if owner, taken := consumed[name]; taken {
+				if owner, taken := claimants[name]; taken {
+					// Two members of ONE grouping reads as "consumed by
+					// groupings "source" and "source"" unless it is told
+					// apart here, which sends the reader looking for a
+					// second grouping that does not exist. The two cases
+					// also have different fixes -- one is a duplicated
+					// member, the other is two groupings disagreeing about
+					// who owns a field.
+					if owner.grouping == grouping.TerraformName {
+						return nil, fmt.Errorf(
+							"grouping %q consumes structural field %q twice, in members %q and %q",
+							grouping.TerraformName, name, owner.member, member.TerraformName,
+						)
+					}
 					return nil, fmt.Errorf(
 						"structural field %q is consumed by groupings %q and %q",
-						name, owner, grouping.TerraformName,
+						name, owner.grouping, grouping.TerraformName,
 					)
 				}
 				if _, top := policyFields[name]; top {
@@ -559,6 +576,7 @@ func groupedStructuralFields(
 					)
 				}
 				consumed[name] = grouping.TerraformName
+				claimants[name] = claimant{grouping.TerraformName, member.TerraformName}
 			}
 		}
 	}
