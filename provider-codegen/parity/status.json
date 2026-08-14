@@ -33,8 +33,9 @@
   },
   {
    "kind": "data_source",
+   "migration": "Schema compiles from the bootstrap and policy. The surface is a LIST over a whole observed record rather than a projection of one: its single clients attribute is a list_nested grouping whose members are the ClientInfo fields, 42 served and 43 omitted, and site and timeouts are provider-owned. That shape needed no new capability -- a grouping already emits its members under nested_object for a list_nested type. Its element attributes came from unifi/models.Attributes(), a helper in a leaf package shared with nothing else once unifi_client_info was generated, so the descriptions and dispositions here are transcribed from the released contract rather than from that helper. Admission waits on a campaign run.",
    "name": "unifi_client_info_list",
-   "state": "policy_complete"
+   "state": "generated_shadow"
   },
   {
    "kind": "data_source",
