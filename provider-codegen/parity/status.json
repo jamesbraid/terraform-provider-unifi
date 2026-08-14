@@ -40,8 +40,9 @@
   },
   {
    "kind": "data_source",
+   "migration": "Schema compiles from the bootstrap and policy, and it is the surface the companion capability was built for. Its clients element carries 42 attributes of which the LEAD struct Client supplies 13 and the companion ClientInfo the other 29, fetched by ListClientInfo and ListClientHistory and joined to the Client by user ID (client_list_data_source.go:443-490, clientListEntryValues at 519). SEVENTEEN FIELD NAMES EXIST IN BOTH STRUCTS -- blocked, display_name, fixed_ip, hostname, last_ip, last_seen, mac, name, network_id, site_id and seven more -- which is why observed fields are keyed by source AND name. `last_seen` is the one that matters: BOTH structs carry it and the conversion reads ClientInfo's, so a policy keyed by bare name would have been describing the wrong field while compiling clean. Every field of BOTH structs is accounted: 13 lead fields served, 11 omitted by name, 29 companion fields served and 56 omitted by name. Declaring the 29 invented would have compiled and would have left ClientInfo's 85 fields outside the accounting entirely, which is the trade James refused. clients.network_id is a claim over TWO fields of the lead struct: networkIDValue reports virtual_network_override_id when set and network_id otherwise, so neither alone is its source -- the same ordered preference the singular data source carries. Admission waits on a campaign run.",
    "name": "unifi_client_list",
-   "state": "policy_complete"
+   "state": "generated_shadow"
   },
   {
    "kind": "data_source",

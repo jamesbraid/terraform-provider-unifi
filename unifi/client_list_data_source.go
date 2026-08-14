@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	gounifi "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_list"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -280,43 +281,10 @@ func (d *clientListDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Retrieves a list of clients (users) on the network with optional filtering. " +
-			"Merges client configuration data with active and historical connection information " +
-			"for network discovery within Terraform.",
-
-		Attributes: map[string]schema.Attribute{
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to retrieve clients from.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"group": schema.StringAttribute{
-				MarkdownDescription: "Filter clients by network members group name.",
-				Optional:            true,
-			},
-			"wired": schema.BoolAttribute{
-				MarkdownDescription: "Filter clients by wired connection status.",
-				Optional:            true,
-			},
-			"blocked": schema.BoolAttribute{
-				MarkdownDescription: "Filter clients by blocked status.",
-				Optional:            true,
-			},
-			"oui": schema.StringAttribute{
-				MarkdownDescription: "Filter clients by OUI (vendor prefix).",
-				Optional:            true,
-			},
-			"clients": schema.ListNestedAttribute{
-				MarkdownDescription: "List of clients matching the specified filters.",
-				Computed:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: clientListEntrySchemaAttributes(),
-				},
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
+	resp.Schema = datasource_client_list.ClientListDsDataSourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *clientListDataSource) Configure(
