@@ -231,15 +231,35 @@ type groupedMember struct {
 	// conflict and a field claimed by none is still unclassified. Widening what
 	// a member may claim must not widen what may go unclaimed.
 	StructuralNames []string `json:"structural_names,omitempty"`
-	// Split names the function that divides the attribute's value across those
-	// fields, and is required whenever StructuralNames is used.
-	//
-	// It is a NAME, never an inference. The compiler cannot see how a provider
-	// splits a value, and a rule guessed from field names is the mistake this
-	// pipeline has already made twice -- static_route's `type` and wlan's
-	// `schedule` both matched a plausible name and bound the wrong field. A
-	// named function is a claim someone wrote down and that a reader can check.
-	Split string `json:"split,omitempty"`
+	// Mapping names the functions that relate the attribute to those fields,
+	// and is required whenever StructuralNames is used.
+	Mapping *mappingFunctions `json:"mapping,omitempty"`
+}
+
+// mappingFunctions names both directions of the relation between one Terraform
+// attribute and the several observed fields behind it.
+//
+// BOTH HALVES ARE REQUIRED, and there is deliberately no way to say "the same
+// function, inverted". The two directions in this provider are different
+// functions and are not inverses. network's dhcp_server.dns_servers WRITES
+// positionally into dhcpd_dns_1..4, clearing the trailing slots it does not use
+// and silently dropping a fifth value; it READS with collectNonEmptyStrings,
+// which COMPACTS. So {"", "b", ""} on the wire reads as ["b"] and writes back
+// as slot 1 = "b" -- the value moves slot. And within that one resource,
+// dhcp_guarding.servers writes positionally WITHOUT clearing the trailing
+// slots. A vocabulary that could not express that difference could not describe
+// this provider, and an inverse shortcut would have blessed it silently.
+//
+// They are NAMES, never inferences. The compiler cannot see how a provider
+// divides a value, and a rule guessed from field names is the mistake this
+// pipeline has already shipped twice -- static_route's `type` and wlan's
+// `schedule` both matched a plausible name and bound the wrong field. A named
+// function is a claim someone wrote down and that a reader can open and check.
+type mappingFunctions struct {
+	// ToAPI builds the observed fields from the attribute's value.
+	ToAPI string `json:"to_api"`
+	// FromAPI builds the attribute's value from the observed fields.
+	FromAPI string `json:"from_api"`
 }
 
 // flatteningPolicy declares an observed nested struct whose members the
