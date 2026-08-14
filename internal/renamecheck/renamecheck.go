@@ -53,6 +53,14 @@ type Binding struct {
 
 // Unread records a conversion this package could not resolve, with the reason.
 // A named gap and a silent one look identical in a green run.
+//
+// This is a FLOOR on what was skipped, not a ceiling. A conversion this package
+// never visits at all cannot be reported here: composite is walked only for
+// literals of go-unifi structs, so a MODEL built with a literal --
+// `vpnServerWireguardModel{PublicKey: strPtrToType(network.WireguardPublicKey)}`,
+// which is the ordinary style for a nested object -- produces neither a binding
+// nor an Unread. Treat the binding list the same way: what it names is right,
+// and what it omits is not evidence of absence.
 type Unread struct {
 	File   string
 	Detail string
@@ -94,7 +102,7 @@ func Derive(dir string) (Result, error) {
 		return Result{}, fmt.Errorf("load %s: %v", dir, pkg.Errors[0])
 	}
 
-	w := &walker{pkg: pkg, seen: map[Binding]bool{}}
+	w := &walker{pkg: pkg, seen: map[Binding]bool{}, skipped: map[Unread]bool{}}
 	for _, file := range pkg.Syntax {
 		// The file name comes from the position rather than from
 		// CompiledGoFiles, which is only populated under a mode flag this does
@@ -124,10 +132,11 @@ func Derive(dir string) (Result, error) {
 }
 
 type walker struct {
-	pkg    *packages.Package
-	file   string
-	result Result
-	seen   map[Binding]bool
+	pkg     *packages.Package
+	file    string
+	result  Result
+	seen    map[Binding]bool
+	skipped map[Unread]bool
 }
 
 func (w *walker) visit(node ast.Node) bool {
@@ -152,17 +161,50 @@ func (w *walker) assignment(stmt *ast.AssignStmt) {
 		rhs := stmt.Rhs[index]
 
 		if structural, sdkType, ok := w.sdkField(lhs); ok {
-			if terraform, ok := w.soleTerraformName(rhs); ok {
+			candidates := w.terraformNamesIn(rhs)
+			if terraform, ok := sole(candidates); ok {
 				w.record(terraform, structural, sdkType)
+			} else {
+				w.skip(sdkType+"."+structural, "written from", "model attribute", candidates)
 			}
 			continue
 		}
 		if terraform, ok := w.terraformField(lhs); ok {
-			if structural, sdkType, ok := w.soleSDKField(rhs); ok {
-				w.record(terraform, structural, sdkType)
+			names, kinds := w.sdkFieldsIn(rhs)
+			if structural, ok := sole(names); ok {
+				w.record(terraform, structural, kinds[0])
+			} else {
+				w.skip(terraform, "read from", "SDK field", names)
 			}
 		}
 	}
+}
+
+// skip records one conversion this package declined to resolve.
+//
+// The two reasons are kept apart because they mean different things. NO
+// candidate is not a binding at all -- a constant, or a local the value was
+// staged through, which is how every many-into-one conversion in this provider
+// is written. SEVERAL candidates IS a binding, and the one this package must
+// not resolve: taking the first would invent exactly the pairing it exists to
+// catch.
+func (w *walker) skip(subject, direction, kind string, candidates []string) {
+	var detail string
+	if len(candidates) == 0 {
+		detail = fmt.Sprintf(
+			"%s is %s an expression naming no %s: a constant, or a value staged through a local",
+			subject, direction, kind)
+	} else {
+		detail = fmt.Sprintf(
+			"%s is %s an expression naming %d %ss (%s); resolving it would be a guess",
+			subject, direction, len(candidates), kind, strings.Join(candidates, ", "))
+	}
+	entry := Unread{File: w.file, Detail: detail}
+	if w.skipped[entry] {
+		return
+	}
+	w.skipped[entry] = true
+	w.result.Unread = append(w.result.Unread, entry)
 }
 
 // composite reads `&unifi.Thing{Field: model.Attr.ValueString()}`, which is how
@@ -185,8 +227,11 @@ func (w *walker) composite(lit *ast.CompositeLit) {
 		if !ok {
 			continue
 		}
-		if terraform, ok := w.soleTerraformName(kv.Value); ok {
+		candidates := w.terraformNamesIn(kv.Value)
+		if terraform, ok := sole(candidates); ok {
 			w.record(terraform, structural, named)
+		} else {
+			w.skip(named+"."+structural, "written from", "model attribute", candidates)
 		}
 	}
 }
@@ -234,13 +279,14 @@ func (w *walker) terraformField(expr ast.Expr) (string, bool) {
 	return tagOf(structure, selector.Sel.Name, "tfsdk")
 }
 
-// soleTerraformName returns the model attribute an expression mentions, but only
-// when it mentions exactly one.
+// terraformNamesIn returns every model attribute an expression mentions.
 //
-// Exactly one is the point. `model.A.ValueString()` is a pairing;
-// `a + b` or `choose(model.A, model.B)` is not one this package may resolve, and
-// silently taking the first would invent a binding.
-func (w *walker) soleTerraformName(expr ast.Expr) (string, bool) {
+// The caller pairs only when there is exactly one. That is the point:
+// `model.A.ValueString()` is a pairing; `a + b` or `choose(model.A, model.B)` is
+// not one this package may resolve, and silently taking the first would invent a
+// binding. Returning the whole list rather than a sole-or-nothing answer is what
+// lets a skip say WHICH names it saw, so a gap is named rather than silent.
+func (w *walker) terraformNamesIn(expr ast.Expr) []string {
 	var found []string
 	ast.Inspect(expr, func(node ast.Node) bool {
 		if selector, ok := node.(*ast.SelectorExpr); ok {
@@ -250,10 +296,10 @@ func (w *walker) soleTerraformName(expr ast.Expr) (string, bool) {
 		}
 		return true
 	})
-	return sole(found)
+	return found
 }
 
-func (w *walker) soleSDKField(expr ast.Expr) (string, string, bool) {
+func (w *walker) sdkFieldsIn(expr ast.Expr) ([]string, []string) {
 	var names, kinds []string
 	ast.Inspect(expr, func(node ast.Node) bool {
 		if selector, ok := node.(*ast.SelectorExpr); ok {
@@ -264,11 +310,7 @@ func (w *walker) soleSDKField(expr ast.Expr) (string, string, bool) {
 		}
 		return true
 	})
-	name, ok := sole(names)
-	if !ok {
-		return "", "", false
-	}
-	return name, kinds[0], true
+	return names, kinds
 }
 
 func sole(found []string) (string, bool) {

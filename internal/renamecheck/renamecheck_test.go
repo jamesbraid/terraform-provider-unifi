@@ -78,6 +78,18 @@ func write(t *testing.T, dir, name, body string) {
 // so go-unifi resolves from the module cache.
 func derived(t *testing.T) map[string]map[string]bool {
 	t.Helper()
+	pairs := map[string]map[string]bool{}
+	for _, b := range deriveFixture(t).Bindings {
+		if pairs[b.TerraformName] == nil {
+			pairs[b.TerraformName] = map[string]bool{}
+		}
+		pairs[b.TerraformName][b.StructuralName] = true
+	}
+	return pairs
+}
+
+func deriveFixture(t *testing.T) Result {
+	t.Helper()
 	dir := t.TempDir()
 
 	root, err := filepath.Abs("../..")
@@ -95,14 +107,7 @@ func derived(t *testing.T) map[string]map[string]bool {
 		// would go green whether the walker worked or not.
 		t.Fatalf("fixture package would not load: %v", err)
 	}
-	pairs := map[string]map[string]bool{}
-	for _, b := range result.Bindings {
-		if pairs[b.TerraformName] == nil {
-			pairs[b.TerraformName] = map[string]bool{}
-		}
-		pairs[b.TerraformName][b.StructuralName] = true
-	}
-	return pairs
+	return result
 }
 
 // Test_readsEveryConversionShape checks the three shapes that carry real
@@ -137,5 +142,47 @@ func Test_refusesAnAmbiguousExpression(t *testing.T) {
 	}
 	if got, claimed := pairs["other"]; claimed {
 		t.Errorf("the second field of an ambiguous expression resolved to %v", got)
+	}
+}
+
+// Test_namesWhatItCouldNotRead is the guard on the guard.
+//
+// Unread was declared, sorted in Derive, and never appended to. Every run
+// reported zero unreadable conversions no matter how much it had skipped, while
+// the package doc promised it "NAMES what it could not read" -- so the binding
+// count read as coverage over an unstated denominator, and the estate's real
+// figure turned out to be 625 resolved against 682 declined.
+//
+// The ambiguous expression must be NAMED, not merely absent from the bindings.
+// Absent and skipped are the same observation, and only one of them is a report.
+func Test_namesWhatItCouldNotRead(t *testing.T) {
+	result := deriveFixture(t)
+
+	if len(result.Unread) == 0 {
+		t.Fatal("nothing was reported as unread, though the fixture contains an expression " +
+			"naming two model fields; a report that is always empty is not a report")
+	}
+
+	var ambiguous string
+	for _, u := range result.Unread {
+		if strings.Contains(u.Detail, "gateway_device") {
+			ambiguous = u.Detail
+		}
+	}
+	if ambiguous == "" {
+		t.Fatalf("the ambiguous assignment to gateway_device was skipped without being named; got %v",
+			result.Unread)
+	}
+	// Both candidates, so a reader can see what the choice was between rather
+	// than only that a choice existed.
+	for _, want := range []string{"joined", "other", "would be a guess"} {
+		if !strings.Contains(ambiguous, want) {
+			t.Errorf("the report of an ambiguous conversion does not mention %q: %s", want, ambiguous)
+		}
+	}
+	for _, u := range result.Unread {
+		if u.File == "" {
+			t.Errorf("an unread entry names no file: %s", u.Detail)
+		}
 	}
 }
