@@ -191,6 +191,10 @@ package providercodegen
 //go:generate gofmt -w ../internal/generated/datasource_radius_profile/radius_profile_ds_data_source_gen.go
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct ClientInfo -resource unifi_client_info -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-client-info-ds.json
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct ClientInfo -resource unifi_client_info_list -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-client-info-list-ds.json
+//go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Client -struct ClientInfo -resource unifi_client_list -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-client-list-ds.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-client-list-ds.json -policy policy/client_list_ds.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix client_list_ds -output-dir generated
+//go:generate go tool tfplugingen-framework generate data-sources --input generated/client_list_ds.provider-code-spec.json --output ../internal/generated/datasource_client_list --package datasource_client_list
+//go:generate gofmt -w ../internal/generated/datasource_client_list/client_list_ds_data_source_gen.go
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-client-info-list-ds.json -policy policy/client_info_list_ds.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix client_info_list_ds -output-dir generated
 //go:generate go tool tfplugingen-framework generate data-sources --input generated/client_info_list_ds.provider-code-spec.json --output ../internal/generated/datasource_client_info_list --package datasource_client_info_list
 //go:generate gofmt -w ../internal/generated/datasource_client_info_list/client_info_list_ds_data_source_gen.go

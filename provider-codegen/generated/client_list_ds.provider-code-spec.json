@@ -1,0 +1,359 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "datasources": [
+    {
+      "name": "client_list_ds",
+      "schema": {
+        "attributes": [
+          {
+            "bool": {
+              "computed_optional_required": "optional",
+              "description": "Filter clients by blocked status."
+            },
+            "name": "blocked"
+          },
+          {
+            "list_nested": {
+              "computed_optional_required": "computed",
+              "description": "List of clients matching the specified filters.",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "ap_mac",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The MAC address of the access point the client is connected to."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed",
+                      "description": "Whether the client is authorized."
+                    },
+                    "name": "authorized"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed",
+                      "description": "Whether the client is blocked from the network."
+                    },
+                    "name": "blocked"
+                  },
+                  {
+                    "name": "bssid",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The BSSID of the access point."
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The WiFi channel the client is connected on."
+                    },
+                    "name": "channel"
+                  },
+                  {
+                    "name": "display_name",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The display name of the client."
+                    }
+                  },
+                  {
+                    "name": "essid",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The ESSID (network name) the client is connected to."
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "Unix timestamp when the client was first seen."
+                    },
+                    "name": "first_seen"
+                  },
+                  {
+                    "name": "fixed_ap_mac",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The MAC address of the access point to which this client is fixed."
+                    }
+                  },
+                  {
+                    "name": "fixed_ip",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "A fixed IPv4 address for this client."
+                    }
+                  },
+                  {
+                    "name": "group_id",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The user group ID for the client."
+                    }
+                  },
+                  {
+                    "name": "hostname",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The hostname of the client."
+                    }
+                  },
+                  {
+                    "name": "id",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The ID of the client."
+                    }
+                  },
+                  {
+                    "name": "ip",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The IP address of the client."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed",
+                      "description": "Whether the client is a guest."
+                    },
+                    "name": "is_guest"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed",
+                      "description": "Whether the client is connected via wired connection."
+                    },
+                    "name": "is_wired"
+                  },
+                  {
+                    "name": "last_connection_network_id",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The network ID of the last connection."
+                    }
+                  },
+                  {
+                    "name": "last_connection_network_name",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The network name of the last connection."
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "Unix timestamp when the client was last seen."
+                    },
+                    "name": "last_seen"
+                  },
+                  {
+                    "name": "last_uplink_mac",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The MAC address of the last uplink device."
+                    }
+                  },
+                  {
+                    "name": "last_uplink_name",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The name of the last uplink device."
+                    }
+                  },
+                  {
+                    "name": "local_dns_record",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The local DNS record for this client."
+                    }
+                  },
+                  {
+                    "name": "mac",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The MAC address of the client."
+                    }
+                  },
+                  {
+                    "name": "name",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The name of the client."
+                    }
+                  },
+                  {
+                    "name": "network_id",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The network ID for this client."
+                    }
+                  },
+                  {
+                    "list": {
+                      "computed_optional_required": "computed",
+                      "description": "List of network member group IDs for this client.",
+                      "element_type": {
+                        "string": {}
+                      }
+                    },
+                    "name": "network_members_group_ids"
+                  },
+                  {
+                    "name": "network_name",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The network name for this client."
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The noise level in dBm."
+                    },
+                    "name": "noise"
+                  },
+                  {
+                    "name": "note",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "A note with additional information for the client."
+                    }
+                  },
+                  {
+                    "name": "oui",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The OUI (vendor) of the client's MAC address."
+                    }
+                  },
+                  {
+                    "name": "radio",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The radio type (e.g., na, ng)."
+                    }
+                  },
+                  {
+                    "name": "radio_name",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The radio name (e.g., wifi0, wifi1)."
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The RSSI value."
+                    },
+                    "name": "rssi"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "Total bytes received."
+                    },
+                    "name": "rx_bytes"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The receive rate in kbps."
+                    },
+                    "name": "rx_rate"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The signal strength in dBm."
+                    },
+                    "name": "signal"
+                  },
+                  {
+                    "name": "status",
+                    "string": {
+                      "computed_optional_required": "computed",
+                      "description": "The connection status of the client."
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The switch port number the client is connected to."
+                    },
+                    "name": "sw_port"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "Total bytes transmitted."
+                    },
+                    "name": "tx_bytes"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The transmit rate in kbps."
+                    },
+                    "name": "tx_rate"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The uptime of the client in seconds."
+                    },
+                    "name": "uptime"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed",
+                      "description": "The wired connection rate in Mbps."
+                    },
+                    "name": "wired_rate_mbps"
+                  }
+                ]
+              }
+            },
+            "name": "clients"
+          },
+          {
+            "name": "group",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "Filter clients by network members group name."
+            }
+          },
+          {
+            "name": "oui",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "Filter clients by OUI (vendor prefix)."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to retrieve clients from."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "optional",
+              "description": "Filter clients by wired connection status."
+            },
+            "name": "wired"
+          }
+        ],
+        "markdown_description": "Retrieves a list of clients (users) on the network with optional filtering. Merges client configuration data with active and historical connection information for network discovery within Terraform."
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "data_source",
+  "surface_name": "unifi_client_list",
+  "resource": "unifi_client_list",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "bbacc37db3868379898efc674a4e2c9af35e7e11f48277f7353913a00ef8508f"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "data_source": "478ac4561f901ec9d7248a6dd6fc037be740bb467df5377e9eb087e3ac8ce22c"
+  },
+  "structural_fields": 110,
+  "generated_attributes": 6,
+  "provider_owned_seams": 6,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}
