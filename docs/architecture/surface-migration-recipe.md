@@ -107,6 +107,29 @@ cardinality change, and that guard was written for something else entirely.
 `cmd/policy-scaffold` maps what a name can tell you and **declines to guess a
 rename**, reporting what it could not place. Do not improve it into a guesser.
 
+### `internal/renamecheck` reports a floor, not a ceiling
+
+It is the right source — it reads the conversion code rather than the names —
+but **read its silence as "not resolved", never as "not there".** Across the
+estate it resolves 625 conversions and declines 682, and it now says so on every
+run.
+
+Two limits, and they compound. It resolves an expression naming **exactly one**
+attribute, so a value staged through a local — which is how every many-into-one
+conversion here is written — yields nothing. And `composite` walks literals of
+**go-unifi structs only**, so a MODEL built with a literal is never visited at
+all: `vpn_server`'s `wireguard.public_key` is absent from its output for that
+reason, and building a nested object with a literal is the ordinary style.
+
+The second limit cannot even be reported, because nothing is visited. **So for a
+binding renamecheck does not list, read the conversion code — do not fall back
+to the scaffold**, which matches on names and is the known-wrong source.
+
+That was invisible until recently: `Unread` was declared, sorted, and never
+appended to, so every run reported zero unreadable conversions however much it
+had skipped, and the claim count read as coverage over a denominator nobody
+could see.
+
 ### The rename tell
 
 A wrong rename appears in the behaviour inventory as **a removal and an addition
@@ -122,7 +145,7 @@ number of behaviours to account for — 83 for `wlan`, 46 for `firewall_policy`.
 Knowing it up front makes "am I finished" arithmetic rather than judgement,
 which is the difference that matters on a wide surface.
 
-## The three traps
+## The four traps
 
 Each of these is invisible to at least one gate, and each has bitten exactly
 once so far.
@@ -177,6 +200,23 @@ Custom types also override an attribute map, which is what broke the state
 upgrader above — so an inventory of type *names* would not have caught that
 either. Both facts are guarded now, separately, because they fail in different
 ways.
+
+### 4. A surface that fronts TWO SDK structs
+
+**Exactly one does: `unifi_client_list`.** Its `clients` element carries 42
+attributes and the `Client` struct carries 13. The other 29 — `ap_mac`, `bssid`,
+`rssi`, `rx_bytes`, `uptime` and the rest — come from `ClientInfo`, fetched by
+two further calls and joined on user ID.
+
+**A bootstrap describes ONE struct, so those 29 attributes are not observed at
+all**, and exactly-once accounting is silent about a field it never saw. The
+policy would have to call each of them `invented`, which compiles, reads as
+"the provider computes this", and is false: they come off the wire.
+
+Count the released attributes against the struct's fields before sizing a
+surface. A large gap is usually omissions, which are fine; a gap in the other
+direction — more attributes than fields — means a second source, and the shape
+of this method does not reach it yet.
 
 ## At scale, the mechanism holds and review quality does not
 
