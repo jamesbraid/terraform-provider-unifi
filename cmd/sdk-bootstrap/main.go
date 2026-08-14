@@ -37,6 +37,24 @@ type bootstrapDocument struct {
 	FormatVersion int               `json:"format_version"`
 	Source        bootstrapSource   `json:"source"`
 	Resource      bootstrapResource `json:"resource"`
+	// Companions are the further SDK structs a surface projects, in the order
+	// they were named. One surface needs them: unifi_client_list's element
+	// carries 42 attributes of which Client supplies 13 and ClientInfo the
+	// rest, fetched by a second call and joined on user ID.
+	//
+	// The lead struct stays in Resource rather than becoming companions[0],
+	// because it is not a peer: the surface's identity, its baseline key and
+	// its conversion file all follow the lead, and two peers would leave
+	// nothing to break ties.
+	Companions []bootstrapCompanion `json:"companions,omitempty"`
+}
+
+// bootstrapCompanion is one further struct, named by its GO TYPE rather than by
+// a resource name -- there is no resource for it, and the policy qualifies a
+// field by this name.
+type bootstrapCompanion struct {
+	Struct string  `json:"struct"`
+	Fields []field `json:"fields"`
 }
 
 type bootstrapSource struct {
@@ -56,20 +74,34 @@ type field struct {
 	Fields []field `json:"fields,omitempty"`
 }
 
+// stringList collects a flag given more than once, in the order given, because
+// which struct leads is a fact the order carries.
+type stringList []string
+
+func (l *stringList) String() string { return strings.Join(*l, ",") }
+
+func (l *stringList) Set(value string) error {
+	*l = append(*l, value)
+	return nil
+}
+
 func main() { os.Exit(run(os.Args[1:], os.Stderr)) }
 
 func run(args []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("sdk-bootstrap", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	pkgPath := flags.String("package", "", "SDK package to resolve")
-	rootName := flags.String("struct", "", "SDK struct the resource operates on")
+	var structNames stringList
+	flags.Var(&structNames, "struct",
+		"SDK struct the resource operates on; repeat for a surface that projects several, "+
+			"the first being the one the surface leads with")
 	resource := flags.String("resource", "", "Terraform resource name")
 	commit := flags.String("commit", "", "SDK commit the bootstrap is derived from")
 	output := flags.String("output", "", "file to write")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if *pkgPath == "" || *rootName == "" || *resource == "" || *commit == "" || *output == "" {
+	if *pkgPath == "" || len(structNames) == 0 || *resource == "" || *commit == "" || *output == "" {
 		fmt.Fprintln(stderr, "package, struct, resource, commit and output are required")
 		return 2
 	}
@@ -80,28 +112,54 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "import %s: %v\n", *pkgPath, err)
 		return 1
 	}
-	object := pkg.Scope().Lookup(*rootName)
-	if object == nil {
-		fmt.Fprintf(stderr, "%s defines no %s\n", *pkgPath, *rootName)
-		return 1
+	// Each struct's own declaring file, in the order named. The file comes from
+	// where the struct is declared, not from a name built out of the resource.
+	// Guessing produced firewall_policy.go when the type lives in
+	// firewall_policy.generated.go, and a digest over the wrong file is worse
+	// than none: it is a real digest of something irrelevant.
+	declared := make([][]byte, 0, len(structNames))
+	structures := make([]*types.Struct, 0, len(structNames))
+	seen := map[string]bool{}
+	for _, name := range structNames {
+		if seen[name] {
+			fmt.Fprintf(stderr, "struct %s named twice; a field would then be observed twice\n", name)
+			return 2
+		}
+		seen[name] = true
+		object := pkg.Scope().Lookup(name)
+		if object == nil {
+			fmt.Fprintf(stderr, "%s defines no %s\n", *pkgPath, name)
+			return 1
+		}
+		structure, ok := object.Type().Underlying().(*types.Struct)
+		if !ok {
+			fmt.Fprintf(stderr, "%s.%s is not a struct\n", *pkgPath, name)
+			return 1
+		}
+		contents, err := os.ReadFile(fset.Position(object.Pos()).Filename)
+		if err != nil {
+			fmt.Fprintf(stderr, "read the file declaring %s: %v\n", name, err)
+			return 1
+		}
+		declared = append(declared, contents)
+		structures = append(structures, structure)
 	}
-	structure, ok := object.Type().Underlying().(*types.Struct)
-	if !ok {
-		fmt.Fprintf(stderr, "%s.%s is not a struct\n", *pkgPath, *rootName)
-		return 1
-	}
+	structure := structures[0]
 
-	// The file comes from where the struct is declared, not from a name built
-	// out of the resource. Guessing produced firewall_policy.go when the type
-	// lives in firewall_policy.generated.go, and a digest over the wrong file
-	// is worse than none: it is a real digest of something irrelevant.
-	source := fset.Position(object.Pos()).Filename
-	contents, err := os.ReadFile(source)
-	if err != nil {
-		fmt.Fprintf(stderr, "read %s: %v\n", source, err)
-		return 1
+	// One struct digests exactly as it always did, so every existing bootstrap
+	// and the policy digest bound to it are unchanged. Several digest the whole
+	// sequence, names included, so adding a companion, reordering them or
+	// changing any one of their files all move the digest.
+	sum := sha256.Sum256(declared[0])
+	if len(declared) > 1 {
+		hash := sha256.New()
+		for index, contents := range declared {
+			hash.Write([]byte(structNames[index]))
+			hash.Write([]byte{0})
+			hash.Write(contents)
+		}
+		copy(sum[:], hash.Sum(nil))
 	}
-	sum := sha256.Sum256(contents)
 
 	document := bootstrapDocument{
 		FormatVersion: 1,
@@ -111,6 +169,12 @@ func run(args []string, stderr io.Writer) int {
 			SpecificationSHA256: hex.EncodeToString(sum[:]),
 		},
 		Resource: bootstrapResource{Name: *resource, Fields: walk(structure)},
+	}
+	for index, companion := range structures[1:] {
+		document.Companions = append(document.Companions, bootstrapCompanion{
+			Struct: structNames[index+1],
+			Fields: walk(companion),
+		})
 	}
 
 	encoded := new(strings.Builder)

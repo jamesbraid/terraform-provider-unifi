@@ -27,6 +27,18 @@ type bootstrap struct {
 	FormatVersion int             `json:"format_version"`
 	Source        bootstrapSource `json:"source"`
 	Resource      bootstrapSchema `json:"resource"`
+	// Companions are the further SDK structs a surface projects. The lead stays
+	// in Resource rather than becoming the first companion, because it is not a
+	// peer: the surface's identity, its baseline key and its conversion file
+	// all follow the lead.
+	Companions []bootstrapCompanion `json:"companions,omitempty"`
+}
+
+// bootstrapCompanion is one further observed struct, named by its GO TYPE.
+// There is no resource name for it; the policy qualifies a field by this name.
+type bootstrapCompanion struct {
+	Struct string           `json:"struct"`
+	Fields []bootstrapField `json:"fields"`
 }
 
 type bootstrapSource struct {
@@ -150,12 +162,20 @@ type catalogPolicySource struct {
 }
 
 type fieldPolicy struct {
-	StructuralName string          `json:"structural_name"`
-	SemanticID     string          `json:"semantic_id,omitempty"`
-	TerraformName  string          `json:"terraform_name"`
-	TerraformType  string          `json:"terraform_type,omitempty"`
-	Disposition    string          `json:"disposition"`
-	Attribute      json.RawMessage `json:"attribute,omitempty"`
+	StructuralName string `json:"structural_name"`
+	// StructuralSource names the SDK struct StructuralName belongs to, when the
+	// surface projects more than one. It is empty for the lead struct, so every
+	// policy written before companions existed means exactly what it did.
+	//
+	// PER ATTRIBUTE rather than per group, because a group can span structs:
+	// client's qos_rate takes its `id` from Client.usergroup_id and its other
+	// three members from ClientGroup, in one grouping.
+	StructuralSource string          `json:"structural_source,omitempty"`
+	SemanticID       string          `json:"semantic_id,omitempty"`
+	TerraformName    string          `json:"terraform_name"`
+	TerraformType    string          `json:"terraform_type,omitempty"`
+	Disposition      string          `json:"disposition"`
+	Attribute        json.RawMessage `json:"attribute,omitempty"`
 	// Fields holds the per-member decisions for an object or array<object>.
 	// The catalog supplies the members; this supplies what each one becomes,
 	// exactly as the top level does for scalars.
@@ -193,11 +213,19 @@ type groupingPolicy struct {
 type groupedMember struct {
 	// StructuralName names the observed flat field this member consumes. It is
 	// empty only for an invented member, which must say why.
-	StructuralName string          `json:"structural_name,omitempty"`
-	TerraformName  string          `json:"terraform_name"`
-	TerraformType  string          `json:"terraform_type,omitempty"`
-	Disposition    string          `json:"disposition"`
-	Attribute      json.RawMessage `json:"attribute,omitempty"`
+	StructuralName string `json:"structural_name,omitempty"`
+	// StructuralSource names the SDK struct StructuralName belongs to, when the
+	// surface projects more than one. It is empty for the lead struct, so every
+	// policy written before companions existed means exactly what it did.
+	//
+	// PER ATTRIBUTE rather than per group, because a group can span structs:
+	// client's qos_rate takes its `id` from Client.usergroup_id and its other
+	// three members from ClientGroup, in one grouping.
+	StructuralSource string          `json:"structural_source,omitempty"`
+	TerraformName    string          `json:"terraform_name"`
+	TerraformType    string          `json:"terraform_type,omitempty"`
+	Disposition      string          `json:"disposition"`
+	Attribute        json.RawMessage `json:"attribute,omitempty"`
 	// Fields holds the per-member decisions when the observed field this member
 	// consumes is itself an object or array<object>.
 	//
@@ -267,6 +295,10 @@ type claimPolicy struct {
 	TerraformMembers []string `json:"terraform_members"`
 	// StructuralNames names the observed fields the claim consumes.
 	StructuralNames []string `json:"structural_names"`
+	// StructuralSource names the struct they all belong to, empty for the lead.
+	// A claim whose fields span TWO structs has no surface asking for it, and
+	// would need a source per name rather than one for the claim.
+	StructuralSource string `json:"structural_source,omitempty"`
 	// Mapping names the two functions that relate them.
 	Mapping *mappingFunctions `json:"mapping"`
 	// Reason says why the relation is not one-to-one, in prose. Required for
@@ -317,8 +349,10 @@ type mappingFunctions struct {
 // anyone deciding to drop it.
 type flatteningPolicy struct {
 	// StructuralName is the observed object field being spread.
-	StructuralName string            `json:"structural_name"`
-	Members        []flattenedMember `json:"members"`
+	StructuralName string `json:"structural_name"`
+	// StructuralSource names the struct it belongs to, empty for the lead.
+	StructuralSource string            `json:"structural_source,omitempty"`
+	Members          []flattenedMember `json:"members"`
 }
 
 // flattenedMember promotes one member of a nested struct to a top-level
