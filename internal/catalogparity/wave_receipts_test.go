@@ -142,6 +142,12 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 		// internal/renamecheck read the right ones out of the conversion code.
 		case "unifi_wan":
 			want = GeneratedShadow
+		// The widest omission set in the estate: 223 of 263 SDK fields, seven
+		// claims, and a trap the name cannot survive -- the SDK carries an
+		// ipv6_aliases field AND the released schema an ipv6_aliases
+		// attribute, and they are not connected.
+		case "unifi_network":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -372,8 +378,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:  5,
-		GeneratedShadow: 60,
+		PolicyComplete:  4,
+		GeneratedShadow: 61,
 		ShadowOnly:      1,
 		Admitted:        1,
 	}

@@ -1,0 +1,1136 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "network",
+      "schema": {
+        "attributes": [
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Specifies whether auto-scaling is enabled."
+            },
+            "name": "auto_scale"
+          },
+          {
+            "name": "dhcp_guarding",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Specifies whether DHCP guarding is enabled."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "optional",
+                    "description": "List of allowed DHCP server IP addresses (maximum 3).",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                            }
+                          ],
+                          "schema_definition": "listvalidator.SizeAtMost(3)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "servers"
+                }
+              ],
+              "computed_optional_required": "optional",
+              "description": "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network."
+            }
+          },
+          {
+            "name": "dhcp_relay",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Specifies whether DHCP relay is enabled."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "optional",
+                    "description": "List of DHCP relay server addresses.",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                            }
+                          ],
+                          "schema_definition": "listvalidator.SizeAtMost(4)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "servers"
+                }
+              ],
+              "computed_optional_required": "optional",
+              "description": "DHCP relay configuration."
+            }
+          },
+          {
+            "name": "dhcp_server",
+            "single_nested": {
+              "attributes": [
+                {
+                  "name": "boot",
+                  "single_nested": {
+                    "attributes": [
+                      {
+                        "bool": {
+                          "computed_optional_required": "computed_optional",
+                          "default": {
+                            "static": false
+                          },
+                          "description": "Toggles DHCP boot options."
+                        },
+                        "name": "enabled"
+                      },
+                      {
+                        "name": "server",
+                        "string": {
+                          "computed_optional_required": "computed_optional",
+                          "description": "TFTP server for boot options.",
+                          "plan_modifiers": [
+                            {
+                              "custom": {
+                                "imports": [
+                                  {
+                                    "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                                  }
+                                ],
+                                "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "filename",
+                        "string": {
+                          "computed_optional_required": "computed_optional",
+                          "description": "Boot filename.",
+                          "plan_modifiers": [
+                            {
+                              "custom": {
+                                "imports": [
+                                  {
+                                    "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                                  }
+                                ],
+                                "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    "computed_optional_required": "computed_optional",
+                    "description": "DHCP boot settings.",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": true
+                    },
+                    "description": "Specifies whether DHCP conflict checking is enabled."
+                  },
+                  "name": "conflict_checking"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Specifies whether DHCP DNS is enabled."
+                  },
+                  "name": "dns_enabled"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "optional",
+                    "description": "List of DNS server addresses for DHCP clients.",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                            }
+                          ],
+                          "schema_definition": "listvalidator.SizeAtMost(4)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "dns_servers"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": true
+                    },
+                    "description": "Specifies whether DHCP server is enabled."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Specifies whether DHCP gateway is enabled."
+                  },
+                  "name": "gateway_enabled"
+                },
+                {
+                  "name": "leasetime",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "default": {
+                      "static": "24h0m0s"
+                    },
+                    "description": "Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Defaults to `24h0m0s`."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Specifies whether DHCP NTP is enabled."
+                  },
+                  "name": "ntp_enabled"
+                },
+                {
+                  "name": "start",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "The IPv4 address where the DHCP range starts.",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                            }
+                          ],
+                          "schema_definition": "validators.IPv4Validator()"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "stop",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "The IPv4 address where the DHCP range stops.",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ],
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                            }
+                          ],
+                          "schema_definition": "validators.IPv4Validator()"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "tftp_server",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "TFTP server address."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Specifies whether DHCP time offset is enabled."
+                  },
+                  "name": "time_offset_enabled"
+                },
+                {
+                  "name": "unifi_controller",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "UniFi controller IP address.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                            }
+                          ],
+                          "schema_definition": "validators.IPv4Validator()"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "wins",
+                  "single_nested": {
+                    "attributes": [
+                      {
+                        "bool": {
+                          "computed_optional_required": "computed_optional",
+                          "default": {
+                            "static": false
+                          },
+                          "description": "Specifies whether DHCP WINS is enabled."
+                        },
+                        "name": "enabled"
+                      },
+                      {
+                        "list": {
+                          "computed_optional_required": "optional",
+                          "description": "List of WINS server addresses (maximum 2).",
+                          "element_type": {
+                            "string": {}
+                          },
+                          "validators": [
+                            {
+                              "custom": {
+                                "imports": [
+                                  {
+                                    "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                                  }
+                                ],
+                                "schema_definition": "listvalidator.SizeAtMost(2)"
+                              }
+                            }
+                          ]
+                        },
+                        "name": "addresses"
+                      }
+                    ],
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "custom": {
+                        "imports": [
+                          {
+                            "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
+                          },
+                          {
+                            "path": "github.com/hashicorp/terraform-plugin-framework/types"
+                          },
+                          {
+                            "path": "github.com/hashicorp/terraform-plugin-framework/attr"
+                          }
+                        ],
+                        "schema_definition": "objectdefault.StaticValue(types.ObjectValueMust(map[string]attr.Type{\"enabled\": types.BoolType, \"addresses\": types.ListType{ElemType: types.StringType}}, map[string]attr.Value{\"enabled\": types.BoolValue(false), \"addresses\": types.ListNull(types.StringType)}))"
+                      }
+                    },
+                    "description": "WINS server configuration."
+                  }
+                },
+                {
+                  "name": "wpad_url",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "WPAD URL for proxy auto-configuration."
+                  }
+                }
+              ],
+              "computed_optional_required": "optional",
+              "description": "DHCP server configuration."
+            }
+          },
+          {
+            "name": "dhcp_v6_server",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Specifies whether DNS auto-discovery is enabled for DHCPv6."
+                  },
+                  "name": "dns_auto"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "optional",
+                    "description": "List of DNS server addresses for DHCPv6 clients (maximum 4).",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                            }
+                          ],
+                          "schema_definition": "listvalidator.SizeAtMost(4)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "dns_servers"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Specifies whether the DHCPv6 server is enabled."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "optional",
+                    "description": "The lease time for DHCPv6 addresses in seconds."
+                  },
+                  "name": "lease"
+                },
+                {
+                  "name": "start",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "The start of the DHCPv6 address range."
+                  }
+                },
+                {
+                  "name": "stop",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "The end of the DHCPv6 address range."
+                  }
+                }
+              ],
+              "computed_optional_required": "optional",
+              "description": "DHCPv6 server configuration."
+            }
+          },
+          {
+            "name": "domain_name",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The domain name for the network.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      }
+                    ],
+                    "schema_definition": "validators.DomainNameValidator()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Specifies whether the network is enabled."
+            },
+            "name": "enabled"
+          },
+          {
+            "name": "gateway_type",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "default"
+              },
+              "description": "The gateway type. Must be one of `default` or `switch`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"default\", \"switch\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the network.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Specifies whether IGMP snooping is enabled."
+            },
+            "name": "igmp_snooping"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Specifies whether internet access is enabled."
+            },
+            "name": "internet_access"
+          },
+          {
+            "list": {
+              "computed_optional_required": "optional",
+              "description": "List of IP aliases for the network.",
+              "element_type": {
+                "string": {}
+              }
+            },
+            "name": "ip_aliases"
+          },
+          {
+            "list": {
+              "computed_optional_required": "optional",
+              "description": "List of IPv6 aliases for the network.",
+              "element_type": {
+                "string": {}
+              }
+            },
+            "name": "ipv6_aliases"
+          },
+          {
+            "name": "ipv6_client_address_assignment",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "How clients on this network obtain an IPv6 address (UI: Networks \u2192 IPv6 \u2192 Client Address Assignment). One of `slaac` (SLAAC only), `dhcpv6` (DHCPv6 only), or `slaac-dhcpv6` (both). Computed from the controller when not set.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"slaac\", \"dhcpv6\", \"slaac-dhcpv6\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ipv6_interface_type",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "none"
+              },
+              "description": "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"none\", \"pd\", \"static\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Specifies whether automatic prefix ID assignment is enabled for IPv6 Prefix Delegation.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "ipv6_pd_auto_prefixid_enabled"
+          },
+          {
+            "name": "ipv6_pd_interface",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The IPv6 Prefix Delegation WAN interface (e.g., `wan`, `wan2`)."
+            }
+          },
+          {
+            "name": "ipv6_pd_prefixid",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The IPv6 Prefix Delegation prefix ID (hex string, e.g., `0`, `1a`)."
+            }
+          },
+          {
+            "name": "ipv6_pd_start",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The start of the IPv6 Prefix Delegation range (e.g. `::2`). Required together with `ipv6_pd_stop` when `ipv6_interface_type` is `pd`, otherwise the controller rejects the network with `api.err.InvalidIpv6Addr`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ipv6_pd_stop",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The end of the IPv6 Prefix Delegation range (e.g. `::7d1`). Required together with `ipv6_pd_start` when `ipv6_interface_type` is `pd`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Specifies whether IPv6 Router Advertisement (RA) is enabled.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "ipv6_ra"
+          },
+          {
+            "name": "ipv6_ra_preferred_lifetime",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "description": "The IPv6 Router Advertisement preferred lifetime, as a Go duration string (e.g. `14400s`, `4h`). Must be a whole number of seconds between `0s` and `31536000s` (1 year).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationBetween(0, 31536000*time.Second)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ipv6_ra_priority",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The IPv6 Router Advertisement priority. Must be one of `high`, `medium`, or `low`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"high\", \"medium\", \"low\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ipv6_ra_valid_lifetime",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "description": "The IPv6 Router Advertisement valid lifetime, as a Go duration string (e.g. `86400s`, `24h`). Must be a whole number of seconds between `0s` and `31536000s` (1 year).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationBetween(0, 31536000*time.Second)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ipv6_static_subnet",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Defaults to `true` (network stays available during LTE failover); set to `false` to disable it while on the LTE backup link. The controller may set this automatically, which is why existing networks can show differing values."
+            },
+            "name": "lte_lan"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Specifies whether mDNS is enabled. This is read back from the controller rather than defaulted: some controllers (notably UniFi OS gateways) ignore `mdns_enabled` at create/update time and always store `false`, so forcing a `true` default produced a \"provider produced inconsistent result after apply\" error.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "multicast_dns"
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the network."
+            }
+          },
+          {
+            "list_nested": {
+              "computed_optional_required": "optional",
+              "description": "List of NAT outbound IP addresses.",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "ip_address",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "The IP address."
+                    }
+                  },
+                  {
+                    "list": {
+                      "computed_optional_required": "optional",
+                      "description": "The IP address pool.",
+                      "element_type": {
+                        "string": {}
+                      }
+                    },
+                    "name": "ip_address_pool"
+                  },
+                  {
+                    "name": "mode",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "The mode."
+                    }
+                  },
+                  {
+                    "name": "wan_network_group",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "The WAN network group."
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "nat_outbound_ip_addresses"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Specifies whether network isolation is enabled."
+            },
+            "name": "network_isolation"
+          },
+          {
+            "name": "purpose",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The network purpose: `corporate` (default), `guest`, or `vlan-only`. Leave unset to let the controller manage it (a `third_party_gateway` network is always `vlan-only`). **Note:** on Zone-Based-Firewall controllers the purpose is coupled to the firewall zone \u2014 a `guest` network only keeps `purpose = \"guest\"` while it belongs to the guest/Hotspot zone (assign it there via `unifi_firewall_zone`), otherwise the controller rewrites it back to `corporate` and the apply fails with an inconsistent-result error.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      },
+                      {
+                        "path": "github.com/ubiquiti-community/go-unifi/unifi"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(unifi.PurposeCorporate, unifi.PurposeGuest, unifi.PurposeVLANOnly)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "setting_preference",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "auto"
+              },
+              "description": "Setting preference. Must be one of `auto` or `manual`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the network with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "subnet",
+            "string": {
+              "computed_optional_required": "optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
+                },
+                "type": "cidrtypes.IPv4PrefixType{}",
+                "value_type": "cidrtypes.IPv4Prefix"
+              },
+              "description": "The network's gateway IP and prefix in CIDR notation. The host portion is the gateway address the controller assigns \u2014 it need not be the first usable address: `10.0.10.1/24` uses gateway `10.0.10.1`, while `10.0.10.254/24` uses gateway `10.0.10.254` on the same subnet. Optional: it is not required for `vlan_only` networks (`third_party_gateway = true`), where the UniFi controller does not manage the subnet."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Specifies whether this network uses a third-party gateway. When enabled, the network purpose is set to `vlan-only` and only VLAN ID, DHCP guarding, and basic network settings are configured."
+            },
+            "name": "third_party_gateway"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The VLAN ID for the network.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(1, 4094)"
+                  }
+                }
+              ]
+            },
+            "name": "vlan"
+          }
+        ],
+        "markdown_description": "`unifi_network` manages networks (VLANs) in the UniFi controller."
+      }
+    }
+  ]
+}
