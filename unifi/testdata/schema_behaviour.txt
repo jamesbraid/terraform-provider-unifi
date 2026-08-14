@@ -40,6 +40,7 @@ data.unifi_ap_group.timeouts.read	validator	validators.timeDurationValidator	"mu
 data.unifi_client.fixed_ap_mac	custom_type	hwtypes.MACAddressType	"<carries no description>"
 data.unifi_client.fixed_ip	custom_type	iptypes.IPv4AddressType	"<carries no description>"
 data.unifi_client.mac	custom_type	hwtypes.MACAddressType	"<carries no description>"
+data.unifi_client.qos_rate	custom_type	datasource_client.QosRateType	"<carries no description>"
 data.unifi_client.timeouts	custom_type	timeouts.Type	"<carries no description>"
 data.unifi_client.timeouts.read	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 data.unifi_client_info.timeouts	custom_type	timeouts.Type	"<carries no description>"
