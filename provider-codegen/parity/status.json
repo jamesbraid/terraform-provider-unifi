@@ -63,8 +63,9 @@
   },
   {
    "kind": "data_source",
+   "migration": "Schema compiles from the bootstrap and policy, and it is the last surface this release needed. It reads the same unifi.Network the managed resource writes and exposes more of it: 46 released attributes against the resource's 37, adding the WAN half the resource does not serve. Counts from the mapping report, not estimated. SEVEN CLAIMS, five of them the same relations the managed resource carries, read-only. wan_dns is its own: one released list collected from wan_dns1 and wan_dns2, which are POINTERS, and wan_dns3 and wan_dns4, which are plain strings -- one attribute over four fields of two different Go shapes. purpose and third_party_gateway are again two released attributes over the one observed purpose, here both computed from it on read. TWO RENAMES THE NAME CANNOT SURVIVE, both read from the conversion code with internal/renamecheck: network_group comes from networkgroup while wan_network_group comes from wan_networkgroup, and this surface exposes BOTH, so a name match would have crossed them. ipv6_static_subnet comes from ipv6_subnet. ipv6_aliases is the same trap the managed resource carries: an SDK field and a released attribute of one name that are not connected, the attribute set to null unconditionally on read. The field is omitted and the attribute is provider-owned. Admission waits on a campaign run.",
    "name": "unifi_network",
-   "state": "policy_complete"
+   "state": "generated_shadow"
   },
   {
    "kind": "data_source",
