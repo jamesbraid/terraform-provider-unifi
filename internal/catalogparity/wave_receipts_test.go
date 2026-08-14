@@ -313,6 +313,13 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		// nested object type from the attribute name rather than its path.
 		case "unifi_wan":
 			want = GeneratedShadow
+		// The surface the claims vocabulary was built for, and the only one
+		// with a claim in each direction: destination.ip is ONE member over
+		// TWO observed arrays, and source.clients with source.networks are
+		// TWO members over ONE. It also carries the estate's only
+		// element_member, destination.domain over []TrafficRouteDomains.
+		case "unifi_traffic_route":
+			want = GeneratedShadow
 		// The fifth surface over unifi.Network, and the first with claims:
 		// wireguard.peer relates one released object to three flat observed
 		// fields, and wireguard.dns_servers one released list to two. Its
@@ -358,8 +365,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:  8,
-		GeneratedShadow: 57,
+		PolicyComplete:  7,
+		GeneratedShadow: 58,
 		ShadowOnly:      1,
 		Admitted:        1,
 	}

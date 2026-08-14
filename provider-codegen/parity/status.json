@@ -363,8 +363,9 @@
   },
   {
    "kind": "managed_resource",
+   "migration": "Schema compiles from the bootstrap and policy, and it is the surface the claims vocabulary was built for. TWO CLAIMS, one of each direction. destination.ip is ONE released list over TWO observed arrays: an entry containing a hyphen becomes an ip_ranges record and anything else an ip_addresses record, and the two are merged back into one list on read. source.clients and source.networks are TWO released members over ONE observed target_devices array, partitioned on its own type discriminator -- which no member-scoped declaration reaches, because under one the two members would each assert the field and collide with nowhere to say they belong together. destination.domain is the estate's only element_member: the SDK carries []TrafficRouteDomains{domain, port_ranges, ports} and the released attribute is a list of strings. Emitting it as list_nested would compile and would be a different schema -- practitioners write domain = [\"a.com\"] and would have to write domain = [{domain = \"a.com\"}] -- so the collapse is declared and cross-checked against the catalog three ways. The element's other two members are omitted by name; this resource writes only Domain on that struct, and touches port_ranges and ports only on ip_addresses. matching_target is omitted. The provider sets it to DOMAIN, REGION, IP or INTERNET according to which destination member is populated and NEVER READS IT BACK -- apiToModel rebuilds destination from domains, regions, ip_addresses and ip_ranges directly -- so no released attribute exposes it. Admission waits on a campaign run.",
    "name": "unifi_traffic_route",
-   "state": "policy_complete"
+   "state": "generated_shadow"
   },
   {
    "kind": "managed_resource",
