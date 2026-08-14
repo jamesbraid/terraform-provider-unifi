@@ -76,6 +76,11 @@ func Compile(input CompileInput) (Result, error) {
 		return Result{}, err
 	}
 
+	// Observed fields are keyed by SOURCE AND NAME, because a surface may
+	// project more than one SDK struct and their names collide: Client and
+	// ClientInfo both carry `name` and `mac`, and Client and ClientGroup both
+	// carry `name`. A field of the lead struct keys as its bare name, so every
+	// policy written before companions existed is unaffected.
 	sourceFields := make(map[string]bootstrapField, len(source.Resource.Fields))
 	for _, field := range source.Resource.Fields {
 		if field.Name == "" || field.Type == "" {
@@ -85,6 +90,43 @@ func Compile(input CompileInput) (Result, error) {
 			return Result{}, fmt.Errorf("duplicate structural field %q", field.Name)
 		}
 		sourceFields[field.Name] = field
+	}
+	companionStructs := map[string]struct{}{}
+	for _, companion := range source.Companions {
+		if companion.Struct == "" {
+			return Result{}, fmt.Errorf("bootstrap companion has no struct name")
+		}
+		if _, exists := companionStructs[companion.Struct]; exists {
+			return Result{}, fmt.Errorf("bootstrap names companion struct %q twice", companion.Struct)
+		}
+		// A companion named like a field of the lead struct would make
+		// "X.member" ambiguous between a companion field and a flattening of
+		// the lead's X, and the mapping report writes both in that form.
+		if _, collides := sourceFields[companion.Struct]; collides {
+			return Result{}, fmt.Errorf(
+				"companion struct %q has the same name as an observed field of the lead struct; "+
+					"a qualified name would then be ambiguous with a flattening of that field",
+				companion.Struct)
+		}
+		companionStructs[companion.Struct] = struct{}{}
+		for _, field := range companion.Fields {
+			if field.Name == "" || field.Type == "" {
+				return Result{}, fmt.Errorf(
+					"bootstrap field of companion %q has empty name or type", companion.Struct)
+			}
+			key := qualifyField(companion.Struct, field.Name)
+			if _, exists := sourceFields[key]; exists {
+				return Result{}, fmt.Errorf("duplicate structural field %q", key)
+			}
+			sourceFields[key] = field
+		}
+	}
+
+	// A source the bootstrap does not carry is a typo, and its consequence --
+	// the field it was meant to classify goes unclassified -- names the wrong
+	// thing. Refuse it where the mistake is.
+	if err := declaredSourcesExist(rules, companionStructs); err != nil {
+		return Result{}, err
 	}
 
 	claimedFields, claimedMembers, err := claimedStructuralFields(rules.Claims)
@@ -130,13 +172,14 @@ func Compile(input CompileInput) (Result, error) {
 			claimedTopLevel[field.TerraformName] = field
 			continue
 		}
-		if _, exists := policyFields[field.StructuralName]; exists {
-			return Result{}, fmt.Errorf("duplicate policy field %q", field.StructuralName)
+		key := qualifyField(field.StructuralSource, field.StructuralName)
+		if _, exists := policyFields[key]; exists {
+			return Result{}, fmt.Errorf("duplicate policy field %q", key)
 		}
-		if owner, claimed := claimedFields[field.StructuralName]; claimed {
+		if owner, claimed := claimedFields[key]; claimed {
 			return Result{}, fmt.Errorf(
 				"structural field %q is consumed by %s and also classified at the top level",
-				field.StructuralName, owner)
+				key, owner)
 		}
 		if err := validateDisposition(field.Disposition, field.StructuralName); err != nil {
 			return Result{}, err
@@ -152,7 +195,7 @@ func Compile(input CompileInput) (Result, error) {
 				return Result{}, err
 			}
 		}
-		policyFields[field.StructuralName] = field
+		policyFields[key] = field
 	}
 
 	// A grouped field is classified by the grouping that consumes it, not at
@@ -300,7 +343,7 @@ func Compile(input CompileInput) (Result, error) {
 			}
 		}
 		mapping.Fields = append(mapping.Fields, mappingField{
-			StructuralName: structural.Name,
+			StructuralName: name,
 			TerraformName:  field.TerraformName,
 			StructuralType: structural.Type,
 			TerraformType:  terraformType,
@@ -345,7 +388,7 @@ func Compile(input CompileInput) (Result, error) {
 	flattenings := append([]flatteningPolicy(nil), rules.Flattenings...)
 	sort.Slice(flattenings, func(i, j int) bool { return flattenings[i].StructuralName < flattenings[j].StructuralName })
 	for _, flattening := range flattenings {
-		structural := sourceFields[flattening.StructuralName]
+		structural := sourceFields[qualifyField(flattening.StructuralSource, flattening.StructuralName)]
 		members := append([]flattenedMember(nil), flattening.Members...)
 		sort.Slice(members, func(i, j int) bool { return members[i].TerraformName < members[j].TerraformName })
 		for _, member := range members {
@@ -357,7 +400,7 @@ func Compile(input CompileInput) (Result, error) {
 				}
 			}
 			mapping.Fields = append(mapping.Fields, mappingField{
-				StructuralName: flattening.StructuralName + "." + member.StructuralName,
+				StructuralName: qualifyField(flattening.StructuralSource, flattening.StructuralName) + "." + member.StructuralName,
 				TerraformName:  member.TerraformName,
 				StructuralType: inner.Type,
 				TerraformType:  member.TerraformType,
@@ -406,7 +449,7 @@ func Compile(input CompileInput) (Result, error) {
 				continue
 			}
 			mapping.Fields = append(mapping.Fields, mappingField{
-				StructuralName: member.StructuralName,
+				StructuralName: qualifyField(member.StructuralSource, member.StructuralName),
 				TerraformName:  grouping.TerraformName + "." + member.TerraformName,
 				StructuralType: groupedStructuralType(sourceFields, member),
 				TerraformType:  member.TerraformType,
@@ -673,7 +716,7 @@ func groupedStructuralFields(
 			}
 			// One field per member here. Anything that is not one-to-one is a
 			// claim, so this stays the single-name case it always was.
-			for _, name := range []string{member.StructuralName} {
+			for _, name := range []string{qualifyField(member.StructuralSource, member.StructuralName)} {
 				if owner, taken := claimants[name]; taken {
 					// Two members of ONE grouping reads as "consumed by
 					// groupings "source" and "source"" unless it is told
@@ -726,7 +769,7 @@ func flattenedStructuralFields(
 		if flattening.StructuralName == "" {
 			return nil, fmt.Errorf("flattening has no structural_name")
 		}
-		structural, observed := sourceFields[flattening.StructuralName]
+		structural, observed := sourceFields[qualifyField(flattening.StructuralSource, flattening.StructuralName)]
 		if !observed {
 			return nil, fmt.Errorf(
 				"flattening spreads %q, which the catalog does not observe",
@@ -820,7 +863,7 @@ func groupedStructuralType(sourceFields map[string]bootstrapField, member groupe
 	if member.Invented != "" {
 		return "invented"
 	}
-	return sourceFields[member.StructuralName].Type
+	return sourceFields[qualifyField(member.StructuralSource, member.StructuralName)].Type
 }
 
 // claimMappingRows reports one row per observed field a claim consumes.
@@ -840,7 +883,8 @@ func claimMappingRows(claim claimPolicy, sourceFields map[string]bootstrapField)
 	sort.Strings(members)
 	joined := strings.Join(members, ", ")
 	rows := make([]mappingField, 0, len(claim.StructuralNames))
-	for _, name := range claim.StructuralNames {
+	for _, bare := range claim.StructuralNames {
+		name := qualifyField(claim.StructuralSource, bare)
 		rows = append(rows, mappingField{
 			StructuralName: name,
 			TerraformName:  joined,
@@ -877,8 +921,9 @@ func mappingCoversEveryObservedField(
 		expected[name] = 1
 	}
 	for _, flattening := range flattenings {
+		parent := qualifyField(flattening.StructuralSource, flattening.StructuralName)
 		for _, member := range flattening.Members {
-			expected[flattening.StructuralName+"."+member.StructuralName]++
+			expected[parent+"."+member.StructuralName]++
 		}
 	}
 
@@ -915,6 +960,78 @@ func mappingCoversEveryObservedField(
 		}
 	}
 	return nil
+}
+
+// declaredSourcesExist refuses a structural_source naming a struct the
+// bootstrap does not carry, wherever a policy may name one.
+func declaredSourcesExist(rules policy, companions map[string]struct{}) error {
+	known := func(source, where string) error {
+		if source == "" {
+			return nil
+		}
+		if _, ok := companions[source]; ok {
+			return nil
+		}
+		return fmt.Errorf(
+			"%s declares structural_source %q, which the bootstrap does not carry; "+
+				"it names %s",
+			where, source, describeCompanions(companions))
+	}
+	for _, field := range rules.Fields {
+		if err := known(field.StructuralSource, "top-level field "+field.TerraformName); err != nil {
+			return err
+		}
+	}
+	for _, grouping := range rules.Groupings {
+		for _, member := range grouping.Members {
+			where := "grouping member " + grouping.TerraformName + "." + member.TerraformName
+			if err := known(member.StructuralSource, where); err != nil {
+				return err
+			}
+		}
+	}
+	for _, flattening := range rules.Flattenings {
+		if err := known(flattening.StructuralSource, "flattening of "+flattening.StructuralName); err != nil {
+			return err
+		}
+	}
+	for _, claim := range rules.Claims {
+		where := "claim on " + strings.Join(claim.StructuralNames, ", ")
+		if err := known(claim.StructuralSource, where); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// describeCompanions names what the bootstrap does carry, because "not carried"
+// without the alternatives sends the reader to the wrong file.
+func describeCompanions(companions map[string]struct{}) string {
+	if len(companions) == 0 {
+		return "no companion structs at all, only the lead"
+	}
+	names := make([]string, 0, len(companions))
+	for name := range companions {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return "only " + strings.Join(names, ", ")
+}
+
+// qualifyField keys an observed field by the struct it belongs to.
+//
+// A field of the LEAD struct keys as its bare name, so every policy written
+// before companions existed keys exactly as it did and nothing on disk changes.
+// A companion's field keys as Struct.field, which is also how the mapping report
+// writes it, so a reviewer can tell Client.name from ClientGroup.name.
+//
+// Nothing ever parses the result back apart: the source is carried as its own
+// member throughout, and this is the only place the two are joined.
+func qualifyField(source, name string) string {
+	if source == "" {
+		return name
+	}
+	return source + "." + name
 }
 
 func sortedFieldKeys(values map[string]fieldPolicy) []string {
@@ -1087,7 +1204,7 @@ func buildGroupingAttribute(
 			members = append(members, attribute)
 			continue
 		}
-		structural := sourceFields[member.StructuralName]
+		structural := sourceFields[qualifyField(member.StructuralSource, member.StructuralName)]
 		if member.ElementMember != "" {
 			attribute, err := collapsedElementAttribute(owner, member, structural)
 			if err != nil {
@@ -2058,10 +2175,11 @@ func claimedStructuralFields(claims []claimPolicy) (map[string]string, map[strin
 			}
 		}
 
-		for _, name := range claim.StructuralNames {
-			if name == "" {
+		for _, bare := range claim.StructuralNames {
+			if bare == "" {
 				return nil, nil, fmt.Errorf("%s lists an empty structural name", owner)
 			}
+			name := qualifyField(claim.StructuralSource, bare)
 			if existing, taken := fields[name]; taken {
 				if existing == owner {
 					return nil, nil, fmt.Errorf(

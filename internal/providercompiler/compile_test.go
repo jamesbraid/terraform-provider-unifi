@@ -2851,3 +2851,157 @@ func bootstrapWithObjectMember(t *testing.T) []byte {
 	})
 	return mustJSON(t, document)
 }
+
+// companionInput models unifi_client_list's shape: a surface whose released
+// attributes come from TWO SDK structs, joined by the conversion.
+//
+// The companion deliberately repeats `port`, because that is the whole reason
+// observed fields are keyed by source and name: Client and ClientInfo both carry
+// `name` and `mac`, and Client and ClientGroup both carry `name`.
+func companionInput(t *testing.T, mutate func(bootstrap, rules map[string]any)) CompileInput {
+	t.Helper()
+	var document map[string]any
+	if err := json.Unmarshal(testBootstrap(t, dnsFieldNames()), &document); err != nil {
+		t.Fatal(err)
+	}
+	document["companions"] = []any{map[string]any{
+		"struct": "Sidecar",
+		"fields": []any{
+			map[string]any{"name": "port", "type": "int64"},
+			map[string]any{"name": "label", "type": "string"},
+		},
+	}}
+
+	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+	rules["fields"] = append(rules["fields"].([]any),
+		map[string]any{
+			"structural_name": "label", "structural_source": "Sidecar",
+			"terraform_name": "sidecar_label", "disposition": "managed",
+			"attribute": map[string]any{"computed_optional_required": "computed"},
+		},
+		map[string]any{
+			"structural_name": "port", "structural_source": "Sidecar",
+			"terraform_name": "sidecar_port", "disposition": "omitted",
+		})
+	if mutate != nil {
+		mutate(document, rules)
+	}
+	return CompileInput{
+		Bootstrap:       mustJSON(t, document),
+		Policy:          mustJSON(t, rules),
+		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, catalogparity.Admitted),
+	}
+}
+
+// A surface may project several SDK structs, and the accounting covers ALL of
+// them. Declaring a second struct's fields `invented` compiles and is a lie:
+// they come off the wire, from a different call, and the exactly-once rule would
+// then say nothing at all about that struct.
+func TestCompileConsumesACompanionStructsFields(t *testing.T) {
+	result, err := Compile(companionInput(t, nil))
+	if err != nil {
+		t.Fatalf("Compile() rejected a companion struct: %v", err)
+	}
+	attribute := collectionAttribute(t, result.ProviderCodeSpec, "sidecar_label")
+	if _, ok := attribute["string"]; !ok {
+		t.Fatalf("sidecar_label emitted as %v, want its companion's observed string type",
+			attributeMembers(attribute))
+	}
+
+	var mapping struct {
+		Fields []struct {
+			TerraformName  string `json:"terraform_name"`
+			StructuralName string `json:"structural_name"`
+			StructuralType string `json:"structural_type"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(result.MappingReport, &mapping); err != nil {
+		t.Fatal(err)
+	}
+	rows := map[string]string{}
+	for _, field := range mapping.Fields {
+		rows[field.StructuralName] = field.TerraformName
+	}
+	// The report qualifies a companion's field and leaves the lead's bare, so a
+	// reviewer can tell Sidecar.port from the lead's own port -- which is the
+	// distinction that makes the accounting mean anything on this surface.
+	for name, want := range map[string]string{
+		"Sidecar.label": "sidecar_label",
+		"Sidecar.port":  "sidecar_port",
+		"port":          "port",
+	} {
+		if rows[name] != want {
+			t.Errorf("mapping row %q maps to %q, want %q", name, rows[name], want)
+		}
+	}
+}
+
+// The return on this capability: a companion's fields are accounted for, so one
+// nobody classified is refused exactly as the lead struct's are.
+func TestCompileRefusesAnUnclassifiedCompanionField(t *testing.T) {
+	_, err := Compile(companionInput(t, func(_, rules map[string]any) {
+		kept := []any{}
+		for _, raw := range rules["fields"].([]any) {
+			field := raw.(map[string]any)
+			if field["terraform_name"] == "sidecar_port" {
+				continue
+			}
+			kept = append(kept, raw)
+		}
+		rules["fields"] = kept
+	}))
+	if err == nil || !strings.Contains(err.Error(), `unclassified structural field "Sidecar.port"`) {
+		t.Fatalf("Compile() error = %v, want the unclassified companion field named", err)
+	}
+}
+
+// Every way a bootstrap could make a qualified name ambiguous, refused.
+func TestCompileRejectsAmbiguousCompanions(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(bootstrap, rules map[string]any)
+		want   string
+	}{
+		"the same struct named twice": {
+			mutate: func(document, _ map[string]any) {
+				document["companions"] = append(document["companions"].([]any),
+					map[string]any{"struct": "Sidecar", "fields": []any{}})
+			},
+			want: `names companion struct "Sidecar" twice`,
+		},
+		// "port.label" would then be ambiguous between a companion's field and
+		// a flattening of the lead's own `port`, and the mapping report writes
+		// both in that form.
+		"a struct named like a field of the lead": {
+			mutate: func(document, _ map[string]any) {
+				document["companions"].([]any)[0].(map[string]any)["struct"] = "port"
+			},
+			want: "same name as an observed field of the lead struct",
+		},
+		"a companion with no struct name": {
+			mutate: func(document, _ map[string]any) {
+				delete(document["companions"].([]any)[0].(map[string]any), "struct")
+			},
+			want: "companion has no struct name",
+		},
+		"a policy naming a struct the bootstrap does not carry": {
+			mutate: func(_, rules map[string]any) {
+				for _, raw := range rules["fields"].([]any) {
+					field := raw.(map[string]any)
+					if field["terraform_name"] == "sidecar_label" {
+						field["structural_source"] = "Nonexistent"
+					}
+				}
+			},
+			want: `declares structural_source "Nonexistent", which the bootstrap does not carry; it names only Sidecar`,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(companionInput(t, test.mutate))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
