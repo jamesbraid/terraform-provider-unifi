@@ -956,6 +956,20 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 			},
 			want: `is consumed by groupings`,
 		},
+		// The same conflict WITHIN one grouping. Told apart from the case
+		// above because "consumed by groupings "endpoint" and "endpoint""
+		// sends the reader looking for a second grouping that is not there,
+		// and because the two have different fixes: one is a duplicated
+		// member, the other is two groupings disagreeing about who owns a
+		// field.
+		"one grouping consumes the same field in two members": {
+			mutate: func(rules map[string]any) {
+				members := groupingMembers(rules)
+				members[1].(map[string]any)["structural_name"] = "port"
+				firstGrouping(rules)["members"] = members
+			},
+			want: `grouping "endpoint" consumes structural field "port" twice, in members "port" and "priority"`,
+		},
 		"member names nothing and is not declared invented": {
 			mutate: func(rules map[string]any) {
 				delete(groupingMembers(rules)[0].(map[string]any), "structural_name")
