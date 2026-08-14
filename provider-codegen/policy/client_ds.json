@@ -165,6 +165,15 @@
   {
    "attribute": {
     "computed_optional_required": "computed",
+    "description": "The network ID for this client."
+   },
+   "disposition": "managed",
+   "terraform_name": "network_id",
+   "terraform_type": "string"
+  },
+  {
+   "attribute": {
+    "computed_optional_required": "computed",
     "description": "List of network members group names for this client.",
     "element_type": {
      "string": {}
@@ -200,13 +209,40 @@
    "terraform_name": "virtual_network_override_enabled"
   },
   {
-   "attribute": {
-    "computed_optional_required": "computed",
-    "description": "The network ID for this client."
-   },
-   "disposition": "managed",
-   "terraform_name": "network_id",
-   "terraform_type": "string"
+   "disposition": "omitted",
+   "structural_name": "_id",
+   "structural_source": "ClientGroup",
+   "terraform_name": "clientgroup_id"
+  },
+  {
+   "disposition": "omitted",
+   "structural_name": "attr_hidden",
+   "structural_source": "ClientGroup",
+   "terraform_name": "clientgroup_attr_hidden"
+  },
+  {
+   "disposition": "omitted",
+   "structural_name": "attr_hidden_id",
+   "structural_source": "ClientGroup",
+   "terraform_name": "clientgroup_attr_hidden_id"
+  },
+  {
+   "disposition": "omitted",
+   "structural_name": "attr_no_delete",
+   "structural_source": "ClientGroup",
+   "terraform_name": "clientgroup_attr_no_delete"
+  },
+  {
+   "disposition": "omitted",
+   "structural_name": "attr_no_edit",
+   "structural_source": "ClientGroup",
+   "terraform_name": "clientgroup_attr_no_edit"
+  },
+  {
+   "disposition": "omitted",
+   "structural_name": "site_id",
+   "structural_source": "ClientGroup",
+   "terraform_name": "clientgroup_site_id"
   }
  ],
  "format_version": 1,
@@ -233,9 +269,9 @@
       "description": "The name of the client group."
      },
      "disposition": "managed",
-     "invented": "names a ClientGroup, a separate controller object the Client struct does not carry; the data source reads the group named by usergroup_id and reports its name",
-     "terraform_name": "name",
-     "terraform_type": "string"
+     "structural_name": "name",
+     "structural_source": "ClientGroup",
+     "terraform_name": "name"
     },
     {
      "attribute": {
@@ -243,9 +279,9 @@
       "description": "Maximum upload rate in kbps."
      },
      "disposition": "managed",
-     "invented": "a ClientGroup rate rather than a Client field, read from the group named by usergroup_id",
-     "terraform_name": "max_up",
-     "terraform_type": "int64"
+     "structural_name": "qos_rate_max_up",
+     "structural_source": "ClientGroup",
+     "terraform_name": "max_up"
     },
     {
      "attribute": {
@@ -253,9 +289,9 @@
       "description": "Maximum download rate in kbps."
      },
      "disposition": "managed",
-     "invented": "a ClientGroup rate rather than a Client field, read from the group named by usergroup_id",
-     "terraform_name": "max_down",
-     "terraform_type": "int64"
+     "structural_name": "qos_rate_max_down",
+     "structural_source": "ClientGroup",
+     "terraform_name": "max_down"
     }
    ],
    "terraform_name": "qos_rate",
@@ -280,6 +316,6 @@
   }
  ],
  "resource": "unifi_client",
- "source_specification_sha256": "573638a96c16dea0d2e09044c2891b20cb031d993561b9a51feddb9c433792a3",
+ "source_specification_sha256": "e5954987b39335314530ab83fea2273eedce75dc442339e7626a9602c2e3aee7",
  "surface_kind": "data_source"
 }
