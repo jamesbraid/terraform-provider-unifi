@@ -44,8 +44,13 @@ type policyField struct {
 }
 
 // claim is one policy assertion: this attribute comes from this SDK field.
+//
+// path is where the attribute sits in the policy. renamecheck reports a bare
+// tfsdk tag with no path, so path is not compared -- it exists so a claim that
+// CANNOT be compared can say which attribute it was.
 type claim struct {
 	terraform  string
+	path       string
 	structural string
 }
 
@@ -86,8 +91,10 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 
 	// Per file, every SDK field each attribute name is paired with. A name can
 	// appear more than once -- nested shapes reuse `enabled` and `id` -- and
-	// that only makes the check more permissive, never wrong: a claim passes if
-	// ANY binding of that name supports it.
+	// when it does, no binding of that name can be attributed to any one of them.
+	// ambiguousNames reports those claims as unchecked rather than accepting any
+	// binding, which is what this used to do and is permissive in the exact
+	// direction the referee exists to guard.
 	paired := map[string]map[string]map[string]bool{}
 	for _, b := range derived.Bindings {
 		if paired[b.File] == nil {
@@ -148,13 +155,23 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 		}
 		surfaces++
 		byName := paired[filepath.Base(file)]
+		ambiguous := ambiguousNames(claims)
 
 		for _, c := range claims {
+			if at, shared := ambiguous[c.terraform]; shared {
+				unchecked = append(unchecked, fmt.Sprintf(
+					"%s.%s (claims %s): %d attributes share the terraform name %q (%s), and "+
+						"the deriver reports a bare name, so no binding of it can be attributed "+
+						"to one of them",
+					policy.Resource, c.path, c.structural, len(at), c.terraform,
+					strings.Join(at, ", ")))
+				continue
+			}
 			targets, mentioned := byName[c.terraform]
 			if !mentioned {
 				unchecked = append(unchecked, fmt.Sprintf(
 					"%s.%s (claims %s): the conversion code never pairs this attribute with an "+
-						"SDK field directly", policy.Resource, c.terraform, c.structural))
+						"SDK field directly", policy.Resource, c.path, c.structural))
 				continue
 			}
 			checked++
@@ -163,7 +180,7 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 			}
 			contradicted = append(contradicted, fmt.Sprintf(
 				"%s.%s claims %q but %s pairs it with %s",
-				policy.Resource, c.terraform, c.structural,
+				policy.Resource, c.path, c.structural,
 				filepath.Base(file), strings.Join(sortedKeys(targets), " or ")))
 		}
 	}
@@ -243,28 +260,72 @@ func conversionFile(policy policyDocument) string {
 // SDK field, at any depth. An invented member claims no field and is skipped.
 func claimsOf(policy policyDocument) []claim {
 	var out []claim
-	var walk func(fields []policyField)
-	walk = func(fields []policyField) {
+	var walk func(prefix string, fields []policyField)
+	walk = func(prefix string, fields []policyField) {
 		for _, f := range fields {
+			path := prefix + f.TerraformName
 			if f.Disposition == "managed" && f.Invented == "" &&
 				f.StructuralName != "" && f.TerraformName != "" {
-				out = append(out, claim{terraform: f.TerraformName, structural: f.StructuralName})
+				out = append(out, claim{
+					terraform: f.TerraformName, path: path, structural: f.StructuralName,
+				})
 			}
-			walk(f.Fields)
+			walk(path+".", f.Fields)
 		}
 	}
-	walk(policy.Fields)
+	walk("", policy.Fields)
 	for _, flattening := range policy.Flattenings {
-		walk(flattening.Members)
+		walk("", flattening.Members)
 	}
 	for _, grouping := range policy.Groupings {
 		for _, m := range grouping.Members {
 			if m.Disposition == "managed" && m.Invented == "" && m.StructuralName != "" {
-				out = append(out, claim{terraform: m.TerraformName, structural: m.StructuralName})
+				out = append(out, claim{
+					terraform:  m.TerraformName,
+					path:       grouping.TerraformName + "." + m.TerraformName,
+					structural: m.StructuralName,
+				})
 			}
 		}
 	}
 	return out
+}
+
+// ambiguousNames reports which terraform names a policy uses at more than one
+// path.
+//
+// renamecheck reports a bare tfsdk tag, so when two attributes share one the
+// bindings of that name cannot be attributed to either. Accepting ANY binding
+// of the name -- which is what this referee did -- makes the comparison
+// permissive in the exact direction it exists to guard: wan carries FIVE
+// attributes called `enabled`, bound to enabled, upnp_enabled,
+// wan_egress_qos_enabled, wan_smartq_enabled and wan_vlan_enabled, so
+// upnp.enabled could have claimed wan_vlan_enabled and passed.
+//
+// It also produced a false CONTRADICTION, which is how this was found: client's
+// qos_rate.id resolves through resolveClientGroup and a local, so renamecheck
+// declines it, and the only binding of the name `id` belongs to the top-level
+// attribute of the same name.
+//
+// So an ambiguous name is reported as unchecked rather than compared. That is a
+// real loss of reach, and it is a loss the referee already had -- it is now
+// counted instead of hidden.
+func ambiguousNames(claims []claim) map[string][]string {
+	paths := map[string][]string{}
+	for _, c := range claims {
+		paths[c.terraform] = append(paths[c.terraform], c.path)
+	}
+	ambiguous := map[string][]string{}
+	for name, at := range paths {
+		unique := map[string]bool{}
+		for _, path := range at {
+			unique[path] = true
+		}
+		if len(unique) > 1 {
+			ambiguous[name] = sortedKeys(unique)
+		}
+	}
+	return ambiguous
 }
 
 func sortedKeys(set map[string]bool) []string {
