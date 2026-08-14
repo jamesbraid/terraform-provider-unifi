@@ -42,6 +42,15 @@ omission set before committing to the surface.
 7. **Re-cut the five wave receipts in the same commit as the state change.**
 8. **Rewire the resource to serve the generated schema.**
 
+**Step 8 destroys the input to step 4.** `cmd/schema-behaviour` reads the
+hand-written schema out of the resource, and step 8 replaces it. Once rewired,
+re-deriving the behaviour half writes NOTHING and says so — *already serves a
+generated schema* — and a policy rebuilt at that point silently loses every
+validator, plan modifier, default and custom type it had. `vpn_client` lost
+eleven that way. The behaviour golden refuses all of them, so it fails loudly,
+but the cheaper habit is to **re-derive before rewiring, or revert the rewire to
+re-derive.**
+
 ### Why the inventory cannot be taken later
 
 It costs nothing to take early and cannot be reconstructed afterwards, because
@@ -83,6 +92,15 @@ new one by hand.
 Transcribe descriptions rather than writing them. The released text is
 authoritative because it is published; two descriptions were wrong for no
 reason other than having been retyped.
+
+**And transcribe `sensitive` with them.** Reading dispositions and descriptions
+out of the released contract and stopping there dropped three of `vpn_client`'s
+secret flags — `peer.public_key`, `preshared_key` and `configuration.content`.
+The attributes keep their names, types and descriptions, so **nothing except the
+projection referee can see that three secrets stopped being marked secret**, and
+the compiler's own secret guard does not reach them: it checks the catalog's
+secret candidates, which are the `x_`-prefixed SDK fields, not what the released
+schema chose to hide.
 
 **Restore behaviour you disagree with.** Several of `firewall_policy`'s
 defaults are arguable — the optional-plus-computed inventory argues against
