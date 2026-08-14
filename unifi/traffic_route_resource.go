@@ -10,22 +10,17 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_traffic_route"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_traffic_route"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -179,147 +174,16 @@ func (r *trafficRouteResource) IdentitySchema(
 
 func (r *trafficRouteResource) Schema(
 	ctx context.Context,
-	_ resource.SchemaRequest,
+	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a traffic route in the UniFi controller. Traffic routes allow you to steer traffic matching specific destinations through a chosen network or VPN.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the traffic route.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the traffic route with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"description": schema.StringAttribute{
-				MarkdownDescription: "A description of the traffic route (max 128 characters).",
-				Optional:            true,
-			},
-			"destination": schema.SingleNestedAttribute{
-				MarkdownDescription: "Destination filter for this traffic route. Specify exactly one of `domain`, `region`, or `ip`. When omitted, the route matches all internet traffic.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"domain": schema.ListAttribute{
-						MarkdownDescription: "List of domain names to match.",
-						Optional:            true,
-						ElementType:         types.StringType,
-						Validators: []validator.List{
-							listvalidator.ConflictsWith(
-								path.MatchRelative().AtParent().AtName("region"),
-								path.MatchRelative().AtParent().AtName("ip"),
-							),
-						},
-					},
-					"ip": schema.ListNestedAttribute{
-						MarkdownDescription: "List of IP address, subnet, or IP range entries to match. Use CIDR notation (e.g. `10.0.0.0/8`) for subnets, or a hyphenated range (e.g. `192.168.10.1-192.168.10.255`) for IP ranges.",
-						Optional:            true,
-						Validators: []validator.List{
-							listvalidator.ConflictsWith(
-								path.MatchRelative().AtParent().AtName("domain"),
-								path.MatchRelative().AtParent().AtName("region"),
-							),
-						},
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"address": schema.StringAttribute{
-									MarkdownDescription: "An IP address, CIDR subnet, or hyphenated IP range to match.",
-									Required:            true,
-								},
-								"ports": schema.ListAttribute{
-									MarkdownDescription: "List of ports or port ranges to match. Use a single number (e.g. `80`) for individual ports, or a hyphenated range (e.g. `8080-8090`) for port ranges. Only supported for IP addresses and subnets, not IP ranges.",
-									Optional:            true,
-									ElementType:         types.StringType,
-								},
-							},
-						},
-					},
-					"region": schema.ListAttribute{
-						MarkdownDescription: "List of regions to match.",
-						Optional:            true,
-						ElementType:         types.StringType,
-						Validators: []validator.List{
-							listvalidator.ConflictsWith(
-								path.MatchRelative().AtParent().AtName("domain"),
-								path.MatchRelative().AtParent().AtName("ip"),
-							),
-						},
-					},
-				},
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the traffic route is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"kill_switch_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the kill switch is enabled. When enabled, traffic is blocked if the target network/VPN is unavailable.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"network_id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the network or VPN to route matching traffic through. Defaults to the primary WAN network.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"next_hop": schema.StringAttribute{
-				MarkdownDescription: "The next hop for the traffic route.",
-				CustomType:          iptypes.IPAddressType{},
-				Optional:            true,
-			},
-			"source": schema.SingleNestedAttribute{
-				MarkdownDescription: "Source filter for this traffic route. When omitted, the route applies to all clients.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"networks": schema.ListNestedAttribute{
-						MarkdownDescription: "List of networks whose traffic this route applies to.",
-						Optional:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"id": schema.StringAttribute{
-									MarkdownDescription: "The ID of the network.",
-									Required:            true,
-								},
-							},
-						},
-					},
-					"clients": schema.ListNestedAttribute{
-						MarkdownDescription: "List of client devices whose traffic this route applies to.",
-						Optional:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"mac": schema.StringAttribute{
-									MarkdownDescription: "The MAC address of the client device.",
-									Required:            true,
-								},
-							},
-						},
-					},
-				},
-			},
-			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-			}),
-		},
-	}
+	resp.Schema = resource_traffic_route.TrafficRouteResourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *trafficRouteResource) Configure(
