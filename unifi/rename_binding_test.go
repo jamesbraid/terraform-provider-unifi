@@ -192,6 +192,30 @@ func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 			"attribute with a field directly:\n    %s",
 			len(unchecked), strings.Join(unchecked, "\n    "))
 	}
+
+	// What the deriver ITSELF could not read. Without this the checked count
+	// reads as coverage, and it is not: it is coverage of the conversions the
+	// deriver resolved, over an unstated denominator. The two numbers belong
+	// beside each other.
+	var ambiguous []string
+	for _, u := range derived.Unread {
+		if strings.Contains(u.Detail, "would be a guess") {
+			ambiguous = append(ambiguous, u.File+": "+u.Detail)
+		}
+	}
+	sort.Strings(ambiguous)
+	t.Logf("the deriver resolved %d conversion(s) and declined %d; the checked count above "+
+		"is a FLOOR on this referee's reach, not its extent",
+		len(derived.Bindings), len(derived.Unread))
+	if len(ambiguous) > 0 {
+		// Named individually because this is the dangerous class: the
+		// conversion IS a pairing, and it pairs one field with SEVERAL
+		// attributes or the reverse. Every one is a claim no policy can
+		// currently express, and resolving any of them by picking a candidate
+		// would invent exactly the binding this referee exists to catch.
+		t.Logf("%d of those decline because the conversion names several candidates:\n    %s",
+			len(ambiguous), strings.Join(ambiguous, "\n    "))
+	}
 }
 
 // conversionFile maps a policy to the file that converts it, or "" when the
