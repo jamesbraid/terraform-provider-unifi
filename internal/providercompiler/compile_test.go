@@ -884,34 +884,58 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 		// fields it takes, and every one is refused rather than defaulted --
 		// there is no division that is obviously right, and picking one
 		// silently is how a wrong binding survives.
-		"a multi-field member with no split function": {
+		"a multi-field member with no mapping": {
 			mutate: func(rules map[string]any) {
 				member := groupingMembers(rules)[0].(map[string]any)
 				delete(member, "structural_name")
 				member["structural_names"] = []any{"port", "priority"}
 			},
-			want: "declares no split function",
+			want: "declares no mapping",
+		},
+		// Both halves, always. The two directions are different functions in
+		// this provider and are not inverses: network's dhcp_server.dns_servers
+		// writes positionally into dhcpd_dns_1..4, clearing the trailing slots,
+		// and reads back compacted -- so a value moves slot on a round trip. A
+		// mapping naming one direction describes half the behaviour while
+		// reading as though it described all of it.
+		"a mapping naming only the write direction": {
+			mutate: func(rules map[string]any) {
+				member := groupingMembers(rules)[0].(map[string]any)
+				delete(member, "structural_name")
+				member["structural_names"] = []any{"port", "priority"}
+				member["mapping"] = map[string]any{"to_api": "splitEndpoint"}
+			},
+			want: "declares a mapping with no from_api function",
+		},
+		"a mapping naming only the read direction": {
+			mutate: func(rules map[string]any) {
+				member := groupingMembers(rules)[0].(map[string]any)
+				delete(member, "structural_name")
+				member["structural_names"] = []any{"port", "priority"}
+				member["mapping"] = map[string]any{"from_api": "joinEndpoint"}
+			},
+			want: "declares a mapping with no to_api function",
 		},
 		"a member declaring both one field and several": {
 			mutate: func(rules map[string]any) {
 				member := groupingMembers(rules)[0].(map[string]any)
 				member["structural_names"] = []any{"port", "priority"}
-				member["split"] = "splitEndpoint"
+				member["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
 			},
 			want: "declares both structural_name and structural_names",
 		},
-		"a split declared on a single-field member": {
+		"a mapping declared on a single-field member": {
 			mutate: func(rules map[string]any) {
-				groupingMembers(rules)[0].(map[string]any)["split"] = "splitEndpoint"
+				groupingMembers(rules)[0].(map[string]any)["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
 			},
-			want: "there is nothing to split",
+			want: "there is nothing to relate",
 		},
 		"structural_names used for exactly one field": {
 			mutate: func(rules map[string]any) {
 				member := groupingMembers(rules)[0].(map[string]any)
 				delete(member, "structural_name")
 				member["structural_names"] = []any{"port"}
-				member["split"] = "splitEndpoint"
+				member["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
 			},
 			want: "use structural_name",
 		},
@@ -923,7 +947,7 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 				member := groupingMembers(rules)[0].(map[string]any)
 				delete(member, "structural_name")
 				member["structural_names"] = []any{"port", "port"}
-				member["split"] = "splitEndpoint"
+				member["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
 			},
 			want: "twice",
 		},
@@ -1097,7 +1121,7 @@ func multiFieldMemberInput(t *testing.T, mutate func(member map[string]any)) Com
 		member := groupingMembers(rules)[0].(map[string]any)
 		delete(member, "structural_name")
 		member["structural_names"] = []any{"port", "priority"}
-		member["split"] = "splitEndpoint"
+		member["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
 		member["terraform_type"] = "string"
 		if mutate != nil {
 			mutate(member)

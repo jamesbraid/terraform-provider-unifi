@@ -1756,17 +1756,17 @@ func marshalCanonical(value any) ([]byte, error) {
 // consumes, refusing every way a policy could be ambiguous about it.
 //
 // A member names exactly one field or several, never both and never neither.
-// Several requires a named split function, because the compiler cannot see how
-// a provider divides one value across two fields and a rule inferred from field
-// names is the mistake this pipeline has already shipped twice -- static_route's
+// Several requires a named mapping, because the compiler cannot see how a
+// provider relates one value to two fields and a rule inferred from field names
+// is the mistake this pipeline has already shipped twice -- static_route's
 // `type` matched the record discriminator rather than the route kind, and wlan's
 // `schedule` matched a legacy field of a plausible type. Both produced a
 // byte-identical schema and the wrong request.
 //
-// The split is a NAME, not an expression: something a reader can open and check
-// against the conversion code. A member declaring several fields with no split
-// is refused rather than defaulted, because there is no division that is
-// obviously right, and picking one silently is how a wrong binding survives.
+// The mapping is a pair of NAMES, not an expression: something a reader can open
+// and check against the conversion code. A member declaring several fields with
+// no mapping is refused rather than defaulted, because there is no relation that
+// is obviously right, and picking one silently is how a wrong binding survives.
 func memberStructuralNames(grouping string, member groupedMember) ([]string, error) {
 	single := member.StructuralName != ""
 	several := len(member.StructuralNames) > 0
@@ -1783,23 +1783,40 @@ func memberStructuralNames(grouping string, member groupedMember) ([]string, err
 			"grouping %q member %q names no structural field and is not declared invented",
 			grouping, member.TerraformName)
 	case single:
-		if member.Split != "" {
+		if member.Mapping != nil {
 			return nil, fmt.Errorf(
-				"grouping %q member %q declares split %q while consuming a single field; "+
-					"there is nothing to split",
-				grouping, member.TerraformName, member.Split)
+				"grouping %q member %q declares a mapping while consuming a single field; "+
+					"there is nothing to relate",
+				grouping, member.TerraformName)
 		}
 		return []string{member.StructuralName}, nil
 	}
 
-	if member.Split == "" {
+	if member.Mapping == nil {
 		return nil, fmt.Errorf(
-			"grouping %q member %q consumes %d fields (%s) and declares no split function; "+
-				"how one value divides across them is a decision the compiler cannot see, "+
+			"grouping %q member %q consumes %d fields (%s) and declares no mapping; "+
+				"how one value relates to them is a decision the compiler cannot see, "+
 				"and inferring it from names is what bound static_route's type and wlan's "+
 				"schedule to the wrong field",
 			grouping, member.TerraformName, len(member.StructuralNames),
 			strings.Join(member.StructuralNames, ", "))
+	}
+	// Both halves, always. The two directions are different functions and are
+	// not inverses -- network's dhcp_server.dns_servers writes positionally and
+	// reads compacted, so a value moves slot on a round trip -- and one name
+	// would describe half the behaviour while reading as though it described
+	// all of it.
+	for _, half := range []struct{ name, value, does string }{
+		{"to_api", member.Mapping.ToAPI, "builds the observed fields from the attribute"},
+		{"from_api", member.Mapping.FromAPI, "builds the attribute from the observed fields"},
+	} {
+		if half.value == "" {
+			return nil, fmt.Errorf(
+				"grouping %q member %q declares a mapping with no %s function, which %s; "+
+					"both directions are named because they are different functions here, "+
+					"not inverses of one another",
+				grouping, member.TerraformName, half.name, half.does)
+		}
 	}
 	if len(member.StructuralNames) < 2 {
 		return nil, fmt.Errorf(
