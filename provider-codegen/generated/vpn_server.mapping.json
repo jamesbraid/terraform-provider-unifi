@@ -1,0 +1,1862 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_vpn_server",
+  "resource": "unifi_vpn_server",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "auto_scale_enabled",
+      "terraform_name": "auto_scale_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcp_relay_enabled",
+      "terraform_name": "dhcp_relay_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcp_relay_servers",
+      "terraform_name": "dhcp_relay_servers",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_boot_enabled",
+      "terraform_name": "dhcpd_boot_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_boot_filename",
+      "terraform_name": "dhcpd_boot_filename",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_boot_server",
+      "terraform_name": "dhcpd_boot_server",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_conflict_checking",
+      "terraform_name": "dhcpd_conflict_checking",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_dns_3",
+      "terraform_name": "dhcpd_dns_3",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_dns_4",
+      "terraform_name": "dhcpd_dns_4",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_enabled",
+      "terraform_name": "dhcpd_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_gateway",
+      "terraform_name": "dhcpd_gateway",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_gateway_enabled",
+      "terraform_name": "dhcpd_gateway_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_ip_1",
+      "terraform_name": "dhcpd_ip_1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_ip_2",
+      "terraform_name": "dhcpd_ip_2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_ip_3",
+      "terraform_name": "dhcpd_ip_3",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_leasetime",
+      "terraform_name": "dhcpd_leasetime",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_mac_1",
+      "terraform_name": "dhcpd_mac_1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_mac_2",
+      "terraform_name": "dhcpd_mac_2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_mac_3",
+      "terraform_name": "dhcpd_mac_3",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_ntp_1",
+      "terraform_name": "dhcpd_ntp_1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_ntp_2",
+      "terraform_name": "dhcpd_ntp_2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_ntp_enabled",
+      "terraform_name": "dhcpd_ntp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_start",
+      "terraform_name": "dhcpd_start",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_stop",
+      "terraform_name": "dhcpd_stop",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_tftp_server",
+      "terraform_name": "dhcpd_tftp_server",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_time_offset",
+      "terraform_name": "dhcpd_time_offset",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_time_offset_enabled",
+      "terraform_name": "dhcpd_time_offset_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_unifi_controller",
+      "terraform_name": "dhcpd_unifi_controller",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_wins_1",
+      "terraform_name": "dhcpd_wins_1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_wins_2",
+      "terraform_name": "dhcpd_wins_2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_wins_enabled",
+      "terraform_name": "dhcpd_wins_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_wpad_url",
+      "terraform_name": "dhcpd_wpad_url",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_allow_slaac",
+      "terraform_name": "dhcpdv6_allow_slaac",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_dns_1",
+      "terraform_name": "dhcpdv6_dns_1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_dns_2",
+      "terraform_name": "dhcpdv6_dns_2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_dns_3",
+      "terraform_name": "dhcpdv6_dns_3",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_dns_4",
+      "terraform_name": "dhcpdv6_dns_4",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_dns_auto",
+      "terraform_name": "dhcpdv6_dns_auto",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_enabled",
+      "terraform_name": "dhcpdv6_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_leasetime",
+      "terraform_name": "dhcpdv6_leasetime",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_start",
+      "terraform_name": "dhcpdv6_start",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpdv6_stop",
+      "terraform_name": "dhcpdv6_stop",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpguard_enabled",
+      "terraform_name": "dhcpguard_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "domain_name",
+      "terraform_name": "domain_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dpi_enabled",
+      "terraform_name": "dpi_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dpigroup_id",
+      "terraform_name": "dpigroup_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "exposed_to_site_vpn",
+      "terraform_name": "exposed_to_site_vpn",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "firewall_zone_id",
+      "terraform_name": "firewall_zone_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "gateway_device",
+      "terraform_name": "gateway_device",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "gateway_type",
+      "terraform_name": "gateway_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_fastleave",
+      "terraform_name": "igmp_fastleave",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_flood_unknown_multicast",
+      "terraform_name": "igmp_flood_unknown_multicast",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_groupmembership",
+      "terraform_name": "igmp_groupmembership",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_maxresponse",
+      "terraform_name": "igmp_maxresponse",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_mcrtrexpiretime",
+      "terraform_name": "igmp_mcrtrexpiretime",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_proxy_downstream_networkconf_ids",
+      "terraform_name": "igmp_proxy_downstream_networkconf_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_proxy_for",
+      "terraform_name": "igmp_proxy_for",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_proxy_upstream",
+      "terraform_name": "igmp_proxy_upstream",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_querier_switches",
+      "terraform_name": "igmp_querier_switches",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_snooping",
+      "terraform_name": "igmp_snooping",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "igmp_supression",
+      "terraform_name": "igmp_supression",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "interface_mtu",
+      "terraform_name": "interface_mtu",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "interface_mtu_enabled",
+      "terraform_name": "interface_mtu_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "internet_access_enabled",
+      "terraform_name": "internet_access_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ip_aliases",
+      "terraform_name": "ip_aliases",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ip_subnet",
+      "terraform_name": "subnet",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipsec_dh_group",
+      "terraform_name": "ipsec_dh_group",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_dynamic_routing",
+      "terraform_name": "ipsec_dynamic_routing",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_encryption",
+      "terraform_name": "ipsec_encryption",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_esp_dh_group",
+      "terraform_name": "ipsec_esp_dh_group",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_esp_encryption",
+      "terraform_name": "ipsec_esp_encryption",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_esp_hash",
+      "terraform_name": "ipsec_esp_hash",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_esp_lifetime",
+      "terraform_name": "ipsec_esp_lifetime",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_hash",
+      "terraform_name": "ipsec_hash",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_ike_dh_group",
+      "terraform_name": "ipsec_ike_dh_group",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_ike_encryption",
+      "terraform_name": "ipsec_ike_encryption",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_ike_hash",
+      "terraform_name": "ipsec_ike_hash",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_ike_lifetime",
+      "terraform_name": "ipsec_ike_lifetime",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_interface",
+      "terraform_name": "ipsec_interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_key_exchange",
+      "terraform_name": "ipsec_key_exchange",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_local_identifier",
+      "terraform_name": "ipsec_local_identifier",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_local_identifier_enabled",
+      "terraform_name": "ipsec_local_identifier_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_local_ip",
+      "terraform_name": "ipsec_local_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_peer_ip",
+      "terraform_name": "ipsec_peer_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_pfs",
+      "terraform_name": "ipsec_pfs",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_profile",
+      "terraform_name": "ipsec_profile",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_remote_identifier",
+      "terraform_name": "ipsec_remote_identifier",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_remote_identifier_enabled",
+      "terraform_name": "ipsec_remote_identifier_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_separate_ikev2_networks",
+      "terraform_name": "ipsec_separate_ikev2_networks",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_tunnel_ip",
+      "terraform_name": "ipsec_tunnel_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipsec_tunnel_ip_enabled",
+      "terraform_name": "ipsec_tunnel_ip_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_aliases",
+      "terraform_name": "ipv6_aliases",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_client_address_assignment",
+      "terraform_name": "ipv6_client_address_assignment",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_interface_type",
+      "terraform_name": "ipv6_interface_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_pd_auto_prefixid_enabled",
+      "terraform_name": "ipv6_pd_auto_prefixid_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_pd_interface",
+      "terraform_name": "ipv6_pd_interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_pd_prefixid",
+      "terraform_name": "ipv6_pd_prefixid",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_pd_start",
+      "terraform_name": "ipv6_pd_start",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_pd_stop",
+      "terraform_name": "ipv6_pd_stop",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_ra_enabled",
+      "terraform_name": "ipv6_ra_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_ra_preferred_lifetime",
+      "terraform_name": "ipv6_ra_preferred_lifetime",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_ra_priority",
+      "terraform_name": "ipv6_ra_priority",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_ra_valid_lifetime",
+      "terraform_name": "ipv6_ra_valid_lifetime",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_setting_preference",
+      "terraform_name": "ipv6_setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_single_network_interface",
+      "terraform_name": "ipv6_single_network_interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_subnet",
+      "terraform_name": "ipv6_subnet",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_wan_delegation_type",
+      "terraform_name": "ipv6_wan_delegation_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "is_nat",
+      "terraform_name": "is_nat",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "l3_interface_type",
+      "terraform_name": "l3_interface_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "lte_lan_enabled",
+      "terraform_name": "lte_lan_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mac_override",
+      "terraform_name": "mac_override",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mac_override_enabled",
+      "terraform_name": "mac_override_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mdns_enabled",
+      "terraform_name": "mdns_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mss_clamp",
+      "terraform_name": "mss_clamp",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mss_clamp_ipv6",
+      "terraform_name": "mss_clamp_ipv6",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mss_clamp_mss",
+      "terraform_name": "mss_clamp_mss",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mss_clamp_mss_ipv6",
+      "terraform_name": "mss_clamp_mss_ipv6",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "nat_outbound_ip_addresses",
+      "terraform_name": "nat_outbound_ip_addresses",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "network_isolation_enabled",
+      "terraform_name": "network_isolation_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "networkgroup",
+      "terraform_name": "networkgroup",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "openvpn_configuration",
+      "terraform_name": "openvpn_configuration",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "openvpn_configuration_filename",
+      "terraform_name": "openvpn_configuration_filename",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "openvpn_local_address",
+      "terraform_name": "openvpn_local_address",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "openvpn_local_port",
+      "terraform_name": "openvpn_local_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "openvpn_remote_address",
+      "terraform_name": "openvpn_remote_address",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "openvpn_remote_host",
+      "terraform_name": "openvpn_remote_host",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "openvpn_remote_port",
+      "terraform_name": "openvpn_remote_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "openvpn_username",
+      "terraform_name": "openvpn_username",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "pptpc_require_mppe",
+      "terraform_name": "pptpc_require_mppe",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "pptpc_route_distance",
+      "terraform_name": "pptpc_route_distance",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "pptpc_server_ip",
+      "terraform_name": "pptpc_server_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "pptpc_username",
+      "terraform_name": "pptpc_username",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "priority",
+      "terraform_name": "priority",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "purpose",
+      "terraform_name": "purpose",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "radiusprofile_id",
+      "terraform_name": "radiusprofile_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "remote_site_id",
+      "terraform_name": "remote_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "remote_site_subnets",
+      "terraform_name": "remote_site_subnets",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "remote_vpn_dynamic_subnets_enabled",
+      "terraform_name": "remote_vpn_dynamic_subnets_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "remote_vpn_subnets",
+      "terraform_name": "remote_vpn_subnets",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "report_wan_event",
+      "terraform_name": "report_wan_event",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "require_mschapv2",
+      "terraform_name": "require_mschapv2",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "route_distance",
+      "terraform_name": "route_distance",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "routed_lag_idx",
+      "terraform_name": "routed_lag_idx",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "routed_port_idx",
+      "terraform_name": "routed_port_idx",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "sdwan_remote_site_id",
+      "terraform_name": "sdwan_remote_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "single_network_lan",
+      "terraform_name": "single_network_lan",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_policy_enabled",
+      "terraform_name": "uid_policy_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_policy_name",
+      "terraform_name": "uid_policy_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_public_gateway_port",
+      "terraform_name": "uid_public_gateway_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_traffic_rules_allowed_ips_and_hostnames",
+      "terraform_name": "uid_traffic_rules_allowed_ips_and_hostnames",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_traffic_rules_enabled",
+      "terraform_name": "uid_traffic_rules_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_vpn_custom_routing",
+      "terraform_name": "uid_vpn_custom_routing",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_vpn_default_dns_suffix",
+      "terraform_name": "uid_vpn_default_dns_suffix",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_vpn_masquerade_enabled",
+      "terraform_name": "uid_vpn_masquerade_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_vpn_max_connection_time_seconds",
+      "terraform_name": "uid_vpn_max_connection_time_seconds",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_vpn_sync_public_ip",
+      "terraform_name": "uid_vpn_sync_public_ip",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_vpn_type",
+      "terraform_name": "uid_vpn_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uid_workspace_url",
+      "terraform_name": "uid_workspace_url",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "upnp_enabled",
+      "terraform_name": "upnp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "upnp_lan_enabled",
+      "terraform_name": "upnp_lan_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "upnp_nat_pmp_enabled",
+      "terraform_name": "upnp_nat_pmp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "upnp_secure_mode",
+      "terraform_name": "upnp_secure_mode",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "upnp_wan_interface",
+      "terraform_name": "upnp_wan_interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "usergroup_id",
+      "terraform_name": "usergroup_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vlan",
+      "terraform_name": "vlan",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vlan_enabled",
+      "terraform_name": "vlan_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vpn_binding_mode",
+      "terraform_name": "vpn_binding_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vpn_client_configuration_remote_ip_override",
+      "terraform_name": "vpn_client_configuration_remote_ip_override",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vpn_client_configuration_remote_ip_override_enabled",
+      "terraform_name": "vpn_client_configuration_remote_ip_override_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vpn_client_default_route",
+      "terraform_name": "vpn_client_default_route",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vpn_client_pull_dns",
+      "terraform_name": "vpn_client_pull_dns",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vpn_protocol",
+      "terraform_name": "vpn_protocol",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vpn_type",
+      "terraform_name": "vpn_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vrrp_ip_subnet_gw1",
+      "terraform_name": "vrrp_ip_subnet_gw1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vrrp_ip_subnet_gw2",
+      "terraform_name": "vrrp_ip_subnet_gw2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "vrrp_vrid",
+      "terraform_name": "vrrp_vrid",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dhcp_cos",
+      "terraform_name": "wan_dhcp_cos",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dhcp_options",
+      "terraform_name": "wan_dhcp_options",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dhcpv6_cos",
+      "terraform_name": "wan_dhcpv6_cos",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dhcpv6_options",
+      "terraform_name": "wan_dhcpv6_options",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dhcpv6_pd_size",
+      "terraform_name": "wan_dhcpv6_pd_size",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dhcpv6_pd_size_auto",
+      "terraform_name": "wan_dhcpv6_pd_size_auto",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dns1",
+      "terraform_name": "wan_dns1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dns2",
+      "terraform_name": "wan_dns2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dns3",
+      "terraform_name": "wan_dns3",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dns4",
+      "terraform_name": "wan_dns4",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dns_preference",
+      "terraform_name": "wan_dns_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dslite_remote_host",
+      "terraform_name": "wan_dslite_remote_host",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_dslite_remote_host_auto",
+      "terraform_name": "wan_dslite_remote_host_auto",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_egress_qos",
+      "terraform_name": "wan_egress_qos",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_egress_qos_enabled",
+      "terraform_name": "wan_egress_qos_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_failover_priority",
+      "terraform_name": "wan_failover_priority",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_gateway",
+      "terraform_name": "wan_gateway",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_gateway_v6",
+      "terraform_name": "wan_gateway_v6",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_ip",
+      "terraform_name": "wan_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_ip_aliases",
+      "terraform_name": "wan_ip_aliases",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_ipv6",
+      "terraform_name": "wan_ipv6",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_ipv6_dns1",
+      "terraform_name": "wan_ipv6_dns1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_ipv6_dns2",
+      "terraform_name": "wan_ipv6_dns2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_ipv6_dns_preference",
+      "terraform_name": "wan_ipv6_dns_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_load_balance_type",
+      "terraform_name": "wan_load_balance_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_load_balance_weight",
+      "terraform_name": "wan_load_balance_weight",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_netmask",
+      "terraform_name": "wan_netmask",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_networkgroup",
+      "terraform_name": "wan_networkgroup",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_pppoe_password_enabled",
+      "terraform_name": "wan_pppoe_password_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_pppoe_username_enabled",
+      "terraform_name": "wan_pppoe_username_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_prefixlen",
+      "terraform_name": "wan_prefixlen",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_provider_capabilities",
+      "terraform_name": "wan_provider_capabilities",
+      "structural_type": "object",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_sla",
+      "terraform_name": "wan_sla",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_smartq_down_rate",
+      "terraform_name": "wan_smartq_down_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_smartq_enabled",
+      "terraform_name": "wan_smartq_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_smartq_up_rate",
+      "terraform_name": "wan_smartq_up_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_type",
+      "terraform_name": "wan_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_type_v6",
+      "terraform_name": "wan_type_v6",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_username",
+      "terraform_name": "wan_username",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_vlan",
+      "terraform_name": "wan_vlan",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wan_vlan_enabled",
+      "terraform_name": "wan_vlan_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_client_configuration_file",
+      "terraform_name": "wireguard_client_configuration_file",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_client_configuration_filename",
+      "terraform_name": "wireguard_client_configuration_filename",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_client_mode",
+      "terraform_name": "wireguard_client_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_client_peer_ip",
+      "terraform_name": "wireguard_client_peer_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_client_peer_port",
+      "terraform_name": "wireguard_client_peer_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_client_peer_public_key",
+      "terraform_name": "wireguard_client_peer_public_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_client_preshared_key",
+      "terraform_name": "wireguard_client_preshared_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_client_preshared_key_enabled",
+      "terraform_name": "wireguard_client_preshared_key_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wireguard_interface_binding_mode_ip_version",
+      "terraform_name": "wireguard_interface_binding_mode_ip_version",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_openvpn_password",
+      "terraform_name": "x_openvpn_password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_openvpn_shared_secret_key",
+      "terraform_name": "x_openvpn_shared_secret_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_pptpc_password",
+      "terraform_name": "x_pptpc_password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "x_wan_password",
+      "terraform_name": "x_wan_password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_dns_enabled",
+      "terraform_name": "dns.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "l2tp_allow_weak_ciphers",
+      "terraform_name": "l2tp.allow_weak_ciphers",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ipsec_pre_shared_key",
+      "terraform_name": "l2tp.pre_shared_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "openvpn_mode",
+      "terraform_name": "openvpn.mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "openvpn_encryption_cipher",
+      "terraform_name": "openvpn.encryption_cipher",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_auth_key",
+      "terraform_name": "openvpn.auth_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ca_crt",
+      "terraform_name": "openvpn.ca_crt",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ca_key",
+      "terraform_name": "openvpn.ca_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_dh_key",
+      "terraform_name": "openvpn.dh_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_server_crt",
+      "terraform_name": "openvpn.server_crt",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_server_key",
+      "terraform_name": "openvpn.server_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_shared_client_crt",
+      "terraform_name": "openvpn.shared_client_crt",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_shared_client_key",
+      "terraform_name": "openvpn.shared_client_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_wireguard_private_key",
+      "terraform_name": "wireguard.private_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wireguard_public_key",
+      "terraform_name": "wireguard.public_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_dns_1",
+      "terraform_name": "dns.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_dns_2",
+      "terraform_name": "dns.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "l2tp_interface",
+      "terraform_name": "wan.interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "openvpn_interface",
+      "terraform_name": "wan.interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_interface",
+      "terraform_name": "wan.interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "l2tp_local_wan_ip",
+      "terraform_name": "wan.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "openvpn_local_wan_ip",
+      "terraform_name": "wan.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_local_wan_ip",
+      "terraform_name": "wan.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "local_port",
+      "terraform_name": "openvpn.port, wireguard.port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": ""
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

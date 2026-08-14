@@ -215,6 +215,13 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 		// second to serve a GoDuration string over an SDK int64.
 		case "unifi_port_profile":
 			want = GeneratedShadow
+		// The surface that decided the claims vocabulary: local_port is ONE
+		// observed field claimed by wireguard.port AND openvpn.port, members
+		// of DIFFERENT groupings, because the controller carries one port and
+		// the released schema exposes it under whichever VPN type is
+		// configured. No member-scoped declaration reaches across siblings.
+		case "unifi_vpn_server":
+			want = GeneratedShadow
 		// The surface whose qos_rate is a grouping over one observed field:
 		// its id member consumes usergroup_id, and name, max_up and max_down
 		// are invented because they describe a ClientGroup, which the Client
@@ -365,8 +372,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:  7,
-		GeneratedShadow: 58,
+		PolicyComplete:  6,
+		GeneratedShadow: 59,
 		ShadowOnly:      1,
 		Admitted:        1,
 	}
