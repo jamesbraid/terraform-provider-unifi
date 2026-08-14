@@ -221,20 +221,40 @@ ways.
 
 ### 4. A surface that fronts TWO SDK structs
 
-**Exactly one does: `unifi_client_list`.** Its `clients` element carries 42
-attributes and the `Client` struct carries 13. The other 29 — `ap_mac`, `bssid`,
-`rssi`, `rx_bytes`, `uptime` and the rest — come from `ClientInfo`, fetched by
-two further calls and joined on user ID.
+**Three do**, and a bootstrap may now name several: the first LEADS and the rest
+are `companions`, with each attribute naming its source. `unifi_client_list`
+takes 13 of its 42 element attributes from `Client` and 29 from `ClientInfo`;
+`unifi_client`, managed and data source, takes three of `qos_rate`'s members
+from `ClientGroup`.
 
-**A bootstrap describes ONE struct, so those 29 attributes are not observed at
-all**, and exactly-once accounting is silent about a field it never saw. The
-policy would have to call each of them `invented`, which compiles, reads as
-"the provider computes this", and is false: they come off the wire.
+**The reason it must be declared rather than called `invented`**: `invented`
+means an attribute corresponds to nothing observed. These correspond to
+something observable that the bootstrap merely did not observe, and calling them
+invented leaves the second struct's fields — 85 of them for `ClientInfo`, nine
+for `ClientGroup` — accounted for NOWHERE. A new one appearing there would never
+be noticed, which is the drift the whole apparatus exists to catch.
 
-Count the released attributes against the struct's fields before sizing a
-surface. A large gap is usually omissions, which are fine; a gap in the other
-direction — more attributes than fields — means a second source, and the shape
-of this method does not reach it yet.
+**Names collide across structs and that is the danger, not the inconvenience.**
+`Client` and `ClientInfo` share SEVENTEEN field names. `last_seen` is on both,
+and `clientListEntryValues` reads `ClientInfo`'s — so a policy keyed by bare
+name would describe one field while the resource reads the other, and compile
+clean. Observed fields are keyed by source AND name for that reason, and the
+mapping report writes a companion's field as `Struct.field`.
+
+#### Two tells, and the cheap one only works BEFORE migration
+
+Count released attributes against struct fields: **more attributes than fields
+means a second source.** That finds an unmigrated surface, and it is how
+`client_list` was found.
+
+**It does not find a migrated one.** A migrated surface with a second source
+cannot compile unless its extra attributes were already declared away, so by
+then the count balances and the tell is silent. **After migration, sweep the
+escape hatches instead** — every `invented` member and every `provider_owned`
+attribute with `generated: true` — and ask of each whether it really comes from
+nowhere, or just from somewhere the bootstrap was not looking. That is a bounded
+list, twenty-two across the estate, and it is how `client`'s three were found
+after they had already landed.
 
 ## At scale, what degrades is readability, not correctness
 
