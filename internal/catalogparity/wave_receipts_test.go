@@ -313,6 +313,14 @@ func TestWave4RemainingManagedReceipt(t *testing.T) {
 		// nested object type from the attribute name rather than its path.
 		case "unifi_wan":
 			want = GeneratedShadow
+		// The fifth surface over unifi.Network, and the first with claims:
+		// wireguard.peer relates one released object to three flat observed
+		// fields, and wireguard.dns_servers one released list to two. Its
+		// `configuration` is invented -- an alternative input form whose
+		// content the provider parses into the peer fields, not a rival
+		// claimant on them.
+		case "unifi_vpn_client":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -350,8 +358,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:  10,
-		GeneratedShadow: 55,
+		PolicyComplete:  9,
+		GeneratedShadow: 56,
 		ShadowOnly:      1,
 		Admitted:        1,
 	}
