@@ -84,6 +84,9 @@ package providercodegen
 //go:generate go run ../cmd/list-resource-gen --input generated/firewall_zone_list.provider-code-spec.json --output ../internal/generated/listresource_firewall_zone --package listresource_firewall_zone
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Client -resource unifi_client -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-client.json
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Device -resource unifi_device -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-device.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-client.json -policy policy/client.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix client -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/client.provider-code-spec.json --output ../internal/generated/resource_client --package resource_client
+//go:generate gofmt -w ../internal/generated/resource_client/client_resource_gen.go
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct Network -resource unifi_network -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-network.json
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct PortForward -resource unifi_port_forward -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-port-forward.json
 //go:generate go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -struct TrafficRoute -resource unifi_traffic_route -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e -output bootstrap/go-unifi-v1.103.0-traffic-route.json

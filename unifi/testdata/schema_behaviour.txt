@@ -132,6 +132,7 @@ unifi_client.mac	plan_modifier	stringplanmodifier.requiresReplaceIfModifier	"If 
 unifi_client.name	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_client.network_id	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_client.note	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
+unifi_client.qos_rate	custom_type	resource_client.QosRateType	"<carries no description>"
 unifi_client.qos_rate	plan_modifier	objectplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_client.site	plan_modifier	stringplanmodifier.requiresReplaceIfModifier	"If the value of this attribute changes, Terraform will destroy and recreate the resource."
 unifi_client.site	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
