@@ -5,6 +5,48 @@
   "resource": "unifi_client",
   "fields": [
     {
+      "structural_name": "ClientGroup._id",
+      "terraform_name": "clientgroup_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ClientGroup.attr_hidden",
+      "terraform_name": "clientgroup_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ClientGroup.attr_hidden_id",
+      "terraform_name": "clientgroup_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ClientGroup.attr_no_delete",
+      "terraform_name": "clientgroup_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ClientGroup.attr_no_edit",
+      "terraform_name": "clientgroup_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ClientGroup.site_id",
+      "terraform_name": "clientgroup_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
       "structural_name": "_id",
       "terraform_name": "id",
       "structural_type": "string",
@@ -180,24 +222,24 @@
       "disposition": "managed"
     },
     {
-      "structural_name": "",
+      "structural_name": "ClientGroup.name",
       "terraform_name": "qos_rate.name",
-      "structural_type": "invented",
-      "terraform_type": "string",
+      "structural_type": "string",
+      "terraform_type": "",
       "disposition": "managed"
     },
     {
-      "structural_name": "",
+      "structural_name": "ClientGroup.qos_rate_max_up",
       "terraform_name": "qos_rate.max_up",
-      "structural_type": "invented",
-      "terraform_type": "int64",
+      "structural_type": "int64",
+      "terraform_type": "",
       "disposition": "managed"
     },
     {
-      "structural_name": "",
+      "structural_name": "ClientGroup.qos_rate_max_down",
       "terraform_name": "qos_rate.max_down",
-      "structural_type": "invented",
-      "terraform_type": "int64",
+      "structural_type": "int64",
+      "terraform_type": "",
       "disposition": "managed"
     }
   ],
