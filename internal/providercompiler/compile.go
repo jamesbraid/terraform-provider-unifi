@@ -87,11 +87,56 @@ func Compile(input CompileInput) (Result, error) {
 		sourceFields[field.Name] = field
 	}
 
+	claimedFields, claimedMembers, err := claimedStructuralFields(rules.Claims)
+	if err != nil {
+		return Result{}, err
+	}
+	for _, name := range sortedKeys(claimedFields) {
+		if _, exists := sourceFields[name]; !exists {
+			return Result{}, fmt.Errorf(
+				"%s consumes %q, which the catalog does not observe",
+				claimedFields[name], name,
+			)
+		}
+	}
+
 	policyFields := make(map[string]fieldPolicy, len(rules.Fields))
+	claimedTopLevel := make(map[string]fieldPolicy)
 	terraformNames := make(map[string]string, len(rules.Fields)+len(rules.ProviderOwned))
 	for _, field := range rules.Fields {
+		// A top-level field named by a claim relates to the wire through that
+		// claim, so it names no structural field of its own and is keyed by the
+		// only name it has. network's `purpose` and `third_party_gateway` are
+		// both computed from the one observed `purpose`, which no member-scoped
+		// declaration can express.
+		if field.StructuralName == "" {
+			owner, claimed := claimedMembers[field.TerraformName]
+			if !claimed {
+				return Result{}, fmt.Errorf(
+					"top-level field %q names no structural field and is not named by any claim",
+					field.TerraformName)
+			}
+			if err := validateDisposition(field.Disposition, field.TerraformName); err != nil {
+				return Result{}, err
+			}
+			if _, exists := claimedTopLevel[field.TerraformName]; exists {
+				return Result{}, fmt.Errorf("duplicate policy field %q", field.TerraformName)
+			}
+			if field.Disposition != "omitted" {
+				if err := claimTerraformName(terraformNames, field.TerraformName, owner); err != nil {
+					return Result{}, err
+				}
+			}
+			claimedTopLevel[field.TerraformName] = field
+			continue
+		}
 		if _, exists := policyFields[field.StructuralName]; exists {
 			return Result{}, fmt.Errorf("duplicate policy field %q", field.StructuralName)
+		}
+		if owner, claimed := claimedFields[field.StructuralName]; claimed {
+			return Result{}, fmt.Errorf(
+				"structural field %q is consumed by %s and also classified at the top level",
+				field.StructuralName, owner)
 		}
 		if err := validateDisposition(field.Disposition, field.StructuralName); err != nil {
 			return Result{}, err
@@ -112,9 +157,16 @@ func Compile(input CompileInput) (Result, error) {
 
 	// A grouped field is classified by the grouping that consumes it, not at
 	// the top level, so gather those before checking coverage.
-	grouped, err := groupedStructuralFields(rules.Groupings, policyFields, terraformNames)
+	grouped, err := groupedStructuralFields(rules.Groupings, policyFields, terraformNames, claimedMembers)
 	if err != nil {
 		return Result{}, err
+	}
+	for _, name := range sortedKeys(grouped) {
+		if owner, claimed := claimedFields[name]; claimed {
+			return Result{}, fmt.Errorf(
+				"structural field %q is consumed by grouping %q and also by %s",
+				name, grouped[name], owner)
+		}
 	}
 
 	// Checked before coverage: a grouping naming a field that does not exist
@@ -137,9 +189,31 @@ func Compile(input CompileInput) (Result, error) {
 		_, classified := policyFields[name]
 		_, consumed := grouped[name]
 		_, spread := flattened[name]
-		if !classified && !consumed && !spread {
+		_, related := claimedFields[name]
+		if !classified && !consumed && !spread && !related {
 			return Result{}, fmt.Errorf("unclassified structural field %q", name)
 		}
+	}
+	// A claim naming a member no grouping and no field list declares would
+	// otherwise consume its fields and emit nothing, which reads downstream as a
+	// field silently dropped rather than as the typo it is.
+	declaredMembers := map[string]struct{}{}
+	for _, grouping := range rules.Groupings {
+		for _, member := range grouping.Members {
+			declaredMembers[grouping.TerraformName+"."+member.TerraformName] = struct{}{}
+		}
+	}
+	for _, path := range sortedKeys(claimedMembers) {
+		if _, top := claimedTopLevel[path]; top {
+			continue
+		}
+		if _, nested := declaredMembers[path]; nested {
+			continue
+		}
+		return Result{}, fmt.Errorf(
+			"%s names terraform member %q, which is neither a top-level field nor a member "+
+				"of any grouping",
+			claimedMembers[path], path)
 	}
 	for name := range policyFields {
 		if _, exists := sourceFields[name]; !exists {
@@ -187,6 +261,9 @@ func Compile(input CompileInput) (Result, error) {
 			continue
 		}
 		if _, spread := flattened[name]; spread {
+			continue
+		}
+		if _, related := claimedFields[name]; related {
 			continue
 		}
 		structural := sourceFields[name]
@@ -241,6 +318,30 @@ func Compile(input CompileInput) (Result, error) {
 			}
 		}
 	}
+	// A claimed top-level field has no one observed field to take a type from,
+	// exactly as a claimed grouping member has none, so the policy supplies it.
+	// network's `purpose` and `third_party_gateway` are both computed from the
+	// one observed `purpose` and neither can borrow its type by construction --
+	// one is a string and the other a bool.
+	for _, name := range sortedFieldKeys(claimedTopLevel) {
+		field := claimedTopLevel[name]
+		if field.Disposition != "managed" && field.Disposition != "computed" {
+			continue
+		}
+		if field.TerraformType == "" {
+			return Result{}, fmt.Errorf(
+				"top-level field %q is named by %s and must declare terraform_type: no one "+
+					"observed field supplies it",
+				name, claimedMembers[name])
+		}
+		attribute, err := makeCodeAttribute(field.TerraformName, field.TerraformType, field.Attribute)
+		if err != nil {
+			return Result{}, fmt.Errorf("top-level field %q named by %s: %w",
+				name, claimedMembers[name], err)
+		}
+		attributes = append(attributes, attribute)
+	}
+
 	flattenings := append([]flatteningPolicy(nil), rules.Flattenings...)
 	sort.Slice(flattenings, func(i, j int) bool { return flattenings[i].StructuralName < flattenings[j].StructuralName })
 	for _, flattening := range flattenings {
@@ -282,7 +383,7 @@ func Compile(input CompileInput) (Result, error) {
 	groupings := append([]groupingPolicy(nil), rules.Groupings...)
 	sort.Slice(groupings, func(i, j int) bool { return groupings[i].TerraformName < groupings[j].TerraformName })
 	for _, grouping := range groupings {
-		attribute, err := buildGroupingAttribute(grouping, sourceFields, terraformNames)
+		attribute, err := buildGroupingAttribute(grouping, sourceFields, terraformNames, claimedMembers)
 		if err != nil {
 			return Result{}, err
 		}
@@ -297,22 +398,29 @@ func Compile(input CompileInput) (Result, error) {
 			attributes = append(attributes, attribute)
 		}
 		for _, member := range grouping.Members {
-			// One row per field the member consumes, not one row per member. A
-			// member taking several fields and reporting one would drop the rest
-			// out of the artifact the exactly-once accounting is reviewed from --
-			// and every surface in the estate carries one row per observed field,
-			// so a missing row reads as a field nobody classified rather than as a
-			// reporting shortcut.
-			for _, claim := range groupedClaims(member) {
-				mapping.Fields = append(mapping.Fields, mappingField{
-					StructuralName: claim,
-					TerraformName:  grouping.TerraformName + "." + member.TerraformName,
-					StructuralType: groupedStructuralType(sourceFields, member, claim),
-					TerraformType:  member.TerraformType,
-					Disposition:    member.Disposition,
-				})
+			// A claimed member's fields are reported by its claim, in one place,
+			// naming every member of that claim together. Reporting them here as
+			// well would double-count them and break the one-row-per-field
+			// invariant the accounting is read from.
+			if _, claimed := claimedMembers[grouping.TerraformName+"."+member.TerraformName]; claimed {
+				continue
 			}
+			mapping.Fields = append(mapping.Fields, mappingField{
+				StructuralName: member.StructuralName,
+				TerraformName:  grouping.TerraformName + "." + member.TerraformName,
+				StructuralType: groupedStructuralType(sourceFields, member),
+				TerraformType:  member.TerraformType,
+				Disposition:    member.Disposition,
+			})
 		}
+	}
+
+	claims := append([]claimPolicy(nil), rules.Claims...)
+	sort.Slice(claims, func(i, j int) bool {
+		return strings.Join(claims[i].StructuralNames, ",") < strings.Join(claims[j].StructuralNames, ",")
+	})
+	for _, claim := range claims {
+		mapping.Fields = append(mapping.Fields, claimMappingRows(claim, sourceFields)...)
 	}
 
 	if err := mappingCoversEveryObservedField(mapping, sourceFields, flattened, rules.Flattenings); err != nil {
@@ -470,6 +578,7 @@ func groupedStructuralFields(
 	groupings []groupingPolicy,
 	policyFields map[string]fieldPolicy,
 	terraformNames map[string]string,
+	claimedMembers map[string]string,
 ) (map[string]string, error) {
 	// The grouping alone is what the caller needs; the member is carried
 	// alongside it only so a conflict can name both sides of itself.
@@ -519,37 +628,52 @@ func groupedStructuralFields(
 			if err := validateDisposition(member.Disposition, member.TerraformName); err != nil {
 				return nil, err
 			}
+			path := grouping.TerraformName + "." + member.TerraformName
+			claimOwner, claimed := claimedMembers[path]
 			if member.Invented != "" {
 				// An invented member corresponds to nothing observed, so it
 				// must not also claim a field, and it must say why it exists.
 				// The claimed field is NAMED, not merely reported as present:
 				// the reader's next question is always which one, and an
 				// existing test holds this message to that standard.
-				if claimed := member.StructuralName; claimed != "" {
+				if named := member.StructuralName; named != "" {
 					return nil, fmt.Errorf(
 						"grouping %q member %q is declared invented and also names structural field %q",
-						grouping.TerraformName, member.TerraformName, claimed,
+						grouping.TerraformName, member.TerraformName, named,
 					)
 				}
-				if len(member.StructuralNames) > 0 {
+				if claimed {
 					return nil, fmt.Errorf(
-						"grouping %q member %q is declared invented and also names structural field(s) %s",
-						grouping.TerraformName, member.TerraformName,
-						strings.Join(member.StructuralNames, ", "),
+						"grouping %q member %q is declared invented and is also named by %s; "+
+							"a member either corresponds to nothing observed or takes part in a "+
+							"relation to something observed, and both cannot be true",
+						grouping.TerraformName, member.TerraformName, claimOwner,
 					)
 				}
 				continue
 			}
-
-			claims, err := memberStructuralNames(grouping.TerraformName, member)
-			if err != nil {
-				return nil, err
+			// A claimed member relates to the wire through its claim, so it
+			// names no field of its own -- the claim names them all, in one
+			// place, under one function.
+			if claimed {
+				if named := member.StructuralName; named != "" {
+					return nil, fmt.Errorf(
+						"grouping %q member %q is named by %s and also names structural field %q; "+
+							"the claim already says which fields it relates to",
+						grouping.TerraformName, member.TerraformName, claimOwner, named,
+					)
+				}
+				continue
 			}
-			// Every claimed field goes through the SAME two checks a single
-			// claim always did. Consuming several fields widens what a member
-			// may claim; it must not widen what may go unclaimed, so the
-			// accounting stays per name rather than becoming per member.
-			for _, name := range claims {
+			if member.StructuralName == "" {
+				return nil, fmt.Errorf(
+					"grouping %q member %q names no structural field, is not declared invented, "+
+						"and is not named by any claim",
+					grouping.TerraformName, member.TerraformName)
+			}
+			// One field per member here. Anything that is not one-to-one is a
+			// claim, so this stays the single-name case it always was.
+			for _, name := range []string{member.StructuralName} {
 				if owner, taken := claimants[name]; taken {
 					// Two members of ONE grouping reads as "consumed by
 					// groupings "source" and "source"" unless it is told
@@ -689,29 +813,41 @@ func sortedKeys(values map[string]string) []string {
 	return keys
 }
 
-// groupedClaims lists the observed fields one member consumes, for reporting.
-//
-// It returns a single empty name for an invented member, because that member
-// still earns a row: the mapping report has to show that the attribute exists
-// and came from nowhere, which is a different fact from the attribute being
-// absent. memberStructuralNames is the validating reader of the same two
-// members; this one only reports, and is deliberately total so a mapping row is
-// never skipped by a shape it did not expect.
-func groupedClaims(member groupedMember) []string {
-	if len(member.StructuralNames) > 0 {
-		return member.StructuralNames
-	}
-	return []string{member.StructuralName}
-}
-
 // groupedStructuralType reports the observed type behind one row of the mapping
 // report. An invented member consumes nothing, and the report says so rather
 // than borrowing a type it does not have.
-func groupedStructuralType(sourceFields map[string]bootstrapField, member groupedMember, claim string) string {
+func groupedStructuralType(sourceFields map[string]bootstrapField, member groupedMember) string {
 	if member.Invented != "" {
 		return "invented"
 	}
-	return sourceFields[claim].Type
+	return sourceFields[member.StructuralName].Type
+}
+
+// claimMappingRows reports one row per observed field a claim consumes.
+//
+// One row per FIELD, never one per claim and never one per member-field pair.
+// The report carries exactly one row for every observed field on every surface
+// in the estate, and that is the artifact the exactly-once accounting is
+// reviewed from: a claim consuming three fields and reporting one row would
+// leave two invisible, which is indistinguishable to a reader from two fields
+// nobody classified.
+//
+// The terraform side names every member together, because that IS the fact --
+// the field is related to the set, not to any one of them, and splitting the
+// name would restate the very thing the claim exists to keep in one place.
+func claimMappingRows(claim claimPolicy, sourceFields map[string]bootstrapField) []mappingField {
+	members := append([]string(nil), claim.TerraformMembers...)
+	sort.Strings(members)
+	joined := strings.Join(members, ", ")
+	rows := make([]mappingField, 0, len(claim.StructuralNames))
+	for _, name := range claim.StructuralNames {
+		rows = append(rows, mappingField{
+			StructuralName: name,
+			TerraformName:  joined,
+			StructuralType: sourceFields[name].Type,
+		})
+	}
+	return rows
 }
 
 // mappingCoversEveryObservedField checks the artifact against the accounting it
@@ -781,6 +917,15 @@ func mappingCoversEveryObservedField(
 	return nil
 }
 
+func sortedFieldKeys(values map[string]fieldPolicy) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 func sortedCountKeys(values map[string]int) []string {
 	keys := make([]string, 0, len(values))
 	for key := range values {
@@ -790,6 +935,96 @@ func sortedCountKeys(values map[string]int) []string {
 	return keys
 }
 
+// collapsedElementAttribute emits a list of SCALARS over an observed
+// array<object>, where the released attribute carries one member of the element
+// and the rest are omitted.
+//
+// traffic_route's destination.domain is the case and the only one in the estate:
+// []TrafficRouteDomains{domain, port_ranges, ports} presented as a list of
+// strings. Emitting it as list_nested instead compiles and is a DIFFERENT
+// SCHEMA -- practitioners write domain = ["a.com"] today and would have to write
+// domain = [{domain = "a.com"}]. A migration changes how the schema is produced,
+// not what it says.
+//
+// Unlike a mapping, which is a function name nothing can verify, this is checked
+// three ways against the catalog. That is what earns it a separate declaration
+// rather than a hand-written attribute.
+func collapsedElementAttribute(
+	owner string,
+	member groupedMember,
+	structural bootstrapField,
+) (codeAttribute, error) {
+	if structural.Type != structuralObjectArray {
+		return codeAttribute{}, fmt.Errorf(
+			"member %q declares element_member %q but consumes %q, which is observed as %q "+
+				"rather than %s",
+			owner, member.ElementMember, member.StructuralName, structural.Type, structuralObjectArray)
+	}
+	var element bootstrapField
+	for _, candidate := range structural.Fields {
+		if candidate.Name == member.ElementMember {
+			element = candidate
+		}
+	}
+	if element.Name == "" {
+		return codeAttribute{}, fmt.Errorf(
+			"member %q declares element_member %q, which %q does not carry",
+			owner, member.ElementMember, member.StructuralName)
+	}
+	// The declared member and the Fields list must agree, and they are stated
+	// separately ON PURPOSE. Deriving "the collapsed member" from whichever one
+	// is not omitted would let omitting a SECOND member silently change the
+	// attribute's element type -- the schema would still compile and would then
+	// describe a different list.
+	var live []string
+	decided := map[string]struct{}{}
+	for _, decision := range member.Fields {
+		decided[decision.StructuralName] = struct{}{}
+		if decision.Disposition != "omitted" {
+			live = append(live, decision.StructuralName)
+		}
+	}
+	for _, candidate := range structural.Fields {
+		if _, ok := decided[candidate.Name]; !ok {
+			return codeAttribute{}, fmt.Errorf(
+				"member %q collapses %q to element_member %q and leaves member %q undecided: "+
+					"promote it or omit it",
+				owner, member.StructuralName, member.ElementMember, candidate.Name)
+		}
+	}
+	sort.Strings(live)
+	if len(live) != 1 || live[0] != member.ElementMember {
+		return codeAttribute{}, fmt.Errorf(
+			"member %q declares element_member %q but its field list leaves %d member(s) "+
+				"not omitted (%s); a list of scalars carries exactly one",
+			owner, member.ElementMember, len(live), strings.Join(live, ", "))
+	}
+	if member.TerraformType != "list" && member.TerraformType != "set" {
+		return codeAttribute{}, fmt.Errorf(
+			"member %q declares element_member %q and terraform_type %q, want list or set",
+			owner, member.ElementMember, member.TerraformType)
+	}
+	declared, err := declaredElementType(fieldPolicy{
+		StructuralName: member.StructuralName,
+		TerraformName:  member.TerraformName,
+		Attribute:      member.Attribute,
+	})
+	if err != nil {
+		return codeAttribute{}, err
+	}
+	observed, err := providerStructuralType(element.Type)
+	if err != nil {
+		return codeAttribute{}, fmt.Errorf("member %q element_member %q: %w",
+			owner, member.ElementMember, err)
+	}
+	if declared != observed {
+		return codeAttribute{}, fmt.Errorf(
+			"member %q declares element type %q but the catalog observes %q.%q as %q",
+			owner, declared, member.StructuralName, member.ElementMember, observed)
+	}
+	return makeCodeAttribute(member.TerraformName, member.TerraformType, member.Attribute)
+}
+
 // buildGroupingAttribute emits a declared grouping. Member types come from the
 // catalog for observed members; an invented member has no observed type, so its
 // policy must supply one.
@@ -797,6 +1032,7 @@ func buildGroupingAttribute(
 	grouping groupingPolicy,
 	sourceFields map[string]bootstrapField,
 	names map[string]string,
+	claimedMembers map[string]string,
 ) (codeAttribute, error) {
 	members := make([]codeAttribute, 0, len(grouping.Members))
 	for _, member := range grouping.Members {
@@ -820,40 +1056,46 @@ func buildGroupingAttribute(
 			members = append(members, attribute)
 			continue
 		}
-		// A member consuming SEVERAL fields has no one observed field to take a
-		// type from, so the policy supplies it -- the same treatment an invented
-		// member gets, for the same reason, and the observed-type comparison is
-		// skipped because there is no single observed type to compare against.
+		// A CLAIMED member has no one observed field to take a type from, so the
+		// policy supplies it -- the same treatment an invented member gets, for
+		// the same reason, and the observed-type comparison is skipped because
+		// there is no single observed type to compare against.
 		//
 		// There is also no rule that could compare them. traffic_route's
 		// destination.ip is one list over ip_addresses AND ip_ranges, which is a
 		// partition; vpn_server's wan.ip is one STRING over three
-		// *_local_wan_ip fields, which is a broadcast. Nothing relates the
-		// declared type to the observed ones across both.
+		// *_local_wan_ip fields, which is a broadcast; and source.clients is one
+		// of TWO members over the single target_devices. Nothing relates the
+		// declared type to the observed ones across all three.
 		//
 		// Until this branch existed the member fell through to sourceFields[""],
 		// the zero bootstrapField, and requireScalarOverride reported
 		//   field "" is observed as "" and declares terraform_type "list_nested"
 		// naming neither the member nor the grouping nor any field.
-		if len(member.StructuralNames) > 0 {
+		if claim, claimed := claimedMembers[owner]; claimed {
 			if member.TerraformType == "" {
 				return codeAttribute{}, fmt.Errorf(
-					"member %q consumes %d fields (%s) and must declare terraform_type: "+
-						"no one observed field supplies it",
-					owner, len(member.StructuralNames), strings.Join(member.StructuralNames, ", "),
+					"member %q is named by %s and must declare terraform_type: no one "+
+						"observed field supplies it",
+					owner, claim,
 				)
 			}
 			attribute, err := makeCodeAttribute(member.TerraformName, member.TerraformType, member.Attribute)
 			if err != nil {
-				return codeAttribute{}, fmt.Errorf(
-					"member %q consuming %s: %w",
-					owner, strings.Join(member.StructuralNames, ", "), err,
-				)
+				return codeAttribute{}, fmt.Errorf("member %q named by %s: %w", owner, claim, err)
 			}
 			members = append(members, attribute)
 			continue
 		}
 		structural := sourceFields[member.StructuralName]
+		if member.ElementMember != "" {
+			attribute, err := collapsedElementAttribute(owner, member, structural)
+			if err != nil {
+				return codeAttribute{}, err
+			}
+			members = append(members, attribute)
+			continue
+		}
 		attribute, err := buildCodeAttribute(fieldPolicy{
 			StructuralName: member.StructuralName,
 			TerraformName:  member.TerraformName,
@@ -1752,91 +1994,102 @@ func marshalCanonical(value any) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-// memberStructuralNames returns the observed fields one grouping member
-// consumes, refusing every way a policy could be ambiguous about it.
+// claimedStructuralFields validates every declared claim and returns which
+// observed field each one consumes, mapped to the claim that consumed it.
 //
-// A member names exactly one field or several, never both and never neither.
-// Several requires a named mapping, because the compiler cannot see how a
-// provider relates one value to two fields and a rule inferred from field names
-// is the mistake this pipeline has already shipped twice -- static_route's
-// `type` matched the record discriminator rather than the route kind, and wlan's
-// `schedule` matched a legacy field of a plausible type. Both produced a
-// byte-identical schema and the wrong request.
-//
-// The mapping is a pair of NAMES, not an expression: something a reader can open
-// and check against the conversion code. A member declaring several fields with
-// no mapping is refused rather than defaulted, because there is no relation that
-// is obviously right, and picking one silently is how a wrong binding survives.
-func memberStructuralNames(grouping string, member groupedMember) ([]string, error) {
-	single := member.StructuralName != ""
-	several := len(member.StructuralNames) > 0
+// Exactly-once is unchanged, in both directions: a field named by two claims is
+// a conflict, and so is a member named by two claims. That second half is what
+// makes a claim stronger than the per-arm accounting it replaced. Two members
+// that both write one field must be listed TOGETHER, under ONE named function,
+// rather than each asserting the field separately -- and that listing is
+// precisely what a reviewer has to check.
+func claimedStructuralFields(claims []claimPolicy) (map[string]string, map[string]string, error) {
+	fields := map[string]string{}
+	members := map[string]string{}
+	for index, claim := range claims {
+		// A claim has no name of its own, so diagnostics identify it by what it
+		// consumes. Naming it by index would send the reader counting entries in
+		// a JSON array.
+		owner := "claim on " + strings.Join(claim.StructuralNames, ", ")
+		if len(claim.StructuralNames) == 0 {
+			owner = fmt.Sprintf("claim %d", index+1)
+			return nil, nil, fmt.Errorf("%s names no structural field", owner)
+		}
+		if len(claim.TerraformMembers) == 0 {
+			return nil, nil, fmt.Errorf("%s names no terraform member", owner)
+		}
+		if claim.Reason == "" {
+			return nil, nil, fmt.Errorf(
+				"%s declares no reason; the compiler cannot check how the relation works, "+
+					"so a reader has to be able to",
+				owner)
+		}
+		// A one-to-one claim is an ordinary member wearing a costume. Refusing
+		// it keeps one way to say each thing: the member's own structural_name.
+		if len(claim.TerraformMembers) == 1 && len(claim.StructuralNames) == 1 {
+			return nil, nil, fmt.Errorf(
+				"%s relates one member (%s) to one field (%s); declare structural_name on "+
+					"the member instead, so a claim always means a relation that is not "+
+					"one-to-one",
+				owner, claim.TerraformMembers[0], claim.StructuralNames[0])
+		}
+		if claim.Mapping == nil {
+			return nil, nil, fmt.Errorf(
+				"%s declares no mapping; how %d member(s) relate to %d field(s) is a "+
+					"decision the compiler cannot see, and inferring it from names is what "+
+					"bound static_route's type and wlan's schedule to the wrong field",
+				owner, len(claim.TerraformMembers), len(claim.StructuralNames))
+		}
+		// Both halves, always. The two directions are different functions and
+		// are not inverses -- network's dhcp_server.dns_servers writes
+		// positionally and reads compacted, so a value moves slot on a round
+		// trip -- and one name would describe half the behaviour while reading
+		// as though it described all of it.
+		for _, half := range []struct{ name, value, does string }{
+			{"to_api", claim.Mapping.ToAPI, "builds the observed fields from the members"},
+			{"from_api", claim.Mapping.FromAPI, "builds the members from the observed fields"},
+		} {
+			if half.value == "" {
+				return nil, nil, fmt.Errorf(
+					"%s declares a mapping with no %s function, which %s; both directions "+
+						"are named because they are different functions here, not inverses "+
+						"of one another",
+					owner, half.name, half.does)
+			}
+		}
 
-	switch {
-	case single && several:
-		return nil, fmt.Errorf(
-			"grouping %q member %q declares both structural_name and structural_names; "+
-				"a member consumes one field or several, and saying both leaves which "+
-				"fields it takes undecided",
-			grouping, member.TerraformName)
-	case !single && !several:
-		return nil, fmt.Errorf(
-			"grouping %q member %q names no structural field and is not declared invented",
-			grouping, member.TerraformName)
-	case single:
-		if member.Mapping != nil {
-			return nil, fmt.Errorf(
-				"grouping %q member %q declares a mapping while consuming a single field; "+
-					"there is nothing to relate",
-				grouping, member.TerraformName)
+		for _, name := range claim.StructuralNames {
+			if name == "" {
+				return nil, nil, fmt.Errorf("%s lists an empty structural name", owner)
+			}
+			if existing, taken := fields[name]; taken {
+				if existing == owner {
+					return nil, nil, fmt.Errorf(
+						"%s lists structural field %q twice; exactly-once accounting would "+
+							"then report it consumed once and count it two",
+						owner, name)
+				}
+				return nil, nil, fmt.Errorf(
+					"structural field %q is consumed by two claims, %q and %q",
+					name, existing, owner)
+			}
+			fields[name] = owner
 		}
-		return []string{member.StructuralName}, nil
-	}
-
-	if member.Mapping == nil {
-		return nil, fmt.Errorf(
-			"grouping %q member %q consumes %d fields (%s) and declares no mapping; "+
-				"how one value relates to them is a decision the compiler cannot see, "+
-				"and inferring it from names is what bound static_route's type and wlan's "+
-				"schedule to the wrong field",
-			grouping, member.TerraformName, len(member.StructuralNames),
-			strings.Join(member.StructuralNames, ", "))
-	}
-	// Both halves, always. The two directions are different functions and are
-	// not inverses -- network's dhcp_server.dns_servers writes positionally and
-	// reads compacted, so a value moves slot on a round trip -- and one name
-	// would describe half the behaviour while reading as though it described
-	// all of it.
-	for _, half := range []struct{ name, value, does string }{
-		{"to_api", member.Mapping.ToAPI, "builds the observed fields from the attribute"},
-		{"from_api", member.Mapping.FromAPI, "builds the attribute from the observed fields"},
-	} {
-		if half.value == "" {
-			return nil, fmt.Errorf(
-				"grouping %q member %q declares a mapping with no %s function, which %s; "+
-					"both directions are named because they are different functions here, "+
-					"not inverses of one another",
-				grouping, member.TerraformName, half.name, half.does)
+		for _, path := range claim.TerraformMembers {
+			if path == "" {
+				return nil, nil, fmt.Errorf("%s lists an empty terraform member", owner)
+			}
+			if existing, taken := members[path]; taken {
+				if existing == owner {
+					return nil, nil, fmt.Errorf("%s lists terraform member %q twice", owner, path)
+				}
+				return nil, nil, fmt.Errorf(
+					"terraform member %q is named by two claims, %q and %q; a member relates "+
+						"to the wire in one way or the schema does not say which",
+					path, existing, owner)
+			}
+			members[path] = owner
 		}
 	}
-	if len(member.StructuralNames) < 2 {
-		return nil, fmt.Errorf(
-			"grouping %q member %q uses structural_names for a single field (%s); "+
-				"use structural_name, so a reader can tell the two cases apart",
-			grouping, member.TerraformName, member.StructuralNames[0])
-	}
-	seen := map[string]bool{}
-	for _, name := range member.StructuralNames {
-		if name == "" {
-			return nil, fmt.Errorf("grouping %q member %q lists an empty structural name",
-				grouping, member.TerraformName)
-		}
-		if seen[name] {
-			return nil, fmt.Errorf(
-				"grouping %q member %q lists structural field %q twice; exactly-once "+
-					"accounting would then report it consumed by one member and count it two",
-				grouping, member.TerraformName, name)
-		}
-		seen[name] = true
-	}
-	return append([]string(nil), member.StructuralNames...), nil
+	return fields, members, nil
 }

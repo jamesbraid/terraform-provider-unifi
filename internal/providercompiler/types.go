@@ -134,6 +134,7 @@ type policy struct {
 	CatalogTarget             catalogTarget             `json:"catalog_target,omitempty"`
 	Groupings                 []groupingPolicy          `json:"groupings,omitempty"`
 	Flattenings               []flatteningPolicy        `json:"flattenings,omitempty"`
+	Claims                    []claimPolicy             `json:"claims,omitempty"`
 	CatalogSources            catalogSources            `json:"catalog_sources,omitempty"`
 	OperationDigest           string                    `json:"operation_digest,omitempty"`
 	Description               string                    `json:"description"`
@@ -220,20 +221,59 @@ type groupedMember struct {
 	// so the ledger cannot report them as derived, and the reason is required
 	// so the claim is legible rather than a flag someone sets to pass a gate.
 	Invented string `json:"invented,omitempty"`
-	// StructuralNames names SEVERAL observed fields this one member consumes,
-	// where StructuralName names exactly one. traffic_route's destination.ip is
-	// the case: the released attribute is one list, and the SDK carries
-	// ip_addresses and ip_ranges.
+	// ElementMember names which member of an observed array<object> this member
+	// presents, when the released attribute is a list of SCALARS over an
+	// element the SDK models as a struct.
 	//
-	// The two are mutually exclusive, so a policy cannot half-say which fields a
-	// member takes. Exactly-once accounting is unchanged and deliberately so:
-	// every name here is consumed, so a field claimed by two members is still a
-	// conflict and a field claimed by none is still unclassified. Widening what
-	// a member may claim must not widen what may go unclaimed.
-	StructuralNames []string `json:"structural_names,omitempty"`
-	// Mapping names the functions that relate the attribute to those fields,
-	// and is required whenever StructuralNames is used.
-	Mapping *mappingFunctions `json:"mapping,omitempty"`
+	// traffic_route's destination.domain is the case and the only one in the
+	// estate: the SDK carries []TrafficRouteDomains{domain, port_ranges, ports}
+	// and the released attribute is a list of strings. Every other list on a
+	// blocked surface is already array<string>.
+	//
+	// It is stated rather than derived from "whichever member is not omitted",
+	// and the redundancy with Fields is the point: derived, omitting a second
+	// member would silently change the attribute's element type. Stated, it is
+	// cross-checked three ways against the catalog -- the member exists, it is
+	// the only one not omitted, and its observed type is the declared element
+	// type -- which is what separates this from a mapping, whose function names
+	// nothing can verify.
+	ElementMember string `json:"element_member,omitempty"`
+}
+
+// claimPolicy relates a SET of schema members to a SET of observed fields
+// through a named pair of functions.
+//
+// It is the one mechanism for every relation that is not one-to-one, and the
+// ordinary cases are its degenerate forms: a member naming one field is 1x1, an
+// invented member is 1x0, an omitted field is 0x1. Everything else is a claim.
+//
+// It has to be declared here rather than on a member, because the relation is
+// not a property of any one member. Three scopes were measured and only this
+// reaches all three:
+//
+//	within ONE grouping       traffic_route  source.{clients,networks} <- target_devices
+//	across SIBLING groupings  vpn_server     {wireguard.port, openvpn.port} <- local_port
+//	at the TOP LEVEL          network        {purpose, third_party_gateway} <- purpose
+//
+// EXACTLY ONCE IS UNCHANGED, and deliberately stronger than the per-arm rule
+// this replaced. Every observed field appears in exactly one claim, and every
+// schema member appears in exactly one claim, so two members that co-claim a
+// field must be listed TOGETHER under ONE named function. That listing is
+// exactly what a reviewer has to check, which is why the format forces it into
+// one place rather than letting two members each assert the field separately.
+type claimPolicy struct {
+	// TerraformMembers names the schema members by path: a top-level field by
+	// its terraform_name, a grouping member as "grouping.member".
+	TerraformMembers []string `json:"terraform_members"`
+	// StructuralNames names the observed fields the claim consumes.
+	StructuralNames []string `json:"structural_names"`
+	// Mapping names the two functions that relate them.
+	Mapping *mappingFunctions `json:"mapping"`
+	// Reason says why the relation is not one-to-one, in prose. Required for
+	// the same cause as everywhere else here: a flag is something set to pass a
+	// gate, and the compiler cannot check the relation, so the reader has to be
+	// able to.
+	Reason string `json:"reason"`
 }
 
 // mappingFunctions names both directions of the relation between one Terraform

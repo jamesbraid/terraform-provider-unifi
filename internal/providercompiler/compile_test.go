@@ -879,78 +879,6 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 		mutate func(rules map[string]any)
 		want   string
 	}{
-		// A member consuming SEVERAL fields is the many-to-one capability.
-		// Each of these is a way a policy could be ambiguous about which
-		// fields it takes, and every one is refused rather than defaulted --
-		// there is no division that is obviously right, and picking one
-		// silently is how a wrong binding survives.
-		"a multi-field member with no mapping": {
-			mutate: func(rules map[string]any) {
-				member := groupingMembers(rules)[0].(map[string]any)
-				delete(member, "structural_name")
-				member["structural_names"] = []any{"port", "priority"}
-			},
-			want: "declares no mapping",
-		},
-		// Both halves, always. The two directions are different functions in
-		// this provider and are not inverses: network's dhcp_server.dns_servers
-		// writes positionally into dhcpd_dns_1..4, clearing the trailing slots,
-		// and reads back compacted -- so a value moves slot on a round trip. A
-		// mapping naming one direction describes half the behaviour while
-		// reading as though it described all of it.
-		"a mapping naming only the write direction": {
-			mutate: func(rules map[string]any) {
-				member := groupingMembers(rules)[0].(map[string]any)
-				delete(member, "structural_name")
-				member["structural_names"] = []any{"port", "priority"}
-				member["mapping"] = map[string]any{"to_api": "splitEndpoint"}
-			},
-			want: "declares a mapping with no from_api function",
-		},
-		"a mapping naming only the read direction": {
-			mutate: func(rules map[string]any) {
-				member := groupingMembers(rules)[0].(map[string]any)
-				delete(member, "structural_name")
-				member["structural_names"] = []any{"port", "priority"}
-				member["mapping"] = map[string]any{"from_api": "joinEndpoint"}
-			},
-			want: "declares a mapping with no to_api function",
-		},
-		"a member declaring both one field and several": {
-			mutate: func(rules map[string]any) {
-				member := groupingMembers(rules)[0].(map[string]any)
-				member["structural_names"] = []any{"port", "priority"}
-				member["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
-			},
-			want: "declares both structural_name and structural_names",
-		},
-		"a mapping declared on a single-field member": {
-			mutate: func(rules map[string]any) {
-				groupingMembers(rules)[0].(map[string]any)["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
-			},
-			want: "there is nothing to relate",
-		},
-		"structural_names used for exactly one field": {
-			mutate: func(rules map[string]any) {
-				member := groupingMembers(rules)[0].(map[string]any)
-				delete(member, "structural_name")
-				member["structural_names"] = []any{"port"}
-				member["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
-			},
-			want: "use structural_name",
-		},
-		// The accounting property. Widening what a member may claim must not
-		// widen what may go unclaimed, so a field listed twice by one member
-		// is a conflict rather than a harmless repetition.
-		"a member listing the same field twice": {
-			mutate: func(rules map[string]any) {
-				member := groupingMembers(rules)[0].(map[string]any)
-				delete(member, "structural_name")
-				member["structural_names"] = []any{"port", "port"}
-				member["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
-			},
-			want: "twice",
-		},
 		"member names no observed field": {
 			mutate: func(rules map[string]any) {
 				groupingMembers(rules)[0].(map[string]any)["structural_name"] = "nonexistent"
@@ -998,7 +926,7 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 			mutate: func(rules map[string]any) {
 				delete(groupingMembers(rules)[0].(map[string]any), "structural_name")
 			},
-			want: "names no structural field and is not declared invented",
+			want: "names no structural field, is not declared invented, and is not named by any claim",
 		},
 		"invented member also claims an observed field": {
 			mutate: func(rules map[string]any) {
@@ -1113,32 +1041,101 @@ func TestMappingRecordsAnInventedMemberAsInvented(t *testing.T) {
 	t.Fatal("mapping report does not mention the invented member")
 }
 
-// multiFieldMemberInput folds both grouped fields into ONE member, which is the
-// shape traffic_route's destination.ip has over ip_addresses and ip_ranges.
-func multiFieldMemberInput(t *testing.T, mutate func(member map[string]any)) CompileInput {
+// oneToManyInput folds both grouped fields into ONE member through a claim,
+// which is the shape traffic_route's destination.ip has over ip_addresses and
+// ip_ranges.
+func oneToManyInput(t *testing.T, mutate func(rules map[string]any)) CompileInput {
 	t.Helper()
 	return groupingInput(t, func(rules map[string]any) {
 		member := groupingMembers(rules)[0].(map[string]any)
 		delete(member, "structural_name")
-		member["structural_names"] = []any{"port", "priority"}
-		member["mapping"] = map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"}
 		member["terraform_type"] = "string"
-		if mutate != nil {
-			mutate(member)
-		}
 		firstGrouping(rules)["members"] = []any{member}
+		rules["claims"] = []any{testClaim([]any{"endpoint.port"}, []any{"port", "priority"})}
+		if mutate != nil {
+			mutate(rules)
+		}
 	})
 }
 
-// A member consuming several fields has no one observed field behind it, so the
-// policy declares its type and the compiler does not compare one -- there is no
-// comparison that holds across the estate's two cases, a PARTITION
-// (traffic_route's ip over ip_addresses and ip_ranges) and a BROADCAST
-// (vpn_server's wan.ip over three *_local_wan_ip fields).
-func TestCompileConstructsAMultiFieldMember(t *testing.T) {
-	result, err := Compile(multiFieldMemberInput(t, nil))
+// manyToOneInput keeps BOTH members and relates them to ONE field, which is the
+// shape traffic_route's source.{clients,networks} has over target_devices and
+// vpn_server's {wireguard.port, openvpn.port} has over local_port.
+func manyToOneInput(t *testing.T, mutate func(rules map[string]any)) CompileInput {
+	t.Helper()
+	return groupingInput(t, func(rules map[string]any) {
+		for _, raw := range groupingMembers(rules) {
+			member := raw.(map[string]any)
+			delete(member, "structural_name")
+			member["terraform_type"] = "string"
+		}
+		rules["fields"] = append(rules["fields"].([]any), map[string]any{
+			"structural_name": "priority", "semantic_id": "unifi.network.dns_record.field.priority",
+			"terraform_name": "priority_at_top", "disposition": "managed",
+			"attribute": map[string]any{"computed_optional_required": "optional"},
+		})
+		rules["claims"] = []any{
+			testClaim([]any{"endpoint.port", "endpoint.priority"}, []any{"port"}),
+		}
+		if mutate != nil {
+			mutate(rules)
+		}
+	})
+}
+
+func testClaim(members, fields []any) map[string]any {
+	return map[string]any{
+		"terraform_members": members,
+		"structural_names":  fields,
+		"mapping":           map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"},
+		"reason":            "the released attribute set does not correspond one to one with the wire",
+	}
+}
+
+func firstClaim(rules map[string]any) map[string]any {
+	return rules["claims"].([]any)[0].(map[string]any)
+}
+
+// dropTopLevelField frees a structural field for a second claim to consume.
+func dropTopLevelField(rules map[string]any, names ...string) {
+	drop := map[string]bool{}
+	for _, name := range names {
+		drop[name] = true
+	}
+	kept := []any{}
+	for _, raw := range rules["fields"].([]any) {
+		if field, ok := raw.(map[string]any); ok && drop[fmt.Sprint(field["structural_name"])] {
+			continue
+		}
+		kept = append(kept, raw)
+	}
+	rules["fields"] = kept
+}
+
+// bothMembersInput restores endpoint's two members, each claimed, so a test can
+// exercise a conflict BETWEEN claims rather than within one.
+func bothMembersInput(t *testing.T, mutate func(rules map[string]any)) CompileInput {
+	t.Helper()
+	return groupingInput(t, func(rules map[string]any) {
+		for _, raw := range groupingMembers(rules) {
+			member := raw.(map[string]any)
+			delete(member, "structural_name")
+			member["terraform_type"] = "string"
+		}
+		mutate(rules)
+	})
+}
+
+// A claimed member has no one observed field behind it, so the policy declares
+// its type and the compiler does not compare one -- there is no comparison that
+// holds across the estate's three cases: a PARTITION (traffic_route's ip over
+// ip_addresses and ip_ranges), a BROADCAST (vpn_server's wan.ip over three
+// *_local_wan_ip fields), and a SPLIT ACROSS MEMBERS (source.clients and
+// source.networks over the one target_devices).
+func TestCompileConstructsAClaimedMember(t *testing.T) {
+	result, err := Compile(oneToManyInput(t, nil))
 	if err != nil {
-		t.Fatalf("Compile() rejected a multi-field member: %v", err)
+		t.Fatalf("Compile() rejected a claimed member: %v", err)
 	}
 	attribute := collectionAttribute(t, result.ProviderCodeSpec, "endpoint")
 	var definition struct {
@@ -1159,15 +1156,35 @@ func TestCompileConstructsAMultiFieldMember(t *testing.T) {
 	}
 }
 
+// TWO members over ONE field, which no member-scoped declaration reaches: under
+// one the two members would each assert the field and collide, and the policy
+// would have no place to say they belong together.
+func TestCompileConstructsTwoMembersOverOneField(t *testing.T) {
+	result, err := Compile(manyToOneInput(t, nil))
+	if err != nil {
+		t.Fatalf("Compile() rejected two members over one field: %v", err)
+	}
+	attribute := collectionAttribute(t, result.ProviderCodeSpec, "endpoint")
+	var definition struct {
+		Attributes []map[string]json.RawMessage `json:"attributes"`
+	}
+	if err := json.Unmarshal(attribute["single_nested"], &definition); err != nil {
+		t.Fatal(err)
+	}
+	if len(definition.Attributes) != 2 {
+		t.Fatalf("grouping has %d members, want 2", len(definition.Attributes))
+	}
+}
+
 // The failure that used to reach requireScalarOverride and report
 // `field "" is observed as ""` -- naming neither the member, nor the grouping,
 // nor any field. A refusal that names nothing is treated as a defect here.
-func TestCompileRefusesAMultiFieldMemberWithNoDeclaredType(t *testing.T) {
-	_, err := Compile(multiFieldMemberInput(t, func(member map[string]any) {
-		delete(member, "terraform_type")
+func TestCompileRefusesAClaimedMemberWithNoDeclaredType(t *testing.T) {
+	_, err := Compile(oneToManyInput(t, func(rules map[string]any) {
+		delete(groupingMembers(rules)[0].(map[string]any), "terraform_type")
 	}))
 	if err == nil {
-		t.Fatal("Compile() accepted a multi-field member with no terraform_type")
+		t.Fatal("Compile() accepted a claimed member with no terraform_type")
 	}
 	for _, want := range []string{"endpoint.port", "must declare terraform_type", "port, priority"} {
 		if !strings.Contains(err.Error(), want) {
@@ -1177,32 +1194,394 @@ func TestCompileRefusesAMultiFieldMemberWithNoDeclaredType(t *testing.T) {
 }
 
 // The mapping report is where the exactly-once accounting is reviewed, so a
-// member consuming two fields owes it two rows. One row naming one field would
+// claim consuming two fields owes it two rows. One row naming one field would
 // leave the other invisible in the artifact -- which is a field nobody
-// classified, as far as any reader can tell.
-func TestMappingReportsEveryFieldAMultiFieldMemberConsumes(t *testing.T) {
-	result, err := Compile(multiFieldMemberInput(t, nil))
+// classified, as far as any reader can tell. The terraform side names every
+// member of the claim together, because that is the fact: the field relates to
+// the SET.
+func TestMappingReportsEveryFieldAClaimConsumes(t *testing.T) {
+	for name, test := range map[string]struct {
+		input CompileInput
+		want  map[string]string
+	}{
+		"one member over two fields": {
+			input: oneToManyInput(t, nil),
+			want:  map[string]string{"port": "endpoint.port", "priority": "endpoint.port"},
+		},
+		"two members over one field": {
+			input: manyToOneInput(t, nil),
+			want:  map[string]string{"port": "endpoint.port, endpoint.priority"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			result, err := Compile(test.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var mapping struct {
+				Fields []struct {
+					TerraformName  string `json:"terraform_name"`
+					StructuralName string `json:"structural_name"`
+					StructuralType string `json:"structural_type"`
+				} `json:"fields"`
+			}
+			if err := json.Unmarshal(result.MappingReport, &mapping); err != nil {
+				t.Fatal(err)
+			}
+			for structural, terraform := range test.want {
+				found := false
+				for _, field := range mapping.Fields {
+					if field.StructuralName != structural {
+						continue
+					}
+					found = true
+					if field.TerraformName != terraform {
+						t.Fatalf("%s maps to %q, want %q", structural, field.TerraformName, terraform)
+					}
+					if field.StructuralType != "int64" {
+						t.Fatalf("%s reports observed type %q, want int64", structural, field.StructuralType)
+					}
+				}
+				if !found {
+					t.Fatalf("the mapping report has no row for %q", structural)
+				}
+			}
+		})
+	}
+}
+
+// Every way a claim can be ambiguous about what it relates, refused rather than
+// defaulted. The accounting is what makes a claim a migration rather than
+// hand-authoring, and it runs in BOTH directions: a field named twice and a
+// member named twice are equally conflicts.
+func TestCompileRejectsClaimsThatAreNotDerivations(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(rules map[string]any)
+		want   string
+	}{
+		"a claim with no mapping": {
+			mutate: func(rules map[string]any) { delete(firstClaim(rules), "mapping") },
+			want:   "declares no mapping",
+		},
+		"a mapping naming only the write direction": {
+			mutate: func(rules map[string]any) {
+				firstClaim(rules)["mapping"] = map[string]any{"to_api": "splitEndpoint"}
+			},
+			want: "declares a mapping with no from_api function",
+		},
+		"a mapping naming only the read direction": {
+			mutate: func(rules map[string]any) {
+				firstClaim(rules)["mapping"] = map[string]any{"from_api": "joinEndpoint"}
+			},
+			want: "declares a mapping with no to_api function",
+		},
+		"a claim with no reason": {
+			mutate: func(rules map[string]any) { delete(firstClaim(rules), "reason") },
+			want:   "declares no reason",
+		},
+		// A one-to-one claim is an ordinary member wearing a costume, and
+		// admitting it would give the estate two ways to say the same thing.
+		"a claim relating one member to one field": {
+			mutate: func(rules map[string]any) {
+				firstClaim(rules)["structural_names"] = []any{"port"}
+				rules["fields"] = append(rules["fields"].([]any), map[string]any{
+					"structural_name": "priority", "semantic_id": "unifi.network.dns_record.field.priority",
+					"terraform_name": "priority_at_top", "disposition": "managed",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+				})
+			},
+			want: "declare structural_name on the member instead",
+		},
+		"a claim listing one field twice": {
+			mutate: func(rules map[string]any) {
+				firstClaim(rules)["structural_names"] = []any{"port", "port"}
+			},
+			want: "lists structural field \"port\" twice",
+		},
+		"a claim naming a field the catalog does not observe": {
+			mutate: func(rules map[string]any) {
+				firstClaim(rules)["structural_names"] = []any{"port", "nonexistent"}
+			},
+			want: `consumes "nonexistent", which the catalog does not observe`,
+		},
+		"a claim naming a member no grouping declares": {
+			mutate: func(rules map[string]any) {
+				dropTopLevelField(rules, "ttl", "weight")
+				rules["claims"] = append(rules["claims"].([]any),
+					testClaim([]any{"endpoint.nonexistent"}, []any{"ttl", "weight"}))
+			},
+			want: "which is neither a top-level field nor a member of any grouping",
+		},
+		"a claimed member that also names a field": {
+			mutate: func(rules map[string]any) {
+				groupingMembers(rules)[0].(map[string]any)["structural_name"] = "port"
+			},
+			want: "the claim already says which fields it relates to",
+		},
+		"a claimed member that is also declared invented": {
+			mutate: func(rules map[string]any) {
+				groupingMembers(rules)[0].(map[string]any)["invented"] = "computed by the provider"
+			},
+			want: "is declared invented and is also named by",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(oneToManyInput(t, test.mutate))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+
+	// The two cross-claim conflicts, which need both members present and are
+	// the halves of exactly-once that a per-member declaration cannot express.
+	for name, test := range map[string]struct {
+		claims func(rules map[string]any)
+		want   string
+	}{
+		// Disjoint members, overlapping fields.
+		"two claims consuming the same field": {
+			claims: func(rules map[string]any) {
+				rules["claims"] = []any{
+					testClaim([]any{"endpoint.port"}, []any{"port", "priority"}),
+					testClaim([]any{"endpoint.priority"}, []any{"priority", "port"}),
+				}
+			},
+			want: `structural field "priority" is consumed by two claims`,
+		},
+		// Overlapping members, disjoint fields. A member relating to the wire
+		// two ways leaves the schema unable to say which.
+		"two claims naming the same member": {
+			claims: func(rules map[string]any) {
+				dropTopLevelField(rules, "ttl", "weight")
+				rules["claims"] = []any{
+					testClaim([]any{"endpoint.port"}, []any{"port", "priority"}),
+					testClaim([]any{"endpoint.port", "endpoint.priority"}, []any{"ttl", "weight"}),
+				}
+			},
+			want: `terraform member "endpoint.port" is named by two claims`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(bothMembersInput(t, test.claims))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+// elementMemberInput models traffic_route's destination.domain: an observed
+// array<object> presented as a list of the element's one live member.
+func elementMemberInput(t *testing.T, mutate func(member map[string]any)) CompileInput {
+	t.Helper()
+	names := append(dnsFieldNames(), "options")
+	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
+	kept := []any{}
+	for _, raw := range rules["fields"].([]any) {
+		field := raw.(map[string]any)
+		if field["structural_name"] == "port" || field["structural_name"] == "priority" {
+			continue
+		}
+		kept = append(kept, field)
+	}
+	rules["fields"] = kept
+	member := map[string]any{
+		"structural_name": "options", "terraform_name": "options", "disposition": "managed",
+		"terraform_type": "list", "element_member": "value",
+		"attribute": map[string]any{
+			"computed_optional_required": "optional",
+			"element_type":               map[string]any{"string": map[string]any{}},
+		},
+		"fields": []any{
+			map[string]any{"structural_name": "optionNumber", "terraform_name": "option_number",
+				"disposition": "omitted"},
+			map[string]any{"structural_name": "value", "terraform_name": "value",
+				"disposition": "managed",
+				"attribute":   map[string]any{"computed_optional_required": "optional"}},
+		},
+	}
+	if mutate != nil {
+		mutate(member)
+	}
+	rules["groupings"] = []any{map[string]any{
+		"terraform_name": "endpoint", "terraform_type": "single_nested",
+		"attribute": map[string]any{"computed_optional_required": "optional"},
+		"members": []any{member, map[string]any{
+			"structural_name": "port", "terraform_name": "port", "disposition": "managed",
+			"attribute": map[string]any{"computed_optional_required": "optional"},
+		}},
+	}}
+	rules["fields"] = append(rules["fields"].([]any), map[string]any{
+		"structural_name": "priority", "semantic_id": "unifi.network.dns_record.field.priority",
+		"terraform_name": "priority", "disposition": "managed",
+		"attribute": map[string]any{"computed_optional_required": "optional"},
+	})
+	_ = names
+	return CompileInput{
+		Bootstrap:       bootstrapWithObjectMember(t),
+		Policy:          mustJSON(t, rules),
+		BaselineDigests: testBaseline(t),
+		Ledger:          testLedger(t, catalogparity.Admitted),
+	}
+}
+
+// An observed array<object> presented as a list of SCALARS. Emitting it as
+// list_nested instead compiles and is a different schema -- practitioners write
+// domain = ["a.com"] and would have to write domain = [{domain = "a.com"}] --
+// so the collapse is declared, and unlike a mapping the compiler CHECKS it.
+func TestCompileCollapsesAnObjectArrayToItsElementMember(t *testing.T) {
+	result, err := Compile(elementMemberInput(t, nil))
 	if err != nil {
+		t.Fatalf("Compile() rejected a collapsed element: %v", err)
+	}
+	attribute := collectionAttribute(t, result.ProviderCodeSpec, "endpoint")
+	var definition struct {
+		Attributes []map[string]json.RawMessage `json:"attributes"`
+	}
+	if err := json.Unmarshal(attribute["single_nested"], &definition); err != nil {
 		t.Fatal(err)
 	}
+	for _, member := range definition.Attributes {
+		if member["name"] == nil {
+			continue
+		}
+		var name string
+		if err := json.Unmarshal(member["name"], &name); err != nil {
+			t.Fatal(err)
+		}
+		if name != "options" {
+			continue
+		}
+		if _, ok := member["list"]; !ok {
+			t.Fatalf("options emitted as %v, want a plain list", attributeMembers(member))
+		}
+		return
+	}
+	t.Fatal("the grouping does not carry the collapsed member")
+}
+
+// The three checks that separate this from a hand-written attribute, each
+// refused by NAME. The redundancy between element_member and the field list is
+// deliberate: derived from "whichever is not omitted", omitting a second member
+// would silently change the attribute's element type.
+func TestCompileRejectsACollapseTheCatalogContradicts(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(member map[string]any)
+		want   string
+	}{
+		"a member the element does not carry": {
+			mutate: func(member map[string]any) { member["element_member"] = "nonexistent" },
+			want:   `declares element_member "nonexistent", which "options" does not carry`,
+		},
+		"a second member left live": {
+			mutate: func(member map[string]any) {
+				member["fields"].([]any)[0].(map[string]any)["disposition"] = "managed"
+				member["fields"].([]any)[0].(map[string]any)["attribute"] =
+					map[string]any{"computed_optional_required": "optional"}
+			},
+			want: "leaves 2 member(s) not omitted (optionNumber, value); a list of scalars carries exactly one",
+		},
+		// The list stays declared as string while the member it now carries is
+		// observed as int64. Nothing else in the policy is wrong, and only the
+		// catalog can say so.
+		"an element type the catalog contradicts": {
+			mutate: func(member map[string]any) {
+				member["element_member"] = "optionNumber"
+				fields := member["fields"].([]any)
+				fields[0].(map[string]any)["disposition"] = "managed"
+				fields[0].(map[string]any)["attribute"] =
+					map[string]any{"computed_optional_required": "optional"}
+				fields[1].(map[string]any)["disposition"] = "omitted"
+			},
+			want: `declares element type "string" but the catalog observes "options"."optionNumber" as "int64"`,
+		},
+		"a member of the element left undecided": {
+			mutate: func(member map[string]any) {
+				member["fields"] = []any{member["fields"].([]any)[1]}
+			},
+			want: `leaves member "optionNumber" undecided`,
+		},
+		"a collapse declared as a nested type": {
+			mutate: func(member map[string]any) { member["terraform_type"] = "list_nested" },
+			want:   `terraform_type "list_nested", want list or set`,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(elementMemberInput(t, test.mutate))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Compile() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+// A claim reaching TOP-LEVEL fields, which is network's shape: `purpose` and
+// `third_party_gateway` are both computed from the one observed `purpose`, and
+// neither can borrow its type -- one is a string and the other a bool.
+func TestCompileConstructsClaimedTopLevelFields(t *testing.T) {
+	input := groupingInput(t, func(rules map[string]any) {
+		dropTopLevelField(rules, "ttl")
+		rules["fields"] = append(rules["fields"].([]any),
+			map[string]any{
+				"terraform_name": "ttl", "terraform_type": "string", "disposition": "managed",
+				"attribute": map[string]any{"computed_optional_required": "optional"},
+			},
+			map[string]any{
+				"terraform_name": "ttl_is_set", "terraform_type": "bool", "disposition": "managed",
+				"attribute": map[string]any{"computed_optional_required": "computed"},
+			})
+		rules["claims"] = []any{testClaim([]any{"ttl", "ttl_is_set"}, []any{"ttl"})}
+	})
+	result, err := Compile(input)
+	if err != nil {
+		t.Fatalf("Compile() rejected a claim over top-level fields: %v", err)
+	}
+	for name, want := range map[string]string{"ttl": "string", "ttl_is_set": "bool"} {
+		attribute := collectionAttribute(t, result.ProviderCodeSpec, name)
+		if _, ok := attribute[want]; !ok {
+			t.Fatalf("%s emitted as %v, want the declared %s", name, attributeMembers(attribute), want)
+		}
+	}
+
+	// The report shows the one observed field related to BOTH attributes, in one
+	// row. Two rows would double-count it against the one-row-per-field rule.
 	var mapping struct {
 		Fields []struct {
 			TerraformName  string `json:"terraform_name"`
 			StructuralName string `json:"structural_name"`
-			StructuralType string `json:"structural_type"`
 		} `json:"fields"`
 	}
 	if err := json.Unmarshal(result.MappingReport, &mapping); err != nil {
 		t.Fatal(err)
 	}
-	seen := map[string]string{}
+	rows := 0
 	for _, field := range mapping.Fields {
-		if field.TerraformName == "endpoint.port" {
-			seen[field.StructuralName] = field.StructuralType
+		if field.StructuralName != "ttl" {
+			continue
+		}
+		rows++
+		if field.TerraformName != "ttl, ttl_is_set" {
+			t.Fatalf("ttl maps to %q, want both members named together", field.TerraformName)
 		}
 	}
-	if len(seen) != 2 || seen["port"] != "int64" || seen["priority"] != "int64" {
-		t.Fatalf("endpoint.port maps from %v, want port and priority both int64", seen)
+	if rows != 1 {
+		t.Fatalf("the mapping report has %d rows for ttl, want 1", rows)
+	}
+
+	// A top-level field naming nothing and claimed by nobody is a typo, not a
+	// shape: it would occupy an attribute name and account for no field.
+	_, err = Compile(groupingInput(t, func(rules map[string]any) {
+		rules["fields"] = append(rules["fields"].([]any), map[string]any{
+			"terraform_name": "orphan", "terraform_type": "string", "disposition": "managed",
+			"attribute": map[string]any{"computed_optional_required": "optional"},
+		})
+	}))
+	if err == nil || !strings.Contains(err.Error(),
+		`top-level field "orphan" names no structural field and is not named by any claim`) {
+		t.Fatalf("Compile() error = %v, want an unclaimed top-level field to be refused", err)
 	}
 }
 
