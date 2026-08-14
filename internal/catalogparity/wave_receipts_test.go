@@ -215,6 +215,14 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 		// second to serve a GoDuration string over an SDK int64.
 		case "unifi_port_profile":
 			want = GeneratedShadow
+		// The surface whose qos_rate is a grouping over one observed field:
+		// its id member consumes usergroup_id, and name, max_up and max_down
+		// are invented because they describe a ClientGroup, which the Client
+		// struct does not carry. policy-scaffold bound network_id to the SDK's
+		// own network_id; the released attribute comes from
+		// virtual_network_override_id.
+		case "unifi_client":
+			want = GeneratedShadow
 		}
 		if err := ledger.Require(contract.SurfaceKey, want); err != nil {
 			t.Fatal(err)
@@ -342,8 +350,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 		}
 	}
 	want := map[AdmissionState]int{
-		PolicyComplete:  11,
-		GeneratedShadow: 54,
+		PolicyComplete:  10,
+		GeneratedShadow: 55,
 		ShadowOnly:      1,
 		Admitted:        1,
 	}
