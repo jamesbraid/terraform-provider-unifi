@@ -22,8 +22,9 @@
   },
   {
    "kind": "data_source",
+   "migration": "Schema compiles from the bootstrap and policy. Its network_id is the ORDERED PREFERENCE the brief called a fourth shape and the measurement showed is not one: the data source reports virtual_network_override_id when it is set and the SDK own network_id otherwise (client_data_source.go:280-285), so ONE released attribute relates to TWO observed fields and neither alone is its source. That is a claim like any other -- the relation happens to be first-non-empty rather than a partition, which is exactly why the mapping is a pair of NAMES and not an inferred rule. qos_rate mirrors the managed resource: its id member consumes usergroup_id, and name, max_up and max_down are invented because they describe a ClientGroup the Client struct does not carry. groups reports the NAMES of the groups whose IDs are in network_members_group_ids, resolved by resolveGroupNames. Admission waits on a campaign run.",
    "name": "unifi_client",
-   "state": "policy_complete"
+   "state": "generated_shadow"
   },
   {
    "kind": "data_source",

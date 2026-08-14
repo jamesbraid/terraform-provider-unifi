@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -61,92 +61,10 @@ func (d *clientDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: `Retrieves properties of a client of the network by MAC address.`,
-
-		Attributes: map[string]schema.Attribute{
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the client is associated with.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"mac": schema.StringAttribute{
-				MarkdownDescription: "The MAC address of the client.",
-				CustomType:          hwtypes.MACAddressType{},
-				Required:            true,
-			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the client.",
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the client.",
-				Computed:            true,
-			},
-			"display_name": schema.StringAttribute{
-				MarkdownDescription: "The display name of the client.",
-				Computed:            true,
-			},
-			"qos_rate": schema.SingleNestedAttribute{
-				MarkdownDescription: "QoS rate limiting configuration from the client's group.",
-				Computed:            true,
-				Attributes: map[string]schema.Attribute{
-					"id": schema.StringAttribute{
-						MarkdownDescription: "The ID of the client group.",
-						Computed:            true,
-					},
-					"name": schema.StringAttribute{
-						MarkdownDescription: "The name of the client group.",
-						Computed:            true,
-					},
-					"max_up": schema.Int64Attribute{
-						MarkdownDescription: "Maximum upload rate in kbps.",
-						Computed:            true,
-					},
-					"max_down": schema.Int64Attribute{
-						MarkdownDescription: "Maximum download rate in kbps.",
-						Computed:            true,
-					},
-				},
-			},
-			"note": schema.StringAttribute{
-				MarkdownDescription: "A note with additional information for the client.",
-				Computed:            true,
-			},
-			"fixed_ip": schema.StringAttribute{
-				MarkdownDescription: "A fixed IPv4 address for this client.",
-				CustomType:          iptypes.IPv4AddressType{},
-				Computed:            true,
-			},
-			"fixed_ap_mac": schema.StringAttribute{
-				MarkdownDescription: "The MAC address of the access point to which this client should be fixed.",
-				CustomType:          hwtypes.MACAddressType{},
-				Computed:            true,
-			},
-			"network_id": schema.StringAttribute{
-				MarkdownDescription: "The network ID for this client.",
-				Computed:            true,
-			},
-			"groups": schema.ListAttribute{
-				MarkdownDescription: "List of network members group names for this client.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"blocked": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether this client should be blocked from the network.",
-				Computed:            true,
-			},
-			"local_dns_record": schema.StringAttribute{
-				MarkdownDescription: "Specifies the local DNS record for this client.",
-				Computed:            true,
-			},
-			"hostname": schema.StringAttribute{
-				MarkdownDescription: "The hostname of the client.",
-				Computed:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
+	resp.Schema = datasource_client.ClientDsDataSourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *clientDataSource) Configure(
