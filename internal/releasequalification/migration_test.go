@@ -312,11 +312,23 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			FormatVersion: 1, Gate: "catalog controller differential",
 			SurfaceCount: 67, EvidenceGapCount: 8,
 			TestNameCount: 152,
-			RuntimeChangeSet: []catalogparity.SurfaceKey{
-				{Kind: catalogparity.ListResource, Name: "unifi_device"},
-				{Kind: catalogparity.ListResource, Name: "unifi_dns_record"},
-				{Kind: catalogparity.ManagedResource, Name: "unifi_device"},
-				{Kind: catalogparity.ManagedResource, Name: "unifi_dns_record"},
+			RuntimeChangeSet: []catalogparity.RuntimeChange{
+				{
+					SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.ListResource, Name: "unifi_device"},
+					Reason:     catalogparity.ReasonConverted,
+				},
+				{
+					SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.ListResource, Name: "unifi_dns_record"},
+					Reason:     catalogparity.ReasonConverted,
+				},
+				{
+					SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.ManagedResource, Name: "unifi_device"},
+					Reason:     catalogparity.ReasonHandEdit,
+				},
+				{
+					SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.ManagedResource, Name: "unifi_dns_record"},
+					Reason:     catalogparity.ReasonConverted,
+				},
 			},
 		},
 		Admission: catalogparity.AdmissionReceipt{
