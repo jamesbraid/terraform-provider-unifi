@@ -148,3 +148,108 @@ func writeEvidenceFixture(t *testing.T, root, relativePath, contents string) {
 		t.Fatal(err)
 	}
 }
+
+// TestScenarioOwnersFindsACompanionFileAndTagsItsScenarios covers the whole
+// point of the plural change, and it exists because the manual probe that first
+// demonstrated it was a throwaway.
+//
+// A surface whose acceptance tests do not exist on the released side has to put
+// them somewhere. Putting them in the conventional test file makes that file
+// differ, which disqualified every scenario in it at once; putting them in a
+// companion file was not possible while a surface could own only one.
+//
+// The companion is found BY THE BASE, which includes the kind suffix. That is
+// load-bearing rather than incidental: the stem alone would be ambiguous,
+// because "client" is a prefix of the real surfaces client_info, client_list
+// and client_qos_rate, and a stem rule would need a longest-match tiebreak to
+// tell them apart. The kind suffix terminates the stem, so firewall_policy_resource
+// can never prefix another surface's base.
+func TestScenarioOwnersFindsACompanionFileAndTagsItsScenarios(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "unifi"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, "unifi", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("firewall_policy_resource_test.go", "package unifi\n\nfunc TestAccExisting(t *testing.T) {}\n")
+	write("firewall_policy_resource_acc_test.go", "package unifi\n\nfunc TestAccCompanion(t *testing.T) {}\n")
+	// A file belonging to a DIFFERENT surface, to prove the match is not a
+	// loose prefix over the whole directory.
+	write("firewall_zone_resource_test.go", "package unifi\n\nfunc TestAccOther(t *testing.T) {}\n")
+
+	key := SurfaceKey{Kind: ManagedResource, Name: "unifi_firewall_policy"}
+	owners, err := scenarioOwners(root, key)
+	if err != nil {
+		t.Fatalf("scenarioOwners() error = %v", err)
+	}
+	want := []string{
+		"unifi/firewall_policy_resource_acc_test.go",
+		"unifi/firewall_policy_resource_test.go",
+	}
+	if !reflect.DeepEqual(owners, want) {
+		t.Fatalf("owners = %v, want %v", owners, want)
+	}
+
+	// The released tree has neither file, so both scenarios are added, and each
+	// must name the file it came from -- a reader holding only the function
+	// name cannot say which file to graft.
+	scenarios, err := compareScenarios(t.TempDir(), root, owners)
+	if err != nil {
+		t.Fatalf("compareScenarios() error = %v", err)
+	}
+	got := map[string]string{}
+	for _, scenario := range scenarios {
+		if scenario.Status != ScenarioAdded {
+			t.Errorf("%s status = %q, want added; the released tree has no such file", scenario.Name, scenario.Status)
+		}
+		got[scenario.Name] = scenario.File
+	}
+	wantFiles := map[string]string{
+		"TestAccExisting":  "unifi/firewall_policy_resource_test.go",
+		"TestAccCompanion": "unifi/firewall_policy_resource_acc_test.go",
+	}
+	if !reflect.DeepEqual(got, wantFiles) {
+		t.Errorf("scenario files = %v, want %v", got, wantFiles)
+	}
+}
+
+// TestUnclaimedScenarioFilesNamesAnAcceptanceFileNoSurfaceOwns is the freshness
+// check on deriving owners by name. Deriving is only safe while every
+// acceptance file matches the convention, and nothing enforces the convention.
+//
+// It deliberately does not report a file claimed by SEVERAL surfaces: a managed
+// resource and its list companion share a base by design and legitimately name
+// the same file. A symmetric guard would be red on the existing tree.
+func TestUnclaimedScenarioFilesNamesAnAcceptanceFileNoSurfaceOwns(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "unifi"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, "unifi", name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("firewall_policy_resource_test.go", "package unifi\n\nfunc TestAccOwned(t *testing.T) {}\n")
+	write("firewall_policy_extra_test.go", "package unifi\n\nfunc TestAccStranded(t *testing.T) {}\n")
+	write("helpers_test.go", "package unifi\n\nfunc TestUnitOnly(t *testing.T) {}\n")
+
+	keys := []SurfaceKey{
+		{Kind: ManagedResource, Name: "unifi_firewall_policy"},
+		{Kind: ListResource, Name: "unifi_firewall_policy"},
+	}
+	unclaimed, err := UnclaimedScenarioFiles(root, keys)
+	if err != nil {
+		t.Fatalf("UnclaimedScenarioFiles() error = %v", err)
+	}
+	// helpers_test.go declares no TestAcc, so it is not evidence and not a
+	// finding. firewall_policy_extra_test.go does, and no surface claims it.
+	if !reflect.DeepEqual(unclaimed, []string{"unifi/firewall_policy_extra_test.go"}) {
+		t.Fatalf("unclaimed = %v, want only the stranded acceptance file", unclaimed)
+	}
+}
