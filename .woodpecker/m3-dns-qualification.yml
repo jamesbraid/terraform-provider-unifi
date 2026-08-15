@@ -33,6 +33,13 @@ steps:
       - env CGO_ENABLED=0 GOFLAGS=-mod=readonly GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go build -trimpath -buildvcs=false -ldflags=-buildid= -o m3-candidate/terraform-provider-unifi .
 
   - name: locked-network-lifecycle
+    # This step drives real controllers, and on 2026-08-15 it wedged: no output
+    # for fifty minutes, stalled immediately after a destroy, and it outlived an
+    # explicit cancel. Only a pipeline-level timeout ended it, an hour in, and
+    # it took promotion-receipt down with it -- so the last of three failures we
+    # were chasing went unreported for a day because of a step with no bound.
+    # Seven minutes is the observed cost; this is generous and still finite.
+    timeout: 25m
     image: docker:27.5.1-cli
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -43,6 +50,8 @@ steps:
       - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true' build/m3/network-dns-qualification-ci.json
 
   - name: promotion-receipt
+    # Also drives a controller, and it is the step the wedge above starved.
+    timeout: 20m
     image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
     commands:
       - apt-get update
