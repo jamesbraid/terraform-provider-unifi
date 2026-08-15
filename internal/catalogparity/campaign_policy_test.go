@@ -118,9 +118,9 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 		}
 		return runtimeChanged[a].Name < runtimeChanged[b].Name
 	})
-	if !reflect.DeepEqual(runtimeChanged, policy.RuntimeChangeSet) {
+	if !reflect.DeepEqual(runtimeChanged, policy.RuntimeChangeKeys()) {
 		t.Errorf("inventory runtime change set is %v, policy declares %v",
-			runtimeChanged, policy.RuntimeChangeSet)
+			runtimeChanged, policy.RuntimeChangeKeys())
 	}
 
 	// Every disposition has to name a test the campaign actually plans to run,
@@ -135,5 +135,85 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 				t.Errorf("campaign policy names %q, which the catalog does not plan", name)
 			}
 		}
+	}
+}
+
+// TestRuntimeChangeReasonsMatchTheGeneratedPackages checks every declared
+// reason against the packages actually present under internal/generated.
+//
+// The list of surfaces is the easy half of the declaration and the one a tired
+// human satisfies by pasting whatever the inventory measured. The reasons are
+// the half that cannot be pasted, and this is what makes them cost something:
+// claiming a surface was converted when it has no generated package fails here,
+// in a second, rather than being believed forever.
+//
+// It deliberately does not decide between companion_conversion and hand_edit.
+// Telling "the bytes moved because a companion was generated" apart from
+// "someone changed this on purpose" is a judgement about intent, and intent is
+// the reason this list is declared instead of derived.
+func TestRuntimeChangeReasonsMatchTheGeneratedPackages(t *testing.T) {
+	policy := testCampaignPolicy(t)
+	if len(policy.RuntimeChangeSet) == 0 {
+		t.Fatal("the policy declares no runtime changes, so every reason below would be vacuous")
+	}
+	for _, problem := range policy.RuntimeChangeReasonsMatchTree("../generated") {
+		t.Error(problem)
+	}
+}
+
+// TestRuntimeChangeReasonsRejectAContradictedClaim proves the check above can
+// fail. A reason nothing refutes is decoration.
+func TestRuntimeChangeReasonsRejectAContradictedClaim(t *testing.T) {
+	for name, test := range map[string]struct {
+		change RuntimeChange
+		want   string
+	}{
+		"converted without a generated package": {
+			change: RuntimeChange{
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_device"},
+				Reason:     ReasonConverted,
+			},
+			want: "no generated package resource_device",
+		},
+		"hand edit on a converted surface": {
+			change: RuntimeChange{
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_wlan"},
+				Reason:     ReasonHandEdit,
+			},
+			want: "its own package resource_wlan exists",
+		},
+		"companion conversion on a converted surface": {
+			change: RuntimeChange{
+				SurfaceKey: SurfaceKey{Kind: ListResource, Name: "unifi_wlan"},
+				Reason:     ReasonCompanionConversion,
+			},
+			want: "its own package listresource_wlan exists",
+		},
+		"companion conversion with no converted companion": {
+			change: RuntimeChange{
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_setting"},
+				Reason:     ReasonCompanionConversion,
+			},
+			want: "no companion package listresource_setting exists",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			policy := CampaignPolicy{RuntimeChangeSet: []RuntimeChange{test.change}}
+			problems := policy.RuntimeChangeReasonsMatchTree("../generated")
+			if len(problems) != 1 || !strings.Contains(problems[0].Error(), test.want) {
+				t.Fatalf("problems = %v, want one containing %q", problems, test.want)
+			}
+		})
+	}
+
+	// The control: the reason the committed policy actually gives for that same
+	// surface is accepted, so the cases above fail for their stated cause and
+	// not because the checker rejects everything.
+	policy := CampaignPolicy{RuntimeChangeSet: []RuntimeChange{{
+		SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_device"},
+		Reason:     ReasonHandEdit,
+	}}}
+	if problems := policy.RuntimeChangeReasonsMatchTree("../generated"); len(problems) != 0 {
+		t.Fatalf("the committed reason for managed_resource/unifi_device was rejected: %v", problems)
 	}
 }
