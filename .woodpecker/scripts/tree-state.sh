@@ -57,7 +57,14 @@
 evidence_tree_state() {
     local what=${1:?evidence_tree_state needs the artifact it is guarding}
     local root
-    root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    # Resolve the repository from THIS FILE's location, never the working
+    # directory. Every generator resolves its own root from BASH_SOURCE; the
+    # guard used to resolve from the CWD, so it agreed with all of them except
+    # the one caller that cd's first -- catalog-controller-differential_test.sh
+    # runs the script from a mktemp dir. That single disagreement took down the
+    # whole controller campaign on its first command, for seven manual
+    # pipelines, with a message that reads like a broken checkout.
+    root=$(git -C "$(dirname -- "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null) || {
         printf '%s: not a git repository, so the tree state cannot be recorded\n' "${what}" >&2
         exit 1
     }
