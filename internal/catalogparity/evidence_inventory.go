@@ -57,15 +57,77 @@ type TestSignals struct {
 	ActionAcceptance bool `json:"action_acceptance"`
 }
 
+type ScenarioStatus string
+
+const (
+	ScenarioIdentical ScenarioStatus = "identical"
+	ScenarioChanged   ScenarioStatus = "changed"
+	// ScenarioAdded means the candidate declares this acceptance test and the
+	// released tree does not. It is deliberately not "changed": a scenario the
+	// released provider never had cannot judge it, and calling that a change
+	// invites reading a red as drift when it is absence.
+	ScenarioAdded ScenarioStatus = "added"
+)
+
+// ScenarioComparison compares ONE acceptance test function between the
+// released and candidate trees.
+//
+// It exists because file identity is the wrong granularity and was quietly
+// standing in for this. A scenario owner file holds acceptance tests, which
+// drive the provider through HCL, alongside unit tests, which reach into
+// provider internals. Converting a surface necessarily changes the unit tests
+// and need not touch the acceptance tests at all -- yet the file digest moves,
+// and every scenario in it loses its standing.
+//
+// Measured on this tree, eight of the nine acceptance tests that survived from
+// the released provider are BYTE-IDENTICAL to it, and all eight sat in files
+// marked changed. They were being disqualified by their file-mates.
+//
+// The digest covers the function declaration only, from `func` to its closing
+// brace, excluding any preceding doc comment. A comment above a test is not
+// part of what it does; a comment inside it is, and stays in the digest.
+type ScenarioComparison struct {
+	Name            string         `json:"name"`
+	Status          ScenarioStatus `json:"status"`
+	ReleasedSHA256  string         `json:"released_sha256,omitempty"`
+	CandidateSHA256 string         `json:"candidate_sha256"`
+}
+
 type SurfaceEvidenceInventory struct {
 	SurfaceKey
-	Wave           int            `json:"wave"`
-	Runtime        FileComparison `json:"runtime"`
-	Tests          FileComparison `json:"tests"`
-	ScenarioOwner  string         `json:"scenario_owner"`
-	TestFunctions  []string       `json:"test_functions"`
-	Signals        TestSignals    `json:"signals"`
-	MissingSignals []string       `json:"missing_signals"`
+	Wave          int            `json:"wave"`
+	Runtime       FileComparison `json:"runtime"`
+	Tests         FileComparison `json:"tests"`
+	ScenarioOwner string         `json:"scenario_owner"`
+	TestFunctions []string       `json:"test_functions"`
+	// Scenarios compares every TestAcc function in the scenario owner, without
+	// applying the plan's kind filter. The inventory measures; deciding which
+	// of them speak for a managed surface and which for its list companion is
+	// the plan's job, and duplicating that rule here would be a second copy of
+	// it.
+	// omitempty is load-bearing, not tidiness. Catalog admission re-marshals a
+	// parsed inventory and requires the result to reproduce the committed
+	// file's bytes, so a field that always serialises would invalidate every
+	// inventory generated before scenarios existed -- including the committed
+	// one, which nobody in this lane can regenerate. Omitted when absent, the
+	// old bytes still round-trip and the new field appears only once something
+	// has measured it.
+	Scenarios      []ScenarioComparison `json:"scenarios,omitempty"`
+	Signals        TestSignals          `json:"signals"`
+	MissingSignals []string             `json:"missing_signals"`
+}
+
+// Scenario returns the comparison for one acceptance test, and whether the
+// inventory carries one at all. The second result matters: an inventory built
+// before scenarios existed reports nothing, and a caller must be able to tell
+// that from "measured, and it differs".
+func (s SurfaceEvidenceInventory) Scenario(name string) (ScenarioComparison, bool) {
+	for _, scenario := range s.Scenarios {
+		if scenario.Name == name {
+			return scenario, true
+		}
+	}
+	return ScenarioComparison{}, false
 }
 
 type EvidenceInventory struct {
@@ -132,6 +194,10 @@ func BuildEvidenceInventory(input EvidenceInventoryInput) (EvidenceInventory, er
 		if err != nil {
 			return EvidenceInventory{}, fmt.Errorf("scenario owner for %s/%s: %w", surface.Kind, surface.Name, err)
 		}
+		scenarios, err := compareScenarios(input.ReleasedRoot, input.CandidateRoot, testPath)
+		if err != nil {
+			return EvidenceInventory{}, fmt.Errorf("scenarios for %s/%s: %w", surface.Kind, surface.Name, err)
+		}
 		signals := classifyTestSignals(surface.Kind, functions, fileData)
 		missing := missingTestSignals(surface.Kind, signals)
 		entry := SurfaceEvidenceInventory{
@@ -141,6 +207,7 @@ func BuildEvidenceInventory(input EvidenceInventoryInput) (EvidenceInventory, er
 			Tests:          tests,
 			ScenarioOwner:  testPath,
 			TestFunctions:  functions,
+			Scenarios:      scenarios,
 			Signals:        signals,
 			MissingSignals: missing,
 		}
@@ -258,6 +325,77 @@ func compareEvidenceFile(releasedRoot, candidateRoot, relativePath string) (File
 		ReleasedSHA256:  hex.EncodeToString(releasedDigest[:]),
 		CandidateSHA256: hex.EncodeToString(candidateDigest[:]),
 	}, nil
+}
+
+// compareScenarios digests every TestAcc function in the candidate scenario
+// owner and compares it with the same function in the released tree.
+//
+// A released file that does not exist is not an error: the candidate may have
+// added a scenario owner outright, and every scenario in it is then added
+// rather than changed.
+func compareScenarios(releasedRoot, candidateRoot, relativePath string) ([]ScenarioComparison, error) {
+	candidate, err := acceptanceScenarioDigests(filepath.Join(candidateRoot, filepath.FromSlash(relativePath)))
+	if err != nil {
+		return nil, err
+	}
+	released, err := acceptanceScenarioDigests(filepath.Join(releasedRoot, filepath.FromSlash(relativePath)))
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	names := make([]string, 0, len(candidate))
+	for name := range candidate {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	comparisons := make([]ScenarioComparison, 0, len(names))
+	for _, name := range names {
+		comparison := ScenarioComparison{Name: name, CandidateSHA256: candidate[name]}
+		switch before, existed := released[name]; {
+		case !existed:
+			comparison.Status = ScenarioAdded
+		case before == candidate[name]:
+			comparison.Status, comparison.ReleasedSHA256 = ScenarioIdentical, before
+		default:
+			comparison.Status, comparison.ReleasedSHA256 = ScenarioChanged, before
+		}
+		comparisons = append(comparisons, comparison)
+	}
+	return comparisons, nil
+}
+
+// acceptanceScenarioDigests maps each TestAcc function in a file to the SHA-256
+// of its declaration source.
+//
+// The span runs from the `func` keyword to the closing brace, which excludes a
+// doc comment above the function and includes any comment inside it. That is
+// the line between prose about a test and the test itself: unifi_device's only
+// acceptance-test change adds "state" to ImportStateVerifyIgnore together with
+// an inline comment explaining why, and both belong to what the test does.
+func acceptanceScenarioDigests(path string) (map[string]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	fileSet := token.NewFileSet()
+	parsed, err := parser.ParseFile(fileSet, path, data, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+	digests := make(map[string]string)
+	for _, declaration := range parsed.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || !strings.HasPrefix(function.Name.Name, "TestAcc") {
+			continue
+		}
+		start := fileSet.Position(function.Pos()).Offset
+		end := fileSet.Position(function.End()).Offset
+		if start < 0 || end > len(data) || start >= end {
+			return nil, fmt.Errorf("%s: cannot read the source of %s", path, function.Name.Name)
+		}
+		digest := sha256.Sum256(data[start:end])
+		digests[function.Name.Name] = hex.EncodeToString(digest[:])
+	}
+	return digests, nil
 }
 
 func parseTestFunctions(path string) ([]string, []byte, error) {
