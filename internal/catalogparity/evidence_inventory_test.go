@@ -180,6 +180,14 @@ func TestScenarioOwnersFindsACompanionFileAndTagsItsScenarios(t *testing.T) {
 	// A file belonging to a DIFFERENT surface, to prove the match is not a
 	// loose prefix over the whole directory.
 	write("firewall_zone_resource_test.go", "package unifi\n\nfunc TestAccOther(t *testing.T) {}\n")
+	// A companion that matches the name and carries NO acceptance test. It must
+	// NOT become an owner. Not hypothetical: unifi/port_action_merge_test.go is
+	// exactly this shape, and action/unifi_port carries the one declared
+	// shared-scenario exception, so enrolling it would have made the graft copy a
+	// unit-test file bound to a candidate-side function into the released tree --
+	// no scenario gained, a compile failure risked, on the one piece of grafting
+	// machinery with evidence behind it.
+	write("firewall_policy_resource_merge_test.go", "package unifi\n\nfunc Test_unitOnly(t *testing.T) {}\n")
 
 	key := SurfaceKey{Kind: ManagedResource, Name: "unifi_firewall_policy"}
 	owners, err := scenarioOwners(root, key)
