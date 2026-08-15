@@ -209,12 +209,26 @@ func validateMigrationAdmission(input MigrationRecoveryInput) error {
 		len(a.Surfaces) != 67 {
 		return fmt.Errorf("catalog admission is not a complete pass")
 	}
-	want := catalogparity.EvidenceGap{
-		SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"},
-		Signal:     "hardware_claim",
+	// The release blockers must be exactly the gaps the campaign policy declares
+	// the release may ship carrying. This used to assert a single hardcoded gap,
+	// the port action's hardware claim, which stopped being the whole truth when
+	// three pragmatic references were withdrawn for leaning on sources the
+	// released provider never ran.
+	accepted := make(map[catalogparity.EvidenceGap]struct{}, len(input.Policy.AcceptedEvidenceGaps))
+	for _, gap := range input.Policy.AcceptedEvidenceGaps {
+		accepted[gap.Gap()] = struct{}{}
 	}
-	if a.ReleaseBlockerCount != 1 || len(a.ReleaseBlockers) != 1 || a.ReleaseBlockers[0] != want {
-		return fmt.Errorf("catalog admission release blocker is invalid")
+	if a.ReleaseBlockerCount != len(a.ReleaseBlockers) || len(a.ReleaseBlockers) != len(accepted) {
+		return fmt.Errorf(
+			"catalog admission carries %d release blockers, the campaign policy declares %d",
+			len(a.ReleaseBlockers), len(accepted))
+	}
+	for _, blocker := range a.ReleaseBlockers {
+		if _, declared := accepted[blocker]; !declared {
+			return fmt.Errorf(
+				"catalog admission release blocker %s/%s %q is not declared in the campaign policy",
+				blocker.Kind, blocker.Name, blocker.Signal)
+		}
 	}
 	if a.Evidence.InventorySHA256 != input.InventorySHA256 ||
 		a.Evidence.BuildSchemaSHA256 != input.BuildSchemaSHA256 ||

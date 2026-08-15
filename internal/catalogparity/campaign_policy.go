@@ -41,6 +41,24 @@ type CampaignPolicy struct {
 	// whose runtime is identical, because that exception is doing nothing.
 	SharedScenarioExceptions []SharedScenarioException `json:"shared_scenario_exceptions"`
 
+	// AcceptedEvidenceGaps names the evidence gaps the release may ship
+	// carrying, each with the reason it cannot be closed.
+	//
+	// It replaces a hardcoded assertion in validatePragmaticAdmission that the
+	// only unresolved gap could ever be the port action's hardware claim. That
+	// was true when it was written and stopped being true the moment three
+	// pragmatic references were withdrawn for leaning on sources with no
+	// released-side scenario. A constant naming one surface cannot express
+	// "these four, for these reasons", and renumbering it to four would have
+	// hidden which four.
+	//
+	// This is a DECLARATION, not a measurement: which gaps a release is willing
+	// to ship with is a judgement, and it is checked against the resolution
+	// rather than derived from it. A gap the campaign leaves unresolved and
+	// nobody declared fails, and a declared gap the campaign did resolve fails
+	// too, so the list cannot quietly grow to fit.
+	AcceptedEvidenceGaps []AcceptedEvidenceGap `json:"accepted_evidence_gaps"`
+
 	ReleasedAllowedFailures []string `json:"released_allowed_failures"`
 	ReleasedAllowedMissing  []string `json:"released_allowed_missing"`
 
@@ -104,6 +122,22 @@ func (policy CampaignPolicy) RuntimeChangeKeys() []SurfaceKey {
 		keys = append(keys, change.SurfaceKey)
 	}
 	return keys
+}
+
+// AcceptedEvidenceGap declares one evidence gap the release ships carrying.
+// The reason is required for the same cause as every other declaration here: a
+// bare list is something appended to until a gate goes green, and the next
+// reader cannot tell a considered acceptance from a forgotten one.
+type AcceptedEvidenceGap struct {
+	SurfaceKey
+	Signal string `json:"signal"`
+	Reason string `json:"reason"`
+}
+
+// Gap projects the declaration onto the shape the resolution reports, so the
+// comparison is against the measured gap rather than a restatement of it.
+func (gap AcceptedEvidenceGap) Gap() EvidenceGap {
+	return EvidenceGap{SurfaceKey: gap.SurfaceKey, Signal: gap.Signal}
 }
 
 // SharedScenarioException declares one surface whose scenario is shared with
@@ -174,6 +208,23 @@ func (policy CampaignPolicy) Validate() error {
 			return fmt.Errorf("campaign policy runtime change set repeats %s/%s", change.Kind, change.Name)
 		}
 		seen[change.SurfaceKey] = struct{}{}
+	}
+	seenGaps := make(map[EvidenceGap]struct{}, len(policy.AcceptedEvidenceGaps))
+	for _, gap := range policy.AcceptedEvidenceGaps {
+		if !validSurfaceKind(gap.Kind) || gap.Name == "" || gap.Signal == "" {
+			return fmt.Errorf("campaign policy accepted evidence gap is invalid")
+		}
+		if gap.Reason == "" {
+			return fmt.Errorf(
+				"campaign policy accepts %s/%s signal %q with no reason",
+				gap.Kind, gap.Name, gap.Signal)
+		}
+		if _, duplicate := seenGaps[gap.Gap()]; duplicate {
+			return fmt.Errorf(
+				"campaign policy repeats accepted evidence gap %s/%s %q",
+				gap.Kind, gap.Name, gap.Signal)
+		}
+		seenGaps[gap.Gap()] = struct{}{}
 	}
 	if !sortedSurfaceKeys(policy.RuntimeChangeKeys()) {
 		return fmt.Errorf("campaign policy runtime change set is not sorted by kind then name")

@@ -29,6 +29,12 @@ func TestResolvePragmaticReferencesResolvesOnlyDeclaredIdenticalRuntimeGap(t *te
 				SurfaceKey:     source,
 				Runtime:        FileComparison{Status: FileIdentical},
 				MissingSignals: []string{},
+				// A lender must have an acceptance scenario the released
+				// provider also ran; identical runtime is no longer the test.
+				Scenarios: []ScenarioComparison{{
+					Name: "TestAccSourceLendable", Status: ScenarioIdentical,
+					ReleasedSHA256: strings.Repeat("1", 64), CandidateSHA256: strings.Repeat("1", 64),
+				}},
 			},
 		},
 	}
@@ -87,7 +93,10 @@ func TestResolvePragmaticReferencesRejectsUnsafeOrUnmeasuredSubstitutions(t *tes
 		ProviderAddress: CanonicalProviderAddress,
 		Surfaces: []SurfaceEvidenceInventory{
 			{SurfaceKey: target, Runtime: FileComparison{Status: FileIdentical}, MissingSignals: []string{"acceptance"}},
-			{SurfaceKey: source, Runtime: FileComparison{Status: FileIdentical}},
+			{SurfaceKey: source, Runtime: FileComparison{Status: FileIdentical}, Scenarios: []ScenarioComparison{{
+				Name: "TestAccSourceLendable", Status: ScenarioIdentical,
+				ReleasedSHA256: strings.Repeat("1", 64), CandidateSHA256: strings.Repeat("1", 64),
+			}}},
 		},
 	}
 	validReferences := PragmaticReferenceSet{
@@ -120,11 +129,28 @@ func TestResolvePragmaticReferencesRejectsUnsafeOrUnmeasuredSubstitutions(t *tes
 		mutate func(*EvidenceInventory, *FleetReferenceSummary, *PragmaticReferenceSet)
 		want   string
 	}{
-		"changed target runtime": {
+		// The rule these three replace -- that the surface CARRYING the gap must
+		// have an unchanged runtime -- was removed deliberately, so mutating it
+		// proves nothing any more. What must fail now is a SOURCE that cannot
+		// lend: its scenario moved, the released provider never ran it, or it
+		// has none at all.
+		"source scenario changed": {
 			mutate: func(inventory *EvidenceInventory, _ *FleetReferenceSummary, _ *PragmaticReferenceSet) {
-				inventory.Surfaces[0].Runtime.Status = FileChanged
+				inventory.Surfaces[1].Scenarios[0].Status = ScenarioChanged
 			},
-			want: "runtime is changed",
+			want: "not identical to the released provider's",
+		},
+		"source scenario added only": {
+			mutate: func(inventory *EvidenceInventory, _ *FleetReferenceSummary, _ *PragmaticReferenceSet) {
+				inventory.Surfaces[1].Scenarios[0].Status = ScenarioAdded
+			},
+			want: "not identical to the released provider's",
+		},
+		"source declares no scenario": {
+			mutate: func(inventory *EvidenceInventory, _ *FleetReferenceSummary, _ *PragmaticReferenceSet) {
+				inventory.Surfaces[1].Scenarios = nil
+			},
+			want: "declares no acceptance scenario",
 		},
 		"stale inventory digest": {
 			mutate: func(_ *EvidenceInventory, _ *FleetReferenceSummary, references *PragmaticReferenceSet) {
@@ -206,20 +232,25 @@ func TestPragmaticReferencePolicyResolvesExactlyEightCatalogGaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 7 || resolution.RemainingSignalCount != 1 {
+	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 4 || resolution.RemainingSignalCount != 4 {
 		t.Fatalf("resolution = %+v", resolution)
 	}
+	// Three references were withdrawn because their sources' only acceptance
+	// scenario is `added` -- the released provider never ran it, so there is no
+	// before-and-after to borrow. Those gaps are now release blockers, which is
+	// the honest state rather than a worse one.
 	wantRemaining := []EvidenceGap{
+		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_firewall_policy"}, Signal: "acceptance"},
+		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_power_supervisor"}, Signal: "acceptance"},
+		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_site_to_site_vpn"}, Signal: "acceptance"},
 		{SurfaceKey: SurfaceKey{Kind: Action, Name: "unifi_port"}, Signal: "hardware_claim"},
 	}
 	if !reflect.DeepEqual(resolution.Remaining, wantRemaining) {
 		t.Fatalf("remaining = %+v, want %+v", resolution.Remaining, wantRemaining)
 	}
 	wantKinds := map[PragmaticReferenceKind]int{
-		AliasReference:           3,
-		FleetShapeReference:      1,
-		SiblingReadReference:     1,
-		ZeroUseEndpointReference: 2,
+		AliasReference:       3,
+		SiblingReadReference: 1,
 	}
 	gotKinds := make(map[PragmaticReferenceKind]int)
 	for _, signal := range resolution.Resolved {
