@@ -19,9 +19,16 @@ import (
 // practitioner writes, the members it declares, and whether the schema binds it
 // to a custom type.
 type nestedAttribute struct {
-	Path       string
-	Members    []string
+	Path    string
+	Members []string
+	// CustomType is the type bound to the attribute itself.
 	CustomType string
+	// ElementCustomType is the type bound to a list or set attribute's ELEMENT
+	// object, which is a separate binding site and the one a walk of attributes
+	// alone does not see. Fifteen of the fifty-two live here, so reading only
+	// CustomType found thirty-seven of them -- the same undercount, from the
+	// same blind spot, that four earlier textual scans produced.
+	ElementCustomType string
 }
 
 // TestServedSchemaAgreesWithItsRuntimeModel is the referee that did not exist.
@@ -109,6 +116,43 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 	if len(generated) == 0 {
 		t.Fatal("no types found in the generated tree, so the check below would be vacuous")
 	}
+
+	// DIRECTION ZERO, and it is the one this whole test exists for. A nested
+	// attribute must not bind a custom object type that the generated tree
+	// declares, because nothing in the provider produces a value of one --
+	// every runtime model carries the nested object as a plain types.Object --
+	// so the framework rejects the value at apply time.
+	//
+	// THIS WAS MISSING UNTIL A RETRODICTION TEST FOUND IT. The test was run
+	// against the tree as it stood before the bindings were removed, the tree
+	// that produced 54 controller regressions, and it PASSED. The attribute-set
+	// check cannot see the fault, because the members are identical whether or
+	// not a custom type is bound. The check below cannot either, because it
+	// reads model fields and those were always plain. The attribute's own
+	// CustomType was captured by the walk and never read.
+	//
+	// A check built for a defect, which does not fire on that defect, is worth
+	// nothing. Being mutation-proven did not reveal it: every mutation tested
+	// the checks that already existed. Only running it against the broken tree
+	// did.
+	for _, nested := range surfaces {
+		for where, bound := range map[string]string{
+			"":         nested.CustomType,
+			" element": nested.ElementCustomType,
+		} {
+			if bound == "" {
+				continue
+			}
+			if _, isGenerated := generated[bound]; !isGenerated {
+				continue
+			}
+			t.Errorf("%s%s binds custom type %s, which the generated tree declares; "+
+				"nothing in the provider produces a value of one and the runtime model carries "+
+				"a plain object, so every apply touching this attribute fails",
+				nested.Path, where, bound)
+		}
+	}
+
 	for _, model := range index.Models {
 		for tag, goType := range model.Fields {
 			if _, isGenerated := generated[strings.TrimPrefix(goType, "*")]; isGenerated {
@@ -198,6 +242,7 @@ func servedNestedAttributes(ctx context.Context, t *testing.T) []nestedAttribute
 		var got resource.SchemaResponse
 		res.Schema(ctx, resource.SchemaRequest{}, &got)
 		walkResourceAttributes(ctx, meta.TypeName, got.Schema.Attributes, &found)
+		walkResourceBlocks(ctx, meta.TypeName, got.Schema.Blocks, &found)
 	}
 	for _, newDataSource := range provider.DataSources(ctx) {
 		ds := newDataSource()
@@ -206,8 +251,127 @@ func servedNestedAttributes(ctx context.Context, t *testing.T) []nestedAttribute
 		var got datasource.SchemaResponse
 		ds.Schema(ctx, datasource.SchemaRequest{}, &got)
 		walkDataSourceAttributes(ctx, "data."+meta.TypeName, got.Schema.Attributes, &found)
+		walkDataSourceBlocks(ctx, "data."+meta.TypeName, got.Schema.Blocks, &found)
 	}
 	return found
+}
+
+// walkResourceBlocks covers the half of the schema the first version of this
+// test could not see at all.
+//
+// A nested object can be declared as an attribute or as a BLOCK, and the two
+// are different Go types with different accessors. Walking only Attributes
+// missed every block in the provider -- unifi_wlan's schedule and
+// unifi_radius_profile's acct_server and auth_server among them. That was found
+// by running this test against the pre-strip tree and having it report 49 of
+// the 52 known bindings: the three it missed were all blocks. Without a known
+// total to check against, the gap would have looked like a clean pass.
+func walkResourceBlocks(
+	ctx context.Context,
+	prefix string,
+	blocks map[string]rschema.Block,
+	found *[]nestedAttribute,
+) {
+	names := sortedAttributeNames(len(blocks), func(yield func(string)) {
+		for name := range blocks {
+			yield(name)
+		}
+	})
+	for _, name := range names {
+		path := prefix + "." + name
+		switch block := blocks[name].(type) {
+		case rschema.SingleNestedBlock:
+			*found = append(*found, nestedAttribute{
+				Path: path, Members: resourceMembers(block.Attributes, block.Blocks),
+				CustomType: customTypeName(block.CustomType),
+			})
+			walkResourceAttributes(ctx, path, block.Attributes, found)
+			walkResourceBlocks(ctx, path, block.Blocks, found)
+		case rschema.ListNestedBlock:
+			*found = append(*found, nestedAttribute{
+				Path:       path,
+				Members:    resourceMembers(block.NestedObject.Attributes, block.NestedObject.Blocks),
+				CustomType: customTypeName(block.CustomType),
+				// The element object carries its own binding, exactly as a
+				// list-nested ATTRIBUTE's does.
+				ElementCustomType: customTypeName(block.NestedObject.CustomType),
+			})
+			walkResourceAttributes(ctx, path, block.NestedObject.Attributes, found)
+			walkResourceBlocks(ctx, path, block.NestedObject.Blocks, found)
+		case rschema.SetNestedBlock:
+			*found = append(*found, nestedAttribute{
+				Path:              path,
+				Members:           resourceMembers(block.NestedObject.Attributes, block.NestedObject.Blocks),
+				CustomType:        customTypeName(block.CustomType),
+				ElementCustomType: customTypeName(block.NestedObject.CustomType),
+			})
+			walkResourceAttributes(ctx, path, block.NestedObject.Attributes, found)
+			walkResourceBlocks(ctx, path, block.NestedObject.Blocks, found)
+		}
+	}
+}
+
+func walkDataSourceBlocks(
+	ctx context.Context,
+	prefix string,
+	blocks map[string]dschema.Block,
+	found *[]nestedAttribute,
+) {
+	names := sortedAttributeNames(len(blocks), func(yield func(string)) {
+		for name := range blocks {
+			yield(name)
+		}
+	})
+	for _, name := range names {
+		path := prefix + "." + name
+		switch block := blocks[name].(type) {
+		case dschema.SingleNestedBlock:
+			*found = append(*found, nestedAttribute{
+				Path: path, Members: dataSourceMembers(block.Attributes, block.Blocks),
+				CustomType: customTypeName(block.CustomType),
+			})
+			walkDataSourceAttributes(ctx, path, block.Attributes, found)
+			walkDataSourceBlocks(ctx, path, block.Blocks, found)
+		case dschema.ListNestedBlock:
+			*found = append(*found, nestedAttribute{
+				Path:              path,
+				Members:           dataSourceMembers(block.NestedObject.Attributes, block.NestedObject.Blocks),
+				CustomType:        customTypeName(block.CustomType),
+				ElementCustomType: customTypeName(block.NestedObject.CustomType),
+			})
+			walkDataSourceAttributes(ctx, path, block.NestedObject.Attributes, found)
+			walkDataSourceBlocks(ctx, path, block.NestedObject.Blocks, found)
+		case dschema.SetNestedBlock:
+			*found = append(*found, nestedAttribute{
+				Path:              path,
+				Members:           dataSourceMembers(block.NestedObject.Attributes, block.NestedObject.Blocks),
+				CustomType:        customTypeName(block.CustomType),
+				ElementCustomType: customTypeName(block.NestedObject.CustomType),
+			})
+			walkDataSourceAttributes(ctx, path, block.NestedObject.Attributes, found)
+			walkDataSourceBlocks(ctx, path, block.NestedObject.Blocks, found)
+		}
+	}
+}
+
+// resourceMembers is the member set of an object that can hold both, because a
+// runtime model's tfsdk tags cover its nested blocks as well as its attributes.
+func resourceMembers(attributes map[string]rschema.Attribute, blocks map[string]rschema.Block) []string {
+	names := attributeNames(attributes)
+	for name := range blocks {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func dataSourceMembers(attributes map[string]dschema.Attribute, blocks map[string]dschema.Block) []string {
+	names := dataSourceAttributeNames(attributes)
+	for name := range blocks {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func walkResourceAttributes(
@@ -239,12 +403,14 @@ func walkResourceAttributes(
 			*found = append(*found, nestedAttribute{
 				Path: path, Members: attributeNames(attribute.NestedObject.Attributes),
 				CustomType: customTypeName(attribute.CustomType),
+				ElementCustomType: customTypeName(attribute.NestedObject.CustomType),
 			})
 			walkResourceAttributes(ctx, path, attribute.NestedObject.Attributes, found)
 		case rschema.SetNestedAttribute:
 			*found = append(*found, nestedAttribute{
 				Path: path, Members: attributeNames(attribute.NestedObject.Attributes),
 				CustomType: customTypeName(attribute.CustomType),
+				ElementCustomType: customTypeName(attribute.NestedObject.CustomType),
 			})
 			walkResourceAttributes(ctx, path, attribute.NestedObject.Attributes, found)
 		}
@@ -278,12 +444,14 @@ func walkDataSourceAttributes(
 			*found = append(*found, nestedAttribute{
 				Path: path, Members: dataSourceAttributeNames(attribute.NestedObject.Attributes),
 				CustomType: customTypeName(attribute.CustomType),
+				ElementCustomType: customTypeName(attribute.NestedObject.CustomType),
 			})
 			walkDataSourceAttributes(ctx, path, attribute.NestedObject.Attributes, found)
 		case dschema.SetNestedAttribute:
 			*found = append(*found, nestedAttribute{
 				Path: path, Members: dataSourceAttributeNames(attribute.NestedObject.Attributes),
 				CustomType: customTypeName(attribute.CustomType),
+				ElementCustomType: customTypeName(attribute.NestedObject.CustomType),
 			})
 			walkDataSourceAttributes(ctx, path, attribute.NestedObject.Attributes, found)
 		}
