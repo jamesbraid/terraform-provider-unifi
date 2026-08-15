@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -481,4 +482,70 @@ func resolveCommittedPragmatic(t *testing.T, inventory EvidenceInventory, invent
 		t.Fatalf("resolving the committed pragmatic references: %v", err)
 	}
 	return resolution
+}
+
+// TestAdmissionRejectsCoverageCountsThatContradictTheirSurfaces replaces a
+// literal that used to sit in the gate itself.
+//
+// The gate pinned acceptance to 35 by hand, so adding an acceptance test to any
+// surface made the release gate refuse the tree -- and refuse it with
+// "inventory coverage counts are invalid": six numbers compared, one boolean
+// returned, nothing named. The person whose work broke the gate had nothing to
+// go on.
+//
+// It now checks that the declared counts tally the surfaces beside them, which
+// is the property worth gating. A hand-edited or truncated inventory is caught;
+// a surface gaining an acceptance test is not an error.
+func TestAdmissionRejectsCoverageCountsThatContradictTheirSurfaces(t *testing.T) {
+	baseline := releasedBaseline(t)
+	contracts, err := BuildSurfaceContracts(baseline, releasedSchemaVersions(t, baseline), releasedWavePolicy(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inventory, err := BuildEvidenceInventory(EvidenceInventoryInput{
+		Baseline:         baseline,
+		Contracts:        contracts,
+		ReleasedRoot:     filepath.Join("..", ".."),
+		CandidateRoot:    filepath.Join("..", ".."),
+		ReleasedProvider: ReleasedProvider{Version: "0.101.2", Commit: strings.Repeat("f", 40)},
+		SDK: SDKComparison{
+			ModulePath:             "github.com/jamesbraid/go-unifi",
+			ReleasedVersion:        "v1.101.0",
+			ReleasedArchiveSHA256:  strings.Repeat("a", 64),
+			CandidateVersion:       "v1.102.0",
+			CandidateArchiveSHA256: strings.Repeat("b", 64),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Honest inventory first, so a later failure cannot be blamed on the
+	// fixture. If this does not pass the gate, the corruption below proves
+	// nothing.
+	honestDigest, err := canonicalDigest(inventory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateAdmissionInventory(inventory, honestDigest); err != nil {
+		t.Fatalf("the unmodified inventory does not pass the gate: %v", err)
+	}
+
+	// Overstate one count and re-digest, so the gate reaches the coverage check
+	// rather than stopping at the digest.
+	before := inventory.CoverageCounts["acceptance"]
+	inventory.CoverageCounts["acceptance"] = before + 1
+	corruptDigest, err := canonicalDigest(inventory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = validateAdmissionInventory(inventory, corruptDigest)
+	if err == nil {
+		t.Fatal("the gate accepted a coverage count that contradicts its own surfaces")
+	}
+	for _, want := range []string{"acceptance", fmt.Sprint(before + 1), fmt.Sprint(before)} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %q, want it to name %q; a gate that says less than its test is one nobody can act on", err, want)
+		}
+	}
 }
