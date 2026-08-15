@@ -20,15 +20,25 @@ func TestBuildAdmissionAdmitsCatalogAndRetainsHardwareReleaseBlocker(t *testing.
 	if receipt.Result != "pass" || receipt.AdmittedSurfaceCount != 67 {
 		t.Fatalf("admission result = %q with %d surfaces", receipt.Result, receipt.AdmittedSurfaceCount)
 	}
-	if receipt.ReleaseBlockerCount != 1 {
-		t.Fatalf("release blockers = %d, want 1", receipt.ReleaseBlockerCount)
+	// Four blockers, not one. Three pragmatic references were withdrawn for
+	// leaning on sources whose only acceptance scenario the released provider
+	// never ran, so those gaps are carried openly instead of resolved by a
+	// borrow that did not hold.
+	wantBlockers := []EvidenceGap{
+		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_firewall_policy"}, Signal: "acceptance"},
+		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_power_supervisor"}, Signal: "acceptance"},
+		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_site_to_site_vpn"}, Signal: "acceptance"},
+		{SurfaceKey: SurfaceKey{Kind: Action, Name: "unifi_port"}, Signal: "hardware_claim"},
 	}
-	wantBlocker := EvidenceGap{
-		SurfaceKey: SurfaceKey{Kind: Action, Name: "unifi_port"},
-		Signal:     "hardware_claim",
+	if receipt.ReleaseBlockerCount != len(wantBlockers) {
+		t.Fatalf("release blockers = %d, want %d", receipt.ReleaseBlockerCount, len(wantBlockers))
 	}
-	if !reflect.DeepEqual(receipt.ReleaseBlockers, []EvidenceGap{wantBlocker}) {
-		t.Fatalf("release blockers = %+v", receipt.ReleaseBlockers)
+	if !reflect.DeepEqual(receipt.ReleaseBlockers, wantBlockers) {
+		t.Fatalf("release blockers = %+v, want %+v", receipt.ReleaseBlockers, wantBlockers)
+	}
+	blocked := map[SurfaceKey][]string{}
+	for _, gap := range wantBlockers {
+		blocked[gap.SurfaceKey] = append(blocked[gap.SurfaceKey], gap.Signal)
 	}
 	for _, surface := range receipt.Surfaces {
 		if surface.State != Admitted {
@@ -37,10 +47,7 @@ func TestBuildAdmissionAdmitsCatalogAndRetainsHardwareReleaseBlocker(t *testing.
 		if !validSHA256(surface.AdapterParitySHA256) || !validSHA256(surface.ReceiptSHA256) {
 			t.Fatalf("surface %s/%s has invalid evidence digests", surface.Kind, surface.Name)
 		}
-		want := []string(nil)
-		if surface.SurfaceKey == wantBlocker.SurfaceKey {
-			want = []string{"hardware_claim"}
-		}
+		want := blocked[surface.SurfaceKey]
 		if !reflect.DeepEqual(surface.ReleaseBlockers, want) {
 			t.Fatalf("surface %s/%s release blockers = %v, want %v", surface.Kind, surface.Name, surface.ReleaseBlockers, want)
 		}
@@ -141,7 +148,7 @@ func TestBuildAdmissionRejectsUnboundOrIncompleteEvidence(t *testing.T) {
 				})
 				input.Pragmatic.RemainingSignalCount++
 			},
-			want: "release-only blocker",
+			want: "is not a declared accepted evidence gap",
 		},
 		"surface set": {
 			mutate: func(input *AdmissionInput) {
@@ -413,14 +420,22 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		Candidate: controllerSuite,
 	}
 	controllerSHA256 := strings.Repeat("c", 64)
-	pragmaticData, err := os.ReadFile("../../build/restricted/catalog-pragmatic-resolution.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var pragmatic PragmaticResolution
-	if err := json.Unmarshal(pragmaticData, &pragmatic); err != nil {
-		t.Fatal(err)
-	}
+	// The pragmatic resolution is RESOLVED here from committed inputs rather
+	// than read from build/restricted/catalog-pragmatic-resolution.json.
+	//
+	// That file is a campaign OUTPUT, not a committed input: producing it needs
+	// a passing controller differential receipt, which only exists during a
+	// run. Reading it as a fixture made this test depend on a snapshot that
+	// only a campaign can refresh -- and since `go test ./...` is itself the
+	// gate the campaign must pass before it starts, a stale snapshot deadlocked
+	// the two. Resolving from the inventory, the fleet summary and the
+	// reference policy, all of which ARE committed inputs, breaks that.
+	//
+	// It does mean this fixture agrees with the resolver by construction. That
+	// is correct here -- this test is about admission, and the resolver has its
+	// own tests with the inventory held fixed -- but it is the reason a
+	// resolver bug would not surface in this file.
+	pragmatic := resolveCommittedPragmatic(t, inventory, inventorySHA256)
 	pragmatic.ControllerReceiptSHA256 = controllerSHA256
 
 	return AdmissionInput{
@@ -436,4 +451,32 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		Pragmatic:         pragmatic,
 		PragmaticSHA256:   digest,
 	}
+}
+
+// resolveCommittedPragmatic runs the reference resolver over the committed
+// inventory, fleet summary and reference policy.
+func resolveCommittedPragmatic(t *testing.T, inventory EvidenceInventory, inventorySHA256 string) PragmaticResolution {
+	t.Helper()
+	fleetData, err := os.ReadFile("../../build/restricted/catalog-fleet-gap-summary.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fleet FleetReferenceSummary
+	if err := json.Unmarshal(fleetData, &fleet); err != nil {
+		t.Fatal(err)
+	}
+	referenceData, err := os.ReadFile("../../provider-codegen/policy/catalog-pragmatic-references.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var references PragmaticReferenceSet
+	if err := json.Unmarshal(referenceData, &references); err != nil {
+		t.Fatal(err)
+	}
+	resolution, err := ResolvePragmaticReferences(
+		inventory, inventorySHA256, fleet, byteSHA256(fleetData), references)
+	if err != nil {
+		t.Fatalf("resolving the committed pragmatic references: %v", err)
+	}
+	return resolution
 }

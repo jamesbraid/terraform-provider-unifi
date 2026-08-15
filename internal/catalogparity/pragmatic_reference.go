@@ -1,6 +1,10 @@
 package catalogparity
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 type PragmaticReferenceKind string
 
@@ -138,8 +142,7 @@ func ResolvePragmaticReferences(
 				reference.SurfaceKey.Kind, reference.Name, reference.Signal,
 			)
 		}
-		target, exists := surfaces[reference.SurfaceKey]
-		if !exists {
+		if _, exists := surfaces[reference.SurfaceKey]; !exists {
 			return PragmaticResolution{}, fmt.Errorf("pragmatic reference target %s/%s is missing", reference.SurfaceKey.Kind, reference.Name)
 		}
 		if _, exists := missing[gap]; !exists {
@@ -147,9 +150,18 @@ func ResolvePragmaticReferences(
 				"signal %q is not missing for %s/%s", reference.Signal, reference.SurfaceKey.Kind, reference.Name,
 			)
 		}
-		if target.Runtime.Status != FileIdentical {
-			return PragmaticResolution{}, fmt.Errorf("surface %s/%s runtime is changed", reference.SurfaceKey.Kind, reference.Name)
-		}
+		// The surface CARRYING the gap is no longer required to have an
+		// unchanged runtime. That test was written when nothing had been
+		// converted and it asks the wrong question. A reference says "my
+		// evidence for this signal lives over there", so what must hold is that
+		// the borrowing relationship is still good -- not that the borrower
+		// never changed. Whether the borrower is itself sound is its own
+		// evidence mode's job, which judges it on measured state.
+		//
+		// It could not have been restated in terms of scenarios either. A
+		// surface carrying an acceptance gap has NO acceptance scenarios by
+		// definition -- that is what the gap is -- so "the target's scenarios
+		// are unchanged" would be vacuously true for every one of them.
 		fleetSurface, exists := fleetSurfaces[reference.SurfaceKey]
 		if !exists {
 			return PragmaticResolution{}, fmt.Errorf("surface %s/%s is missing from the fleet summary", reference.SurfaceKey.Kind, reference.Name)
@@ -164,8 +176,15 @@ func ResolvePragmaticReferences(
 		if !exists {
 			return PragmaticResolution{}, fmt.Errorf("source surface %s/%s is missing", reference.Source.Kind, reference.Source.Name)
 		}
-		if source.Runtime.Status != FileIdentical || len(source.MissingSignals) != 0 {
-			return PragmaticResolution{}, fmt.Errorf("source surface %s/%s does not have complete identical-runtime evidence", reference.Source.Kind, reference.Source.Name)
+		if len(source.MissingSignals) != 0 {
+			return PragmaticResolution{}, fmt.Errorf(
+				"source surface %s/%s has gaps of its own (%v) and cannot lend evidence",
+				reference.Source.Kind, reference.Source.Name, source.MissingSignals)
+		}
+		if err := sourceScenariosAreLendable(source); err != nil {
+			return PragmaticResolution{}, fmt.Errorf(
+				"source surface %s/%s cannot lend evidence: %w",
+				reference.Source.Kind, reference.Source.Name, err)
 		}
 		if err := validatePragmaticReference(reference); err != nil {
 			return PragmaticResolution{}, fmt.Errorf("surface %s/%s signal %q: %w", reference.SurfaceKey.Kind, reference.Name, reference.Signal, err)
@@ -259,4 +278,50 @@ func strictlySortedUnique(values []string) bool {
 		}
 	}
 	return true
+}
+
+// sourceScenariosAreLendable reports whether a surface has acceptance evidence
+// another surface may borrow.
+//
+// It replaces a requirement that the source's RUNTIME be byte-identical to the
+// released provider's. That was the fourth place in this pipeline where
+// identical-runtime stood in for "this surface's evidence can be trusted", and
+// like the other three it worked only while nothing had been converted. Sixty-
+// four surfaces later it refused all seven references and took catalog
+// admission down with them. The conversion did not break the pragmatic chain;
+// it revealed that the chain rested on a proxy.
+//
+// What a lender actually needs is a scenario that ran on BOTH providers, since
+// that is the evidence being lent. So every one of its acceptance scenarios
+// must be identical between the released and candidate trees, and it must have
+// at least one -- a surface with no scenarios would otherwise satisfy "none of
+// them changed" and lend evidence it does not have.
+//
+// IDENTICAL-OR-ADDED WAS MEASURED AND REJECTED. Do not reintroduce it: it
+// resolves all seven references instead of four and therefore looks generous.
+// Three of the seven -- managed unifi_firewall_policy, unifi_power_supervisor
+// and unifi_site_to_site_vpn -- lean on list companions whose ONLY scenario is
+// `added`, meaning the candidate declares that acceptance test and the released
+// tree does not. There is no before-and-after at such a source, so there is no
+// evidence there to borrow; the reference would resolve today on the strength
+// of a result no one has produced. Those three stay unresolved and need
+// evidence of their own. Their A/B is runnable, so a controller campaign may
+// supply it.
+func sourceScenariosAreLendable(source SurfaceEvidenceInventory) error {
+	if len(source.Scenarios) == 0 {
+		return fmt.Errorf("it declares no acceptance scenario")
+	}
+	unlendable := make([]string, 0, len(source.Scenarios))
+	for _, scenario := range source.Scenarios {
+		if scenario.Status != ScenarioIdentical {
+			unlendable = append(unlendable, string(scenario.Status)+" "+scenario.Name)
+		}
+	}
+	if len(unlendable) != 0 {
+		sort.Strings(unlendable)
+		return fmt.Errorf(
+			"%d of its %d scenarios are not identical to the released provider's (%s)",
+			len(unlendable), len(source.Scenarios), strings.Join(unlendable, ", "))
+	}
+	return nil
 }

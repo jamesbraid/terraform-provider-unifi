@@ -54,7 +54,11 @@ func TestRunWritesBoundReferenceResolution(t *testing.T) {
 	if err := json.Unmarshal(data, &resolution); err != nil {
 		t.Fatal(err)
 	}
-	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 7 || resolution.RemainingSignalCount != 1 {
+	// Four resolved, four remaining. Three references were withdrawn from the
+	// policy because their sources' only acceptance scenario is `added`: the
+	// released provider never ran it, so there was no before-and-after to
+	// borrow and the resolution they used to produce was not evidence.
+	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 4 || resolution.RemainingSignalCount != 4 {
 		t.Fatalf("resolution = %+v", resolution)
 	}
 	sum := sha256.Sum256(controllerData)

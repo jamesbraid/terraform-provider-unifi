@@ -11,6 +11,32 @@
       "reason": "the port action's runtime differs from the released provider's, but its scenario is still grafted onto the released tree; that sharing is what makes its hardware_claim disposition satisfiable"
     }
   ],
+  "accepted_evidence_gaps": [
+    {
+      "kind": "action",
+      "name": "unifi_port",
+      "signal": "hardware_claim",
+      "reason": "the port action needs a physical PoE device to claim; no controller in the fleet can supply one, so this signal can only ever be satisfied by hardware"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_policy",
+      "signal": "acceptance",
+      "reason": "its fleet_shape reference to list_resource/unifi_firewall_policy was withdrawn: that source's only acceptance scenario is added, so the released provider never ran it and there is no before-and-after to borrow"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_power_supervisor",
+      "signal": "acceptance",
+      "reason": "its zero_use_endpoint reference to list_resource/unifi_power_supervisor was withdrawn for the same reason: the source's only scenario is added"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_site_to_site_vpn",
+      "signal": "acceptance",
+      "reason": "its zero_use_endpoint reference to list_resource/unifi_site_to_site_vpn was withdrawn for the same reason: the source's only scenario is added"
+    }
+  ],
   "allowed_skips": [
     "TestAccSettingResource_dohCustomServers",
     "TestAccSettingResource_ipsHoneypot",

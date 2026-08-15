@@ -33,55 +33,6 @@
       ]
     },
     {
-      "kind": "managed_resource",
-      "name": "unifi_firewall_policy",
-      "signal": "acceptance",
-      "reference_kind": "fleet_shape",
-      "source": {
-        "kind": "list_resource",
-        "name": "unifi_firewall_policy"
-      },
-      "fleet_count": 16,
-      "shape_sha256": "1de704ffd35e1272327c6ec59074d788cbf1ef7a993e8e93a1c435fe3f58b21d",
-      "required_evidence": [
-        "controller_list",
-        "mapping",
-        "plan_shape"
-      ]
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_power_supervisor",
-      "signal": "acceptance",
-      "reference_kind": "zero_use_endpoint",
-      "source": {
-        "kind": "list_resource",
-        "name": "unifi_power_supervisor"
-      },
-      "fleet_count": 0,
-      "required_evidence": [
-        "controller_list",
-        "mapping",
-        "zero_use_inventory"
-      ]
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_site_to_site_vpn",
-      "signal": "acceptance",
-      "reference_kind": "zero_use_endpoint",
-      "source": {
-        "kind": "list_resource",
-        "name": "unifi_site_to_site_vpn"
-      },
-      "fleet_count": 0,
-      "required_evidence": [
-        "controller_list",
-        "mapping",
-        "zero_use_inventory"
-      ]
-    },
-    {
       "kind": "data_source",
       "name": "unifi_account",
       "signal": "acceptance",

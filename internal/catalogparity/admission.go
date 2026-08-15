@@ -322,7 +322,7 @@ func validateAdmissionInput(input AdmissionInput) error {
 	if input.ControllerSHA256 != input.Pragmatic.ControllerReceiptSHA256 {
 		return fmt.Errorf("controller receipt SHA-256 does not match pragmatic resolution")
 	}
-	return validatePragmaticAdmission(input.Pragmatic, input.Inventory, input.InventorySHA256)
+	return validatePragmaticAdmission(input.Pragmatic, input.Inventory, input.InventorySHA256, input.Policy)
 }
 
 func validateAdmissionInventory(inventory EvidenceInventory, digest string) error {
@@ -715,7 +715,7 @@ func uniqueStrings(values []string) []string {
 	return unique
 }
 
-func validatePragmaticAdmission(resolution PragmaticResolution, inventory EvidenceInventory, inventorySHA256 string) error {
+func validatePragmaticAdmission(resolution PragmaticResolution, inventory EvidenceInventory, inventorySHA256 string, policy CampaignPolicy) error {
 	if resolution.FormatVersion != 1 || resolution.ProviderAddress != CanonicalProviderAddress ||
 		resolution.Result != "blocked_evidence" || resolution.InventorySHA256 != inventorySHA256 {
 		return fmt.Errorf("pragmatic resolution identity or inventory SHA-256 is invalid")
@@ -741,17 +741,39 @@ func validatePragmaticAdmission(resolution PragmaticResolution, inventory Eviden
 		}
 		got[gap] = struct{}{}
 	}
+	accepted := make(map[EvidenceGap]struct{}, len(policy.AcceptedEvidenceGaps))
+	for _, gap := range policy.AcceptedEvidenceGaps {
+		accepted[gap.Gap()] = struct{}{}
+	}
+	// Every gap the campaign could not resolve must have been declared, WITH a
+	// reason, in the campaign policy. This used to assert that the only such
+	// gap could ever be the port action's hardware claim, which was true when
+	// it was written and stopped being true when three pragmatic references
+	// were withdrawn for leaning on sources the released provider never ran.
 	for _, gap := range resolution.Remaining {
-		if gap != (EvidenceGap{SurfaceKey: SurfaceKey{Kind: Action, Name: "unifi_port"}, Signal: "hardware_claim"}) {
-			return fmt.Errorf("remaining signal %s/%s %q is not a release-only blocker", gap.Kind, gap.Name, gap.Signal)
+		if _, declared := accepted[gap]; !declared {
+			return fmt.Errorf(
+				"remaining signal %s/%s %q is not a declared accepted evidence gap",
+				gap.Kind, gap.Name, gap.Signal)
 		}
 		if _, duplicate := got[gap]; duplicate {
 			return fmt.Errorf("pragmatic resolution duplicates %s/%s signal %q", gap.Kind, gap.Name, gap.Signal)
 		}
 		got[gap] = struct{}{}
 	}
-	if resolution.ResolvedSignalCount != 7 || resolution.RemainingSignalCount != 1 {
-		return fmt.Errorf("pragmatic resolution counts are incomplete")
+	// A declared acceptance the campaign actually resolved is a stale
+	// declaration. Checking both directions is what stops the list growing to
+	// fit whatever went wrong.
+	remaining := make(map[EvidenceGap]struct{}, len(resolution.Remaining))
+	for _, gap := range resolution.Remaining {
+		remaining[gap] = struct{}{}
+	}
+	for _, gap := range policy.AcceptedEvidenceGaps {
+		if _, unresolved := remaining[gap.Gap()]; !unresolved {
+			return fmt.Errorf(
+				"campaign policy accepts %s/%s %q, which the campaign resolved",
+				gap.Kind, gap.Name, gap.Signal)
+		}
 	}
 	if !reflect.DeepEqual(got, want) {
 		return fmt.Errorf("pragmatic resolution does not cover every inventory gap")

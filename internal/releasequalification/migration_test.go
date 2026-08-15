@@ -384,6 +384,14 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			FormatVersion: 1, Gate: "catalog controller differential",
 			SurfaceCount: 67, EvidenceGapCount: 8,
 			TestNameCount: 152,
+			// The fixture's admission carries one release blocker, so the policy
+			// must declare exactly that one. Declaring more, or fewer, is now a
+			// failure rather than something only a hardcoded constant knew.
+			AcceptedEvidenceGaps: []catalogparity.AcceptedEvidenceGap{{
+				SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"},
+				Signal:     "hardware_claim",
+				Reason:     "the port action needs physical hardware to claim",
+			}},
 			RuntimeChangeSet: []catalogparity.RuntimeChange{
 				{
 					SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.ListResource, Name: "unifi_device"},
