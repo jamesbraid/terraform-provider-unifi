@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -507,10 +508,12 @@ func validateControllerAdmission(
 		len(receipt.Plan.Surfaces) != policy.SurfaceCount ||
 		receipt.Plan.EvidenceGapCount != policy.EvidenceGapCount ||
 		len(receipt.Plan.TestNames) != policy.TestNameCount ||
-		len(receipt.Plan.SharedScenarioOwners) != policy.SharedScenarioOwnerCount ||
 		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedFailures, policy.ReleasedAllowedFailures) ||
 		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedMissing, policy.ReleasedAllowedMissing) {
 		return fmt.Errorf("controller plan surfaces or counts are incomplete")
+	}
+	if err := validateSharedScenarioOwners(receipt.Plan.SharedScenarioOwners, inventory, policy); err != nil {
+		return err
 	}
 	want := make(map[SurfaceKey]SurfaceEvidenceInventory, len(inventory.Surfaces))
 	for _, surface := range inventory.Surfaces {
@@ -540,6 +543,68 @@ func validateControllerAdmission(
 		"candidate", receipt.Candidate, receipt.Plan.TestNames, receipt.Plan.AllowedSkips,
 		nil, nil,
 	)
+}
+
+// validateSharedScenarioOwners re-derives the plan's shared scenario owners
+// from the inventory and compares the SET, not its length.
+//
+// A shared scenario owner is not a statistic. It is a file the campaign copies
+// out of the candidate tree over the released checkout
+// (.woodpecker/scripts/catalog-controller-differential.sh:137-139) so that one
+// scenario exercises both providers. Copying it is only sound when the two
+// runtimes are the same file, which is what the derivation reads.
+//
+// This replaces a comparison against a hardcoded shared_scenario_owner_count.
+// That constant was a copy of a fact the inventory already carries, so it could
+// only ever go stale -- and comparing lengths meant a plan carrying the right
+// number of WRONG owners passed. Deriving the set here gives admission an
+// independent reading of the same rule the jq plan builder applies, which is
+// the point: two implementations that must agree, rather than one blessed by a
+// number nobody rechecks.
+func validateSharedScenarioOwners(
+	planned []string,
+	inventory EvidenceInventory,
+	policy CampaignPolicy,
+) error {
+	excepted := make(map[SurfaceKey]struct{}, len(policy.SharedScenarioExceptions))
+	for _, exception := range policy.SharedScenarioExceptions {
+		excepted[exception.SurfaceKey] = struct{}{}
+	}
+	known := make(map[SurfaceKey]struct{}, len(inventory.Surfaces))
+	owners := make(map[string]struct{}, len(inventory.Surfaces))
+	for _, surface := range inventory.Surfaces {
+		known[surface.SurfaceKey] = struct{}{}
+		_, exception := excepted[surface.SurfaceKey]
+		// A declaration is checked in both directions. An exception for a
+		// surface whose runtime is already identical is doing nothing, and a
+		// silently redundant exception is how a list survives the reason it was
+		// written for.
+		if exception && surface.Runtime.Status == FileIdentical {
+			return fmt.Errorf(
+				"campaign policy declares a shared scenario exception for %s/%s, whose runtime is identical",
+				surface.Kind, surface.Name)
+		}
+		if surface.Runtime.Status == FileIdentical || exception {
+			owners[surface.ScenarioOwner] = struct{}{}
+		}
+	}
+	for _, exception := range policy.SharedScenarioExceptions {
+		if _, ok := known[exception.SurfaceKey]; !ok {
+			return fmt.Errorf(
+				"campaign policy declares a shared scenario exception for unknown surface %s/%s",
+				exception.Kind, exception.Name)
+		}
+	}
+	want := make([]string, 0, len(owners))
+	for owner := range owners {
+		want = append(want, owner)
+	}
+	// jq's `unique` sorts, so the plan's list is sorted and this must be too.
+	sort.Strings(want)
+	if !reflect.DeepEqual(planned, want) {
+		return fmt.Errorf("controller plan shared scenario owners are %v, the inventory yields %v", planned, want)
+	}
+	return nil
 }
 
 func validateControllerSuite(

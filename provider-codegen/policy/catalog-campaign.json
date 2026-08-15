@@ -4,7 +4,13 @@
   "surface_count": 67,
   "evidence_gap_count": 8,
   "test_name_count": 152,
-  "shared_scenario_owner_count": 38,
+  "shared_scenario_exceptions": [
+    {
+      "kind": "action",
+      "name": "unifi_port",
+      "reason": "the port action's runtime differs from the released provider's, but its scenario is still grafted onto the released tree; that sharing is what makes its hardware_claim disposition satisfiable"
+    }
+  ],
   "allowed_skips": [
     "TestAccSettingResource_dohCustomServers",
     "TestAccSettingResource_ipsHoneypot",
@@ -19,12 +25,12 @@
     "TestAccFirewallZoneList_emptyOrSeeded"
   ],
   "runtime_change_set": [
-    {"kind": "action", "name": "unifi_port"},
-    {"kind": "list_resource", "name": "unifi_device"},
-    {"kind": "list_resource", "name": "unifi_dns_record"},
-    {"kind": "list_resource", "name": "unifi_firewall_zone"},
-    {"kind": "managed_resource", "name": "unifi_device"},
-    {"kind": "managed_resource", "name": "unifi_dns_record"},
-    {"kind": "managed_resource", "name": "unifi_firewall_zone"}
+    {"kind": "action", "name": "unifi_port", "reason": "converted"},
+    {"kind": "list_resource", "name": "unifi_device", "reason": "converted"},
+    {"kind": "list_resource", "name": "unifi_dns_record", "reason": "converted"},
+    {"kind": "list_resource", "name": "unifi_firewall_zone", "reason": "converted"},
+    {"kind": "managed_resource", "name": "unifi_device", "reason": "hand_edit"},
+    {"kind": "managed_resource", "name": "unifi_dns_record", "reason": "converted"},
+    {"kind": "managed_resource", "name": "unifi_firewall_zone", "reason": "converted"}
   ]
 }
