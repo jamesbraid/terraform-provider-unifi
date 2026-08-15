@@ -48,10 +48,32 @@ cleanup() {
 }
 trap cleanup EXIT
 
-module_json=$(go list -m -json all | jq --compact-output \
-    --arg module_path "${expected_module}" \
-    'select(.Path == $module_path)')
+# Ask for the one module, not the whole graph.
+#
+# This listed 519 modules so that jq could select 1. The `all` pattern requires
+# the entire module graph to resolve, so once the CI download stopped fetching
+# the graph this failed under GOPROXY=off once per module the build does not
+# need -- 300 of them -- each printing a bare "go: module lookup disabled by
+# GOPROXY=off" that names nothing. go emits no JSON at all when it aborts that
+# way, so there was nothing for the pipeline to filter and nothing in the log
+# to diagnose from: 300 identical lines and not one subject among them.
+#
+# Naming the module removes the graph dependency instead of feeding it. The
+# record returned is the same object and carries every field asserted below.
+#
+# DO NOT ADD -e HERE TO RECOVER THE NAMES ON FAILURE. With -e this command exits
+# 0 and reports each unresolved module inside its JSON, so the assertions below
+# would still find their fields and still pass -- converting a loud failure into
+# a green step over a broken cache. If -e is ever wanted it must arrive together
+# with an explicit assertion that no listed module carries an Error.
+module_json=$(go list -m -json "${expected_module}")
 readonly module_json
+# Not a shape check on the record. This is the guard that this branch resolves
+# go-unifi through the CANONICAL path with NO fork replacement: main replaces it
+# with github.com/jamesbraid/go-unifi and this branch must not. go list emits
+# Replace as an OBJECT when a replacement is in effect and omits the key
+# entirely otherwise, so the absent key IS the assertion that no fork has been
+# substituted. Deleting this line would let one back in silently.
 test "$(jq -r 'has("Replace")' <<<"${module_json}")" = false
 test "$(jq -r .Version <<<"${module_json}")" = "${expected_version}"
 test "$(jq -r .Sum <<<"${module_json}")" = "${expected_sum}"
