@@ -12,6 +12,13 @@ clone:
 
 steps:
   - name: waves-1-through-5-controller-differential
+    # The campaign itself, and the step with most to lose to a hang: it starts
+    # controllers for both providers and runs 152 acceptance tests twice. The
+    # go test invocations inside carry -timeout 90m, but nothing bounded the
+    # docker work around them, so a wedged container could hold the runner
+    # until someone noticed. Above the inner timeout, so a test-level timeout
+    # still reports as a test failure rather than as this.
+    timeout: 120m
     image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
