@@ -202,7 +202,7 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 		Policy: catalogparity.CampaignPolicy{
 			FormatVersion: 1, Gate: "catalog controller differential",
 			SurfaceCount: 67, EvidenceGapCount: 8,
-			TestNameCount: 152, SharedScenarioOwnerCount: 38,
+			TestNameCount: 152,
 			RuntimeChangeSet: []catalogparity.SurfaceKey{
 				{Kind: catalogparity.ListResource, Name: "unifi_device"},
 				{Kind: catalogparity.ListResource, Name: "unifi_dns_record"},
