@@ -1,6 +1,8 @@
 package releasequalification
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"sort"
@@ -64,16 +66,21 @@ func TestEvidenceModesCoverTheCommittedInventory(t *testing.T) {
 	// differential_scenario. The tree got worse before it got better and this
 	// test said so at both steps.
 	//
-	// CAVEAT ON pragmatic_reference, which is OPTIMISTIC here. This harness
-	// takes its release blockers from the committed
-	// catalog-pragmatic-resolution.json, and that artifact was produced from
-	// the pre-conversion inventory. ResolvePragmaticReferences requires both a
-	// gap's own surface and the surface it references to have an identical
-	// runtime (pragmatic_reference.go:150 and :167), and on the regenerated
-	// inventory all seven references fail that. So the 1 below is reachable
-	// only while a resolution built from a stale inventory is still on disk.
-	// Regenerating it turns that 1 into a 0 and this surface into an
-	// eighteenth unjustified one.
+	// pragmatic_reference is 1 and it is now EARNED rather than optimistic. It
+	// used to rest on the committed resolution artifact, which was produced
+	// before the conversion and still claims seven signals resolved; this
+	// harness resolves from committed inputs instead, under the same rule the
+	// gate applies. data_source/unifi_client_info keeps it because its lender,
+	// data_source/unifi_client_info_list, has an acceptance scenario identical
+	// to the released provider's.
+	//
+	// Withdrawing three references for lending from `added`-only sources did
+	// NOT move this census, which is worth stating because it is surprising.
+	// managed firewall_policy, power_supervisor and site_to_site_vpn were
+	// already unjustified here for an independent reason -- their scenario
+	// files changed, so pragmatic_reference refused them whether or not their
+	// references resolved. What that change moved was the release blocker
+	// count, from one to four.
 	want := map[string]int{
 		EvidenceSourceIdentity:       3,
 		EvidenceDifferentialScenario: 45,
@@ -152,17 +159,17 @@ func bestCaseEvidenceView(
 ) evidenceView {
 	t.Helper()
 
-	data, err := os.ReadFile("../../build/restricted/catalog-pragmatic-resolution.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var resolution catalogparity.PragmaticResolution
-	if err := json.Unmarshal(data, &resolution); err != nil {
-		t.Fatal(err)
-	}
-	if len(resolution.Resolved) == 0 {
-		t.Fatal("the committed pragmatic resolution resolves nothing, so pragmatic_reference would be untested")
-	}
+	// The release blockers are RESOLVED from committed inputs rather than read
+	// from build/restricted/catalog-pragmatic-resolution.json.
+	//
+	// That file is a campaign output built from the PRE-conversion inventory:
+	// it still reports seven signals resolved and one remaining, when the
+	// current rules resolve four and leave four. Reading it made this census
+	// optimistic about pragmatic_reference in a way a reader could not see.
+	// Resolving here means the count is earned by the same rules the gate
+	// applies, against the same committed artifacts.
+	resolution := resolveCommittedPragmatic(t)
+
 	blockers := map[catalogparity.SurfaceKey][]string{}
 	for _, gap := range resolution.Remaining {
 		blockers[gap.SurfaceKey] = append(blockers[gap.SurfaceKey], gap.Signal)
@@ -215,4 +222,46 @@ func plannedAcceptanceNames(surface catalogparity.SurfaceEvidenceInventory) []st
 		names = append(names, name)
 	}
 	return names
+}
+
+// resolveCommittedPragmatic runs the reference resolver over the committed
+// inventory, fleet summary and reference policy -- all committed INPUTS, unlike
+// the resolution artifact, which only a campaign can produce.
+func resolveCommittedPragmatic(t *testing.T) catalogparity.PragmaticResolution {
+	t.Helper()
+	inventoryData, err := os.ReadFile("../../build/release-ready/catalog-evidence-inventory.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var inventory catalogparity.EvidenceInventory
+	if err := json.Unmarshal(inventoryData, &inventory); err != nil {
+		t.Fatal(err)
+	}
+	fleetData, err := os.ReadFile("../../build/restricted/catalog-fleet-gap-summary.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fleet catalogparity.FleetReferenceSummary
+	if err := json.Unmarshal(fleetData, &fleet); err != nil {
+		t.Fatal(err)
+	}
+	referenceData, err := os.ReadFile("../../provider-codegen/policy/catalog-pragmatic-references.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var references catalogparity.PragmaticReferenceSet
+	if err := json.Unmarshal(referenceData, &references); err != nil {
+		t.Fatal(err)
+	}
+	resolution, err := catalogparity.ResolvePragmaticReferences(
+		inventory, sha256Hex(inventoryData), fleet, sha256Hex(fleetData), references)
+	if err != nil {
+		t.Fatalf("resolving the committed pragmatic references: %v", err)
+	}
+	return resolution
+}
+
+func sha256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
