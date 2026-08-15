@@ -21,13 +21,27 @@
 // pinned version only by a copyright header. So the binding is removed after
 // generation, exactly as the duplicate type declaration is.
 //
-// WHY REMOVING IT CANNOT MOVE THE PUBLIC SCHEMA. Measured, not reasoned: all
-// fifty-four nested attributes carrying a CustomType were compared against the
-// plain nested-object type the framework derives for the same attribute, and
-// all fifty-four are identical at the tftypes level -- which is what the wire
-// carries. A custom object type and a plain object of the same members are the
-// same type to Terraform. That is also why every schema referee we own was
-// blind to this: there is nothing in the protocol to see.
+// WHY REMOVING IT CANNOT MOVE THE PUBLIC SCHEMA. Structural, not a count:
+// every one of the fifty-one generated nested object types embeds the
+// framework's own basetypes.ObjectType, and NOT ONE of them overrides
+// TerraformType, which is the method that decides the wire representation.
+// (Fifty-one types for fifty-two bindings: resource_wan binds the same
+// OptionsType at two attributes.) They all define ValueFromTerraform, which
+// converts values and does not affect the type. So each binding was already
+// indistinguishable on the wire from the plain object that replaces it, and
+// there is nothing in the protocol for a schema comparison to see -- which is
+// why every referee we own was blind to this by construction.
+//
+// THIS PARAGRAPH USED TO CITE A COUNT, AND THE COUNT WAS ONE OF THE WRONG
+// ONES. It read "all fifty-four nested attributes ... are identical at the
+// tftypes level", quoting the same fifty-four that the -n commit body lists as
+// a discredited measurement -- a runtime walk that counted the timeouts custom
+// type. It survived re-reading because fifty-four is ALSO the number of
+// controller regressions this defect caused, which is a real and separate
+// figure, so the wrong number looked familiar every time it was read. Prefer a
+// structural fact to a count: a count needs re-measuring when the tree moves
+// and nothing checks a doc comment, while "no type overrides TerraformType"
+// stays true or fails loudly at the point someone writes one.
 //
 // THE TRAP THIS TOOL MUST NOT FALL INTO, and the reason it is this narrow.
 // `CustomType:` is emitted for two unrelated purposes. The generated nested
