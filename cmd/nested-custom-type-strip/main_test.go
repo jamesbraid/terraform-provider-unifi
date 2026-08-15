@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -42,7 +43,7 @@ func TestStripsGeneratedNestedTypeAndKeepsImportedScalar(t *testing.T) {
 		Optional:   true,
 	},
 `)
-	stripped, kept, err := stripDir(dir)
+	stripped, kept, err := stripDir(dir, false, io.Discard)
 	if err != nil {
 		t.Fatalf("stripDir() error = %v", err)
 	}
@@ -94,7 +95,7 @@ func TestRefusesWhatItCannotClassify(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, _, err := stripDir(fixture(t, test.body))
+			_, _, err := stripDir(fixture(t, test.body), false, io.Discard)
 			if err == nil {
 				t.Fatal("stripDir() accepted a shape it cannot classify")
 			}

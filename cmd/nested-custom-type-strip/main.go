@@ -62,8 +62,16 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
+	// -n lists what would be removed and writes nothing. The counts this tool
+	// reports have been wrong four times when measured textually instead, so
+	// the list a reader audits should come from the same parse that does the
+	// work rather than from a second implementation.
+	dryRun := false
+	if len(args) > 0 && args[0] == "-n" {
+		dryRun, args = true, args[1:]
+	}
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: nested-custom-type-strip <generated-package-dir>...")
+		fmt.Fprintln(stderr, "usage: nested-custom-type-strip [-n] <generated-package-dir>...")
 		return 2
 	}
 	stripped, kept := 0, 0
@@ -74,7 +82,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		for _, dir := range dirs {
-			s, k, err := stripDir(dir)
+			s, k, err := stripDir(dir, dryRun, stdout)
 			if err != nil {
 				fmt.Fprintf(stderr, "%v\n", err)
 				return 1
@@ -122,7 +130,7 @@ func packageDirs(root string) ([]string, error) {
 // The package is parsed as a whole first, because whether a CustomType is
 // generated or imported is decided by whether THIS package declares the type,
 // and a type used in one file can be declared in another.
-func stripDir(dir string) (int, int, error) {
+func stripDir(dir string, dryRun bool, stdout io.Writer) (int, int, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return 0, 0, err
@@ -168,6 +176,15 @@ func stripDir(dir string) (int, int, error) {
 		if len(cuts) == 0 {
 			continue
 		}
+		if dryRun {
+			for _, c := range cuts {
+				where := fileSet.Position(token.Pos(0))
+				_ = where
+				fmt.Fprintf(stdout, "%s\t%s\n", path, c.what)
+			}
+			stripped += len(cuts)
+			continue
+		}
 		out, err := splice(sources[path], cuts)
 		if err != nil {
 			return 0, 0, fmt.Errorf("%s: %w", path, err)
@@ -197,7 +214,12 @@ func declaredTypeNames(file *ast.File) []string {
 }
 
 // cut is a half-open byte range to remove.
-type cut struct{ start, end int }
+type cut struct {
+	start, end int
+	// what identifies the binding for -n, so the list a human audits names the
+	// attribute type rather than a byte range.
+	what string
+}
 
 // classify decides, for every CustomType in one file, whether it is a generated
 // nested object binding to remove or an imported scalar type to keep.
@@ -252,6 +274,7 @@ func classify(
 			cuts = append(cuts, cut{
 				start: fileSet.Position(pair.Pos()).Offset,
 				end:   fileSet.Position(pair.End()).Offset,
+				what:  fmt.Sprintf("%s (line %d)", typeExpr.Name, where.Line),
 			})
 			return false
 		default:
