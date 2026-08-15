@@ -64,18 +64,41 @@ shared_scenarios_unjustified() {
       ($policy[0].shared_scenario_exceptions // []) as $exceptions |
       [.surfaces[] |
         . as $surface |
-        select($shared | index($surface.scenario_owner)) |
+        select([$surface.scenario_owners[] | . as $owner | select($shared | index($owner))] | length > 0) |
         select($surface.runtime.status != "identical") |
         select([$exceptions[] |
                 select(.kind == $surface.kind and .name == $surface.name)] |
                length == 0) |
-        "\($surface.kind)/\($surface.name) via \($surface.scenario_owner)"] |
+        "\($surface.kind)/\($surface.name) via \($surface.scenario_owners | join(", "))"] |
+      unique | .[]' "${inventory}"
+}
+
+# A surface's owners are copied as a group, so the shared set must contain all
+# of them or none. That held by construction when a surface had one owner and
+# still holds now, and construction is not a check: a partial set would send
+# some of a surface's scenarios to the released tree and not others, and the
+# receipt would describe a comparison that half happened while looking
+# complete. Names the surface and the split rather than reporting a count.
+shared_scenarios_partial() {
+    jq -r --slurpfile plan "$1" '
+      ($plan[0].shared_scenario_owners // []) as $shared |
+      [.surfaces[] |
+        . as $surface |
+        ([$surface.scenario_owners[] | . as $owner | select($shared | index($owner))]) as $in |
+        ([$surface.scenario_owners[] | . as $owner | select($shared | index($owner) | not)]) as $out |
+        select(($in | length) > 0 and ($out | length) > 0) |
+        "\($surface.kind)/\($surface.name) shares \($in | join(", ")) but withholds \($out | join(", "))"] |
       unique | .[]' "${inventory}"
 }
 
 if [[ -n $(shared_scenarios_unjustified "${work_root}/plan.json") ]]; then
     echo "a changed-runtime surface shares its scenario without a declared exception:" >&2
     shared_scenarios_unjustified "${work_root}/plan.json" | sed 's/^/  /' >&2
+    exit 1
+fi
+if [[ -n $(shared_scenarios_partial "${work_root}/plan.json") ]]; then
+    echo "a surface lends some of its scenario owners and withholds others:" >&2
+    shared_scenarios_partial "${work_root}/plan.json" | sed 's/^/  /' >&2
     exit 1
 fi
 
@@ -93,7 +116,7 @@ smuggled=$(jq -r --slurpfile policy "${campaign_policy}" '
     select([$exceptions[] |
             select(.kind == $surface.kind and .name == $surface.name)] |
            length == 0) |
-    $surface.scenario_owner] | unique | first // empty' "${inventory}")
+    $surface.scenario_owners[]] | unique | first // empty' "${inventory}")
 if [[ -z ${smuggled} ]]; then
     echo "no changed-and-undeclared surface exists, so the scenario guard is untestable" >&2
     exit 1

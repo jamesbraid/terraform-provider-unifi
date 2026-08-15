@@ -49,7 +49,7 @@ jq --arg waves "${waves}" --slurpfile campaign "${campaign_policy}" '
            ([$exceptions[] |
              select(.kind == $surface.kind and .name == $surface.name)] |
             length) > 0) |
-    .scenario_owner] | unique as $shared_scenario_owners |
+    .scenario_owners[]] | unique as $shared_scenario_owners |
   {
     format_version: 1,
     gate: "catalog controller differential",
