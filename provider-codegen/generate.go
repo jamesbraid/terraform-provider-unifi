@@ -201,3 +201,8 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-client-info-ds.json -policy policy/client_info_ds.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix client_info_ds -output-dir generated
 //go:generate go tool tfplugingen-framework generate data-sources --input generated/client_info_ds.provider-code-spec.json --output ../internal/generated/datasource_client_info --package datasource_client_info
 //go:generate gofmt -w ../internal/generated/datasource_client_info/client_info_ds_data_source_gen.go
+
+// Every generated package, in one sweep, AFTER all of them exist. Wiring this
+// per surface would make it a line somebody forgets when adding one, and the
+// binding it removes is invisible to every schema referee we own.
+//go:generate go run ../cmd/nested-custom-type-strip ../internal/generated

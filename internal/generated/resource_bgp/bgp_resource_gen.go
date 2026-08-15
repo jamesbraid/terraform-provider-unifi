@@ -94,11 +94,6 @@ func BgpResourceSchema(ctx context.Context) schema.Schema {
 							},
 						},
 					},
-					CustomType: PeersType{
-						ObjectType: types.ObjectType{
-							AttrTypes: PeersValue{}.AttributeTypes(ctx),
-						},
-					},
 				},
 				Optional:            true,
 				Description:         "List of BGP peer groups. Conflicts with `config`.",

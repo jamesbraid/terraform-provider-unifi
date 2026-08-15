@@ -56,11 +56,6 @@ func TrafficRouteResourceSchema(ctx context.Context) schema.Schema {
 									MarkdownDescription: "List of ports or port ranges to match. Use a single number (e.g. `80`) for individual ports, or a hyphenated range (e.g. `8080-8090`) for port ranges. Only supported for IP addresses and subnets, not IP ranges.",
 								},
 							},
-							CustomType: IpType{
-								ObjectType: types.ObjectType{
-									AttrTypes: IpValue{}.AttributeTypes(ctx),
-								},
-							},
 						},
 						Optional:            true,
 						Description:         "List of IP address, subnet, or IP range entries to match. Use CIDR notation (e.g. `10.0.0.0/8`) for subnets, or a hyphenated range (e.g. `192.168.10.1-192.168.10.255`) for IP ranges.",
@@ -77,11 +72,6 @@ func TrafficRouteResourceSchema(ctx context.Context) schema.Schema {
 						Validators: []validator.List{
 							listvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("domain"), path.MatchRelative().AtParent().AtName("ip")),
 						},
-					},
-				},
-				CustomType: DestinationType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DestinationValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -146,11 +136,6 @@ func TrafficRouteResourceSchema(ctx context.Context) schema.Schema {
 									MarkdownDescription: "The MAC address of the client device.",
 								},
 							},
-							CustomType: ClientsType{
-								ObjectType: types.ObjectType{
-									AttrTypes: ClientsValue{}.AttributeTypes(ctx),
-								},
-							},
 						},
 						Optional:            true,
 						Description:         "List of client devices whose traffic this route applies to.",
@@ -165,20 +150,10 @@ func TrafficRouteResourceSchema(ctx context.Context) schema.Schema {
 									MarkdownDescription: "The ID of the network.",
 								},
 							},
-							CustomType: NetworksType{
-								ObjectType: types.ObjectType{
-									AttrTypes: NetworksValue{}.AttributeTypes(ctx),
-								},
-							},
 						},
 						Optional:            true,
 						Description:         "List of networks whose traffic this route applies to.",
 						MarkdownDescription: "List of networks whose traffic this route applies to.",
-					},
-				},
-				CustomType: SourceType{
-					ObjectType: types.ObjectType{
-						AttrTypes: SourceValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,

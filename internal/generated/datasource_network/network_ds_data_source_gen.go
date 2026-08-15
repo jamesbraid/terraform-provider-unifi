@@ -41,11 +41,6 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "List of allowed DHCP server IP addresses.",
 					},
 				},
-				CustomType: DhcpGuardingType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpGuardingValue{}.AttributeTypes(ctx),
-					},
-				},
 				Computed:            true,
 				Description:         "DHCP guarding configuration.",
 				MarkdownDescription: "DHCP guarding configuration.",
@@ -62,11 +57,6 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "List of DHCP relay server addresses.",
 						MarkdownDescription: "List of DHCP relay server addresses.",
-					},
-				},
-				CustomType: DhcpRelayType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpRelayValue{}.AttributeTypes(ctx),
 					},
 				},
 				Computed:            true,
@@ -91,11 +81,6 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 								Computed:            true,
 								Description:         "TFTP server for boot options.",
 								MarkdownDescription: "TFTP server for boot options.",
-							},
-						},
-						CustomType: BootType{
-							ObjectType: types.ObjectType{
-								AttrTypes: BootValue{}.AttributeTypes(ctx),
 							},
 						},
 						Computed:            true,
@@ -178,11 +163,6 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 								MarkdownDescription: "Specifies whether DHCP WINS is enabled.",
 							},
 						},
-						CustomType: WinsType{
-							ObjectType: types.ObjectType{
-								AttrTypes: WinsValue{}.AttributeTypes(ctx),
-							},
-						},
 						Computed:            true,
 						Description:         "WINS server configuration.",
 						MarkdownDescription: "WINS server configuration.",
@@ -191,11 +171,6 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "WPAD URL for proxy auto-configuration.",
 						MarkdownDescription: "WPAD URL for proxy auto-configuration.",
-					},
-				},
-				CustomType: DhcpServerType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpServerValue{}.AttributeTypes(ctx),
 					},
 				},
 				Computed:            true,
@@ -234,11 +209,6 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "End address of the DHCPv6 range.",
 						MarkdownDescription: "End address of the DHCPv6 range.",
-					},
-				},
-				CustomType: DhcpV6ServerType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpV6ServerValue{}.AttributeTypes(ctx),
 					},
 				},
 				Computed:            true,
@@ -385,11 +355,6 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "The WAN network group.",
 							MarkdownDescription: "The WAN network group.",
-						},
-					},
-					CustomType: NatOutboundIpAddressesType{
-						ObjectType: types.ObjectType{
-							AttrTypes: NatOutboundIpAddressesValue{}.AttributeTypes(ctx),
 						},
 					},
 				},

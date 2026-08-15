@@ -60,11 +60,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						},
 					},
 				},
-				CustomType: DhcpGuardingType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpGuardingValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Description:         "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network.",
 				MarkdownDescription: "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network.",
@@ -86,11 +81,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						Validators: []validator.List{
 							listvalidator.SizeAtMost(4),
 						},
-					},
-				},
-				CustomType: DhcpRelayType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpRelayValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -125,11 +115,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 								PlanModifiers: []planmodifier.String{
 									stringplanmodifier.UseStateForUnknown(),
 								},
-							},
-						},
-						CustomType: BootType{
-							ObjectType: types.ObjectType{
-								AttrTypes: BootValue{}.AttributeTypes(ctx),
 							},
 						},
 						Optional:            true,
@@ -255,11 +240,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 								Default:             booldefault.StaticBool(false),
 							},
 						},
-						CustomType: WinsType{
-							ObjectType: types.ObjectType{
-								AttrTypes: WinsValue{}.AttributeTypes(ctx),
-							},
-						},
 						Optional:            true,
 						Computed:            true,
 						Description:         "WINS server configuration.",
@@ -270,11 +250,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						Optional:            true,
 						Description:         "WPAD URL for proxy auto-configuration.",
 						MarkdownDescription: "WPAD URL for proxy auto-configuration.",
-					},
-				},
-				CustomType: DhcpServerType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpServerValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -320,11 +295,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						Optional:            true,
 						Description:         "The end of the DHCPv6 address range.",
 						MarkdownDescription: "The end of the DHCPv6 address range.",
-					},
-				},
-				CustomType: DhcpV6ServerType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpV6ServerValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -551,11 +521,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "The WAN network group.",
 							MarkdownDescription: "The WAN network group.",
-						},
-					},
-					CustomType: NatOutboundIpAddressesType{
-						ObjectType: types.ObjectType{
-							AttrTypes: NatOutboundIpAddressesValue{}.AttributeTypes(ctx),
 						},
 					},
 				},

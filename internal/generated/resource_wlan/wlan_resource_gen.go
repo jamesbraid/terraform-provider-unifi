@@ -216,11 +216,6 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 						Default: stringdefault.StaticString("deny"),
 					},
 				},
-				CustomType: MacFilterType{
-					ObjectType: types.ObjectType{
-						AttrTypes: MacFilterValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Computed:            true,
 				Description:         "MAC address filtering configuration.",
@@ -338,11 +333,6 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 							Validators: []validator.String{
 								stringvalidator.LengthBetween(8, 255),
 							},
-						},
-					},
-					CustomType: PrivatePresharedKeysType{
-						ObjectType: types.ObjectType{
-							AttrTypes: PrivatePresharedKeysValue{}.AttributeTypes(ctx),
 						},
 					},
 				},
@@ -581,11 +571,6 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 								int64validator.Between(0, 59),
 							},
 							Default: int64default.StaticInt64(0),
-						},
-					},
-					CustomType: ScheduleType{
-						ObjectType: types.ObjectType{
-							AttrTypes: ScheduleValue{}.AttributeTypes(ctx),
 						},
 					},
 				},

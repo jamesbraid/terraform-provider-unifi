@@ -110,11 +110,6 @@ func PowerSupervisorResourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "Type of the upstream source (e.g. `poe_port`).",
 						},
 					},
-					CustomType: PowerSourcesType{
-						ObjectType: types.ObjectType{
-							AttrTypes: PowerSourcesValue{}.AttributeTypes(ctx),
-						},
-					},
 				},
 				Computed:            true,
 				Description:         "The upstream power source(s) the controller resolved for the device and will cycle on recovery (read-only).",

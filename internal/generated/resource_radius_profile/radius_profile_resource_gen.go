@@ -138,11 +138,6 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "Shared secret for accounting server.",
 						},
 					},
-					CustomType: AcctServerType{
-						ObjectType: types.ObjectType{
-							AttrTypes: AcctServerValue{}.AttributeTypes(ctx),
-						},
-					},
 				},
 				Description:         "RADIUS accounting servers.",
 				MarkdownDescription: "RADIUS accounting servers.",
@@ -173,11 +168,6 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 							Sensitive:           true,
 							Description:         "Shared secret for authentication server.",
 							MarkdownDescription: "Shared secret for authentication server.",
-						},
-					},
-					CustomType: AuthServerType{
-						ObjectType: types.ObjectType{
-							AttrTypes: AuthServerValue{}.AttributeTypes(ctx),
 						},
 					},
 				},

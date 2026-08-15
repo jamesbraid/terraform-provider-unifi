@@ -181,11 +181,6 @@ func ClientResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The name of the client group. If set, the group is looked up or created by name.",
 					},
 				},
-				CustomType: QosRateType{
-					ObjectType: types.ObjectType{
-						AttrTypes: QosRateValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Computed:            true,
 				Description:         "QoS rate limiting configuration. Controls the client group (usergroup) used for bandwidth limits.",

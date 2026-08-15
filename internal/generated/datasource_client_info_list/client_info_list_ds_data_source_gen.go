@@ -234,11 +234,6 @@ func ClientInfoListDsDataSourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "The wired connection rate in Mbps.",
 						},
 					},
-					CustomType: ClientsType{
-						ObjectType: types.ObjectType{
-							AttrTypes: ClientsValue{}.AttributeTypes(ctx),
-						},
-					},
 				},
 				Computed:            true,
 				Description:         "List of active clients on the network.",
