@@ -56,19 +56,37 @@ const (
 	// endpoint. Catalog admission proves every such gap is either resolved or
 	// carried as a release blocker, so an unresolved gap cannot reach here.
 	EvidencePragmaticReference = "pragmatic_reference"
-
-	// EvidenceDNSBidirectionalState and EvidenceDNSListController are the two
-	// dns_record surfaces, which carry a dedicated M3 lifecycle receipt.
-	//
-	// KNOWN LIMITATION, recorded rather than hidden: DNSLifecycleReceipt
-	// carries no surface key, so the surface these modes apply to is still
-	// matched by NAME. What has changed is that each now has a precondition
-	// that can fail -- the name alone no longer grants the mode. Giving the M3
-	// receipt a surface key would remove the last of it and belongs with that
-	// receipt's producer.
-	EvidenceDNSBidirectionalState = "dns_bidirectional_state"
-	EvidenceDNSListController     = "dns_list_controller"
 )
+
+// dns_bidirectional_state and dns_list_controller used to be modes here, one
+// per dns_record surface, and they have been deleted rather than kept.
+//
+// Their evidence was the M3 lifecycle receipt, and validateDNSLifecycle already
+// requires all thirteen of its checks before ANY receipt is built. Inside a
+// valid migration/recovery receipt those checks are therefore true for every
+// surface, so a mode predicated on them could not fail. That is the same
+// argument this file makes against a schema-equivalence mode, and it does not
+// get weaker when applied to modes already written.
+//
+// What justifies dns_record is what justifies the other converted surfaces:
+// its acceptance tests are byte-identical to the released provider's and passed
+// on both. That is differential_scenario, and dns_record qualifies for it
+// directly once scenarios are compared per test rather than per file. The M3
+// receipt still gates the whole artifact; it simply is not a per-surface
+// distinction.
+//
+// It also settled a question that had been parked as "should the weaker
+// dns_list_controller assertion generalise to the four other surfaces that
+// satisfy it". The answer was not to generalise it but that it should not
+// exist: all five have byte-identical acceptance tests and qualify for the
+// strong mode. The weak one was compensating for file-level granularity.
+//
+// The lifecycle provenance is deliberately NOT re-added as a per-surface field.
+// The fact it would record is "the M3 receipt is about dns_record", which the
+// M3 receipt itself does not say -- it carries no surface key. Writing it here
+// by name would give a missing fact a second home in a different artifact,
+// which is the failure class this project keeps paying for. The fix belongs
+// with the M3 receipt's producer.
 
 // evidenceView is every measured fact the mode rules read, indexed once per
 // receipt rather than re-scanned per surface.
@@ -78,7 +96,6 @@ type evidenceView struct {
 	planned   map[catalogparity.SurfaceKey][]string
 	released  map[string]struct{}
 	candidate map[string]struct{}
-	dns       DNSLifecycleChecks
 }
 
 func newEvidenceView(input MigrationRecoveryInput) evidenceView {
@@ -88,7 +105,6 @@ func newEvidenceView(input MigrationRecoveryInput) evidenceView {
 		planned:   make(map[catalogparity.SurfaceKey][]string, len(input.Controller.Plan.Surfaces)),
 		released:  make(map[string]struct{}, len(input.Controller.Released.Passed)),
 		candidate: make(map[string]struct{}, len(input.Controller.Candidate.Passed)),
-		dns:       input.DNSLifecycle.Lifecycle,
 	}
 	for _, surface := range input.Inventory.Surfaces {
 		view.inventory[surface.SurfaceKey] = surface
@@ -125,6 +141,15 @@ type verdict struct {
 	// This is NOT a tie-breaker for overlapping rules. If two modes hold and
 	// neither contains the other, the label really would be arbitrary and the
 	// gate fails instead.
+	//
+	// NOTE TO WHOEVER ADDS THE NEXT MODE. Assignment by name has now been found
+	// three times on this gate: originally, when every surface was stamped
+	// source_identity; again when differential_scenario and dns_list_controller
+	// both held for list dns_record and the label would have fallen out of
+	// evaluation order; and a third time INSIDE THE FIX FOR THE SECOND, when
+	// comparing scenarios per test made dns_record satisfy two modes at once.
+	// The defect is not a mistake anyone made once. Adding a mode without
+	// checking what else can hold for the same surface is how it comes back.
 	refines string
 }
 
@@ -145,8 +170,6 @@ func (v evidenceView) evidenceMode(entry catalogparity.MigrationEntry) (string, 
 		v.sourceIdentity(surface),
 		v.differentialScenario(key, surface),
 		v.pragmaticReference(key, surface),
-		v.dnsBidirectionalState(key, surface),
-		v.dnsListController(key, surface),
 	}
 
 	held := make([]string, 0, 1)
@@ -306,75 +329,6 @@ func (v evidenceView) pragmaticReference(
 		return verdict{mode: mode, because: signal + " is an unresolved release blocker"}
 	}
 	return verdict{mode: mode, holds: true}
-}
-
-// dnsBidirectionalState is differential_scenario PLUS the M3 lifecycle receipt.
-//
-// It is declared a refinement rather than an alternative, and that is what
-// keeps it honest. Once scenarios are compared per test rather than per file,
-// dns_record's acceptance tests turn out to be byte-identical to the released
-// provider's, so differential_scenario holds for it on its own. Both statements
-// are then true at once, and without the refinement the gate would fail on an
-// ambiguity that is not really ambiguous: this mode requires everything
-// differential_scenario requires AND the M3 evidence, so it is simply the more
-// specific of the two.
-//
-// The corollary is worth stating plainly rather than leaving for a reader to
-// notice: at function granularity dns_record no longer NEEDS a mode of its own.
-// This one now records extra evidence, not a different kind of justification.
-// Whether the estate wants that distinction published is a judgement about the
-// receipt's vocabulary, not about mechanism.
-func (v evidenceView) dnsBidirectionalState(
-	key catalogparity.SurfaceKey,
-	surface catalogparity.SurfaceEvidenceInventory,
-) verdict {
-	const mode = EvidenceDNSBidirectionalState
-	if key.Kind != catalogparity.ManagedResource || key.Name != "unifi_dns_record" {
-		return verdict{mode: mode, because: "the M3 lifecycle receipt does not cover this surface"}
-	}
-	if base := v.differentialScenario(key, surface); !base.holds {
-		return verdict{mode: mode, because: "it does not meet differential_scenario, which this refines: " + base.because}
-	}
-	if !v.dns.BidirectionalAdapterStateRoundTrip || !v.dns.V0IntegerTTLStateUpgrade || !v.dns.Import {
-		return verdict{mode: mode, because: "the M3 lifecycle receipt does not carry a bidirectional state round trip"}
-	}
-	return verdict{mode: mode, holds: true, refines: EvidenceDifferentialScenario}
-}
-
-// dnsListController is differential_scenario PLUS the list surface having been
-// exercised against a live controller on both providers.
-//
-// It is a refinement for the same reason dnsBidirectionalState is: at function
-// granularity list dns_record's acceptance test is byte-identical to the
-// released provider's, so differential_scenario already holds for it.
-//
-// WHAT CHANGED HERE, AND IT IS WORTH READING. This mode previously asserted
-// something weaker -- that the same test NAMES passed on both providers from
-// two DIFFERENT scenario sources -- and it was guarded by requiring the
-// scenario file to have changed. That guard was compensating for file-level
-// granularity: dns_record's file changed while its tests did not. With the
-// comparison done per test the weaker assertion is no longer needed for
-// dns_record at all, so it is gone rather than kept warm.
-//
-// The generalisation question I raised earlier is therefore ANSWERED, not
-// merely deferred: the five surfaces that satisfied "same names, different
-// sources" satisfy plain differential_scenario once scenarios are compared
-// properly. There is no weaker mode left to generalise.
-func (v evidenceView) dnsListController(
-	key catalogparity.SurfaceKey,
-	surface catalogparity.SurfaceEvidenceInventory,
-) verdict {
-	const mode = EvidenceDNSListController
-	if key.Kind != catalogparity.ListResource || key.Name != "unifi_dns_record" {
-		return verdict{mode: mode, because: "the M3 lifecycle receipt does not cover this surface"}
-	}
-	if base := v.differentialScenario(key, surface); !base.holds {
-		return verdict{mode: mode, because: "it does not meet differential_scenario, which this refines: " + base.because}
-	}
-	if !v.dns.NoOpPlan || !v.dns.Delete || !v.dns.Cleanup {
-		return verdict{mode: mode, because: "the M3 lifecycle receipt does not carry a complete dns_record lifecycle"}
-	}
-	return verdict{mode: mode, holds: true, refines: EvidenceDifferentialScenario}
 }
 
 // acceptanceSignal is the name missingTestSignals uses for the acceptance gap
