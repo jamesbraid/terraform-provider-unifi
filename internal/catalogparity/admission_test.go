@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -364,10 +365,26 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		planSurfaces[0].TestNames = append(planSurfaces[0].TestNames, name)
 		allTests = append(allTests, name)
 	}
-	sharedScenarioOwners := make([]string, policy.SharedScenarioOwnerCount)
-	for index := range sharedScenarioOwners {
-		sharedScenarioOwners[index] = fmt.Sprintf("unifi/scenario_%02d_test.go", index)
+	// Admission re-derives the shared scenario owner set from the inventory and
+	// compares SETS, so a synthetic list of the right length is no longer a
+	// valid fixture. The rule is written out here rather than calling the
+	// production helper: a fixture built by the code under test would agree
+	// with it by construction.
+	excepted := make(map[SurfaceKey]struct{}, len(policy.SharedScenarioExceptions))
+	for _, exception := range policy.SharedScenarioExceptions {
+		excepted[exception.SurfaceKey] = struct{}{}
 	}
+	ownerSet := map[string]struct{}{}
+	for _, surface := range inventory.Surfaces {
+		if _, exception := excepted[surface.SurfaceKey]; exception || surface.Runtime.Status == FileIdentical {
+			ownerSet[surface.ScenarioOwner] = struct{}{}
+		}
+	}
+	sharedScenarioOwners := make([]string, 0, len(ownerSet))
+	for owner := range ownerSet {
+		sharedScenarioOwners = append(sharedScenarioOwners, owner)
+	}
+	sort.Strings(sharedScenarioOwners)
 	controllerSuite := ControllerSuiteReceipt{ExitCode: 0, Result: "pass", Passed: allTests}
 	controller := ControllerDifferentialReceipt{
 		FormatVersion:         1,

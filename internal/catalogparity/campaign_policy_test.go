@@ -30,6 +30,11 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	excepted := make(map[SurfaceKey]bool, len(policy.SharedScenarioExceptions))
+	for _, exception := range policy.SharedScenarioExceptions {
+		excepted[exception.SurfaceKey] = true
+	}
+
 	waves := []int{1, 2, 3, 4, 5}
 	surfaceCount := 0
 	evidenceGapCount := 0
@@ -64,13 +69,30 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 				testNames = append(testNames, name)
 			}
 		}
-		// The port action shares its scenario with the released suite even
-		// though its runtime differs; that sharing is what makes the hardware
-		// disposition satisfiable.
-		shared := surface.Runtime.Status == "identical" ||
-			(surface.Kind == Action && surface.Name == "unifi_port")
+		// A scenario is shared when the runtime is byte-identical, or when the
+		// policy declares an exception for the surface. The exception used to
+		// be hardcoded here as "the port action"; it now comes from the policy,
+		// so this test reads the same declaration admission does.
+		shared := surface.Runtime.Status == "identical" || excepted[surface.SurfaceKey]
 		if shared && !slices.Contains(sharedScenarioOwners, surface.ScenarioOwner) {
 			sharedScenarioOwners = append(sharedScenarioOwners, surface.ScenarioOwner)
+		}
+	}
+
+	// A declared exception for a surface whose runtime is identical is doing
+	// nothing, because the runtime rule already shares it. Catching a redundant
+	// exception here keeps the declaration a decision rather than decoration
+	// nobody rereads.
+	for _, exception := range policy.SharedScenarioExceptions {
+		surface := inventory.Surface(exception.SurfaceKey)
+		if surface == nil {
+			t.Errorf("campaign policy excepts %s/%s, which the catalog does not contain",
+				exception.Kind, exception.Name)
+			continue
+		}
+		if surface.Runtime.Status == FileIdentical {
+			t.Errorf("campaign policy excepts %s/%s, whose runtime is identical, so the exception is redundant",
+				exception.Kind, exception.Name)
 		}
 	}
 
@@ -82,7 +104,6 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 		{"surface_count", surfaceCount, policy.SurfaceCount},
 		{"evidence_gap_count", evidenceGapCount, policy.EvidenceGapCount},
 		{"test_name_count", len(testNames), policy.TestNameCount},
-		{"shared_scenario_owner_count", len(sharedScenarioOwners), policy.SharedScenarioOwnerCount},
 	} {
 		if check.got != check.want {
 			t.Errorf("inventory yields %s = %d, policy says %d", check.field, check.got, check.want)
