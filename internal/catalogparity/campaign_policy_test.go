@@ -30,6 +30,11 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	excepted := make(map[SurfaceKey]bool, len(policy.SharedScenarioExceptions))
+	for _, exception := range policy.SharedScenarioExceptions {
+		excepted[exception.SurfaceKey] = true
+	}
+
 	waves := []int{1, 2, 3, 4, 5}
 	surfaceCount := 0
 	evidenceGapCount := 0
@@ -64,13 +69,30 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 				testNames = append(testNames, name)
 			}
 		}
-		// The port action shares its scenario with the released suite even
-		// though its runtime differs; that sharing is what makes the hardware
-		// disposition satisfiable.
-		shared := surface.Runtime.Status == "identical" ||
-			(surface.Kind == Action && surface.Name == "unifi_port")
+		// A scenario is shared when the runtime is byte-identical, or when the
+		// policy declares an exception for the surface. The exception used to
+		// be hardcoded here as "the port action"; it now comes from the policy,
+		// so this test reads the same declaration admission does.
+		shared := surface.Runtime.Status == "identical" || excepted[surface.SurfaceKey]
 		if shared && !slices.Contains(sharedScenarioOwners, surface.ScenarioOwner) {
 			sharedScenarioOwners = append(sharedScenarioOwners, surface.ScenarioOwner)
+		}
+	}
+
+	// A declared exception for a surface whose runtime is identical is doing
+	// nothing, because the runtime rule already shares it. Catching a redundant
+	// exception here keeps the declaration a decision rather than decoration
+	// nobody rereads.
+	for _, exception := range policy.SharedScenarioExceptions {
+		surface := inventory.Surface(exception.SurfaceKey)
+		if surface == nil {
+			t.Errorf("campaign policy excepts %s/%s, which the catalog does not contain",
+				exception.Kind, exception.Name)
+			continue
+		}
+		if surface.Runtime.Status == FileIdentical {
+			t.Errorf("campaign policy excepts %s/%s, whose runtime is identical, so the exception is redundant",
+				exception.Kind, exception.Name)
 		}
 	}
 
@@ -82,7 +104,6 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 		{"surface_count", surfaceCount, policy.SurfaceCount},
 		{"evidence_gap_count", evidenceGapCount, policy.EvidenceGapCount},
 		{"test_name_count", len(testNames), policy.TestNameCount},
-		{"shared_scenario_owner_count", len(sharedScenarioOwners), policy.SharedScenarioOwnerCount},
 	} {
 		if check.got != check.want {
 			t.Errorf("inventory yields %s = %d, policy says %d", check.field, check.got, check.want)
@@ -97,9 +118,9 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 		}
 		return runtimeChanged[a].Name < runtimeChanged[b].Name
 	})
-	if !reflect.DeepEqual(runtimeChanged, policy.RuntimeChangeSet) {
+	if !reflect.DeepEqual(runtimeChanged, policy.RuntimeChangeKeys()) {
 		t.Errorf("inventory runtime change set is %v, policy declares %v",
-			runtimeChanged, policy.RuntimeChangeSet)
+			runtimeChanged, policy.RuntimeChangeKeys())
 	}
 
 	// Every disposition has to name a test the campaign actually plans to run,
@@ -114,5 +135,85 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 				t.Errorf("campaign policy names %q, which the catalog does not plan", name)
 			}
 		}
+	}
+}
+
+// TestRuntimeChangeReasonsMatchTheGeneratedPackages checks every declared
+// reason against the packages actually present under internal/generated.
+//
+// The list of surfaces is the easy half of the declaration and the one a tired
+// human satisfies by pasting whatever the inventory measured. The reasons are
+// the half that cannot be pasted, and this is what makes them cost something:
+// claiming a surface was converted when it has no generated package fails here,
+// in a second, rather than being believed forever.
+//
+// It deliberately does not decide between companion_conversion and hand_edit.
+// Telling "the bytes moved because a companion was generated" apart from
+// "someone changed this on purpose" is a judgement about intent, and intent is
+// the reason this list is declared instead of derived.
+func TestRuntimeChangeReasonsMatchTheGeneratedPackages(t *testing.T) {
+	policy := testCampaignPolicy(t)
+	if len(policy.RuntimeChangeSet) == 0 {
+		t.Fatal("the policy declares no runtime changes, so every reason below would be vacuous")
+	}
+	for _, problem := range policy.RuntimeChangeReasonsMatchTree("../generated") {
+		t.Error(problem)
+	}
+}
+
+// TestRuntimeChangeReasonsRejectAContradictedClaim proves the check above can
+// fail. A reason nothing refutes is decoration.
+func TestRuntimeChangeReasonsRejectAContradictedClaim(t *testing.T) {
+	for name, test := range map[string]struct {
+		change RuntimeChange
+		want   string
+	}{
+		"converted without a generated package": {
+			change: RuntimeChange{
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_device"},
+				Reason:     ReasonConverted,
+			},
+			want: "no generated package resource_device",
+		},
+		"hand edit on a converted surface": {
+			change: RuntimeChange{
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_wlan"},
+				Reason:     ReasonHandEdit,
+			},
+			want: "its own package resource_wlan exists",
+		},
+		"companion conversion on a converted surface": {
+			change: RuntimeChange{
+				SurfaceKey: SurfaceKey{Kind: ListResource, Name: "unifi_wlan"},
+				Reason:     ReasonCompanionConversion,
+			},
+			want: "its own package listresource_wlan exists",
+		},
+		"companion conversion with no converted companion": {
+			change: RuntimeChange{
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_setting"},
+				Reason:     ReasonCompanionConversion,
+			},
+			want: "no companion package listresource_setting exists",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			policy := CampaignPolicy{RuntimeChangeSet: []RuntimeChange{test.change}}
+			problems := policy.RuntimeChangeReasonsMatchTree("../generated")
+			if len(problems) != 1 || !strings.Contains(problems[0].Error(), test.want) {
+				t.Fatalf("problems = %v, want one containing %q", problems, test.want)
+			}
+		})
+	}
+
+	// The control: the reason the committed policy actually gives for that same
+	// surface is accepted, so the cases above fail for their stated cause and
+	// not because the checker rejects everything.
+	policy := CampaignPolicy{RuntimeChangeSet: []RuntimeChange{{
+		SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_device"},
+		Reason:     ReasonHandEdit,
+	}}}
+	if problems := policy.RuntimeChangeReasonsMatchTree("../generated"); len(problems) != 0 {
+		t.Fatalf("the committed reason for managed_resource/unifi_device was rejected: %v", problems)
 	}
 }

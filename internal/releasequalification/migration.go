@@ -130,14 +130,17 @@ func BuildMigrationRecoveryReceipt(input MigrationRecoveryInput) (MigrationRecov
 	for _, surface := range input.Inventory.Surfaces {
 		inventory[surface.SurfaceKey] = surface
 	}
+	view := newEvidenceView(input)
 	surfaces := make([]MigrationRecoverySurface, 0, len(input.Manifest.Entries))
 	modes := map[string]int{}
 	for _, entry := range input.Manifest.Entries {
-		mode := "source_identity"
-		if entry.Kind == catalogparity.ManagedResource && entry.Name == "unifi_dns_record" {
-			mode = "dns_bidirectional_state"
-		} else if entry.Kind == catalogparity.ListResource && entry.Name == "unifi_dns_record" {
-			mode = "dns_list_controller"
+		// The mode is selected from measured state -- see evidence_mode.go.
+		// It used to be assigned from the surface's name, which is why sixty-two
+		// converted surfaces claimed their source was identical to the released
+		// provider's while it was not.
+		mode, err := view.evidenceMode(entry)
+		if err != nil {
+			return MigrationRecoveryReceipt{}, err
 		}
 		modes[mode]++
 		digest, err := canonicalDigest(struct {
@@ -421,7 +424,10 @@ func validateMigrationInventory(input MigrationRecoveryInput) error {
 	// instead of being discovered an hour into a campaign. The comparison is
 	// still against a human-declared list, so an undeclared runtime change
 	// fails the gate exactly as before.
-	want := input.Policy.RuntimeChangeSet
+	// The declared surfaces, not their reasons. A reason says why a human
+	// expected the change; whether the tree agrees with the reason is checked
+	// where the tree is readable, and this gate reads only receipts.
+	want := input.Policy.RuntimeChangeKeys()
 	if !reflect.DeepEqual(changed, want) {
 		return fmt.Errorf("catalog runtime change set is %v, want %v", changed, want)
 	}
