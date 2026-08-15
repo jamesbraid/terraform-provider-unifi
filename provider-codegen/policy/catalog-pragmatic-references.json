@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
-  "inventory_sha256": "436f2cd4980a90559375702ce9546f80a5d037b725ec3318acc83fbcef6312d3",
+  "inventory_sha256": "40b8c8cef656c74ec944118af7a6cb79c4e22901a329799084c9a99e0fe90dd0",
   "fleet_summary_sha256": "12f576f11f670ad4df4fce32fa6b0913faa285a427c08f26d719de7f478ba922",
   "references": [
     {
