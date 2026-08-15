@@ -30,7 +30,10 @@ steps:
       - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
-      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
+      # Deliberately not "all" -- see catalog-controller-differential.yml. It
+      # writes graph-wide sums into go.sum and the schema baseline generator
+      # then refuses the dirty tree.
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
       - CATALOG_DEPENDENCY_OUTPUT=/tmp/catalog-dependency-publishability.json bash .woodpecker/scripts/catalog-dependency-publishability.sh

@@ -35,7 +35,12 @@ steps:
       - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
-      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
+      # Deliberately not "all". That resolves the entire module graph and
+      # writes sums for test dependencies OF dependencies into go.sum, leaving
+      # ` M go.sum` behind -- which every evidence generator below then refuses
+      # to run against, correctly. The no-argument form fetches exactly what
+      # builds and tests this module, and leaves the tree clean.
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
       # The inventory is committed evidence describing the tree it was

@@ -25,7 +25,10 @@ steps:
       - apt-get install --yes --no-install-recommends jq
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
-      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
+      # Deliberately not "all" -- see catalog-controller-differential.yml. It
+      # writes graph-wide sums into go.sum and the promotion receipt below
+      # then refuses the dirty tree.
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - mkdir -p m3-candidate
       - env CGO_ENABLED=0 GOFLAGS=-mod=readonly GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go build -trimpath -buildvcs=false -ldflags=-buildid= -o m3-candidate/terraform-provider-unifi .
 
@@ -56,7 +59,10 @@ steps:
       - unzip -q /tmp/provider.zip -d /tmp/released-provider
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
-      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
+      # Deliberately not "all" -- see catalog-controller-differential.yml. It
+      # writes graph-wide sums into go.sum and the promotion receipt below
+      # then refuses the dirty tree.
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - bash .woodpecker/scripts/m1-evidence-lib_test.sh
       - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 M1_EVIDENCE_OUTPUT_DIRECTORY=/tmp/provider-m1-evidence M1_EVIDENCE_ARCHIVE=/tmp/provider-m1-evidence.tar.gz M1_PRINT_EVIDENCE_BUNDLE=true M3_EXECUTION=woodpecker M3_LIFECYCLE_RECEIPT=build/m3/network-dns-qualification-ci.json M3_MANAGEMENT_SIDECAR_OUTPUT=build/m5/provider-contract-ci.json M3_RECEIPT_OUTPUT=build/m3/dns-operation-ci.json TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m3-dns-operation.sh
       - jq -e '.promotion == "qualified" and .lifecycle.locked_target_result == "pass"' build/m3/dns-operation-ci.json

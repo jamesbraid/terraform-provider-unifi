@@ -22,6 +22,8 @@ steps:
       - unzip -q /tmp/provider.zip -d /tmp/released-provider
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
-      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download all
+      # Deliberately not "all" -- see catalog-controller-differential.yml. It
+      # writes graph-wide sums into go.sum and dirties the tree.
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - bash .woodpecker/scripts/m1-evidence-lib_test.sh
       - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_EXECUTION=woodpecker M1_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 M1_EVIDENCE_OUTPUT_DIRECTORY=/tmp/provider-m1-evidence M1_EVIDENCE_ARCHIVE=/tmp/provider-m1-evidence.tar.gz M1_PRINT_EVIDENCE_BUNDLE=true TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m1-dns-compiler.sh
