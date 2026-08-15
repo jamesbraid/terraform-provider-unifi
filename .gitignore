@@ -73,3 +73,17 @@ __debug_bin*
 .github/.bak
 
 .test
+
+# Woodpecker campaign working files.
+#
+# Each of these is created by one step and consumed by a later step of the SAME
+# workflow. While they were neither tracked nor ignored, the evidence guard in
+# the later step saw them as a dirty tree and refused -- a workflow failing on
+# files it had just created itself, reported as though the checkout were dirty.
+# The receipts are per-run CI outputs, and the two fixture inputs are built
+# from unifi-emu at a pinned commit for a scratch image, so none of them
+# belong in the tree.
+build/**/*-ci.json
+/m3-candidate/
+/.woodpecker/fixtures/catalog-acceptance/unifi-emu
+/.woodpecker/fixtures/catalog-acceptance/devices.fleet.json
