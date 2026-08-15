@@ -200,7 +200,7 @@ func TestResolvePragmaticReferencesRejectsUnsafeOrUnmeasuredSubstitutions(t *tes
 	}
 }
 
-func TestPragmaticReferencePolicyResolvesExactlyEightCatalogGaps(t *testing.T) {
+func TestPragmaticReferencePolicyResolvesTheCommittedCatalogGaps(t *testing.T) {
 	inventoryData, err := os.ReadFile("../../build/release-ready/catalog-evidence-inventory.json")
 	if err != nil {
 		t.Fatal(err)
@@ -232,17 +232,20 @@ func TestPragmaticReferencePolicyResolvesExactlyEightCatalogGaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 4 || resolution.RemainingSignalCount != 4 {
+	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 4 || resolution.RemainingSignalCount != 2 {
 		t.Fatalf("resolution = %+v", resolution)
 	}
-	// Three references were withdrawn because their sources' only acceptance
-	// scenario is `added` -- the released provider never ran it, so there is no
-	// before-and-after to borrow. Those gaps are now release blockers, which is
-	// the honest state rather than a worse one.
+	// Four resolved by reference, two remaining. It was four remaining until
+	// firewall_policy and site_to_site_vpn gained acceptance files of their own.
+	// Three references had been withdrawn for leaning on sources whose only
+	// acceptance scenario is `added`; two of those surfaces have now stopped
+	// needing a borrow, because they carry their own coverage.
+	//
+	// The two that remain cannot be resolved by writing a test at all.
+	// power_supervisor cannot be exercised against any controller in the fleet,
+	// and the port action needs physical PoE hardware to claim.
 	wantRemaining := []EvidenceGap{
-		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_firewall_policy"}, Signal: "acceptance"},
 		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_power_supervisor"}, Signal: "acceptance"},
-		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_site_to_site_vpn"}, Signal: "acceptance"},
 		{SurfaceKey: SurfaceKey{Kind: Action, Name: "unifi_port"}, Signal: "hardware_claim"},
 	}
 	if !reflect.DeepEqual(resolution.Remaining, wantRemaining) {

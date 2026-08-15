@@ -2,8 +2,8 @@
   "format_version": 1,
   "gate": "catalog controller differential",
   "surface_count": 67,
-  "evidence_gap_count": 8,
-  "test_name_count": 152,
+  "evidence_gap_count": 6,
+  "test_name_count": 154,
   "shared_scenario_exceptions": [
     {
       "kind": "action",
@@ -20,21 +20,9 @@
     },
     {
       "kind": "managed_resource",
-      "name": "unifi_firewall_policy",
-      "signal": "acceptance",
-      "reason": "its fleet_shape reference to list_resource/unifi_firewall_policy was withdrawn: that source's only acceptance scenario is added, so the released provider never ran it and there is no before-and-after to borrow"
-    },
-    {
-      "kind": "managed_resource",
       "name": "unifi_power_supervisor",
       "signal": "acceptance",
       "reason": "its zero_use_endpoint reference to list_resource/unifi_power_supervisor was withdrawn for the same reason: the source's only scenario is added"
-    },
-    {
-      "kind": "managed_resource",
-      "name": "unifi_site_to_site_vpn",
-      "signal": "acceptance",
-      "reason": "its zero_use_endpoint reference to list_resource/unifi_site_to_site_vpn was withdrawn for the same reason: the source's only scenario is added"
     }
   ],
   "allowed_skips": [
