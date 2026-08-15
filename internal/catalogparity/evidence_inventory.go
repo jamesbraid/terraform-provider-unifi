@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -87,7 +88,11 @@ const (
 // brace, excluding any preceding doc comment. A comment above a test is not
 // part of what it does; a comment inside it is, and stays in the digest.
 type ScenarioComparison struct {
-	Name            string         `json:"name"`
+	Name string `json:"name"`
+	// File names the scenario owner this function was read from. A surface can
+	// own several, and a reader holding only the function name cannot say which
+	// file has to be grafted to obtain it.
+	File            string         `json:"file"`
 	Status          ScenarioStatus `json:"status"`
 	ReleasedSHA256  string         `json:"released_sha256,omitempty"`
 	CandidateSHA256 string         `json:"candidate_sha256"`
@@ -95,11 +100,27 @@ type ScenarioComparison struct {
 
 type SurfaceEvidenceInventory struct {
 	SurfaceKey
-	Wave          int            `json:"wave"`
-	Runtime       FileComparison `json:"runtime"`
-	Tests         FileComparison `json:"tests"`
-	ScenarioOwner string         `json:"scenario_owner"`
-	TestFunctions []string       `json:"test_functions"`
+	Wave    int            `json:"wave"`
+	Runtime FileComparison `json:"runtime"`
+	Tests   FileComparison `json:"tests"`
+	// ScenarioOwners is every file this surface's acceptance evidence lives in,
+	// sorted, and it replaced a single scenario_owner string.
+	//
+	// One file per surface was never a decision, only an assumption nobody had
+	// needed to break: a surface whose acceptance tests do not exist on the
+	// released side has to put them somewhere, and putting them in the
+	// conventional test file makes that file differ, which under the old
+	// single-file rule disqualified every scenario in it at once.
+	//
+	// A file may be owned by MORE THAN ONE SURFACE and that is not a defect.
+	// evidencePaths maps a managed resource and its list companion to the same
+	// base, so unifi/firewall_policy_resource_test.go is legitimately named by
+	// both. Any check over these must therefore require at least one owner per
+	// surface, and must NOT require at most one surface per owner -- a mistake
+	// worth naming because the obvious both-directions guard fails on the
+	// existing tree.
+	ScenarioOwners []string `json:"scenario_owners"`
+	TestFunctions  []string `json:"test_functions"`
 	// Scenarios compares every TestAcc function in the scenario owner, without
 	// applying the plan's kind filter. The inventory measures; deciding which
 	// of them speak for a managed surface and which for its list companion is
@@ -190,11 +211,27 @@ func BuildEvidenceInventory(input EvidenceInventoryInput) (EvidenceInventory, er
 		if err != nil {
 			return EvidenceInventory{}, fmt.Errorf("scenario owner for %s/%s: %w", surface.Kind, surface.Name, err)
 		}
-		functions, fileData, err := parseTestFunctions(filepath.Join(input.CandidateRoot, filepath.FromSlash(testPath)))
+		owners, err := scenarioOwners(input.CandidateRoot, surface.SurfaceKey)
 		if err != nil {
-			return EvidenceInventory{}, fmt.Errorf("scenario owner for %s/%s: %w", surface.Kind, surface.Name, err)
+			return EvidenceInventory{}, fmt.Errorf("scenario owners for %s/%s: %w", surface.Kind, surface.Name, err)
 		}
-		scenarios, err := compareScenarios(input.ReleasedRoot, input.CandidateRoot, testPath)
+		// Signals are classified over EVERY owner, not just the conventional
+		// file. A surface whose acceptance test lives in a companion file would
+		// otherwise be reported as having no acceptance signal while the test
+		// sits next to it -- which is precisely the case this change exists to
+		// support.
+		functions := make([]string, 0)
+		fileData := make([]byte, 0)
+		for _, owner := range owners {
+			ownerFunctions, ownerData, err := parseTestFunctions(filepath.Join(input.CandidateRoot, filepath.FromSlash(owner)))
+			if err != nil {
+				return EvidenceInventory{}, fmt.Errorf("scenario owner %s for %s/%s: %w", owner, surface.Kind, surface.Name, err)
+			}
+			functions = append(functions, ownerFunctions...)
+			fileData = append(fileData, ownerData...)
+		}
+		sort.Strings(functions)
+		scenarios, err := compareScenarios(input.ReleasedRoot, input.CandidateRoot, owners)
 		if err != nil {
 			return EvidenceInventory{}, fmt.Errorf("scenarios for %s/%s: %w", surface.Kind, surface.Name, err)
 		}
@@ -205,7 +242,7 @@ func BuildEvidenceInventory(input EvidenceInventoryInput) (EvidenceInventory, er
 			Wave:           contract.Wave,
 			Runtime:        runtime,
 			Tests:          tests,
-			ScenarioOwner:  testPath,
+			ScenarioOwners: owners,
 			TestFunctions:  functions,
 			Scenarios:      scenarios,
 			Signals:        signals,
@@ -304,6 +341,96 @@ func evidencePaths(key SurfaceKey) (string, string, error) {
 	return "unifi/" + base + ".go", "unifi/" + base + "_test.go", nil
 }
 
+// scenarioOwners lists every acceptance-evidence file a surface owns, sorted,
+// starting from the conventional one evidencePaths names.
+//
+// DERIVED FROM THE TREE, NOT DECLARED IN POLICY. The filesystem already knows
+// which files exist; a policy list would be a second copy of that, and a second
+// copy of a fact is the defect this project keeps paying for. The rule is the
+// existing convention widened by one step: <base>_test.go, plus any sibling
+// <base>_<suffix>_test.go.
+//
+// The cost of deriving rather than declaring is that a file named outside the
+// convention is silently not evidence. That is why UnclaimedScenarioFiles
+// exists -- it turns the quiet failure into a named one.
+func scenarioOwners(candidateRoot string, key SurfaceKey) ([]string, error) {
+	_, testPath, err := evidencePaths(key)
+	if err != nil {
+		return nil, err
+	}
+	base := strings.TrimSuffix(path.Base(testPath), "_test.go")
+	entries, err := os.ReadDir(filepath.Join(candidateRoot, "unifi"))
+	if err != nil {
+		return nil, err
+	}
+	owners := make([]string, 0, 2)
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		stem := strings.TrimSuffix(name, "_test.go")
+		if stem == base || strings.HasPrefix(stem, base+"_") {
+			owners = append(owners, "unifi/"+name)
+		}
+	}
+	if len(owners) == 0 {
+		return nil, fmt.Errorf("surface %s/%s owns no scenario file; expected at least %s",
+			key.Kind, key.Name, testPath)
+	}
+	sort.Strings(owners)
+	return owners, nil
+}
+
+// UnclaimedScenarioFiles returns every file under unifi/ that declares a TestAcc
+// function and that no surface's convention claims.
+//
+// This is the freshness check on the derivation above. Deriving the owner set
+// by name is safe only while every acceptance file actually matches the
+// convention, and nothing enforces the convention. Without this, a new
+// acceptance file with an unexpected name is simply not evidence, the inventory
+// is quietly short, and every count computed from it is quietly wrong.
+//
+// It deliberately does NOT report a file claimed by several surfaces. A managed
+// resource and its list companion share a base by design and legitimately name
+// the same file.
+func UnclaimedScenarioFiles(candidateRoot string, keys []SurfaceKey) ([]string, error) {
+	claimed := map[string]struct{}{}
+	for _, key := range keys {
+		owners, err := scenarioOwners(candidateRoot, key)
+		if err != nil {
+			return nil, err
+		}
+		for _, owner := range owners {
+			claimed[owner] = struct{}{}
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(candidateRoot, "unifi"))
+	if err != nil {
+		return nil, err
+	}
+	unclaimed := make([]string, 0)
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		relative := "unifi/" + name
+		if _, ok := claimed[relative]; ok {
+			continue
+		}
+		digests, err := acceptanceScenarioDigests(filepath.Join(candidateRoot, "unifi", name))
+		if err != nil {
+			return nil, err
+		}
+		if len(digests) > 0 {
+			unclaimed = append(unclaimed, relative)
+		}
+	}
+	sort.Strings(unclaimed)
+	return unclaimed, nil
+}
+
 func compareEvidenceFile(releasedRoot, candidateRoot, relativePath string) (FileComparison, error) {
 	releasedData, err := os.ReadFile(filepath.Join(releasedRoot, filepath.FromSlash(relativePath)))
 	if err != nil {
@@ -333,7 +460,33 @@ func compareEvidenceFile(releasedRoot, candidateRoot, relativePath string) (File
 // A released file that does not exist is not an error: the candidate may have
 // added a scenario owner outright, and every scenario in it is then added
 // rather than changed.
-func compareScenarios(releasedRoot, candidateRoot, relativePath string) ([]ScenarioComparison, error) {
+// compareScenarios compares every TestAcc function across ALL of a surface's
+// scenario owners.
+//
+// The result stays a flat list keyed by function name rather than becoming a
+// per-file structure, and that is a fact about Go rather than a preference: two
+// functions in one package cannot share a name, unifi is one package, so a
+// scenario name identifies exactly one function however many files a surface
+// owns. Keeping it flat also means the identical-only lending rule reads
+// exactly what it read before.
+//
+// A per-file status would additionally force an invented aggregation -- what a
+// surface's status is when one file is identical and another changed -- which
+// the lending rule would then have to interpret.
+func compareScenarios(releasedRoot, candidateRoot string, relativePaths []string) ([]ScenarioComparison, error) {
+	comparisons := make([]ScenarioComparison, 0)
+	for _, relativePath := range relativePaths {
+		found, err := compareScenariosInFile(releasedRoot, candidateRoot, relativePath)
+		if err != nil {
+			return nil, err
+		}
+		comparisons = append(comparisons, found...)
+	}
+	sort.Slice(comparisons, func(a, b int) bool { return comparisons[a].Name < comparisons[b].Name })
+	return comparisons, nil
+}
+
+func compareScenariosInFile(releasedRoot, candidateRoot, relativePath string) ([]ScenarioComparison, error) {
 	candidate, err := acceptanceScenarioDigests(filepath.Join(candidateRoot, filepath.FromSlash(relativePath)))
 	if err != nil {
 		return nil, err
@@ -349,7 +502,7 @@ func compareScenarios(releasedRoot, candidateRoot, relativePath string) ([]Scena
 	sort.Strings(names)
 	comparisons := make([]ScenarioComparison, 0, len(names))
 	for _, name := range names {
-		comparison := ScenarioComparison{Name: name, CandidateSHA256: candidate[name]}
+		comparison := ScenarioComparison{Name: name, File: relativePath, CandidateSHA256: candidate[name]}
 		switch before, existed := released[name]; {
 		case !existed:
 			comparison.Status = ScenarioAdded

@@ -335,9 +335,9 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 		}
 		inventorySurfaces = append(inventorySurfaces, catalogparity.SurfaceEvidenceInventory{
 			SurfaceKey: key, Wave: 1,
-			Runtime:       catalogparity.FileComparison{Path: "unifi/runtime.go", Status: status, ReleasedSHA256: digest, CandidateSHA256: digest},
-			Tests:         catalogparity.FileComparison{Path: "unifi/runtime_test.go", Status: testStatus, ReleasedSHA256: digest, CandidateSHA256: digest},
-			ScenarioOwner: "unifi/runtime_test.go", TestFunctions: []string{"TestAccSurface"},
+			Runtime:        catalogparity.FileComparison{Path: "unifi/runtime.go", Status: status, ReleasedSHA256: digest, CandidateSHA256: digest},
+			Tests:          catalogparity.FileComparison{Path: "unifi/runtime_test.go", Status: testStatus, ReleasedSHA256: digest, CandidateSHA256: digest},
+			ScenarioOwners: []string{"unifi/runtime_test.go"}, TestFunctions: []string{"TestAccSurface"},
 			Scenarios: scenarios,
 		})
 		testName := fmt.Sprintf("TestAccSurface%02d", index)
