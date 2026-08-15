@@ -107,11 +107,6 @@ func ClientDsDataSourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The name of the client group.",
 					},
 				},
-				CustomType: QosRateType{
-					ObjectType: types.ObjectType{
-						AttrTypes: QosRateValue{}.AttributeTypes(ctx),
-					},
-				},
 				Computed:            true,
 				Description:         "QoS rate limiting configuration from the client's group.",
 				MarkdownDescription: "QoS rate limiting configuration from the client's group.",

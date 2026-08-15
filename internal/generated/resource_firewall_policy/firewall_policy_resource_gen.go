@@ -175,11 +175,6 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The ID of the firewall zone this endpoint belongs to. Use the `unifi_firewall_zone` data source to look up zone IDs by name.",
 					},
 				},
-				CustomType: DestinationType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DestinationValue{}.AttributeTypes(ctx),
-					},
-				},
 				Required:            true,
 				Description:         "The destination endpoint of the policy.",
 				MarkdownDescription: "The destination endpoint of the policy.",
@@ -362,11 +357,6 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Required:            true,
 						Description:         "The ID of the firewall zone this endpoint belongs to. Use the `unifi_firewall_zone` data source to look up zone IDs by name.",
 						MarkdownDescription: "The ID of the firewall zone this endpoint belongs to. Use the `unifi_firewall_zone` data source to look up zone IDs by name.",
-					},
-				},
-				CustomType: SourceType{
-					ObjectType: types.ObjectType{
-						AttrTypes: SourceValue{}.AttributeTypes(ctx),
 					},
 				},
 				Required:            true,

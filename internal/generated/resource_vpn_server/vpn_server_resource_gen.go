@@ -48,11 +48,6 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "DNS servers to push to VPN clients.",
 					},
 				},
-				CustomType: DnsType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DnsValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Computed:            true,
 				Description:         "DNS configuration pushed to VPN clients.",
@@ -90,11 +85,6 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "IPsec pre-shared key for L2TP. Required by the UniFi controller.",
 						MarkdownDescription: "IPsec pre-shared key for L2TP. Required by the UniFi controller.",
-					},
-				},
-				CustomType: L2tpType{
-					ObjectType: types.ObjectType{
-						AttrTypes: L2tpValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -211,11 +201,6 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						},
 					},
 				},
-				CustomType: OpenvpnType{
-					ObjectType: types.ObjectType{
-						AttrTypes: OpenvpnValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Description:         "OpenVPN server configuration. Exactly one of `wireguard`, `l2tp`, or `openvpn` must be specified.",
 				MarkdownDescription: "OpenVPN server configuration. Exactly one of `wireguard`, `l2tp`, or `openvpn` must be specified.",
@@ -261,11 +246,6 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						Default:             stringdefault.StaticString("any"),
 					},
 				},
-				CustomType: WanType{
-					ObjectType: types.ObjectType{
-						AttrTypes: WanValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Computed:            true,
 				Description:         "WAN binding configuration for the VPN server.",
@@ -303,11 +283,6 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
-					},
-				},
-				CustomType: WireguardType{
-					ObjectType: types.ObjectType{
-						AttrTypes: WireguardValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,

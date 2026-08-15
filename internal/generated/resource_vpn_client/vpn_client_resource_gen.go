@@ -94,11 +94,6 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 								MarkdownDescription: "Filename of the WireGuard configuration file.",
 							},
 						},
-						CustomType: ConfigurationType{
-							ObjectType: types.ObjectType{
-								AttrTypes: ConfigurationValue{}.AttributeTypes(ctx),
-							},
-						},
 						Optional:            true,
 						Description:         "File-based WireGuard configuration. Provide a complete WireGuard .conf file.",
 						MarkdownDescription: "File-based WireGuard configuration. Provide a complete WireGuard .conf file.",
@@ -144,11 +139,6 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 								MarkdownDescription: "WireGuard peer public key.",
 							},
 						},
-						CustomType: PeerType{
-							ObjectType: types.ObjectType{
-								AttrTypes: PeerValue{}.AttributeTypes(ctx),
-							},
-						},
 						Optional:            true,
 						Description:         "Manual WireGuard peer configuration. Specify peer endpoint and public key.",
 						MarkdownDescription: "Manual WireGuard peer configuration. Specify peer endpoint and public key.",
@@ -171,11 +161,6 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "WireGuard private key for this client.",
 						MarkdownDescription: "WireGuard private key for this client.",
-					},
-				},
-				CustomType: WireguardType{
-					ObjectType: types.ObjectType{
-						AttrTypes: WireguardValue{}.AttributeTypes(ctx),
 					},
 				},
 				Required:            true,

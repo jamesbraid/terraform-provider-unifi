@@ -59,20 +59,10 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 									MarkdownDescription: "DHCP option value",
 								},
 							},
-							CustomType: OptionsType{
-								ObjectType: types.ObjectType{
-									AttrTypes: OptionsValue{}.AttributeTypes(ctx),
-								},
-							},
 						},
 						Optional:            true,
 						Description:         "DHCP options",
 						MarkdownDescription: "DHCP options",
-					},
-				},
-				CustomType: DhcpType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DhcpValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -114,11 +104,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 									MarkdownDescription: "DHCPv6 option value",
 								},
 							},
-							CustomType: OptionsType{
-								ObjectType: types.ObjectType{
-									AttrTypes: OptionsValue{}.AttributeTypes(ctx),
-								},
-							},
 						},
 						Optional:            true,
 						Description:         "DHCPv6 options",
@@ -156,11 +141,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						Validators: []validator.String{
 							stringvalidator.OneOf("pd", "single_network", "none"),
 						},
-					},
-				},
-				CustomType: Dhcpv6Type{
-					ObjectType: types.ObjectType{
-						AttrTypes: Dhcpv6Value{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -224,11 +204,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						},
 					},
 				},
-				CustomType: DnsType{
-					ObjectType: types.ObjectType{
-						AttrTypes: DnsValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Computed:            true,
 				Description:         "DNS configuration",
@@ -255,11 +230,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 							int64validator.Between(0, 7),
 						},
 						Default: int64default.StaticInt64(0),
-					},
-				},
-				CustomType: EgressQosType{
-					ObjectType: types.ObjectType{
-						AttrTypes: EgressQosValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -307,11 +277,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						PlanModifiers: []planmodifier.Bool{
 							boolplanmodifier.UseStateForUnknown(),
 						},
-					},
-				},
-				CustomType: IgmpProxyType{
-					ObjectType: types.ObjectType{
-						AttrTypes: IgmpProxyValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -379,11 +344,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						},
 					},
 				},
-				CustomType: LoadBalanceType{
-					ObjectType: types.ObjectType{
-						AttrTypes: LoadBalanceValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Computed:            true,
 				Description:         "Load balance configuration",
@@ -437,11 +397,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						PlanModifiers: []planmodifier.Int64{
 							int64planmodifier.UseStateForUnknown(),
 						},
-					},
-				},
-				CustomType: ProviderCapabilitiesType{
-					ObjectType: types.ObjectType{
-						AttrTypes: ProviderCapabilitiesValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
@@ -512,11 +467,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Smart Queue upload rate in kbps",
 					},
 				},
-				CustomType: SmartqType{
-					ObjectType: types.ObjectType{
-						AttrTypes: SmartqValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Computed:            true,
 				Description:         "Smart Queue configuration",
@@ -582,11 +532,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "UPnP WAN interface",
 					},
 				},
-				CustomType: UpnpType{
-					ObjectType: types.ObjectType{
-						AttrTypes: UpnpValue{}.AttributeTypes(ctx),
-					},
-				},
 				Optional:            true,
 				Computed:            true,
 				Description:         "UPnP configuration",
@@ -613,11 +558,6 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 							int64validator.Between(0, 4094),
 						},
 						Default: int64default.StaticInt64(0),
-					},
-				},
-				CustomType: VlanType{
-					ObjectType: types.ObjectType{
-						AttrTypes: VlanValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional:            true,
