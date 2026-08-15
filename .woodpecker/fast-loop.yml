@@ -4,13 +4,33 @@ when:
   # A push runs this workflow ALONE, because the other four are manual-only.
   # That is the only way to exercise the fast loop without four other workflows
   # competing for the runner, which matters while the step's own failure
-  # reporting is under suspicion. The working branch is listed explicitly; a
-  # branch not named here gets no fast feedback on push at all, which is worth
-  # revisiting separately.
+  # reporting is under suspicion.
+  #
+  # main is listed because leaving it off stopped being a convenience question.
+  # This step runs the only check that can see a served schema disagreeing with
+  # its runtime model, which is the class that produced 54 controller
+  # regressions; with main absent from this list, that check would sit un-run on
+  # the branch it protects. Working branches are still listed explicitly, and a
+  # branch not named here gets no fast feedback on push.
   - event: push
     branch:
+      - main
       - emdash/control-plane-completion
       - campaign/unblock-controller-run
+  # Measured rather than assumed, because the obvious guess was wrong. Opening
+  # a pull request against this repository produced NO PIPELINE AT ALL. ALLOW
+  # PULL is enabled so the event reaches the server, but with no workflow
+  # declaring pull_request there was nothing to run, and the server created
+  # nothing rather than creating an empty success. A probe pull request was
+  # opened and closed to establish that: the pipeline counter did not move, and
+  # the repository's entire history holds zero pull_request pipelines against
+  # three merged pull requests.
+  #
+  # So the gap was never a green that tested nothing. It is NO CHECK AT ALL on
+  # the only path that reaches main, which is quieter than a red and quieter
+  # than a false green: a reviewer sees an absence, and an absence is easy to
+  # read as nothing to see.
+  - event: pull_request
 
 labels:
   pool: skunkworks
