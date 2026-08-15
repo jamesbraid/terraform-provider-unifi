@@ -370,8 +370,33 @@ func scenarioOwners(candidateRoot string, key SurfaceKey) ([]string, error) {
 			continue
 		}
 		stem := strings.TrimSuffix(name, "_test.go")
-		if stem == base || strings.HasPrefix(stem, base+"_") {
+		switch {
+		case stem == base:
+			// The conventional file is the surface's test file by definition
+			// and is already what the graft copies today. It stays an owner
+			// whether or not it carries an acceptance test, so no surface
+			// without a companion changes behaviour at all.
 			owners = append(owners, "unifi/"+name)
+		case strings.HasPrefix(stem, base+"_"):
+			// A COMPANION MUST ACTUALLY CARRY ACCEPTANCE EVIDENCE. Matching the
+			// name is not enough, and the tree already holds the case that
+			// proves it: unifi/port_action_merge_test.go matches port_action_*,
+			// declares NO TestAcc function, and exists only to unit-test
+			// mergePortOverride.
+			//
+			// Enrolling it would have been silent and expensive. action/
+			// unifi_port carries the one declared shared-scenario exception --
+			// the single piece of grafting machinery with evidence behind it --
+			// so the graft would have begun copying a unit-test file bound to a
+			// candidate-side function into the released tree. No scenario to
+			// gain, a compile failure to lose.
+			digests, err := acceptanceScenarioDigests(filepath.Join(candidateRoot, "unifi", name))
+			if err != nil {
+				return nil, err
+			}
+			if len(digests) > 0 {
+				owners = append(owners, "unifi/"+name)
+			}
 		}
 	}
 	if len(owners) == 0 {
