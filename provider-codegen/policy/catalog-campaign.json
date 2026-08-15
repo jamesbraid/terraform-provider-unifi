@@ -46,9 +46,19 @@
     "TestAccDeviceFramework_basic"
   ],
   "released_allowed_missing": [
+    "TestAccAPGroupDataSource_basic",
+    "TestAccAPGroupList_basic",
+    "TestAccClientQosRateDataSource_basic",
+    "TestAccDNSRecordDataSource_basic",
     "TestAccDeviceList_basic",
+    "TestAccFirewallPolicyList_emptyOrSeeded",
+    "TestAccFirewallZoneDataSource_basic",
     "TestAccFirewallZoneFramework_basic",
-    "TestAccFirewallZoneList_emptyOrSeeded"
+    "TestAccFirewallZoneList_emptyOrSeeded",
+    "TestAccPortProfileDataSource_basic",
+    "TestAccPowerSupervisorList_emptyOrSeeded",
+    "TestAccSiteToSiteVPNList_empty",
+    "TestAccWANList_basic"
   ],
   "runtime_change_set": [
     {

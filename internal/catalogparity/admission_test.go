@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -366,6 +367,27 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 			TestNames:      tests,
 		})
 		allTests = append(allTests, tests...)
+	}
+	// controllerSuiteComplete rejects a suite whose plan does not carry every
+	// declared disposition by name, so this fixture has to contain them. Derive
+	// that from the policy rather than listing names: the switch above named
+	// exactly the four dispositions that existed when it was written, and
+	// widening released_allowed_missing from three names to thirteen broke nine
+	// tests across two packages purely because the fixture had its own copy of
+	// the list. A declaration with a second home in a fixture goes stale the
+	// first time the declaration is right.
+	for _, names := range [][]string{
+		policy.AllowedSkips,
+		policy.ReleasedAllowedFailures,
+		policy.ReleasedAllowedMissing,
+	} {
+		for _, name := range names {
+			if slices.Contains(allTests, name) {
+				continue
+			}
+			planSurfaces[0].TestNames = append(planSurfaces[0].TestNames, name)
+			allTests = append(allTests, name)
+		}
 	}
 	for len(allTests) < policy.TestNameCount {
 		name := fmt.Sprintf("TestAccSynthetic%03d", len(allTests))
