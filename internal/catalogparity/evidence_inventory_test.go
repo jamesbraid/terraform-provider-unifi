@@ -42,16 +42,62 @@ func TestBuildEvidenceInventoryAccountsForEverySurfaceAndNamesGaps(t *testing.T)
 	if got := inventory.CoverageCounts["scenario_owner"]; got != 67 {
 		t.Fatalf("scenario owners = %d, want 67", got)
 	}
-	wantCoverage := map[string]int{
-		"scenario_owner":    67,
-		"constructor":       67,
-		"acceptance":        35,
-		"import":            27,
-		"list_acceptance":   25,
-		"action_acceptance": 1,
+	// The coverage counts are recomputed from the surfaces rather than pinned,
+	// and the literals are gone deliberately.
+	//
+	// "acceptance" was 35. Adding acceptance files for unifi_firewall_policy and
+	// unifi_site_to_site_vpn makes it 37, and the only thing in the repository
+	// that objected was this line. That is a number which SHOULD move -- it
+	// moves whenever somebody adds an acceptance test, which is the work going
+	// well -- so pinning it makes this test a ratchet against the thing it
+	// exists to describe. It was also a second home for a fact the artifact
+	// already carries.
+	//
+	// The recount reads the PERSISTED per-surface signals, so it still catches
+	// what the counter can actually get wrong: a surface filed in the wrong
+	// bucket, one missed, or one counted twice. It cannot catch a wrong
+	// classifyTestSignals -- and neither could the literal. It does restate the
+	// bucket rule, which is a duplication, but one whose drift fails this test
+	// immediately rather than a number that goes stale in silence.
+	recount := map[string]int{}
+	for _, surface := range inventory.Surfaces {
+		recount["scenario_owner"]++
+		if surface.Signals.Constructor {
+			recount["constructor"]++
+		}
+		switch surface.Kind {
+		case ManagedResource:
+			if surface.Signals.Acceptance {
+				recount["acceptance"]++
+			}
+			if surface.Signals.Import {
+				recount["import"]++
+			}
+		case DataSource:
+			if surface.Signals.Acceptance {
+				recount["acceptance"]++
+			}
+		case ListResource:
+			if surface.Signals.ListAcceptance {
+				recount["list_acceptance"]++
+			}
+		case Action:
+			if surface.Signals.ActionAcceptance {
+				recount["action_acceptance"]++
+			}
+		}
 	}
-	if !reflect.DeepEqual(inventory.CoverageCounts, wantCoverage) {
-		t.Fatalf("coverage counts = %v, want %v", inventory.CoverageCounts, wantCoverage)
+	if !reflect.DeepEqual(inventory.CoverageCounts, recount) {
+		t.Fatalf("coverage counts = %v, recounted from the surfaces = %v", inventory.CoverageCounts, recount)
+	}
+	// Without this, an inventory that classified nothing would agree with a
+	// recount of nothing and the comparison above would pass on two zeroes.
+	for _, key := range []string{
+		"scenario_owner", "constructor", "acceptance", "import", "list_acceptance", "action_acceptance",
+	} {
+		if recount[key] == 0 {
+			t.Errorf("coverage count %q is zero, so comparing it against a recount proves nothing", key)
+		}
 	}
 
 	network := inventory.Surface(SurfaceKey{Kind: ManagedResource, Name: "unifi_network"})
