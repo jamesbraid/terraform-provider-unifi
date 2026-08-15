@@ -531,19 +531,30 @@ func TestAdmissionRejectsCoverageCountsThatContradictTheirSurfaces(t *testing.T)
 		t.Fatalf("the unmodified inventory does not pass the gate: %v", err)
 	}
 
-	// Overstate one count and re-digest, so the gate reaches the coverage check
+	// Corrupt TWO counts and re-digest, so the gate reaches the coverage check
 	// rather than stopping at the digest.
-	before := inventory.CoverageCounts["acceptance"]
-	inventory.CoverageCounts["acceptance"] = before + 1
+	//
+	// Two rather than one on purpose. Reporting only the first disagreement
+	// makes an operator fix a number, re-run a gate that is not cheap to reach,
+	// and meet the next one -- so "names every disagreement" is a property, and
+	// a property with no test is one that regresses to first-only the next time
+	// somebody simplifies the loop.
+	beforeAcceptance := inventory.CoverageCounts["acceptance"]
+	beforeImport := inventory.CoverageCounts["import"]
+	inventory.CoverageCounts["acceptance"] = beforeAcceptance + 1
+	inventory.CoverageCounts["import"] = beforeImport - 1
 	corruptDigest, err := canonicalDigest(inventory)
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = validateAdmissionInventory(inventory, corruptDigest)
 	if err == nil {
-		t.Fatal("the gate accepted a coverage count that contradicts its own surfaces")
+		t.Fatal("the gate accepted coverage counts that contradict its own surfaces")
 	}
-	for _, want := range []string{"acceptance", fmt.Sprint(before + 1), fmt.Sprint(before)} {
+	for _, want := range []string{
+		"acceptance", fmt.Sprint(beforeAcceptance + 1), fmt.Sprint(beforeAcceptance),
+		"import", fmt.Sprint(beforeImport - 1), fmt.Sprint(beforeImport),
+	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error = %q, want it to name %q; a gate that says less than its test is one nobody can act on", err, want)
 		}

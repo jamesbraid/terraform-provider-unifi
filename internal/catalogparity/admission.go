@@ -392,13 +392,23 @@ func validateAdmissionInventory(inventory EvidenceInventory, digest string) erro
 	// gaps. This is the integrity half: whatever the counts claim, they must be
 	// a true tally of the surfaces alongside them, so a hand-edited or truncated
 	// inventory is caught.
+	// EVERY disagreeing count is reported, not the first. Returning on the first
+	// makes the operator fix one number, run again, and discover the next --
+	// once per round trip through a gate that is not cheap to reach. The
+	// superseded version of this check printed both maps in full for the same
+	// reason, and that instinct was right even though the literal it defended
+	// was not.
 	recount := recountCoverage(inventory.Surfaces)
+	disagreements := make([]string, 0)
 	for _, key := range coverageKeys {
 		if inventory.CoverageCounts[key] != recount[key] {
-			return fmt.Errorf(
-				"inventory coverage count %q is %d but its surfaces tally %d",
-				key, inventory.CoverageCounts[key], recount[key])
+			disagreements = append(disagreements, fmt.Sprintf(
+				"%q is %d but its surfaces tally %d", key, inventory.CoverageCounts[key], recount[key]))
 		}
+	}
+	if len(disagreements) != 0 {
+		return fmt.Errorf("inventory coverage counts contradict its surfaces: %s",
+			strings.Join(disagreements, "; "))
 	}
 	if len(inventory.CoverageCounts) != len(coverageKeys) {
 		return fmt.Errorf("inventory declares %d coverage counts, want %d",
