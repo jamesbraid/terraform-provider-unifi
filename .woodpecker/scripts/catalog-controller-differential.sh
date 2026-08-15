@@ -142,12 +142,64 @@ git -C "${repository_root}" archive "${released_ref}" | tar -xf - -C "${released
 # implementations instead of appearing as a missing released test. A changed
 # runtime path retains its released test owner and needs separate migration
 # evidence.
+
+# The released side is a COMPOSITE of three sources -- the released tag, the
+# candidate's harness, and the candidate's scenario owners -- and until now
+# nothing checked that the composite COMPILES before spending an hour running
+# it. A compile failure surfaces at run_suite released, which is after
+# run_suite candidate has already run, so the cheapest fact in the pipeline was
+# being paid for at the most expensive moment.
+#
+# Vet each layer as it is added rather than once at the end. A single vet after
+# the last copy reports that something is broken; vetting per layer reports
+# WHICH layer broke it, and the three layers have three different owners. Each
+# pass is a couple of seconds against a suite measured in tens of minutes.
+released_vet() {
+    local layer=$1
+    local log="${work_root}/released-vet-${layer}.log"
+    if (cd "${released_root}" && env \
+        GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 \
+        GOTOOLCHAIN=local GOCACHE="${work_root}/released-vet-cache" \
+        go vet ./unifi/ >"${log}" 2>&1); then
+        return 0
+    fi
+    echo "the released tree does not compile after: ${layer}" >&2
+    sed -n '1,40p' "${log}" >&2
+    return 1
+}
+
+if ! released_vet "extracting ${released_ref}"; then
+    echo "  Nothing of the candidate's has been copied in yet, so this is the" >&2
+    echo "  released tag failing to build on its own. Do not look for it in the" >&2
+    echo "  graft." >&2
+    exit 1
+fi
+
 rm -rf "${released_root}/internal/controllertest"
 cp -R "${repository_root}/internal/controllertest" "${released_root}/internal/controllertest"
 cp "${repository_root}/docker-compose.yaml" "${released_root}/docker-compose.yaml"
+if ! released_vet "grafting the candidate's internal/controllertest harness"; then
+    echo "  The harness is copied onto both sides unconditionally, by the rule" >&2
+    echo "  above, and no scenario owner has been copied yet. The break is" >&2
+    echo "  between the candidate's harness and the released provider." >&2
+    exit 1
+fi
+
+grafted_owners=()
 while IFS= read -r scenario_owner; do
     cp "${repository_root}/${scenario_owner}" "${released_root}/${scenario_owner}"
+    grafted_owners+=("${scenario_owner}")
 done < <(jq -r '.shared_scenario_owners[]' "${plan_path}")
+if ! released_vet "grafting ${#grafted_owners[@]} scenario owner(s)"; then
+    echo "  The released tag and the harness both vetted clean before these" >&2
+    echo "  files were copied, so the break is in one of them:" >&2
+    printf '    %s\n' "${grafted_owners[@]}" >&2
+    echo "  A scenario owner that cannot compile against the released provider" >&2
+    echo "  must not be lent to it. Withdraw the exception or split the file --" >&2
+    echo "  do NOT skip it and continue, because a skipped owner produces a" >&2
+    echo "  receipt that looks complete for a comparison that never happened." >&2
+    exit 1
+fi
 
 test_regex=$(jq -r '.test_names | join("|")' "${plan_path}")
 readonly test_regex
