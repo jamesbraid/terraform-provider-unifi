@@ -66,6 +66,7 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		t.Fatal("no object-valued attributes found in any served schema, so this proves nothing")
 	}
 
+	ambiguous := map[string]string{}
 	checked := 0
 	for _, nested := range surfaces {
 		checked++
@@ -76,6 +77,14 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		// is a defect. A referee whose loudest signal is benign is one people
 		// learn to skip, which is worse than not having it.
 		matches := index.Resolve(nested.Members)
+		if len(matches) > 1 {
+			names := make([]string, 0, len(matches))
+			for _, model := range matches {
+				names = append(names, model.Name)
+			}
+			sort.Strings(names)
+			ambiguous[nested.Path] = strings.Join(names, " ")
+		}
 		if len(matches) == 0 {
 			near, missing, extra := index.Nearest(nested.Members)
 			if near.Name == "" {
@@ -122,8 +131,60 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 			model.Name, model.File, model.Tags(), model.RestatedTags())
 	}
 
-	t.Logf("checked %d object-valued attributes across the served schemas against %d runtime models",
-		checked, len(index.Models))
+	// WHERE THE ATTRIBUTE-SET CHECK CANNOT FAIL, NAMED.
+	//
+	// Several models carrying a member set is not a defect -- three unrelated
+	// models legitimately declare {enabled, servers}, and five identity models
+	// declare {id, name}. But it does mean the check above cannot fail for that
+	// attribute: break the model that actually serves it and a sibling still
+	// matches. Resolving WHICH model serves an attribute needs dataflow through
+	// the ObjectValueFrom call sites, because a types.Object field does not
+	// name its element model; that is not built, so these are declared instead.
+	//
+	// Compared as a SET, both directions. A new ambiguity must be added here
+	// deliberately, and one that disappears must be removed -- a count would
+	// let one silently replace another.
+	//
+	// unifi_firewall_policy.source and .destination are the ones that matter:
+	// that surface has no managed acceptance test and sixteen uses on the
+	// fleet, and its second candidate is a state-upgrader model for schema
+	// version 0, which is not a rival the runtime can actually use. Closing
+	// those two is the highest-value piece of work left here.
+	declaredAmbiguous := map[string]string{
+		"unifi_firewall_policy.destination":             "firewallPolicyEndpointModel firewallPolicyEndpointModelV0",
+		"unifi_firewall_policy.source":                  "firewallPolicyEndpointModel firewallPolicyEndpointModelV0",
+		"unifi_network.dhcp_guarding":                   "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"unifi_network.dhcp_relay":                      "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"unifi_setting.ips.suppression_alerts.tracking": "settingIpsTrackingModel settingIpsWhitelistModel",
+		"unifi_setting.ips.suppression_whitelist":       "settingIpsTrackingModel settingIpsWhitelistModel",
+		"unifi_vpn_server.dns":                          "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"unifi_traffic_route.source.clients":            "clientIdentityModel sourceClientModel",
+		"unifi_traffic_route.source.networks":           "networkIdentityModel sourceNetworkModel trafficRouteIdentityModel vpnClientIdentityModel vpnServerIdentityModel",
+		"data.unifi_network.dhcp_guarding":              "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"data.unifi_network.dhcp_relay":                 "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+	}
+	for path, candidates := range ambiguous {
+		declared, ok := declaredAmbiguous[path]
+		switch {
+		case !ok:
+			t.Errorf("%s now resolves to several models (%s) and the check above can no longer fail "+
+				"for it; either give it a distinct member set or declare it here with the others",
+				path, candidates)
+		case declared != candidates:
+			t.Errorf("%s resolves to %s, declared as %s; the set of models sharing this shape moved",
+				path, candidates, declared)
+		}
+	}
+	for path := range declaredAmbiguous {
+		if _, ok := ambiguous[path]; !ok {
+			t.Errorf("%s is declared ambiguous but now resolves to one model; delete it from "+
+				"declaredAmbiguous so the list keeps meaning what it says", path)
+		}
+	}
+
+	t.Logf("checked %d object-valued attributes across the served schemas against %d runtime models; "+
+		"%d of them resolve to several models and cannot fail this check",
+		checked, len(index.Models), len(ambiguous))
 }
 
 // servedNestedAttributes walks every registered surface's schema to any depth.

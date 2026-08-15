@@ -152,7 +152,58 @@ func IndexModels(dirs ...string) (*Index, error) {
 			index.Models[i].Restated = shape
 		}
 	}
+	index.foldFunctionRestatements()
 	return index, nil
+}
+
+// foldFunctionRestatements attaches a function-declared shape to the struct it
+// restates, instead of leaving the two as rivals.
+//
+// configNetworkAttrTypes() and configNetworkModel declare the same members;
+// so do outletOverrideAttrTypes(), radioTableAttrTypes() and
+// natOutboundIPAddresses() with their structs. That is the same relationship a
+// struct has with its own AttributeTypes() method, expressed as a free
+// function instead of a method, and it needs the same treatment for the same
+// reason: while both are indexed, breaking the struct leaves the function
+// matching and the attribute-set check cannot fail.
+//
+// A function is folded only when exactly ONE struct carries its member set. If
+// several do, the function does not identify one of them and it stays an
+// independent shape -- silently attaching it to whichever came first would
+// invent a relationship the code does not have.
+func (i *Index) foldFunctionRestatements() {
+	dropped := make(map[int]bool)
+	for at, model := range i.Models {
+		if !strings.HasSuffix(model.Name, "()") {
+			continue
+		}
+		matches := make([]int, 0, 1)
+		for candidateAt, candidate := range i.Models {
+			if strings.HasSuffix(candidate.Name, "()") {
+				continue
+			}
+			if reflect.DeepEqual(candidate.Tags(), model.Tags()) {
+				matches = append(matches, candidateAt)
+			}
+		}
+		if len(matches) != 1 {
+			continue
+		}
+		// The struct is the shape; the function restates it either way. If the
+		// struct already carries a method restatement, the disagreement check
+		// covers it and this one is redundant rather than informative.
+		if i.Models[matches[0]].Restated == nil {
+			i.Models[matches[0]].Restated = model.Fields
+		}
+		dropped[at] = true
+	}
+	kept := make([]Model, 0, len(i.Models))
+	for at, model := range i.Models {
+		if !dropped[at] {
+			kept = append(kept, model)
+		}
+	}
+	i.Models = kept
 }
 
 // Disagreements returns every model whose own AttributeTypes() method declares
@@ -267,6 +318,19 @@ func attrTypeMaps(file *ast.File, fileName string) ([]Model, map[string]map[stri
 			continue
 		}
 		receiver := receiverTypeName(function)
+		// A DECLARATION IS A WHOLE FUNCTION; A CONVERSION SITE IS NOT.
+		//
+		// natOutboundIPAddresses() exists to declare a shape: its entire body
+		// is `return map[string]attr.Type{...}`. networkToModel(), wlanToModel(),
+		// readSettings() and usgSettingToModel() build attr.Type maps inline
+		// while converting an API object, and those maps are USES of a shape
+		// that a struct already declares. Indexing a use as a rival declaration
+		// is the masking bug again in a second costume: it gave five attributes
+		// a twin, so breaking the struct that actually serves them left the
+		// conversion site matching and the check green.
+		if function.Body != nil && len(function.Body.List) != 1 {
+			continue
+		}
 		ast.Inspect(function.Body, func(node ast.Node) bool {
 			literal, ok := node.(*ast.CompositeLit)
 			if !ok {
