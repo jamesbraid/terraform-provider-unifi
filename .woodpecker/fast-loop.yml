@@ -16,7 +16,11 @@ clone:
 steps:
   - name: fast-deterministic-loop
     image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
-    timeout: 5m
+    # Raised from 5m for the inventory check: it fetches the released tag, two
+    # SDK archives, and compiles cmd/catalog-evidence. A timeout would be a red
+    # that says nothing about the inventory, which is the failure this step
+    # exists to report clearly.
+    timeout: 8m
     # The skunkworks guest's Docker volume lives on its persistent cache disk.
     # Keep Go's build/module cache and the locked go-unifi checkout between
     # jobs; the workflow still verifies the checkout and source commit on each
@@ -32,5 +36,18 @@ steps:
       - export GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org GOVCS='*:off' GOTOOLCHAIN=local
       - go test ./...
       - go vet ./...
+      # The evidence inventory describes the tree it was generated from, and
+      # nothing has ever checked that it still does. The check already existed
+      # and already failed -- it was wired to no workflow, so a stale inventory
+      # was indistinguishable from a fresh one, and the Go test that compares
+      # the campaign policy against it passes because both drifted together.
+      #
+      # It needs the released tag and both SDK archives. Fetch them here rather
+      # than relying on whatever the cache happens to hold, so a missing
+      # prerequisite can never be mistaken for staleness.
+      - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
+      - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
+      - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
+      - bash .woodpecker/scripts/catalog-evidence-inventory_test.sh
       - go generate ./...
       - git diff --exit-code
