@@ -151,8 +151,6 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 	// version 0, which is not a rival the runtime can actually use. Closing
 	// those two is the highest-value piece of work left here.
 	declaredAmbiguous := map[string]string{
-		"unifi_firewall_policy.destination":             "firewallPolicyEndpointModel firewallPolicyEndpointModelV0",
-		"unifi_firewall_policy.source":                  "firewallPolicyEndpointModel firewallPolicyEndpointModelV0",
 		"unifi_network.dhcp_guarding":                   "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"unifi_network.dhcp_relay":                      "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"unifi_setting.ips.suppression_alerts.tracking": "settingIpsTrackingModel settingIpsWhitelistModel",
