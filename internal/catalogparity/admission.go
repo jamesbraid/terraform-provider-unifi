@@ -378,12 +378,25 @@ func validateAdmissionInventory(inventory EvidenceInventory, digest string) erro
 			}
 		}
 	}
+	// acceptance moved from 35 to 37 when firewall_policy and site_to_site_vpn
+	// gained acceptance files. These six numbers are the same measurement the
+	// campaign policy states as evidence_gap_count and accepted_evidence_gaps,
+	// counted a different way, so they move together: two surfaces gaining
+	// coverage is acceptance up two and gaps down two. Editing one of the four
+	// records and not the others leaves this gate contradicting the policy it
+	// validates.
+	//
+	// This should be DERIVED from the per-surface signals and cross-checked
+	// against the accumulation, the way the inventory's own test now does it,
+	// rather than compared against six literals somebody typed. Until then,
+	// whoever adds the next acceptance test edits this map.
 	wantCoverage := map[string]int{
-		"scenario_owner": 67, "constructor": 67, "acceptance": 35,
+		"scenario_owner": 67, "constructor": 67, "acceptance": 37,
 		"import": 27, "list_acceptance": 25, "action_acceptance": 1,
 	}
 	if !reflect.DeepEqual(inventory.CoverageCounts, wantCoverage) {
-		return fmt.Errorf("inventory coverage counts are invalid")
+		return fmt.Errorf("inventory coverage counts are %v, want %v",
+			inventory.CoverageCounts, wantCoverage)
 	}
 	return nil
 }

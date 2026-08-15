@@ -42,7 +42,7 @@ func controllerReceiptJSON(t *testing.T, policy catalogparity.CampaignPolicy, re
 		"gate":           "catalog controller differential",
 		"result":         "blocked_evidence",
 		"plan": map[string]any{
-			"evidence_gap_count":        8,
+			"evidence_gap_count":        policy.EvidenceGapCount,
 			"released_allowed_failures": policy.ReleasedAllowedFailures,
 			"released_allowed_missing":  policy.ReleasedAllowedMissing,
 		},
@@ -95,11 +95,14 @@ func TestRunWritesBoundReferenceResolution(t *testing.T) {
 	if err := json.Unmarshal(data, &resolution); err != nil {
 		t.Fatal(err)
 	}
-	// Four resolved, four remaining. Three references were withdrawn from the
+	// Four resolved, two remaining. Three references were withdrawn from the
 	// policy because their sources' only acceptance scenario is `added`: the
 	// released provider never ran it, so there was no before-and-after to
-	// borrow and the resolution they used to produce was not evidence.
-	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 4 || resolution.RemainingSignalCount != 4 {
+	// borrow and the resolution they used to produce was not evidence. Two of
+	// those surfaces no longer need one -- firewall_policy and site_to_site_vpn
+	// now carry their own acceptance files, which the multi-file scenario owner
+	// change made visible.
+	if resolution.Result != "blocked_evidence" || resolution.ResolvedSignalCount != 4 || resolution.RemainingSignalCount != 2 {
 		t.Fatalf("resolution = %+v", resolution)
 	}
 	sum := sha256.Sum256(controllerData)

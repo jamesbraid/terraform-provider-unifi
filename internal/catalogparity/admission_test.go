@@ -21,14 +21,18 @@ func TestBuildAdmissionAdmitsCatalogAndRetainsHardwareReleaseBlocker(t *testing.
 	if receipt.Result != "pass" || receipt.AdmittedSurfaceCount != 67 {
 		t.Fatalf("admission result = %q with %d surfaces", receipt.Result, receipt.AdmittedSurfaceCount)
 	}
-	// Four blockers, not one. Three pragmatic references were withdrawn for
-	// leaning on sources whose only acceptance scenario the released provider
-	// never ran, so those gaps are carried openly instead of resolved by a
-	// borrow that did not hold.
+	// Two blockers. It was four until firewall_policy and site_to_site_vpn
+	// gained acceptance files of their own, which is what the multi-file
+	// scenario owner change made visible: a surface with an acceptance test in
+	// a companion file used to report no acceptance evidence with the test
+	// sitting next to it.
+	//
+	// Written out rather than derived from the policy on purpose. Admission
+	// already checks the blockers against accepted_evidence_gaps in both
+	// directions, so deriving this would restate that check instead of being an
+	// independent statement of what we expect the receipt to say.
 	wantBlockers := []EvidenceGap{
-		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_firewall_policy"}, Signal: "acceptance"},
 		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_power_supervisor"}, Signal: "acceptance"},
-		{SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_site_to_site_vpn"}, Signal: "acceptance"},
 		{SurfaceKey: SurfaceKey{Kind: Action, Name: "unifi_port"}, Signal: "hardware_claim"},
 	}
 	if receipt.ReleaseBlockerCount != len(wantBlockers) {
