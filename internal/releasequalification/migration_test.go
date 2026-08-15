@@ -18,7 +18,12 @@ func TestBuildMigrationRecoveryReceipt(t *testing.T) {
 	if receipt.Result != "pass" || receipt.SurfaceCount != 67 || receipt.RecoveryCount != 67 {
 		t.Fatalf("receipt result/counts = %q/%d/%d", receipt.Result, receipt.SurfaceCount, receipt.RecoveryCount)
 	}
-	if receipt.EvidenceModes["source_identity"] != 65 ||
+	// The modes are now selected from the fixture's MEASURED state, not from
+	// surface names: 63 surfaces whose runtime is identical, the two device
+	// surfaces whose runtime changed but whose scenario did not, and the two
+	// dns_record surfaces whose scenario changed as well.
+	if receipt.EvidenceModes["source_identity"] != 63 ||
+		receipt.EvidenceModes["differential_scenario"] != 2 ||
 		receipt.EvidenceModes["dns_bidirectional_state"] != 1 ||
 		receipt.EvidenceModes["dns_list_controller"] != 1 {
 		t.Fatalf("evidence modes = %#v", receipt.EvidenceModes)
@@ -58,8 +63,10 @@ func TestBuildMigrationRecoveryReceiptAllowsReleasedMissingTest(t *testing.T) {
 
 func TestBuildMigrationRecoveryReceiptAllowsReleasedFailureThatPasses(t *testing.T) {
 	input := validMigrationInput(t)
-	allowedFailure := input.Controller.Plan.TestNames[1]
-	missing := input.Controller.Plan.TestNames[2]
+	// Indices 2 and 3: both belong to surfaces whose runtime is identical, so
+	// neither surface's recovery depends on the controller result being clean.
+	allowedFailure := input.Controller.Plan.TestNames[2]
+	missing := input.Controller.Plan.TestNames[3]
 	input.Controller.Plan.ReleasedAllowedFailures = []string{allowedFailure}
 	input.Controller.Plan.ReleasedAllowedMissing = []string{missing}
 	input.Controller.Released.Result = "accepted_limitation"
@@ -134,6 +141,72 @@ func TestBuildMigrationRecoveryReceiptFailsClosed(t *testing.T) {
 			},
 			want: "inventory surface set",
 		},
+		// The mutations below are the point of the evidence modes. Each takes
+		// away one piece of a CONVERTED surface's justification and nothing
+		// else. Before this, every one of them left the surface stamped
+		// source_identity and the receipt passed.
+		//
+		// unifi_device (managed) is the fixture's differential_scenario
+		// surface: runtime changed, scenario unchanged, one acceptance test
+		// that passed on both providers.
+		"converted surface lost its released side": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.Controller.Released.Passed = removeControllerTest(
+					input.Controller.Released.Passed, deviceScenario(input))
+				input.Controller.Released.Result = "accepted_limitation"
+				input.Controller.Released.Missing = []string{deviceScenario(input)}
+				input.Controller.Plan.ReleasedAllowedMissing = []string{deviceScenario(input)}
+			},
+			want: "did not pass on the released provider",
+		},
+		// A skip is the one way a scenario can legitimately go unrun on the
+		// CANDIDATE side -- the controller gate requires the candidate suite to
+		// pass everything it is not allowed to skip, so nothing else gets past
+		// it. Skipping a converted surface's only scenario leaves the whole
+		// controller receipt valid and the surface with nothing behind it,
+		// which is precisely the hole this mode exists to close.
+		"converted surface scenario skipped on both sides": {
+			mutate: func(input *MigrationRecoveryInput) {
+				scenario := deviceScenario(input)
+				input.Controller.Plan.AllowedSkips = append(input.Controller.Plan.AllowedSkips, scenario)
+				for _, suite := range []*catalogparity.ControllerSuiteReceipt{
+					&input.Controller.Released, &input.Controller.Candidate,
+				} {
+					suite.Passed = removeControllerTest(suite.Passed, scenario)
+					suite.Skipped = append(append([]string{}, suite.Skipped...), scenario)
+				}
+			},
+			want: "unifi_device has no evidence mode",
+		},
+		"converted surface scenario also changed": {
+			mutate: func(input *MigrationRecoveryInput) {
+				surface := inventorySurface(input, catalogparity.SurfaceKey{
+					Kind: catalogparity.ManagedResource, Name: "unifi_device"})
+				surface.Tests.Status = catalogparity.FileChanged
+			},
+			want: "has no evidence mode",
+		},
+		"converted surface has no planned scenario": {
+			mutate: func(input *MigrationRecoveryInput) {
+				for index := range input.Controller.Plan.Surfaces {
+					if input.Controller.Plan.Surfaces[index].Kind == catalogparity.ManagedResource &&
+						input.Controller.Plan.Surfaces[index].Name == "unifi_device" {
+						input.Controller.Plan.Surfaces[index].TestNames = nil
+						input.Controller.Plan.Surfaces[index].MissingSignals = []string{"acceptance"}
+					}
+				}
+			},
+			want: "plans no acceptance test",
+		},
+		// The M3 receipt is what distinguishes the dns modes from a name. Take
+		// its round trip away and dns_record must not simply fall back.
+		"dns record loses its lifecycle evidence": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.DNSLifecycle.Lifecycle.BidirectionalAdapterStateRoundTrip = false
+				input.DNSLifecycle.Lifecycle.Cleanup = false
+			},
+			want: "DNS lifecycle",
+		},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -145,6 +218,31 @@ func TestBuildMigrationRecoveryReceiptFailsClosed(t *testing.T) {
 			}
 		})
 	}
+}
+
+// deviceScenario is the acceptance test the fixture's converted surface,
+// managed unifi_device, depends on. Looked up rather than hardcoded as an
+// index, because an index into the plan is exactly the kind of quiet coupling
+// that made allowReleasedControllerLimitation excuse the wrong test.
+func deviceScenario(input *MigrationRecoveryInput) string {
+	for _, surface := range input.Controller.Plan.Surfaces {
+		if surface.Kind == catalogparity.ManagedResource && surface.Name == "unifi_device" {
+			return surface.TestNames[0]
+		}
+	}
+	return ""
+}
+
+func inventorySurface(
+	input *MigrationRecoveryInput,
+	key catalogparity.SurfaceKey,
+) *catalogparity.SurfaceEvidenceInventory {
+	for index := range input.Inventory.Surfaces {
+		if input.Inventory.Surfaces[index].SurfaceKey == key {
+			return &input.Inventory.Surfaces[index]
+		}
+	}
+	return nil
 }
 
 func validMigrationInput(t *testing.T) MigrationRecoveryInput {
@@ -169,10 +267,21 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			(key.Kind == catalogparity.ManagedResource || key.Kind == catalogparity.ListResource) {
 			status = catalogparity.FileChanged
 		}
+		// dns_record's scenario changed in the real tree as well as its runtime,
+		// which is what puts it on the M3 lifecycle receipt instead of the
+		// unchanged-scenario differential. device's scenario is unchanged, so it
+		// is the fixture's differential_scenario surface. Getting this wrong
+		// hides a mode overlap: with every scenario identical, list dns_record
+		// satisfied both differential_scenario and dns_list_controller.
+		testStatus := catalogparity.FileIdentical
+		if key.Name == "unifi_dns_record" &&
+			(key.Kind == catalogparity.ManagedResource || key.Kind == catalogparity.ListResource) {
+			testStatus = catalogparity.FileChanged
+		}
 		inventorySurfaces = append(inventorySurfaces, catalogparity.SurfaceEvidenceInventory{
 			SurfaceKey: key, Wave: 1,
 			Runtime:       catalogparity.FileComparison{Path: "unifi/runtime.go", Status: status, ReleasedSHA256: digest, CandidateSHA256: digest},
-			Tests:         catalogparity.FileComparison{Path: "unifi/runtime_test.go", Status: catalogparity.FileIdentical, ReleasedSHA256: digest, CandidateSHA256: digest},
+			Tests:         catalogparity.FileComparison{Path: "unifi/runtime_test.go", Status: testStatus, ReleasedSHA256: digest, CandidateSHA256: digest},
 			ScenarioOwner: "unifi/runtime_test.go", TestFunctions: []string{"TestAccSurface"},
 		})
 		testName := fmt.Sprintf("TestAccSurface%02d", index)
@@ -290,7 +399,14 @@ func allowReleasedControllerLimitation(
 	controller *catalogparity.ControllerDifferentialReceipt,
 ) {
 	t.Helper()
-	failure := controller.Plan.TestNames[1]
+	// Index 2, not 1. Index 1 belongs to unifi_device, whose runtime changed
+	// and whose recovery therefore RESTS on that test passing on both sides --
+	// excusing it on the released side withdraws the surface's only evidence,
+	// and the gate correctly refuses it. This test is about tolerating a
+	// released limitation in general, so it picks a surface whose runtime is
+	// identical and whose recovery does not depend on the controller at all.
+	// TestBuildMigrationRecoveryReceiptFailsClosed covers the converted case.
+	failure := controller.Plan.TestNames[2]
 	if failure == portPersistenceScenario {
 		t.Fatalf("released limitation unexpectedly selected port persistence scenario")
 	}
@@ -313,7 +429,9 @@ func allowReleasedControllerMissing(
 	controller *catalogparity.ControllerDifferentialReceipt,
 ) {
 	t.Helper()
-	missing := controller.Plan.TestNames[1]
+	// Index 2 for the same reason as allowReleasedControllerLimitation: index 1
+	// is the converted surface whose evidence is that very test.
+	missing := controller.Plan.TestNames[2]
 	controller.Plan.ReleasedAllowedMissing = []string{missing}
 	controller.Released.Result = "accepted_limitation"
 	controller.Released.Missing = []string{missing}
