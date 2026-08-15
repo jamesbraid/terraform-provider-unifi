@@ -88,7 +88,9 @@ func sharedScenarioOwnersFromPolicy(inventory EvidenceInventory, policy Campaign
 	owners := map[string]struct{}{}
 	for _, surface := range inventory.Surfaces {
 		if surface.Runtime.Status == FileIdentical || excepted[surface.SurfaceKey] {
-			owners[surface.ScenarioOwner] = struct{}{}
+			for _, owner := range surface.ScenarioOwners {
+				owners[owner] = struct{}{}
+			}
 		}
 	}
 	result := make([]string, 0, len(owners))

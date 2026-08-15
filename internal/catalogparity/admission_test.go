@@ -406,7 +406,9 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 	ownerSet := map[string]struct{}{}
 	for _, surface := range inventory.Surfaces {
 		if _, exception := excepted[surface.SurfaceKey]; exception || surface.Runtime.Status == FileIdentical {
-			ownerSet[surface.ScenarioOwner] = struct{}{}
+			for _, owner := range surface.ScenarioOwners {
+				ownerSet[owner] = struct{}{}
+			}
 		}
 	}
 	sharedScenarioOwners := make([]string, 0, len(ownerSet))

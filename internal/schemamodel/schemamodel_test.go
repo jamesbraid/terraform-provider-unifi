@@ -181,6 +181,98 @@ func (m dhcpServerModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
+// TestAModelReachedOnlyFromUpgradeStateIsNotACandidate covers the exclusion
+// that closed unifi_firewall_policy's source and destination.
+//
+// A state upgrader converts PRIOR state, so a model reached only from
+// UpgradeState describes a version no longer served and cannot be the model
+// behind a current attribute. While it was a candidate it carried the same
+// member set as the live model, so breaking the live one left the upgrader's
+// copy matching and the check could not fail for either attribute.
+//
+// The reachability is transitive on purpose: the V0 model is not named in
+// UpgradeState itself, only in a helper it calls.
+func TestAModelReachedOnlyFromUpgradeStateIsNotACandidate(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "firewall_policy_resource.go", `package unifi
+
+type endpointModel struct {
+	ZoneID types.String `+"`tfsdk:\"zone_id\"`"+`
+}
+
+type endpointModelV0 struct {
+	ZoneID types.String `+"`tfsdk:\"zone_id\"`"+`
+}
+
+func (r *firewallPolicyResource) UpgradeState(ctx context.Context) {
+	upgradeEndpointV0(ctx)
+}
+
+func upgradeEndpointV0(ctx context.Context) {
+	var v0 endpointModelV0
+	_ = v0
+}
+
+func (r *firewallPolicyResource) Read(ctx context.Context) {
+	var live endpointModel
+	_ = live
+}
+`)
+	index, err := IndexModels(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	matches := index.Resolve([]string{"zone_id"})
+	if len(matches) != 1 {
+		names := make([]string, 0, len(matches))
+		for _, model := range matches {
+			names = append(names, model.Name)
+		}
+		sort.Strings(names)
+		t.Fatalf("resolved %v; a model reachable only from UpgradeState is not a candidate", names)
+	}
+	if matches[0].Name != "endpointModel" {
+		t.Errorf("resolved %q, want the live model", matches[0].Name)
+	}
+	// Nearest must apply the SAME exclusion, or a failure names a model the
+	// resolver has already refused and reports it as differing by nothing.
+	if near, missing, extra := index.Nearest([]string{"zone_id", "absent"}); near.Name == "endpointModelV0" {
+		t.Errorf("Nearest returned the upgrade-only model (missing %v, extra %v)", missing, extra)
+	}
+}
+
+// TestAModelUsedLiveAndInAnUpgradeStaysACandidate is the other half: the
+// exclusion must err towards keeping a model. A shape used by both a live path
+// and an upgrader is a live shape, and dropping it would report the attribute
+// it serves as having no model at all.
+func TestAModelUsedLiveAndInAnUpgradeStaysACandidate(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "a.go", `package unifi
+
+type sharedModel struct {
+	ZoneID types.String `+"`tfsdk:\"zone_id\"`"+`
+}
+
+func (r *res) UpgradeState(ctx context.Context) {
+	var m sharedModel
+	_ = m
+}
+
+func (r *res) Read(ctx context.Context) {
+	var m sharedModel
+	_ = m
+}
+`)
+	index, err := IndexModels(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if matches := index.Resolve([]string{"zone_id"}); len(matches) != 1 {
+		t.Fatalf("resolved %d models; a shape used on a live path is live even if an upgrader also uses it",
+			len(matches))
+	}
+}
+
 // TestResolveRejectsASubsetOrSuperset is the half that makes the check mean
 // something. A model carrying MORE than the attribute set is not a model for
 // that attribute, and neither is one carrying less.

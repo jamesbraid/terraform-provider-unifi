@@ -309,7 +309,7 @@ func (v evidenceView) pragmaticReference(
 		return verdict{mode: mode, because: "runtime is unchanged, so source_identity covers it"}
 	}
 	if surface.Tests.Status != catalogparity.FileIdentical {
-		return verdict{mode: mode, because: "scenario " + surface.ScenarioOwner + " changed"}
+		return verdict{mode: mode, because: "scenario owner " + surface.Tests.Path + " changed"}
 	}
 	signal := acceptanceSignal(key.Kind)
 	if !containsString(surface.MissingSignals, signal) {
