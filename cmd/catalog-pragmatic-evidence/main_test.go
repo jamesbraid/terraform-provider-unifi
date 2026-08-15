@@ -27,11 +27,52 @@ func testCampaignPolicy(t *testing.T) catalogparity.CampaignPolicy {
 	return policy
 }
 
+// controllerReceiptJSON builds a controller receipt whose plan dispositions come
+// from the policy instead of from a literal.
+//
+// Every fixture below used to carry its own copy of released_allowed_missing,
+// so widening that declaration from three names to thirteen failed five tests
+// here that had nothing to do with the change: the declaration had a second
+// home, and the second home went stale the first time the first one was right.
+// Deriving them means these fixtures track the policy by construction.
+func controllerReceiptJSON(t *testing.T, policy catalogparity.CampaignPolicy, released map[string]any) []byte {
+	t.Helper()
+	data, err := json.Marshal(map[string]any{
+		"format_version": 1,
+		"gate":           "catalog controller differential",
+		"result":         "blocked_evidence",
+		"plan": map[string]any{
+			"evidence_gap_count":        8,
+			"released_allowed_failures": policy.ReleasedAllowedFailures,
+			"released_allowed_missing":  policy.ReleasedAllowedMissing,
+		},
+		"released": released,
+		"candidate": map[string]any{
+			"result":              "pass",
+			"failed":              []string{},
+			"accepted_failures":   []string{},
+			"unexpected_failures": []string{},
+			"missing":             []string{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return append(data, '\n')
+}
+
 func TestRunWritesBoundReferenceResolution(t *testing.T) {
 	root := filepath.Join("..", "..")
 	output := filepath.Join(t.TempDir(), "resolution.json")
 	controllerReceipt := filepath.Join(t.TempDir(), "controller.json")
-	controllerData := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":8,"released_allowed_failures":["TestAccDeviceFramework_basic"],"released_allowed_missing":["TestAccDeviceList_basic","TestAccFirewallZoneFramework_basic","TestAccFirewallZoneList_emptyOrSeeded"]},"released":{"result":"pass","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":[]},"candidate":{"result":"pass","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":[]}}` + "\n")
+	policy := testCampaignPolicy(t)
+	controllerData := controllerReceiptJSON(t, policy, map[string]any{
+		"result":              "pass",
+		"failed":              []string{},
+		"accepted_failures":   []string{},
+		"unexpected_failures": []string{},
+		"missing":             []string{},
+	})
 	if err := os.WriteFile(controllerReceipt, controllerData, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +110,14 @@ func TestRunWritesBoundReferenceResolution(t *testing.T) {
 
 func TestValidateControllerReceiptAcceptsExactReleasedLimitation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "controller.json")
-	data := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":8,"released_allowed_failures":["TestAccDeviceFramework_basic"],"released_allowed_missing":["TestAccDeviceList_basic","TestAccFirewallZoneFramework_basic","TestAccFirewallZoneList_emptyOrSeeded"]},"released":{"result":"accepted_limitation","failed":["TestAccDeviceFramework_basic"],"accepted_failures":["TestAccDeviceFramework_basic"],"unexpected_failures":[],"missing":["TestAccDeviceList_basic","TestAccFirewallZoneFramework_basic","TestAccFirewallZoneList_emptyOrSeeded"]},"candidate":{"result":"pass","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":[]}}` + "\n")
+	policy := testCampaignPolicy(t)
+	data := controllerReceiptJSON(t, policy, map[string]any{
+		"result":              "accepted_limitation",
+		"failed":              policy.ReleasedAllowedFailures,
+		"accepted_failures":   policy.ReleasedAllowedFailures,
+		"unexpected_failures": []string{},
+		"missing":             policy.ReleasedAllowedMissing,
+	})
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +128,14 @@ func TestValidateControllerReceiptAcceptsExactReleasedLimitation(t *testing.T) {
 
 func TestValidateControllerReceiptAcceptsAllowedReleasedFailureThatPasses(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "controller.json")
-	data := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":8,"released_allowed_failures":["TestAccDeviceFramework_basic"],"released_allowed_missing":["TestAccDeviceList_basic","TestAccFirewallZoneFramework_basic","TestAccFirewallZoneList_emptyOrSeeded"]},"released":{"result":"accepted_limitation","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":["TestAccDeviceList_basic","TestAccFirewallZoneFramework_basic","TestAccFirewallZoneList_emptyOrSeeded"]},"candidate":{"result":"pass","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":[]}}` + "\n")
+	policy := testCampaignPolicy(t)
+	data := controllerReceiptJSON(t, policy, map[string]any{
+		"result":              "accepted_limitation",
+		"failed":              []string{},
+		"accepted_failures":   []string{},
+		"unexpected_failures": []string{},
+		"missing":             policy.ReleasedAllowedMissing,
+	})
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +146,14 @@ func TestValidateControllerReceiptAcceptsAllowedReleasedFailureThatPasses(t *tes
 
 func TestValidateControllerReceiptRejectsBroaderReleasedLimitation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "controller.json")
-	data := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":8,"released_allowed_failures":["TestAccDeviceFramework_basic"],"released_allowed_missing":["TestAccDeviceList_basic","TestAccFirewallZoneFramework_basic","TestAccFirewallZoneList_emptyOrSeeded"]},"released":{"result":"accepted_limitation","failed":["TestAccDeviceFramework_basic","TestAccUnexpected"],"accepted_failures":["TestAccDeviceFramework_basic","TestAccUnexpected"],"unexpected_failures":[],"missing":["TestAccDeviceList_basic","TestAccFirewallZoneFramework_basic","TestAccFirewallZoneList_emptyOrSeeded"]},"candidate":{"result":"pass","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":[]}}` + "\n")
+	policy := testCampaignPolicy(t)
+	data := controllerReceiptJSON(t, policy, map[string]any{
+		"result":              "accepted_limitation",
+		"failed":              append(append([]string{}, policy.ReleasedAllowedFailures...), "TestAccUnexpected"),
+		"accepted_failures":   append(append([]string{}, policy.ReleasedAllowedFailures...), "TestAccUnexpected"),
+		"unexpected_failures": []string{},
+		"missing":             policy.ReleasedAllowedMissing,
+	})
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +164,14 @@ func TestValidateControllerReceiptRejectsBroaderReleasedLimitation(t *testing.T)
 
 func TestValidateControllerReceiptRejectsBroaderReleasedMissing(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "controller.json")
-	data := []byte(`{"format_version":1,"gate":"catalog controller differential","result":"blocked_evidence","plan":{"evidence_gap_count":8,"released_allowed_failures":["TestAccDeviceFramework_basic"],"released_allowed_missing":["TestAccDeviceList_basic","TestAccFirewallZoneFramework_basic","TestAccFirewallZoneList_emptyOrSeeded"]},"released":{"result":"accepted_limitation","failed":["TestAccDeviceFramework_basic"],"accepted_failures":["TestAccDeviceFramework_basic"],"unexpected_failures":[],"missing":["TestAccDeviceList_basic","TestAccUnexpected"]},"candidate":{"result":"pass","failed":[],"accepted_failures":[],"unexpected_failures":[],"missing":[]}}` + "\n")
+	policy := testCampaignPolicy(t)
+	data := controllerReceiptJSON(t, policy, map[string]any{
+		"result":              "accepted_limitation",
+		"failed":              policy.ReleasedAllowedFailures,
+		"accepted_failures":   policy.ReleasedAllowedFailures,
+		"unexpected_failures": []string{},
+		"missing":             append(append([]string{}, policy.ReleasedAllowedMissing...), "TestAccUnexpected"),
+	})
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
