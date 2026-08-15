@@ -18,14 +18,19 @@ func TestBuildMigrationRecoveryReceipt(t *testing.T) {
 	if receipt.Result != "pass" || receipt.SurfaceCount != 67 || receipt.RecoveryCount != 67 {
 		t.Fatalf("receipt result/counts = %q/%d/%d", receipt.Result, receipt.SurfaceCount, receipt.RecoveryCount)
 	}
-	// The modes are now selected from the fixture's MEASURED state, not from
-	// surface names: 63 surfaces whose runtime is identical, the two device
-	// surfaces whose runtime changed but whose scenario did not, and the two
-	// dns_record surfaces whose scenario changed as well.
-	if receipt.EvidenceModes["source_identity"] != 63 ||
-		receipt.EvidenceModes["differential_scenario"] != 2 ||
-		receipt.EvidenceModes["dns_bidirectional_state"] != 1 ||
-		receipt.EvidenceModes["dns_list_controller"] != 1 {
+	// Modes are selected from the fixture's MEASURED state, not from surface
+	// names: 63 surfaces whose runtime is identical, and four whose runtime
+	// changed while the acceptance test itself did not -- the two device
+	// surfaces, whose scenario file is unchanged, and the two dns_record
+	// surfaces, whose file changed around a test that did not.
+	//
+	// dns_record has no mode of its own any more. The two it had rested on the
+	// M3 lifecycle receipt, which validateDNSLifecycle already requires in full
+	// before any receipt exists, so they could not fail. The length check keeps
+	// a reintroduced mode from passing unnoticed.
+	if len(receipt.EvidenceModes) != 2 ||
+		receipt.EvidenceModes["source_identity"] != 63 ||
+		receipt.EvidenceModes["differential_scenario"] != 4 {
 		t.Fatalf("evidence modes = %#v", receipt.EvidenceModes)
 	}
 	for _, surface := range receipt.Surfaces {

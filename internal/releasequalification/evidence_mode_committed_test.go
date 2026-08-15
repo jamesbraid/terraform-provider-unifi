@@ -149,16 +149,6 @@ func bestCaseEvidenceView(
 		planned:   make(map[catalogparity.SurfaceKey][]string, len(inventory.Surfaces)),
 		released:  map[string]struct{}{},
 		candidate: map[string]struct{}{},
-		// Every M3 lifecycle check granted: the dns modes must be denied by
-		// something other than a missing receipt for this census to mean
-		// anything about the surfaces themselves.
-		dns: DNSLifecycleChecks{
-			FreshTargetPerCLIAndAdapter: true, Create: true, Update: true,
-			OmittedOptionalFields: true, ConfiguredOptionalFields: true,
-			ReplacementPlan: true, RestartRefresh: true, Import: true,
-			V0IntegerTTLStateUpgrade: true, NoOpPlan: true, Delete: true,
-			Cleanup: true, BidirectionalAdapterStateRoundTrip: true,
-		},
 	}
 	for _, surface := range inventory.Surfaces {
 		view.inventory[surface.SurfaceKey] = surface
