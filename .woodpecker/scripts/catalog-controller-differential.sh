@@ -22,7 +22,14 @@ cleanup() {
 trap cleanup EXIT
 
 plan_path=${work_root}/plan.json
-jq --arg waves "${waves}" '
+# The campaign policy is read here, not only in the pass below, because the
+# shared scenario owner set depends on it. A surface whose runtime CHANGED may
+# still graft its scenario onto the released tree, but only if the policy
+# declares the exception and says why -- the port action is the one such case.
+# That exception used to be hardcoded in this expression as well as declared in
+# the policy, which is one fact with two homes and the shape of drift this
+# campaign has been bitten by repeatedly.
+jq --arg waves "${waves}" --slurpfile campaign "${campaign_policy}" '
   def acceptance_tests:
     if .kind == "managed_resource" then
       [.test_functions[] | select(startswith("TestAcc") and (contains("List") | not))]
@@ -34,10 +41,14 @@ jq --arg waves "${waves}" '
   ($waves | split(",") | map(tonumber)) as $selected |
   [.surfaces[] | select(.wave as $wave | $selected | index($wave)) |
     {kind, name, wave, missing_signals, test_names: acceptance_tests}] as $surfaces |
+  ($campaign[0].shared_scenario_exceptions // []) as $exceptions |
   [.surfaces[] |
     select(.wave as $wave | $selected | index($wave)) |
-    select(.runtime.status == "identical" or
-           (.kind == "action" and .name == "unifi_port")) |
+    . as $surface |
+    select($surface.runtime.status == "identical" or
+           ([$exceptions[] |
+             select(.kind == $surface.kind and .name == $surface.name)] |
+            length) > 0) |
     .scenario_owner] | unique as $shared_scenario_owners |
   {
     format_version: 1,

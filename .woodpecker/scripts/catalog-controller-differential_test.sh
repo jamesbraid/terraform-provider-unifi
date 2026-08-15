@@ -25,6 +25,7 @@ CATALOG_ACCEPTANCE_OUTPUT="${work_root}/plan.json" \
 
 if ! jq -e --slurpfile policy "${campaign_policy}" '
   $policy[0] as $campaign |
+  . as $plan |
   .format_version == 1 and
   .gate == $campaign.gate and
   .waves == [1, 2, 3, 4, 5] and
@@ -34,12 +35,74 @@ if ! jq -e --slurpfile policy "${campaign_policy}" '
   .released_allowed_failures == $campaign.released_allowed_failures and
   .released_allowed_missing == $campaign.released_allowed_missing and
   (.test_names | length) == $campaign.test_name_count and
-  (.shared_scenario_owners | length) == $campaign.shared_scenario_owner_count and
+  (.shared_scenario_owners | length) > 0 and
+  ([($campaign.shared_scenario_exceptions // [])[] as $exception |
+    $plan.surfaces[] |
+    select(.kind == $exception.kind and .name == $exception.name)] | length)
+      == (($campaign.shared_scenario_exceptions // []) | length) and
   ([.surfaces[] | select(.name == "unifi_port" and .kind == "action" and .missing_signals == ["hardware_claim"])] | length) == 1 and
   ([.surfaces[] | select(.name == "unifi_dns_record" and .kind == "managed_resource")] | length) == 1
 ' "${work_root}/plan.json" >/dev/null; then
     echo "full controller plan self-test failed" >&2
     jq '.' "${work_root}/plan.json" >&2
+    exit 1
+fi
+
+# The invariant a count could never express. Grafting the candidate's scenario
+# onto the released tree is only sound where the runtime is source-identical,
+# or where the policy declares an exception and says why. A surface that
+# changed and is shared anyway runs new-schema tests against the old
+# implementation and reports the result as agreement.
+readonly inventory=${CATALOG_EVIDENCE_INVENTORY:-${repository_root}/build/release-ready/catalog-evidence-inventory.json}
+
+# shared_scenarios_unjustified names every surface in the given plan that
+# grafts its scenario onto the released tree while its runtime differs and no
+# policy exception covers it. Silence means the set is sound.
+shared_scenarios_unjustified() {
+    jq -r --slurpfile plan "$1" --slurpfile policy "${campaign_policy}" '
+      ($plan[0].shared_scenario_owners // []) as $shared |
+      ($policy[0].shared_scenario_exceptions // []) as $exceptions |
+      [.surfaces[] |
+        . as $surface |
+        select($shared | index($surface.scenario_owner)) |
+        select($surface.runtime.status != "identical") |
+        select([$exceptions[] |
+                select(.kind == $surface.kind and .name == $surface.name)] |
+               length == 0) |
+        "\($surface.kind)/\($surface.name) via \($surface.scenario_owner)"] |
+      unique | .[]' "${inventory}"
+}
+
+if [[ -n $(shared_scenarios_unjustified "${work_root}/plan.json") ]]; then
+    echo "a changed-runtime surface shares its scenario without a declared exception:" >&2
+    shared_scenarios_unjustified "${work_root}/plan.json" | sed 's/^/  /' >&2
+    exit 1
+fi
+
+# Prove that check can fail, because it very nearly could not. The plan builder
+# derives the shared set from the SAME policy this check reads, so emptying the
+# exceptions shrinks both sides at once and the comparison passes vacuously --
+# a detector whose two inputs share the error it exists to detect. Mutating the
+# policy therefore proves nothing. Mutate the PLAN instead: graft a
+# changed-runtime, undeclared surface's scenario in and require it to be named.
+smuggled=$(jq -r --slurpfile policy "${campaign_policy}" '
+  ($policy[0].shared_scenario_exceptions // []) as $exceptions |
+  [.surfaces[] |
+    . as $surface |
+    select($surface.runtime.status != "identical") |
+    select([$exceptions[] |
+            select(.kind == $surface.kind and .name == $surface.name)] |
+           length == 0) |
+    $surface.scenario_owner] | unique | first // empty' "${inventory}")
+if [[ -z ${smuggled} ]]; then
+    echo "no changed-and-undeclared surface exists, so the scenario guard is untestable" >&2
+    exit 1
+fi
+jq --arg smuggled "${smuggled}" \
+   '.shared_scenario_owners = (.shared_scenario_owners + [$smuggled] | unique)' \
+   "${work_root}/plan.json" >"${work_root}/smuggled-plan.json"
+if [[ -z $(shared_scenarios_unjustified "${work_root}/smuggled-plan.json") ]]; then
+    echo "the scenario guard accepted ${smuggled} grafted in without a declaration" >&2
     exit 1
 fi
 
