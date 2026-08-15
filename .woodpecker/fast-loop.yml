@@ -1,8 +1,16 @@
 ---
 when:
   - event: manual
+  # A push runs this workflow ALONE, because the other four are manual-only.
+  # That is the only way to exercise the fast loop without four other workflows
+  # competing for the runner, which matters while the step's own failure
+  # reporting is under suspicion. The working branch is listed explicitly; a
+  # branch not named here gets no fast feedback on push at all, which is worth
+  # revisiting separately.
   - event: push
-    branch: emdash/control-plane-completion
+    branch:
+      - emdash/control-plane-completion
+      - campaign/unblock-controller-run
 
 labels:
   pool: skunkworks
