@@ -178,13 +178,50 @@ func TestBuildMigrationRecoveryReceiptFailsClosed(t *testing.T) {
 			},
 			want: "unifi_device has no evidence mode",
 		},
-		"converted surface scenario also changed": {
+		// A changed scenario FILE is no longer enough to refuse the surface --
+		// what matters is whether the acceptance test itself moved. With the
+		// file changed but the test byte-identical, the mode must still hold,
+		// which TestDifferentialScenarioIsPerTestNotPerFile covers. Here the
+		// test itself differs, and that must fail.
+		"converted surface acceptance test changed": {
 			mutate: func(input *MigrationRecoveryInput) {
 				surface := inventorySurface(input, catalogparity.SurfaceKey{
 					Kind: catalogparity.ManagedResource, Name: "unifi_device"})
 				surface.Tests.Status = catalogparity.FileChanged
+				surface.Scenarios = []catalogparity.ScenarioComparison{{
+					Name:            deviceScenario(input),
+					Status:          catalogparity.ScenarioChanged,
+					ReleasedSHA256:  strings.Repeat("1", 64),
+					CandidateSHA256: strings.Repeat("2", 64),
+				}}
 			},
-			want: "has no evidence mode",
+			want: "so the two providers were not judged by the same stimulus",
+		},
+		// A scenario the released tree never had cannot judge the released
+		// provider. It must not read as a change, and it must not pass.
+		"converted surface acceptance test is new": {
+			mutate: func(input *MigrationRecoveryInput) {
+				surface := inventorySurface(input, catalogparity.SurfaceKey{
+					Kind: catalogparity.ManagedResource, Name: "unifi_device"})
+				surface.Tests.Status = catalogparity.FileChanged
+				surface.Scenarios = []catalogparity.ScenarioComparison{{
+					Name:            deviceScenario(input),
+					Status:          catalogparity.ScenarioAdded,
+					CandidateSHA256: strings.Repeat("2", 64),
+				}}
+			},
+			want: "is added against the released tree",
+		},
+		// An inventory built before scenarios existed says nothing about them.
+		// Silence must not be read as agreement.
+		"converted surface scenario is unmeasured": {
+			mutate: func(input *MigrationRecoveryInput) {
+				surface := inventorySurface(input, catalogparity.SurfaceKey{
+					Kind: catalogparity.ManagedResource, Name: "unifi_device"})
+				surface.Tests.Status = catalogparity.FileChanged
+				surface.Scenarios = nil
+			},
+			want: "carries no per-scenario comparison",
 		},
 		"converted surface has no planned scenario": {
 			mutate: func(input *MigrationRecoveryInput) {
@@ -278,11 +315,25 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			(key.Kind == catalogparity.ManagedResource || key.Kind == catalogparity.ListResource) {
 			testStatus = catalogparity.FileChanged
 		}
+		// dns_record mirrors the real tree: its scenario FILE changed while the
+		// acceptance test inside it did not. That is the whole point of
+		// comparing per test, so the fixture has to carry the distinction or
+		// the modes are never exercised against it.
+		var scenarios []catalogparity.ScenarioComparison
+		if testStatus == catalogparity.FileChanged {
+			scenarios = []catalogparity.ScenarioComparison{{
+				Name:            fmt.Sprintf("TestAccSurface%02d", index),
+				Status:          catalogparity.ScenarioIdentical,
+				ReleasedSHA256:  digest,
+				CandidateSHA256: digest,
+			}}
+		}
 		inventorySurfaces = append(inventorySurfaces, catalogparity.SurfaceEvidenceInventory{
 			SurfaceKey: key, Wave: 1,
 			Runtime:       catalogparity.FileComparison{Path: "unifi/runtime.go", Status: status, ReleasedSHA256: digest, CandidateSHA256: digest},
 			Tests:         catalogparity.FileComparison{Path: "unifi/runtime_test.go", Status: testStatus, ReleasedSHA256: digest, CandidateSHA256: digest},
 			ScenarioOwner: "unifi/runtime_test.go", TestFunctions: []string{"TestAccSurface"},
+			Scenarios: scenarios,
 		})
 		testName := fmt.Sprintf("TestAccSurface%02d", index)
 		testNames = append(testNames, testName)
@@ -299,8 +350,24 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			Recovery:          catalogparity.Recovery{Mode: "snapshot_restore", Assertions: []string{"state_snapshot_present"}},
 		})
 	}
+	// The skipped test belongs to a surface whose runtime is IDENTICAL, so its
+	// recovery rests on source_identity and needs no controller result. Index 0
+	// used to be skipped, which is managed dns_record -- a converted surface
+	// whose entire justification is that its scenario ran on both providers.
+	// Skipping the one test a converted surface depends on is a real failure
+	// (TestBuildMigrationRecoveryReceiptFailsClosed asserts it), so a fixture
+	// that does it by accident cannot also be the passing case. It is also not
+	// what the real campaign does: allowed_skips names two setting tests and a
+	// WLAN list test, none of them dns_record's.
+	const skippedIndex = 5
+	passed := make([]string, 0, len(testNames)-1)
+	for index, name := range testNames {
+		if index != skippedIndex {
+			passed = append(passed, name)
+		}
+	}
 	controllerSuite := catalogparity.ControllerSuiteReceipt{
-		Result: "pass", Passed: append([]string(nil), testNames[1:]...), Skipped: []string{testNames[0]},
+		Result: "pass", Passed: passed, Skipped: []string{testNames[skippedIndex]},
 		Failed: []string{}, Missing: []string{}, PreTestDiagnostics: []string{},
 	}
 	return MigrationRecoveryInput{
@@ -365,7 +432,7 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			FormatVersion: 1, Gate: "catalog controller differential", Result: "blocked_evidence",
 			PlanSHA256: digest, ReleasedCommit: releasedCommit, CandidateCommit: commit,
 			Target:   catalogparity.ControllerImageReceipt{Image: "controller@sha256:" + digest, ImageID: "sha256:" + digest, PullPolicy: "never"},
-			Plan:     catalogparity.ControllerPlanReceipt{FormatVersion: 1, Gate: "catalog controller differential", Waves: []int{1, 2, 3, 4, 5}, Surfaces: planSurfaces, SurfaceCount: 67, EvidenceGapCount: 1, TestNames: testNames, AllowedSkips: []string{testNames[0]}},
+			Plan:     catalogparity.ControllerPlanReceipt{FormatVersion: 1, Gate: "catalog controller differential", Waves: []int{1, 2, 3, 4, 5}, Surfaces: planSurfaces, SurfaceCount: 67, EvidenceGapCount: 1, TestNames: testNames, AllowedSkips: []string{testNames[skippedIndex]}},
 			Released: controllerSuite, Candidate: controllerSuite,
 		},
 		ControllerSHA256: digest,
@@ -481,4 +548,56 @@ func migrationSurfaceKeys() []catalogparity.SurfaceKey {
 	}
 	keys = append(keys, catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"})
 	return keys
+}
+
+// TestDifferentialScenarioIsPerTestNotPerFile is the positive half of the
+// granularity fix, and the case that matters most.
+//
+// A converted surface's scenario owner changes for reasons that have nothing to
+// do with its acceptance tests: the conversion rewrites the unit tests beside
+// them, and the campaign appends new acceptance tests for the list companion.
+// Under the file-level rule that was enough to strip the surface of its mode,
+// even when the acceptance test the released provider ran was byte-for-byte the
+// one the candidate ran.
+//
+// Measured on this repository that mistake covered eight acceptance tests
+// across ap_group, wan and dns_record. This is the assertion that they are no
+// longer disqualified by their file-mates.
+func TestDifferentialScenarioIsPerTestNotPerFile(t *testing.T) {
+	input := validMigrationInput(t)
+	key := catalogparity.SurfaceKey{Kind: catalogparity.ManagedResource, Name: "unifi_device"}
+	surface := inventorySurface(&input, key)
+	surface.Tests.Status = catalogparity.FileChanged
+	surface.Scenarios = []catalogparity.ScenarioComparison{
+		{
+			Name:            deviceScenario(&input),
+			Status:          catalogparity.ScenarioIdentical,
+			ReleasedSHA256:  strings.Repeat("1", 64),
+			CandidateSHA256: strings.Repeat("1", 64),
+		},
+		// A unit test cannot appear here -- only TestAcc functions are
+		// compared -- but a NEW acceptance test for the list companion can, and
+		// it must not drag the managed surface down with it. The plan gives
+		// each surface its own test names, and only those are consulted.
+		{
+			Name:            "TestAccSurfaceListSomethingNew",
+			Status:          catalogparity.ScenarioAdded,
+			CandidateSHA256: strings.Repeat("3", 64),
+		},
+	}
+
+	receipt, err := BuildMigrationRecoveryReceipt(input)
+	if err != nil {
+		t.Fatalf("BuildMigrationRecoveryReceipt() error = %v", err)
+	}
+	for _, recovered := range receipt.Surfaces {
+		if recovered.SurfaceKey != key {
+			continue
+		}
+		if recovered.EvidenceMode != EvidenceDifferentialScenario {
+			t.Fatalf("evidence mode = %q, want %q", recovered.EvidenceMode, EvidenceDifferentialScenario)
+		}
+		return
+	}
+	t.Fatalf("surface %s/%s is absent from the receipt", key.Kind, key.Name)
 }

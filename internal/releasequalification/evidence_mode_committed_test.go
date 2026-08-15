@@ -55,16 +55,23 @@ func TestEvidenceModesCoverTheCommittedInventory(t *testing.T) {
 	// These numbers describe the committed inventory, which is stale. They are
 	// recorded rather than computed so that regenerating it produces a diff a
 	// human has to read and agree with.
-	want := map[string]int{
-		EvidenceSourceIdentity:        60,
-		EvidenceDNSBidirectionalState: 1,
-		EvidenceDNSListController:     1,
-	}
+	// Only source_identity is reachable from the committed inventory, and that
+	// is the finding rather than an oversight. Every other mode needs the
+	// per-scenario comparisons this inventory predates: it carries file digests
+	// only. Seven surfaces therefore have nothing behind them, including both
+	// dns_record surfaces, whose acceptance tests are in fact byte-identical to
+	// the released provider's -- nothing committed has measured that yet.
+	//
+	// Regenerating the inventory is what unlocks them, and this test is what
+	// makes the before and the after visible instead of assumed.
+	want := map[string]int{EvidenceSourceIdentity: 60}
 	wantUnjustified := []string{
 		"action/unifi_port",
 		"list_resource/unifi_device",
+		"list_resource/unifi_dns_record",
 		"list_resource/unifi_firewall_zone",
 		"managed_resource/unifi_device",
+		"managed_resource/unifi_dns_record",
 		"managed_resource/unifi_firewall_zone",
 	}
 

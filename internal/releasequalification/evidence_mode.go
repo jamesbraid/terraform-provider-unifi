@@ -116,6 +116,16 @@ type verdict struct {
 	mode    string
 	holds   bool
 	because string
+	// refines names a mode whose preconditions this one wholly contains. It is
+	// how two modes can both hold without the label being arbitrary: a mode
+	// that requires everything another requires AND MORE is the more specific
+	// true statement, so choosing it is a fact about the rules rather than
+	// about the order they happen to be evaluated in.
+	//
+	// This is NOT a tie-breaker for overlapping rules. If two modes hold and
+	// neither contains the other, the label really would be arbitrary and the
+	// gate fails instead.
+	refines string
 }
 
 // evidenceMode returns the single mode whose preconditions the surface meets.
@@ -135,42 +145,83 @@ func (v evidenceView) evidenceMode(entry catalogparity.MigrationEntry) (string, 
 		v.sourceIdentity(surface),
 		v.differentialScenario(key, surface),
 		v.pragmaticReference(key, surface),
-		v.dnsBidirectionalState(key),
+		v.dnsBidirectionalState(key, surface),
 		v.dnsListController(key, surface),
 	}
 
 	held := make([]string, 0, 1)
+	refines := map[string]string{}
 	refused := make([]string, 0, len(verdicts))
 	for _, ruling := range verdicts {
 		if ruling.holds {
 			held = append(held, ruling.mode)
+			refines[ruling.mode] = ruling.refines
 			continue
 		}
 		refused = append(refused, ruling.mode+": "+ruling.because)
 	}
-	switch len(held) {
-	case 1:
-		return held[0], nil
-	case 0:
+	if len(held) == 0 {
 		return "", fmt.Errorf(
 			"surface %s/%s has no evidence mode; every mode refused it (%s)",
 			key.Kind, key.Name, strings.Join(refused, "; "),
 		)
-	default:
-		sort.Strings(held)
-		return "", fmt.Errorf(
-			"surface %s/%s matches %d evidence modes (%s); the rules overlap and the label would be arbitrary",
-			key.Kind, key.Name, len(held), strings.Join(held, ", "),
-		)
 	}
+	if len(held) == 1 {
+		return held[0], nil
+	}
+	// More than one holds. That is only acceptable when one of them is a strict
+	// refinement of all the others -- it required everything they required and
+	// more -- in which case it is the most specific true statement and there is
+	// nothing arbitrary about recording it. Anything else is genuinely
+	// ambiguous and fails.
+	mostSpecific := make([]string, 0, 1)
+	for _, candidate := range held {
+		covers := true
+		for _, other := range held {
+			if other != candidate && !modeRefines(refines, candidate, other) {
+				covers = false
+				break
+			}
+		}
+		if covers {
+			mostSpecific = append(mostSpecific, candidate)
+		}
+	}
+	if len(mostSpecific) == 1 {
+		return mostSpecific[0], nil
+	}
+	sort.Strings(held)
+	return "", fmt.Errorf(
+		"surface %s/%s matches %d evidence modes (%s) and none refines the rest; "+
+			"the rules overlap and the label would be arbitrary",
+		key.Kind, key.Name, len(held), strings.Join(held, ", "),
+	)
+}
+
+// modeRefines reports whether mode reaches target by following refinements. The
+// chain is walked rather than compared once, so a mode refining a mode that
+// refines a third is still resolvable, and a cycle terminates instead of
+// hanging.
+func modeRefines(refines map[string]string, mode, target string) bool {
+	seen := map[string]struct{}{}
+	for current := refines[mode]; current != ""; current = refines[current] {
+		if current == target {
+			return true
+		}
+		if _, loop := seen[current]; loop {
+			return false
+		}
+		seen[current] = struct{}{}
+	}
+	return false
 }
 
 func (v evidenceView) sourceIdentity(surface catalogparity.SurfaceEvidenceInventory) verdict {
 	if surface.Runtime.Status != catalogparity.FileIdentical {
-		return verdict{EvidenceSourceIdentity, false, fmt.Sprintf(
+		return verdict{mode: EvidenceSourceIdentity, because: fmt.Sprintf(
 			"runtime %s is %s against the released provider", surface.Runtime.Path, surface.Runtime.Status)}
 	}
-	return verdict{EvidenceSourceIdentity, true, ""}
+	return verdict{mode: EvidenceSourceIdentity, holds: true}
 }
 
 func (v evidenceView) differentialScenario(
@@ -179,26 +230,51 @@ func (v evidenceView) differentialScenario(
 ) verdict {
 	const mode = EvidenceDifferentialScenario
 	if surface.Runtime.Status != catalogparity.FileChanged {
-		return verdict{mode, false, "runtime is unchanged, so source_identity covers it"}
-	}
-	if surface.Tests.Status != catalogparity.FileIdentical {
-		return verdict{mode, false, fmt.Sprintf(
-			"scenario %s changed, so the released provider was not exercised by this scenario",
-			surface.ScenarioOwner)}
+		return verdict{mode: mode, because: "runtime is unchanged, so source_identity covers it"}
 	}
 	planned := v.planned[key]
 	if len(planned) == 0 {
-		return verdict{mode, false, "the campaign plans no acceptance test for it"}
+		return verdict{mode: mode, because: "the campaign plans no acceptance test for it"}
+	}
+	// Identity is required PER ACCEPTANCE TEST, not per file.
+	//
+	// The scenario owner holds acceptance tests, which drive the provider
+	// through HCL, beside unit tests, which reach into provider internals.
+	// Converting a surface changes the unit tests by necessity and need not
+	// touch a single acceptance test -- but the file digest moves, and under a
+	// file-level rule every scenario in it lost its standing. Measured on this
+	// tree, eight of the nine acceptance tests that survive from the released
+	// provider are byte-identical to it, and all eight sit in files marked
+	// changed. They were being disqualified by their file-mates.
+	//
+	// A byte-identical FILE still settles it immediately, and that is not a
+	// fallback: if every byte of the file matches then so does every function
+	// in it, which makes file identity a strictly stronger premise than the
+	// per-test check it stands in for.
+	if surface.Tests.Status != catalogparity.FileIdentical {
+		for _, name := range planned {
+			scenario, measured := surface.Scenario(name)
+			switch {
+			case !measured:
+				return verdict{mode: mode, because: fmt.Sprintf(
+					"the inventory carries no per-scenario comparison for %s, so whether the released "+
+						"provider ran this exact test is unmeasured", name)}
+			case scenario.Status != catalogparity.ScenarioIdentical:
+				return verdict{mode: mode, because: fmt.Sprintf(
+					"%s is %s against the released tree, so the two providers were not judged by the "+
+						"same stimulus", name, scenario.Status)}
+			}
+		}
 	}
 	for _, name := range planned {
 		if _, passed := v.released[name]; !passed {
-			return verdict{mode, false, name + " did not pass on the released provider"}
+			return verdict{mode: mode, because: name + " did not pass on the released provider"}
 		}
 		if _, passed := v.candidate[name]; !passed {
-			return verdict{mode, false, name + " did not pass on the candidate provider"}
+			return verdict{mode: mode, because: name + " did not pass on the candidate provider"}
 		}
 	}
-	return verdict{mode, true, ""}
+	return verdict{mode: mode, holds: true}
 }
 
 func (v evidenceView) pragmaticReference(
@@ -207,19 +283,19 @@ func (v evidenceView) pragmaticReference(
 ) verdict {
 	const mode = EvidencePragmaticReference
 	if surface.Runtime.Status != catalogparity.FileChanged {
-		return verdict{mode, false, "runtime is unchanged, so source_identity covers it"}
+		return verdict{mode: mode, because: "runtime is unchanged, so source_identity covers it"}
 	}
 	if surface.Tests.Status != catalogparity.FileIdentical {
-		return verdict{mode, false, "scenario " + surface.ScenarioOwner + " changed"}
+		return verdict{mode: mode, because: "scenario " + surface.ScenarioOwner + " changed"}
 	}
 	signal := acceptanceSignal(key.Kind)
 	if !containsString(surface.MissingSignals, signal) {
-		return verdict{mode, false, fmt.Sprintf(
+		return verdict{mode: mode, because: fmt.Sprintf(
 			"it has its own %s signal, so a reference to another surface is not what justifies it", signal)}
 	}
 	admitted, ok := v.admission[key]
 	if !ok {
-		return verdict{mode, false, "it has no admission entry"}
+		return verdict{mode: mode, because: "it has no admission entry"}
 	}
 	// Catalog admission proves every inventory gap is either pragmatically
 	// resolved or carried as a release blocker (validatePragmaticAdmission), so
@@ -227,67 +303,78 @@ func (v evidenceView) pragmaticReference(
 	// read here rather than re-derived: re-deriving it would be a second
 	// implementation of the resolution rules and a second thing to be wrong.
 	if containsString(admitted.ReleaseBlockers, signal) {
-		return verdict{mode, false, signal + " is an unresolved release blocker"}
+		return verdict{mode: mode, because: signal + " is an unresolved release blocker"}
 	}
-	return verdict{mode, true, ""}
+	return verdict{mode: mode, holds: true}
 }
 
-func (v evidenceView) dnsBidirectionalState(key catalogparity.SurfaceKey) verdict {
+// dnsBidirectionalState is differential_scenario PLUS the M3 lifecycle receipt.
+//
+// It is declared a refinement rather than an alternative, and that is what
+// keeps it honest. Once scenarios are compared per test rather than per file,
+// dns_record's acceptance tests turn out to be byte-identical to the released
+// provider's, so differential_scenario holds for it on its own. Both statements
+// are then true at once, and without the refinement the gate would fail on an
+// ambiguity that is not really ambiguous: this mode requires everything
+// differential_scenario requires AND the M3 evidence, so it is simply the more
+// specific of the two.
+//
+// The corollary is worth stating plainly rather than leaving for a reader to
+// notice: at function granularity dns_record no longer NEEDS a mode of its own.
+// This one now records extra evidence, not a different kind of justification.
+// Whether the estate wants that distinction published is a judgement about the
+// receipt's vocabulary, not about mechanism.
+func (v evidenceView) dnsBidirectionalState(
+	key catalogparity.SurfaceKey,
+	surface catalogparity.SurfaceEvidenceInventory,
+) verdict {
 	const mode = EvidenceDNSBidirectionalState
 	if key.Kind != catalogparity.ManagedResource || key.Name != "unifi_dns_record" {
-		return verdict{mode, false, "the M3 lifecycle receipt does not cover this surface"}
+		return verdict{mode: mode, because: "the M3 lifecycle receipt does not cover this surface"}
+	}
+	if base := v.differentialScenario(key, surface); !base.holds {
+		return verdict{mode: mode, because: "it does not meet differential_scenario, which this refines: " + base.because}
 	}
 	if !v.dns.BidirectionalAdapterStateRoundTrip || !v.dns.V0IntegerTTLStateUpgrade || !v.dns.Import {
-		return verdict{mode, false, "the M3 lifecycle receipt does not carry a bidirectional state round trip"}
+		return verdict{mode: mode, because: "the M3 lifecycle receipt does not carry a bidirectional state round trip"}
 	}
-	return verdict{mode, true, ""}
+	return verdict{mode: mode, holds: true, refines: EvidenceDifferentialScenario}
 }
 
-// dnsListController is the weakest mode here and the one to read carefully.
+// dnsListController is differential_scenario PLUS the list surface having been
+// exercised against a live controller on both providers.
 //
-// It asserts NAME-level agreement rather than source-level: the same acceptance
-// test names passed on both providers, but from two different scenario sources,
-// because this surface's scenario changed. That is genuinely less than
-// differential_scenario, which requires one unchanged scenario to have judged
-// both.
+// It is a refinement for the same reason dnsBidirectionalState is: at function
+// granularity list dns_record's acceptance test is byte-identical to the
+// released provider's, so differential_scenario already holds for it.
 //
-// IT IS ALSO STILL BOUND BY NAME, AND THAT IS A DEFECT I AM FLAGGING RATHER
-// THAN HIDING. Nothing in this assertion is specific to dns_record. Measured
-// against the committed tree, five surfaces satisfy it -- managed ap_group,
-// managed device, managed dns_record, managed wan and list dns_record -- and
-// restricting it to one of them by name is the same by-name assignment this
-// file exists to remove, in a smaller box. Generalising it is a decision about
-// how much evidence a release requires, not a refactor, so it is written down
-// here and referred upward rather than taken.
+// WHAT CHANGED HERE, AND IT IS WORTH READING. This mode previously asserted
+// something weaker -- that the same test NAMES passed on both providers from
+// two DIFFERENT scenario sources -- and it was guarded by requiring the
+// scenario file to have changed. That guard was compensating for file-level
+// granularity: dns_record's file changed while its tests did not. With the
+// comparison done per test the weaker assertion is no longer needed for
+// dns_record at all, so it is gone rather than kept warm.
 //
-// The Tests.Status guard is what keeps it from overlapping
-// differential_scenario. Without it both modes hold whenever a scenario is
-// unchanged, and the recorded label becomes an artefact of evaluation order.
+// The generalisation question I raised earlier is therefore ANSWERED, not
+// merely deferred: the five surfaces that satisfied "same names, different
+// sources" satisfy plain differential_scenario once scenarios are compared
+// properly. There is no weaker mode left to generalise.
 func (v evidenceView) dnsListController(
 	key catalogparity.SurfaceKey,
 	surface catalogparity.SurfaceEvidenceInventory,
 ) verdict {
 	const mode = EvidenceDNSListController
 	if key.Kind != catalogparity.ListResource || key.Name != "unifi_dns_record" {
-		return verdict{mode, false, "the M3 lifecycle receipt does not cover this surface"}
+		return verdict{mode: mode, because: "the M3 lifecycle receipt does not cover this surface"}
 	}
-	if surface.Tests.Status != catalogparity.FileChanged {
-		return verdict{mode, false,
-			"its scenario is unchanged, so differential_scenario is the stronger claim available"}
+	if base := v.differentialScenario(key, surface); !base.holds {
+		return verdict{mode: mode, because: "it does not meet differential_scenario, which this refines: " + base.because}
 	}
-	planned := v.planned[key]
-	if len(planned) == 0 {
-		return verdict{mode, false, "the campaign plans no acceptance test for it"}
+	if !v.dns.NoOpPlan || !v.dns.Delete || !v.dns.Cleanup {
+		return verdict{mode: mode, because: "the M3 lifecycle receipt does not carry a complete dns_record lifecycle"}
 	}
-	for _, name := range planned {
-		if _, passed := v.released[name]; !passed {
-			return verdict{mode, false, name + " did not pass on the released provider"}
-		}
-		if _, passed := v.candidate[name]; !passed {
-			return verdict{mode, false, name + " did not pass on the candidate provider"}
-		}
-	}
-	return verdict{mode, true, ""}
+	return verdict{mode: mode, holds: true, refines: EvidenceDifferentialScenario}
 }
 
 // acceptanceSignal is the name missingTestSignals uses for the acceptance gap
