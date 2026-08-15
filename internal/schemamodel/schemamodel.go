@@ -61,6 +61,10 @@ type Model struct {
 	// declares it, or nil if the model has no such method. It is NOT a second
 	// model -- see restatements below for why keeping the distinction matters.
 	Restated map[string]string
+	// UpgradeOnly marks a model that nothing outside the state-upgrade path
+	// mentions. It cannot be the model serving the current schema, so it is not
+	// a candidate for one. See upgradeOnlyModels.
+	UpgradeOnly bool
 }
 
 // Tags returns the model's tfsdk tags, sorted.
@@ -110,6 +114,7 @@ func IndexModels(dirs ...string) (*Index, error) {
 
 	index := &Index{Models: make([]Model, 0, len(paths))}
 	restated := map[string]map[string]string{}
+	functions := make([]declaredFunction, 0)
 	fileSet := token.NewFileSet()
 	for _, path := range paths {
 		file, err := parser.ParseFile(fileSet, path, nil, 0)
@@ -141,6 +146,7 @@ func IndexModels(dirs ...string) (*Index, error) {
 				})
 			}
 		}
+		functions = append(functions, declaredFunctions(file)...)
 		standalone, methods := attrTypeMaps(file, filepath.Base(path))
 		index.Models = append(index.Models, standalone...)
 		for receiver, shape := range methods {
@@ -152,7 +158,130 @@ func IndexModels(dirs ...string) (*Index, error) {
 			index.Models[i].Restated = shape
 		}
 	}
+	index.foldFunctionRestatements()
+	index.markUpgradeOnly(functions)
 	return index, nil
+}
+
+// declaredFunction is one function body reduced to the two things reachability
+// needs: the identifiers it mentions, and the functions it calls.
+type declaredFunction struct {
+	name       string
+	references map[string]bool
+	calls      map[string]bool
+}
+
+// markUpgradeOnly flags every model that nothing outside the state-upgrade path
+// mentions.
+//
+// A state upgrader converts PRIOR state into current state, so a model reached
+// only from UpgradeState describes a schema version that is no longer served.
+// It therefore cannot be the model behind a current schema attribute, and
+// offering it as a candidate is how unifi_firewall_policy's source and
+// destination came to be unfailable: firewallPolicyEndpointModelV0 carries the
+// same member set as the live firewallPolicyEndpointModel, so breaking the live
+// one left the upgrader's copy matching.
+//
+// THE TEST IS REACHABILITY, NOT THE NAME. A "V0" suffix is a convention and
+// would be a rule about spelling; being mentioned only from functions reachable
+// from UpgradeState is the fact the exclusion is actually about. Measured
+// against this tree, exactly one model qualifies.
+//
+// It errs towards keeping a model: a model mentioned anywhere outside the
+// upgrade path stays a candidate, because a shape used by both a live path and
+// an upgrader is a live shape.
+func (i *Index) markUpgradeOnly(functions []declaredFunction) {
+	reachable := map[string]bool{"UpgradeState": true}
+	queue := make([]string, 0)
+	for _, function := range functions {
+		if function.name != "UpgradeState" {
+			continue
+		}
+		for called := range function.calls {
+			queue = append(queue, called)
+		}
+	}
+	for len(queue) > 0 {
+		name := queue[0]
+		queue = queue[1:]
+		if reachable[name] {
+			continue
+		}
+		reachable[name] = true
+		for _, function := range functions {
+			if function.name != name {
+				continue
+			}
+			for called := range function.calls {
+				queue = append(queue, called)
+			}
+		}
+	}
+
+	for at, model := range i.Models {
+		mentioned := false
+		onlyFromUpgrade := true
+		for _, function := range functions {
+			if !function.references[model.Name] {
+				continue
+			}
+			mentioned = true
+			if !reachable[function.name] {
+				onlyFromUpgrade = false
+			}
+		}
+		i.Models[at].UpgradeOnly = mentioned && onlyFromUpgrade
+	}
+}
+
+// foldFunctionRestatements attaches a function-declared shape to the struct it
+// restates, instead of leaving the two as rivals.
+//
+// configNetworkAttrTypes() and configNetworkModel declare the same members;
+// so do outletOverrideAttrTypes(), radioTableAttrTypes() and
+// natOutboundIPAddresses() with their structs. That is the same relationship a
+// struct has with its own AttributeTypes() method, expressed as a free
+// function instead of a method, and it needs the same treatment for the same
+// reason: while both are indexed, breaking the struct leaves the function
+// matching and the attribute-set check cannot fail.
+//
+// A function is folded only when exactly ONE struct carries its member set. If
+// several do, the function does not identify one of them and it stays an
+// independent shape -- silently attaching it to whichever came first would
+// invent a relationship the code does not have.
+func (i *Index) foldFunctionRestatements() {
+	dropped := make(map[int]bool)
+	for at, model := range i.Models {
+		if !strings.HasSuffix(model.Name, "()") {
+			continue
+		}
+		matches := make([]int, 0, 1)
+		for candidateAt, candidate := range i.Models {
+			if strings.HasSuffix(candidate.Name, "()") {
+				continue
+			}
+			if reflect.DeepEqual(candidate.Tags(), model.Tags()) {
+				matches = append(matches, candidateAt)
+			}
+		}
+		if len(matches) != 1 {
+			continue
+		}
+		// The struct is the shape; the function restates it either way. If the
+		// struct already carries a method restatement, the disagreement check
+		// covers it and this one is redundant rather than informative.
+		if i.Models[matches[0]].Restated == nil {
+			i.Models[matches[0]].Restated = model.Fields
+		}
+		dropped[at] = true
+	}
+	kept := make([]Model, 0, len(i.Models))
+	for at, model := range i.Models {
+		if !dropped[at] {
+			kept = append(kept, model)
+		}
+	}
+	i.Models = kept
 }
 
 // Disagreements returns every model whose own AttributeTypes() method declares
@@ -267,6 +396,19 @@ func attrTypeMaps(file *ast.File, fileName string) ([]Model, map[string]map[stri
 			continue
 		}
 		receiver := receiverTypeName(function)
+		// A DECLARATION IS A WHOLE FUNCTION; A CONVERSION SITE IS NOT.
+		//
+		// natOutboundIPAddresses() exists to declare a shape: its entire body
+		// is `return map[string]attr.Type{...}`. networkToModel(), wlanToModel(),
+		// readSettings() and usgSettingToModel() build attr.Type maps inline
+		// while converting an API object, and those maps are USES of a shape
+		// that a struct already declares. Indexing a use as a rival declaration
+		// is the masking bug again in a second costume: it gave five attributes
+		// a twin, so breaking the struct that actually serves them left the
+		// conversion site matching and the check green.
+		if function.Body != nil && len(function.Body.List) != 1 {
+			continue
+		}
 		ast.Inspect(function.Body, func(node ast.Node) bool {
 			literal, ok := node.(*ast.CompositeLit)
 			if !ok {
@@ -304,6 +446,45 @@ func attrTypeMaps(file *ast.File, fileName string) ([]Model, map[string]map[stri
 		})
 	}
 	return models, methods
+}
+
+// declaredFunctions reduces every function in a file to the identifiers it
+// mentions and the functions it calls, which is all markUpgradeOnly needs.
+//
+// Calls are matched by name rather than by resolved symbol. That is coarse, and
+// coarse in the safe direction here: a name collision can only make MORE
+// functions look reachable from UpgradeState, and a model is excluded only when
+// EVERY function mentioning it is reachable. The failure mode is keeping a
+// candidate that could have been excluded, never excluding a live model.
+func declaredFunctions(file *ast.File) []declaredFunction {
+	out := make([]declaredFunction, 0)
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || function.Body == nil {
+			continue
+		}
+		current := declaredFunction{
+			name:       function.Name.Name,
+			references: map[string]bool{},
+			calls:      map[string]bool{},
+		}
+		ast.Inspect(function.Body, func(node ast.Node) bool {
+			switch typed := node.(type) {
+			case *ast.Ident:
+				current.references[typed.Name] = true
+			case *ast.CallExpr:
+				switch callee := typed.Fun.(type) {
+				case *ast.Ident:
+					current.calls[callee.Name] = true
+				case *ast.SelectorExpr:
+					current.calls[callee.Sel.Name] = true
+				}
+			}
+			return true
+		})
+		out = append(out, current)
+	}
+	return out
 }
 
 // receiverTypeName returns the receiver's type name with any pointer stripped,
@@ -362,6 +543,9 @@ func (i *Index) Resolve(attributes []string) []Model {
 	sort.Strings(want)
 	matches := make([]Model, 0, 1)
 	for _, model := range i.Models {
+		if model.UpgradeOnly {
+			continue
+		}
 		if reflect.DeepEqual(model.Tags(), want) {
 			matches = append(matches, model)
 		}
@@ -381,6 +565,15 @@ func (i *Index) Nearest(attributes []string) (Model, []string, []string) {
 	var best Model
 	bestScore := -1
 	for _, model := range i.Models {
+		// Same exclusion as Resolve, and it has to be the same or the message
+		// contradicts itself. Without this, a broken live model produced "no
+		// runtime model carries exactly these members; nearest is
+		// firewallPolicyEndpointModelV0, which is missing [] and additionally
+		// declares []" -- an exact match offered as the nearest miss, because
+		// Nearest could still see the candidate Resolve had just refused.
+		if model.UpgradeOnly {
+			continue
+		}
 		score := 0
 		for tag := range model.Fields {
 			if _, ok := want[tag]; ok {

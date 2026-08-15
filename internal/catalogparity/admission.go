@@ -366,7 +366,7 @@ func validateAdmissionInventory(inventory EvidenceInventory, digest string) erro
 		if index > 0 && !surfaceLess(inventory.Surfaces[index-1].SurfaceKey, surface.SurfaceKey) {
 			return fmt.Errorf("inventory surfaces are not strictly sorted")
 		}
-		if surface.Wave < 1 || surface.Wave > 5 || surface.ScenarioOwner == "" ||
+		if surface.Wave < 1 || surface.Wave > 5 || len(surface.ScenarioOwners) == 0 ||
 			len(surface.TestFunctions) == 0 {
 			return fmt.Errorf("inventory surface %s/%s evidence is incomplete", surface.Kind, surface.Name)
 		}
@@ -585,7 +585,13 @@ func validateSharedScenarioOwners(
 				surface.Kind, surface.Name)
 		}
 		if surface.Runtime.Status == FileIdentical || exception {
-			owners[surface.ScenarioOwner] = struct{}{}
+			// Every owner, not just the first. A surface that lends evidence
+			// lends all of it, and taking one file here would re-derive a
+			// smaller set than the plan grafts -- the two would disagree
+			// without either being wrong on its own terms.
+			for _, owner := range surface.ScenarioOwners {
+				owners[owner] = struct{}{}
+			}
 		}
 	}
 	for _, exception := range policy.SharedScenarioExceptions {

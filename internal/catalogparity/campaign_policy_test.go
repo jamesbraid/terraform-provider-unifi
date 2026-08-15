@@ -74,8 +74,12 @@ func TestCampaignPolicyMatchesCommittedInventory(t *testing.T) {
 		// be hardcoded here as "the port action"; it now comes from the policy,
 		// so this test reads the same declaration admission does.
 		shared := surface.Runtime.Status == "identical" || excepted[surface.SurfaceKey]
-		if shared && !slices.Contains(sharedScenarioOwners, surface.ScenarioOwner) {
-			sharedScenarioOwners = append(sharedScenarioOwners, surface.ScenarioOwner)
+		if shared {
+			for _, owner := range surface.ScenarioOwners {
+				if !slices.Contains(sharedScenarioOwners, owner) {
+					sharedScenarioOwners = append(sharedScenarioOwners, owner)
+				}
+			}
 		}
 	}
 
