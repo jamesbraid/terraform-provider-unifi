@@ -52,27 +52,52 @@ func TestEvidenceModesCoverTheCommittedInventory(t *testing.T) {
 	}
 	sort.Strings(unjustified)
 
-	// These numbers describe the committed inventory, which is stale. They are
-	// recorded rather than computed so that regenerating it produces a diff a
-	// human has to read and agree with.
-	// Only source_identity is reachable from the committed inventory, and that
-	// is the finding rather than an oversight. Every other mode needs the
-	// per-scenario comparisons this inventory predates: it carries file digests
-	// only. Seven surfaces therefore have nothing behind them, including both
-	// dns_record surfaces, whose acceptance tests are in fact byte-identical to
-	// the released provider's -- nothing committed has measured that yet.
+	// These numbers describe the committed inventory. They are recorded rather
+	// than computed so that regenerating it produces a diff a human has to read
+	// and agree with.
 	//
-	// Regenerating the inventory is what unlocks them, and this test is what
-	// makes the before and the after visible instead of assumed.
-	want := map[string]int{EvidenceSourceIdentity: 60}
+	// They have already moved twice, and both moves were the point. Against the
+	// pre-conversion inventory only source_identity was reachable and seven
+	// surfaces had nothing behind them, because that inventory carried file
+	// digests and no per-scenario comparisons. Against the regenerated one, 64
+	// surfaces are converted, scenarios are measured, and 45 of them earn
+	// differential_scenario. The tree got worse before it got better and this
+	// test said so at both steps.
+	//
+	// CAVEAT ON pragmatic_reference, which is OPTIMISTIC here. This harness
+	// takes its release blockers from the committed
+	// catalog-pragmatic-resolution.json, and that artifact was produced from
+	// the pre-conversion inventory. ResolvePragmaticReferences requires both a
+	// gap's own surface and the surface it references to have an identical
+	// runtime (pragmatic_reference.go:150 and :167), and on the regenerated
+	// inventory all seven references fail that. So the 1 below is reachable
+	// only while a resolution built from a stale inventory is still on disk.
+	// Regenerating it turns that 1 into a 0 and this surface into an
+	// eighteenth unjustified one.
+	want := map[string]int{
+		EvidenceSourceIdentity:       3,
+		EvidenceDifferentialScenario: 45,
+		EvidencePragmaticReference:   1,
+	}
 	wantUnjustified := []string{
 		"action/unifi_port",
+		"data_source/unifi_ap_group",
+		"data_source/unifi_client_qos_rate",
+		"data_source/unifi_dns_record",
+		"data_source/unifi_firewall_zone",
+		"data_source/unifi_port_profile",
+		"list_resource/unifi_ap_group",
 		"list_resource/unifi_device",
-		"list_resource/unifi_dns_record",
+		"list_resource/unifi_firewall_policy",
 		"list_resource/unifi_firewall_zone",
+		"list_resource/unifi_power_supervisor",
+		"list_resource/unifi_site_to_site_vpn",
+		"list_resource/unifi_wan",
 		"managed_resource/unifi_device",
-		"managed_resource/unifi_dns_record",
+		"managed_resource/unifi_firewall_policy",
 		"managed_resource/unifi_firewall_zone",
+		"managed_resource/unifi_power_supervisor",
+		"managed_resource/unifi_site_to_site_vpn",
 	}
 
 	for mode, count := range want {
