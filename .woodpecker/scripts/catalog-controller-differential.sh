@@ -114,21 +114,16 @@ if [[ ${CATALOG_ACCEPTANCE_PLAN_ONLY:-} == true ]]; then
     exit 0
 fi
 
-readonly controller_image=${CATALOG_CONTROLLER_IMAGE:?CATALOG_CONTROLLER_IMAGE is required}
-readonly synthetic_image=${CATALOG_SYNTHETIC_IMAGE:?CATALOG_SYNTHETIC_IMAGE is required}
-readonly ryuk_image=${CATALOG_RYUK_IMAGE:?CATALOG_RYUK_IMAGE is required}
-readonly herder_bin=${CATALOG_HERDER_BIN:?CATALOG_HERDER_BIN is required}
-readonly terraform_bin=${TERRAFORM_BIN:?TERRAFORM_BIN is required}
+# Split deliberately. Preparing the released tree needs two git refs and
+# nothing else; running the suites against it needs Linux, x86_64, docker
+# images and two binaries. Keeping them together meant the tree could not be
+# built anywhere the controllers cannot run, so the vets below were unreachable
+# from any self-test and had to be verified by hand -- which is how a log path
+# built from a label with a slash in it reached CI and cost pipeline 188. The
+# requirements that belong to the suites now sit with the suites.
 readonly released_ref=${CATALOG_RELEASED_REF:-v0.101.2}
 readonly candidate_ref=${CI_COMMIT_SHA:-$(git -C "${repository_root}" rev-parse HEAD)}
 
-test "$(uname -s)" = Linux
-test "$(uname -m)" = x86_64
-test -x "${herder_bin}"
-test -x "${terraform_bin}"
-docker image inspect "${controller_image}" >/dev/null
-docker image inspect "${synthetic_image}" >/dev/null
-docker image inspect "${ryuk_image}" >/dev/null
 git -C "${repository_root}" cat-file -e "${released_ref}^{commit}"
 git -C "${repository_root}" cat-file -e "${candidate_ref}^{commit}"
 
@@ -216,6 +211,34 @@ if ! released_vet "grafting ${#grafted_owners[@]} scenario owner(s)"; then
     echo "  receipt that looks complete for a comparison that never happened." >&2
     exit 1
 fi
+
+# Everything above this line prepares the released tree and can run anywhere
+# Go runs. CATALOG_ACCEPTANCE_PREPARE_ONLY stops here so a self-test can reach
+# the three vets -- with their real labels, through the real function, not
+# through a reproduction of it. Two slots were lost to code below the reach of
+# every test, verified by hand and wrong in the gap between the reproduction
+# and the thing.
+if [[ ${CATALOG_ACCEPTANCE_PREPARE_ONLY:-} == true ]]; then
+    printf 'prepared the released tree and vetted %d layer(s), grafting %d scenario owner(s)\n' \
+        3 "${#grafted_owners[@]}"
+    exit 0
+fi
+
+# The suites need a machine that can run controllers. The preparation above
+# does not, which is why these requirements live here rather than at the top.
+readonly controller_image=${CATALOG_CONTROLLER_IMAGE:?CATALOG_CONTROLLER_IMAGE is required}
+readonly synthetic_image=${CATALOG_SYNTHETIC_IMAGE:?CATALOG_SYNTHETIC_IMAGE is required}
+readonly ryuk_image=${CATALOG_RYUK_IMAGE:?CATALOG_RYUK_IMAGE is required}
+readonly herder_bin=${CATALOG_HERDER_BIN:?CATALOG_HERDER_BIN is required}
+readonly terraform_bin=${TERRAFORM_BIN:?TERRAFORM_BIN is required}
+
+test "$(uname -s)" = Linux
+test "$(uname -m)" = x86_64
+test -x "${herder_bin}"
+test -x "${terraform_bin}"
+docker image inspect "${controller_image}" >/dev/null
+docker image inspect "${synthetic_image}" >/dev/null
+docker image inspect "${ryuk_image}" >/dev/null
 
 test_regex=$(jq -r '.test_names | join("|")' "${plan_path}")
 readonly test_regex
