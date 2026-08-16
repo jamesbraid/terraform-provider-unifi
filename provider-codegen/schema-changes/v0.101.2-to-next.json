@@ -1,0 +1,27 @@
+{
+  "format_version": 1,
+  "from_version": "0.101.2",
+  "to_version": "next",
+  "entries": [
+    {
+      "surface": "unifi_network",
+      "attribute": "lte_lan",
+      "field": "description",
+      "old": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Defaults to `true` (network stays available during LTE failover); set to `false` to disable it while on the LTE backup link. The controller may set this automatically, which is why existing networks can show differing values.",
+      "new": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Set `false` to take the network off the LTE backup link. This is read back from the controller rather than defaulted: the controller sets it automatically, and a static `true` default stamped a network the controller held as `false` back to `true` on any plan that omitted the attribute.",
+      "why_not_breaking": "A description is not part of any configuration's contract: no config becomes invalid and no state migrates. The text is corrected because the released wording asserts a default the attribute no longer has, so keeping it would ship a statement known to be false about the behaviour shipping alongside it.",
+      "evidence": [
+        {
+          "claim": "The released schema documents a default that the candidate no longer declares.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json: lte_lan description says 'Defaults to `true`'; the candidate schema has no Default for lte_lan."
+        },
+        {
+          "claim": "Terraform never rejects a configuration on the basis of an attribute description.",
+          "kind": "inferred",
+          "source": "Terraform plugin protocol semantics. Reasoning, not observation."
+        }
+      ]
+    }
+  ]
+}
