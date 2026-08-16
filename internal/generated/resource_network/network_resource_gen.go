@@ -383,10 +383,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
 				MarkdownDescription: "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("none", "pd", "static"),
 				},
-				Default: stringdefault.StaticString("none"),
 			},
 			"ipv6_pd_auto_prefixid_enabled": schema.BoolAttribute{
 				Optional:            true,

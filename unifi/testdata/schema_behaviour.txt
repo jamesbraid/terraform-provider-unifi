@@ -350,7 +350,7 @@ unifi_network.igmp_snooping	default	booldefault.staticBoolDefault	"value default
 unifi_network.internet_access	default	booldefault.staticBoolDefault	"value defaults to true"
 unifi_network.ipv6_client_address_assignment	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.ipv6_client_address_assignment	validator	stringvalidator.oneOfValidator	"value must be one of: [\"slaac\" \"dhcpv6\" \"slaac-dhcpv6\"]"
-unifi_network.ipv6_interface_type	default	stringdefault.staticStringDefault	"value defaults to none"
+unifi_network.ipv6_interface_type	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.ipv6_interface_type	validator	stringvalidator.oneOfValidator	"value must be one of: [\"none\" \"pd\" \"static\"]"
 unifi_network.ipv6_pd_auto_prefixid_enabled	plan_modifier	boolplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.ipv6_pd_start	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
