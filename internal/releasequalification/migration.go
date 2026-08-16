@@ -457,8 +457,49 @@ func admittedSurfaceSet(admission catalogparity.AdmissionReceipt) map[catalogpar
 	return result
 }
 
+// validateMigrationManifest checks the committed migration manifest at release
+// qualification. It runs catalogparity's validator first and then adds the
+// rules the release asserts on top of it.
+//
+// The delegation is the point. Until it was added there were two functions of
+// this name in two packages -- catalogparity's over the manifest at generation,
+// this one over the same manifest at release -- and neither was a superset of
+// the other. Five defects passed here that catalogparity rejected: an identity
+// entry carrying an attribute mapping, a state move, an import transform, or a
+// schema version change, and entries out of order. Nothing about the release
+// question makes any of those acceptable, and this is the sole guard over the
+// committed manifest, so those five were unguarded at exactly the point a
+// hand-edit lands.
+//
+// Two rules remain here rather than moving down. catalogparity admits all five
+// migration strategies and any non-empty recovery mode, because it validates a
+// manifest that may legitimately be non-identity; the release asserts that
+// every one of the 67 surfaces migrates by identity with snapshot recovery.
+// Those are claims about this release, not about manifests, so they stay.
+//
+// PROVEN BY MUTATION, all seven asymmetric cases, each restored. Every one of
+// the five is rejected here now and was accepted before; both of the two
+// survive the delegation and are still rejected here. The five:
+//
+//	identity entry + AttributeMapping        -> "identity migration for ... contains a transform"
+//	identity entry + StateMoves              -> "identity migration for ... contains a transform"
+//	identity entry + ImportTransform         -> "identity migration for ... contains a transform"
+//	identity entry + NewSchemaVersion bump   -> "identity migration for ... contains a transform"
+//	entries swapped out of order             -> "migration entries are not strictly sorted"
+//
+// and the two, which fail with this function's own messages and so prove the
+// delegation did not swallow them:
+//
+//	Strategy = StateUpgrader                 -> "is not a complete identity migration"
+//	Recovery.Mode = "manual_rollback"        -> "is not a complete identity migration"
+//
+// Deleting the delegation line turns the first five green again, which is what
+// establishes they are held by it and not by the checks below.
 func validateMigrationManifest(input MigrationRecoveryInput) error {
 	m := input.Manifest
+	if err := catalogparity.ValidateMigrationManifest(m); err != nil {
+		return err
+	}
 	if m.FormatVersion != 1 || m.FromVersion != "0.101.2" || m.ToVersion == "" ||
 		m.ProviderAddress != catalogparity.CanonicalProviderAddress || len(m.Entries) != 67 {
 		return fmt.Errorf("migration manifest identity is invalid")
