@@ -238,14 +238,14 @@ func ExpandMigration(baseline Baseline, versions SchemaVersions, policy Migratio
 		SchemaSHA256:    versions.SchemaSHA256,
 		Entries:         entries,
 	}
-	if err := validateMigrationManifest(manifest); err != nil {
+	if err := ValidateMigrationManifest(manifest); err != nil {
 		return MigrationManifest{}, err
 	}
 	return manifest, nil
 }
 
 func BuildMigrationReport(manifest MigrationManifest) (MigrationReport, error) {
-	if err := validateMigrationManifest(manifest); err != nil {
+	if err := ValidateMigrationManifest(manifest); err != nil {
 		return MigrationReport{}, err
 	}
 	report := MigrationReport{
@@ -353,7 +353,15 @@ func applyMigrationOverride(entry MigrationEntry, override MigrationOverride) (M
 	return entry, nil
 }
 
-func validateMigrationManifest(manifest MigrationManifest) error {
+// ValidateMigrationManifest checks a migration manifest's identity, provenance,
+// ordering and per-entry consistency. It admits any of the five strategies,
+// because a manifest may legitimately be non-identity.
+//
+// It is exported so release qualification can hold the same rules over the
+// committed manifest that generation holds over the emitted one. It had a
+// same-named twin there that was not a superset either way, and five defects
+// this rejects passed that one -- see releasequalification.validateMigrationManifest.
+func ValidateMigrationManifest(manifest MigrationManifest) error {
 	if manifest.FormatVersion != 1 || manifest.FromVersion != "0.101.2" || manifest.ToVersion == "" {
 		return fmt.Errorf("migration manifest identity is invalid")
 	}
