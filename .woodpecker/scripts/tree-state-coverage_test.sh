@@ -1,16 +1,37 @@
 #!/usr/bin/env bash
-# Names what the dirty-tree guard does NOT cover, and counts it.
+# Reports how many evidence generators carry the dirty-tree guard, over a
+# population DERIVED from the tree.
 #
-# A guard on some generators makes the whole suite look protected. This is the
-# same defect the guard exists to remove, one level up: a silent exclusion and a
-# counted one look identical in a green run and differ completely to the next
-# reader.
+# This used to hand-maintain three arrays: the guarded, the unguarded, and every
+# evidence writer. Three lists that must agree with each other AND with the tree
+# is three chances to drift, and it drifted the way lists do. It reported five of
+# eight while the tree held ten bash generators; it could not see a Go one at
+# all; and the one generator it did catch, it caught only because that generator
+# happened to name a literal build/ path.
 #
-# So the exclusions are listed here by name with a reason each, and this fails
-# when reality stops matching the list -- a new evidence generator appearing
-# unguarded, or a listed exclusion disappearing. The list has to be maintained
-# deliberately, which is the point: the cost of leaving something uncovered is
-# writing down that you did.
+# So the population is computed here, and the only thing written down is the
+# EXEMPTIONS. That list has to stay, and it is the one that should: "this one is
+# uncovered, and here is why" is a judgement, and a tree cannot hold a judgement.
+# The cost of leaving something uncovered is still writing down that you did.
+#
+# HOW THE POPULATION IS DERIVED
+#
+#   bash  every .woodpecker/scripts/*.sh, excluding *_test.sh, whose body --
+#         comment lines removed -- names a build/<dir>/<file>.json path or an
+#         *OUTPUT* variable. Stripping comments is what keeps tree-state.sh out
+#         of its own population: every build/ path in that file is prose.
+#
+#   Go    every cmd/* invoked from .woodpecker/ that writes a file. Binaries
+#         named by a go:generate directive are excluded BY CONSTRUCTION rather
+#         than by exception: a code generator's working condition is a tree it
+#         is about to change, so a guard that refuses a dirty tree would refuse
+#         the job. The two sets are disjoint, which is what makes "invoked from
+#         a workflow" usable as the rule instead of "writes a file".
+#
+# Both rules match CANDIDATES, not proven writers. A script that only READ an
+# artifact would be counted as well; today all ten write. That direction is the
+# safe one: over-counting demands a written reason, under-counting is silent,
+# and silence is the defect this whole file exists to remove.
 set -uo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -19,116 +40,150 @@ readonly scripts="${repository_root}/.woodpecker/scripts"
 
 failures=0
 
-# GUARDED: sources tree-state.sh and calls evidence_tree_state.
-readonly -a guarded=(
-    catalog-evidence-inventory.sh
-    catalog-build-schema.sh
-    m3-dns-operation.sh
-    catalog-controller-differential.sh
-    catalog-unit-differential.sh
-)
-
-# NOT GUARDED, with the obstacle. Each writes an evidence artifact and each has
-# a structural reason the guard is not placed yet, not an oversight.
-#
-#   m1-dns-compiler.sh          resolves its repository root at line 145, inside
-#                               a function, so there is no early point to guard
-#                               from without restructuring it
-#   m0-uos-dns-qualification.sh establishes no repository root variable at all,
-#                               and writes only when M0_UOS_RECEIPT_OUTPUT is set
-#   m3-dns-qualification.sh     same, gated on M3_LIFECYCLE_RECEIPT_OUTPUT
-#
-# None of the three could be verified by running it: the pipeline that exercises
-# them is down. Adding a call site never seen to execute is the shape of change
-# that looks like coverage and is not.
-readonly -a unguarded=(
-    m1-dns-compiler.sh
-    m0-uos-dns-qualification.sh
-    m3-dns-qualification.sh
-)
-
-# Every script that writes an evidence artifact, guarded or not. A script
-# appearing here that is in neither list above is what this test is for.
-# Two of these were missed by the first enumeration, which counted backwards
-# from artifacts committed under build/. catalog-controller-differential.sh and
-# catalog-unit-differential.sh write evidence that is NOT committed, so counting
-# from the artifact side could not see them. Rule 4 below found them, which is
-# what it is for -- and it is the mirror of the orphan-artifact finding: there a
-# file with no producer, here a producer with no file.
-readonly -a evidence_writers=(
-    catalog-evidence-inventory.sh
-    catalog-build-schema.sh
-    m3-dns-operation.sh
-    catalog-controller-differential.sh
-    catalog-unit-differential.sh
-    m1-dns-compiler.sh
-    m0-uos-dns-qualification.sh
-    m3-dns-qualification.sh
-)
-
 fail() {
     printf 'FAIL %s\n' "$1" >&2
     failures=$((failures + 1))
 }
 
-# 1. Every script claimed guarded actually is.
-for script in "${guarded[@]}"; do
-    if [[ ! -f ${scripts}/${script} ]]; then
-        fail "${script} is listed as guarded and does not exist"
-        continue
-    fi
-    if ! grep -q 'evidence_tree_state' "${scripts}/${script}"; then
-        fail "${script} is listed as guarded but never calls evidence_tree_state"
-        continue
-    fi
-    printf 'ok   guarded: %s\n' "${script}"
-done
+# THE ONE HAND-MAINTAINED LIST. Each entry is "name|reason", and the reason is
+# the point of the entry.
+#
+# The three m-scripts carried a different reason until now: that there was no
+# usable repository root to guard from. That reason is obsolete and was left
+# standing after the fact that made it obsolete had already landed.
+# evidence_tree_state resolves its own root from BASH_SOURCE, and all three sit
+# in this same directory, so sourcing the library needs no root either. What
+# still blocks them is the second half of the original reason, which is intact:
+# the pipeline that exercises them is down, so no call site could be watched
+# refusing on a real dirty tree, and a call site never seen to run is the shape
+# of change that looks like coverage and is not.
+readonly -a exempt=(
+    "m1-dns-compiler.sh|cannot be executed to verify: the pipeline that exercises it is down"
+    "m0-uos-dns-qualification.sh|cannot be executed to verify: the pipeline that exercises it is down"
+    "m3-dns-qualification.sh|cannot be executed to verify: the pipeline that exercises it is down"
+    "cmd/catalog-admission|Go: the guard is a bash library a Go binary cannot source (task 56)"
+    "cmd/catalog-evidence|Go: the guard is a bash library a Go binary cannot source (task 56)"
+    "cmd/catalog-hardware-disposition|Go: the guard is a bash library a Go binary cannot source (task 56)"
+    "cmd/catalog-management-contract|Go: the guard is a bash library a Go binary cannot source (task 56)"
+    "cmd/catalog-migration-recovery|Go: the guard is a bash library a Go binary cannot source (task 56)"
+    "cmd/catalog-pragmatic-evidence|Go: the guard is a bash library a Go binary cannot source (task 56)"
+    "cmd/schema-baseline|Go: the guard is a bash library a Go binary cannot source (task 56)"
+)
 
-# 2. Every script claimed unguarded actually is. A script quietly gaining the
-# guard should move lists rather than leave a stale exclusion behind -- a
-# reader trusts this list to say what is uncovered, and an over-long list
-# understates coverage as surely as a short one overstates it.
-for script in "${unguarded[@]}"; do
-    if [[ ! -f ${scripts}/${script} ]]; then
-        fail "${script} is listed as unguarded and does not exist"
-        continue
-    fi
-    if grep -q 'evidence_tree_state' "${scripts}/${script}"; then
-        fail "${script} is listed as NOT guarded but now calls evidence_tree_state; move it to guarded"
-        continue
-    fi
-    printf 'ok   uncovered, deliberately: %s\n' "${script}"
-done
-
-# 3. The lists together must account for every evidence writer.
-for script in "${evidence_writers[@]}"; do
-    found=0
-    for known in "${guarded[@]}" "${unguarded[@]}"; do
-        [[ ${script} == "${known}" ]] && found=1 && break
+is_exempt() {
+    local entry
+    for entry in "${exempt[@]}"; do
+        [[ $1 == "${entry%%|*}" ]] && return 0
     done
-    if [[ ${found} -eq 0 ]]; then
-        fail "${script} writes evidence and is in neither list; decide and record which"
+    return 1
+}
+
+# ---------------------------------------------------------------- derive: bash
+population=()
+guarded=()
+
+for path in "${scripts}"/*.sh; do
+    name=$(basename "${path}")
+    case ${name} in *_test.sh) continue ;; esac
+
+    body=$(grep -vE '^[[:space:]]*#' "${path}")
+    printf '%s\n' "${body}" |
+        grep -qE 'build/[a-z0-9-]+/[a-z0-9-]+\.json|\$\{?[A-Z0-9_]*OUTPUT[A-Z0-9_]*' || continue
+
+    population+=("${name}")
+    if printf '%s\n' "${body}" | grep -q 'evidence_tree_state'; then
+        guarded+=("${name}")
     fi
 done
 
-# 4. A generator that appears later must not be able to arrive unnoticed. Any
-# script sourcing the evidence library or writing under build/ is a candidate.
-while IFS= read -r candidate; do
-    name=$(basename "${candidate}")
-    [[ ${name} == *_test.sh ]] && continue
-    [[ ${name} == tree-state.sh ]] && continue
-    known=0
-    for listed in "${evidence_writers[@]}"; do
-        [[ ${name} == "${listed}" ]] && known=1 && break
-    done
-    if [[ ${known} -eq 0 ]]; then
-        fail "${name} writes under build/ and is in no list; it is a new evidence generator, or the pattern needs narrowing"
-    fi
-done < <(grep -rl 'build/[a-z0-9-]*/[a-z0-9-]*\.json' "${scripts}"/*.sh 2>/dev/null)
+# ------------------------------------------------------------------ derive: Go
+# A go:generate binary must never be guarded, so it is not in the population.
+generators=$(grep -rh 'go:generate' --include='*.go' "${repository_root}" |
+    grep -oE 'cmd/[a-z0-9-]+' | sed 's|cmd/||' | sort -u)
 
-printf '\nCOVERAGE: %d of %d evidence generators carry the dirty-tree guard.\n' \
-    "${#guarded[@]}" "${#evidence_writers[@]}"
-printf 'UNCOVERED, by name: %s\n' "${unguarded[*]}"
+for dir in "${repository_root}"/cmd/*/; do
+    command_name=$(basename "${dir}")
+
+    printf '%s\n' "${generators}" | grep -qx "${command_name}" && continue
+
+    grep -rqE "cmd/${command_name}([^a-z0-9-]|\$)" "${repository_root}/.woodpecker" || continue
+
+    writes=0
+    while IFS= read -r source_file; do
+        if grep -qE 'os\.(WriteFile|Create|CreateTemp|OpenFile)' "${source_file}"; then
+            writes=1
+            break
+        fi
+    done < <(find "${dir}" -name '*.go' ! -name '*_test.go')
+    [[ ${writes} -eq 0 ]] && continue
+
+    population+=("cmd/${command_name}")
+    # No Go generator carries the guard. Rule 4 asserts that rather than
+    # assuming it, so this loop cannot quietly keep reporting zero after
+    # somebody does the work.
+done
+
+# ------------------------------------------------------------------------ rules
+
+# 1. Every derived generator is guarded, or exempt with a reason. This is the
+#    rule that stops a new generator arriving unnoticed, and unlike the pattern
+#    it replaces it does not depend on the generator naming a literal path.
+for name in "${population[@]}"; do
+    printf '%s\n' "${guarded[@]:-}" | grep -qx "${name}" && continue
+    if is_exempt "${name}"; then
+        continue
+    fi
+    fail "${name} generates evidence, does not carry the guard, and is not exempt; guard it or write down why not"
+done
+
+# 2. No exemption is stale. One that quietly gained the guard must leave this
+#    list: a reader trusts it to say what is uncovered, and an over-long list
+#    understates coverage as surely as a short one overstates it.
+for entry in "${exempt[@]}"; do
+    name=${entry%%|*}
+    if printf '%s\n' "${guarded[@]:-}" | grep -qx "${name}"; then
+        fail "${name} is exempt but now carries the guard; delete its exemption"
+    fi
+done
+
+# 3. No exemption names something that is not a generator any more. A reason for
+#    a file that no longer writes evidence is a claim about nothing, and it makes
+#    the uncovered count read higher than the truth.
+for entry in "${exempt[@]}"; do
+    name=${entry%%|*}
+    if ! printf '%s\n' "${population[@]}" | grep -qx "${name}"; then
+        fail "${name} is exempt but is no longer a derived evidence generator; delete its exemption"
+    fi
+done
+
+# 4. There is still no Go dirty-tree guard. Asserted, not assumed: without this
+#    the Go half of the exemption list would keep its reason forever, and the
+#    day somebody writes the guard the count would go on reporting zero because
+#    nothing here knows how to see a Go call site.
+if grep -rq 'EVIDENCE_ALLOW_DIRTY_TREE' --include='*.go' "${repository_root}"; then
+    fail "a Go file now honours EVIDENCE_ALLOW_DIRTY_TREE; teach this check to detect Go call sites, then move the covered commands out of the exemption list"
+fi
+
+# ----------------------------------------------------------------------- report
+printf '\n'
+for name in "${population[@]}"; do
+    if printf '%s\n' "${guarded[@]:-}" | grep -qx "${name}"; then
+        printf 'ok   guarded:                %s\n' "${name}"
+    elif is_exempt "${name}"; then
+        for entry in "${exempt[@]}"; do
+            [[ ${name} == "${entry%%|*}" ]] && printf 'ok   uncovered, on purpose:  %s -- %s\n' "${name}" "${entry#*|}"
+        done
+    else
+        # Rule 1 has already failed on this one. Say so here too: a reader who
+        # reads only the report should not have to infer a member's existence
+        # from the total not adding up.
+        printf 'FAIL unaccounted:            %s\n' "${name}"
+    fi
+done
+
+printf '\nCOVERAGE: %d of %d derived evidence generators carry the dirty-tree guard.\n' \
+    "${#guarded[@]}" "${#population[@]}"
+
 printf '\nSEPARATELY, and NOT addressed by this guard: thirteen of the nineteen\n'
 printf 'evidence artifacts under build/ have no producer at all -- including all\n'
 printf 'five wave receipts, which are maintained by hand. A guard on generators\n'
