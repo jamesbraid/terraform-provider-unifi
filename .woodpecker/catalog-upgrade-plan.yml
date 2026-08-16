@@ -59,5 +59,18 @@ steps:
       # The runner starts the controller, runs the harness against it, stops the
       # controller, and passes the harness's exit code through unchanged -- 1 is
       # an upgrade regression, 2 is a fixture that cannot judge one.
-      - go run ./cmd/upgrade-plan-runner
+      #
+      # BUILT AND RUN, NEVER `go run`. `go run` reports the program's status as
+      # text and exits 1 itself, whatever the program returned:
+      #
+      #   program exits 2  ->  go run exits 1, printing "exit status 2"
+      #   program exits 2  ->  compiled binary exits 2
+      #
+      # Under `go run` the two reds collapse into one and a void fixture becomes
+      # indistinguishable from an upgrade regression -- the exact coin flip the
+      # runner's own comment says it exists to prevent. Measured on a controller:
+      # a deliberately mis-declared fixture made the script exit 2 and `go run`
+      # reported 1.
+      - go build -o /tmp/upgrade-plan-runner ./cmd/upgrade-plan-runner
+      - /tmp/upgrade-plan-runner
       - jq '.' build/release-ready/catalog-upgrade-plan.json
