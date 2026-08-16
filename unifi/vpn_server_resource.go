@@ -528,15 +528,11 @@ func (r *vpnServerResource) modelToNetwork(
 				d := dns.Servers.ElementsAs(ctx, &dnsServers, false)
 				diags.Append(d...)
 				if !diags.HasError() {
-					if len(dnsServers) > 0 {
-						network.DHCPDDNS1 = dnsServers[0]
-						// Default enabled to true when servers are specified
-						if dns.Enabled.IsNull() || dns.Enabled.IsUnknown() {
-							network.DHCPDDNSEnabled = true
-						}
-					}
-					if len(dnsServers) > 1 {
-						network.DHCPDDNS2 = dnsServers[1]
+					vpnServerDNSServersToNetwork(dnsServers, network)
+					// Default enabled to true when servers are specified
+					if len(dnsServers) > 0 &&
+						(dns.Enabled.IsNull() || dns.Enabled.IsUnknown()) {
+						network.DHCPDDNSEnabled = true
 					}
 				}
 			}
@@ -549,17 +545,8 @@ func (r *vpnServerResource) modelToNetwork(
 		d := model.WAN.As(ctx, &wan, basetypes.ObjectAsOptions{})
 		diags.Append(d...)
 		if !diags.HasError() {
-			switch {
-			case hasWireguard:
-				network.WireguardLocalWANIP = wan.IP.ValueStringPointer()
-				network.WireguardInterface = wan.Interface.ValueStringPointer()
-			case hasL2TP:
-				network.L2TpLocalWANIP = wan.IP.ValueStringPointer()
-				network.L2TpInterface = wan.Interface.ValueStringPointer()
-			case hasOpenVPN:
-				network.OpenVPNLocalWANIP = wan.IP.ValueStringPointer()
-				network.OpenVPNInterface = wan.Interface.ValueStringPointer()
-			}
+			vpnServerWANIPToNetwork(wan.IP, network)
+			vpnServerWANInterfaceToNetwork(wan.Interface, network)
 		}
 	}
 
@@ -588,7 +575,7 @@ func (r *vpnServerResource) modelToNetwork(
 					network.WireguardPrivateKey = &key
 				}
 			}
-			network.LocalPort = wireguard.Port.ValueInt64Pointer()
+			vpnServerLocalPortToNetwork(wireguard.Port, network)
 		}
 	}
 
@@ -609,7 +596,7 @@ func (r *vpnServerResource) modelToNetwork(
 		d := model.OpenVPN.As(ctx, &openvpn, basetypes.ObjectAsOptions{})
 		diags.Append(d...)
 		if !diags.HasError() {
-			network.LocalPort = openvpn.Port.ValueInt64Pointer()
+			vpnServerLocalPortToNetwork(openvpn.Port, network)
 			network.OpenVPNMode = openvpn.Mode.ValueStringPointer()
 			network.OpenVPNEncryptionCipher = openvpn.EncryptionCipher.ValueStringPointer()
 
@@ -664,21 +651,7 @@ func (r *vpnServerResource) networkToModel(
 
 	// Build DNS nested object
 	{
-		var dnsServersList types.List
-		var dnsServers []string
-		if network.DHCPDDNS1 != "" {
-			dnsServers = append(dnsServers, network.DHCPDDNS1)
-		}
-		if network.DHCPDDNS2 != "" {
-			dnsServers = append(dnsServers, network.DHCPDDNS2)
-		}
-		if len(dnsServers) > 0 {
-			var d diag.Diagnostics
-			dnsServersList, d = types.ListValueFrom(ctx, types.StringType, dnsServers)
-			diags.Append(d...)
-		} else {
-			dnsServersList = types.ListNull(types.StringType)
-		}
+		dnsServersList := vpnServerDNSServersFromNetwork(ctx, &diags, network)
 
 		dnsValue := vpnServerDNSModel{
 			Enabled: types.BoolValue(network.DHCPDDNSEnabled),
@@ -697,22 +670,9 @@ func (r *vpnServerResource) networkToModel(
 
 	// Build WAN nested object with VPN-type-specific API field mapping
 	{
-		var wanIP, wanIface *string
-		switch vpnType {
-		case "wireguard-server":
-			wanIP = network.WireguardLocalWANIP
-			wanIface = network.WireguardInterface
-		case "l2tp-server":
-			wanIP = network.L2TpLocalWANIP
-			wanIface = network.L2TpInterface
-		case "openvpn-server":
-			wanIP = network.OpenVPNLocalWANIP
-			wanIface = network.OpenVPNInterface
-		}
-
 		wanValue := vpnServerWANModel{
-			IP:        types.StringPointerValue(wanIP),
-			Interface: types.StringPointerValue(wanIface),
+			IP:        vpnServerWANIPFromNetwork(network),
+			Interface: vpnServerWANInterfaceFromNetwork(network),
 		}
 		var d diag.Diagnostics
 		model.WAN, d = types.ObjectValueFrom(ctx, vpnServerWANModel{}.AttributeTypes(), wanValue)
@@ -751,7 +711,7 @@ func (r *vpnServerResource) networkToModel(
 		wireguardValue := vpnServerWireguardModel{
 			PrivateKey: privateKeyVal,
 			PublicKey:  strPtrToType(network.WireguardPublicKey),
-			Port:       types.Int64PointerValue(network.LocalPort),
+			Port:       vpnServerLocalPortFromNetwork(network),
 		}
 		var d diag.Diagnostics
 		model.Wireguard, d = types.ObjectValueFrom(
@@ -788,7 +748,7 @@ func (r *vpnServerResource) networkToModel(
 
 	case "openvpn-server":
 		openvpnValue := vpnServerOpenVPNModel{
-			Port:             types.Int64PointerValue(network.LocalPort),
+			Port:             vpnServerLocalPortFromNetwork(network),
 			Mode:             types.StringPointerValue(network.OpenVPNMode),
 			EncryptionCipher: types.StringPointerValue(network.OpenVPNEncryptionCipher),
 			ServerCrt:        types.StringPointerValue(network.ServerCrt),
@@ -925,4 +885,135 @@ func generateWireGuardPrivateKey() (string, error) {
 	key[31] &= 127
 	key[31] |= 64
 	return base64.StdEncoding.EncodeToString(key[:]), nil
+}
+
+// The eight functions below are the halves this resource's policy claims name.
+// Each relates one Terraform member to several observed fields, which is the
+// one thing the compiler cannot check, so the policy names a function and a
+// reader opens it. They were inline in modelToNetwork and networkToModel.
+//
+// The three type-specific relations all switch on network.VPNType, which
+// modelToNetwork sets from which block is configured before any of them run,
+// and which networkToModel reads back off the wire. One vocabulary, both
+// directions.
+
+// vpnServerLocalPortToNetwork writes whichever type's port is configured into
+// the one observed local_port. The released schema exposes it under each type's
+// own block, so two members relate to the one field and only one of them is
+// ever set.
+func vpnServerLocalPortToNetwork(port types.Int64, network *unifi.Network) {
+	network.LocalPort = port.ValueInt64Pointer()
+}
+
+// vpnServerLocalPortFromNetwork reads local_port back. The caller places it
+// under the block belonging to the type the controller reports.
+func vpnServerLocalPortFromNetwork(network *unifi.Network) types.Int64 {
+	return types.Int64PointerValue(network.LocalPort)
+}
+
+// vpnServerWANIPToNetwork writes wan.ip into the field belonging to the
+// configured VPN type. A type the controller does not name writes nothing,
+// which is what the switch did before.
+func vpnServerWANIPToNetwork(ip types.String, network *unifi.Network) {
+	switch vpnServerType(network) {
+	case "wireguard-server":
+		network.WireguardLocalWANIP = ip.ValueStringPointer()
+	case "l2tp-server":
+		network.L2TpLocalWANIP = ip.ValueStringPointer()
+	case "openvpn-server":
+		network.OpenVPNLocalWANIP = ip.ValueStringPointer()
+	}
+}
+
+// vpnServerWANIPFromNetwork reads wan.ip from whichever of the three is set.
+func vpnServerWANIPFromNetwork(network *unifi.Network) types.String {
+	switch vpnServerType(network) {
+	case "wireguard-server":
+		return types.StringPointerValue(network.WireguardLocalWANIP)
+	case "l2tp-server":
+		return types.StringPointerValue(network.L2TpLocalWANIP)
+	case "openvpn-server":
+		return types.StringPointerValue(network.OpenVPNLocalWANIP)
+	}
+	return types.StringPointerValue(nil)
+}
+
+// vpnServerWANInterfaceToNetwork writes wan.interface into the field belonging
+// to the configured VPN type.
+func vpnServerWANInterfaceToNetwork(iface types.String, network *unifi.Network) {
+	switch vpnServerType(network) {
+	case "wireguard-server":
+		network.WireguardInterface = iface.ValueStringPointer()
+	case "l2tp-server":
+		network.L2TpInterface = iface.ValueStringPointer()
+	case "openvpn-server":
+		network.OpenVPNInterface = iface.ValueStringPointer()
+	}
+}
+
+// vpnServerWANInterfaceFromNetwork reads wan.interface from whichever of the
+// three is set.
+func vpnServerWANInterfaceFromNetwork(network *unifi.Network) types.String {
+	switch vpnServerType(network) {
+	case "wireguard-server":
+		return types.StringPointerValue(network.WireguardInterface)
+	case "l2tp-server":
+		return types.StringPointerValue(network.L2TpInterface)
+	case "openvpn-server":
+		return types.StringPointerValue(network.OpenVPNInterface)
+	}
+	return types.StringPointerValue(nil)
+}
+
+// vpnServerDNSServersToNetwork distributes dns.servers positionally into the
+// two observed slots. It does not clear the slot it does not use, so a shorter
+// list leaves whatever was there.
+//
+// A THIRD SERVER IS SILENTLY DROPPED, and this is the only one of the three
+// that does it: network's dhcp_server.dns_servers carries
+// listvalidator.SizeAtMost(4) and vpn_client's wireguard.dns_servers carries
+// SizeBetween(1, 2), so both refuse an over-long list with a diagnostic. This
+// attribute carries no size validator at all, so a third is accepted, applied,
+// and never written. Reported rather than fixed here: adding the bound is a
+// public schema change, not a refactor.
+func vpnServerDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
+	if len(dnsServers) > 0 {
+		network.DHCPDDNS1 = dnsServers[0]
+	}
+	if len(dnsServers) > 1 {
+		network.DHCPDDNS2 = dnsServers[1]
+	}
+}
+
+// vpnServerDNSServersFromNetwork collects dns.servers from the two observed
+// slots, keeping only the non-empty ones. The write distributes positionally
+// and this compacts, so a value in slot two with slot one empty reads back as
+// the first element.
+func vpnServerDNSServersFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	var servers []string
+	if network.DHCPDDNS1 != "" {
+		servers = append(servers, network.DHCPDDNS1)
+	}
+	if network.DHCPDDNS2 != "" {
+		servers = append(servers, network.DHCPDDNS2)
+	}
+	if len(servers) == 0 {
+		return types.ListNull(types.StringType)
+	}
+	list, d := types.ListValueFrom(ctx, types.StringType, servers)
+	diags.Append(d...)
+	return list
+}
+
+// vpnServerType is the controller's own name for which VPN a network serves,
+// empty when it names none.
+func vpnServerType(network *unifi.Network) string {
+	if network.VPNType == nil {
+		return ""
+	}
+	return *network.VPNType
 }

@@ -7,9 +7,9 @@
   "claims": [
     {
       "mapping": {
-        "from_api": "apiToModel",
-        "kind": "containing",
-        "to_api": "modelToAPI"
+        "from_api": "trafficRouteDestinationIPFromAPI",
+        "kind": "dedicated",
+        "to_api": "trafficRouteDestinationIPToAPI"
       },
       "reason": "one released list of address-or-range strings over two observed arrays: an entry containing a hyphen becomes an ip_ranges record and anything else an ip_addresses record, and the two are merged back into one list on read",
       "structural_names": [
@@ -22,9 +22,9 @@
     },
     {
       "mapping": {
-        "from_api": "apiToModel",
-        "kind": "containing",
-        "to_api": "modelToAPI"
+        "from_api": "trafficRouteSourceFromAPI",
+        "kind": "dedicated",
+        "to_api": "trafficRouteTargetDevicesToAPI"
       },
       "reason": "one observed array partitioned on its own type discriminator: CLIENT entries become source.clients and NETWORK entries source.networks, and both are written back into the one array",
       "structural_names": [

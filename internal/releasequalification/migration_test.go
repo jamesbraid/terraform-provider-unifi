@@ -546,14 +546,36 @@ func allowReleasedControllerMissing(
 	controller.Released.Passed = passed
 }
 
+// migrationSurfaceKeys builds the 67 keys the release manifest covers, in the
+// order the generator emits them: by kind, then by name ascending within each
+// kind.
+//
+// The order is load-bearing, not cosmetic. The manifest this fixture stands in
+// for is sorted -- provider-codegen/generated/catalog-migration-manifest.json
+// opens unifi_account, unifi_ap_group, unifi_bgp, unifi_client -- and
+// catalogparity rejects an unsorted one. This fixture was not sorted: it put
+// unifi_dns_record at index 0 and unifi_device at index 1 in both the managed
+// and list blocks, and dns_record > device. So every test built on it was run
+// against a manifest the generator cannot produce, which stayed invisible for
+// as long as the validator over it never checked ordering.
+//
+// device therefore comes before dns_record, and both come before the
+// unifi_resource_NN / unifi_list_NN runs, because "unifi_d" < "unifi_l" and
+// "unifi_d" < "unifi_r". Nothing indexes these positions; the two surfaces are
+// picked out by name.
+//
+// PROVEN, no mutation needed: putting dns_record back at index 0 turns 33 tests
+// in this package red, TestBuildMigrationRecoveryReceipt first, with "migration
+// entries are not strictly sorted". The ordering is now held by the gate rather
+// than by this comment, which is the only reason to trust it.
 func migrationSurfaceKeys() []catalogparity.SurfaceKey {
 	keys := make([]catalogparity.SurfaceKey, 0, 67)
 	for index := range 28 {
 		name := fmt.Sprintf("unifi_resource_%02d", index)
 		if index == 0 {
-			name = "unifi_dns_record"
-		} else if index == 1 {
 			name = "unifi_device"
+		} else if index == 1 {
+			name = "unifi_dns_record"
 		}
 		keys = append(keys, catalogparity.SurfaceKey{Kind: catalogparity.ManagedResource, Name: name})
 	}
@@ -563,9 +585,9 @@ func migrationSurfaceKeys() []catalogparity.SurfaceKey {
 	for index := range 25 {
 		name := fmt.Sprintf("unifi_list_%02d", index)
 		if index == 0 {
-			name = "unifi_dns_record"
-		} else if index == 1 {
 			name = "unifi_device"
+		} else if index == 1 {
+			name = "unifi_dns_record"
 		}
 		keys = append(keys, catalogparity.SurfaceKey{Kind: catalogparity.ListResource, Name: name})
 	}
@@ -623,4 +645,146 @@ func TestDifferentialScenarioIsPerTestNotPerFile(t *testing.T) {
 		return
 	}
 	t.Fatalf("surface %s/%s is absent from the receipt", key.Kind, key.Name)
+}
+
+// TestMigrationManifestGateHoldsBothValidatorsRules pins the eight rules that
+// differed between the two validators of the same name.
+//
+// catalogparity.ValidateMigrationManifest guards the manifest at generation and
+// this package's validateMigrationManifest guards the same manifest at release.
+// Neither was a superset of the other, and because they shared a name in
+// different packages the gap was invisible from either side. Six rules
+// catalogparity held that release qualification did not, two the other way.
+// Release qualification is the only guard over the committed artifact, so those
+// six were unheld exactly where a hand-edit lands.
+//
+// The six are asserted by their catalogparity messages and the two by this
+// package's, which is the point of listing them together: it shows the
+// delegation added the first six without swallowing the last two. A careless
+// union drops the stricter side silently, and that is the direction in which
+// the merge still looks like a success.
+//
+// PROVEN BY MUTATION, both directions, restored afterwards. Deleting the
+// three-line catalogparity.ValidateMigrationManifest call from
+// validateMigrationManifest turns the first six green -- attribute_mapping,
+// state_moves, import_transform, schema version, ordering and the kind shift
+// all ACCEPT -- while StateUpgrader and manual_rollback keep REJECTING with
+// this package's own message. That is the asymmetry reproduced through the
+// merged validator, and it is what establishes the six are held by the
+// delegation rather than by anything already here.
+//
+// The mutation was confirmed by a line count rather than by re-running the
+// pattern that performed it, which is the only way to know an edit landed.
+// The count itself is deliberately not recorded: an absolute line number is a
+// fact about this file that this file's own later edits invalidate, and the
+// first version of this comment cited one that was stale within the hour.
+// Cite what the change IS, not how big the file was when it was made.
+func TestMigrationManifestGateHoldsBothValidatorsRules(t *testing.T) {
+	bumped := int64(1)
+	tests := map[string]struct {
+		mutate func(*MigrationRecoveryInput)
+		want   string
+	}{
+		// Held by catalogparity, and by nothing here before the delegation.
+		"identity entry carries an attribute mapping": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.Manifest.Entries[0].AttributeMapping = map[string]string{"old": "new"}
+			},
+			want: "contains a transform",
+		},
+		"identity entry carries a state move": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.Manifest.Entries[0].StateMoves = []catalogparity.StateMove{{From: "a", To: "b"}}
+			},
+			want: "contains a transform",
+		},
+		"identity entry carries an import transform": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.Manifest.Entries[0].ImportTransform = "id -> name"
+			},
+			want: "contains a transform",
+		},
+		"identity entry changes schema version": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.Manifest.Entries[0].NewSchemaVersion = &bumped
+			},
+			want: "contains a transform",
+		},
+		"entries are out of order": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.Manifest.Entries[0], input.Manifest.Entries[1] = input.Manifest.Entries[1], input.Manifest.Entries[0]
+			},
+			want: "not strictly sorted",
+		},
+		// The sixth, and the only one that needs every receipt to drift
+		// together before it opens. This package counts len(Entries) != 67,
+		// which a per-kind shift satisfies exactly. catalogparity counts
+		// 28/13/25/1 per kind, which it does not.
+		//
+		// Moving the manifest alone does not demonstrate it, and the first
+		// attempt here got that wrong. The gate has three relational checks
+		// around this one, and each fires in turn as the receipts are moved:
+		// the manifest alone trips "references unknown surface", adding the
+		// admission receipt trips "controller surface set differs from
+		// admission". Only with the manifest, admission, controller plan and
+		// inventory all moved consistently -- which is what a regeneration
+		// produces -- do all three fall silent, and then the per-kind count is
+		// the single check left standing.
+		//
+		// That is the plan and the policy drifting upward together, one gate
+		// over. A check comparing two receipts cannot see them move as a pair.
+		// Only an absolute count can, and this package had none.
+		"every receipt moves one surface to another kind": {
+			mutate: func(input *MigrationRecoveryInput) {
+				moved := catalogparity.SurfaceKey{Kind: catalogparity.DataSource, Name: "unifi_data_"}
+				old := input.Manifest.Entries[27].SurfaceKey
+				input.Manifest.Entries[27].SurfaceKey = moved
+				input.Manifest.Entries[27].OldName = moved.Name
+				input.Manifest.Entries[27].NewName = moved.Name
+				for index := range input.Admission.Surfaces {
+					if input.Admission.Surfaces[index].SurfaceKey == old {
+						input.Admission.Surfaces[index].SurfaceKey = moved
+					}
+				}
+				for index := range input.Controller.Plan.Surfaces {
+					if input.Controller.Plan.Surfaces[index].SurfaceKey == old {
+						input.Controller.Plan.Surfaces[index].SurfaceKey = moved
+					}
+				}
+				for index := range input.Inventory.Surfaces {
+					if input.Inventory.Surfaces[index].SurfaceKey == old {
+						input.Inventory.Surfaces[index].SurfaceKey = moved
+					}
+				}
+			},
+			want: "managed_resource count is 27, want 28",
+		},
+		// Held here, and not by catalogparity, which validates manifests that
+		// may legitimately be non-identity. The release asserts otherwise.
+		"strategy is a state upgrader": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.Manifest.Entries[0].Strategy = catalogparity.StateUpgrader
+			},
+			want: "not a complete identity migration",
+		},
+		"recovery is not a snapshot restore": {
+			mutate: func(input *MigrationRecoveryInput) {
+				input.Manifest.Entries[0].Recovery.Mode = "manual_rollback"
+			},
+			want: "not a complete identity migration",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			input := validMigrationInput(t)
+			test.mutate(&input)
+			_, err := BuildMigrationRecoveryReceipt(input)
+			if err == nil {
+				t.Fatalf("mutated manifest was accepted, want error containing %q", test.want)
+			}
+			if !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want it to contain %q", err, test.want)
+			}
+		})
+	}
 }
