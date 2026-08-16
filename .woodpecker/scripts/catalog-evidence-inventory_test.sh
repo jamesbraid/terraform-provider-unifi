@@ -44,11 +44,49 @@ drift=$(jq -n --slurpfile a "${committed}" --slurpfile b "${output}" '
     select($measured[$key] != null and
            $measured[$key].runtime.status != .runtime.status) |
     "\($key): committed \(.runtime.status), measured \($measured[$key].runtime.status)"]')
-printf '  %s surface(s) disagree on runtime status:\n' "$(jq -r 'length' <<<"${drift}")" >&2
-jq -r '.[0:8][] | "    " + .' <<<"${drift}" >&2
-if [[ $(jq -r 'length' <<<"${drift}") -gt 8 ]]; then
-    printf '    ... and %s more\n' "$(( $(jq -r 'length' <<<"${drift}") - 8 ))" >&2
+report() {
+    local label=$1 body=$2 count
+    count=$(jq -r 'length' <<<"${body}")
+    [[ ${count} -eq 0 ]] && return 0
+    printf '  %s %s:\n' "${count}" "${label}" >&2
+    jq -r '.[0:8][] | "    " + .' <<<"${body}" >&2
+    if [[ ${count} -gt 8 ]]; then
+        printf '    ... and %s more\n' "$(( count - 8 ))" >&2
+    fi
+    printf '\n' >&2
+    return 1
+}
+
+# Status drift is one cause of a stale inventory, not the only one. A digest
+# moves whenever a runtime file changes, and reporting only status printed
+# "0 surface(s) disagree" while still exiting non-zero -- naming the artifact
+# but not what went stale inside it.
+digests=$(jq -n --slurpfile a "${committed}" --slurpfile b "${output}" '
+  ($b[0].surfaces | INDEX("\(.kind)/\(.name)")) as $measured |
+  [$a[0].surfaces[] |
+    "\(.kind)/\(.name)" as $key |
+    .runtime as $was | $measured[$key].runtime as $now |
+    select($now != null and $now != $was and $now.status == $was.status) |
+    [$was | keys_unsorted[] | select($was[.] != $now[.])] as $fields |
+    "\($key): \($fields | join(", "))"]')
+
+roots=$(jq -n --slurpfile a "${committed}" --slurpfile b "${output}" '
+  [$a[0] | to_entries[] | select((.value | type) != "array") |
+   select(.value != $b[0][.key]) | .key]')
+
+explained=0
+report "surface(s) disagree on runtime status" "${drift}" || explained=1
+report "surface(s) whose runtime digest moved" "${digests}" || explained=1
+report "top-level field(s) that moved" "${roots}" || explained=1
+
+# A failure that cannot say what differs sends the reader to diff a 98KB
+# single-line JSON by hand. Say so outright rather than exiting on silence.
+if [[ ${explained} -eq 0 ]]; then
+    printf '  The artifacts differ in a way this test cannot describe.\n' >&2
+    printf '  Compare them directly:\n' >&2
+    printf '    diff <(jq -S . %s) <(jq -S . %s)\n\n' "${committed}" "${output}" >&2
 fi
-printf '\n  Regenerate with .woodpecker/scripts/catalog-evidence-inventory.sh\n' >&2
+
+printf '  Regenerate with .woodpecker/scripts/catalog-evidence-inventory.sh\n' >&2
 printf '  and check what else is pinned to it before committing the result.\n' >&2
 exit 1
