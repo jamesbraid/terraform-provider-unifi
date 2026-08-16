@@ -306,6 +306,17 @@ for entry in "${committed_artifact[@]}"; do
     # A MENTION IS NOT AN INVOCATION either, so comments are stripped before
     # looking for cmp. Both holes are the shape this rule exists to catch: a
     # reason that survives by nothing being able to contradict it.
+    #
+    # Mutation-proven, all four against the schema-baseline entry:
+    #   artifact -> build/m0/not-tracked.json     FAIL "git does not track it"
+    #   artifact -> build/m0/README.md            FAIL "no script both names it
+    #                                             and runs cmp" -- this one
+    #                                             PASSED before the two fixes
+    #   README.md + "# cmp build/m0/README.md"
+    #     appended to catalog-evidence-inventory  FAIL, same message: a comment
+    #                                             is not an invocation
+    #   README.md + a real cmp line appended      ok -- the control, so the
+    #                                             matcher is not simply broken
     comparer=""
     while IFS= read -r candidate; do
         [[ $(basename "${candidate}") == "$(basename "${BASH_SOURCE[0]}")" ]] && continue
