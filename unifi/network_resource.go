@@ -1200,7 +1200,14 @@ func (r *networkResource) networkToModel(
 		model.IPv6StaticSubnet = previousModel.IPv6StaticSubnet
 		model.IPv6PDInterface = previousModel.IPv6PDInterface
 		model.IPv6PDPrefixID = previousModel.IPv6PDPrefixID
-		model.LteLan = previousModel.LteLan
+		// lte_lan uses UseStateForUnknown, so it may be unknown during Create.
+		// Resolve it from the API value: the controller assigns this flag
+		// itself, which is why it must not carry a static default.
+		if previousModel.LteLan.IsUnknown() {
+			model.LteLan = types.BoolValue(network.LteLanEnabled)
+		} else {
+			model.LteLan = previousModel.LteLan
+		}
 		// The IPv6 attributes below are Computed + UseStateForUnknown. On Create
 		// there is no prior state, so the plan carries them as unknown; copying
 		// the plan value verbatim would leave them unknown in the result and
