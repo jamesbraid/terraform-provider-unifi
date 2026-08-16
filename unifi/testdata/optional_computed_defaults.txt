@@ -73,7 +73,6 @@ unifi_network.internet_access
 unifi_network.ipv6_interface_type
 unifi_network.lte_lan
 unifi_network.network_isolation
-unifi_network.third_party_gateway
 unifi_port_forward.enabled
 unifi_port_forward.logging
 unifi_port_forward.protocol
