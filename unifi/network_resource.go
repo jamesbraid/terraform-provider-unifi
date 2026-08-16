@@ -27,11 +27,12 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var (
-	_ resource.Resource                 = &networkResource{}
-	_ resource.ResourceWithImportState  = &networkResource{}
-	_ resource.ResourceWithIdentity     = &networkResource{}
-	_ resource.ResourceWithModifyPlan   = &networkResource{}
-	_ resource.ResourceWithUpgradeState = &networkResource{}
+	_ resource.Resource                     = &networkResource{}
+	_ resource.ResourceWithImportState      = &networkResource{}
+	_ resource.ResourceWithIdentity         = &networkResource{}
+	_ resource.ResourceWithModifyPlan       = &networkResource{}
+	_ resource.ResourceWithUpgradeState     = &networkResource{}
+	_ resource.ResourceWithConfigValidators = &networkResource{}
 )
 
 // Ensure provider defined types fully satisfy list interfaces.
@@ -362,6 +363,75 @@ func planBoolAt(
 	var v types.Bool
 	diags.Append(plan.GetAttribute(ctx, p, &v)...)
 	return v.ValueBool()
+}
+
+func (r *networkResource) ConfigValidators(
+	_ context.Context,
+) []resource.ConfigValidator {
+	return []resource.ConfigValidator{&networkPurposeAliasConfigValidator{}}
+}
+
+// networkPurposeAliasConfigValidator refuses a configuration that sets
+// third_party_gateway and purpose to disagree.
+//
+// The two are not independent attributes. Both write the controller's single
+// Purpose field -- an explicit purpose is applied first, then a true
+// third_party_gateway overrides it to vlan-only -- and third_party_gateway is
+// read back out of that same field rather than one of its own. So a
+// disagreeing pair cannot be satisfied: whichever side loses the write is
+// rewritten on the read, and the apply fails with "inconsistent result after
+// apply" naming an attribute the practitioner set to exactly the value they
+// asked for. That error blames the provider for the user's contradiction and
+// says nothing about the other half of it.
+//
+// Refusing it here says which two lines conflict, before anything is created.
+// Leaving either side unset is not a conflict: the unset one is derived.
+type networkPurposeAliasConfigValidator struct{}
+
+func (v *networkPurposeAliasConfigValidator) Description(_ context.Context) string {
+	return "third_party_gateway and purpose must agree: a third-party gateway network is always vlan-only"
+}
+
+func (v *networkPurposeAliasConfigValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v *networkPurposeAliasConfigValidator) ValidateResource(
+	ctx context.Context,
+	req resource.ValidateConfigRequest,
+	resp *resource.ValidateConfigResponse,
+) {
+	var thirdParty types.Bool
+	var purpose types.String
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("third_party_gateway"), &thirdParty)...)
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("purpose"), &purpose)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// An unknown value comes from an expression this validator cannot resolve,
+	// so it cannot judge the pair. Null means the practitioner left it to be
+	// derived, which is the whole point of the fix and never a conflict.
+	if thirdParty.IsNull() || thirdParty.IsUnknown() ||
+		purpose.IsNull() || purpose.IsUnknown() {
+		return
+	}
+	if thirdParty.ValueBool() == (purpose.ValueString() == unifi.PurposeVLANOnly) {
+		return
+	}
+	resp.Diagnostics.AddError(
+		"Conflicting network purpose",
+		fmt.Sprintf(
+			"third_party_gateway = %t and purpose = %q cannot both hold: the "+
+				"controller stores one purpose per network, and a third-party "+
+				"gateway network is always %q.\n\n"+
+				"Set third_party_gateway = %t, or change purpose to %q, or drop "+
+				"one of them and let it be derived from the other.",
+			thirdParty.ValueBool(), purpose.ValueString(), unifi.PurposeVLANOnly,
+			purpose.ValueString() == unifi.PurposeVLANOnly, unifi.PurposeVLANOnly,
+		),
+	)
 }
 
 // ModifyPlan forces setting_preference to "manual" when the plan enables a
