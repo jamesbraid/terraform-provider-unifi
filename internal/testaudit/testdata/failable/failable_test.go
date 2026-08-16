@@ -70,3 +70,33 @@ func TestTableWithCases(t *testing.T) {
 		})
 	}
 }
+
+// An accumulator is DECLARED empty and then filled. Reading only the
+// declaration reports a test that runs and asserts as one whose body never
+// executes. This was a real false positive:
+// TestEvidenceModesCoverTheCommittedInventory in internal/releasequalification
+// asserts perfectly well and was reported as empty-table.
+func TestAccumulatorIsNotAnEmptyTable(t *testing.T) {
+	census := map[string]int{}
+	for _, name := range []string{"a", "b"} {
+		census[name]++
+	}
+	for name, count := range census {
+		if count != 1 {
+			t.Errorf("%s: %d", name, count)
+		}
+	}
+}
+
+// A slice accumulator, same shape, built with append rather than indexing.
+func TestAppendAccumulatorIsNotAnEmptyTable(t *testing.T) {
+	got := []string{}
+	for _, name := range []string{"a"} {
+		got = append(got, name)
+	}
+	for _, name := range got {
+		if name == "" {
+			t.Error("empty")
+		}
+	}
+}

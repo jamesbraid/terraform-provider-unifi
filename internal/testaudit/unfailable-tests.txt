@@ -8,11 +8,13 @@
 #   no-assertion  it calls the code under test and checks nothing. This one
 #                 EXECUTES, so it produces coverage and a green PASS
 #
+# A fourth column names the defect a test is already named after. Those are the
+# most actionable entries here: the bug was found by other means while a test
+# bearing its name sat green, so the reproduction has a slot waiting.
+#
 # Removing a line is the fix and needs only UPDATE_TESTAUDIT=1. Adding one
 # needs UPDATE_TESTAUDIT_ALLOW_ADDITION=1 as well, because a new entry here is
 # a new test that cannot fail.
-internal/releasequalification/evidence_mode_committed_test.go	TestEvidenceModesCoverTheCommittedInventory	empty-table
-internal/schemabehaviour/schemabehaviour_test.go	Test_unreadableAttributesAreNamed	empty-table
 main_test.go	Test_main	empty-table
 unifi/bgp_resource_test.go	Test_bgpResource_ImportState	skip-stub
 unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_Create	empty-table
@@ -105,8 +107,6 @@ unifi/port_profile_resource_test.go	Test_portProfileResource_IdentitySchema	no-a
 unifi/port_profile_resource_test.go	Test_portProfileResource_ListResourceConfigSchema	no-assertion
 unifi/provider_test.go	Test_unifiProvider_EphemeralResources	no-assertion
 unifi/radius_user_resource_test.go	Test_radiusUserResource_IdentitySchemaStub	no-assertion
-unifi/schema_behaviour_derived_test.go	Test_schemaBehaviourIsDerivable	empty-table
-unifi/schema_model_agreement_test.go	TestServedSchemaAgreesWithItsRuntimeModel	empty-table
 unifi/setting_resource_test.go	Test_settingResource_ImportState	skip-stub
 unifi/traffic_route_resource_test.go	Test_trafficRouteResource_ImportState	skip-stub
 unifi/util/retry/error_test.go	TestNotFoundError_Error	empty-table
@@ -145,25 +145,25 @@ unifi/validators/port_number_test.go	TestPortNumberValidator	empty-table
 unifi/validators/port_number_test.go	Test_portValidator_Description	empty-table
 unifi/validators/port_number_test.go	Test_portValidator_MarkdownDescription	empty-table
 unifi/validators/port_number_test.go	Test_portValidator_ValidateInt64	no-assertion
-unifi/vpn_server_resource_test.go	Test_vpnServerResource_ImportState	skip-stub
-unifi/wan_resource_test.go	Test_wanResource_Create	skip-stub
+unifi/vpn_server_resource_test.go	Test_vpnServerResource_ImportState	skip-stub	task 116: vpn_server drops a third DNS server (SDK marshalUserVPN)
+unifi/wan_resource_test.go	Test_wanResource_Create	skip-stub	task 99: unifi_wan cannot create a static WAN at all
 unifi/wan_resource_test.go	Test_wanResource_Delete	skip-stub
 unifi/wan_resource_test.go	Test_wanResource_ImportState	skip-stub
 unifi/wan_resource_test.go	Test_wanResource_List	skip-stub
 unifi/wan_resource_test.go	Test_wanResource_Read	skip-stub
 unifi/wan_resource_test.go	Test_wanResource_Update	skip-stub
 unifi/wan_resource_test.go	Test_wanResource_adoptExistingWAN	skip-stub
-unifi/wan_resource_test.go	Test_wanResource_applyPlanToState	skip-stub
+unifi/wan_resource_test.go	Test_wanResource_applyPlanToState	skip-stub	task 99: unifi_wan cannot create a static WAN at all
 unifi/wan_resource_test.go	Test_wanResource_overlayConfig	skip-stub
-unifi/wlan_resource_test.go	TestAccWLANList_basic	skip-stub
-unifi/wlan_resource_test.go	Test_wlanFrameworkResource_Create	skip-stub
+unifi/wlan_resource_test.go	TestAccWLANList_basic	skip-stub	task 102: its own skip reason names the create bug
+unifi/wlan_resource_test.go	Test_wlanFrameworkResource_Create	skip-stub	task 102: unifi_wlan cannot create
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_Delete	skip-stub
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_IdentitySchema	no-assertion
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_ImportState	skip-stub
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_List	skip-stub
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_ListResourceConfigSchema	no-assertion
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_Read	skip-stub
-unifi/wlan_resource_test.go	Test_wlanFrameworkResource_Update	skip-stub
-unifi/wlan_resource_test.go	Test_wlanFrameworkResource_applyPlanToState	skip-stub
+unifi/wlan_resource_test.go	Test_wlanFrameworkResource_Update	skip-stub	task 102: unifi_wlan cannot update
+unifi/wlan_resource_test.go	Test_wlanFrameworkResource_applyPlanToState	skip-stub	task 102: unifi_wlan cannot create or update
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_readPassphraseWO	skip-stub
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_setDefaultWLANGroupID	skip-stub

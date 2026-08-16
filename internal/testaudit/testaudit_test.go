@@ -36,6 +36,10 @@ const inventoryHeader = `# Test functions that CANNOT FAIL, one per line: file, 
 #   no-assertion  it calls the code under test and checks nothing. This one
 #                 EXECUTES, so it produces coverage and a green PASS
 #
+# A fourth column names the defect a test is already named after. Those are the
+# most actionable entries here: the bug was found by other means while a test
+# bearing its name sat green, so the reproduction has a slot waiting.
+#
 # Removing a line is the fix and needs only UPDATE_TESTAUDIT=1. Adding one
 # needs UPDATE_TESTAUDIT_ALLOW_ADDITION=1 as well, because a new entry here is
 # a new test that cannot fail.
@@ -106,6 +110,30 @@ func Test_unfailableTestInventory(t *testing.T) {
 			"    That is the good direction. Refresh the inventory with %s=1.",
 			len(removed), filepath.Base(path), strings.Join(removed, "\n    "), updateEnv)
 	}
+
+	// Identity is what the asymmetry above is about, so a reworded note is
+	// neither an addition nor a removal. It still has to be written down: a
+	// stale note points the next reader at the wrong defect, which is the same
+	// failure as a stale exemption reason and just as quiet.
+	//
+	// PROVEN TO FAIL: editing a task-99 note in the inventory without
+	// regenerating turned this red with "a note has changed".
+	if len(added) == 0 && len(removed) == 0 && !equal(want, got) {
+		t.Errorf("%s is stale: the tests it names are right, but a note has changed.\n"+
+			"    Refresh it with %s=1.", filepath.Base(path), updateEnv)
+	}
+}
+
+func equal(want, got []string) bool {
+	if len(want) != len(got) {
+		return false
+	}
+	for i := range want {
+		if want[i] != got[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // additionRefusal names the entries. "Set another variable" tells the reader
@@ -142,22 +170,35 @@ func readInventory(t *testing.T, path string) (lines []string, exists bool) {
 	return lines, true
 }
 
+// identity is the part of an inventory line that says WHICH test this is:
+// file, name, shape. The fourth column is a note about a known defect, and
+// rewording one must not read as a test appearing and another vanishing --
+// otherwise editing a note would need the addition flag, which is how people
+// learn to set the addition flag by default.
+func identity(line string) string {
+	parts := strings.Split(line, "\t")
+	if len(parts) > 3 {
+		parts = parts[:3]
+	}
+	return strings.Join(parts, "\t")
+}
+
 func diff(want, got []string) (added, removed []string) {
 	inWant := map[string]bool{}
 	for _, w := range want {
-		inWant[w] = true
+		inWant[identity(w)] = true
 	}
 	inGot := map[string]bool{}
 	for _, g := range got {
-		inGot[g] = true
+		inGot[identity(g)] = true
 	}
 	for _, g := range got {
-		if !inWant[g] {
+		if !inWant[identity(g)] {
 			added = append(added, g)
 		}
 	}
 	for _, w := range want {
-		if !inGot[w] {
+		if !inGot[identity(w)] {
 			removed = append(removed, w)
 		}
 	}
@@ -250,6 +291,42 @@ func Test_additionRefusalNamesTheEntries(t *testing.T) {
 	} {
 		if !strings.Contains(message, want) {
 			t.Errorf("the refusal does not mention %q:\n%s", want, message)
+		}
+	}
+}
+
+// Test_knownBugSlotsAllExist stops the cross-reference going stale.
+//
+// knownBugSlots is hand-maintained, and a hand-maintained claim about the tree
+// is exactly what rots: cmd/schema-baseline sat in the coverage check's
+// exemption list for hours carrying a reason that had been refuted, because
+// nothing checked a reason against the tree. An entry here naming a test that
+// no longer exists, or one that now asserts, is a claim about nothing -- and it
+// would point the next reader at a slot that is not there.
+//
+// Fixing the test is the good outcome, so this says to delete the entry rather
+// than treating it as a failure to undo.
+//
+// PROVEN TO FAIL. Renaming the Test_wanResource_Create key to Test_noSuchTest
+// turned this red with "knownBugSlots names ... which is no longer a test that
+// cannot fail". Restoring the key returned it to green.
+func Test_knownBugSlotsAllExist(t *testing.T) {
+	findings, err := Scan(repositoryRoot(t))
+	if err != nil {
+		t.Fatalf("scanning: %v", err)
+	}
+	present := map[string]bool{}
+	for _, f := range findings {
+		present[f.File+"\t"+f.Name] = true
+	}
+
+	for key, slot := range knownBugSlots {
+		if !present[key] {
+			name := strings.ReplaceAll(key, "\t", " ")
+			t.Errorf("knownBugSlots names %q (%s), which is no longer a test that cannot fail;\n"+
+				"    if it was fixed that is the good outcome -- delete the entry, because a\n"+
+				"    cross-reference to a slot that is not there sends the next reader nowhere",
+				name, slot)
 		}
 	}
 }
