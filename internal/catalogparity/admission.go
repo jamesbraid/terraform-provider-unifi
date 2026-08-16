@@ -39,9 +39,28 @@ type SchemaDifferentialEvidence struct {
 	TerraformOnlyCategories     []string         `json:"terraform_only_categories"`
 }
 
+// TreeState is what .woodpecker/scripts/tree-state.sh records in a receipt: the
+// commit the receipt names, and whether the working tree it was generated from
+// actually matched it.
+//
+// source_commit alone cannot answer that. It comes from `git rev-parse HEAD`,
+// which on a dirty tree names a commit the receipt does not describe -- honest
+// about what it saw and wrong about what exists, and it heals silently once the
+// files land, so the window where it was wrong leaves no trace.
+//
+// A POINTER so a receipt without one stays without one. Every consumer here
+// decodes with DisallowUnknownFields, and re-emitting an empty tree_state would
+// read as "clean" to anyone scanning for the key -- a claim nothing measured.
+type TreeState struct {
+	Status     string   `json:"status"`
+	Commit     string   `json:"commit"`
+	DirtyPaths []string `json:"dirty_paths"`
+}
+
 type BuildSchemaReceipt struct {
 	FormatVersion     int                        `json:"format_version"`
 	Gate              string                     `json:"gate"`
+	TreeState         *TreeState                 `json:"tree_state,omitempty"`
 	Result            string                     `json:"result"`
 	PromotionBlockers []string                   `json:"promotion_blockers"`
 	SourceCommit      string                     `json:"source_commit"`
@@ -71,6 +90,7 @@ type UnitSuiteReceipt struct {
 type UnitDifferentialReceipt struct {
 	FormatVersion     int              `json:"format_version"`
 	Gate              string           `json:"gate"`
+	TreeState         *TreeState       `json:"tree_state,omitempty"`
 	Result            string           `json:"result"`
 	PromotionBlockers []string         `json:"promotion_blockers"`
 	Network           string           `json:"network"`
@@ -136,6 +156,7 @@ type ControllerSuiteReceipt struct {
 type ControllerDifferentialReceipt struct {
 	FormatVersion         int                    `json:"format_version"`
 	Gate                  string                 `json:"gate"`
+	TreeState             *TreeState             `json:"tree_state,omitempty"`
 	Result                string                 `json:"result"`
 	PlanSHA256            string                 `json:"plan_sha256"`
 	ReleasedCommit        string                 `json:"released_commit"`
