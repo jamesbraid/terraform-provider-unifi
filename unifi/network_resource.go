@@ -10,40 +10,29 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_network"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_network"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var (
-	_ resource.Resource                 = &networkResource{}
-	_ resource.ResourceWithImportState  = &networkResource{}
-	_ resource.ResourceWithIdentity     = &networkResource{}
-	_ resource.ResourceWithModifyPlan   = &networkResource{}
-	_ resource.ResourceWithUpgradeState = &networkResource{}
+	_ resource.Resource                     = &networkResource{}
+	_ resource.ResourceWithImportState      = &networkResource{}
+	_ resource.ResourceWithIdentity         = &networkResource{}
+	_ resource.ResourceWithModifyPlan       = &networkResource{}
+	_ resource.ResourceWithUpgradeState     = &networkResource{}
+	_ resource.ResourceWithConfigValidators = &networkResource{}
 )
 
 // Ensure provider defined types fully satisfy list interfaces.
@@ -284,541 +273,18 @@ func (r *networkResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		// v1: leasetime, ipv6_ra_preferred_lifetime and ipv6_ra_valid_lifetime
-		// changed from Int64 (seconds) to GoDuration strings. See UpgradeState.
-		Version:             1,
-		MarkdownDescription: "`unifi_network` manages networks (VLANs) in the UniFi controller.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the network.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the network with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether the network is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the network.",
-				Required:            true,
-			},
-			"nat_outbound_ip_addresses": schema.ListNestedAttribute{
-				MarkdownDescription: "List of NAT outbound IP addresses.",
-				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"ip_address": schema.StringAttribute{
-							MarkdownDescription: "The IP address.",
-							Optional:            true,
-						},
-						"ip_address_pool": schema.ListAttribute{
-							MarkdownDescription: "The IP address pool.",
-							Optional:            true,
-							ElementType:         types.StringType,
-						},
-						"mode": schema.StringAttribute{
-							MarkdownDescription: "The mode.",
-							Optional:            true,
-						},
-						"wan_network_group": schema.StringAttribute{
-							MarkdownDescription: "The WAN network group.",
-							Optional:            true,
-						},
-					},
-				},
-			},
-			"auto_scale": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether auto-scaling is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"subnet": schema.StringAttribute{
-				MarkdownDescription: "The network's gateway IP and prefix in CIDR notation. The host " +
-					"portion is the gateway address the controller assigns — it need not be the first " +
-					"usable address: `10.0.10.1/24` uses gateway `10.0.10.1`, while `10.0.10.254/24` " +
-					"uses gateway `10.0.10.254` on the same subnet. Optional: it is not required for " +
-					"`vlan_only` networks (`third_party_gateway = true`), where the UniFi controller " +
-					"does not manage the subnet.",
-				Optional:   true,
-				CustomType: cidrtypes.IPv4PrefixType{},
-			},
-			"domain_name": schema.StringAttribute{
-				MarkdownDescription: "The domain name for the network.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					validators.DomainNameValidator(),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"vlan": schema.Int64Attribute{
-				MarkdownDescription: "The VLAN ID for the network.",
-				Optional:            true,
-				Validators: []validator.Int64{
-					int64validator.Between(1, 4094),
-				},
-			},
-			"network_isolation": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether network isolation is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"setting_preference": schema.StringAttribute{
-				MarkdownDescription: "Setting preference. Must be one of `auto` or `manual`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("auto"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("auto", "manual"),
-				},
-			},
-			"internet_access": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether internet access is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"igmp_snooping": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether IGMP snooping is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"multicast_dns": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether mDNS is enabled. This is " +
-					"read back from the controller rather than defaulted: some " +
-					"controllers (notably UniFi OS gateways) ignore `mdns_enabled` " +
-					"at create/update time and always store `false`, so forcing a " +
-					"`true` default produced a \"provider produced inconsistent " +
-					"result after apply\" error.",
-				Optional: true,
-				Computed: true,
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"gateway_type": schema.StringAttribute{
-				MarkdownDescription: "The gateway type. Must be one of `default` or `switch`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("default"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("default", "switch"),
-				},
-			},
-			"ipv6_interface_type": schema.StringAttribute{
-				MarkdownDescription: "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("none"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("none", "pd", "static"),
-				},
-			},
-			"ipv6_client_address_assignment": schema.StringAttribute{
-				MarkdownDescription: "How clients on this network obtain an IPv6 address (UI: Networks → IPv6 → Client Address Assignment). One of `slaac` (SLAAC only), `dhcpv6` (DHCPv6 only), or `slaac-dhcpv6` (both). Computed from the controller when not set.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("slaac", "dhcpv6", "slaac-dhcpv6"),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"ipv6_static_subnet": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
-				Optional:            true,
-			},
-			"ipv6_ra": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether IPv6 Router Advertisement (RA) is enabled.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"ipv6_ra_priority": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 Router Advertisement priority. Must be one of `high`, `medium`, or `low`.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("high", "medium", "low"),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"ipv6_ra_preferred_lifetime": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 Router Advertisement preferred lifetime, as a Go " +
-					"duration string (e.g. `14400s`, `4h`). Must be a whole number of seconds " +
-					"between `0s` and `31536000s` (1 year).",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Validators: []validator.String{
-					validators.GoDurationBetween(0, 31536000*time.Second),
-					validators.GoDurationMultipleOf(time.Second),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"ipv6_ra_valid_lifetime": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 Router Advertisement valid lifetime, as a Go " +
-					"duration string (e.g. `86400s`, `24h`). Must be a whole number of seconds " +
-					"between `0s` and `31536000s` (1 year).",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Validators: []validator.String{
-					validators.GoDurationBetween(0, 31536000*time.Second),
-					validators.GoDurationMultipleOf(time.Second),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"ipv6_pd_interface": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 Prefix Delegation WAN interface (e.g., `wan`, `wan2`).",
-				Optional:            true,
-			},
-			"ipv6_pd_prefixid": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 Prefix Delegation prefix ID (hex string, e.g., `0`, `1a`).",
-				Optional:            true,
-			},
-			"ipv6_pd_start": schema.StringAttribute{
-				MarkdownDescription: "The start of the IPv6 Prefix Delegation range (e.g. `::2`). " +
-					"Required together with `ipv6_pd_stop` when `ipv6_interface_type` is " +
-					"`pd`, otherwise the controller rejects the network with " +
-					"`api.err.InvalidIpv6Addr`.",
-				Optional: true,
-				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"ipv6_pd_stop": schema.StringAttribute{
-				MarkdownDescription: "The end of the IPv6 Prefix Delegation range (e.g. `::7d1`). " +
-					"Required together with `ipv6_pd_start` when `ipv6_interface_type` is `pd`.",
-				Optional: true,
-				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"ipv6_pd_auto_prefixid_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether automatic prefix ID assignment is enabled for IPv6 Prefix Delegation.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"lte_lan": schema.BoolAttribute{
-				MarkdownDescription: "Whether this network/VLAN stays active when the " +
-					"gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to " +
-					"the controller's `lte_lan_enabled` flag and only matters when a " +
-					"UniFi LTE failover device is in use; otherwise it is cosmetic. " +
-					"Defaults to `true` (network stays available during LTE failover); " +
-					"set to `false` to disable it while on the LTE backup link. The " +
-					"controller may set this automatically, which is why existing " +
-					"networks can show differing values.",
-				Optional: true,
-				Computed: true,
-				Default:  booldefault.StaticBool(true),
-			},
-			"ip_aliases": schema.ListAttribute{
-				MarkdownDescription: "List of IP aliases for the network.",
-				Optional:            true,
-				ElementType:         types.StringType,
-			},
-			"ipv6_aliases": schema.ListAttribute{
-				MarkdownDescription: "List of IPv6 aliases for the network.",
-				Optional:            true,
-				ElementType:         types.StringType,
-			},
-			"third_party_gateway": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether this network uses a third-party gateway. When enabled, the network purpose is set to `vlan-only` and only VLAN ID, DHCP guarding, and basic network settings are configured.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"purpose": schema.StringAttribute{
-				MarkdownDescription: "The network purpose: `corporate` (default), `guest`, or `vlan-only`. Leave unset to let the controller manage it (a `third_party_gateway` network is always `vlan-only`). **Note:** on Zone-Based-Firewall controllers the purpose is coupled to the firewall zone — a `guest` network only keeps `purpose = \"guest\"` while it belongs to the guest/Hotspot zone (assign it there via `unifi_firewall_zone`), otherwise the controller rewrites it back to `corporate` and the apply fails with an inconsistent-result error.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf(
-						unifi.PurposeCorporate,
-						unifi.PurposeGuest,
-						unifi.PurposeVLANOnly,
-					),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"dhcp_guarding": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP guarding is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"servers": schema.ListAttribute{
-						MarkdownDescription: "List of allowed DHCP server IP addresses (maximum 3).",
-						Optional:            true,
-						ElementType:         types.StringType,
-						Validators: []validator.List{
-							listvalidator.SizeAtMost(3),
-						},
-					},
-				},
-			},
-			"dhcp_server": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCP server configuration.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"boot": schema.SingleNestedAttribute{
-						MarkdownDescription: "DHCP boot settings.",
-						Optional:            true,
-						Computed:            true,
-						Attributes: map[string]schema.Attribute{
-							"enabled": schema.BoolAttribute{
-								MarkdownDescription: "Toggles DHCP boot options.",
-								Optional:            true,
-								Computed:            true,
-								Default:             booldefault.StaticBool(false),
-							},
-							"server": schema.StringAttribute{
-								MarkdownDescription: "TFTP server for boot options.",
-								Optional:            true,
-								Computed:            true,
-								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
-								},
-							},
-							"filename": schema.StringAttribute{
-								MarkdownDescription: "Boot filename.",
-								Optional:            true,
-								Computed:            true,
-								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
-								},
-							},
-						},
-						PlanModifiers: []planmodifier.Object{
-							objectplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP server is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(true),
-					},
-					"start": schema.StringAttribute{
-						MarkdownDescription: "The IPv4 address where the DHCP range starts.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.String{
-							validators.IPv4Validator(),
-						},
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"stop": schema.StringAttribute{
-						MarkdownDescription: "The IPv4 address where the DHCP range stops.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.String{
-							validators.IPv4Validator(),
-						},
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"gateway_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP gateway is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"conflict_checking": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP conflict checking is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(true),
-					},
-					"ntp_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP NTP is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"time_offset_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP time offset is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"dns_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP DNS is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"leasetime": schema.StringAttribute{
-						MarkdownDescription: "Specifies the DHCP lease time, as a Go duration " +
-							"string (e.g. `24h`, `86400s`). Defaults to `24h0m0s`.",
-						CustomType: timetypes.GoDurationType{},
-						Optional:   true,
-						Computed:   true,
-						Default:    stringdefault.StaticString("24h0m0s"),
-					},
-					"wins": schema.SingleNestedAttribute{
-						MarkdownDescription: "WINS server configuration.",
-						Optional:            true,
-						Computed:            true,
-						Default: objectdefault.StaticValue(
-							types.ObjectValueMust(map[string]attr.Type{
-								"enabled":   types.BoolType,
-								"addresses": types.ListType{ElemType: types.StringType},
-							}, map[string]attr.Value{
-								"enabled":   types.BoolValue(false),
-								"addresses": types.ListNull(types.StringType),
-							}),
-						),
-						Attributes: map[string]schema.Attribute{
-							"enabled": schema.BoolAttribute{
-								MarkdownDescription: "Specifies whether DHCP WINS is enabled.",
-								Optional:            true,
-								Computed:            true,
-								Default:             booldefault.StaticBool(false),
-							},
-							"addresses": schema.ListAttribute{
-								MarkdownDescription: "List of WINS server addresses (maximum 2).",
-								Optional:            true,
-								ElementType:         types.StringType,
-								Validators: []validator.List{
-									listvalidator.SizeAtMost(2),
-								},
-							},
-						},
-					},
-					"wpad_url": schema.StringAttribute{
-						MarkdownDescription: "WPAD URL for proxy auto-configuration.",
-						Optional:            true,
-					},
-					"tftp_server": schema.StringAttribute{
-						MarkdownDescription: "TFTP server address.",
-						Optional:            true,
-					},
-					"unifi_controller": schema.StringAttribute{
-						MarkdownDescription: "UniFi controller IP address.",
-						Optional:            true,
-						Validators: []validator.String{
-							validators.IPv4Validator(),
-						},
-					},
-					"dns_servers": schema.ListAttribute{
-						MarkdownDescription: "List of DNS server addresses for DHCP clients.",
-						Optional:            true,
-						ElementType:         types.StringType,
-						Validators: []validator.List{
-							listvalidator.SizeAtMost(4),
-						},
-					},
-				},
-			},
-			"dhcp_v6_server": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCPv6 server configuration.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether the DHCPv6 server is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"dns_auto": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"dns_servers": schema.ListAttribute{
-						MarkdownDescription: "List of DNS server addresses for DHCPv6 clients (maximum 4).",
-						Optional:            true,
-						ElementType:         types.StringType,
-						Validators: []validator.List{
-							listvalidator.SizeAtMost(4),
-						},
-					},
-					"lease": schema.Int64Attribute{
-						MarkdownDescription: "The lease time for DHCPv6 addresses in seconds.",
-						Optional:            true,
-					},
-					"start": schema.StringAttribute{
-						MarkdownDescription: "The start of the DHCPv6 address range.",
-						Optional:            true,
-					},
-					"stop": schema.StringAttribute{
-						MarkdownDescription: "The end of the DHCPv6 address range.",
-						Optional:            true,
-					},
-				},
-			},
-			"dhcp_relay": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCP relay configuration.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP relay is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"servers": schema.ListAttribute{
-						MarkdownDescription: "List of DHCP relay server addresses.",
-						Optional:            true,
-						ElementType:         types.StringType,
-						Validators: []validator.List{
-							listvalidator.SizeAtMost(4),
-						},
-					},
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_network.NetworkResourceSchema(ctx)
+	// v1: dhcp_server.leasetime, ipv6_ra_preferred_lifetime and
+	// ipv6_ra_valid_lifetime changed from Int64 (seconds) to GoDuration
+	// strings, which UpgradeState migrates. The specification cannot carry a
+	// schema version, so it is re-set here as site_to_site_vpn does.
+	resp.Schema.Version = 1
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 // UpgradeState migrates v0 state to v1: leasetime (nested in dhcp_server),
@@ -897,6 +363,75 @@ func planBoolAt(
 	var v types.Bool
 	diags.Append(plan.GetAttribute(ctx, p, &v)...)
 	return v.ValueBool()
+}
+
+func (r *networkResource) ConfigValidators(
+	_ context.Context,
+) []resource.ConfigValidator {
+	return []resource.ConfigValidator{&networkPurposeAliasConfigValidator{}}
+}
+
+// networkPurposeAliasConfigValidator refuses a configuration that sets
+// third_party_gateway and purpose to disagree.
+//
+// The two are not independent attributes. Both write the controller's single
+// Purpose field -- an explicit purpose is applied first, then a true
+// third_party_gateway overrides it to vlan-only -- and third_party_gateway is
+// read back out of that same field rather than one of its own. So a
+// disagreeing pair cannot be satisfied: whichever side loses the write is
+// rewritten on the read, and the apply fails with "inconsistent result after
+// apply" naming an attribute the practitioner set to exactly the value they
+// asked for. That error blames the provider for the user's contradiction and
+// says nothing about the other half of it.
+//
+// Refusing it here says which two lines conflict, before anything is created.
+// Leaving either side unset is not a conflict: the unset one is derived.
+type networkPurposeAliasConfigValidator struct{}
+
+func (v *networkPurposeAliasConfigValidator) Description(_ context.Context) string {
+	return "third_party_gateway and purpose must agree: a third-party gateway network is always vlan-only"
+}
+
+func (v *networkPurposeAliasConfigValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v *networkPurposeAliasConfigValidator) ValidateResource(
+	ctx context.Context,
+	req resource.ValidateConfigRequest,
+	resp *resource.ValidateConfigResponse,
+) {
+	var thirdParty types.Bool
+	var purpose types.String
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("third_party_gateway"), &thirdParty)...)
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("purpose"), &purpose)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// An unknown value comes from an expression this validator cannot resolve,
+	// so it cannot judge the pair. Null means the practitioner left it to be
+	// derived, which is the whole point of the fix and never a conflict.
+	if thirdParty.IsNull() || thirdParty.IsUnknown() ||
+		purpose.IsNull() || purpose.IsUnknown() {
+		return
+	}
+	if thirdParty.ValueBool() == (purpose.ValueString() == unifi.PurposeVLANOnly) {
+		return
+	}
+	resp.Diagnostics.AddError(
+		"Conflicting network purpose",
+		fmt.Sprintf(
+			"third_party_gateway = %t and purpose = %q cannot both hold: the "+
+				"controller stores one purpose per network, and a third-party "+
+				"gateway network is always %q.\n\n"+
+				"Set third_party_gateway = %t, or change purpose to %q, or drop "+
+				"one of them and let it be derived from the other.",
+			thirdParty.ValueBool(), purpose.ValueString(), unifi.PurposeVLANOnly,
+			purpose.ValueString() == unifi.PurposeVLANOnly, unifi.PurposeVLANOnly,
+		),
+	)
 }
 
 // ModifyPlan forces setting_preference to "manual" when the plan enables a
@@ -1233,7 +768,7 @@ func (r *networkResource) modelToNetwork(
 		AutoScaleEnabled:            model.AutoScale.ValueBool(),
 		IPSubnet:                    model.Subnet.ValueStringPointer(),
 		NetworkIsolationEnabled:     model.NetworkIsolation.ValueBool(),
-		SettingPreference:           model.SettingPreference.ValueStringPointer(),
+		SettingPreference:           optStr(model.SettingPreference),
 		InternetAccessEnabled:       model.InternetAccess.ValueBool(),
 		MdnsEnabled:                 model.MulticastDNS.ValueBool(),
 		GatewayType:                 model.GatewayType.ValueStringPointer(),
@@ -1641,7 +1176,16 @@ func (r *networkResource) networkToModel(
 	if isVLANOnly && previousModel != nil {
 		model.Subnet = previousModel.Subnet
 		model.AutoScale = previousModel.AutoScale
-		model.SettingPreference = previousModel.SettingPreference
+		// setting_preference carries no default and uses UseStateForUnknown, so
+		// it is unknown during Create. Preserving that leaves it unknown after
+		// apply, which Terraform rejects. Resolve it from the API value instead
+		// -- null when the controller reports nothing, which is what a vlan-only
+		// network gets and is a known value.
+		if previousModel.SettingPreference.IsUnknown() {
+			model.SettingPreference = types.StringPointerValue(network.SettingPreference)
+		} else {
+			model.SettingPreference = previousModel.SettingPreference
+		}
 		model.InternetAccess = previousModel.InternetAccess
 		// multicast_dns uses UseStateForUnknown, so it may be unknown during
 		// Create. Resolve it from the API value (the controller does not honor
@@ -2018,31 +1562,7 @@ func (r *networkResource) ListResourceConfigSchema(
 	req list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List networks in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list networks from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_network.NetworkListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

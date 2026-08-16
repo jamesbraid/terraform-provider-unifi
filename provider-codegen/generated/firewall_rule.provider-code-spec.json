@@ -1,0 +1,398 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "firewall_rule",
+      "schema": {
+        "attributes": [
+          {
+            "name": "action",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The action of the firewall rule. Must be one of `drop`, `accept`, or `reject`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"drop\", \"accept\", \"reject\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "dst_address",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The destination address of the firewall rule."
+            }
+          },
+          {
+            "name": "dst_address_ipv6",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The IPv6 destination address of the firewall rule."
+            }
+          },
+          {
+            "name": "dst_firewall_group_ids",
+            "set": {
+              "computed_optional_required": "optional",
+              "description": "The destination firewall group IDs of the firewall rule.",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "dst_network_id",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The destination network ID of the firewall rule."
+            }
+          },
+          {
+            "name": "dst_network_type",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "NETv4"
+              },
+              "description": "The destination network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"ADDRv4\", \"NETv4\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "dst_port",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The destination port of the firewall rule."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Specifies whether the rule should be enabled."
+            },
+            "name": "enabled"
+          },
+          {
+            "name": "icmp_typename",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "ICMP type name."
+            }
+          },
+          {
+            "name": "icmp_v6_typename",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "ICMPv6 type name."
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the firewall rule.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ip_sec",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "Specify whether the rule matches on IPsec packets. Can be one of `match-ipset` or `match-none`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"match-ipsec\", \"match-none\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable logging for the firewall rule."
+            },
+            "name": "logging"
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the firewall rule."
+            }
+          },
+          {
+            "name": "protocol",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The protocol of the rule."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Match packets that do NOT match the specified protocol (protocol negation)."
+            },
+            "name": "protocol_match_excepted"
+          },
+          {
+            "name": "protocol_v6",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The IPv6 protocol of the rule."
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "required",
+              "description": "The index of the rule. Must be in one of the interface-specific blocks: `2000-2999` (LAN), `3000-3999` (WAN), `4000-4999` (GUEST), or their high-range equivalents `20000-29999`, `30000-39999`, `40000-49999` used by newer UniFi OS versions.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Any(int64validator.Between(2000, 2999), int64validator.Between(3000, 3999), int64validator.Between(4000, 4999), int64validator.Between(20000, 29999), int64validator.Between(30000, 39999), int64validator.Between(40000, 49999))"
+                  }
+                }
+              ]
+            },
+            "name": "rule_index"
+          },
+          {
+            "name": "ruleset",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The ruleset for the rule. This is from the perspective of the security gateway.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"WAN_IN\", \"WAN_OUT\", \"WAN_LOCAL\", \"LAN_IN\", \"LAN_OUT\", \"LAN_LOCAL\", \"GUEST_IN\", \"GUEST_OUT\", \"GUEST_LOCAL\", \"WANv6_IN\", \"WANv6_OUT\", \"WANv6_LOCAL\", \"LANv6_IN\", \"LANv6_OUT\", \"LANv6_LOCAL\", \"GUESTv6_IN\", \"GUESTv6_OUT\", \"GUESTv6_LOCAL\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "setting_preference",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether the rule is managed automatically by the controller or manually. Can be one of `auto` or `manual`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the firewall rule with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "src_address",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The source address for the firewall rule."
+            }
+          },
+          {
+            "name": "src_address_ipv6",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The IPv6 source address for the firewall rule."
+            }
+          },
+          {
+            "name": "src_firewall_group_ids",
+            "set": {
+              "computed_optional_required": "optional",
+              "description": "The source firewall group IDs for the firewall rule.",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "src_mac",
+            "string": {
+              "computed_optional_required": "optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+                },
+                "type": "hwtypes.MACAddressType{}",
+                "value_type": "hwtypes.MACAddress"
+              },
+              "description": "The source MAC address of the firewall rule."
+            }
+          },
+          {
+            "name": "src_network_id",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The source network ID for the firewall rule."
+            }
+          },
+          {
+            "name": "src_network_type",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "NETv4"
+              },
+              "description": "The source network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"ADDRv4\", \"NETv4\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "src_port",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The source port of the firewall rule."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Match where the state is established."
+            },
+            "name": "state_established"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Match where the state is invalid."
+            },
+            "name": "state_invalid"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Match where the state is new."
+            },
+            "name": "state_new"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Match where the state is related."
+            },
+            "name": "state_related"
+          }
+        ],
+        "markdown_description": "Manages an individual firewall rule on the gateway."
+      }
+    }
+  ]
+}

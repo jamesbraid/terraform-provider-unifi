@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_power_supervisor",
+  "resource": "unifi_power_supervisor",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "6e9323970396a327ad963849ca8d896f973317d28bb5b3ab9c245c7d53ae2c7a"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "list_resource": "47899de4b8b623fbbf07076fecfb033b26d1ed1e19e82a9d39cfa5918d6e5208"
+  },
+  "structural_fields": 7,
+  "generated_attributes": 1,
+  "provider_owned_seams": 1,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

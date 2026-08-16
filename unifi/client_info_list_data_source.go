@@ -8,10 +8,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	gounifi "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_info_list"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/models"
 )
 
@@ -44,25 +44,10 @@ func (d *clientInfoListDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Retrieves a list of all active clients on the network.",
-
-		Attributes: map[string]schema.Attribute{
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to retrieve clients from.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"clients": schema.ListNestedAttribute{
-				MarkdownDescription: "List of active clients on the network.",
-				Computed:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: models.Attributes(),
-				},
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
+	resp.Schema = datasource_client_info_list.ClientInfoListDsDataSourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *clientInfoListDataSource) Configure(

@@ -7,9 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_port_profile"
 )
 
 var _ datasource.DataSource = &portProfileDataSource{}
@@ -48,48 +48,8 @@ func (d *portProfileDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Data source for port profiles.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of this port profile.",
-				Computed:            true,
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the port profile is associated with.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the port profile to look up.",
-				Required:            true,
-			},
-			"forward": schema.StringAttribute{
-				MarkdownDescription: "The forwarding mode of the port profile. One of `all`, `native`, `customize` or `disabled`.",
-				Computed:            true,
-			},
-			"native_networkconf_id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the native (untagged) network for the port profile.",
-				Computed:            true,
-			},
-			"tagged_networkconf_ids": schema.SetAttribute{
-				MarkdownDescription: "The actual set of tagged VLAN network IDs after applying the controller mode and exclusions.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"excluded_networkconf_ids": schema.SetAttribute{
-				MarkdownDescription: "The controller-facing network exclusion set used by Custom mode.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"tagged_vlan_mgmt": schema.StringAttribute{
-				MarkdownDescription: "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom).",
-				Computed:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
+	resp.Schema = datasource_port_profile.PortProfileDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *portProfileDataSource) Configure(

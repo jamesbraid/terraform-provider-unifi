@@ -11,27 +11,17 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_vpn_server"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_server"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -206,261 +196,13 @@ func (r *vpnServerResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	wanInterfaceValidator := stringvalidator.RegexMatches(
-		regexp.MustCompile(`^wan[2-9]?$`),
-		"must be 'wan' or 'wan2' through 'wan9'",
+	resp.Schema = resource_vpn_server.VpnServerResourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
 	)
-
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "`unifi_vpn_server` manages VPN server configurations (WireGuard, L2TP, or OpenVPN) in the UniFi controller.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the VPN server.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the VPN server with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the VPN server.",
-				Required:            true,
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether the VPN server is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"subnet": schema.StringAttribute{
-				MarkdownDescription: "The VPN server subnet in CIDR notation (e.g., `10.100.0.1/24`). " +
-					"The first address is the server's tunnel IP, so use the gateway form " +
-					"(`10.100.0.1/24`) — the network address (`10.100.0.0/24`) is rejected with " +
-					"`api.err.IncorrectIPSubnetSpec`.",
-				Required:   true,
-				CustomType: cidrtypes.IPv4PrefixType{},
-			},
-			"dns": schema.SingleNestedAttribute{
-				MarkdownDescription: "DNS configuration pushed to VPN clients.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether custom DNS servers are enabled for VPN clients. Defaults to `true` when `servers` is non-empty.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers: []planmodifier.Bool{
-							boolplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"servers": schema.ListAttribute{
-						MarkdownDescription: "DNS servers to push to VPN clients.",
-						Optional:            true,
-						ElementType:         types.StringType,
-					},
-				},
-			},
-			"wan": schema.SingleNestedAttribute{
-				MarkdownDescription: "WAN binding configuration for the VPN server.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"ip": schema.StringAttribute{
-						MarkdownDescription: "Local WAN IP to bind the VPN server to. Use `any` to listen on all addresses.",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("any"),
-					},
-					"interface": schema.StringAttribute{
-						MarkdownDescription: "WAN interface to use for the VPN server (e.g., `wan`, `wan2`).",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("wan"),
-						Validators: []validator.String{
-							wanInterfaceValidator,
-						},
-					},
-				},
-			},
-			"radiusprofile_id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the RADIUS profile to use for authentication. Applicable to L2TP and OpenVPN server types.",
-				Optional:            true,
-			},
-			"wireguard": schema.SingleNestedAttribute{
-				MarkdownDescription: "WireGuard VPN server configuration. Exactly one of `wireguard`, `l2tp`, or `openvpn` must be specified.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"private_key": schema.StringAttribute{
-						MarkdownDescription: "WireGuard private key for this server (base64). If not " +
-							"specified, the provider generates one at create time (the controller " +
-							"does not generate it and rejects a server without a key).",
-						Optional:  true,
-						Computed:  true,
-						Sensitive: true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"public_key": schema.StringAttribute{
-						MarkdownDescription: "WireGuard public key for this server. Computed from the private key.",
-						Computed:            true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"port": schema.Int64Attribute{
-						MarkdownDescription: "UDP port for the WireGuard server to listen on.",
-						Optional:            true,
-						Computed:            true,
-						Default:             int64default.StaticInt64(51820),
-						Validators: []validator.Int64{
-							int64validator.Between(1, 65535),
-						},
-					},
-				},
-			},
-			"l2tp": schema.SingleNestedAttribute{
-				MarkdownDescription: "L2TP VPN server configuration. Exactly one of `wireguard`, `l2tp`, or `openvpn` must be specified.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"allow_weak_ciphers": schema.BoolAttribute{
-						MarkdownDescription: "Allow weak ciphers for L2TP connections.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"pre_shared_key": schema.StringAttribute{
-						MarkdownDescription: "IPsec pre-shared key for L2TP. Required by the UniFi controller.",
-						Required:            true,
-						Sensitive:           true,
-					},
-				},
-			},
-			"openvpn": schema.SingleNestedAttribute{
-				MarkdownDescription: "OpenVPN server configuration. Exactly one of `wireguard`, `l2tp`, or `openvpn` must be specified.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"port": schema.Int64Attribute{
-						MarkdownDescription: "Port for the OpenVPN server to listen on.",
-						Optional:            true,
-						Computed:            true,
-						Default:             int64default.StaticInt64(1194),
-						Validators: []validator.Int64{
-							int64validator.Between(1, 65535),
-						},
-					},
-					"mode": schema.StringAttribute{
-						MarkdownDescription: "OpenVPN mode.",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("server"),
-						Validators: []validator.String{
-							stringvalidator.OneOf("server", "site-to-site"),
-						},
-					},
-					"encryption_cipher": schema.StringAttribute{
-						MarkdownDescription: "Encryption cipher for OpenVPN. One of `AES_256_CBC` or `BF_CBC`.",
-						Optional:            true,
-						Computed:            true,
-						// The controller accepts AES_256_CBC and BF_CBC. AES_256_GCM
-						// was offered here and defaulted to, and the controller
-						// answers it with api.err.InvalidValue naming the pattern
-						// AES_256_CBC|BF_CBC, so every OpenVPN server that did not
-						// override the default failed to create.
-						Default: stringdefault.StaticString("AES_256_CBC"),
-						Validators: []validator.String{
-							stringvalidator.OneOf("AES_256_CBC", "BF_CBC"),
-						},
-					},
-					"server_crt": schema.StringAttribute{
-						MarkdownDescription: "Server certificate generated by the controller.",
-						Computed:            true,
-						Sensitive:           true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"server_key": schema.StringAttribute{
-						MarkdownDescription: "Server private key generated by the controller.",
-						Computed:            true,
-						Sensitive:           true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"dh_key": schema.StringAttribute{
-						MarkdownDescription: "Diffie-Hellman parameters generated by the controller.",
-						Computed:            true,
-						Sensitive:           true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"shared_client_key": schema.StringAttribute{
-						MarkdownDescription: "Shared client private key generated by the controller.",
-						Computed:            true,
-						Sensitive:           true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"shared_client_crt": schema.StringAttribute{
-						MarkdownDescription: "Shared client certificate generated by the controller.",
-						Computed:            true,
-						Sensitive:           true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"auth_key": schema.StringAttribute{
-						MarkdownDescription: "OpenVPN static authentication key generated by the controller.",
-						Computed:            true,
-						Sensitive:           true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"ca_crt": schema.StringAttribute{
-						MarkdownDescription: "CA certificate generated by the controller.",
-						Computed:            true,
-						Sensitive:           true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"ca_key": schema.StringAttribute{
-						MarkdownDescription: "CA private key generated by the controller.",
-						Computed:            true,
-						Sensitive:           true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-				},
-			},
-			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-			}),
-		},
-	}
 }
 
 func (r *vpnServerResource) Configure(
@@ -1084,31 +826,7 @@ func (r *vpnServerResource) ListResourceConfigSchema(
 	req list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List VPN servers in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list VPN servers from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_vpn_server.VpnServerListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

@@ -1,0 +1,78 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "datasources": [
+    {
+      "name": "port_profile_ds",
+      "schema": {
+        "attributes": [
+          {
+            "name": "excluded_networkconf_ids",
+            "set": {
+              "computed_optional_required": "computed",
+              "description": "The controller-facing network exclusion set used by Custom mode.",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "forward",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The forwarding mode of the port profile. One of `all`, `native`, `customize` or `disabled`."
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of this port profile."
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the port profile to look up."
+            }
+          },
+          {
+            "name": "native_networkconf_id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the native (untagged) network for the port profile."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site the port profile is associated with."
+            }
+          },
+          {
+            "name": "tagged_networkconf_ids",
+            "set": {
+              "computed_optional_required": "computed",
+              "description": "The actual set of tagged VLAN network IDs after applying the controller mode and exclusions.",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "tagged_vlan_mgmt",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom)."
+            }
+          }
+        ],
+        "markdown_description": "Data source for port profiles."
+      }
+    }
+  ]
+}

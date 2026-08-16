@@ -7,22 +7,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_wireguard_peer"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wireguard_peer"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -105,71 +98,13 @@ func (r *wireguardPeerResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a WireGuard peer (client) of a WireGuard VPN server. " +
-			"The server is a `unifi_vpn_server` resource (or a network with `vpn_type = \"wireguard-server\"`); " +
-			"its network ID is referenced via `network_id`.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the WireGuard peer.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the WireGuard server belongs to.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"network_id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the WireGuard server network the peer connects to.",
-				Required:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the WireGuard peer.",
-				Required:            true,
-			},
-			"interface_ip": schema.StringAttribute{
-				MarkdownDescription: "The tunnel IP assigned to the peer, without mask (e.g. `192.0.2.10`). " +
-					"Must be within the WireGuard server's subnet.",
-				Required: true,
-				Validators: []validator.String{
-					validators.IPv4Validator(),
-				},
-			},
-			"public_key": schema.StringAttribute{
-				MarkdownDescription: "The WireGuard public key of the peer.",
-				Required:            true,
-			},
-			"allowed_ips": schema.ListAttribute{
-				MarkdownDescription: "Additional CIDRs routed to this peer beyond its tunnel IP.",
-				ElementType:         types.StringType,
-				Optional:            true,
-				Computed:            true,
-				Default: listdefault.StaticValue(
-					types.ListValueMust(types.StringType, []attr.Value{}),
-				),
-				Validators: []validator.List{
-					listvalidator.ValueStringsAre(validators.CIDRValidator()),
-				},
-			},
-			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-			}),
-		},
-	}
+	resp.Schema = resource_wireguard_peer.WireguardPeerResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx, timeouts.Opts{
+		Create: true,
+		Read:   true,
+		Update: true,
+		Delete: true,
+	})
 }
 
 func (r *wireguardPeerResource) Configure(
@@ -442,39 +377,11 @@ func (r *wireguardPeerResource) peerToModel(
 // ListResourceConfigSchema implements [list.ListResource]. Peers belong to a
 // WireGuard server network, so `network_id` is required.
 func (r *wireguardPeerResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List WireGuard peers of a WireGuard server network.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site the WireGuard server belongs to.",
-				Optional:            true,
-			},
-			"network_id": listschema.StringAttribute{
-				MarkdownDescription: "The ID of the WireGuard server network to list peers from.",
-				Required:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_wireguard_peer.WireguardPeerListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

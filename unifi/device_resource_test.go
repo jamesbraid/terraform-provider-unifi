@@ -18,9 +18,34 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
 )
+
+func TestAccDeviceList_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		Steps: []resource.TestStep{{
+			Query: true,
+			Config: `
+provider "unifi" {}
+list "unifi_device" "test" {
+  provider = unifi
+  config {}
+}
+`,
+			QueryResultChecks: []querycheck.QueryResultCheck{
+				querycheck.ExpectLengthAtLeast("unifi_device.test", 1),
+			},
+		}},
+	})
+}
 
 // TestMergePortOverridesByIndex guards #266: declaring a subset of port_override
 // blocks must not wipe the device's other ports. The UniFi PUT replaces the whole
@@ -332,10 +357,15 @@ func TestAccDeviceFramework_basic(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:            "unifi_device.test",
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"allow_adoption", "forget_on_destroy"},
+				ResourceName:      "unifi_device.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// state is live controller telemetry, not configuration: a
+				// device that is still provisioning reports 5 and settles to 1
+				// on its own schedule. Comparing it across the two reads that
+				// import performs is a race, and it has failed both suites
+				// intermittently.
+				ImportStateVerifyIgnore: []string{"allow_adoption", "forget_on_destroy", "state"},
 			},
 		},
 	})
@@ -686,6 +716,18 @@ func Test_deviceResource_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.r.Create(tt.args.ctx, tt.args.req, tt.args.resp)
 		})
+	}
+}
+
+func Test_restoreCreatePlanValues_preservesSuccessfulAdoption(t *testing.T) {
+	model := deviceResourceModel{
+		Adopted: types.BoolValue(false),
+	}
+
+	restoreCreatePlanValues(&model, types.BoolValue(true), types.BoolValue(false), types.StringNull(), types.SetNull(types.ObjectType{AttrTypes: portOverrideAttrTypes()}))
+
+	if !model.Adopted.ValueBool() {
+		t.Fatal("Adopted = false, want true after successful create")
 	}
 }
 

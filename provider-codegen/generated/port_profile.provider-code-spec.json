@@ -1,0 +1,772 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "port_profile",
+      "schema": {
+        "attributes": [
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Enable link auto negotiation for the port profile. When set to `true` this overrides `speed`."
+            },
+            "name": "autoneg"
+          },
+          {
+            "name": "dot1x_ctrl",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "force_authorized"
+              },
+              "description": "The type of 802.1X control to use. Can be `auto`, `force_authorized`, `force_unauthorized`, `mac_based` or `multi_host`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"force_authorized\", \"force_unauthorized\", \"mac_based\", \"multi_host\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "dot1x_idle_timeout",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "default": {
+                "static": "5m0s"
+              },
+              "description": "The idle timeout to use when using MAC Based 802.1X control, as a Go duration string (e.g. `5m`, `300s`). Defaults to `5m0s`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationBetween(0, 65535*time.Second)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The egress rate limit, in kpbs, for the port profile. Can be between `64` and `9999999`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(64, 9999999)"
+                  }
+                }
+              ]
+            },
+            "name": "egress_rate_limit_kbps"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable egress rate limiting for the port profile."
+            },
+            "name": "egress_rate_limit_kbps_enabled"
+          },
+          {
+            "name": "excluded_networkconf_ids",
+            "set": {
+              "computed_optional_required": "computed_optional",
+              "description": "The controller-facing set of networks excluded from the port profile when `tagged_vlan_mgmt` is `custom`. This advanced interface conflicts with `tagged_networkconf_ids`; prefer the exact tagged-network set.",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "fec_mode",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "Forward Error Correction mode. Can be `rs-fec`, `fc-fec`, `default`, or `disabled`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"rs-fec\", \"fc-fec\", \"default\", \"disabled\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "forward",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The forwarding mode. Can be `all`, `native`, `customize`, or `disabled`; tagged VLAN configuration derives the matching value when omitted.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"all\", \"native\", \"customize\", \"disabled\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable full duplex for the port profile."
+            },
+            "name": "full_duplex"
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the port profile.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable port isolation for the port profile."
+            },
+            "name": "isolation"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Enable LLDP-MED for the port profile."
+            },
+            "name": "lldpmed_enabled"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "optional",
+              "description": "Enable LLDP-MED topology change notifications for the port profile."
+            },
+            "name": "lldpmed_notify_enabled"
+          },
+          {
+            "name": "multicast_router_networkconf_ids",
+            "set": {
+              "computed_optional_required": "optional",
+              "description": "The IDs of networks designated as multicast routers for the port profile.",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The name of the port profile."
+            }
+          },
+          {
+            "name": "native_networkconf_id",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The ID of network to use as the main (native/untagged) network on the port profile. Assigned by the controller if not set.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "op_mode",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "switch"
+              },
+              "description": "The operation mode for the port profile. Can only be `switch`",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"switch\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "poe_mode",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"passv24\", \"passthrough\", \"off\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable port keepalive for the port profile."
+            },
+            "name": "port_keepalive_enabled"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable port security for the port profile."
+            },
+            "name": "port_security_enabled"
+          },
+          {
+            "name": "port_security_mac_address",
+            "set": {
+              "computed_optional_required": "optional",
+              "description": "The MAC addresses associated with the port security for the port profile.",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The priority queue 1 level for the port profile. Can be between 0 and 100.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 100)"
+                  }
+                }
+              ]
+            },
+            "name": "priority_queue1_level"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The priority queue 2 level for the port profile. Can be between 0 and 100.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 100)"
+                  }
+                }
+              ]
+            },
+            "name": "priority_queue2_level"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The priority queue 3 level for the port profile. Can be between 0 and 100.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 100)"
+                  }
+                }
+              ]
+            },
+            "name": "priority_queue3_level"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The priority queue 4 level for the port profile. Can be between 0 and 100.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 100)"
+                  }
+                }
+              ]
+            },
+            "name": "priority_queue4_level"
+          },
+          {
+            "name": "setting_preference",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether the port profile settings are managed automatically or manually. Can be `auto` or `manual`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the port profile with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The link speed to set for the port profile. Can be one of `10`, `100`, `1000`, `2500`, `5000`, `10000`, `20000`, `25000`, `40000`, `50000` or `100000`",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.OneOf(10, 100, 1000, 2500, 5000, 10000, 20000, 25000, 40000, 50000, 100000)"
+                  }
+                }
+              ]
+            },
+            "name": "speed"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable broadcast Storm Control for the port profile."
+            },
+            "name": "stormctrl_bcast_enabled"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The broadcast Storm Control level for the port profile. Can be between 0 and 100.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 100)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      },
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                      }
+                    ],
+                    "schema_definition": "int64validator.ConflictsWith(path.MatchRoot(\"stormctrl_bcast_rate\"))"
+                  }
+                }
+              ]
+            },
+            "name": "stormctrl_bcast_level"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The broadcast Storm Control rate for the port profile. Can be between 0 and 14880000.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 14880000)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      },
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                      }
+                    ],
+                    "schema_definition": "int64validator.ConflictsWith(path.MatchRoot(\"stormctrl_bcast_level\"))"
+                  }
+                }
+              ]
+            },
+            "name": "stormctrl_bcast_rate"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable multicast Storm Control for the port profile."
+            },
+            "name": "stormctrl_mcast_enabled"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The multicast Storm Control level for the port profile. Can be between 0 and 100.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 100)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      },
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                      }
+                    ],
+                    "schema_definition": "int64validator.ConflictsWith(path.MatchRoot(\"stormctrl_mcast_rate\"))"
+                  }
+                }
+              ]
+            },
+            "name": "stormctrl_mcast_level"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The multicast Storm Control rate for the port profile. Can be between 0 and 14880000.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 14880000)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      },
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                      }
+                    ],
+                    "schema_definition": "int64validator.ConflictsWith(path.MatchRoot(\"stormctrl_mcast_level\"))"
+                  }
+                }
+              ]
+            },
+            "name": "stormctrl_mcast_rate"
+          },
+          {
+            "name": "stormctrl_type",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The type of Storm Control to use for the port profile. Can be `level` or `rate`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"level\", \"rate\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Enable unknown unicast Storm Control for the port profile."
+            },
+            "name": "stormctrl_ucast_enabled"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The unknown unicast Storm Control level for the port profile. Can be between 0 and 100.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 100)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      },
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                      }
+                    ],
+                    "schema_definition": "int64validator.ConflictsWith(path.MatchRoot(\"stormctrl_ucast_rate\"))"
+                  }
+                }
+              ]
+            },
+            "name": "stormctrl_ucast_level"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "optional",
+              "description": "The unknown unicast Storm Control rate for the port profile. Can be between 0 and 14880000.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(0, 14880000)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      },
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                      }
+                    ],
+                    "schema_definition": "int64validator.ConflictsWith(path.MatchRoot(\"stormctrl_ucast_level\"))"
+                  }
+                }
+              ]
+            },
+            "name": "stormctrl_ucast_rate"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Enable Spanning Tree Protocol (STP) for the port profile. Computed from the controller when not set.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "stp_port_mode"
+          },
+          {
+            "name": "tagged_networkconf_ids",
+            "set": {
+              "computed_optional_required": "computed_optional",
+              "description": "The exact set of VLAN network IDs to carry tagged. The provider translates this to the controller's exclusion list and keeps it exact as site networks change. Conflicts with `excluded_networkconf_ids`.",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "tagged_vlan_mgmt",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom). An exact tagged or excluded set derives the matching mode when omitted.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"block_all\", \"custom\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "voice_networkconf_id",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The ID of network to use for voice traffic for the port profile."
+            }
+          }
+        ],
+        "markdown_description": "`unifi_port_profile` manages a port profile for use on network switches."
+      }
+    }
+  ]
+}

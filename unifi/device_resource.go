@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
@@ -33,6 +32,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_device"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util/retry"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
@@ -1178,6 +1178,7 @@ func (r *deviceResource) Create(
 	allowAdoption := plan.AllowAdoption
 	forgetOnDestroy := plan.ForgetOnDestroy
 	plannedPortOverride := plan.PortOverride
+	plannedName := plan.Name
 
 	// Set Type from the API so updateDevice can include it in the PUT body.
 	// We deliberately do NOT call setResourceData here — it would fill the model
@@ -1211,20 +1212,32 @@ func (r *deviceResource) Create(
 			return
 		}
 	}
-	// Restore port_override from plan. The API returns ALL ports (e.g. 32) but we
-	// only manage a subset (e.g. 27). Terraform's post-apply consistency check
-	// requires the set length to match the plan. On subsequent Read, the full
-	// port state will be loaded, which may cause a one-time update on next apply.
-	plan.PortOverride = plannedPortOverride
-
-	// Restore plan-only flags
-	plan.AllowAdoption = allowAdoption
-	plan.ForgetOnDestroy = forgetOnDestroy
+	restoreCreatePlanValues(&plan, allowAdoption, forgetOnDestroy, plannedName, plannedPortOverride)
 
 	// Set state
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), plan.ID)...)
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
+}
+
+// restoreCreatePlanValues reapplies values that must survive the controller's
+// immediate post-adoption read. The controller can briefly return stale
+// computed fields while it finishes provisioning; a successful Create must
+// still hand Terraform the state established by the operation itself.
+func restoreCreatePlanValues(
+	plan *deviceResourceModel,
+	allowAdoption, forgetOnDestroy types.Bool,
+	plannedName types.String,
+	plannedPortOverride types.Set,
+) {
+	// The API returns ALL ports (e.g. 32) but the plan manages only a subset.
+	plan.PortOverride = plannedPortOverride
+	if !plannedName.IsNull() && !plannedName.IsUnknown() {
+		plan.Name = plannedName
+	}
+	plan.Adopted = types.BoolValue(true)
+	plan.AllowAdoption = allowAdoption
+	plan.ForgetOnDestroy = forgetOnDestroy
 }
 
 func (r *deviceResource) Read(
@@ -1419,6 +1432,7 @@ func (r *deviceResource) Update(
 	plannedLedOverride := plan.LedOverride
 	plannedLedOverrideColor := plan.LedOverrideColor
 	plannedLedOverrideColorBrightness := plan.LedOverrideColorBrightness
+	plannedName := plan.Name
 
 	// Update the device with only user-configured fields
 	diags = r.updateDevice(ctx, &plan)
@@ -1454,6 +1468,12 @@ func (r *deviceResource) Update(
 	if !plannedLedOverrideColorBrightness.IsNull() &&
 		!plannedLedOverrideColorBrightness.IsUnknown() {
 		plan.LedOverrideColorBrightness = plannedLedOverrideColorBrightness
+	}
+	// Device renames are applied asynchronously too. Keep a configured plan
+	// value across the immediate read, then let the next refresh converge with
+	// the controller once provisioning completes.
+	if !plannedName.IsNull() && !plannedName.IsUnknown() {
+		plan.Name = plannedName
 	}
 	// allow_adoption / forget_on_destroy were resolved before the update and are
 	// not touched by setResourceData; ensure a concrete value (default true)
@@ -3100,35 +3120,11 @@ func (r *deviceResource) deviceListToModel(
 
 // ListResourceConfigSchema implements [list.ListResource].
 func (r *deviceResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List devices in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list devices from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`, `mac`, `model`, `type`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_device.DeviceListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

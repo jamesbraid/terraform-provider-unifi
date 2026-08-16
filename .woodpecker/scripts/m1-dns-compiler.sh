@@ -53,7 +53,7 @@ go test ./...
 for build in one two; do
     CGO_ENABLED=0 GOFLAGS=-mod=readonly GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local \
         GOCACHE="${work_root}/go-build-${build}" \
-        go build -trimpath -buildvcs=false \
+        go build -trimpath -buildvcs=false -ldflags=-buildid= \
         -o "${work_root}/provider/head/terraform-provider-unifi_v${provider_version}.${build}" .
 done
 cmp "${work_root}/provider/head/terraform-provider-unifi_v${provider_version}.one" \
@@ -173,9 +173,18 @@ management_sidecar_sha256=null
 if [[ -n ${M1_LIFECYCLE_RECEIPT:-} ]]; then
     lifecycle_receipt=${M1_LIFECYCLE_RECEIPT}
     readonly lifecycle_receipt
-    test "$(jq -r .result "${lifecycle_receipt}")" = pass
-    test "$(jq -r .source_commit "${lifecycle_receipt}")" = "${source_commit}"
-    test "$(jq -r .provider_binary_sha256 "${lifecycle_receipt}")" = "${provider_binary_sha256}"
+    for field in result source_commit provider_binary_sha256; do
+        case ${field} in
+            result) want=pass ;;
+            source_commit) want=${source_commit} ;;
+            provider_binary_sha256) want=${provider_binary_sha256} ;;
+        esac
+        got=$(jq -r ".${field}" "${lifecycle_receipt}")
+        if [[ ${got} != "${want}" ]]; then
+            echo "lifecycle receipt ${field} is ${got}, want ${want}" >&2
+            exit 1
+        fi
+    done
     lifecycle_sha256=$(sha256sum "${lifecycle_receipt}" | awk '{print $1}')
     sidecar_output=${M1_MANAGEMENT_SIDECAR_OUTPUT:-${work_root}/management-sidecar.json}
     readonly lifecycle_sha256 sidecar_output

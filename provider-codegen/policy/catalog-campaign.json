@@ -1,0 +1,377 @@
+{
+  "format_version": 1,
+  "gate": "catalog controller differential",
+  "surface_count": 67,
+  "evidence_gap_count": 6,
+  "test_name_count": 156,
+  "shared_scenario_exceptions": [
+    {
+      "kind": "action",
+      "name": "unifi_port",
+      "reason": "the port action's runtime differs from the released provider's, but its scenario is still grafted onto the released tree; that sharing is what makes its hardware_claim disposition satisfiable"
+    }
+  ],
+  "accepted_evidence_gaps": [
+    {
+      "kind": "action",
+      "name": "unifi_port",
+      "signal": "hardware_claim",
+      "reason": "the port action needs a physical PoE device to claim; no controller in the fleet can supply one, so this signal can only ever be satisfied by hardware"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_power_supervisor",
+      "signal": "acceptance",
+      "reason": "its zero_use_endpoint reference to list_resource/unifi_power_supervisor was withdrawn for the same reason: the source's only scenario is added"
+    }
+  ],
+  "allowed_skips": [
+    "TestAccSettingResource_dohCustomServers",
+    "TestAccSettingResource_ipsHoneypot",
+    "TestAccWLANList_basic"
+  ],
+  "released_allowed_failures": [
+    "TestAccDeviceFramework_basic"
+  ],
+  "released_allowed_missing": [
+    "TestAccAPGroupDataSource_basic",
+    "TestAccAPGroupList_basic",
+    "TestAccClientQosRateDataSource_basic",
+    "TestAccDNSRecordDataSource_basic",
+    "TestAccDeviceList_basic",
+    "TestAccFirewallPolicyFramework_basic",
+    "TestAccFirewallPolicyList_emptyOrSeeded",
+    "TestAccFirewallZoneDataSource_basic",
+    "TestAccFirewallZoneFramework_basic",
+    "TestAccFirewallZoneList_emptyOrSeeded",
+    "TestAccNetworkFramework_purposeConflict",
+    "TestAccNetworkFramework_purposeVLANOnlyDirect",
+    "TestAccPortProfileDataSource_basic",
+    "TestAccPowerSupervisorList_emptyOrSeeded",
+    "TestAccSiteToSiteVPNFramework_basic",
+    "TestAccSiteToSiteVPNList_empty",
+    "TestAccWANList_basic"
+  ],
+  "runtime_change_set": [
+    {
+      "kind": "action",
+      "name": "unifi_port",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_ap_group",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_info",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_info_list",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_list",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_qos_rate",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_dns_record",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_firewall_zone",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_network",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_port_profile",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_radius_profile",
+      "reason": "converted"
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_radius_user",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_ap_group",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_client",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_client_qos_rate",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_device",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_dns_record",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_dynamic_dns",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_firewall_group",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_firewall_policy",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_firewall_rule",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_firewall_zone",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_network",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_port_forward",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_port_profile",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_power_supervisor",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_radius_profile",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_radius_user",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_site",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_site_to_site_vpn",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_static_route",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_traffic_route",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_vpn_client",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_vpn_server",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_wan",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_wireguard_peer",
+      "reason": "converted"
+    },
+    {
+      "kind": "list_resource",
+      "name": "unifi_wlan",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_ap_group",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_bgp",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_client",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_client_qos_rate",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_device",
+      "reason": "companion_conversion"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_dns_record",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_dynamic_dns",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_group",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_policy",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_rule",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_firewall_zone",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_network",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_port_forward",
+      "reason": "companion_conversion"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_port_profile",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_power_supervisor",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_radius_profile",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_radius_user",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_site",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_site_to_site_vpn",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_static_route",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_traffic_route",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_vpn_client",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_vpn_server",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wan",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wireguard_peer",
+      "reason": "converted"
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_wlan",
+      "reason": "converted"
+    }
+  ]
+}

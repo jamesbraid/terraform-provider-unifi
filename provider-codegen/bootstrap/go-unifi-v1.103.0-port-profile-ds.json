@@ -1,0 +1,301 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "a6b5f260c00d3f2cf636bf72a8d7d7a0d29ff5973d3a06fe9fd93a638288a85b"
+  },
+  "resource": {
+    "name": "unifi_port_profile",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool"
+      },
+      {
+        "name": "autoneg",
+        "type": "bool"
+      },
+      {
+        "name": "dot1x_ctrl",
+        "type": "string"
+      },
+      {
+        "name": "dot1x_idle_timeout",
+        "type": "int64"
+      },
+      {
+        "name": "eee_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "egress_rate_limit_kbps",
+        "type": "int64"
+      },
+      {
+        "name": "egress_rate_limit_kbps_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "excluded_networkconf_ids",
+        "type": "array<string>"
+      },
+      {
+        "name": "fec_mode",
+        "type": "string"
+      },
+      {
+        "name": "flow_control_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "forward",
+        "type": "string"
+      },
+      {
+        "name": "full_duplex",
+        "type": "bool"
+      },
+      {
+        "name": "isolation",
+        "type": "bool"
+      },
+      {
+        "name": "link_debounce",
+        "type": "int64"
+      },
+      {
+        "name": "link_debounce_auto",
+        "type": "bool"
+      },
+      {
+        "name": "lldpmed_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "lldpmed_notify_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "multicast_router_mode",
+        "type": "string"
+      },
+      {
+        "name": "multicast_router_networkconf_ids",
+        "type": "array<string>"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "native_networkconf_id",
+        "type": "string"
+      },
+      {
+        "name": "op_mode",
+        "type": "string"
+      },
+      {
+        "name": "poe_mode",
+        "type": "string"
+      },
+      {
+        "name": "port_keepalive_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "port_security_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "port_security_mac_address",
+        "type": "array<string>"
+      },
+      {
+        "name": "precision_time_protocol_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "priority_queue1_level",
+        "type": "int64"
+      },
+      {
+        "name": "priority_queue2_level",
+        "type": "int64"
+      },
+      {
+        "name": "priority_queue3_level",
+        "type": "int64"
+      },
+      {
+        "name": "priority_queue4_level",
+        "type": "int64"
+      },
+      {
+        "name": "qos_profile",
+        "type": "object",
+        "fields": [
+          {
+            "name": "qos_policies",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "qos_marking",
+                "type": "object",
+                "fields": [
+                  {
+                    "name": "cos_code",
+                    "type": "int64"
+                  },
+                  {
+                    "name": "dscp_code",
+                    "type": "int64"
+                  },
+                  {
+                    "name": "ip_precedence_code",
+                    "type": "int64"
+                  },
+                  {
+                    "name": "queue",
+                    "type": "int64"
+                  }
+                ]
+              },
+              {
+                "name": "qos_matching",
+                "type": "object",
+                "fields": [
+                  {
+                    "name": "cos_code",
+                    "type": "int64"
+                  },
+                  {
+                    "name": "dscp_code",
+                    "type": "int64"
+                  },
+                  {
+                    "name": "dst_port",
+                    "type": "int64"
+                  },
+                  {
+                    "name": "ip_precedence_code",
+                    "type": "int64"
+                  },
+                  {
+                    "name": "protocol",
+                    "type": "string"
+                  },
+                  {
+                    "name": "src_port",
+                    "type": "int64"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "qos_profile_mode",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "setting_preference",
+        "type": "string"
+      },
+      {
+        "name": "site_id",
+        "type": "string"
+      },
+      {
+        "name": "speed",
+        "type": "int64"
+      },
+      {
+        "name": "stable_port_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "stormctrl_bcast_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "stormctrl_bcast_level",
+        "type": "int64"
+      },
+      {
+        "name": "stormctrl_bcast_rate",
+        "type": "int64"
+      },
+      {
+        "name": "stormctrl_mcast_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "stormctrl_mcast_level",
+        "type": "int64"
+      },
+      {
+        "name": "stormctrl_mcast_rate",
+        "type": "int64"
+      },
+      {
+        "name": "stormctrl_type",
+        "type": "string"
+      },
+      {
+        "name": "stormctrl_ucast_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "stormctrl_ucast_level",
+        "type": "int64"
+      },
+      {
+        "name": "stormctrl_ucast_rate",
+        "type": "int64"
+      },
+      {
+        "name": "stp_bpdu_guard_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "stp_edge_state",
+        "type": "string"
+      },
+      {
+        "name": "stp_port_mode",
+        "type": "bool"
+      },
+      {
+        "name": "stp_uplink",
+        "type": "bool"
+      },
+      {
+        "name": "tagged_vlan_mgmt",
+        "type": "string"
+      },
+      {
+        "name": "voice_networkconf_id",
+        "type": "string"
+      }
+    ]
+  }
+}

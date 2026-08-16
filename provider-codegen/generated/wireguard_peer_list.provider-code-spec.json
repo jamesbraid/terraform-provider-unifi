@@ -1,0 +1,55 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "listresources": [
+    {
+      "name": "wireguard_peer",
+      "schema": {
+        "attributes": [
+          {
+            "name": "network_id",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The ID of the WireGuard server network to list peers from."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The name of the site the WireGuard server belongs to."
+            }
+          }
+        ],
+        "blocks": [
+          {
+            "list_nested": {
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "name",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "The name of the filter to apply. Supported values are: `name`."
+                    }
+                  },
+                  {
+                    "name": "value",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "The value to filter by."
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "filter"
+          }
+        ],
+        "markdown_description": "List WireGuard peers of a WireGuard server network."
+      }
+    }
+  ]
+}

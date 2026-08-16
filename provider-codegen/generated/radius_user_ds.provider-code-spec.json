@@ -1,0 +1,66 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "datasources": [
+    {
+      "name": "radius_user_ds",
+      "schema": {
+        "attributes": [
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of this account."
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the account to look up."
+            }
+          },
+          {
+            "name": "network_id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "ID of the network for this account."
+            }
+          },
+          {
+            "name": "password",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The password of the account.",
+              "sensitive": true
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site the account is associated with."
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed",
+              "description": "See RFC2868 section 3.2."
+            },
+            "name": "tunnel_medium_type"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed",
+              "description": "See RFC2868 section 3.1."
+            },
+            "name": "tunnel_type"
+          }
+        ],
+        "markdown_description": "Data source for RADIUS users."
+      }
+    }
+  ]
+}

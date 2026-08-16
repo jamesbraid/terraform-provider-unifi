@@ -1,0 +1,30 @@
+{
+  "format_version": 1,
+  "wave": 0,
+  "result": "pass",
+  "runtime_changed": false,
+  "surface_counts": {
+    "managed_resource": 28,
+    "data_source": 13,
+    "list_resource": 25,
+    "action": 1
+  },
+  "unmanifested_surfaces": 0,
+  "baseline_sha256": "1f5aff6f889192dd671e1dfd30fd0cf0e6c1b1e0addfe8664d7f17b516d77946",
+  "ledger_sha256": "26f2b1013133dcb93485dd63c85085786825293c2c1faaaa5a0a92b287c22a22",
+  "migration_manifest_sha256": "a1fc6357e4994a2a725602e65ed0393c0cae9cf1b1258ca8d1d33463d635bb0e",
+  "migration_report_sha256": "fdc401d31d8e92ee8747b0c61dcdad2e6a45aee006e8033a2f12c5601f7d357d",
+  "compiler_outputs": {
+    "provider_code_spec_sha256": "bcb5a8fa6994d09c5f57fe639b93821325bb95d64801f18481def23ddb40acc4",
+    "impact_sha256": "528bfb08dc5584408ed6f6eb36255b45172ca79267c4a1f39d6850503701e43b",
+    "mapping_sha256": "3d5cf7475619c7ede7f872a51cd5af197a3dedfdabcda028dd646d8738d72fcb",
+    "generated_go_sha256": "cb5dbae12a5fa1835e9d15a4e38c88f49c071be04552f069ee3e153cbc7c2e5b"
+  },
+  "migration_strategy_counts": {
+    "identity": 67
+  },
+  "migration_risk_counts": {
+    "none": 67
+  },
+  "destructive_migrations": 0
+}

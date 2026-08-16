@@ -24,6 +24,8 @@ func TestRunProducesDeterministicDNSArtifacts(t *testing.T) {
 			"-catalog", filepath.Join(root, "provider-codegen/catalog/go-unifi-v1.102.0-dns-record.catalog.json"),
 			"-policy", filepath.Join(root, "provider-codegen/policy/dns_record.json"),
 			"-baseline", filepath.Join(root, "build/m0/provider-schema-digests.json"),
+			"-ledger", filepath.Join(root, "provider-codegen/generated/catalog-parity-ledger.json"),
+			"-artifact-prefix", "dns_record",
 			"-output-dir", outputDir,
 		}, &stderr)
 		if exitCode != 0 {
@@ -69,5 +71,21 @@ func TestRunRejectsMissingArguments(t *testing.T) {
 	var stderr bytes.Buffer
 	if exitCode := run(nil, &stderr); exitCode == 0 {
 		t.Fatal("run() succeeded without required arguments")
+	}
+}
+
+func TestRunRejectsInvalidArtifactPrefix(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", ".."))
+	var stderr bytes.Buffer
+	exitCode := run([]string{
+		"-catalog", filepath.Join(root, "provider-codegen/catalog/go-unifi-v1.102.0-dns-record.catalog.json"),
+		"-policy", filepath.Join(root, "provider-codegen/policy/dns_record.json"),
+		"-baseline", filepath.Join(root, "build/m0/provider-schema-digests.json"),
+		"-ledger", filepath.Join(root, "provider-codegen/generated/catalog-parity-ledger.json"),
+		"-artifact-prefix", "../dns-record",
+		"-output-dir", t.TempDir(),
+	}, &stderr)
+	if exitCode == 0 || !bytes.Contains(stderr.Bytes(), []byte("artifact-prefix")) {
+		t.Fatalf("run() exit code = %d, stderr = %q", exitCode, stderr.String())
 	}
 }

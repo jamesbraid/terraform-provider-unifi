@@ -1,0 +1,616 @@
+{
+  "format_version": 1,
+  "surface_kind": "data_source",
+  "surface_name": "unifi_client_info_list",
+  "resource": "unifi_client_info_list",
+  "fields": [
+    {
+      "structural_name": "ap_mac",
+      "terraform_name": "clients.ap_mac",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "authorized",
+      "terraform_name": "clients.authorized",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "blocked",
+      "terraform_name": "clients.blocked",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "bssid",
+      "terraform_name": "clients.bssid",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "channel",
+      "terraform_name": "clients.channel",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "display_name",
+      "terraform_name": "clients.display_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "essid",
+      "terraform_name": "clients.essid",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "first_seen",
+      "terraform_name": "clients.first_seen",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "fixed_ip",
+      "terraform_name": "clients.fixed_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "hostname",
+      "terraform_name": "clients.hostname",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "id",
+      "terraform_name": "clients.id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip",
+      "terraform_name": "clients.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "is_guest",
+      "terraform_name": "clients.is_guest",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "is_wired",
+      "terraform_name": "clients.is_wired",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "last_connection_network_id",
+      "terraform_name": "clients.last_connection_network_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "last_connection_network_name",
+      "terraform_name": "clients.last_connection_network_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "last_seen",
+      "terraform_name": "clients.last_seen",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "last_uplink_mac",
+      "terraform_name": "clients.last_uplink_mac",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "last_uplink_name",
+      "terraform_name": "clients.last_uplink_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "last_uplink_remote_port",
+      "terraform_name": "clients.last_uplink_remote_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "local_dns_record",
+      "terraform_name": "clients.local_dns_record",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "local_dns_record_enabled",
+      "terraform_name": "clients.local_dns_record_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mac",
+      "terraform_name": "clients.mac",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "clients.name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "network_id",
+      "terraform_name": "clients.network_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "network_name",
+      "terraform_name": "clients.network_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "noise",
+      "terraform_name": "clients.noise",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "oui",
+      "terraform_name": "clients.oui",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "radio",
+      "terraform_name": "clients.radio",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "radio_name",
+      "terraform_name": "clients.radio_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "rssi",
+      "terraform_name": "clients.rssi",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "rx_bytes",
+      "terraform_name": "clients.rx_bytes",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "rx_rate",
+      "terraform_name": "clients.rx_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "signal",
+      "terraform_name": "clients.signal",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "status",
+      "terraform_name": "clients.status",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "sw_port",
+      "terraform_name": "clients.sw_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tx_bytes",
+      "terraform_name": "clients.tx_bytes",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tx_rate",
+      "terraform_name": "clients.tx_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "uptime",
+      "terraform_name": "clients.uptime",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "use_fixedip",
+      "terraform_name": "clients.use_fixedip",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "usergroup_id",
+      "terraform_name": "clients.usergroup_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wired_rate_mbps",
+      "terraform_name": "clients.wired_rate_mbps",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "anomalies",
+      "terraform_name": "clients.omitted_anomalies",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "assoc_time",
+      "terraform_name": "clients.omitted_assoc_time",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ccq",
+      "terraform_name": "clients.omitted_ccq",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "channel_width",
+      "terraform_name": "clients.omitted_channel_width",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "detailed_states",
+      "terraform_name": "clients.omitted_detailed_states",
+      "structural_type": "object",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpend_time",
+      "terraform_name": "clients.omitted_dhcpend_time",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "fingerprint",
+      "terraform_name": "clients.omitted_fingerprint",
+      "structural_type": "object",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "fixed_ap_enabled",
+      "terraform_name": "clients.omitted_fixed_ap_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "gw_mac",
+      "terraform_name": "clients.omitted_gw_mac",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "idletime",
+      "terraform_name": "clients.omitted_idletime",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv4_lease_expiration_timestamp_seconds",
+      "terraform_name": "clients.omitted_ipv4_lease_expiration_timestamp_seconds",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "ipv6_address",
+      "terraform_name": "clients.omitted_ipv6_address",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "is_allowed_in_visual_programming",
+      "terraform_name": "clients.omitted_is_allowed_in_visual_programming",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "is_mlo",
+      "terraform_name": "clients.omitted_is_mlo",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "last_ip",
+      "terraform_name": "clients.omitted_last_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "last_ipv6",
+      "terraform_name": "clients.omitted_last_ipv6",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "last_radio",
+      "terraform_name": "clients.omitted_last_radio",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "latest_assoc_time",
+      "terraform_name": "clients.omitted_latest_assoc_time",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mimo",
+      "terraform_name": "clients.omitted_mimo",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "model_name",
+      "terraform_name": "clients.omitted_model_name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "noted",
+      "terraform_name": "clients.omitted_noted",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "powersave_enabled",
+      "terraform_name": "clients.omitted_powersave_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "radio_proto",
+      "terraform_name": "clients.omitted_radio_proto",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "rate_imbalance",
+      "terraform_name": "clients.omitted_rate_imbalance",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "rx_bytes-r",
+      "terraform_name": "clients.omitted_rx_bytes-r",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "rx_packets",
+      "terraform_name": "clients.omitted_rx_packets",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "clients.omitted_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "tags",
+      "terraform_name": "clients.omitted_tags",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "tx_bytes-r",
+      "terraform_name": "clients.omitted_tx_bytes-r",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "tx_mcs_index",
+      "terraform_name": "clients.omitted_tx_mcs_index",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "tx_packets",
+      "terraform_name": "clients.omitted_tx_packets",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "type",
+      "terraform_name": "clients.omitted_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "unifi_device",
+      "terraform_name": "clients.omitted_unifi_device",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "unifi_device_info",
+      "terraform_name": "clients.omitted_unifi_device_info",
+      "structural_type": "object",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "uplink_mac",
+      "terraform_name": "clients.omitted_uplink_mac",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "user_id",
+      "terraform_name": "clients.omitted_user_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "virtual_network_override_enabled",
+      "terraform_name": "clients.omitted_virtual_network_override_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "virtual_network_override_id",
+      "terraform_name": "clients.omitted_virtual_network_override_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wifi_experience_average",
+      "terraform_name": "clients.omitted_wifi_experience_average",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wifi_experience_score",
+      "terraform_name": "clients.omitted_wifi_experience_score",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wifi_tx_attempts",
+      "terraform_name": "clients.omitted_wifi_tx_attempts",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wifi_tx_retries_percentage",
+      "terraform_name": "clients.omitted_wifi_tx_retries_percentage",
+      "structural_type": "number",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "wlanconf_id",
+      "terraform_name": "clients.omitted_wlanconf_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

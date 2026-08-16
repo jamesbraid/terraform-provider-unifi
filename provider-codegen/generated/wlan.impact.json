@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_wlan",
+  "resource": "unifi_wlan",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "eb794f20398345f9248b35036aaa2075fb210ee9911d0227b1f7c7462d2b3a66"
+  },
+  "baseline_digests": {
+    "resource": "5127b1878debaff9ff0239963e439c7b774c4bb4278202b1b65834d3e1328297",
+    "identity": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+    "list_resource": "7c9cfd6c72c24e897548dea4028fe5dd5a62056223957fdccca40cb6cd23edf3"
+  },
+  "structural_fields": 109,
+  "generated_attributes": 53,
+  "provider_owned_seams": 3,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}
