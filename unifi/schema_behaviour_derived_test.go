@@ -3,6 +3,8 @@ package unifi
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -93,8 +95,51 @@ func Test_schemaBehaviourIsDerivable(t *testing.T) {
 		opaquePrefixes[strings.SplitN(entry, ": ", 2)[0]] = true
 	}
 
+	// DELEGATION HAS TO BE EARNED, BECAUSE "delegated" IS NOT WHAT THE DERIVER
+	// MEANS BY IT.
+	//
+	// walk.go sets Delegated whenever resolveComposite fails, so it reads "the
+	// Schema method assigns something I could not resolve to a literal" -- a
+	// catch-all covering both a surface that genuinely serves a generated schema
+	// and one whose schema was merely moved into a helper. Both are excused from
+	// the comparison, and only the first deserves to be.
+	//
+	// That is what lets the whole oracle pass while reading nothing: make
+	// resolveComposite fail everywhere and every surface becomes delegated, every
+	// fact is set aside, and an empty comparison reports success.
+	//
+	// So a delegation is checked against the tree: the expression must name a
+	// package that actually exists under internal/generated. That is derived from
+	// the filesystem rather than declared, it cannot go stale as surfaces
+	// convert, and it fails the moment a hand-written schema is refactored behind
+	// a helper -- which is the migration this oracle exists to keep honest.
+	for _, entry := range delegated {
+		typeName, target, _ := strings.Cut(entry, " -> ")
+		pkg, _, _ := strings.Cut(target, ".")
+		if pkg == "" {
+			t.Errorf("%s is excused as delegated to %q, which names no package", typeName, target)
+			continue
+		}
+		if _, err := os.Stat(filepath.Join("..", "internal", "generated", pkg)); err != nil {
+			// Truncated deliberately. DelegatedTo is the rendered expression, and
+			// for a surface that assigns a literal that is the ENTIRE schema --
+			// one failure printed 47KB when this was first run, which is a
+			// failure nobody reads to the end of.
+			t.Errorf("%s is excused from this comparison as \"serving a generated schema\", but it "+
+				"assigns %s and there is no internal/generated/%s.\n"+
+				"    The deriver marks a surface delegated whenever it cannot resolve the assigned\n"+
+				"    expression, so this is \"could not read it\" wearing the label of \"nothing to\n"+
+				"    read\". Its behaviour is being set aside rather than compared.",
+				typeName, abbreviate(target), pkg)
+		}
+	}
+
 	setAside := 0
 	dataSourceFacts := 0
+	delegatedFacts := 0
+	opaqueFacts := 0
+	compared := 0
+	comparedSurfaces := map[string]bool{}
 	var missing []string
 	for fact, count := range observed {
 		path := strings.SplitN(fact, "\t", 2)[0]
@@ -113,10 +158,23 @@ func Test_schemaBehaviourIsDerivable(t *testing.T) {
 			setAside += count
 			continue
 		}
-		if excused(path, delegatedPrefixes) || excused(path, opaquePrefixes) {
+		// Counted apart, because one total cannot explain three causes. The
+		// previous version added all three into setAside and then reported the
+		// whole of it as attributable to the opaque attributes, which said three
+		// attributes accounted for 744 behaviours when they account for far
+		// fewer.
+		if excused(path, delegatedPrefixes) {
+			delegatedFacts += count
 			setAside += count
 			continue
 		}
+		if excused(path, opaquePrefixes) {
+			opaqueFacts += count
+			setAside += count
+			continue
+		}
+		compared += count
+		comparedSurfaces[strings.SplitN(path, ".", 2)[0]] = true
 		if derived[fact] < count {
 			missing = append(missing, fmt.Sprintf("%s (runs %d time(s), derived %d)",
 				strings.ReplaceAll(fact, "\t", " "), count, derived[fact]))
@@ -150,7 +208,34 @@ func Test_schemaBehaviourIsDerivable(t *testing.T) {
 			len(spurious), strings.Join(spurious, "\n    "))
 	}
 
-	t.Logf("%d behaviour(s) matched across %d managed resource(s)", len(observed)-setAside, len(surfaces))
+	// THE FLOOR. Everything above reports what did not match; nothing until now
+	// asserted that anything was compared at all.
+	//
+	// Both existing guards are unfirable: observed comes from the runtime
+	// inventory and surfaces from DeriveDir, and neither can be empty while the
+	// provider registers resources and the package has files. So the test could
+	// -- and did -- pass having compared nothing, which is the same shape as a
+	// referee that passes on a broken tree.
+	//
+	// This is deliberately a floor on the COMPARED population rather than on the
+	// inputs, because that is the population the result rests on.
+	if compared == 0 {
+		t.Fatalf("nothing was compared: %d behaviour(s) observed, all of them set aside "+
+			"(%d data source, %d delegated, %d opaque). Every assertion above passes vacuously "+
+			"when the deriver reads nothing, so this is the harness failing rather than the "+
+			"provider passing.", len(observedLines), dataSourceFacts, delegatedFacts, opaqueFacts)
+	}
+
+	// Reported as three separate figures because they have three separate causes,
+	// and in the units they are actually counted in.
+	//
+	// The old line printed len(observed)-setAside: a count of distinct fact KEYS
+	// minus a count of LINES. Subtracting one unit from another produced 66,
+	// which was neither the number of facts compared nor the number of keys.
+	t.Logf("%d behaviour line(s) compared across %d of %d managed resource(s); "+
+		"%d set aside (%d data source, %d delegated to a generated schema, %d opaque)",
+		compared, len(comparedSurfaces), len(surfaces),
+		setAside, dataSourceFacts, delegatedFacts, opaqueFacts)
 	if dataSourceFacts > 0 {
 		t.Logf("%d data source behaviour(s) set aside: the deriver reads resource.Schema "+
 			"methods only, so migrating a data source has to transcribe its behaviour by "+
@@ -161,8 +246,8 @@ func Test_schemaBehaviourIsDerivable(t *testing.T) {
 			"schema to derive from:\n    %s", len(delegated), strings.Join(delegated, "\n    "))
 	}
 	if len(opaque) > 0 {
-		t.Logf("%d attribute(s) the deriver named as unreadable, accounting for %d behaviour(s) "+
-			"not compared:\n    %s", len(opaque), setAside, strings.Join(opaque, "\n    "))
+		t.Logf("%d attribute(s) the deriver named as unreadable, accounting for %d behaviour "+
+			"line(s) not compared:\n    %s", len(opaque), opaqueFacts, strings.Join(opaque, "\n    "))
 	}
 }
 
@@ -176,4 +261,16 @@ func excused(path string, roots map[string]bool) bool {
 		}
 	}
 	return false
+}
+
+// abbreviate shortens a rendered expression for a failure message. A schema
+// assigned as a literal renders as the whole schema, and a diagnostic that
+// prints tens of kilobytes buries the sentence that matters.
+func abbreviate(expression string) string {
+	const limit = 90
+	flattened := strings.Join(strings.Fields(expression), " ")
+	if len(flattened) <= limit {
+		return flattened
+	}
+	return flattened[:limit] + "... (" + fmt.Sprint(len(flattened)) + " chars)"
 }
