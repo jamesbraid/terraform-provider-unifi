@@ -134,10 +134,12 @@ All notable changes to this project will be documented in this file.
 
   **The per-kind count is the case worth reading twice.** The release gate checks that the manifest
   has 67 entries, which a shift of one managed resource into one data source satisfies exactly.
-  Three further checks compare the manifest against other receipts, and each fires in turn as those
-  receipts are moved — until all four move together, which is what a regeneration produces, and then
-  every one of them falls silent. **A check that compares two records cannot see them drift as a
-  pair.** Only an absolute count catches that, and this gate had none.
+  Three further checks compare the receipts against each other, and each fires in turn as they are
+  moved one at a time — until all four move together, which is what a regeneration produces, and
+  then every one of them falls silent. Only the first of those three involves the manifest at all;
+  the others compare two of the remaining receipts. **A check that compares two records cannot see
+  them drift as a pair, and a coherent regeneration satisfies every pairwise comparison in the set.**
+  Only an absolute count catches that, and this gate had none.
 
   Wiring the validator in failed the happy path immediately, because the test fixture was unsorted
   where the real manifest is sorted. The fixture modelled a manifest the generator cannot emit, so
