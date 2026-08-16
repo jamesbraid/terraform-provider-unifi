@@ -231,7 +231,7 @@ func (d *networkDataSource) setDataSourceData(
 	model.ID = types.StringValue(network.ID)
 	model.Site = types.StringValue(site)
 	model.Name = types.StringPointerValue(network.Name)
-	model.Purpose = types.StringValue(network.Purpose)
+	model.Purpose, model.ThirdPartyGateway = networkDataSourcePurposeFromNetwork(network)
 	model.NetworkGroup = types.StringPointerValue(network.NetworkGroup)
 
 	// Shared with resource fields
@@ -248,7 +248,6 @@ func (d *networkDataSource) setDataSourceData(
 	model.GatewayType = types.StringPointerValue(network.GatewayType)
 	model.IPv6InterfaceType = types.StringPointerValue(network.IPV6InterfaceType)
 	model.LteLan = types.BoolValue(network.LteLanEnabled)
-	model.ThirdPartyGateway = types.BoolValue(network.Purpose == unifi.PurposeVLANOnly)
 
 	// ip_aliases
 	if len(network.IPAliases) > 0 {
@@ -269,18 +268,9 @@ func (d *networkDataSource) setDataSourceData(
 
 	// dhcp_guarding
 	{
-		var serversList types.List
-		servers := collectNonEmptyStrings(network.DHCPDIP1, network.DHCPDIP2, network.DHCPDIP3)
-		if len(servers) > 0 {
-			l, d := types.ListValueFrom(ctx, types.StringType, servers)
-			diags.Append(d...)
-			serversList = l
-		} else {
-			serversList = types.ListNull(types.StringType)
-		}
 		dhcpGuardingValue := dhcpGuardingModel{
 			Enabled: types.BoolValue(network.DHCPguardEnabled),
-			Servers: serversList,
+			Servers: networkDataSourceDHCPGuardingServersFromNetwork(ctx, diags, network),
 		}
 		dhcpGuardingObj, d := types.ObjectValueFrom(
 			ctx,
@@ -300,40 +290,9 @@ func (d *networkDataSource) setDataSourceData(
 			return types.StringValue(*ptr)
 		}
 
-		dhcpBootValue := dhcpBootModel{
-			Enabled:  types.BoolValue(network.DHCPDBootEnabled),
-			Server:   types.StringValue(network.DHCPDBootServer),
-			Filename: strPtrToType(network.DHCPDBootFilename),
-		}
-		dhcpBootObj, d := types.ObjectValueFrom(ctx, dhcpBootValue.AttributeTypes(), dhcpBootValue)
-		diags.Append(d...)
-
-		dnsServers := collectNonEmptyStrings(
-			network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
-		)
-		var dnsServersList types.List
-		if len(dnsServers) > 0 {
-			dnsServersList, d = types.ListValueFrom(ctx, types.StringType, dnsServers)
-			diags.Append(d...)
-		} else {
-			dnsServersList = types.ListNull(types.StringType)
-		}
-
-		winsAddresses := collectNonEmptyStringPointers(network.DHCPDWins1, network.DHCPDWins2)
-		var winsAddressesList types.List
-		if len(winsAddresses) > 0 {
-			winsAddressesList, d = types.ListValueFrom(ctx, types.StringType, winsAddresses)
-			diags.Append(d...)
-		} else {
-			winsAddressesList = types.ListNull(types.StringType)
-		}
-
-		winsValue := winsModel{
-			Enabled:   types.BoolValue(network.DHCPDWinsEnabled),
-			Addresses: winsAddressesList,
-		}
-		winsObj, d := types.ObjectValueFrom(ctx, winsValue.AttributeTypes(), winsValue)
-		diags.Append(d...)
+		dhcpBootObj := networkDataSourceBootFromNetwork(ctx, diags, network)
+		dnsServersList := networkDataSourceDHCPServerDNSFromNetwork(ctx, diags, network)
+		winsObj := networkDataSourceWINSFromNetwork(ctx, diags, network)
 
 		dhcpServerValue := dhcpServerModel{
 			Boot:              dhcpBootObj,
@@ -404,23 +363,10 @@ func (d *networkDataSource) setDataSourceData(
 
 	// dhcp_v6_server
 	{
-		dhcpv6DNS := collectNonEmptyStringPointers(
-			network.DHCPDV6DNS1, network.DHCPDV6DNS2,
-			network.DHCPDV6DNS3, network.DHCPDV6DNS4,
-		)
-		var dhcpv6DNSList types.List
-		if len(dhcpv6DNS) > 0 {
-			l, d := types.ListValueFrom(ctx, types.StringType, dhcpv6DNS)
-			diags.Append(d...)
-			dhcpv6DNSList = l
-		} else {
-			dhcpv6DNSList = types.ListNull(types.StringType)
-		}
-
 		dhcpV6ServerValue := dhcpV6ServerModel{
 			Enabled:    types.BoolValue(network.DHCPDV6Enabled),
 			DNSAuto:    types.BoolValue(network.DHCPDV6DNSAuto),
-			DNSServers: dhcpv6DNSList,
+			DNSServers: networkDataSourceDHCPV6ServerDNSFromNetwork(ctx, diags, network),
 			Lease:      types.Int64PointerValue(network.DHCPDV6LeaseTime),
 			Start:      types.StringPointerValue(network.DHCPDV6Start),
 			Stop:       types.StringPointerValue(network.DHCPDV6Stop),
@@ -435,15 +381,7 @@ func (d *networkDataSource) setDataSourceData(
 	}
 
 	// WAN DNS
-	wanDNS := collectNonEmptyStringPointers(network.WANDNS1, network.WANDNS2)
-	wanDNS = append(wanDNS, collectNonEmptyStrings(network.WANDNS3, network.WANDNS4)...)
-	if len(wanDNS) > 0 {
-		wanDNSList, d := types.ListValueFrom(ctx, types.StringType, wanDNS)
-		diags.Append(d...)
-		model.WanDNS = wanDNSList
-	} else {
-		model.WanDNS = types.ListNull(types.StringType)
-	}
+	model.WanDNS = networkDataSourceWANDNSFromNetwork(ctx, diags, network)
 
 	model.WanEgressQOS = types.Int64PointerValue(network.WANEgressQOS)
 	model.WanGateway = types.StringPointerValue(network.WANGateway)
@@ -484,4 +422,128 @@ func collectNonEmptyStringPointers(ptrs ...*string) []string {
 		}
 	}
 	return result
+}
+
+// The functions below are the read halves this data source's policy claims
+// name. Each relates ONE Terraform member to SEVERAL observed fields, which is
+// the one thing the compiler cannot check -- so the policy names a function and
+// a reader opens it. They were inline in setDataSourceData, which made the
+// names true only in the sense that the relation happened somewhere inside a
+// two-hundred-line conversion.
+//
+// A data source only reads, so each claim has a from_api half and no to_api.
+
+// stringListOrNull renders collected addresses as a list, or null when there
+// are none. Every collection below ends this way: the observed slots are
+// sparse, and none set is absent rather than an empty list.
+func stringListOrNull(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	values []string,
+) types.List {
+	if len(values) == 0 {
+		return types.ListNull(types.StringType)
+	}
+	list, d := types.ListValueFrom(ctx, types.StringType, values)
+	diags.Append(d...)
+	return list
+}
+
+// networkDataSourcePurposeFromNetwork reads purpose and third_party_gateway
+// from the one observed purpose field: the purpose as the controller reports
+// it, and third_party_gateway as whether that value is vlan-only.
+func networkDataSourcePurposeFromNetwork(network *unifi.Network) (types.String, types.Bool) {
+	return types.StringValue(network.Purpose),
+		types.BoolValue(network.Purpose == unifi.PurposeVLANOnly)
+}
+
+// networkDataSourceDHCPGuardingServersFromNetwork collects dhcp_guarding.servers
+// from the three observed slots, keeping only the non-empty ones.
+func networkDataSourceDHCPGuardingServersFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
+		network.DHCPDIP1, network.DHCPDIP2, network.DHCPDIP3,
+	))
+}
+
+// networkDataSourceDHCPServerDNSFromNetwork collects dhcp_server.dns_servers
+// from the four observed slots, keeping only the non-empty ones.
+func networkDataSourceDHCPServerDNSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
+		network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
+	))
+}
+
+// networkDataSourceDHCPV6ServerDNSFromNetwork collects
+// dhcp_v6_server.dns_servers from the four observed slots, keeping only the
+// non-empty ones.
+func networkDataSourceDHCPV6ServerDNSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
+		network.DHCPDV6DNS1, network.DHCPDV6DNS2,
+		network.DHCPDV6DNS3, network.DHCPDV6DNS4,
+	))
+}
+
+// networkDataSourceWINSFromNetwork reads dhcp_server.wins from an enable flag
+// and two address slots, the addresses collected non-empty.
+func networkDataSourceWINSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.Object {
+	value := winsModel{
+		Enabled: types.BoolValue(network.DHCPDWinsEnabled),
+		Addresses: stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
+			network.DHCPDWins1, network.DHCPDWins2,
+		)),
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	diags.Append(d...)
+	return object
+}
+
+// networkDataSourceBootFromNetwork reads dhcp_server.boot, which groups three
+// flat observed fields the wire keeps apart.
+func networkDataSourceBootFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.Object {
+	filename := types.StringNull()
+	if network.DHCPDBootFilename != nil && *network.DHCPDBootFilename != "" {
+		filename = types.StringValue(*network.DHCPDBootFilename)
+	}
+	value := dhcpBootModel{
+		Enabled:  types.BoolValue(network.DHCPDBootEnabled),
+		Server:   types.StringValue(network.DHCPDBootServer),
+		Filename: filename,
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	diags.Append(d...)
+	return object
+}
+
+// networkDataSourceWANDNSFromNetwork collects wan_dns from four observed slots,
+// the first two pointers and the last two plain strings, keeping only the
+// non-empty ones. The pointer pair is collected first, so the order is by slot
+// rather than by representation.
+func networkDataSourceWANDNSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	servers := collectNonEmptyStringPointers(network.WANDNS1, network.WANDNS2)
+	servers = append(servers, collectNonEmptyStrings(network.WANDNS3, network.WANDNS4)...)
+	return stringListOrNull(ctx, diags, servers)
 }
