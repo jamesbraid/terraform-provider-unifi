@@ -56,9 +56,36 @@ type Finding struct {
 	Kind Kind
 }
 
-// String is the inventory line format: stable, sorted, one per line.
+// String is the inventory line format: stable, sorted, one per line, with the
+// defect this test is named after when there is one.
 func (f Finding) String() string {
-	return fmt.Sprintf("%s\t%s\t%s", f.File, f.Name, f.Kind)
+	line := fmt.Sprintf("%s\t%s\t%s", f.File, f.Name, f.Kind)
+	if slot, ok := knownBugSlots[f.File+"\t"+f.Name]; ok {
+		line += "\t" + slot
+	}
+	return line
+}
+
+// knownBugSlots names the defect a skipped test is already named after.
+//
+// These are not noise in the list, they are the most actionable entries in it.
+// Every one of these bugs was found by a controller, a schema diff or a code
+// read WHILE a test bearing its name sat green in CI, so when a fix lands the
+// reproduction has a slot waiting with the right name. Without this
+// cross-reference the next person to fix unifi_wan writes a new test beside
+// Test_wanResource_Create rather than filling it, and the skip survives another
+// round.
+//
+// Keyed on file and name rather than line, for the same reason the inventory
+// carries no line numbers: an edit above a test must not rewrite the file.
+var knownBugSlots = map[string]string{
+	"unifi/wan_resource_test.go\tTest_wanResource_Create":                      "task 99: unifi_wan cannot create a static WAN at all",
+	"unifi/wan_resource_test.go\tTest_wanResource_applyPlanToState":            "task 99: unifi_wan cannot create a static WAN at all",
+	"unifi/wlan_resource_test.go\tTest_wlanFrameworkResource_Create":           "task 102: unifi_wlan cannot create",
+	"unifi/wlan_resource_test.go\tTest_wlanFrameworkResource_Update":           "task 102: unifi_wlan cannot update",
+	"unifi/wlan_resource_test.go\tTest_wlanFrameworkResource_applyPlanToState": "task 102: unifi_wlan cannot create or update",
+	"unifi/wlan_resource_test.go\tTestAccWLANList_basic":                       "task 102: its own skip reason names the create bug",
+	"unifi/vpn_server_resource_test.go\tTest_vpnServerResource_ImportState":    "task 116: vpn_server drops a third DNS server (SDK marshalUserVPN)",
 }
 
 // methods on *testing.T that can actually fail a test. Skip and Log are
@@ -274,26 +301,66 @@ func isSkipStub(fd *ast.FuncDecl) bool {
 	return false
 }
 
-// rangesOverEmptyTable reports a range over a slice or map literal with no
-// elements, directly or through a variable.
+// rangesOverEmptyTable reports a range over a slice literal with no elements,
+// directly or through a variable that stays empty.
+//
+// "Declared empty" is not "empty". An accumulator is declared empty and then
+// filled -- census := map[string]int{} ... census[mode]++ ... range census --
+// and reading only the declaration reports a test that runs and asserts as one
+// whose body never executes. That was a real false positive here, in
+// TestEvidenceModesCoverTheCommittedInventory, which asserts perfectly well.
+//
+// Two conditions rather than one, and both are needed. The literal must be a
+// SLICE, because the table-driven shape this exists to find is always
+// tests := []struct{...}{} and an empty map is far more often an accumulator.
+// And the variable must never be written after, which is what separates a table
+// nobody filled in from an accumulator the loop above fills.
 func rangesOverEmptyTable(fd *ast.FuncDecl) bool {
 	empty := map[string]bool{}
+	written := map[string]bool{}
+
 	ast.Inspect(fd, func(n ast.Node) bool {
-		assign, ok := n.(*ast.AssignStmt)
-		if !ok {
-			return true
-		}
-		for i, rhs := range assign.Rhs {
-			lit, ok := rhs.(*ast.CompositeLit)
-			if !ok || len(lit.Elts) != 0 || i >= len(assign.Lhs) {
-				continue
+		switch stmt := n.(type) {
+		case *ast.AssignStmt:
+			// x[k] = v, or a second assignment to x, is a write.
+			for _, lhs := range stmt.Lhs {
+				switch target := lhs.(type) {
+				case *ast.IndexExpr:
+					if id, ok := target.X.(*ast.Ident); ok {
+						written[id.Name] = true
+					}
+				case *ast.Ident:
+					if stmt.Tok == token.ASSIGN {
+						written[target.Name] = true
+					}
+				}
 			}
-			if id, ok := assign.Lhs[i].(*ast.Ident); ok {
-				empty[id.Name] = true
+			for i, rhs := range stmt.Rhs {
+				lit, ok := rhs.(*ast.CompositeLit)
+				if !ok || len(lit.Elts) != 0 || i >= len(stmt.Lhs) {
+					continue
+				}
+				if _, isSlice := lit.Type.(*ast.ArrayType); !isSlice {
+					continue
+				}
+				if id, ok := stmt.Lhs[i].(*ast.Ident); ok {
+					empty[id.Name] = true
+				}
+			}
+		case *ast.IncDecStmt:
+			// census[mode]++ fills an accumulator.
+			if index, ok := stmt.X.(*ast.IndexExpr); ok {
+				if id, ok := index.X.(*ast.Ident); ok {
+					written[id.Name] = true
+				}
 			}
 		}
 		return true
 	})
+
+	for name := range written {
+		delete(empty, name)
+	}
 
 	found := false
 	ast.Inspect(fd, func(n ast.Node) bool {
