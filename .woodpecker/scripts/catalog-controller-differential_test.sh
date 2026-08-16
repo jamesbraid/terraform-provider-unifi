@@ -281,6 +281,58 @@ if [[ -z $(missing_declaration_disagreements \
     exit 1
 fi
 
+# PREPARE_ONLY builds the released tree and runs the three layered vets through
+# the REAL function with the REAL labels. Everything below this point used to be
+# unreachable from any test: PLAN_ONLY exits before the tree is built, so the
+# vets were verified by hand, by reproducing their logic in a scratch shell
+# function. That reproduction used a fixed log path; the code built its path
+# from the layer label, one of which contains a slash; and the difference
+# between the two cost pipeline 188, which reported a compile failure from a vet
+# that never ran.
+#
+# A faithful reproduction and the code are different artifacts. This is the
+# cheapest way to stop testing the first and calling it the second.
+if ! CATALOG_ACCEPTANCE_PREPARE_ONLY=true \
+     CATALOG_ACCEPTANCE_WAVES=1,2,3,4,5 \
+     CATALOG_ACCEPTANCE_TEST_NAMES='' \
+     CATALOG_ACCEPTANCE_OUTPUT="${work_root}/prepare-plan.json" \
+     "${script}" >"${work_root}/prepare.log" 2>&1; then
+    echo "preparing the released tree failed on an unmodified tree:" >&2
+    sed -n '1,40p' "${work_root}/prepare.log" >&2
+    exit 1
+fi
+
+# And prove the vets can fail, by grafting a file that cannot compile against
+# the released provider. unifi/schema_model_agreement_test.go imports
+# internal/schemamodel, which does not exist at the released ref, so the third
+# layer must refuse it and must name it. Mutating the INVENTORY rather than the
+# plan is deliberate: the inventory is the seam the plan builder reads, so this
+# exercises the same path a real bad lend would take.
+poisoned_inventory=${work_root}/poisoned-inventory.json
+jq '.surfaces |= map(
+      if .runtime.status == "identical"
+      then .scenario_owners = (.scenario_owners + ["unifi/schema_model_agreement_test.go"] | unique)
+      else . end)' "${inventory}" >"${poisoned_inventory}"
+if CATALOG_EVIDENCE_INVENTORY="${poisoned_inventory}" \
+   CATALOG_ACCEPTANCE_PREPARE_ONLY=true \
+   CATALOG_ACCEPTANCE_WAVES=1,2,3,4,5 \
+   CATALOG_ACCEPTANCE_TEST_NAMES='' \
+   CATALOG_ACCEPTANCE_OUTPUT="${work_root}/poisoned-plan.json" \
+   "${script}" >"${work_root}/poisoned.log" 2>&1; then
+    echo "the released-tree vet accepted a scenario owner that cannot compile there" >&2
+    exit 1
+fi
+if ! grep -Fq 'the released tree does not compile after: grafting' "${work_root}/poisoned.log"; then
+    echo "the vet refused the poisoned graft without naming the layer:" >&2
+    sed -n '1,40p' "${work_root}/poisoned.log" >&2
+    exit 1
+fi
+if ! grep -Fq 'unifi/schema_model_agreement_test.go' "${work_root}/poisoned.log"; then
+    echo "the vet named the layer but not the file that broke it:" >&2
+    sed -n '1,40p' "${work_root}/poisoned.log" >&2
+    exit 1
+fi
+
 CATALOG_ACCEPTANCE_PLAN_ONLY=true \
 CATALOG_ACCEPTANCE_WAVES=1,2,3,4,5 \
 CATALOG_ACCEPTANCE_TEST_NAMES=TestAccDeviceFramework_basic \
