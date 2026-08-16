@@ -1,37 +1,37 @@
-# Validators, plan modifiers, defaults and custom types, per attribute, for
-# every managed resource, data source and action the provider registers.
 #
-# These never appear in a Terraform schema. The protocol carries types,
-# dispositions, descriptions and deprecation, and nothing else -- so the
-# baseline projection test cannot see any of this, however far it is extended.
-# The released v0.101.2 baseline contains no validators, plan_modifiers or
-# default key anywhere in the document.
 #
-# They are still public behaviour. A lost OneOf accepts configuration the
-# controller will reject; a lost UseStateForUnknown plans a change on every
-# refresh; a lost Default changes what an absent attribute means. Migrating a
-# surface from a hand-written schema to a generated one drops all three
-# silently, because the policy has to restate them and nothing checks that it
-# did. firewall_policy lost nine validators that way and the whole suite
-# stayed green.
+#
+#
+#
+#
 #
 # A custom type is here for the same reason: it is the validation on the
-# attribute it sits on -- unifi_port.device_mac is a hwtypes.MACAddressType,
-# and the protocol renders that as a plain string, so the released baseline
-# records "string" and a schema that dropped the type compares equal to the
-# contract while accepting any string as a MAC address.
-#
-# Each line is "<surface>.<attribute path>  <kind>  <implementation>  <description>".
-# The description is the validator's own, so it carries the VALUES: changing
-# an enum member changes the line rather than leaving the count intact.
-#
 # A removal here is a behaviour regression until someone says otherwise.
-#
+# Each line is "<surface>.<attribute path>  <kind>  <implementation>  <description>".
 # Regenerate with: UPDATE_GOLDEN=1 go test ./unifi/ -run Test_schemaBehaviourInventory
-#
 # That refuses to drop an entry. A rewrite that would remove one has to say
-# so with UPDATE_GOLDEN_ALLOW_REMOVAL=1 as well, because removing a line here
+# The description is the validator's own, so it carries the VALUES: changing
+# The released v0.101.2 baseline contains no validators, plan_modifiers or
+# These never appear in a Terraform schema. The protocol carries types,
+# They are still public behaviour. A lost OneOf accepts configuration the
+# Validators, plan modifiers, defaults and custom types, per attribute, for
+# an enum member changes the line rather than leaving the count intact.
+# and the protocol renders that as a plain string, so the released baseline
+# attribute it sits on -- unifi_port.device_mac is a hwtypes.MACAddressType,
+# baseline projection test cannot see any of this, however far it is extended.
+# contract while accepting any string as a MAC address.
+# controller will reject; a lost UseStateForUnknown plans a change on every
+# default key anywhere in the document.
+# did. firewall_policy lost nine validators that way and the whole suite
+# dispositions, descriptions and deprecation, and nothing else -- so the
+# every managed resource, data source and action the provider registers.
 # is the direction a regression takes and rewriting the file is what erases
+# records "string" and a schema that dropped the type compares equal to the
+# refresh; a lost Default changes what an absent attribute means. Migrating a
+# silently, because the policy has to restate them and nothing checks that it
+# so with UPDATE_GOLDEN_ALLOW_REMOVAL=1 as well, because removing a line here
+# stayed green.
+# surface from a hand-written schema to a generated one drops all three
 # the evidence of it.
 data.unifi_account.timeouts	custom_type	timeouts.Type	"<carries no description>"
 data.unifi_account.timeouts.read	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
@@ -337,9 +337,11 @@ unifi_network.dhcp_server.unifi_controller	validator	*validators.ipv4Validator	"
 unifi_network.dhcp_server.wins	default	objectdefault.staticValueDefault	"value defaults to {\"addresses\":<null>,\"enabled\":false}"
 unifi_network.dhcp_server.wins.addresses	validator	listvalidator.sizeAtMostValidator	"list must contain at most 2 elements"
 unifi_network.dhcp_server.wins.enabled	default	booldefault.staticBoolDefault	"value defaults to false"
-unifi_network.dhcp_v6_server.dns_auto	default	booldefault.staticBoolDefault	"value defaults to false"
+unifi_network.dhcp_v6_server.dns_auto	plan_modifier	boolplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.dhcp_v6_server.dns_servers	validator	listvalidator.sizeAtMostValidator	"list must contain at most 4 elements"
 unifi_network.dhcp_v6_server.enabled	default	booldefault.staticBoolDefault	"value defaults to false"
+unifi_network.dhcp_v6_server.start	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
+unifi_network.dhcp_v6_server.stop	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.domain_name	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.domain_name	validator	*validators.domainNameValidator	"value must be a valid domain name"
 unifi_network.enabled	default	booldefault.staticBoolDefault	"value defaults to true"
@@ -350,7 +352,7 @@ unifi_network.igmp_snooping	default	booldefault.staticBoolDefault	"value default
 unifi_network.internet_access	default	booldefault.staticBoolDefault	"value defaults to true"
 unifi_network.ipv6_client_address_assignment	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.ipv6_client_address_assignment	validator	stringvalidator.oneOfValidator	"value must be one of: [\"slaac\" \"dhcpv6\" \"slaac-dhcpv6\"]"
-unifi_network.ipv6_interface_type	default	stringdefault.staticStringDefault	"value defaults to none"
+unifi_network.ipv6_interface_type	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.ipv6_interface_type	validator	stringvalidator.oneOfValidator	"value must be one of: [\"none\" \"pd\" \"static\"]"
 unifi_network.ipv6_pd_auto_prefixid_enabled	plan_modifier	boolplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.ipv6_pd_start	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
@@ -366,7 +368,8 @@ unifi_network.ipv6_ra_valid_lifetime	custom_type	timetypes.GoDurationType	"<carr
 unifi_network.ipv6_ra_valid_lifetime	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.ipv6_ra_valid_lifetime	validator	*validators.goDurationBetweenValidator	"value must be a Go duration string between 0s and 8760h0m0s"
 unifi_network.ipv6_ra_valid_lifetime	validator	*validators.goDurationMultipleOfValidator	"value must be a Go duration string that is a whole multiple of 1s"
-unifi_network.lte_lan	default	booldefault.staticBoolDefault	"value defaults to true"
+unifi_network.ipv6_static_subnet	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
+unifi_network.lte_lan	plan_modifier	boolplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.multicast_dns	plan_modifier	boolplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.network_isolation	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_network.purpose	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
@@ -499,7 +502,7 @@ unifi_radius_profile.timeouts.delete	validator	validators.timeDurationValidator	
 unifi_radius_profile.timeouts.read	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_radius_profile.timeouts.update	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_radius_profile.use_usg_acct_server	default	booldefault.staticBoolDefault	"value defaults to false"
-unifi_radius_profile.use_usg_auth_server	default	booldefault.staticBoolDefault	"value defaults to false"
+unifi_radius_profile.use_usg_auth_server	plan_modifier	boolplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_radius_profile.vlan_enabled	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_radius_profile.vlan_wlan_mode	default	stringdefault.staticStringDefault	"value defaults to "
 unifi_radius_profile.vlan_wlan_mode	validator	stringvalidator.oneOfValidator	"value must be one of: [\"disabled\" \"optional\" \"required\"]"
@@ -779,7 +782,7 @@ unifi_wan.timeouts.create	validator	validators.timeDurationValidator	"must be a 
 unifi_wan.timeouts.delete	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_wan.timeouts.read	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_wan.timeouts.update	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
-unifi_wan.type	default	stringdefault.staticStringDefault	"value defaults to dhcp"
+unifi_wan.type	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wan.type	validator	stringvalidator.oneOfValidator	"value must be one of: [\"dhcp\" \"static\" \"pppoe\" \"disabled\"]"
 unifi_wan.type_v6	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wan.type_v6	validator	stringvalidator.oneOfValidator	"value must be one of: [\"dhcpv6\" \"slaac\" \"static\" \"disabled\"]"
@@ -805,6 +808,7 @@ unifi_wireguard_peer.timeouts.create	validator	validators.timeDurationValidator	
 unifi_wireguard_peer.timeouts.delete	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_wireguard_peer.timeouts.read	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_wireguard_peer.timeouts.update	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+unifi_wlan.ap_group_ids	plan_modifier	setplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wlan.ap_group_mode	default	stringdefault.staticStringDefault	"value defaults to all"
 unifi_wlan.ap_group_mode	validator	stringvalidator.oneOfValidator	"value must be one of: [\"all\" \"groups\" \"devices\"]"
 unifi_wlan.bc_filter_list	plan_modifier	setplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
@@ -832,16 +836,17 @@ unifi_wlan.mac_filter	plan_modifier	objectplanmodifier.useStateForUnknownModifie
 unifi_wlan.mac_filter.enabled	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_wlan.mac_filter.policy	default	stringdefault.staticStringDefault	"value defaults to deny"
 unifi_wlan.mac_filter.policy	validator	stringvalidator.oneOfValidator	"value must be one of: [\"allow\" \"deny\"]"
-unifi_wlan.minimum_data_rate_2g_kbps	plan_modifier	int64planmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
+unifi_wlan.minimum_data_rate_2g_kbps	plan_modifier	planmodifiers.UseStateUnlessSiblingChanges	"Once set, this value is kept in the plan unless \"minrate_setting_preference\" is changing, in which case the controller supplies it."
 unifi_wlan.minimum_data_rate_2g_kbps	validator	int64validator.oneOfValidator	"value must be one of: [\"0\" \"1000\" \"2000\" \"5500\" \"6000\" \"9000\" \"11000\" \"12000\" \"18000\" \"24000\" \"36000\" \"48000\" \"54000\"]"
-unifi_wlan.minimum_data_rate_5g_kbps	plan_modifier	int64planmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
+unifi_wlan.minimum_data_rate_5g_kbps	plan_modifier	planmodifiers.UseStateUnlessSiblingChanges	"Once set, this value is kept in the plan unless \"minrate_setting_preference\" is changing, in which case the controller supplies it."
 unifi_wlan.minimum_data_rate_5g_kbps	validator	int64validator.oneOfValidator	"value must be one of: [\"0\" \"6000\" \"9000\" \"12000\" \"18000\" \"24000\" \"36000\" \"48000\" \"54000\"]"
-unifi_wlan.minrate_setting_preference	default	stringdefault.staticStringDefault	"value defaults to auto"
+unifi_wlan.minrate_setting_preference	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wlan.minrate_setting_preference	validator	stringvalidator.oneOfValidator	"value must be one of: [\"auto\" \"manual\"]"
 unifi_wlan.mlo_enabled	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_wlan.multicast_enhance	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_wlan.nas_identifier_type	default	stringdefault.staticStringDefault	"value defaults to bssid"
 unifi_wlan.nas_identifier_type	validator	stringvalidator.oneOfValidator	"value must be one of: [\"ap_name\" \"ap_mac\" \"bssid\" \"site_name\" \"custom\"]"
+unifi_wlan.network_id	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wlan.no2ghz_oui	default	booldefault.staticBoolDefault	"value defaults to true"
 unifi_wlan.passphrase_wo	validator	schemavalidator.ConflictsWithValidator	"Ensure that if an attribute is set, these are not set: \"[passphrase]\""
 unifi_wlan.pmf_mode	default	stringdefault.staticStringDefault	"value defaults to disabled"

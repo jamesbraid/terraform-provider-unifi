@@ -74,6 +74,15 @@ func TestEvidenceModesCoverTheCommittedInventory(t *testing.T) {
 	// data_source/unifi_client_info_list, has an acceptance scenario identical
 	// to the released provider's.
 	//
+	// It has now moved a third time, to 44, and the cause is a wlan test edit.
+	// unifi/wlan_resource_test.go changed when the import-step assertion that
+	// demanded minimum_data_rate_*_kbps read back as 0 was corrected -- the
+	// schema default it cited had been removed. Under identical-only
+	// lendability a changed test cannot be lent between released and candidate,
+	// so managed_resource/unifi_wlan and list_resource/unifi_wlan stop earning
+	// differential_scenario. 44 is the honest number for a tree carrying that
+	// fix, and the drop is the evidence model working rather than a regression.
+	//
 	// Withdrawing three references for lending from `added`-only sources did
 	// NOT move this census, which is worth stating because it is surprising.
 	// managed firewall_policy, power_supervisor and site_to_site_vpn were
@@ -83,7 +92,7 @@ func TestEvidenceModesCoverTheCommittedInventory(t *testing.T) {
 	// count, from one to four.
 	want := map[string]int{
 		EvidenceSourceIdentity:       3,
-		EvidenceDifferentialScenario: 45,
+		EvidenceDifferentialScenario: 44,
 		EvidencePragmaticReference:   1,
 	}
 	wantUnjustified := []string{
@@ -105,6 +114,7 @@ func TestEvidenceModesCoverTheCommittedInventory(t *testing.T) {
 		"managed_resource/unifi_firewall_zone",
 		"managed_resource/unifi_power_supervisor",
 		"managed_resource/unifi_site_to_site_vpn",
+		"managed_resource/unifi_wlan",
 	}
 
 	for mode, count := range want {

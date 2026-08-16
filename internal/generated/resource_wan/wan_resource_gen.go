@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -480,10 +479,12 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The WAN type (dhcp, static, pppoe)",
 				MarkdownDescription: "The WAN type (dhcp, static, pppoe)",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("dhcp", "static", "pppoe", "disabled"),
 				},
-				Default: stringdefault.StaticString("dhcp"),
 			},
 			"type_v6": schema.StringAttribute{
 				Optional:            true,

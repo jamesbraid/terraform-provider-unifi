@@ -64,14 +64,11 @@ unifi_network.dhcp_server.ntp_enabled
 unifi_network.dhcp_server.time_offset_enabled
 unifi_network.dhcp_server.wins
 unifi_network.dhcp_server.wins.enabled
-unifi_network.dhcp_v6_server.dns_auto
 unifi_network.dhcp_v6_server.enabled
 unifi_network.enabled
 unifi_network.gateway_type
 unifi_network.igmp_snooping
 unifi_network.internet_access
-unifi_network.ipv6_interface_type
-unifi_network.lte_lan
 unifi_network.network_isolation
 unifi_port_forward.enabled
 unifi_port_forward.logging
@@ -99,7 +96,6 @@ unifi_radius_profile.accounting_enabled
 unifi_radius_profile.interim_update_enabled
 unifi_radius_profile.interim_update_interval
 unifi_radius_profile.use_usg_acct_server
-unifi_radius_profile.use_usg_auth_server
 unifi_radius_profile.vlan_enabled
 unifi_radius_profile.vlan_wlan_mode
 unifi_radius_user.tunnel_medium_type
@@ -142,7 +138,6 @@ unifi_wan.egress_qos.enabled
 unifi_wan.egress_qos.priority
 unifi_wan.enabled
 unifi_wan.smartq.enabled
-unifi_wan.type
 unifi_wan.vlan.enabled
 unifi_wan.vlan.id
 unifi_wireguard_peer.allowed_ips
@@ -159,7 +154,6 @@ unifi_wlan.is_guest
 unifi_wlan.l2_isolation
 unifi_wlan.mac_filter.enabled
 unifi_wlan.mac_filter.policy
-unifi_wlan.minrate_setting_preference
 unifi_wlan.mlo_enabled
 unifi_wlan.multicast_enhance
 unifi_wlan.nas_identifier_type

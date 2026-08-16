@@ -854,8 +854,13 @@ func (r *wanResource) modelToNetwork(
 		Enabled:         model.Enabled.ValueBool(),
 	}
 
-	// WAN Type — type has a Default so it's always known;
-	// type_v6 may be unknown on Create.
+	// WAN Type — neither is guaranteed known, so both guards carry weight.
+	//
+	// This read "type has a Default so it's always known", which was true and
+	// was the bug. The default made the write unconditional, so a WAN the
+	// controller held as static was stamped back to dhcp by any configuration
+	// that omitted `type`. Measured against 10.4.57: an adopted static WAN
+	// planned "static" -> "dhcp" and the apply carried it out.
 	if !model.Type.IsNull() && !model.Type.IsUnknown() {
 		network.WANType = model.Type.ValueStringPointer()
 	}
