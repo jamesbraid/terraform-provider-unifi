@@ -26,4 +26,15 @@ steps:
       # writes graph-wide sums into go.sum and dirties the tree.
       - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - bash .woodpecker/scripts/m1-evidence-lib_test.sh
-      - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_EXECUTION=woodpecker M1_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 M1_EVIDENCE_OUTPUT_DIRECTORY=/tmp/provider-m1-evidence M1_EVIDENCE_ARCHIVE=/tmp/provider-m1-evidence.tar.gz M1_PRINT_EVIDENCE_BUNDLE=true TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m1-dns-compiler.sh
+      # M1_RECEIPT_OUTPUT is set so the receipt survives the run. Unset, line 217
+      # of the script sends it to ${work_root}, which the EXIT trap deletes, so
+      # the only copy was the one cat'd to stdout and build/m1/dns-compiler-receipt.json
+      # had no live producer at all. The -ci.json suffix follows m3 and is
+      # gitignored at .gitignore:86, so writing it cannot dirty the tree.
+      #
+      # NO cmp AGAINST THE COMMITTED RECEIPT YET, deliberately. This step only
+      # makes a fresh copy exist; comparing it is what will go red, and on a tree
+      # where the committed receipt already disagrees with go.mod about the SDK
+      # version that red would land on whoever pushed next rather than on whoever
+      # caused it. Task 114 P4: produce first, compare second.
+      - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_EXECUTION=woodpecker M1_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 M1_EVIDENCE_OUTPUT_DIRECTORY=/tmp/provider-m1-evidence M1_EVIDENCE_ARCHIVE=/tmp/provider-m1-evidence.tar.gz M1_PRINT_EVIDENCE_BUNDLE=true M1_RECEIPT_OUTPUT=build/m1/dns-compiler-ci.json TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m1-dns-compiler.sh
