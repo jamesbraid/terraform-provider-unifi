@@ -292,6 +292,28 @@ fi
 #
 # A faithful reproduction and the code are different artifacts. This is the
 # cheapest way to stop testing the first and calling it the second.
+# ASSERT THE MODULE CACHE BEFORE VETTING ANYTHING WITH IT. The vets below run
+# under GOPROXY=off, so a cold cache makes every import fail with "module
+# lookup disabled by GOPROXY=off" and the vet reports a tree that does not
+# compile. Pipeline 190 died exactly there: the workflow populated the cache
+# BELOW the self-test, because when the ordering was audited this self-test did
+# not need modules. I moved one producer above its consumer for the tag and
+# then gave the same consumer a new dependency without re-running the audit.
+#
+# Same rule as the released ref above: a check that cannot tell a cold cache
+# from a broken tree is not a check, so name the precondition here rather than
+# let the vet mis-report it thirty lines later.
+if ! (cd "${repository_root}" && env GOPROXY=off GOFLAGS=-mod=readonly \
+        GOTOOLCHAIN=local go build ./unifi/ >/dev/null 2>&1); then
+    echo "the go module cache is cold, so the released-tree vets cannot run:" >&2
+    (cd "${repository_root}" && env GOPROXY=off GOFLAGS=-mod=readonly \
+        GOTOOLCHAIN=local go build ./unifi/ 2>&1 | sed -n '1,6p') >&2
+    echo "  Populate it BEFORE invoking this self-test. Nothing below can" >&2
+    echo "  distinguish an empty cache from a released tree that does not" >&2
+    echo "  compile, so the run must stop here." >&2
+    exit 1
+fi
+
 if ! CATALOG_ACCEPTANCE_PREPARE_ONLY=true \
      CATALOG_ACCEPTANCE_WAVES=1,2,3,4,5 \
      CATALOG_ACCEPTANCE_TEST_NAMES='' \
