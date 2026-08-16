@@ -38,8 +38,12 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 			"ap_group_ids": schema.SetAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
+				Computed:            true,
 				Description:         "List of AP group IDs to apply this WLAN to.",
 				MarkdownDescription: "List of AP group IDs to apply this WLAN to.",
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"ap_group_mode": schema.StringAttribute{
 				Optional:            true,
@@ -291,8 +295,12 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"network_id": schema.StringAttribute{
 				Optional:            true,
+				Computed:            true,
 				Description:         "ID of the network for this WLAN.",
 				MarkdownDescription: "ID of the network for this WLAN.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"no2ghz_oui": schema.BoolAttribute{
 				Optional:            true,
