@@ -1191,19 +1191,17 @@ func (r *wlanFrameworkResource) wlanToModel(
 	model.RoamingAssistant6EEnabled = types.BoolValue(wlan.RoamingAssistant6EEnabled)
 	model.RoamingAssistant6ERssi = types.Int64PointerValue(wlan.RoamingAssistant6ERssi)
 
-	// The API omits these fields from GET responses when unset; map the missing
-	// value to 0 (the schema default) instead of null to avoid perpetual
-	// null->0 plan drift after import.
-	if wlan.MinrateNgDataRateKbps != nil {
-		model.MinimumDataRate2GKbps = types.Int64Value(*wlan.MinrateNgDataRateKbps)
-	} else {
-		model.MinimumDataRate2GKbps = types.Int64Value(0)
-	}
-	if wlan.MinrateNaDataRateKbps != nil {
-		model.MinimumDataRate5GKbps = types.Int64Value(*wlan.MinrateNaDataRateKbps)
-	} else {
-		model.MinimumDataRate5GKbps = types.Int64Value(0)
-	}
+	// The API omits these fields from GET responses when unset. Record that as
+	// null: 0 is a rate the practitioner can legitimately ask for -- it is in
+	// both attributes' OneOf list -- so writing it for "the controller said
+	// nothing" states something the controller did not say.
+	//
+	// These used to be mapped to 0 to match a schema default and avoid a
+	// perpetual null->0 plan after import. That default is gone; both
+	// attributes are Computed precisely because the controller assigns the
+	// value, so there is no longer a default for a null to drift towards.
+	model.MinimumDataRate2GKbps = types.Int64PointerValue(wlan.MinrateNgDataRateKbps)
+	model.MinimumDataRate5GKbps = types.Int64PointerValue(wlan.MinrateNaDataRateKbps)
 
 	if wlan.WPAMode != "" {
 		model.WPAMode = types.StringValue(wlan.WPAMode)
