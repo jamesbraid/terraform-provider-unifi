@@ -497,74 +497,12 @@ func (r *trafficRouteResource) modelToAPI(
 			return nil, diags
 		}
 
-		for _, ip := range ips {
-			address := ip.Address.ValueString()
-
-			// Detect IP range (contains "-" but is not CIDR)
-			if strings.Contains(address, "-") {
-				parts := strings.SplitN(address, "-", 2)
-				entry := unifi.TrafficRouteIPRanges{
-					Start:   strings.TrimSpace(parts[0]),
-					Stop:    strings.TrimSpace(parts[1]),
-					Version: unifi.TrafficRouteIPVersionV4,
-				}
-				if ipAddr, err := netip.ParseAddr(entry.Start); err == nil && ipAddr.Is6() {
-					entry.Version = unifi.TrafficRouteIPVersionV6
-				}
-				route.IPRanges = append(route.IPRanges, entry)
-			} else {
-				entry := unifi.TrafficRouteIPAddresses{
-					Address: address,
-					Version: unifi.TrafficRouteIPVersionV4,
-				}
-				if ipAddr, err := netip.ParseAddr(address); err == nil && ipAddr.Is6() {
-					entry.Version = unifi.TrafficRouteIPVersionV6
-				}
-
-				// Parse ports
-				if !ip.Ports.IsNull() && !ip.Ports.IsUnknown() {
-					var portStrs []string
-					diags.Append(ip.Ports.ElementsAs(ctx, &portStrs, false)...)
-					for _, ps := range portStrs {
-						if strings.Contains(ps, "-") {
-							rangeParts := strings.SplitN(ps, "-", 2)
-							start, err1 := strconv.ParseInt(
-								strings.TrimSpace(rangeParts[0]),
-								10,
-								64,
-							)
-							stop, err2 := strconv.ParseInt(strings.TrimSpace(rangeParts[1]), 10, 64)
-							if err1 != nil || err2 != nil {
-								diags.AddError(
-									"Invalid Port Range",
-									fmt.Sprintf("could not parse port range %q", ps),
-								)
-								return nil, diags
-							}
-							entry.PortRanges = append(
-								entry.PortRanges,
-								unifi.TrafficRoutePortRanges{
-									Start: &start,
-									Stop:  &stop,
-								},
-							)
-						} else {
-							port, err := strconv.ParseInt(strings.TrimSpace(ps), 10, 64)
-							if err != nil {
-								diags.AddError(
-									"Invalid Port",
-									fmt.Sprintf("could not parse port %q", ps),
-								)
-								return nil, diags
-							}
-							entry.Ports = append(entry.Ports, port)
-						}
-					}
-				}
-
-				route.IPAddresses = append(route.IPAddresses, entry)
-			}
+		addresses, ranges, ok := trafficRouteDestinationIPToAPI(ctx, &diags, ips)
+		if !ok {
+			return nil, diags
 		}
+		route.IPAddresses = append(route.IPAddresses, addresses...)
+		route.IPRanges = append(route.IPRanges, ranges...)
 	}
 
 	// Initialize empty slices for nil arrays.
@@ -582,49 +520,152 @@ func (r *trafficRouteResource) modelToAPI(
 	}
 
 	// Source → TargetDevices
-	if !model.Source.IsNull() && !model.Source.IsUnknown() {
-		var src sourceModel
-		diags.Append(model.Source.As(ctx, &src, basetypes.ObjectAsOptions{})...)
-		if diags.HasError() {
-			return nil, diags
-		}
-
-		var devices []unifi.TrafficRouteTargetDevices
-
-		// Networks
-		if !src.Networks.IsNull() && !src.Networks.IsUnknown() {
-			var networks []sourceNetworkModel
-			diags.Append(src.Networks.ElementsAs(ctx, &networks, false)...)
-			for _, n := range networks {
-				devices = append(devices, unifi.TrafficRouteTargetDevices{
-					NetworkID: n.ID.ValueString(),
-					Type:      "NETWORK",
-				})
-			}
-		}
-
-		// Clients
-		if !src.Clients.IsNull() && !src.Clients.IsUnknown() {
-			var clients []sourceClientModel
-			diags.Append(src.Clients.ElementsAs(ctx, &clients, false)...)
-			for _, c := range clients {
-				devices = append(devices, unifi.TrafficRouteTargetDevices{
-					ClientMAC: c.MAC.ValueString(),
-					Type:      "CLIENT",
-				})
-			}
-		}
-
-		if len(devices) > 0 {
-			route.TargetDevices = devices
-		} else {
-			route.TargetDevices = []unifi.TrafficRouteTargetDevices{{Type: "ALL_CLIENTS"}}
-		}
-	} else {
-		route.TargetDevices = []unifi.TrafficRouteTargetDevices{{Type: "ALL_CLIENTS"}}
+	devices, ok := trafficRouteTargetDevicesToAPI(ctx, &diags, model.Source)
+	if !ok {
+		return nil, diags
 	}
+	route.TargetDevices = devices
 
 	return route, diags
+}
+
+// trafficRouteDestinationIPToAPI splits destination.ip into the two observed
+// arrays: an entry containing a hyphen becomes an ip_ranges record and anything
+// else an ip_addresses one, and only an ip_addresses entry carries ports.
+//
+// ok is false when a port could not be parsed, which is the one condition that
+// aborted the whole conversion before this was a function of its own. The
+// partial result is returned with it and the caller discards it.
+func trafficRouteDestinationIPToAPI(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	ips []destinationIPModel,
+) ([]unifi.TrafficRouteIPAddresses, []unifi.TrafficRouteIPRanges, bool) {
+	var addresses []unifi.TrafficRouteIPAddresses
+	var ranges []unifi.TrafficRouteIPRanges
+
+	for _, ip := range ips {
+		address := ip.Address.ValueString()
+
+		// Detect IP range (contains "-" but is not CIDR)
+		if strings.Contains(address, "-") {
+			parts := strings.SplitN(address, "-", 2)
+			entry := unifi.TrafficRouteIPRanges{
+				Start:   strings.TrimSpace(parts[0]),
+				Stop:    strings.TrimSpace(parts[1]),
+				Version: unifi.TrafficRouteIPVersionV4,
+			}
+			if ipAddr, err := netip.ParseAddr(entry.Start); err == nil && ipAddr.Is6() {
+				entry.Version = unifi.TrafficRouteIPVersionV6
+			}
+			ranges = append(ranges, entry)
+			continue
+		}
+
+		entry := unifi.TrafficRouteIPAddresses{
+			Address: address,
+			Version: unifi.TrafficRouteIPVersionV4,
+		}
+		if ipAddr, err := netip.ParseAddr(address); err == nil && ipAddr.Is6() {
+			entry.Version = unifi.TrafficRouteIPVersionV6
+		}
+
+		// Parse ports
+		if !ip.Ports.IsNull() && !ip.Ports.IsUnknown() {
+			var portStrs []string
+			diags.Append(ip.Ports.ElementsAs(ctx, &portStrs, false)...)
+			for _, ps := range portStrs {
+				if strings.Contains(ps, "-") {
+					rangeParts := strings.SplitN(ps, "-", 2)
+					start, err1 := strconv.ParseInt(strings.TrimSpace(rangeParts[0]), 10, 64)
+					stop, err2 := strconv.ParseInt(strings.TrimSpace(rangeParts[1]), 10, 64)
+					if err1 != nil || err2 != nil {
+						diags.AddError(
+							"Invalid Port Range",
+							fmt.Sprintf("could not parse port range %q", ps),
+						)
+						return nil, nil, false
+					}
+					entry.PortRanges = append(
+						entry.PortRanges,
+						unifi.TrafficRoutePortRanges{
+							Start: &start,
+							Stop:  &stop,
+						},
+					)
+					continue
+				}
+				port, err := strconv.ParseInt(strings.TrimSpace(ps), 10, 64)
+				if err != nil {
+					diags.AddError(
+						"Invalid Port",
+						fmt.Sprintf("could not parse port %q", ps),
+					)
+					return nil, nil, false
+				}
+				entry.Ports = append(entry.Ports, port)
+			}
+		}
+
+		addresses = append(addresses, entry)
+	}
+
+	return addresses, ranges, true
+}
+
+// trafficRouteTargetDevicesToAPI partitions source.clients and source.networks
+// into the one observed array, each entry carrying its own type discriminator.
+// A source naming nothing and an absent source both mean every client.
+//
+// ok is false when the source object could not be read, which is the one
+// condition that aborted the whole conversion. A member that could not be read
+// only records its diagnostic, as it did before.
+func trafficRouteTargetDevicesToAPI(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	source types.Object,
+) ([]unifi.TrafficRouteTargetDevices, bool) {
+	allClients := []unifi.TrafficRouteTargetDevices{{Type: "ALL_CLIENTS"}}
+	if source.IsNull() || source.IsUnknown() {
+		return allClients, true
+	}
+
+	var src sourceModel
+	diags.Append(source.As(ctx, &src, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return nil, false
+	}
+
+	var devices []unifi.TrafficRouteTargetDevices
+
+	// Networks
+	if !src.Networks.IsNull() && !src.Networks.IsUnknown() {
+		var networks []sourceNetworkModel
+		diags.Append(src.Networks.ElementsAs(ctx, &networks, false)...)
+		for _, n := range networks {
+			devices = append(devices, unifi.TrafficRouteTargetDevices{
+				NetworkID: n.ID.ValueString(),
+				Type:      "NETWORK",
+			})
+		}
+	}
+
+	// Clients
+	if !src.Clients.IsNull() && !src.Clients.IsUnknown() {
+		var clients []sourceClientModel
+		diags.Append(src.Clients.ElementsAs(ctx, &clients, false)...)
+		for _, c := range clients {
+			devices = append(devices, unifi.TrafficRouteTargetDevices{
+				ClientMAC: c.MAC.ValueString(),
+				Type:      "CLIENT",
+			})
+		}
+	}
+
+	if len(devices) == 0 {
+		return allClients, true
+	}
+	return devices, true
 }
 
 // apiToModel converts the UniFi API struct to the Terraform model.
@@ -673,65 +714,7 @@ func (r *trafficRouteResource) apiToModel(
 	}
 
 	// IP (merge IPAddresses and IPRanges into unified list)
-	var ipList types.List
-	if len(route.IPAddresses) > 0 || len(route.IPRanges) > 0 {
-		var ipElements []attr.Value
-
-		for _, addr := range route.IPAddresses {
-			// Build ports list from Ports + PortRanges
-			var portStrings []attr.Value
-			for _, p := range addr.Ports {
-				portStrings = append(portStrings, types.StringValue(strconv.FormatInt(p, 10)))
-			}
-			for _, pr := range addr.PortRanges {
-				if pr.Start != nil && pr.Stop != nil {
-					portStrings = append(portStrings, types.StringValue(
-						strconv.FormatInt(*pr.Start, 10)+"-"+strconv.FormatInt(*pr.Stop, 10),
-					))
-				}
-			}
-
-			var ports types.List
-			if len(portStrings) > 0 {
-				var d diag.Diagnostics
-				ports, d = types.ListValue(types.StringType, portStrings)
-				diags.Append(d...)
-			} else {
-				ports = types.ListNull(types.StringType)
-			}
-
-			ipModel := destinationIPModel{
-				Address: types.StringValue(addr.Address),
-				Ports:   ports,
-			}
-
-			obj, d := types.ObjectValueFrom(ctx, destinationIPModel{}.AttributeTypes(), ipModel)
-			diags.Append(d...)
-			ipElements = append(ipElements, obj)
-		}
-
-		for _, ipRange := range route.IPRanges {
-			ipModel := destinationIPModel{
-				Address: types.StringValue(ipRange.Start + "-" + ipRange.Stop),
-				Ports:   types.ListNull(types.StringType),
-			}
-
-			obj, d := types.ObjectValueFrom(ctx, destinationIPModel{}.AttributeTypes(), ipModel)
-			diags.Append(d...)
-			ipElements = append(ipElements, obj)
-		}
-
-		var d diag.Diagnostics
-		ipList, d = types.ListValue(
-			types.ObjectType{AttrTypes: destinationIPModel{}.AttributeTypes()},
-			ipElements,
-		)
-		diags.Append(d...)
-	} else {
-		ipList = types.ListNull(
-			types.ObjectType{AttrTypes: destinationIPModel{}.AttributeTypes()},
-		)
-	}
+	ipList := trafficRouteDestinationIPFromAPI(ctx, &diags, route)
 
 	// Build destination object.
 	if len(route.Domains) > 0 || len(route.Regions) > 0 || len(route.IPAddresses) > 0 ||
@@ -749,6 +732,83 @@ func (r *trafficRouteResource) apiToModel(
 	}
 
 	// TargetDevices → Source
+	model.Source = trafficRouteSourceFromAPI(ctx, &diags, route)
+
+	return diags
+}
+
+// trafficRouteDestinationIPFromAPI merges the two observed arrays back into the
+// one released list. An ip_ranges record reads as "start-stop" and carries no
+// ports; an ip_addresses record reads as its address, with Ports and PortRanges
+// rendered into the one ports list. Addresses come before ranges, which is the
+// order the write does not preserve and the read therefore imposes.
+func trafficRouteDestinationIPFromAPI(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	route *unifi.TrafficRoute,
+) types.List {
+	elementType := types.ObjectType{AttrTypes: destinationIPModel{}.AttributeTypes()}
+	if len(route.IPAddresses) == 0 && len(route.IPRanges) == 0 {
+		return types.ListNull(elementType)
+	}
+
+	var ipElements []attr.Value
+
+	for _, addr := range route.IPAddresses {
+		// Build ports list from Ports + PortRanges
+		var portStrings []attr.Value
+		for _, p := range addr.Ports {
+			portStrings = append(portStrings, types.StringValue(strconv.FormatInt(p, 10)))
+		}
+		for _, pr := range addr.PortRanges {
+			if pr.Start != nil && pr.Stop != nil {
+				portStrings = append(portStrings, types.StringValue(
+					strconv.FormatInt(*pr.Start, 10)+"-"+strconv.FormatInt(*pr.Stop, 10),
+				))
+			}
+		}
+
+		ports := types.ListNull(types.StringType)
+		if len(portStrings) > 0 {
+			list, d := types.ListValue(types.StringType, portStrings)
+			diags.Append(d...)
+			ports = list
+		}
+
+		obj, d := types.ObjectValueFrom(ctx, destinationIPModel{}.AttributeTypes(), destinationIPModel{
+			Address: types.StringValue(addr.Address),
+			Ports:   ports,
+		})
+		diags.Append(d...)
+		ipElements = append(ipElements, obj)
+	}
+
+	for _, ipRange := range route.IPRanges {
+		obj, d := types.ObjectValueFrom(ctx, destinationIPModel{}.AttributeTypes(), destinationIPModel{
+			Address: types.StringValue(ipRange.Start + "-" + ipRange.Stop),
+			Ports:   types.ListNull(types.StringType),
+		})
+		diags.Append(d...)
+		ipElements = append(ipElements, obj)
+	}
+
+	list, d := types.ListValue(elementType, ipElements)
+	diags.Append(d...)
+	return list
+}
+
+// trafficRouteSourceFromAPI partitions the one observed array on its own type
+// discriminator: NETWORK entries become source.networks and CLIENT entries
+// source.clients. ALL_CLIENTS is the default and is represented by omitting
+// source entirely, so an array of nothing else reads as a null object.
+func trafficRouteSourceFromAPI(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	route *unifi.TrafficRoute,
+) types.Object {
+	networkType := types.ObjectType{AttrTypes: sourceNetworkModel{}.AttributeTypes()}
+	clientType := types.ObjectType{AttrTypes: sourceClientModel{}.AttributeTypes()}
+
 	var networkElements []attr.Value
 	var clientElements []attr.Value
 
@@ -758,9 +818,7 @@ func (r *trafficRouteResource) apiToModel(
 			obj, d := types.ObjectValueFrom(
 				ctx,
 				sourceNetworkModel{}.AttributeTypes(),
-				sourceNetworkModel{
-					ID: types.StringValue(td.NetworkID),
-				},
+				sourceNetworkModel{ID: types.StringValue(td.NetworkID)},
 			)
 			diags.Append(d...)
 			networkElements = append(networkElements, obj)
@@ -768,9 +826,7 @@ func (r *trafficRouteResource) apiToModel(
 			obj, d := types.ObjectValueFrom(
 				ctx,
 				sourceClientModel{}.AttributeTypes(),
-				sourceClientModel{
-					MAC: types.StringValue(td.ClientMAC),
-				},
+				sourceClientModel{MAC: types.StringValue(td.ClientMAC)},
 			)
 			diags.Append(d...)
 			clientElements = append(clientElements, obj)
@@ -779,46 +835,30 @@ func (r *trafficRouteResource) apiToModel(
 		}
 	}
 
-	if len(networkElements) > 0 || len(clientElements) > 0 {
-		var networksList types.List
-		if len(networkElements) > 0 {
-			var d diag.Diagnostics
-			networksList, d = types.ListValue(
-				types.ObjectType{AttrTypes: sourceNetworkModel{}.AttributeTypes()},
-				networkElements,
-			)
-			diags.Append(d...)
-		} else {
-			networksList = types.ListNull(
-				types.ObjectType{AttrTypes: sourceNetworkModel{}.AttributeTypes()},
-			)
-		}
-
-		var clientsList types.List
-		if len(clientElements) > 0 {
-			var d diag.Diagnostics
-			clientsList, d = types.ListValue(
-				types.ObjectType{AttrTypes: sourceClientModel{}.AttributeTypes()},
-				clientElements,
-			)
-			diags.Append(d...)
-		} else {
-			clientsList = types.ListNull(
-				types.ObjectType{AttrTypes: sourceClientModel{}.AttributeTypes()},
-			)
-		}
-
-		var d diag.Diagnostics
-		model.Source, d = types.ObjectValueFrom(ctx, sourceModel{}.AttributeTypes(), sourceModel{
-			Networks: networksList,
-			Clients:  clientsList,
-		})
-		diags.Append(d...)
-	} else {
-		model.Source = types.ObjectNull(sourceModel{}.AttributeTypes())
+	if len(networkElements) == 0 && len(clientElements) == 0 {
+		return types.ObjectNull(sourceModel{}.AttributeTypes())
 	}
 
-	return diags
+	networksList := types.ListNull(networkType)
+	if len(networkElements) > 0 {
+		list, d := types.ListValue(networkType, networkElements)
+		diags.Append(d...)
+		networksList = list
+	}
+
+	clientsList := types.ListNull(clientType)
+	if len(clientElements) > 0 {
+		list, d := types.ListValue(clientType, clientElements)
+		diags.Append(d...)
+		clientsList = list
+	}
+
+	object, d := types.ObjectValueFrom(ctx, sourceModel{}.AttributeTypes(), sourceModel{
+		Networks: networksList,
+		Clients:  clientsList,
+	})
+	diags.Append(d...)
+	return object
 }
 
 func (r *trafficRouteResource) defaultWANNetworkID(
