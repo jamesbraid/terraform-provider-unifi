@@ -77,10 +77,16 @@
 # because a false statement about what is enforced costs something every day it
 # stands, and correcting it asserts nothing.
 #
-# It also cannot see a generator that is not a shell script. The upgrade receipt
-# is written by cmd/upgrade-plan-runner, and sixteen commands under cmd/ write
-# artifacts with no dirty-tree awareness at all, because this guard is a bash
-# library a Go binary cannot source. That is task 56.
+# It also cannot see a generator that is not a shell script. Seven commands
+# under cmd/ are invoked from a workflow and write an artifact, and not one has
+# any dirty-tree awareness, because this guard is a bash library a Go binary
+# cannot source. That is task 56.
+#
+# A further seven are named by go:generate directives, and those must NEVER
+# carry this guard. A code generator's working condition is a tree it is about
+# to change, so refusing a dirty one would refuse the job. The two sets are
+# disjoint, which is what makes "invoked from a workflow" usable as the rule
+# rather than "writes a file".
 #
 # SEPARATELY: thirteen of the nineteen evidence artifacts under build/ have no
 # producer at all, including all five wave receipts, which are maintained by
