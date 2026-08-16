@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -1481,4 +1482,78 @@ func Test_networkResource_purpose(t *testing.T) {
 			t.Errorf("Purpose = %q, want %q", model.Purpose.ValueString(), unifi.PurposeGuest)
 		}
 	})
+}
+
+// TestAccNetworkFramework_purposeVLANOnlyDirect covers the spelling no fixture
+// crossed before: purpose set directly, third_party_gateway left alone.
+//
+// The two attributes are one controller field. modelToNetwork writes an
+// explicit purpose and then lets a true third_party_gateway override it;
+// networkToModel reads third_party_gateway back out of that same field. While
+// third_party_gateway carried a default of false, this configuration planned
+// false, stored vlan-only, read back true, and failed with "inconsistent result
+// after apply" naming an attribute the practitioner had never set.
+//
+// Every other vlan-only fixture in this file spells it third_party_gateway =
+// true, which is exactly why the suite could not see this.
+func TestAccNetworkFramework_purposeVLANOnlyDirect(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkFrameworkConfig_purposeVLANOnlyDirect(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_purpose_vlan_only", "purpose", "vlan-only",
+					),
+					// Derived from the controller's purpose, not defaulted.
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_purpose_vlan_only", "third_party_gateway", "true",
+					),
+				),
+			},
+		},
+	})
+}
+
+// TestAccNetworkFramework_purposeConflict proves a contradictory pair is refused
+// at plan time, naming both attributes, instead of reaching the controller and
+// failing afterwards as an inconsistent result that blames the provider.
+//
+// PlanOnly is the assertion that matters here: it never reaches the controller.
+func TestAccNetworkFramework_purposeConflict(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccNetworkFrameworkConfig_purposeConflict(),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`Conflicting network purpose`),
+			},
+		},
+	})
+}
+
+func testAccNetworkFrameworkConfig_purposeVLANOnlyDirect() string {
+	return `
+resource "unifi_network" "test_purpose_vlan_only" {
+	name    = "Test Purpose VLAN Only"
+	purpose = "vlan-only"
+	vlan    = 24
+}
+`
+}
+
+func testAccNetworkFrameworkConfig_purposeConflict() string {
+	return `
+resource "unifi_network" "test_purpose_conflict" {
+	name                = "Test Purpose Conflict"
+	subnet              = "192.168.24.1/24"
+	vlan                = 25
+	purpose             = "corporate"
+	third_party_gateway = true
+}
+`
 }
