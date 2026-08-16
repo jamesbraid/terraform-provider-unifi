@@ -2,6 +2,100 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.102.0] - 2026-08-16
+
+### 🐛 Bug Fixes
+
+- **Nested configuration blocks could not be written at all.** The provider declared a distinct Go
+  type for every nested block in its schema — `dhcp_server` on `unifi_network`, `wireguard` on both
+  VPN resources, `source` and `destination` on `unifi_traffic_route`, and 49 others — and then never
+  produced a value of any of them. Every one of those blocks was populated at runtime as a plain
+  object. Terraform checks the value against the type the schema declares, finds a plain object
+  where a specific type was promised, and rejects the apply with a value conversion error. Any
+  configuration setting one of the affected blocks failed on every apply. 52 bindings across 15
+  packages were affected, on `unifi_wan` (12), `unifi_network` (7), `unifi_vpn_server` (5),
+  `unifi_traffic_route` (5), `unifi_wlan` (3), `unifi_vpn_client` (3), `unifi_radius_profile` (2),
+  `unifi_firewall_policy` (2), `unifi_bgp`, `unifi_client` and `unifi_power_supervisor` (1 each),
+  plus four data sources.
+
+  The bindings are removed. The 35 custom types that carry real validation — MAC addresses,
+  durations, IP addresses and prefixes — are deliberately kept; those are the ones where the custom
+  type *is* the check, and dropping one would silently accept any string.
+
+  The schema Terraform serves is unchanged, and that is structural rather than a spot check. All 51
+  of the generated types embedded the framework's own object type and not one of them overrode the
+  method that decides the wire representation, so each was already indistinguishable on the wire
+  from the plain object that replaces it. (51 types for 52 bindings: `unifi_wan` binds the same
+  `Options` type at two places.) That is also why no comparison against the previous release could
+  ever have shown the fault — there was nothing in the served schema to differ. It was found by
+  running both providers against a real controller and diffing the results: 54 tests that pass on
+  v0.101.2 failed here, and after the fix the whole suite passes with the released side unchanged
+  as a control.
+
+- **`unifi_network`: fix `setting_preference` planning itself back to `auto`.** The attribute
+  shipped with `Default: "auto"`. A default is applied before the controller is consulted, so a
+  network the controller holds as `manual` planned a change back to `auto` on every run the moment
+  the attribute was absent from the configuration — and never settled, because applying it did not
+  change what the controller returned. Attaching a network to a `unifi_firewall_zone` is what makes
+  the controller hold `manual`, so any zoned network written without an explicit
+  `setting_preference` had a permanent diff. It is now `Optional + Computed` with no default and
+  `UseStateForUnknown`, matching `purpose` on the same resource, so leaving it out keeps whatever
+  the controller holds. Upgrading plans no changes against existing state, and an explicit
+  `setting_preference` added to work around the diff can be dropped.
+
+- **`unifi_network`: fix creating a `third_party_gateway` network without any DHCP or IGMP option
+  set.** The vlan-only branch of the post-write read copied the planned `setting_preference` through
+  unchanged, which was safe only while the schema default guaranteed it was already known. With the
+  default gone it is unknown on create, and Terraform rejects the result with "Provider returned
+  invalid result object after apply". It now resolves from the controller's answer, which for a
+  vlan-only network is absent — the same treatment `multicast_dns` and the IPv6 attributes in that
+  branch already had.
+
+- **`unifi_device`: keep the adoption result and the configured name after adopting a device.**
+  Immediately after a device is adopted the controller can still report the previous adoption state
+  and the previous name, because it applies both asynchronously. The provider read that stale
+  response back over the result of its own successful adoption, so a device that had just been
+  adopted was recorded as not adopted, and a name set in the configuration was replaced by the
+  controller's old one. The next plan then showed a difference that applying could not settle.
+  Create now keeps the adoption result and the configured name, alongside the port overrides and
+  plan-only flags it already preserved, and a later refresh picks up whatever the controller settles
+  on.
+
+### 🔧 Maintenance
+
+- **A new test compares the schema the provider serves against the code that fills it in.** This
+  class of fault was invisible to every check the project had. All of them compare this provider
+  against the previous release, and on the wire the two schemas are identical — so the comparison
+  was blind to it by construction, not by oversight.
+
+  The new test compares the two halves of the same provider instead. For every object-valued
+  attribute and block in every registered resource and data source, at any nesting depth, it rejects
+  a nested object bound to a type the provider cannot produce a value of, requires a runtime model
+  whose fields match the members exactly, and rejects any model field typed against a generated
+  type.
+
+  It is checked by retrodiction rather than by argument: run against the commit before the fix, it
+  reports all 52 bindings — compared as a set against the known list, none missed and none invented.
+  That run names `unifi_firewall_policy`'s `source` and `destination`, which is the case the test
+  exists for, because the controller suite could not reach them at all.
+
+  Its limits, because a check that hides them is worth less than one that states them. Nine
+  attributes resolve to more than one candidate model — several unrelated blocks legitimately
+  declare the same members, such as the three that declare `enabled` and `servers` — and for those
+  nine the test cannot tell which model is wrong. They are listed by name in the test and compared
+  as a set, so a tenth cannot appear unnoticed and a resolved one cannot linger.
+
+- **`unifi_firewall_policy` and `unifi_site_to_site_vpn` have acceptance tests for the first time.**
+  Neither was exercised by anything that talks to a controller; `unifi_firewall_policy` in
+  particular has sixteen uses on the author's own network and had no managed acceptance test at all.
+
+- **Most of this release's diff is invisible on purpose.** 42 files under `unifi/` changed as
+  surfaces moved to generated schemas, and the schema the provider serves still matches v0.101.2
+  exactly — checked against the released baseline rather than assumed. There is nothing to announce
+  about the conversion itself, which is the point of doing it that way.
+
+---
+
 ## [v0.101.2] - 2026-08-02
 
 ### 🐛 Bug Fixes
