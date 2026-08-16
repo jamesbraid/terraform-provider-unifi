@@ -96,6 +96,10 @@ type evidenceView struct {
 	planned   map[catalogparity.SurfaceKey][]string
 	released  map[string]struct{}
 	candidate map[string]struct{}
+	// declaredMissing holds the tests the campaign policy states the released
+	// provider cannot run. Membership excuses a test from the RELEASED half of
+	// differential_scenario and from nothing else.
+	declaredMissing map[string]struct{}
 }
 
 func newEvidenceView(input MigrationRecoveryInput) evidenceView {
@@ -105,6 +109,12 @@ func newEvidenceView(input MigrationRecoveryInput) evidenceView {
 		planned:   make(map[catalogparity.SurfaceKey][]string, len(input.Controller.Plan.Surfaces)),
 		released:  make(map[string]struct{}, len(input.Controller.Released.Passed)),
 		candidate: make(map[string]struct{}, len(input.Controller.Candidate.Passed)),
+		declaredMissing: make(
+			map[string]struct{}, len(input.Controller.Plan.ReleasedAllowedMissing),
+		),
+	}
+	for _, name := range input.Controller.Plan.ReleasedAllowedMissing {
+		view.declaredMissing[name] = struct{}{}
 	}
 	for _, surface := range input.Inventory.Surfaces {
 		view.inventory[surface.SurfaceKey] = surface
@@ -259,6 +269,29 @@ func (v evidenceView) differentialScenario(
 	if len(planned) == 0 {
 		return verdict{mode: mode, because: "the campaign plans no acceptance test for it"}
 	}
+	// A declared test is excused below, so a surface whose every planned test is
+	// declared would reach the loops with nothing left to check and fall out
+	// holding the mode on no comparison at all.
+	//
+	// This is not hypothetical. Measured on this tree, fifteen surfaces plan
+	// exactly one acceptance test and that test is already declared missing --
+	// firewall_policy, firewall_zone, site_to_site_vpn, device, power_supervisor
+	// and ten more. Excusing the only test hands them the strongest mode on the
+	// strength of nothing, which is the check-that-cannot-fail this file already
+	// refuses elsewhere: "A check that cannot fail is decoration."
+	//
+	// The excuse is for a surface that keeps a scenario speaking for both
+	// providers, not for a surface that has none.
+	surviving := 0
+	for _, name := range planned {
+		if _, declared := v.declaredMissing[name]; !declared {
+			surviving++
+		}
+	}
+	if surviving == 0 {
+		return verdict{mode: mode, because: "every acceptance test the campaign plans for it is declared " +
+			"missing from the released provider, so no scenario compares the two"}
+	}
 	// Identity is required PER ACCEPTANCE TEST, not per file.
 	//
 	// The scenario owner holds acceptance tests, which drive the provider
@@ -276,6 +309,9 @@ func (v evidenceView) differentialScenario(
 	// per-test check it stands in for.
 	if surface.Tests.Status != catalogparity.FileIdentical {
 		for _, name := range planned {
+			if _, declared := v.declaredMissing[name]; declared {
+				continue
+			}
 			scenario, measured := surface.Scenario(name)
 			switch {
 			case !measured:
@@ -290,7 +326,32 @@ func (v evidenceView) differentialScenario(
 		}
 	}
 	for _, name := range planned {
-		if _, passed := v.released[name]; !passed {
+		_, declared := v.declaredMissing[name]
+		// A test the campaign declares the released provider cannot run is
+		// excused the released half of this rule and nothing else.
+		//
+		// The per-test comparison above exists because acceptance tests were
+		// being disqualified by their file-mates: converting a surface moves
+		// the file digest without touching a single scenario, and a file-level
+		// rule struck all of them down together. A test that is new in the
+		// candidate does the same thing one level lower. It cannot be
+		// byte-identical to a tree that has never held it and cannot have
+		// passed there, so under an undeclared rule two new tests veto the
+		// twenty-nine beside them that did run on both. That is the same
+		// defect: a scenario losing its standing because of a neighbour rather
+		// than because of anything measured about itself.
+		//
+		// The exclusion is DECLARED, never inferred. It reads the campaign
+		// policy's released_allowed_missing, which a reviewer can see and which
+		// admission already checks the receipt against, so widening it is an
+		// edit to a reviewable list rather than a silent consequence of adding
+		// a test.
+		//
+		// It excuses only the released side. The candidate check below still
+		// applies to a declared test, so a declared test that fails on the
+		// candidate still denies the mode -- the declaration says "released
+		// never had this", not "do not judge this".
+		if _, passed := v.released[name]; !passed && !declared {
 			return verdict{mode: mode, because: name + " did not pass on the released provider"}
 		}
 		if _, passed := v.candidate[name]; !passed {

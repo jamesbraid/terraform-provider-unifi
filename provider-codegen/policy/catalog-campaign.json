@@ -44,6 +44,8 @@
     "TestAccFirewallZoneDataSource_basic",
     "TestAccFirewallZoneFramework_basic",
     "TestAccFirewallZoneList_emptyOrSeeded",
+    "TestAccNetworkFramework_purposeConflict",
+    "TestAccNetworkFramework_purposeVLANOnlyDirect",
     "TestAccPortProfileDataSource_basic",
     "TestAccPowerSupervisorList_emptyOrSeeded",
     "TestAccSiteToSiteVPNFramework_basic",
