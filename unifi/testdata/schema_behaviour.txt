@@ -779,7 +779,7 @@ unifi_wan.timeouts.create	validator	validators.timeDurationValidator	"must be a 
 unifi_wan.timeouts.delete	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_wan.timeouts.read	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_wan.timeouts.update	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
-unifi_wan.type	default	stringdefault.staticStringDefault	"value defaults to dhcp"
+unifi_wan.type	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wan.type	validator	stringvalidator.oneOfValidator	"value must be one of: [\"dhcp\" \"static\" \"pppoe\" \"disabled\"]"
 unifi_wan.type_v6	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wan.type_v6	validator	stringvalidator.oneOfValidator	"value must be one of: [\"dhcpv6\" \"slaac\" \"static\" \"disabled\"]"
