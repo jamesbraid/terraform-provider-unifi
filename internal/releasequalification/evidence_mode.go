@@ -298,7 +298,36 @@ func (v evidenceView) sourceIdentity(surface catalogparity.SurfaceEvidenceInvent
 		return verdict{mode: EvidenceSourceIdentity, because: fmt.Sprintf(
 			"runtime %s is %s against the released provider", surface.Runtime.Path, surface.Runtime.Status)}
 	}
+	// The generated package is where a delegating surface's schema actually
+	// lives, so an identical wrapper over a changed package is not source
+	// identity. Empty means the surface has no generated package and the runtime
+	// path is the whole story -- see SurfaceEvidenceInventory.Generated.
+	for _, generated := range surface.Generated {
+		if generated.Status != catalogparity.FileIdentical {
+			return verdict{mode: EvidenceSourceIdentity, because: fmt.Sprintf(
+				"generated %s is %s against the released provider", generated.Path, generated.Status)}
+		}
+	}
 	return verdict{mode: EvidenceSourceIdentity, holds: true}
+}
+
+// surfaceChanged reports whether anything that decides what this surface serves
+// differs from the released provider -- its runtime file or any of the generated
+// files it delegates to.
+//
+// The two callers below used to ask only about Runtime. That was right while the
+// runtime file held the schema and wrong the moment surfaces began delegating,
+// and it is the same question sourceIdentity answers in the negative.
+func surfaceChanged(surface catalogparity.SurfaceEvidenceInventory) bool {
+	if surface.Runtime.Status == catalogparity.FileChanged {
+		return true
+	}
+	for _, generated := range surface.Generated {
+		if generated.Status == catalogparity.FileChanged {
+			return true
+		}
+	}
+	return false
 }
 
 func (v evidenceView) differentialScenario(
@@ -306,7 +335,7 @@ func (v evidenceView) differentialScenario(
 	surface catalogparity.SurfaceEvidenceInventory,
 ) verdict {
 	const mode = EvidenceDifferentialScenario
-	if surface.Runtime.Status != catalogparity.FileChanged {
+	if !surfaceChanged(surface) {
 		return verdict{mode: mode, because: "runtime is unchanged, so source_identity covers it"}
 	}
 	planned := v.planned[key]
@@ -410,7 +439,7 @@ func (v evidenceView) pragmaticReference(
 	surface catalogparity.SurfaceEvidenceInventory,
 ) verdict {
 	const mode = EvidencePragmaticReference
-	if surface.Runtime.Status != catalogparity.FileChanged {
+	if !surfaceChanged(surface) {
 		return verdict{mode: mode, because: "runtime is unchanged, so source_identity covers it"}
 	}
 	if surface.Tests.Status != catalogparity.FileIdentical {

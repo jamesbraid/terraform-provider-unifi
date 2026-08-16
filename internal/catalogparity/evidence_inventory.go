@@ -102,7 +102,26 @@ type SurfaceEvidenceInventory struct {
 	SurfaceKey
 	Wave    int            `json:"wave"`
 	Runtime FileComparison `json:"runtime"`
-	Tests   FileComparison `json:"tests"`
+	// Generated is every file OUTSIDE the runtime path that decides what this
+	// surface serves -- in practice its package under internal/generated.
+	//
+	// Runtime alone stopped being sufficient when surfaces began delegating.
+	// evidencePaths names one file, unifi/<base>.go, and 38 of the 41 files in
+	// unifi/ that assign resp.Schema now assign it from a generated package. So
+	// a schema-only change leaves the runtime digest untouched: measured on
+	// dns_record, an attribute ceasing to be Required left
+	// unifi/dns_record_resource.go at 3ffe7e13167de315 before and after, while
+	// the served schema moved.
+	//
+	// That matters because sourceIdentity holds on an identical runtime and
+	// means the released result carries over. Without this, a changed schema
+	// inherits evidence from a provider that served a different one.
+	//
+	// EMPTY IS MEANINGFUL AND IS NOT THE SAME AS ABSENT. A surface serving a
+	// hand-written schema has no generated package, and for those the runtime
+	// path really is the whole story. Three surfaces are in that position today.
+	Generated []FileComparison `json:"generated,omitempty"`
+	Tests     FileComparison   `json:"tests"`
 	// ScenarioOwners is every file this surface's acceptance evidence lives in,
 	// sorted, and it replaced a single scenario_owner string.
 	//
