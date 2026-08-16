@@ -56,6 +56,30 @@ steps:
     volumes:
       - unifi-provider-fast-loop-cache:/ci-cache
     commands:
+      # Say which tree this run is about, first, before anything can fail.
+      #
+      # Woodpecker knows the commit; this step's own output did not carry it, so
+      # a green fast-loop was not evidence about any particular tree once the log
+      # scrolled. Measured before adding this: zero of the sixteen commands
+      # emitted a commit, verified against `git rev-parse HEAD` as a positive
+      # control so the zero meant something.
+      #
+      # The tree-state work does not reach here and structurally cannot. fast-loop
+      # runs checks, not producers; the one guarded generator it reaches --
+      # catalog-evidence-inventory.sh, via its self-test, into a temp dir -- is on
+      # records_exempt precisely because its artifact is committed and
+      # byte-compared and so must NOT carry a tree state.
+      #
+      # This is a log line, not a receipt. It does not survive log rotation and
+      # nothing consumes it. It is here because the alternative was nothing at
+      # all, and because the first question asked of a green run is which tree it
+      # was.
+      #
+      # No colon in the format string. YAML reads `printf 'fast-loop: ...` as a
+      # mapping rather than a command, which parses without error and hands
+      # Woodpecker something that is not a string -- caught by parsing this file
+      # rather than by reading it.
+      - printf 'fast-loop commit=%s tree=%s\n' "$(git rev-parse HEAD)" "$(test -z "$(git status --porcelain)" && echo clean || echo dirty)"
       - apt-get update
       - apt-get install --yes --no-install-recommends jq
       - export GOCACHE=/ci-cache/go-build GOMODCACHE=/ci-cache/go-mod GO_UNIFI_SOURCE_ROOT=/ci-cache/go-unifi-source
