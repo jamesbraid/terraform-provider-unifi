@@ -25,6 +25,13 @@ steps:
     commands:
       - apt-get update
       - apt-get install --yes --no-install-recommends ca-certificates curl docker.io git jq unzip
+      # The released tag must exist BEFORE the self-test, not fourteen lines
+      # after it. The self-test asks git whether each planned test is defined at
+      # v0.101.2, and with the tag absent every ask failed, every test looked
+      # missing from the released tree, and pipeline 186 reported a stale
+      # inventory that was not stale. Fetching here costs nothing and is the
+      # difference between that check working and that check lying.
+      - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
       - bash .woodpecker/scripts/catalog-controller-differential_test.sh
       - curl --fail --location --silent --show-error --output /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.15.8/terraform_1.15.8_linux_amd64.zip
       - echo 'd25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d  /tmp/terraform.zip' | sha256sum --check -
@@ -39,7 +46,6 @@ steps:
       - chmod +x /tmp/terraform /tmp/tofu /tmp/released-provider/terraform-provider-unifi_v0.101.2
       - env GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/jamesbraid/unifi-emu.git /tmp/unifi-emu
       - test "$(git -C /tmp/unifi-emu rev-parse HEAD)" = 3df84e841e9dad8e32ad94d341bf8cf64fcf4d55
-      - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
       # Deliberately not "all". That resolves the entire module graph and
