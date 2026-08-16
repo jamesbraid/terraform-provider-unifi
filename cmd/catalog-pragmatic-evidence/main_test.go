@@ -13,6 +13,17 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
 
+// PROVEN TO FAIL, recorded here rather than only in the commit that proved it.
+// Four mutations of the declared-missing set prove this can fail: a declared
+// name that does run on the released tree, a candidate-only test left
+// undeclared, shared_scenario_exceptions emptied, and an inventory with its
+// added scenarios flattened. (cf32d48d)
+//
+// A TAUTOLOGY TO KNOW ABOUT WHEN READING THE RESULT: the fixture is generated
+// from the same policy it is checked against, so three of validateControllerReceipt's
+// checks agree by construction across this file. That is the price of removing
+// the duplicated declaration, and it means a resolver bug would not surface here.
+
 func testCampaignPolicy(t *testing.T) catalogparity.CampaignPolicy {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("..", "..", "provider-codegen", "policy", "catalog-campaign.json"))

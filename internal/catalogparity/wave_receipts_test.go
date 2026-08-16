@@ -6,6 +6,24 @@ import (
 	"testing"
 )
 
+// RETRODICTION, recorded here rather than only in the commit that recorded it.
+// The wave-1 read-surface receipt was already wrong when this check was written:
+// it claimed thirty-seven policy_complete against a ledger holding twenty-four
+// generated_shadow, and every gate stayed green because nothing compared the
+// claim to its subject. (55291a21) The wave-4 checkpoint has since gone red on a
+// real state move. (cd21e43f)
+//
+// AND ONE RECORDED FAILURE TO FIRE, which belongs beside the proof rather than
+// in a commit nobody will find: unifi_account was recorded policy_complete and
+// legacy while the compiler was generating it, and the checkpoint kept agreeing
+// with the wrong number. (92f524cb) A check that has gone red once is not a check
+// that goes red whenever it should.
+//
+// WHAT THESE RECEIPTS ARE. No program writes build/wave*/*.json; they are
+// maintained by hand, and the commits say so outright -- "only the checkpoint
+// totals were edited". So these tests compare a hand-written JSON file against
+// hand-written Go, and the four digest pins are the only part that forces a
+// re-cut when a real artifact moves.
 type staticWaveReceipt struct {
 	FormatVersion           int               `json:"format_version"`
 	Wave                    int               `json:"wave"`
