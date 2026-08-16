@@ -31,6 +31,9 @@ func Compile(input CompileInput) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	if err := verifyBootstrapSecretCandidates(input, source, rules); err != nil {
+		return Result{}, err
+	}
 	var baseline baselineManifest
 	if err := decodeJSON("baseline digests", input.BaselineDigests, &baseline, false); err != nil {
 		return Result{}, err
@@ -2245,4 +2248,95 @@ func claimedStructuralFields(
 		}
 	}
 	return fields, members, nil
+}
+
+// verifyBootstrapSecretCandidates runs the secret-candidate check on the
+// BOOTSTRAP path, which had no such check at all: structuralSource returns as
+// soon as it decodes a bootstrap, and the existing check sits past that return
+// in a catalog branch whose record IDs are hardcoded to dns_record.
+//
+// IT SEARCHES ALL FOUR PLACES A POLICY DISPOSITIONS A FIELD. The original
+// lookup read policy.Fields alone, and measured across the 67 policies that is
+// 4045 of 4406 dispositions -- 361 invisible. vpn_server and vpn_client
+// disposition EVERY x_ field through groupings, so a fields-only guard reports
+// eleven already-declared, already-masked secrets as undeclared. Authoring the
+// omissions it asks for would delete ten live sensitive attributes.
+//
+//	fields       structural_name              4045
+//	groupings    members[].structural_name     294
+//	flattenings  members[].structural_name       4
+//	claims       structural_nameS (plural)      63
+//
+// A CLAIM FAILS CLOSED. It names the fields it consumes but carries no
+// disposition of its own -- the sensitivity lives on the terraform members it
+// maps into. Passing a claimed secret would be a branch that cannot fail, so it
+// errors instead and says why. No x_ field uses a claim today, measured.
+func verifyBootstrapSecretCandidates(input CompileInput, source bootstrap, rules policy) error {
+	if len(input.Catalog) > 0 {
+		return nil // the catalog path checks inside structuralSource
+	}
+	var unsafe []string
+	for _, observed := range source.Resource.Fields {
+		if !observed.SecretCandidate {
+			continue
+		}
+		if err := secretCandidateDispositioned(observed.Name, rules); err != nil {
+			unsafe = append(unsafe, err.Error())
+		}
+	}
+	if len(unsafe) > 0 {
+		// Every one, not the first: the original returned on the first failure,
+		// which turns an authoring task into one compile per field.
+		return fmt.Errorf("secret candidates lack a safe provider disposition:\n  %s", strings.Join(unsafe, "\n  "))
+	}
+	return nil
+}
+
+func secretCandidateDispositioned(name string, rules policy) error {
+	if field, ok := policyFieldByStructuralName(rules.Fields, name); ok {
+		if secretCandidateIsSafe(field) {
+			return nil
+		}
+		return fmt.Errorf("%q is a top-level field that is neither omitted nor sensitive", name)
+	}
+	for _, group := range rules.Groupings {
+		for _, member := range group.Members {
+			if member.StructuralName != name {
+				continue
+			}
+			if dispositionIsSafe(member.Disposition, member.Attribute) {
+				return nil
+			}
+			return fmt.Errorf("%q is a member of grouping %q and is neither omitted nor sensitive", name, group.TerraformName)
+		}
+	}
+	for _, flattening := range rules.Flattenings {
+		for _, member := range flattening.Members {
+			if member.StructuralName != name {
+				continue
+			}
+			if dispositionIsSafe(member.Disposition, member.Attribute) {
+				return nil
+			}
+			return fmt.Errorf("%q is a flattened member and is neither omitted nor sensitive", name)
+		}
+	}
+	for _, claim := range rules.Claims {
+		for _, claimed := range claim.StructuralNames {
+			if claimed == name {
+				return fmt.Errorf("%q is consumed by a claim, whose sensitivity lives on the terraform members it maps into; this check cannot yet follow that and refuses rather than passing", name)
+			}
+		}
+	}
+	return fmt.Errorf("%q has no disposition in fields, groupings, flattenings or claims", name)
+}
+
+func dispositionIsSafe(disposition string, attribute json.RawMessage) bool {
+	if disposition == "omitted" {
+		return true
+	}
+	var decoded struct {
+		Sensitive bool `json:"sensitive"`
+	}
+	return len(attribute) > 0 && json.Unmarshal(attribute, &decoded) == nil && decoded.Sensitive
 }
