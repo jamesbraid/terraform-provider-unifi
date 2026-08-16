@@ -43,7 +43,7 @@ if [ -n "${STUB_GO_FAIL_IN:-}" ] && [ "${PWD}" != "${PWD/${STUB_GO_FAIL_IN}/}" ]
     exit 1
 fi
 mkdir -p "$(dirname "${destination}")"
-printf '#!/bin/sh\nexit 0\n' >"${destination}"
+printf '#!/bin/sh\n# %s\nexit 0\n' "${destination}" >"${destination}"
 chmod +x "${destination}"
 STUB
 chmod +x "${stub_dir}/go"
@@ -88,6 +88,18 @@ chmod +x "${stub_dir}/stub-cli"
 fixture=${work}/fixture
 mkdir -p "${fixture}"
 echo '# fixture' >"${fixture}/main.tf"
+echo 0 >"${fixture}/EXPECT_OLD_PLAN"
+
+# A regression fixture declares that the released provider must NOT settle it.
+regression=${work}/regression
+mkdir -p "${regression}"
+echo '# fixture' >"${regression}/main.tf"
+echo 2 >"${regression}/EXPECT_OLD_PLAN"
+
+# And one that declares nothing at all.
+undeclared=${work}/undeclared
+mkdir -p "${undeclared}"
+echo '# fixture' >"${undeclared}/main.tf"
 
 failures=0
 run_case() {
@@ -98,13 +110,17 @@ run_case() {
     local log=${work}/${name}.log
     local code=0
     set +e
-    env "$@" \
-        PATH="${stub_dir}:${PATH}" \
+    # Per-case assignments come LAST so they override the defaults. env applies
+    # them in order and the later one wins, so putting "$@" first silently
+    # discarded every override -- which made three cases measure the default
+    # fixture while claiming to measure another.
+    env PATH="${stub_dir}:${PATH}" \
         STUB_STATE_DIR="${state_dir}" \
         TERRAFORM_BIN="${stub_dir}/stub-cli" \
         UPGRADE_FIXTURE="${fixture}" \
         UPGRADE_OUTPUT="${work}/${name}.json" \
         UNIFI_API=https://stub UNIFI_USERNAME=stub UNIFI_PASSWORD=stub \
+        "$@" \
         bash "${script}" >"${log}" 2>&1
     code=$?
     set -e
@@ -162,7 +178,7 @@ fi
 #    provenance nobody can check later.
 published=${work}/published/terraform-provider-unifi_v0.101.2
 mkdir -p "$(dirname "${published}")"
-printf '#!/bin/sh\nexit 0\n' >"${published}"
+printf '#!/bin/sh\n# published\nexit 0\n' >"${published}"
 chmod +x "${published}"
 run_case published_binary 0 "plans clean under the candidate" \
     STUB_CONTROL_EXIT=0 STUB_SUBJECT_EXIT=0 UPGRADE_RELEASED_BINARY="${published}"
@@ -184,6 +200,19 @@ if [ -f "${work}/pass.json" ]; then
         echo "ok   receipt distinguishes the source-build fallback"
     fi
 fi
+
+# 7. The control's expected value is a property of the fixture, and a fixture
+#    that declares nothing must be refused rather than defaulted. Defaulting is
+#    how a fix gets reported as proven by a fixture that never showed the defect.
+run_case undeclared_fixture 1 "does not declare EXPECT_OLD_PLAN" \
+    STUB_CONTROL_EXIT=0 STUB_SUBJECT_EXIT=0 UPGRADE_FIXTURE="${undeclared}"
+
+# 8. A regression fixture inverts the control: a released provider that SETTLES
+#    it has failed to demonstrate the defect, so a clean subject proves nothing.
+run_case regression_ok 0 "plans clean under the candidate" \
+    STUB_CONTROL_EXIT=2 STUB_SUBJECT_EXIT=0 UPGRADE_FIXTURE="${regression}"
+run_case regression_control_settled 2 "did not" \
+    STUB_CONTROL_EXIT=0 STUB_SUBJECT_EXIT=0 UPGRADE_FIXTURE="${regression}"
 
 if [ "${failures}" -ne 0 ]; then
     echo "${failures} case(s) failed"
