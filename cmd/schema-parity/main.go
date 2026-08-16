@@ -56,6 +56,17 @@ type options struct {
 	releasedCanonical  string
 	candidateCanonical string
 	cli                string
+
+	// treeStateRaw is the JSON from evidence_tree_json, and it has no default.
+	//
+	// This binary writes a receipt naming candidate_commit, taken from
+	// git rev-parse HEAD. On a dirty tree that commit does not describe the
+	// bytes that were measured, so the receipt would be honest about what it
+	// saw and wrong about what exists -- and it heals silently once the files
+	// land, leaving no trace of the window where it was wrong. The measurement
+	// stays in tree-state.sh; this side is handed the answer and refuses
+	// without one.
+	treeStateRaw string
 }
 
 func main() {
@@ -75,6 +86,8 @@ func main() {
 	flag.StringVar(&o.candidateCanonical, "candidate-canonical", "",
 		"compare-only: an already canonicalised candidate projection")
 	flag.StringVar(&o.cli, "cli", "terraform", "compare-only: which CLI produced the two projections")
+	flag.StringVar(&o.treeStateRaw, "tree-state", "",
+		"JSON from evidence_tree_json describing the working tree; required, no default")
 	flag.Parse()
 
 	if err := run(o); err != nil {
@@ -89,16 +102,17 @@ func main() {
 // untestable: nothing could construct one in a test, so nothing ever asserted
 // what it contained.
 type Receipt struct {
-	FormatVersion   int      `json:"format_version"`
-	Gate            string   `json:"gate"`
-	Result          string   `json:"result"`
-	ReleasedTag     string   `json:"released_tag"`
-	ReleasedCommit  string   `json:"released_commit"`
-	CandidateCommit string   `json:"candidate_commit"`
-	Terraform       string   `json:"terraform_version"`
-	Tofu            string   `json:"tofu_version"`
-	DeclaredChanges int      `json:"declared_schema_changes"`
-	Findings        []string `json:"findings"`
+	FormatVersion   int                      `json:"format_version"`
+	Gate            string                   `json:"gate"`
+	TreeState       *catalogparity.TreeState `json:"tree_state,omitempty"`
+	Result          string                   `json:"result"`
+	ReleasedTag     string                   `json:"released_tag"`
+	ReleasedCommit  string                   `json:"released_commit"`
+	CandidateCommit string                   `json:"candidate_commit"`
+	Terraform       string                   `json:"terraform_version"`
+	Tofu            string                   `json:"tofu_version"`
+	DeclaredChanges int                      `json:"declared_schema_changes"`
+	Findings        []string                 `json:"findings"`
 }
 
 type projection struct {
@@ -108,6 +122,15 @@ type projection struct {
 }
 
 func run(o options) error {
+	// Parsed before anything else in both modes. tree-state.sh already refuses a
+	// dirty tree before this binary is reached, so this is the seam rather than
+	// a second measurement: a call site that forgot the flag fails here instead
+	// of producing a receipt nobody can check.
+	treeState, err := catalogparity.ParseTreeState(o.treeStateRaw)
+	if err != nil {
+		return err
+	}
+
 	if o.releasedCanonical != "" || o.candidateCanonical != "" {
 		return compareOnly(o)
 	}
@@ -206,6 +229,7 @@ func run(o options) error {
 
 	receipt := Receipt{
 		FormatVersion: 1, Gate: "schema-parity",
+		TreeState:       treeState,
 		Result:          "pass",
 		ReleasedTag:     o.releasedTag,
 		ReleasedCommit:  releasedCommit,
