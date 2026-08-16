@@ -464,12 +464,12 @@ func admittedSurfaceSet(admission catalogparity.AdmissionReceipt) map[catalogpar
 // The delegation is the point. Until it was added there were two functions of
 // this name in two packages -- catalogparity's over the manifest at generation,
 // this one over the same manifest at release -- and neither was a superset of
-// the other. Five defects passed here that catalogparity rejected: an identity
+// the other. Six defects passed here that catalogparity rejected: an identity
 // entry carrying an attribute mapping, a state move, an import transform, or a
-// schema version change, and entries out of order. Nothing about the release
-// question makes any of those acceptable, and this is the sole guard over the
-// committed manifest, so those five were unguarded at exactly the point a
-// hand-edit lands.
+// schema version change, entries out of order, and a shift in the per-kind
+// surface counts. Nothing about the release question makes any of those
+// acceptable, and this is the sole guard over the committed manifest, so those
+// six were unguarded at exactly the point a hand-edit lands.
 //
 // Two rules remain here rather than moving down. catalogparity admits all five
 // migration strategies and any non-empty recovery mode, because it validates a
@@ -477,15 +477,16 @@ func admittedSurfaceSet(admission catalogparity.AdmissionReceipt) map[catalogpar
 // every one of the 67 surfaces migrates by identity with snapshot recovery.
 // Those are claims about this release, not about manifests, so they stay.
 //
-// PROVEN BY MUTATION, all seven asymmetric cases, each restored. Every one of
-// the five is rejected here now and was accepted before; both of the two
-// survive the delegation and are still rejected here. The five:
+// PROVEN BY MUTATION, all eight asymmetric cases, each restored. Every one of
+// the six is rejected here now and was accepted before; both of the two survive
+// the delegation and are still rejected here. The six:
 //
 //	identity entry + AttributeMapping        -> "identity migration for ... contains a transform"
 //	identity entry + StateMoves              -> "identity migration for ... contains a transform"
 //	identity entry + ImportTransform         -> "identity migration for ... contains a transform"
 //	identity entry + NewSchemaVersion bump   -> "identity migration for ... contains a transform"
 //	entries swapped out of order             -> "migration entries are not strictly sorted"
+//	one surface moved to another kind        -> "managed_resource count is 27, want 28"
 //
 // and the two, which fail with this function's own messages and so prove the
 // delegation did not swallow them:
@@ -493,8 +494,31 @@ func admittedSurfaceSet(admission catalogparity.AdmissionReceipt) map[catalogpar
 //	Strategy = StateUpgrader                 -> "is not a complete identity migration"
 //	Recovery.Mode = "manual_rollback"        -> "is not a complete identity migration"
 //
-// Deleting the delegation line turns the first five green again, which is what
+// Deleting the delegation line turns the first six green again, which is what
 // establishes they are held by it and not by the checks below.
+//
+// THE DELEGATION ALSO CHANGES WHICH ERROR A CALLER SEES, and that is worth
+// knowing before someone treats a changed message as a regression. The count
+// this adds is ABSOLUTE, and the three checks around it in validateMigrationInputs
+// are RELATIONAL -- the manifest against the admission receipt, the controller
+// plan against it, the inventory against it. Only the first has the manifest as
+// one of its sides. Measured stepwise, moving one surface to another kind and
+// then bringing each receipt into line with it, before the delegation existed:
+//
+//	manifest alone      -> "references unknown surface data_source/unifi_data_"
+//	+ admission         -> "controller surface set differs from admission"
+//	+ controller plan   -> "inventory surface set differs from admission"
+//	+ inventory         -> accepted
+//
+// Each relational check fires in turn while the receipts disagree, and all three
+// fall silent once they agree -- which is what a regeneration produces. A check
+// comparing two records cannot see them move as a pair.
+//
+// Because catalogparity runs first, the absolute count now PRE-EMPTS all three:
+// the manifest-alone case reports the count rather than the unknown surface, so
+// those relational messages are unreachable for this class of movement. The
+// anchor does not merely backstop the relational set at the coherent depth. It
+// replaces it at every depth.
 func validateMigrationManifest(input MigrationRecoveryInput) error {
 	m := input.Manifest
 	if err := catalogparity.ValidateMigrationManifest(m); err != nil {
