@@ -67,9 +67,10 @@ type FleetSoakReceipt struct {
 }
 
 type HardwareDispositionReceipt struct {
-	FormatVersion int    `json:"format_version"`
-	Gate          string `json:"gate"`
-	Result        string `json:"result"`
+	FormatVersion int                      `json:"format_version"`
+	Gate          string                   `json:"gate"`
+	TreeState     *catalogparity.TreeState `json:"tree_state,omitempty"`
+	Result        string                   `json:"result"`
 	catalogparity.SurfaceKey
 	Mode                    string `json:"mode"`
 	ClaimScope              string `json:"claim_scope"`

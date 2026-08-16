@@ -50,3 +50,25 @@ func TestDecodeStrictFileRejectsUnknownAndTrailingJSON(t *testing.T) {
 		})
 	}
 }
+
+// TestRefusesWithoutATreeState makes the refusal a check rather than an
+// intention.
+//
+// A missing -tree-state must fail, never default. A default -- "unknown", or a
+// zero value -- would put a tree_state in every receipt that no measurement
+// produced, and any gate reading it would be comparing a constant against
+// itself. That is the shape where one producer writes a literal and the
+// consumers dutifully check it, and it passes review because the branch is
+// reachable in a test while the input can never vary in production.
+//
+// Deleting the ParseTreeState call, or giving it a fallback, fails this.
+func TestRefusesWithoutATreeState(t *testing.T) {
+	var stderr bytes.Buffer
+	code := run([]string{"-policy", "/dev/null", "-admission", "/dev/null", "-build-schema", "/dev/null", "-controller", "/dev/null", "-inventory", "/dev/null", "-migration-manifest", "/dev/null", "-dns-lifecycle", "/dev/null", "-output", "/dev/null"}, &stderr)
+	if code == 0 {
+		t.Fatalf("catalog-migration-recovery ran without a tree state; exit = 0")
+	}
+	if !strings.Contains(stderr.String(), "tree state is required") {
+		t.Fatalf("stderr = %q, want it to say the tree state is required", stderr.String())
+	}
+}
