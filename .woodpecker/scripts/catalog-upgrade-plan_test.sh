@@ -10,6 +10,30 @@
 # controller, no network and no provider build. What the stubs cannot prove is
 # that the REAL tofu returns the exit codes this assumes; that needs the
 # controller and is the one proof this file does not carry.
+#
+# WHAT HAS BEEN PROVEN AGAINST A REAL CONTROLLER, recorded here rather than only
+# in the commits that measured it:
+#
+#   - A deliberately mis-declared fixture made the script exit 2 while `go run`
+#     reported 1. That is why the workflow builds the runner and executes the
+#     binary rather than using `go run`: under it a void fixture and an upgrade
+#     regression collapse into one exit code, which is the coin flip the control
+#     plan exists to prevent.
+#   - The regression fixture measured control 2 (expected 2) and subject 0, so
+#     the released provider genuinely does NOT settle that configuration and the
+#     candidate does. A control of 0 would mean the fixture had stopped
+#     demonstrating the defect. (bf59ccfd)
+#   - EXPECT_OLD_PLAN has no default, and a fixture declaring nothing is refused,
+#     because defaulting either way rebuilds the check that cannot fail one layer
+#     up. (cdf7cc5e)
+#
+# THREE KNOWN HOLES IN THIS FILE, stated because a proof that hides its scope is
+# worth less than one that states it. The receipt assertions in the pass,
+# published_binary and source-build cases sit inside `if [ -f ... ]` with no else
+# branch, so if the case that produces the receipt failed, four assertions vanish
+# silently rather than failing. run_case never asserts that a receipt was written
+# at all. And the old_build_fails case greps for the bare string "released",
+# which at exit 1 is also emitted by three other branches.
 set -euo pipefail
 
 repository_root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)

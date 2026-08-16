@@ -12,6 +12,27 @@ import (
 	"testing"
 )
 
+// PROVEN TO FAIL. Recorded here rather than only in the commit that proved it,
+// so a reader with a checkout can tell these cases from a table nobody has ever
+// seen go red.
+//
+// Four mutations of the declared-missing machinery: a declared name that DOES
+// run on the released tree, a candidate-only test left undeclared,
+// shared_scenario_exceptions emptied -- which proves the port-action exception
+// is doing work rather than merely being written down -- and an inventory with
+// its added scenarios flattened. (cf32d48d)
+//
+// The shared-scenario owner guard is proven separately and deliberately, in
+// shared_scenario_test.go, because building the plan from the policy and then
+// checking it agrees is agreement by construction. Those mutations hold one
+// side fixed while moving the other. (3da49bdc)
+//
+// RETRODICTION, on a defect this gate had already shipped: the coverage counts
+// were pinned by hand, acceptance among them at 35, so adding an acceptance test
+// to any surface made the release gate refuse the tree -- a number that should
+// rise, wired as a condition for shipping. It survived because a stale inventory
+// digest failed first and stopped the gate before it was reached. (7264bd4c)
+
 func TestBuildAdmissionAdmitsCatalogAndRetainsHardwareReleaseBlocker(t *testing.T) {
 	input := validAdmissionInput(t)
 

@@ -81,6 +81,22 @@ type attrFact struct {
 // Coverage today is managed resources, their attributes at any depth, and their
 // blocks. Data sources, identity and list-resource schemas are separate fact
 // sets and are not read here.
+//
+// PROVEN TO FAIL, and the proofs are recorded here rather than only in the
+// commits that made them, so a reader with a checkout can tell this apart from
+// a check nobody has ever seen go red.
+//
+//   - Deleting wlan's schedule block fails this test and the behaviour
+//     inventory, each naming the surface; deleting one validator inside that
+//     block fails the inventory alone. That is the division of labour -- the
+//     protocol cannot express a validator, so this projection is right not to
+//     look for one. (5d1b8bf5)
+//   - Flipping unifi_dynamic_dns.password from Sensitive: true to false fails
+//     here and NOWHERE ELSE in the tree. This is the only automatic guard
+//     against a secret losing its mask.
+//   - Deleting a resource from Resources() leaves every assertion above green
+//     and is caught only by the surface-count floor below, which is why that
+//     floor exists. (27626936)
 func TestBuiltSchemaMatchesReleasedBaseline(t *testing.T) {
 	ctx := context.Background()
 

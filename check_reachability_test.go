@@ -35,6 +35,13 @@ import (
 //     `//go:generate` directives and reported seven live generators as orphans.
 //
 // So comments are excluded, except go:generate, which is executable.
+//
+// PROVEN TO FAIL, both directions, and recorded here because a check that
+// asserts other checks are wired had better be able to demonstrate its own.
+// Commenting out fast-loop's invocation of catalog-evidence-inventory_test.sh
+// names it as unreachable and undeclared. Adding a ledger entry for
+// upgrade-plan-runner, which the upgrade pipeline does invoke, reports that
+// entry as stale. Without the second direction the ledger would only ever grow.
 func TestEveryCheckIsReachable(t *testing.T) {
 	sources := loadRepositorySources(t)
 
