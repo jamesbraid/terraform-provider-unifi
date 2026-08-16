@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -67,7 +68,7 @@ func writeGolden(t goldenTB, path, header string, got []string) {
 		t.Fatal(fmt.Sprintf("reading %s: %v", path, err))
 	}
 
-	if len(removed) > 0 && os.Getenv(allowGoldenRemovalEnv) == "" {
+	if len(removed) > 0 && !goldenRemovalAuthorised() {
 		t.Fatal(goldenRemovalRefusal(path, removed))
 		// Fatal on a real *testing.T ends the goroutine, so this return is
 		// unreachable there. It is here because the guard must not depend on
@@ -81,6 +82,25 @@ func writeGolden(t goldenTB, path, header string, got []string) {
 		t.Fatal(fmt.Sprintf("writing %s: %v", path, err))
 	}
 	t.Logf("wrote %d entries to %s", len(got), path)
+}
+
+// goldenRemovalAuthorised reports whether the caller has actually said yes to
+// dropping entries.
+//
+// The test was `os.Getenv(allowGoldenRemovalEnv) == ""`, which authorises a
+// removal for ANY non-empty value -- so UPDATE_GOLDEN_ALLOW_REMOVAL=0 and
+// =false both mean yes. That is a plain bug rather than a tradeoff: the two
+// spellings a person reaches for to say no are the two that say yes loudest,
+// and the failure is silent, because the golden is simply rewritten.
+//
+// ParseBool accepts the forms the refusal message actually recommends (1, t,
+// true, TRUE). Anything it cannot read -- "yes", "please", a typo -- is NOT
+// authorisation: an unreadable answer to "do you mean this?" is not a yes, and
+// failing closed costs the caller one corrected command while failing open
+// costs an erased regression.
+func goldenRemovalAuthorised() bool {
+	authorised, err := strconv.ParseBool(os.Getenv(allowGoldenRemovalEnv))
+	return err == nil && authorised
 }
 
 // goldenRemovalRefusal is the message, separated from the refusal so a test can
@@ -200,6 +220,71 @@ func Test_goldenUpdateAllowsARemovalWhenSaidSo(t *testing.T) {
 	}
 	if strings.Contains(string(body), "beta") {
 		t.Errorf("the declared removal was not applied:\n%s", body)
+	}
+}
+
+// Test_goldenUpdateRefusesARemovalWhenTheAnswerIsNo covers the values that mean
+// no.
+//
+// The guard used to be `os.Getenv(allowGoldenRemovalEnv) == ""`, so every value
+// below authorised the removal it was written to prevent. "0" and "false" are
+// not exotic: they are what someone types to turn the thing OFF, most often by
+// editing a CI line that already sets it rather than deleting the line. The
+// golden was rewritten and nothing said a word.
+//
+// "yes" is here for the other direction. It is a person plainly meaning yes in a
+// form ParseBool cannot read, and it must still refuse -- an answer the guard
+// cannot interpret is not consent, and the cost of failing closed is one
+// corrected command against an erased regression.
+func Test_goldenUpdateRefusesARemovalWhenTheAnswerIsNo(t *testing.T) {
+	for _, value := range []string{"0", "false", "FALSE", "no", "off", "yes", " "} {
+		t.Run(value, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "golden.txt")
+			if err := os.WriteFile(path, []byte("# head\nalpha\nbeta\n"), 0o644); err != nil {
+				t.Fatalf("seeding golden: %v", err)
+			}
+			t.Setenv(allowGoldenRemovalEnv, value)
+
+			rec := &recordingTB{}
+			writeGolden(rec, path, "# head\n", []string{"alpha"})
+
+			if !rec.fired {
+				t.Errorf("%s=%q authorised dropping an entry; only a value that reads as true "+
+					"may do that, and this one does not", allowGoldenRemovalEnv, value)
+			}
+			body, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("reading golden: %v", err)
+			}
+			if !strings.Contains(string(body), "beta") {
+				t.Errorf("%s=%q erased the entry:\n%s", allowGoldenRemovalEnv, value, body)
+			}
+		})
+	}
+}
+
+// Test_goldenUpdateAcceptsTheDocumentedSpellings pairs with the refusals above.
+// Without it, the guard could be tightened to refuse everything and both this
+// file and the caller would still look correct -- a removal would simply become
+// impossible, and the next person would work around the guard rather than use
+// it. These are the forms the refusal message itself recommends.
+func Test_goldenUpdateAcceptsTheDocumentedSpellings(t *testing.T) {
+	for _, value := range []string{"1", "t", "true", "TRUE", "True"} {
+		t.Run(value, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "golden.txt")
+			if err := os.WriteFile(path, []byte("# head\nalpha\nbeta\n"), 0o644); err != nil {
+				t.Fatalf("seeding golden: %v", err)
+			}
+			t.Setenv(allowGoldenRemovalEnv, value)
+
+			rec := &recordingTB{}
+			writeGolden(rec, path, "# head\n", []string{"alpha"})
+
+			if rec.fired {
+				t.Errorf("%s=%q was refused, but it is one of the spellings the refusal "+
+					"message tells the reader to use:\n%s", allowGoldenRemovalEnv, value, rec.fatal)
+			}
+		})
 	}
 }
 
