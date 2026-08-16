@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+readonly script_directory=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=m3-evidence-lib.sh
+source "${script_directory}/m3-evidence-lib.sh"
+
 readonly source_commit=${CI_COMMIT_SHA:-$(git rev-parse HEAD)}
+readonly candidate_provider_binary=${M3_CANDIDATE_PROVIDER_BINARY:-}
 readonly old_provider_commit=eaf41ff7dbf39c01690eaca54e99f7f9cec867b9
 readonly provider_version=0.101.2
 readonly old_provider_version=0.41.11
@@ -35,13 +40,12 @@ readonly source_volume=${prefix}-source
 readonly go_cache_volume=${prefix}-go-cache
 readonly old_source_volume=${prefix}-old-source
 readonly old_go_cache_volume=${prefix}-old-go-cache
+readonly go_unifi_proxy_root=${GO_UNIFI_PROXY_ROOT:-/tmp/go-unifi-proxy}
 work_root=$(mktemp -d "${TMPDIR:-/tmp}/provider-m3q.XXXXXX")
 readonly work_root
 readonly dns_name=m0-dns.example.invalid
 
-cleanup() {
-    local result=$1
-    trap - EXIT
+discard_scoped_resources() {
     docker rm --force "${controller}" >/dev/null 2>&1 || true
     docker network rm "${network}" >/dev/null 2>&1 || true
     docker volume rm "${tools_volume}" "${config_volume}" \
@@ -50,9 +54,28 @@ cleanup() {
         "${terraform_legacy_state_volume}" "${tofu_legacy_state_volume}" \
         "${source_volume}" "${go_cache_volume}" \
         "${old_source_volume}" "${old_go_cache_volume}" >/dev/null 2>&1 || true
+}
+
+cleanup() {
+    local result=$1
+    trap - EXIT
+    discard_scoped_resources
     exit "${result}"
 }
 trap 'cleanup $?' EXIT
+
+# Every resource here is named after the pipeline number, and a killed run
+# leaves all of them behind because a SIGKILL never runs the EXIT trap.
+# Woodpecker re-queues the task under the same number, so the previous
+# attempt's remains are already in the way.
+#
+# The network collides loudly, which is how this was found. The volumes do not.
+# docker volume create returns success for a name that already exists, so a
+# retry would silently reattach the killed run's Terraform and OpenTofu state
+# and produce a lifecycle receipt describing a run that never finished. Discard
+# the whole set before creating any of it, so a retry starts from nothing
+# rather than from half of a previous attempt.
+discard_scoped_resources
 
 test "$(docker info --format '{{.Architecture}}')" = x86_64
 git cat-file -e "${source_commit}^{commit}"
@@ -79,6 +102,11 @@ unzip -q "${work_root}/${terraform_archive}" -d "${work_root}/tools"
 unzip -q "${work_root}/${tofu_archive}" -d "${work_root}/tools"
 chmod +x "${work_root}/tools/terraform" "${work_root}/tools/tofu" \
     "${work_root}/tools/provider-legacy/terraform-provider-unifi_v${provider_version}"
+if [[ -n ${candidate_provider_binary} ]]; then
+    install_prebuilt_candidate \
+        "${candidate_provider_binary}" \
+        "${work_root}/tools/provider/terraform-provider-unifi_v${provider_version}"
+fi
 cat >"${work_root}/tools/cli.tfrc" <<'EOF'
 provider_installation {
   dev_overrides {
@@ -125,20 +153,37 @@ populate_volume() {
 
 populate_volume "${work_root}/tools" "${tools_volume}"
 populate_volume "${work_root}/config" "${config_volume}"
-git archive "${source_commit}" | docker run --rm --interactive \
-    --entrypoint /bin/sh \
-    --mount "type=volume,src=${source_volume},dst=/source" \
-    "${go_image}" -c 'tar -xf - -C /source'
-docker run --rm --platform linux/amd64 \
-    --env CGO_ENABLED=0 \
-    --env GOCACHE=/go/build-cache --env GOMODCACHE=/go/module-cache \
-    --env GOTELEMETRY=off --env GOTOOLCHAIN=local \
-    --mount "type=volume,src=${source_volume},dst=/source,readonly" \
-    --mount "type=volume,src=${go_cache_volume},dst=/go" \
-    --mount "type=volume,src=${tools_volume},dst=/tools" \
-    --workdir /source "${go_image}" \
-    go build -trimpath -buildvcs=false \
-    -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
+if [[ -z ${candidate_provider_binary} ]]; then
+    # The candidate depends on the unreleased go-unifi module.  The workflow
+    # bootstraps that module into a file GOPROXY on the host, but this build
+    # runs inside a separate Docker container.  Keep the acquisition boundary
+    # explicit by mounting the retained proxy read-only; otherwise Go falls
+    # through to a direct GitHub lookup for v1.102.0, which is both fragile and
+    # unavailable on the isolated build network.
+    if [[ ! -d ${go_unifi_proxy_root} ]]; then
+        echo "go-unifi proxy root ${go_unifi_proxy_root} is missing:" \
+            "bootstrap it on this host with bootstrap-go-unifi-proxy.sh or" \
+            "pass a prebuilt candidate via M3_CANDIDATE_PROVIDER_BINARY" >&2
+        exit 1
+    fi
+    git archive "${source_commit}" | docker run --rm --interactive \
+        --entrypoint /bin/sh \
+        --mount "type=volume,src=${source_volume},dst=/source" \
+        "${go_image}" -c 'tar -xf - -C /source'
+    docker run --rm --platform linux/amd64 \
+        --env CGO_ENABLED=0 \
+        --env GOCACHE=/go/build-cache --env GOMODCACHE=/go/module-cache \
+        --env GOTELEMETRY=off --env GOTOOLCHAIN=local \
+        --env GOPROXY=file:///go-unifi-proxy,https://proxy.golang.org \
+        --env GOSUMDB=off --env GOVCS=*:off --env GIT_TERMINAL_PROMPT=0 \
+        --mount "type=volume,src=${source_volume},dst=/source,readonly" \
+        --mount "type=volume,src=${go_cache_volume},dst=/go" \
+        --mount "type=volume,src=${tools_volume},dst=/tools" \
+        --mount "type=bind,src=${go_unifi_proxy_root},dst=/go-unifi-proxy,readonly" \
+        --workdir /source "${go_image}" \
+        go build -trimpath -buildvcs=false \
+        -o "/tools/provider/terraform-provider-unifi_v${provider_version}" .
+fi
 git archive "${old_provider_commit}" | docker run --rm --interactive \
     --entrypoint /bin/sh \
     --mount "type=volume,src=${old_source_volume},dst=/source" \

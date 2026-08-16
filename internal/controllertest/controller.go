@@ -9,9 +9,11 @@
 package controllertest
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/docker/compose/v2/pkg/api"
@@ -31,6 +33,16 @@ type Logger interface {
 const (
 	controllerUser     = "admin"
 	controllerPassword = "admin"
+
+	// envRemoveControllerImages restores the old teardown behaviour for an
+	// operator that deliberately wants it. Ordinary acceptance runs preserve
+	// their digest-pinned controller image so a released/candidate pair can run
+	// without contacting a registry between attempts.
+	envRemoveControllerImages = "UNIFI_TEST_REMOVE_CONTROLLER_IMAGES"
+
+	// controllerLogTailLines bounds the startup-failure dump: enough to show
+	// why the controller stalled, not so much that it floods the run log.
+	controllerLogTailLines = 60
 )
 
 // Controller is a running controller and the fleet informing it.
@@ -57,10 +69,15 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 	}
 	c := &Controller{stack: stack}
 
-	// The controller image declares its own healthcheck, so compose.Wait is
-	// what decides it is up; waitForAPI then waits for the API behind it.
+	// Readiness is waitForAPI's job, not the image healthcheck's. The image
+	// gives the controller a fixed retry budget that a slow JVM start can
+	// exhaust while it is still configuring its logging, which failed whole
+	// campaign runs with nothing but "container is unhealthy". Waiting on the
+	// API the tests actually use is both a stronger signal and one this
+	// fixture controls.
 	if err := stack.WithOsEnv().
-		Up(ctx, compose.Wait(true), compose.WithRecreate(api.RecreateDiverged)); err != nil {
+		Up(ctx, compose.WithRecreate(api.RecreateDiverged)); err != nil {
+		logControllerStartupFailure(ctx, logger, stack)
 		return c, fmt.Errorf("compose up: %w", err)
 	}
 
@@ -85,6 +102,7 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 
 	client, err := waitForAPI(ctx, logger, c.Endpoint, controllerUser, controllerPassword)
 	if err != nil {
+		logControllerStartupFailure(ctx, logger, stack)
 		return c, err
 	}
 	c.Client = client
@@ -112,6 +130,9 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 			return c, fmt.Errorf("publish %s: %w", member.Env, err)
 		}
 	}
+	if err := MigrateZoneBasedFirewall(ctx, c.Endpoint, "default", controllerUser, controllerPassword); err != nil {
+		return c, fmt.Errorf("migrate zone-based firewall: %w", err)
+	}
 	return c, nil
 }
 
@@ -127,11 +148,63 @@ func (c *Controller) Stop(logger Logger) error {
 	logger.Printf("RUNNING TEAR DOWN")
 	// Not the caller's context: teardown has to run even when the context
 	// that started everything is already cancelled.
-	return c.stack.Down(
-		context.Background(),
-		compose.RemoveOrphans(true),
-		compose.RemoveImagesLocal,
-	)
+	options := []compose.StackDownOption{compose.RemoveOrphans(true)}
+	if removeControllerImages() {
+		options = append(options, compose.RemoveImagesLocal)
+	}
+	return c.stack.Down(context.Background(), options...)
+}
+
+func removeControllerImages() bool {
+	return os.Getenv(envRemoveControllerImages) == "true"
+}
+
+// logControllerStartupFailure reports what the controller was doing when its
+// healthcheck never went green. Compose says only that the container is
+// unhealthy, and teardown removes it, so without this the run leaves nothing
+// to diagnose. Every step is best-effort: this runs on a path that has already
+// failed, and losing the original error to a diagnostic would be worse than
+// reporting nothing.
+func logControllerStartupFailure(ctx context.Context, logger Logger, stack compose.ComposeStack) {
+	container, err := stack.ServiceContainer(ctx, "unifi")
+	if err != nil {
+		logger.Printf("controller startup failed and its container is gone: %v", err)
+		return
+	}
+	if state, err := container.State(ctx); err == nil {
+		logger.Printf(
+			"controller container state: status=%s running=%t exit=%d oom=%t error=%q",
+			state.Status, state.Running, state.ExitCode, state.OOMKilled, state.Error,
+		)
+		if state.Health != nil {
+			logger.Printf("controller healthcheck: status=%s failing streak=%d",
+				state.Health.Status, state.Health.FailingStreak)
+			for _, probe := range state.Health.Log {
+				logger.Printf("controller healthcheck probe: exit=%d output=%s",
+					probe.ExitCode, strings.TrimSpace(probe.Output))
+			}
+		}
+	}
+	readCloser, err := container.Logs(ctx)
+	if err != nil {
+		logger.Printf("controller logs unavailable: %v", err)
+		return
+	}
+	defer func() { _ = readCloser.Close() }()
+	// The controller is chatty; its last lines are the ones that say why
+	// startup stalled.
+	scanner := bufio.NewScanner(readCloser)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	tail := make([]string, 0, controllerLogTailLines)
+	for scanner.Scan() {
+		if len(tail) == controllerLogTailLines {
+			tail = tail[1:]
+		}
+		tail = append(tail, scanner.Text())
+	}
+	for _, line := range tail {
+		logger.Printf("controller log: %s", strings.TrimSpace(line))
+	}
 }
 
 // exportProviderEnv points the provider under test at this controller.
@@ -151,14 +224,17 @@ func exportProviderEnv(endpoint string) error {
 }
 
 // waitForAPI waits for the controller API to be ready and accepting JSON
-// requests. The container healthcheck says the process is up; this says the
-// API behind it is initialized.
+// requests. This is the fixture's readiness gate: it proves the API the tests
+// drive is initialized, which the container healthcheck alone never did.
 func waitForAPI(
 	ctx context.Context,
 	logger Logger,
 	endpoint, user, password string,
 ) (client *unifi.ApiClient, err error) {
-	maxRetries := 60
+	// Generous on purpose: this is now the only readiness gate, and a cold
+	// controller on a busy runner has been seen spending minutes in JVM
+	// startup before it serves anything.
+	maxRetries := 120
 	retryDelay := 3 * time.Second
 
 	logger.Printf(

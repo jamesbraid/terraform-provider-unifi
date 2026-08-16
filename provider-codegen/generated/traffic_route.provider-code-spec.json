@@ -1,0 +1,271 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "traffic_route",
+      "schema": {
+        "attributes": [
+          {
+            "name": "description",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "A description of the traffic route (max 128 characters)."
+            }
+          },
+          {
+            "name": "destination",
+            "single_nested": {
+              "attributes": [
+                {
+                  "list": {
+                    "computed_optional_required": "optional",
+                    "description": "List of domain names to match.",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                            },
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                            }
+                          ],
+                          "schema_definition": "listvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName(\"region\"), path.MatchRelative().AtParent().AtName(\"ip\"))"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "domain"
+                },
+                {
+                  "list_nested": {
+                    "computed_optional_required": "optional",
+                    "description": "List of IP address, subnet, or IP range entries to match. Use CIDR notation (e.g. `10.0.0.0/8`) for subnets, or a hyphenated range (e.g. `192.168.10.1-192.168.10.255`) for IP ranges.",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "name": "address",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "An IP address, CIDR subnet, or hyphenated IP range to match."
+                          }
+                        },
+                        {
+                          "list": {
+                            "computed_optional_required": "optional",
+                            "description": "List of ports or port ranges to match. Use a single number (e.g. `80`) for individual ports, or a hyphenated range (e.g. `8080-8090`) for port ranges. Only supported for IP addresses and subnets, not IP ranges.",
+                            "element_type": {
+                              "string": {}
+                            }
+                          },
+                          "name": "ports"
+                        }
+                      ]
+                    },
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                            },
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                            }
+                          ],
+                          "schema_definition": "listvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName(\"domain\"), path.MatchRelative().AtParent().AtName(\"region\"))"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "ip"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "optional",
+                    "description": "List of regions to match.",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                            },
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                            }
+                          ],
+                          "schema_definition": "listvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName(\"domain\"), path.MatchRelative().AtParent().AtName(\"ip\"))"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "region"
+                }
+              ],
+              "computed_optional_required": "optional",
+              "description": "Destination filter for this traffic route. Specify exactly one of `domain`, `region`, or `ip`. When omitted, the route matches all internet traffic."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Whether the traffic route is enabled."
+            },
+            "name": "enabled"
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the traffic route.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Whether the kill switch is enabled. When enabled, traffic is blocked if the target network/VPN is unavailable."
+            },
+            "name": "kill_switch_enabled"
+          },
+          {
+            "name": "network_id",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The ID of the network or VPN to route matching traffic through. Defaults to the primary WAN network.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "next_hop",
+            "string": {
+              "computed_optional_required": "optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+                },
+                "type": "iptypes.IPAddressType{}",
+                "value_type": "iptypes.IPAddress"
+              },
+              "description": "The next hop for the traffic route."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the traffic route with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "source",
+            "single_nested": {
+              "attributes": [
+                {
+                  "list_nested": {
+                    "computed_optional_required": "optional",
+                    "description": "List of client devices whose traffic this route applies to.",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "name": "mac",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "The MAC address of the client device."
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "clients"
+                },
+                {
+                  "list_nested": {
+                    "computed_optional_required": "optional",
+                    "description": "List of networks whose traffic this route applies to.",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "name": "id",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "The ID of the network."
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "networks"
+                }
+              ],
+              "computed_optional_required": "optional",
+              "description": "Source filter for this traffic route. When omitted, the route applies to all clients."
+            }
+          }
+        ],
+        "markdown_description": "Manages a traffic route in the UniFi controller. Traffic routes allow you to steer traffic matching specific destinations through a chosen network or VPN."
+      }
+    }
+  ]
+}

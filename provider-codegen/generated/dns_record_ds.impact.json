@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "data_source",
+  "surface_name": "unifi_dns_record",
+  "resource": "unifi_dns_record",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "f5c9e67fd2dbd353ab48707009d4e7c83d40e5b99570fd6069c2a4be480bcd65"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "data_source": "e9217234de7678441bcdd4db0fd285d32d6856ddaf9748cc2b69cb7b82f44646"
+  },
+  "structural_fields": 14,
+  "generated_attributes": 7,
+  "provider_owned_seams": 2,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

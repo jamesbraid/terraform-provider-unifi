@@ -1,0 +1,93 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_client_qos_rate",
+  "resource": "unifi_client_qos_rate",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "qos_rate_max_down",
+      "terraform_name": "qos_rate_max_down",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "qos_rate_max_up",
+      "terraform_name": "qos_rate_max_up",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.name",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.value",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    }
+  ]
+}

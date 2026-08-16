@@ -8,25 +8,16 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_port_profile"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_profile"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -424,327 +415,16 @@ func (r *portProfileResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		// v1: dot1x_idle_timeout changed from Int64 (seconds) to a GoDuration string.
-		Version:     1,
-		Description: "`unifi_port_profile` manages a port profile for use on network switches.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description: "The ID of the port profile.",
-				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				Description: "The name of the site to associate the port profile with.",
-				Computed:    true,
-				Optional:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"autoneg": schema.BoolAttribute{
-				Description: "Enable link auto negotiation for the port profile. When set to `true` this overrides `speed`.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(true),
-			},
-			"dot1x_ctrl": schema.StringAttribute{
-				Description: "The type of 802.1X control to use. Can be `auto`, `force_authorized`, `force_unauthorized`, `mac_based` or `multi_host`.",
-				Optional:    true,
-				Computed:    true,
-				Default:     stringdefault.StaticString("force_authorized"),
-				Validators: []validator.String{
-					stringvalidator.OneOf(
-						"auto",
-						"force_authorized",
-						"force_unauthorized",
-						"mac_based",
-						"multi_host",
-					),
-				},
-			},
-			"dot1x_idle_timeout": schema.StringAttribute{
-				Description: "The idle timeout to use when using MAC Based 802.1X control, as a " +
-					"Go duration string (e.g. `5m`, `300s`). Defaults to `5m0s`.",
-				CustomType: timetypes.GoDurationType{},
-				Optional:   true,
-				Computed:   true,
-				Default:    stringdefault.StaticString("5m0s"),
-				Validators: []validator.String{
-					validators.GoDurationBetween(0, 65535*time.Second),
-					validators.GoDurationMultipleOf(time.Second),
-				},
-			},
-			"egress_rate_limit_kbps": schema.Int64Attribute{
-				Description: "The egress rate limit, in kpbs, for the port profile. Can be between `64` and `9999999`.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(64, 9999999),
-				},
-			},
-			"egress_rate_limit_kbps_enabled": schema.BoolAttribute{
-				Description: "Enable egress rate limiting for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"forward": schema.StringAttribute{
-				Description: "The forwarding mode. Can be `all`, `native`, `customize`, or `disabled`; tagged VLAN configuration derives the matching value when omitted.",
-				Optional:    true,
-				Computed:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("all", "native", "customize", "disabled"),
-				},
-			},
-			"full_duplex": schema.BoolAttribute{
-				Description: "Enable full duplex for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"isolation": schema.BoolAttribute{
-				Description: "Enable port isolation for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"lldpmed_enabled": schema.BoolAttribute{
-				Description: "Enable LLDP-MED for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(true),
-			},
-			"lldpmed_notify_enabled": schema.BoolAttribute{
-				Description: "Enable LLDP-MED topology change notifications for the port profile.",
-				Optional:    true,
-			},
-			"native_networkconf_id": schema.StringAttribute{
-				Description: "The ID of network to use as the main (native/untagged) network on the port profile. Assigned by the controller if not set.",
-				Optional:    true,
-				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				Description: "The name of the port profile.",
-				Optional:    true,
-			},
-			"op_mode": schema.StringAttribute{
-				Description: "The operation mode for the port profile. Can only be `switch`",
-				Optional:    true,
-				Computed:    true,
-				Default:     stringdefault.StaticString("switch"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("switch"),
-				},
-			},
-			"poe_mode": schema.StringAttribute{
-				Description: "The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`.",
-				Optional:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("auto", "passv24", "passthrough", "off"),
-				},
-			},
-			"port_security_enabled": schema.BoolAttribute{
-				Description: "Enable port security for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"port_security_mac_address": schema.SetAttribute{
-				Description: "The MAC addresses associated with the port security for the port profile.",
-				Optional:    true,
-				ElementType: types.StringType,
-			},
-			"priority_queue1_level": schema.Int64Attribute{
-				Description: "The priority queue 1 level for the port profile. Can be between 0 and 100.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
-				},
-			},
-			"priority_queue2_level": schema.Int64Attribute{
-				Description: "The priority queue 2 level for the port profile. Can be between 0 and 100.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
-				},
-			},
-			"priority_queue3_level": schema.Int64Attribute{
-				Description: "The priority queue 3 level for the port profile. Can be between 0 and 100.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
-				},
-			},
-			"priority_queue4_level": schema.Int64Attribute{
-				Description: "The priority queue 4 level for the port profile. Can be between 0 and 100.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
-				},
-			},
-			"speed": schema.Int64Attribute{
-				Description: "The link speed to set for the port profile. Can be one of `10`, `100`, `1000`, `2500`, `5000`, `10000`, `20000`, `25000`, `40000`, `50000` or `100000`",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.OneOf(
-						10,
-						100,
-						1000,
-						2500,
-						5000,
-						10000,
-						20000,
-						25000,
-						40000,
-						50000,
-						100000,
-					),
-				},
-			},
-			"stormctrl_bcast_enabled": schema.BoolAttribute{
-				Description: "Enable broadcast Storm Control for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"stormctrl_bcast_level": schema.Int64Attribute{
-				Description: "The broadcast Storm Control level for the port profile. Can be between 0 and 100.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
-					int64validator.ConflictsWith(path.MatchRoot("stormctrl_bcast_rate")),
-				},
-			},
-			"stormctrl_bcast_rate": schema.Int64Attribute{
-				Description: "The broadcast Storm Control rate for the port profile. Can be between 0 and 14880000.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 14880000),
-					int64validator.ConflictsWith(path.MatchRoot("stormctrl_bcast_level")),
-				},
-			},
-			"stormctrl_mcast_enabled": schema.BoolAttribute{
-				Description: "Enable multicast Storm Control for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"stormctrl_mcast_level": schema.Int64Attribute{
-				Description: "The multicast Storm Control level for the port profile. Can be between 0 and 100.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
-					int64validator.ConflictsWith(path.MatchRoot("stormctrl_mcast_rate")),
-				},
-			},
-			"stormctrl_mcast_rate": schema.Int64Attribute{
-				Description: "The multicast Storm Control rate for the port profile. Can be between 0 and 14880000.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 14880000),
-					int64validator.ConflictsWith(path.MatchRoot("stormctrl_mcast_level")),
-				},
-			},
-			"stormctrl_type": schema.StringAttribute{
-				Description: "The type of Storm Control to use for the port profile. Can be `level` or `rate`.",
-				Optional:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("level", "rate"),
-				},
-			},
-			"stormctrl_ucast_enabled": schema.BoolAttribute{
-				Description: "Enable unknown unicast Storm Control for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"stormctrl_ucast_level": schema.Int64Attribute{
-				Description: "The unknown unicast Storm Control level for the port profile. Can be between 0 and 100.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 100),
-					int64validator.ConflictsWith(path.MatchRoot("stormctrl_ucast_rate")),
-				},
-			},
-			"stormctrl_ucast_rate": schema.Int64Attribute{
-				Description: "The unknown unicast Storm Control rate for the port profile. Can be between 0 and 14880000.",
-				Optional:    true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 14880000),
-					int64validator.ConflictsWith(path.MatchRoot("stormctrl_ucast_level")),
-				},
-			},
-			"stp_port_mode": schema.BoolAttribute{
-				Description: "Enable Spanning Tree Protocol (STP) for the port profile. Computed from the controller when not set.",
-				Optional:    true,
-				Computed:    true,
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"tagged_networkconf_ids": schema.SetAttribute{
-				Description: "The exact set of VLAN network IDs to carry tagged. The provider translates this to the controller's exclusion list and keeps it exact as site networks change. Conflicts with `excluded_networkconf_ids`.",
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-			},
-			"voice_networkconf_id": schema.StringAttribute{
-				Description: "The ID of network to use for voice traffic for the port profile.",
-				Optional:    true,
-			},
-			"excluded_networkconf_ids": schema.SetAttribute{
-				Description: "The controller-facing set of networks excluded from the port profile when `tagged_vlan_mgmt` is `custom`. This advanced interface conflicts with `tagged_networkconf_ids`; prefer the exact tagged-network set.",
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-			},
-			"multicast_router_networkconf_ids": schema.SetAttribute{
-				Description: "The IDs of networks designated as multicast routers for the port profile.",
-				Optional:    true,
-				ElementType: types.StringType,
-			},
-			"tagged_vlan_mgmt": schema.StringAttribute{
-				Description: "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom). An exact tagged or excluded set derives the matching mode when omitted.",
-				Optional:    true,
-				Computed:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("auto", "block_all", "custom"),
-				},
-			},
-			"fec_mode": schema.StringAttribute{
-				Description: "Forward Error Correction mode. Can be `rs-fec`, `fc-fec`, `default`, or `disabled`.",
-				Optional:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("rs-fec", "fc-fec", "default", "disabled"),
-				},
-			},
-			"setting_preference": schema.StringAttribute{
-				Description: "Whether the port profile settings are managed automatically or manually. Can be `auto` or `manual`.",
-				Optional:    true,
-				Computed:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("auto", "manual"),
-				},
-			},
-			"port_keepalive_enabled": schema.BoolAttribute{
-				Description: "Enable port keepalive for the port profile.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_port_profile.PortProfileResourceSchema(ctx)
+	// v1: dot1x_idle_timeout changed from Int64 (seconds) to a GoDuration string.
+	resp.Schema.Version = 1
+	// The released schema describes this surface in plain text, which a
+	// generated schema cannot express; see plainDescriptions.
+	plainDescriptions(&resp.Schema)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *portProfileResource) ConfigValidators(
@@ -1535,35 +1215,11 @@ func (r *portProfileResource) applyPlanToState(
 
 // ListResourceConfigSchema implements [list.ListResource].
 func (r *portProfileResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List port profiles in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list port profiles from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_port_profile.PortProfileListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

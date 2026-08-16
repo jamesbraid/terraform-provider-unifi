@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_vpn_server",
+  "resource": "unifi_vpn_server",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "1f972a84a31cf15751fa0eaa2ff2394a0251fe8fe85cb80f415f961d2c33df1c"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "list_resource": "d34db844add805f4f0305e9d0b75c948d84ba461fd78c1d919450b77167c35c0"
+  },
+  "structural_fields": 263,
+  "generated_attributes": 1,
+  "provider_owned_seams": 1,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

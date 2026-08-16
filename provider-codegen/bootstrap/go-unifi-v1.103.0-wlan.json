@@ -1,0 +1,747 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "eb794f20398345f9248b35036aaa2075fb210ee9911d0227b1f7c7462d2b3a66"
+  },
+  "resource": {
+    "name": "unifi_wlan",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string"
+      },
+      {
+        "name": "advertise_device_name_in_beacon",
+        "type": "bool"
+      },
+      {
+        "name": "ap_group_ids",
+        "type": "array<string>"
+      },
+      {
+        "name": "ap_group_mode",
+        "type": "string"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool"
+      },
+      {
+        "name": "auth_cache",
+        "type": "bool"
+      },
+      {
+        "name": "b_supported",
+        "type": "bool"
+      },
+      {
+        "name": "bc_filter_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "bc_filter_list",
+        "type": "array<string>"
+      },
+      {
+        "name": "bss_transition",
+        "type": "bool"
+      },
+      {
+        "name": "country_beacon",
+        "type": "bool"
+      },
+      {
+        "name": "dns_assistance_mode",
+        "type": "string"
+      },
+      {
+        "name": "dns_assistance_servers",
+        "type": "array<string>"
+      },
+      {
+        "name": "dpi_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dpigroup_id",
+        "type": "string"
+      },
+      {
+        "name": "dtim_6e",
+        "type": "int64"
+      },
+      {
+        "name": "dtim_mode",
+        "type": "string"
+      },
+      {
+        "name": "dtim_na",
+        "type": "int64"
+      },
+      {
+        "name": "dtim_ng",
+        "type": "int64"
+      },
+      {
+        "name": "element_adopt",
+        "type": "bool"
+      },
+      {
+        "name": "enabled",
+        "type": "bool"
+      },
+      {
+        "name": "enhanced_iot",
+        "type": "bool"
+      },
+      {
+        "name": "fast_roaming_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "group_rekey",
+        "type": "int64"
+      },
+      {
+        "name": "hide_ssid",
+        "type": "bool"
+      },
+      {
+        "name": "hotspot2",
+        "type": "object",
+        "fields": [
+          {
+            "name": "capab",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "port",
+                "type": "int64"
+              },
+              {
+                "name": "protocol",
+                "type": "string"
+              },
+              {
+                "name": "status",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "cellular_network_list",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "country_code",
+                "type": "int64"
+              },
+              {
+                "name": "mcc",
+                "type": "int64"
+              },
+              {
+                "name": "mnc",
+                "type": "int64"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "domain_name_list",
+            "type": "array<string>"
+          },
+          {
+            "name": "friendly_name",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "language",
+                "type": "string"
+              },
+              {
+                "name": "text",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "ipaddr_type_avail_v4",
+            "type": "int64"
+          },
+          {
+            "name": "ipaddr_type_avail_v6",
+            "type": "int64"
+          },
+          {
+            "name": "metrics_downlink_load",
+            "type": "int64"
+          },
+          {
+            "name": "metrics_downlink_load_set",
+            "type": "bool"
+          },
+          {
+            "name": "metrics_downlink_speed",
+            "type": "int64"
+          },
+          {
+            "name": "metrics_downlink_speed_set",
+            "type": "bool"
+          },
+          {
+            "name": "metrics_info_at_capacity",
+            "type": "bool"
+          },
+          {
+            "name": "metrics_info_link_status",
+            "type": "string"
+          },
+          {
+            "name": "metrics_info_symmetric",
+            "type": "bool"
+          },
+          {
+            "name": "metrics_measurement",
+            "type": "int64"
+          },
+          {
+            "name": "metrics_measurement_set",
+            "type": "bool"
+          },
+          {
+            "name": "metrics_status",
+            "type": "bool"
+          },
+          {
+            "name": "metrics_uplink_load",
+            "type": "int64"
+          },
+          {
+            "name": "metrics_uplink_load_set",
+            "type": "bool"
+          },
+          {
+            "name": "metrics_uplink_speed",
+            "type": "int64"
+          },
+          {
+            "name": "metrics_uplink_speed_set",
+            "type": "bool"
+          },
+          {
+            "name": "nai_realm_list",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "auth_ids",
+                "type": "array<int64>"
+              },
+              {
+                "name": "auth_vals",
+                "type": "array<int64>"
+              },
+              {
+                "name": "eap_method",
+                "type": "int64"
+              },
+              {
+                "name": "encoding",
+                "type": "int64"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "status",
+                "type": "bool"
+              }
+            ]
+          },
+          {
+            "name": "network_type",
+            "type": "int64"
+          },
+          {
+            "name": "roaming_consortium_list",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "oid",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "venue_group",
+            "type": "int64"
+          },
+          {
+            "name": "venue_name",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "language",
+                "type": "string"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "url",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "venue_type",
+            "type": "int64"
+          }
+        ]
+      },
+      {
+        "name": "hotspot2conf_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "iapp_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "iot_channel_lock",
+        "type": "bool"
+      },
+      {
+        "name": "iot_dtim_lock",
+        "type": "bool"
+      },
+      {
+        "name": "is_guest",
+        "type": "bool"
+      },
+      {
+        "name": "l2_isolation",
+        "type": "bool"
+      },
+      {
+        "name": "log_level",
+        "type": "string"
+      },
+      {
+        "name": "mac_filter_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mac_filter_list",
+        "type": "array<string>"
+      },
+      {
+        "name": "mac_filter_policy",
+        "type": "string"
+      },
+      {
+        "name": "mcastenhance_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mdns_proxy_custom",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "ap_group_ids",
+            "type": "array<string>"
+          },
+          {
+            "name": "ap_macs",
+            "type": "array<string>"
+          },
+          {
+            "name": "ap_scope_mode",
+            "type": "string"
+          },
+          {
+            "name": "custom_services",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "address",
+                "type": "string"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "isolation_enabled",
+            "type": "bool"
+          },
+          {
+            "name": "networkconf_ids",
+            "type": "array<string>"
+          },
+          {
+            "name": "predefined_services",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "code",
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "name": "services_mode",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "mdns_proxy_mode",
+        "type": "string"
+      },
+      {
+        "name": "minrate_na_advertising_rates",
+        "type": "bool"
+      },
+      {
+        "name": "minrate_na_data_rate_kbps",
+        "type": "int64"
+      },
+      {
+        "name": "minrate_na_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "minrate_ng_advertising_rates",
+        "type": "bool"
+      },
+      {
+        "name": "minrate_ng_data_rate_kbps",
+        "type": "int64"
+      },
+      {
+        "name": "minrate_ng_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "minrate_setting_preference",
+        "type": "string"
+      },
+      {
+        "name": "mlo_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "name_combine_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "name_combine_suffix",
+        "type": "string"
+      },
+      {
+        "name": "nas_identifier",
+        "type": "string"
+      },
+      {
+        "name": "nas_identifier_type",
+        "type": "string"
+      },
+      {
+        "name": "networkconf_id",
+        "type": "string"
+      },
+      {
+        "name": "no2ghz_oui",
+        "type": "bool"
+      },
+      {
+        "name": "optimize_iot_wifi_connectivity",
+        "type": "bool"
+      },
+      {
+        "name": "p2p",
+        "type": "bool"
+      },
+      {
+        "name": "p2p_cross_connect",
+        "type": "bool"
+      },
+      {
+        "name": "pmf_cipher",
+        "type": "string"
+      },
+      {
+        "name": "pmf_mode",
+        "type": "string"
+      },
+      {
+        "name": "priority",
+        "type": "string"
+      },
+      {
+        "name": "private_preshared_keys",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "networkconf_id",
+            "type": "string"
+          },
+          {
+            "name": "password",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "private_preshared_keys_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "proxy_arp",
+        "type": "bool"
+      },
+      {
+        "name": "radius_das_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "radius_mac_auth_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "radius_macacl_empty_password",
+        "type": "bool"
+      },
+      {
+        "name": "radius_macacl_format",
+        "type": "string"
+      },
+      {
+        "name": "radiusprofile_id",
+        "type": "string"
+      },
+      {
+        "name": "roam_cluster_id",
+        "type": "int64"
+      },
+      {
+        "name": "roaming_assistant_6e_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "roaming_assistant_6e_rssi",
+        "type": "int64"
+      },
+      {
+        "name": "roaming_assistant_na_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "roaming_assistant_na_rssi",
+        "type": "int64"
+      },
+      {
+        "name": "rrm_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "sae_anti_clogging",
+        "type": "int64"
+      },
+      {
+        "name": "sae_groups",
+        "type": "array<int64>"
+      },
+      {
+        "name": "sae_psk",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "id",
+            "type": "string"
+          },
+          {
+            "name": "mac",
+            "type": "string"
+          },
+          {
+            "name": "psk",
+            "type": "string"
+          },
+          {
+            "name": "vlan",
+            "type": "int64"
+          }
+        ]
+      },
+      {
+        "name": "sae_psk_vlan_required",
+        "type": "bool"
+      },
+      {
+        "name": "sae_sync",
+        "type": "int64"
+      },
+      {
+        "name": "schedule",
+        "type": "array<string>"
+      },
+      {
+        "name": "schedule_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "schedule_reversed",
+        "type": "bool"
+      },
+      {
+        "name": "schedule_with_duration",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "duration_minutes",
+            "type": "int64"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "start_days_of_week",
+            "type": "array<string>"
+          },
+          {
+            "name": "start_hour",
+            "type": "int64"
+          },
+          {
+            "name": "start_minute",
+            "type": "int64"
+          }
+        ]
+      },
+      {
+        "name": "security",
+        "type": "string"
+      },
+      {
+        "name": "setting_preference",
+        "type": "string"
+      },
+      {
+        "name": "site_id",
+        "type": "string"
+      },
+      {
+        "name": "tdls_prohibit",
+        "type": "bool"
+      },
+      {
+        "name": "uapsd_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "uid_workspace_url",
+        "type": "string"
+      },
+      {
+        "name": "usergroup_id",
+        "type": "string"
+      },
+      {
+        "name": "vlan",
+        "type": "int64"
+      },
+      {
+        "name": "vlan_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "wep_idx",
+        "type": "int64"
+      },
+      {
+        "name": "wlan_band",
+        "type": "string"
+      },
+      {
+        "name": "wlan_bands",
+        "type": "array<string>"
+      },
+      {
+        "name": "wlangroup_id",
+        "type": "string"
+      },
+      {
+        "name": "wpa3_enhanced_192",
+        "type": "bool"
+      },
+      {
+        "name": "wpa3_fast_roaming",
+        "type": "bool"
+      },
+      {
+        "name": "wpa3_support",
+        "type": "bool"
+      },
+      {
+        "name": "wpa3_transition",
+        "type": "bool"
+      },
+      {
+        "name": "wpa_enc",
+        "type": "string"
+      },
+      {
+        "name": "wpa_mode",
+        "type": "string"
+      },
+      {
+        "name": "wpa_psk_radius",
+        "type": "string"
+      },
+      {
+        "name": "x_iapp_key",
+        "type": "string"
+      },
+      {
+        "name": "x_passphrase",
+        "type": "string"
+      },
+      {
+        "name": "x_wep",
+        "type": "string"
+      }
+    ]
+  }
+}

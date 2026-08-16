@@ -1,0 +1,105 @@
+---
+# Does a configuration APPLIED BY THE PREVIOUS RELEASE still plan clean under
+# this one? The acceptance suite cannot answer that: it compiles the provider
+# into the test binary, so a run holds exactly one provider and can only ask
+# whether that build creates and then re-plans cleanly.
+#
+# Manual, like the other controller work, and for the same reason: it needs the
+# docker daemon, and two campaign pipelines starting controllers on one agent is
+# a recorded hazard rather than a theoretical one.
+when:
+  - event: manual
+
+labels:
+  pool: skunkworks
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.9.2
+    settings:
+      partial: false
+
+steps:
+  - name: upgrade-plan
+    # Far shorter than the differential, which runs the whole suite twice. This
+    # applies one fixture and plans it twice. Bounded anyway, because an
+    # unbounded controller step can hold the runner until somebody notices.
+    timeout: 30m
+    image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - apt-get update
+      - apt-get install --yes --no-install-recommends ca-certificates curl docker.io git jq unzip
+      # The harness self-test runs FIRST and needs neither controller nor
+      # network. If the harness cannot tell its own failure shapes apart there
+      # is no point spending a controller to find that out.
+      - bash .woodpecker/scripts/catalog-upgrade-plan_test.sh
+      - curl --fail --location --silent --show-error --output /tmp/tofu.zip https://github.com/opentofu/opentofu/releases/download/v1.12.1/tofu_1.12.1_linux_amd64.zip
+      - echo '1fc9af962e3632b7cd0ba27076cd9f1ced177567defe9e331ac37f5a40468575  /tmp/tofu.zip' | sha256sum --check -
+      - unzip -q /tmp/tofu.zip -d /tmp
+      # THE PUBLISHED RELEASE ARTIFACT, not a rebuild of the tag it was cut at.
+      # An operator upgrades from this binary, and a rebuild is not guaranteed
+      # to be the same program.
+      - curl --fail --location --silent --show-error --output /tmp/provider.zip https://github.com/jamesbraid/terraform-provider-unifi/releases/download/v0.101.2/terraform-provider-unifi_0.101.2_linux_amd64.zip
+      - echo '9954f29512f0049f0e86908e2fc11a8a0e3cb11f980f3468d5e3da4005fab4b8  /tmp/provider.zip' | sha256sum --check -
+      - mkdir -p /tmp/released-provider
+      - unzip -q /tmp/provider.zip -d /tmp/released-provider
+      - chmod +x /tmp/tofu /tmp/released-provider/terraform-provider-unifi_v0.101.2
+      # Recorded in the receipt for provenance even though the published binary
+      # is what runs; the fallback path builds from it.
+      - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - export GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org GOVCS='*:off' GOTOOLCHAIN=local
+      # TERRAFORM_BIN holds OpenTofu here. The script records what the binary
+      # says it is rather than what the variable is called, so the receipt does
+      # not report this as Terraform.
+      - export TERRAFORM_BIN=/tmp/tofu
+      - export UPGRADE_RELEASED_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2
+      # The runner starts the controller, runs the harness against it, stops the
+      # controller, and passes the harness's exit code through unchanged -- 1 is
+      # an upgrade regression, 2 is a fixture that cannot judge one.
+      #
+      # BUILT AND RUN, NEVER `go run`. `go run` reports the program's status as
+      # text and exits 1 itself, whatever the program returned:
+      #
+      #   program exits 2  ->  go run exits 1, printing "exit status 2"
+      #   program exits 2  ->  compiled binary exits 2
+      #
+      # Under `go run` the two reds collapse into one and a void fixture becomes
+      # indistinguishable from an upgrade regression -- the exact coin flip the
+      # runner's own comment says it exists to prevent. Measured on a controller:
+      # a deliberately mis-declared fixture made the script exit 2 and `go run`
+      # reported 1.
+      - go build -o /tmp/upgrade-plan-runner ./cmd/upgrade-plan-runner
+      - /tmp/upgrade-plan-runner
+      - jq '.' build/release-ready/catalog-upgrade-plan.json
+      # THE REGRESSION FIXTURE, run as a second invocation rather than by
+      # teaching the harness to loop. One fixture per run is the design:
+      # UPGRADE_FIXTURE already selects it and the receipt describes exactly one
+      # measurement, which is what makes control_exit and subject_exit readable.
+      #
+      # It was written for the third_party_gateway defect and then called by
+      # nothing, which made it a check that never ran. Running it here turns
+      # both of this release's network fixes into a standing guard rather than a
+      # one-off receipt:
+      #
+      #   control 2 (expected 2)  the released provider genuinely does NOT
+      #                           settle this configuration -- that is the
+      #                           defect, and a control of 0 means the fixture
+      #                           has stopped demonstrating it
+      #   subject 0               the candidate does settle it, so
+      #                           setting_preference and third_party_gateway are
+      #                           still fixed
+      #
+      # If either regresses this goes red on its own, naming the candidate
+      # rather than the fixture, because the two reds carry different exit codes
+      # and different verdicts.
+      # $(pwd) rather than a CI variable, matching m3-dns-qualification.yml:49.
+      # The script resolves its own repository root from its location and the
+      # fixture path must be absolute, so this is the one place the workspace
+      # has to be named.
+      - export UPGRADE_FIXTURE=$(pwd)/.woodpecker/fixtures/upgrade-regression
+      - export UPGRADE_OUTPUT=/tmp/catalog-upgrade-plan-regression.json
+      - /tmp/upgrade-plan-runner
+      - jq '.' /tmp/catalog-upgrade-plan-regression.json

@@ -1,7 +1,5 @@
 when:
   - event: manual
-  - event: push
-    branch: emdash/m3-dns-operation
 
 labels:
   pool: skunkworks
@@ -13,16 +11,47 @@ clone:
       partial: false
 
 steps:
+  # The candidate depends on the unreleased go-unifi module, so its build needs
+  # the bootstrapped file proxy. The lifecycle step runs in a docker-cli image
+  # sharing the host daemon, where a bind mount of a step-local proxy cannot
+  # work. Build the candidate here instead and hand the lifecycle step a
+  # prebuilt binary, exactly like the differential workflow and the carrier do.
+  - name: build-candidate
+    # yamllint disable-line rule:line-length
+    image: >-
+      golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
+    commands:
+      - apt-get update
+      - apt-get install --yes --no-install-recommends jq
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      # Deliberately not "all" -- see catalog-controller-differential.yml. It
+      # writes graph-wide sums into go.sum and the promotion receipt below
+      # then refuses the dirty tree.
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
+      - mkdir -p m3-candidate
+      - env CGO_ENABLED=0 GOFLAGS=-mod=readonly GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go build -trimpath -buildvcs=false -ldflags=-buildid= -o m3-candidate/terraform-provider-unifi .
+
   - name: locked-network-lifecycle
+    # This step drives real controllers, and on 2026-08-15 it wedged: no output
+    # for fifty minutes, stalled immediately after a destroy, and it outlived an
+    # explicit cancel. Only a pipeline-level timeout ended it, an hour in, and
+    # it took promotion-receipt down with it -- so the last of three failures we
+    # were chasing went unreported for a day because of a step with no bound.
+    # Seven minutes is the observed cost; this is generous and still finite.
+    timeout: 25m
     image: docker:27.5.1-cli
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
       - apk add --no-cache bash coreutils curl git jq tar unzip
-      - M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
+      - bash .woodpecker/scripts/m3-evidence-lib_test.sh
+      - M3_CANDIDATE_PROVIDER_BINARY=$(pwd)/m3-candidate/terraform-provider-unifi M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
       - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true' build/m3/network-dns-qualification-ci.json
 
   - name: promotion-receipt
+    # Also drives a controller, and it is the step the wedge above starved.
+    timeout: 20m
     image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
     commands:
       - apt-get update
@@ -37,7 +66,12 @@ steps:
       - unzip -q /tmp/tofu.zip -d /usr/local/bin
       - mkdir -p /tmp/released-provider
       - unzip -q /tmp/provider.zip -d /tmp/released-provider
-      - go mod download all
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      # Deliberately not "all" -- see catalog-controller-differential.yml. It
+      # writes graph-wide sums into go.sum and the promotion receipt below
+      # then refuses the dirty tree.
+      - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - bash .woodpecker/scripts/m1-evidence-lib_test.sh
       - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 M1_EVIDENCE_OUTPUT_DIRECTORY=/tmp/provider-m1-evidence M1_EVIDENCE_ARCHIVE=/tmp/provider-m1-evidence.tar.gz M1_PRINT_EVIDENCE_BUNDLE=true M3_EXECUTION=woodpecker M3_LIFECYCLE_RECEIPT=build/m3/network-dns-qualification-ci.json M3_MANAGEMENT_SIDECAR_OUTPUT=build/m5/provider-contract-ci.json M3_RECEIPT_OUTPUT=build/m3/dns-operation-ci.json TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m3-dns-operation.sh
       - jq -e '.promotion == "qualified" and .lifecycle.locked_target_result == "pass"' build/m3/dns-operation-ci.json

@@ -1,0 +1,81 @@
+---
+when:
+  - event: manual
+  # A push runs this workflow ALONE, because the other four are manual-only.
+  # That is the only way to exercise the fast loop without four other workflows
+  # competing for the runner, which matters while the step's own failure
+  # reporting is under suspicion.
+  #
+  # main is listed because leaving it off stopped being a convenience question.
+  # This step runs the only check that can see a served schema disagreeing with
+  # its runtime model, which is the class that produced 54 controller
+  # regressions; with main absent from this list, that check would sit un-run on
+  # the branch it protects. Working branches are still listed explicitly, and a
+  # branch not named here gets no fast feedback on push.
+  - event: push
+    branch:
+      - main
+      - emdash/control-plane-completion
+      - campaign/unblock-controller-run
+  # Measured rather than assumed, because the obvious guess was wrong. Opening
+  # a pull request against this repository produced NO PIPELINE AT ALL. ALLOW
+  # PULL is enabled so the event reaches the server, but with no workflow
+  # declaring pull_request there was nothing to run, and the server created
+  # nothing rather than creating an empty success. A probe pull request was
+  # opened and closed to establish that: the pipeline counter did not move, and
+  # the repository's entire history holds zero pull_request pipelines against
+  # three merged pull requests.
+  #
+  # So the gap was never a green that tested nothing. It is NO CHECK AT ALL on
+  # the only path that reaches main, which is quieter than a red and quieter
+  # than a false green: a reviewer sees an absence, and an absence is easy to
+  # read as nothing to see.
+  - event: pull_request
+
+labels:
+  pool: skunkworks
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.9.2
+    settings:
+      partial: false
+
+steps:
+  - name: fast-deterministic-loop
+    image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
+    # Raised from 5m for the inventory check: it fetches the released tag, two
+    # SDK archives, and compiles cmd/catalog-evidence. A timeout would be a red
+    # that says nothing about the inventory, which is the failure this step
+    # exists to report clearly.
+    timeout: 8m
+    # The skunkworks guest's Docker volume lives on its persistent cache disk.
+    # Keep Go's build/module cache and the locked go-unifi checkout between
+    # jobs; the workflow still verifies the checkout and source commit on each
+    # run. This requires the repository's trusted-volumes setting.
+    volumes:
+      - unifi-provider-fast-loop-cache:/ci-cache
+    commands:
+      - apt-get update
+      - apt-get install --yes --no-install-recommends jq
+      - export GOCACHE=/ci-cache/go-build GOMODCACHE=/ci-cache/go-mod GO_UNIFI_SOURCE_ROOT=/ci-cache/go-unifi-source
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
+      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - export GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org GOVCS='*:off' GOTOOLCHAIN=local
+      - go test ./...
+      - go vet ./...
+      # The evidence inventory describes the tree it was generated from, and
+      # nothing has ever checked that it still does. The check already existed
+      # and already failed -- it was wired to no workflow, so a stale inventory
+      # was indistinguishable from a fresh one, and the Go test that compares
+      # the campaign policy against it passes because both drifted together.
+      #
+      # It needs the released tag and both SDK archives. Fetch them here rather
+      # than relying on whatever the cache happens to hold, so a missing
+      # prerequisite can never be mistaken for staleness.
+      - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
+      - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
+      - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
+      - bash .woodpecker/scripts/catalog-evidence-inventory_test.sh
+      - go generate ./...
+      - git diff --exit-code

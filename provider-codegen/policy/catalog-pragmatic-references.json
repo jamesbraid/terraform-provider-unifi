@@ -1,0 +1,65 @@
+{
+  "format_version": 1,
+  "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
+  "inventory_sha256": "0d3ce1f8186ec74d77feada41dacc8c3fc3a80d63662e55946bfe56c0abb8353",
+  "fleet_summary_sha256": "12f576f11f670ad4df4fce32fa6b0913faa285a427c08f26d719de7f478ba922",
+  "references": [
+    {
+      "kind": "managed_resource",
+      "name": "unifi_account",
+      "signal": "acceptance",
+      "reference_kind": "alias",
+      "source": {
+        "kind": "managed_resource",
+        "name": "unifi_radius_user"
+      },
+      "fleet_count": 0,
+      "required_evidence": [
+        "alias_lifecycle"
+      ]
+    },
+    {
+      "kind": "managed_resource",
+      "name": "unifi_account",
+      "signal": "import",
+      "reference_kind": "alias",
+      "source": {
+        "kind": "managed_resource",
+        "name": "unifi_radius_user"
+      },
+      "fleet_count": 0,
+      "required_evidence": [
+        "alias_lifecycle"
+      ]
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_account",
+      "signal": "acceptance",
+      "reference_kind": "alias",
+      "source": {
+        "kind": "data_source",
+        "name": "unifi_radius_user"
+      },
+      "fleet_count": 0,
+      "required_evidence": [
+        "alias_lifecycle"
+      ]
+    },
+    {
+      "kind": "data_source",
+      "name": "unifi_client_info",
+      "signal": "acceptance",
+      "reference_kind": "sibling_read",
+      "source": {
+        "kind": "data_source",
+        "name": "unifi_client_info_list"
+      },
+      "fleet_count": 0,
+      "required_evidence": [
+        "mapping",
+        "sibling_read"
+      ]
+    }
+  ]
+}

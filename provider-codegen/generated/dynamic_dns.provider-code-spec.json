@@ -1,0 +1,146 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "dynamic_dns",
+      "schema": {
+        "attributes": [
+          {
+            "name": "host_name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The host name to update in the dynamic DNS service."
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the dynamic DNS.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "interface",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "wan"
+              },
+              "description": "The interface for the dynamic DNS. Can be `wan` or `wan2`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"wan\", \"wan2\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "login",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The login for the dynamic DNS service."
+            }
+          },
+          {
+            "name": "password",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The password for the dynamic DNS service.",
+              "sensitive": true
+            }
+          },
+          {
+            "name": "server",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The server for the dynamic DNS service."
+            }
+          },
+          {
+            "name": "service",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The Dynamic DNS service provider, various values are supported (for example `dyndns`, etc.).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate with the dynamic DNS resource.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseNonNullStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "markdown_description": "Manages dynamic DNS settings for different providers."
+      }
+    }
+  ]
+}

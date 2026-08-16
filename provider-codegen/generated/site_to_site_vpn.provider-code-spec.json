@@ -1,0 +1,590 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "site_to_site_vpn",
+      "schema": {
+        "attributes": [
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether IPsec dynamic routing is enabled.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "dynamic_routing"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Whether the tunnel is enabled."
+            },
+            "name": "enabled"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "description": "ESP (phase 2) Diffie-Hellman group (PFS). Only used when `profile = customized`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                      }
+                    ],
+                    "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "esp_dh_group"
+          },
+          {
+            "name": "esp_encryption",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "ESP (phase 2) encryption. Only used when `profile = customized`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"aes128\", \"aes192\", \"aes256\", \"3des\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "esp_hash",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "ESP (phase 2) hash. Only used when `profile = customized`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"sha1\", \"md5\", \"sha256\", \"sha384\", \"sha512\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "esp_lifetime",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "description": "ESP (phase 2) security-association lifetime, as a Go duration string (e.g. `1h`, `3600s`). Must be a whole number of seconds between `30s` and `86400s` (24h).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationBetween(30*time.Second, 86400*time.Second)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the site-to-site VPN network.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "description": "IKE (phase 1) Diffie-Hellman group. Only used when `profile = customized`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                      }
+                    ],
+                    "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "ike_dh_group"
+          },
+          {
+            "name": "ike_encryption",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "IKE (phase 1) encryption. Only used when `profile = customized`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"aes128\", \"aes192\", \"aes256\", \"3des\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ike_hash",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "IKE (phase 1) hash. Only used when `profile = customized`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"sha1\", \"md5\", \"sha256\", \"sha384\", \"sha512\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ike_lifetime",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "description": "IKE (phase 1) security-association lifetime, as a Go duration string (e.g. `8h`, `28800s`). Must be a whole number of seconds between `30s` and `86400s` (24h).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationBetween(30*time.Second, 86400*time.Second)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "interface",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "wan"
+              },
+              "description": "The local WAN interface the tunnel binds to (e.g. `wan`, `wan2`).",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"wan\", \"wan2\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "key_exchange",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": "ikev2"
+              },
+              "description": "IKE key-exchange version. One of `ikev1` or `ikev2`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"ikev1\", \"ikev2\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "local_ip",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+                },
+                "type": "iptypes.IPv4AddressType{}",
+                "value_type": "iptypes.IPv4Address"
+              },
+              "description": "The local IP used for the tunnel. Defaults to the WAN address when omitted.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the site-to-site VPN."
+            }
+          },
+          {
+            "name": "peer_ip",
+            "string": {
+              "computed_optional_required": "required",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+                },
+                "type": "iptypes.IPv4AddressType{}",
+                "value_type": "iptypes.IPv4Address"
+              },
+              "description": "The public IP address of the remote VPN gateway (peer).",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      }
+                    ],
+                    "schema_definition": "validators.IPv4Validator()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether Perfect Forward Secrecy is enabled.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "pfs"
+          },
+          {
+            "name": "pre_shared_key",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The IPsec pre-shared key. Stored in state — use `pre_shared_key_wo` to avoid persisting the secret.",
+              "sensitive": true
+            }
+          },
+          {
+            "name": "profile",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "IPsec profile. One of `customized`, `azure_dynamic`, or `azure_static`. Set to `customized` to tune the IKE/ESP attributes below; the controller may derive the ESP values from the IKE ones.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"customized\", \"azure_dynamic\", \"azure_static\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "list": {
+              "computed_optional_required": "required",
+              "description": "The remote site's subnets reachable through the tunnel (CIDR).",
+              "element_type": {
+                "string": {}
+              },
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                      }
+                    ],
+                    "schema_definition": "listvalidator.SizeAtLeast(1)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                      },
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      }
+                    ],
+                    "schema_definition": "listvalidator.ValueStringsAre(validators.CIDRValidator())"
+                  }
+                }
+              ]
+            },
+            "name": "remote_subnets"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "description": "The route distance (administrative metric) for tunnel routes (1-255).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                      }
+                    ],
+                    "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.Between(1, 255)"
+                  }
+                }
+              ]
+            },
+            "name": "route_distance"
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the VPN with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "markdown_description": "Manages a manual site-to-site IPsec VPN (the UniFi `Settings → VPN → Site-to-Site` network, `purpose = site-vpn`, `vpn_type = ipsec-vpn`). The advanced IKE/ESP attributes only apply when `profile = customized`."
+      }
+    }
+  ]
+}

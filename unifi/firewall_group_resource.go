@@ -6,19 +6,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_firewall_group"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_group"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -98,48 +94,14 @@ func (r *firewallGroupResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		Description: "`unifi_firewall_group` manages groups of addresses or ports for use in firewall rules (`unifi_firewall_rule`).",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description: "The ID of the firewall group.",
-				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				Description: "The name of the site to associate the firewall group with.",
-				Computed:    true,
-				Optional:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				Description: "The name of the firewall group.",
-				Required:    true,
-			},
-			"type": schema.StringAttribute{
-				Description: "The type of the firewall group. Must be one of: `address-group`, `port-group`, or `ipv6-address-group`.",
-				Required:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("address-group", "port-group", "ipv6-address-group"),
-				},
-			},
-			"members": schema.SetAttribute{
-				Description: "The members of the firewall group.",
-				Required:    true,
-				ElementType: types.StringType,
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_firewall_group.FirewallGroupResourceSchema(ctx)
+	// The released schema describes this surface in plain text, which a
+	// generated schema cannot express; see plainDescriptions.
+	plainDescriptions(&resp.Schema)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *firewallGroupResource) Configure(
@@ -492,35 +454,11 @@ func (r *firewallGroupResource) firewallGroupToModel(
 
 // ListResourceConfigSchema implements [list.ListResource].
 func (r *firewallGroupResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List firewall groups in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list firewall groups from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`, `type`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_firewall_group.FirewallGroupListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

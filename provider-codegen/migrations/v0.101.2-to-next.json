@@ -1,0 +1,8 @@
+{
+  "format_version": 1,
+  "from_version": "0.101.2",
+  "to_version": "next",
+  "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
+  "default_strategy": "identity",
+  "overrides": []
+}

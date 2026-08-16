@@ -7,9 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_firewall_zone"
 )
 
 var _ datasource.DataSource = &firewallZoneDataSource{}
@@ -45,36 +45,8 @@ func (d *firewallZoneDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Data source for UniFi firewall zones (zone-based firewall, UniFi Network 8.x+). " +
-			"Use this to look up zone IDs by name for use in `unifi_firewall_policy` resources.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the firewall zone.",
-				Computed:            true,
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the UniFi site.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The display name of the firewall zone (e.g. `Internal`, `External`).",
-				Required:            true,
-			},
-			"zone_key": schema.StringAttribute{
-				MarkdownDescription: "The internal key of the zone (e.g. `lan`, `wan`).",
-				Computed:            true,
-			},
-			"network_ids": schema.ListAttribute{
-				MarkdownDescription: "List of network IDs assigned to this zone.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
+	resp.Schema = datasource_firewall_zone.FirewallZoneDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *firewallZoneDataSource) Configure(

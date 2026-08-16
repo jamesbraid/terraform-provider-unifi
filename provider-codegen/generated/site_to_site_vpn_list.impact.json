@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_site_to_site_vpn",
+  "resource": "unifi_site_to_site_vpn",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "1f972a84a31cf15751fa0eaa2ff2394a0251fe8fe85cb80f415f961d2c33df1c"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "list_resource": "580453f54f1aae947d8338beecc2c228f281ddc716855fbd1511e5cacb36be11"
+  },
+  "structural_fields": 263,
+  "generated_attributes": 1,
+  "provider_owned_seams": 1,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

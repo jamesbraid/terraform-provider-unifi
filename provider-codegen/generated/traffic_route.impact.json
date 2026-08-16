@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_traffic_route",
+  "resource": "unifi_traffic_route",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "0cd23e3328e13ea0702d323d9816e7d401309359b245bbb26d11e0d7b5c5ffc6"
+  },
+  "baseline_digests": {
+    "resource": "f8ce7d9c0b97ee812d50337a491c4c067d718b6cfd24ca7c48625adc864f8475",
+    "identity": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+    "list_resource": "79fae3b9ec4bef282fe22c8acc21a4533debe7158d524bc9315c3968aa66da9d"
+  },
+  "structural_fields": 17,
+  "generated_attributes": 9,
+  "provider_owned_seams": 2,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

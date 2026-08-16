@@ -1,10 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly expected_module=github.com/ubiquiti-community/go-unifi
-readonly expected_replacement=github.com/jamesbraid/go-unifi
-readonly expected_version=v1.102.0
-readonly expected_sum='h1:mi7q/FGi/TIUiM2K5BLv5jdA3T4f1/Tf5icYjGnnd/I='
+m3_repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+readonly m3_repository_root
+# shellcheck source=.woodpecker/scripts/go-unifi-pin.sh
+source "${m3_repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
+
+# This receipt attests a controller operation actually ran. Generated from a
+# dirty tree it would attest the run against code that is in no commit, which is
+# the one claim an operation receipt exists to make.
+# shellcheck source=.woodpecker/scripts/tree-state.sh
+source "${m3_repository_root}/.woodpecker/scripts/tree-state.sh"
+evidence_tree_state "the M3 DNS operation receipt"
+
+# The module version and its hash are read from go.mod and go.sum. They used to
+# be pinned here as well, which made this the fourth home for one fact and the
+# reason a repoint that updated go.mod left this script asserting the previous
+# release. The catalog path below stays literal on purpose: that artifact is
+# keyed on the controller it was captured from, not on the module.
+readonly expected_module=${go_unifi_module_path}
+expected_version=$(go_unifi_declared_version "${m3_repository_root}")
+readonly expected_version
+expected_sum=$(go_unifi_declared_sum "${m3_repository_root}" "${expected_version}")
+readonly expected_sum
 readonly expected_catalog_source_commit=62add0c72d932aba663164fd794d510fb56aebae
 readonly expected_catalog_sha256=a07b8a4b91d68aaaf35b7bb8a2d8f3d877531ffff64cbd44a44748ab736b9ac1
 readonly expected_operation_sha256=d004069d8f4d911de2d893c3183e0d9e59a67d66425fcb3d1551caa55c623cbd
@@ -30,13 +48,35 @@ cleanup() {
 }
 trap cleanup EXIT
 
-module_json=$(go list -m -json all | jq --compact-output \
-    --arg module_path "${expected_module}" \
-    'select(.Path == $module_path)')
+# Ask for the one module, not the whole graph.
+#
+# This listed 519 modules so that jq could select 1. The `all` pattern requires
+# the entire module graph to resolve, so once the CI download stopped fetching
+# the graph this failed under GOPROXY=off once per module the build does not
+# need -- 300 of them -- each printing a bare "go: module lookup disabled by
+# GOPROXY=off" that names nothing. go emits no JSON at all when it aborts that
+# way, so there was nothing for the pipeline to filter and nothing in the log
+# to diagnose from: 300 identical lines and not one subject among them.
+#
+# Naming the module removes the graph dependency instead of feeding it. The
+# record returned is the same object and carries every field asserted below.
+#
+# DO NOT ADD -e HERE TO RECOVER THE NAMES ON FAILURE. With -e this command exits
+# 0 and reports each unresolved module inside its JSON, so the assertions below
+# would still find their fields and still pass -- converting a loud failure into
+# a green step over a broken cache. If -e is ever wanted it must arrive together
+# with an explicit assertion that no listed module carries an Error.
+module_json=$(go list -m -json "${expected_module}")
 readonly module_json
-test "$(jq -r '.Replace.Path' <<<"${module_json}")" = "${expected_replacement}"
-test "$(jq -r '.Replace.Version' <<<"${module_json}")" = "${expected_version}"
-test "$(jq -r '.Replace.Sum' <<<"${module_json}")" = "${expected_sum}"
+# Not a shape check on the record. This is the guard that this branch resolves
+# go-unifi through the CANONICAL path with NO fork replacement: main replaces it
+# with github.com/jamesbraid/go-unifi and this branch must not. go list emits
+# Replace as an OBJECT when a replacement is in effect and omits the key
+# entirely otherwise, so the absent key IS the assertion that no fork has been
+# substituted. Deleting this line would let one back in silently.
+test "$(jq -r 'has("Replace")' <<<"${module_json}")" = false
+test "$(jq -r .Version <<<"${module_json}")" = "${expected_version}"
+test "$(jq -r .Sum <<<"${module_json}")" = "${expected_sum}"
 
 test "$(sha256sum "${catalog_path}" | awk '{print $1}')" = "${expected_catalog_sha256}"
 test "$(sha256sum "${operation_path}" | awk '{print $1}')" = "${expected_operation_sha256}"
@@ -120,7 +160,6 @@ jq --indent 2 --null-input \
     --arg source_commit "${source_commit}" \
     --arg execution "${M3_EXECUTION:-local}" \
     --arg module_path "${expected_module}" \
-    --arg replacement "${expected_replacement}" \
     --arg version "${expected_version}" \
     --arg sum "${expected_sum}" \
     --arg catalog_sha256 "${expected_catalog_sha256}" \
@@ -145,7 +184,7 @@ jq --indent 2 --null-input \
         source_commit: $source_commit,
         go_unifi: {
             module: $module_path,
-            replacement: $replacement,
+            replacement: null,
             version: $version,
             sum: $sum
         },

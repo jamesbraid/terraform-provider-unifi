@@ -8,22 +8,15 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_firewall_rule"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -127,211 +120,11 @@ func (r *firewallRuleResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages an individual firewall rule on the gateway.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the firewall rule.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the firewall rule with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the firewall rule.",
-				Required:            true,
-			},
-			"action": schema.StringAttribute{
-				MarkdownDescription: "The action of the firewall rule. Must be one of `drop`, `accept`, or `reject`.",
-				Required:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("drop", "accept", "reject"),
-				},
-			},
-			"ruleset": schema.StringAttribute{
-				MarkdownDescription: "The ruleset for the rule. This is from the perspective of the security gateway.",
-				Required:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf(
-						"WAN_IN", "WAN_OUT", "WAN_LOCAL",
-						"LAN_IN", "LAN_OUT", "LAN_LOCAL",
-						"GUEST_IN", "GUEST_OUT", "GUEST_LOCAL",
-						"WANv6_IN", "WANv6_OUT", "WANv6_LOCAL",
-						"LANv6_IN", "LANv6_OUT", "LANv6_LOCAL",
-						"GUESTv6_IN", "GUESTv6_OUT", "GUESTv6_LOCAL",
-					),
-				},
-			},
-			"rule_index": schema.Int64Attribute{
-				MarkdownDescription: "The index of the rule. Must be in one of the interface-specific blocks: " +
-					"`2000-2999` (LAN), `3000-3999` (WAN), `4000-4999` (GUEST), or their high-range " +
-					"equivalents `20000-29999`, `30000-39999`, `40000-49999` used by newer UniFi OS versions.",
-				Required: true,
-				Validators: []validator.Int64{
-					int64validator.Any(
-						int64validator.Between(2000, 2999),
-						int64validator.Between(3000, 3999),
-						int64validator.Between(4000, 4999),
-						int64validator.Between(20000, 29999),
-						int64validator.Between(30000, 39999),
-						int64validator.Between(40000, 49999),
-					),
-				},
-			},
-			"protocol": schema.StringAttribute{
-				MarkdownDescription: "The protocol of the rule.",
-				Optional:            true,
-			},
-			"protocol_v6": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 protocol of the rule.",
-				Optional:            true,
-			},
-			"icmp_typename": schema.StringAttribute{
-				MarkdownDescription: "ICMP type name.",
-				Optional:            true,
-			},
-			"icmp_v6_typename": schema.StringAttribute{
-				MarkdownDescription: "ICMPv6 type name.",
-				Optional:            true,
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether the rule should be enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"src_network_id": schema.StringAttribute{
-				MarkdownDescription: "The source network ID for the firewall rule.",
-				Optional:            true,
-			},
-			"src_network_type": schema.StringAttribute{
-				MarkdownDescription: "The source network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("NETv4"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("ADDRv4", "NETv4"),
-				},
-			},
-			"src_firewall_group_ids": schema.SetAttribute{
-				MarkdownDescription: "The source firewall group IDs for the firewall rule.",
-				Optional:            true,
-				ElementType:         types.StringType,
-			},
-			"src_address": schema.StringAttribute{
-				MarkdownDescription: "The source address for the firewall rule.",
-				Optional:            true,
-			},
-			"src_address_ipv6": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 source address for the firewall rule.",
-				Optional:            true,
-			},
-			"src_port": schema.StringAttribute{
-				MarkdownDescription: "The source port of the firewall rule.",
-				Optional:            true,
-			},
-			"src_mac": schema.StringAttribute{
-				MarkdownDescription: "The source MAC address of the firewall rule.",
-				CustomType:          hwtypes.MACAddressType{},
-				Optional:            true,
-			},
-			"dst_network_id": schema.StringAttribute{
-				MarkdownDescription: "The destination network ID of the firewall rule.",
-				Optional:            true,
-			},
-			"dst_network_type": schema.StringAttribute{
-				MarkdownDescription: "The destination network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("NETv4"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("ADDRv4", "NETv4"),
-				},
-			},
-			"dst_firewall_group_ids": schema.SetAttribute{
-				MarkdownDescription: "The destination firewall group IDs of the firewall rule.",
-				Optional:            true,
-				ElementType:         types.StringType,
-			},
-			"dst_address": schema.StringAttribute{
-				MarkdownDescription: "The destination address of the firewall rule.",
-				Optional:            true,
-			},
-			"dst_address_ipv6": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 destination address of the firewall rule.",
-				Optional:            true,
-			},
-			"dst_port": schema.StringAttribute{
-				MarkdownDescription: "The destination port of the firewall rule.",
-				Optional:            true,
-			},
-			"logging": schema.BoolAttribute{
-				MarkdownDescription: "Enable logging for the firewall rule.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"state_established": schema.BoolAttribute{
-				MarkdownDescription: "Match where the state is established.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"state_invalid": schema.BoolAttribute{
-				MarkdownDescription: "Match where the state is invalid.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"state_new": schema.BoolAttribute{
-				MarkdownDescription: "Match where the state is new.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"state_related": schema.BoolAttribute{
-				MarkdownDescription: "Match where the state is related.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"ip_sec": schema.StringAttribute{
-				MarkdownDescription: "Specify whether the rule matches on IPsec packets. Can be one of `match-ipset` or `match-none`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("match-ipsec", "match-none"),
-				},
-			},
-			"setting_preference": schema.StringAttribute{
-				MarkdownDescription: "Whether the rule is managed automatically by the controller or manually. Can be one of `auto` or `manual`.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("auto", "manual"),
-				},
-			},
-			"protocol_match_excepted": schema.BoolAttribute{
-				MarkdownDescription: "Match packets that do NOT match the specified protocol (protocol negation).",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_firewall_rule.FirewallRuleResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *firewallRuleResource) Configure(
@@ -892,35 +685,11 @@ func (r *firewallRuleResource) firewallRuleToModel(
 
 // ListResourceConfigSchema implements [list.ListResource].
 func (r *firewallRuleResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List firewall rules in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list firewall rules from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`, `ruleset`, `action`, `enabled`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_firewall_rule.FirewallRuleListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

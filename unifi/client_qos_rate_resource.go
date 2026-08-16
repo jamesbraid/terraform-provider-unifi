@@ -7,20 +7,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_client_qos_rate"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client_qos_rate"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -99,54 +94,11 @@ func (r *clientQosRateResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: `Manages a client QOS rate, which can be used to limit bandwidth for groups of clients.`,
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the client QOS rate.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the client QOS rate with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the client QOS rate.",
-				Required:            true,
-			},
-			"qos_rate_max_down": schema.Int64Attribute{
-				MarkdownDescription: "The QOS maximum download rate.",
-				Optional:            true,
-				Computed:            true,
-				Default:             int64default.StaticInt64(-1),
-				Validators: []validator.Int64{
-					int64validator.Between(2, 100000),
-				},
-			},
-			"qos_rate_max_up": schema.Int64Attribute{
-				MarkdownDescription: "The QOS maximum upload rate.",
-				Optional:            true,
-				Computed:            true,
-				Default:             int64default.StaticInt64(-1),
-				Validators: []validator.Int64{
-					int64validator.Between(2, 100000),
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_client_qos_rate.ClientQosRateResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *clientQosRateResource) Configure(
@@ -478,35 +430,11 @@ func (r *clientQosRateResource) clientQosRateToModel(
 
 // ListResourceConfigSchema implements [list.ListResource].
 func (r *clientQosRateResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List client QOS rates in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list client QOS rates from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_client_qos_rate.ClientQosRateListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

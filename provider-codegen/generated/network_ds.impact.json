@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "data_source",
+  "surface_name": "unifi_network",
+  "resource": "unifi_network",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "1f972a84a31cf15751fa0eaa2ff2394a0251fe8fe85cb80f415f961d2c33df1c"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "data_source": "147d2d998bd4d9a5852c9f28350a75eb58e0a4a0d69212aa6f29aa18acfa8e91"
+  },
+  "structural_fields": 263,
+  "generated_attributes": 45,
+  "provider_owned_seams": 3,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

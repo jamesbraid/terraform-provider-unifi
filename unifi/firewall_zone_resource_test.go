@@ -3,15 +3,167 @@ package unifi
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
+
+func TestAccFirewallZoneList_emptyOrSeeded(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		Steps: []resource.TestStep{{
+			Query: true,
+			Config: `
+provider "unifi" {}
+list "unifi_firewall_zone" "test" {
+  provider = unifi
+  config {}
+}
+`,
+			QueryResultChecks: []querycheck.QueryResultCheck{
+				querycheck.ExpectLengthAtLeast("unifi_firewall_zone.test", 0),
+			},
+		}},
+	})
+}
+
+func TestAccFirewallZoneFramework_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "unifi_network" "firewall_zone_test" {
+  name   = "Firewall Zone Test Network"
+  subnet = "192.168.250.1/24"
+  vlan   = 250
+
+  # A zone claiming this network flips it to manual controller-side, while the
+  # schema default asks for auto. Declare the end state so the post-apply
+  # refresh plan stays empty.
+  setting_preference = "manual"
+}
+
+resource "unifi_firewall_zone" "test" {
+  name        = "Firewall Zone Test"
+  network_ids = [unifi_network.firewall_zone_test.id]
+}
+`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_firewall_zone.test", "id"),
+					resource.TestCheckResourceAttr("unifi_firewall_zone.test", "name", "Firewall Zone Test"),
+				),
+			},
+			{
+				Config: `
+resource "unifi_network" "firewall_zone_test" {
+  name   = "Firewall Zone Test Network"
+  subnet = "192.168.250.1/24"
+  vlan   = 250
+
+  # A zone claiming this network flips it to manual controller-side, while the
+  # schema default asks for auto. Declare the end state so the post-apply
+  # refresh plan stays empty.
+  setting_preference = "manual"
+}
+
+resource "unifi_firewall_zone" "test" {
+  name        = "Firewall Zone Test Updated"
+  network_ids = [unifi_network.firewall_zone_test.id]
+}
+`,
+				Check: resource.TestCheckResourceAttr(
+					"unifi_firewall_zone.test", "name", "Firewall Zone Test Updated",
+				),
+			},
+			{
+				ResourceName:      "unifi_firewall_zone.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestFirewallZoneDeleteIgnoresNotFound(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/proxy/network/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"meta":{"server_version":"10.4.57"}}`))
+			return
+		}
+		if req.Method != http.MethodDelete {
+			t.Errorf("request method = %s, want DELETE", req.Method)
+		}
+		if req.URL.Path != "/proxy/network/v2/api/site/default/firewall/zone/missing-zone" {
+			t.Errorf("request path = %s, want firewall zone delete path", req.URL.Path)
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	apiClient, err := unifi.New(
+		context.Background(),
+		&unifi.Config{BaseURL: server.URL, APIKey: "test-key"},
+	)
+	if err != nil {
+		t.Fatalf("create API client: %v", err)
+	}
+
+	r := &firewallZoneResource{client: &Client{ApiClient: apiClient, Site: "default"}}
+	schemaResp := &fwresource.SchemaResponse{}
+	r.Schema(context.Background(), fwresource.SchemaRequest{}, schemaResp)
+	state := tfsdk.State{Schema: schemaResp.Schema}
+	timeoutTypes := map[string]attr.Type{
+		"create": types.StringType,
+		"read":   types.StringType,
+		"update": types.StringType,
+		"delete": types.StringType,
+	}
+	diags := state.Set(context.Background(), &firewallZoneResourceModel{
+		ID:          types.StringValue("missing-zone"),
+		Site:        types.StringValue("default"),
+		Name:        types.StringValue("Missing Zone"),
+		NetworkIDs:  types.ListNull(types.StringType),
+		ZoneKey:     types.StringNull(),
+		DefaultZone: types.BoolNull(),
+		Timeouts:    timeouts.Value{Object: types.ObjectNull(timeoutTypes)},
+	})
+	if diags.HasError() {
+		t.Fatalf("set delete state: %v", diags)
+	}
+
+	resp := &fwresource.DeleteResponse{State: state}
+	r.Delete(
+		context.Background(),
+		fwresource.DeleteRequest{State: state},
+		resp,
+	)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Delete returned error diagnostics for an absent zone: %v", resp.Diagnostics)
+	}
+}
 
 func boolPtr(b bool) *bool { return &b }
 

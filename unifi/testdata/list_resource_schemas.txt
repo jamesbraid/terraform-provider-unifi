@@ -1,0 +1,135 @@
+# Every list resource's config schema, at full fidelity.
+#
+# The list surfaces are the only schemas in this provider that nothing else
+# pins. The baseline projection test covers managed resources and says so
+# explicitly; a sibling covers data sources; identity and list-resource schemas
+# are named there as separate fact families and are not compared. The behaviour
+# inventory covers managed resources at every depth and reports list resources
+# as uncovered. So before this file existed, a list config schema could lose
+# every description it has and the whole suite would stay green.
+#
+# That mattered the moment these surfaces started being GENERATED. A generator
+# reproduces what the specification tells it to reproduce. Structure is easy to
+# get right and easy to check; prose is neither, and prose is what a
+# practitioner reads in terraform-ls, in the registry docs and in an error. A
+# generated schema that is structurally perfect and silently undescribed is the
+# exact shape of defect this estate keeps producing: a fact nobody was asking
+# about.
+#
+# The uniformity gate next to this one compares STRUCTURE across all
+# twenty-five and deliberately ignores prose, because twenty-five distinct
+# block descriptions are correct and pinning them there would fight every
+# wording change while catching nothing structural. This file is the other
+# half: it pins the prose, per surface, so a rewording is a visible diff rather
+# than an invisible loss.
+#
+# Each line is "<resource>.<path>  <type:disposition>  <flags>  <description>",
+# where flags is sensitive, deprecated, or "-" for neither. A schema's or a
+# block's own description is recorded as "<resource>[.<block>]  schema|block  -
+# <text>".
+#
+# Regenerate with: UPDATE_GOLDEN=1 go test ./unifi/ -run TestListResourceConfigSchemaGolden
+#
+# That refuses to drop a line. A rewrite that would remove one has to say so
+# with UPDATE_GOLDEN_ALLOW_REMOVAL=1 as well.
+unifi_ap_group  schema  -  List AP groups in a site.
+unifi_ap_group.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_ap_group.filter.value  string:required  -  The value to filter by.
+unifi_ap_group.site  string:optional  -  The name of the site to list AP groups from.
+unifi_client  schema  -  List clients in a site, optionally filtered by network, group, connection type, or vendor.
+unifi_client.filter.name  string:required  -  The name of the filter to apply. Supported values are: `site`, `network_id`, `network_name`, `group`, `wired`, `blocked`, `oui`.
+unifi_client.filter.value  string:required  -  The value to filter by.
+unifi_client.group  string:optional  -  Filter clients by network members group name.
+unifi_client.site  string:optional  -  The name of the site to list clients from.
+unifi_client_qos_rate  schema  -  List client QOS rates in a site.
+unifi_client_qos_rate.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_client_qos_rate.filter.value  string:required  -  The value to filter by.
+unifi_client_qos_rate.site  string:optional  -  The name of the site to list client QOS rates from.
+unifi_device  schema  -  List devices in a site.
+unifi_device.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `mac`, `model`, `type`.
+unifi_device.filter.value  string:required  -  The value to filter by.
+unifi_device.site  string:optional  -  The name of the site to list devices from.
+unifi_dns_record  schema  -  List DNS records in a site.
+unifi_dns_record.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `record_type`, `enabled`.
+unifi_dns_record.filter.value  string:required  -  The value to filter by.
+unifi_dns_record.site  string:optional  -  The name of the site to list DNS records from.
+unifi_dynamic_dns  schema  -  List dynamic DNS configurations in a site.
+unifi_dynamic_dns.filter.name  string:required  -  The name of the filter to apply. Supported values are: `host_name`, `service`.
+unifi_dynamic_dns.filter.value  string:required  -  The value to filter by.
+unifi_dynamic_dns.site  string:optional  -  The name of the site to list dynamic DNS configurations from.
+unifi_firewall_group  schema  -  List firewall groups in a site.
+unifi_firewall_group.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `type`.
+unifi_firewall_group.filter.value  string:required  -  The value to filter by.
+unifi_firewall_group.site  string:optional  -  The name of the site to list firewall groups from.
+unifi_firewall_policy  schema  -  List firewall policies in a site.
+unifi_firewall_policy.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `action`, `enabled`.
+unifi_firewall_policy.filter.value  string:required  -  The value to filter by.
+unifi_firewall_policy.site  string:optional  -  The name of the site to list firewall policies from.
+unifi_firewall_rule  schema  -  List firewall rules in a site.
+unifi_firewall_rule.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `ruleset`, `action`, `enabled`.
+unifi_firewall_rule.filter.value  string:required  -  The value to filter by.
+unifi_firewall_rule.site  string:optional  -  The name of the site to list firewall rules from.
+unifi_firewall_zone  schema  -  List firewall zones in a site.
+unifi_firewall_zone.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_firewall_zone.filter.value  string:required  -  The value to filter by.
+unifi_firewall_zone.site  string:optional  -  The name of the site to list firewall zones from.
+unifi_network  schema  -  List networks in a site.
+unifi_network.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_network.filter.value  string:required  -  The value to filter by.
+unifi_network.site  string:optional  -  The name of the site to list networks from.
+unifi_port_forward  schema  -  List port forwarding rules in a site.
+unifi_port_forward.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `enabled`.
+unifi_port_forward.filter.value  string:required  -  The value to filter by.
+unifi_port_forward.site  string:optional  -  The name of the site to list port forwarding rules from.
+unifi_port_profile  schema  -  List port profiles in a site.
+unifi_port_profile.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_port_profile.filter.value  string:required  -  The value to filter by.
+unifi_port_profile.site  string:optional  -  The name of the site to list port profiles from.
+unifi_power_supervisor  schema  -  List power supervisors in a site.
+unifi_power_supervisor.filter.name  string:required  -  The name of the filter to apply. Supported values are: `device_mac`.
+unifi_power_supervisor.filter.value  string:required  -  The value to filter by.
+unifi_power_supervisor.site  string:optional  -  The name of the site to list power supervisors from.
+unifi_radius_profile  schema  -  List RADIUS profiles in a site.
+unifi_radius_profile.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_radius_profile.filter.value  string:required  -  The value to filter by.
+unifi_radius_profile.site  string:optional  -  The name of the site to list RADIUS profiles from.
+unifi_radius_user  schema  -  List RADIUS user accounts in a site.
+unifi_radius_user.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_radius_user.filter.value  string:required  -  The value to filter by.
+unifi_radius_user.site  string:optional  -  The name of the site to list RADIUS users from.
+unifi_site  schema  -  List sites in the UniFi controller.
+unifi_site.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `description`.
+unifi_site.filter.value  string:required  -  The value to filter by.
+unifi_site_to_site_vpn  schema  -  List site-to-site VPN networks in a site.
+unifi_site_to_site_vpn.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_site_to_site_vpn.filter.value  string:required  -  The value to filter by.
+unifi_site_to_site_vpn.site  string:optional  -  The name of the site to list site-to-site VPN networks from.
+unifi_static_route  schema  -  List static routes in a site.
+unifi_static_route.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `type`. The `type` filter matches the static route type (`interface-route`, `nexthop-route`, `blackhole`).
+unifi_static_route.filter.value  string:required  -  The value to filter by.
+unifi_static_route.site  string:optional  -  The name of the site to list static routes from.
+unifi_traffic_route  schema  -  List traffic routes in a site.
+unifi_traffic_route.filter.name  string:required  -  The name of the filter to apply. Supported values are: `enabled`, `matching_target`, `network_id`, `description`.
+unifi_traffic_route.filter.value  string:required  -  The value to filter by.
+unifi_traffic_route.site  string:optional  -  The name of the site to list traffic routes from.
+unifi_vpn_client  schema  -  List VPN client connections in a site.
+unifi_vpn_client.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_vpn_client.filter.value  string:required  -  The value to filter by.
+unifi_vpn_client.site  string:optional  -  The name of the site to list VPN clients from.
+unifi_vpn_server  schema  -  List VPN servers in a site.
+unifi_vpn_server.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_vpn_server.filter.value  string:required  -  The value to filter by.
+unifi_vpn_server.site  string:optional  -  The name of the site to list VPN servers from.
+unifi_wan  schema  -  List WAN networks in a site.
+unifi_wan.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_wan.filter.value  string:required  -  The value to filter by.
+unifi_wan.site  string:optional  -  The name of the site to list WAN networks from.
+unifi_wireguard_peer  schema  -  List WireGuard peers of a WireGuard server network.
+unifi_wireguard_peer.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`.
+unifi_wireguard_peer.filter.value  string:required  -  The value to filter by.
+unifi_wireguard_peer.network_id  string:required  -  The ID of the WireGuard server network to list peers from.
+unifi_wireguard_peer.site  string:optional  -  The name of the site the WireGuard server belongs to.
+unifi_wlan  schema  -  List WLANs in a site.
+unifi_wlan.filter.name  string:required  -  The name of the filter to apply. Supported values are: `name`, `enabled`.
+unifi_wlan.filter.value  string:required  -  The value to filter by.
+unifi_wlan.site  string:optional  -  The name of the site to list WLANs from.

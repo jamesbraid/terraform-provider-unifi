@@ -6,9 +6,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/providercompiler"
 )
+
+var artifactPrefixPattern = regexp.MustCompile(`^[a-z0-9_]+$`)
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stderr))
@@ -21,12 +24,22 @@ func run(args []string, stderr io.Writer) int {
 	catalogPath := flags.String("catalog", "", "path to the admitted observed catalog")
 	policyPath := flags.String("policy", "", "path to the provider policy")
 	baselinePath := flags.String("baseline", "", "path to the M0 schema digest manifest")
+	ledgerPath := flags.String("ledger", "", "path to the complete catalog admission ledger")
+	artifactPrefix := flags.String("artifact-prefix", "", "prefix for generated artifact names")
 	outputDir := flags.String("output-dir", "", "directory for generated compiler artifacts")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if (*bootstrapPath == "") == (*catalogPath == "") || *policyPath == "" || *baselinePath == "" || *outputDir == "" {
-		fmt.Fprintln(stderr, "exactly one of bootstrap or catalog plus policy, baseline, and output-dir are required")
+	if (*bootstrapPath == "") == (*catalogPath == "") || *policyPath == "" || *baselinePath == "" || *ledgerPath == "" || *artifactPrefix == "" || *outputDir == "" {
+		fmt.Fprintln(stderr, "exactly one of bootstrap or catalog plus policy, baseline, ledger, artifact-prefix, and output-dir are required")
+		return 2
+	}
+	if !artifactPrefixPattern.MatchString(*artifactPrefix) {
+		fmt.Fprintln(stderr, "artifact-prefix must match [a-z0-9_]+")
+		return 2
+	}
+	if flags.NArg() != 0 {
+		fmt.Fprintln(stderr, "positional arguments are not supported")
 		return 2
 	}
 
@@ -55,12 +68,18 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "read baseline: %v\n", err)
 		return 1
 	}
+	ledger, err := os.ReadFile(*ledgerPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "read ledger: %v\n", err)
+		return 1
+	}
 
 	result, err := providercompiler.Compile(providercompiler.CompileInput{
 		Bootstrap:       bootstrap,
 		Catalog:         catalog,
 		Policy:          policy,
 		BaselineDigests: baseline,
+		Ledger:          ledger,
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "compile: %v\n", err)
@@ -75,9 +94,9 @@ func run(args []string, stderr io.Writer) int {
 		name string
 		data []byte
 	}{
-		{"dns_record.provider-code-spec.json", result.ProviderCodeSpec},
-		{"dns_record.impact.json", result.ImpactReport},
-		{"dns_record.mapping.json", result.MappingReport},
+		{*artifactPrefix + ".provider-code-spec.json", result.ProviderCodeSpec},
+		{*artifactPrefix + ".impact.json", result.ImpactReport},
+		{*artifactPrefix + ".mapping.json", result.MappingReport},
 	}
 	for _, artifact := range artifacts {
 		if err := writeAtomic(filepath.Join(*outputDir, artifact.name), artifact.data); err != nil {

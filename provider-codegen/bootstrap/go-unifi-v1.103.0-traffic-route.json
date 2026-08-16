@@ -1,0 +1,161 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "0cd23e3328e13ea0702d323d9816e7d401309359b245bbb26d11e0d7b5c5ffc6"
+  },
+  "resource": {
+    "name": "unifi_traffic_route",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool"
+      },
+      {
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "name": "domains",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "string"
+          },
+          {
+            "name": "port_ranges",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "port_start",
+                "type": "int64"
+              },
+              {
+                "name": "port_stop",
+                "type": "int64"
+              }
+            ]
+          },
+          {
+            "name": "ports",
+            "type": "array<int64>"
+          }
+        ]
+      },
+      {
+        "name": "enabled",
+        "type": "bool"
+      },
+      {
+        "name": "ip_addresses",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "ip_or_subnet",
+            "type": "string"
+          },
+          {
+            "name": "ip_version",
+            "type": "string"
+          },
+          {
+            "name": "port_ranges",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "port_start",
+                "type": "int64"
+              },
+              {
+                "name": "port_stop",
+                "type": "int64"
+              }
+            ]
+          },
+          {
+            "name": "ports",
+            "type": "array<int64>"
+          }
+        ]
+      },
+      {
+        "name": "ip_ranges",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "ip_start",
+            "type": "string"
+          },
+          {
+            "name": "ip_stop",
+            "type": "string"
+          },
+          {
+            "name": "ip_version",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "kill_switch_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "matching_target",
+        "type": "string"
+      },
+      {
+        "name": "network_id",
+        "type": "string"
+      },
+      {
+        "name": "next_hop",
+        "type": "string"
+      },
+      {
+        "name": "regions",
+        "type": "array<string>"
+      },
+      {
+        "name": "site_id",
+        "type": "string"
+      },
+      {
+        "name": "target_devices",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "client_mac",
+            "type": "string"
+          },
+          {
+            "name": "network_id",
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "type": "string"
+          }
+        ]
+      }
+    ]
+  }
+}

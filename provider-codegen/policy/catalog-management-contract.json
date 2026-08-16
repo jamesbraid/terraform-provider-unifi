@@ -1,0 +1,50 @@
+{
+  "format_version": 1,
+  "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
+  "downstream": {
+    "repository": "ubitofu",
+    "commit": "2cbdf24672cb57342b07981d80bed60d3360c4ed",
+    "manifest_path": "src/ubitofu/manifest.py",
+    "manifest_sha256": "05e77fcf5d05a2db701cb4abac70ed1c7cd37d1c7e1ff4a6286e14f828a50c5e"
+  },
+  "managed_resources": [
+    "unifi_account",
+    "unifi_ap_group",
+    "unifi_bgp",
+    "unifi_client",
+    "unifi_client_qos_rate",
+    "unifi_device",
+    "unifi_dns_record",
+    "unifi_dynamic_dns",
+    "unifi_firewall_group",
+    "unifi_firewall_policy",
+    "unifi_firewall_rule",
+    "unifi_firewall_zone",
+    "unifi_network",
+    "unifi_port_forward",
+    "unifi_port_profile",
+    "unifi_power_supervisor",
+    "unifi_radius_profile",
+    "unifi_radius_user",
+    "unifi_setting",
+    "unifi_site",
+    "unifi_site_to_site_vpn",
+    "unifi_static_route",
+    "unifi_traffic_route",
+    "unifi_vpn_client",
+    "unifi_vpn_server",
+    "unifi_wan",
+    "unifi_wireguard_peer",
+    "unifi_wlan"
+  ],
+  "required_dimensions": [
+    "capture_eligibility",
+    "coverage",
+    "enumeration",
+    "generated_hcl",
+    "identity",
+    "plan_classification",
+    "receipt_inputs",
+    "redaction"
+  ]
+}

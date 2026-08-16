@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_firewall_rule",
+  "resource": "unifi_firewall_rule",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "c17e65d7f2af345c7c25855b9c8bd891a3728631902462f15bcd4301a4a669e1"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "list_resource": "f0ab60963c79fb0472240fd072b6834bf37915b2c78e9f824dbe7cb6dad65998"
+  },
+  "structural_fields": 36,
+  "generated_attributes": 1,
+  "provider_owned_seams": 1,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

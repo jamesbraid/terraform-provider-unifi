@@ -1,0 +1,100 @@
+{
+  "format_version": 1,
+  "provider_address": "registry.terraform.io/ubiquiti-community/unifi",
+  "waves": [
+    {
+      "wave": 1,
+      "data_sources": [
+        "unifi_account",
+        "unifi_ap_group",
+        "unifi_client",
+        "unifi_client_info",
+        "unifi_client_info_list",
+        "unifi_client_list",
+        "unifi_client_qos_rate",
+        "unifi_dns_record",
+        "unifi_firewall_zone",
+        "unifi_network",
+        "unifi_port_profile",
+        "unifi_radius_profile",
+        "unifi_radius_user"
+      ],
+      "list_resources": [
+        "unifi_ap_group",
+        "unifi_client",
+        "unifi_client_qos_rate",
+        "unifi_device",
+        "unifi_dns_record",
+        "unifi_dynamic_dns",
+        "unifi_firewall_group",
+        "unifi_firewall_policy",
+        "unifi_firewall_rule",
+        "unifi_firewall_zone",
+        "unifi_network",
+        "unifi_port_forward",
+        "unifi_port_profile",
+        "unifi_power_supervisor",
+        "unifi_radius_profile",
+        "unifi_radius_user",
+        "unifi_site",
+        "unifi_site_to_site_vpn",
+        "unifi_static_route",
+        "unifi_traffic_route",
+        "unifi_vpn_client",
+        "unifi_vpn_server",
+        "unifi_wan",
+        "unifi_wireguard_peer",
+        "unifi_wlan"
+      ]
+    },
+    {
+      "wave": 2,
+      "managed_resources": [
+        "unifi_dns_record",
+        "unifi_dynamic_dns",
+        "unifi_firewall_group",
+        "unifi_firewall_zone",
+        "unifi_network",
+        "unifi_setting",
+        "unifi_site",
+        "unifi_wan"
+      ]
+    },
+    {
+      "wave": 3,
+      "managed_resources": [
+        "unifi_ap_group",
+        "unifi_client",
+        "unifi_device",
+        "unifi_firewall_policy",
+        "unifi_port_forward",
+        "unifi_port_profile",
+        "unifi_vpn_server",
+        "unifi_wireguard_peer",
+        "unifi_wlan"
+      ]
+    },
+    {
+      "wave": 4,
+      "managed_resources": [
+        "unifi_account",
+        "unifi_bgp",
+        "unifi_client_qos_rate",
+        "unifi_firewall_rule",
+        "unifi_power_supervisor",
+        "unifi_radius_profile",
+        "unifi_radius_user",
+        "unifi_site_to_site_vpn",
+        "unifi_static_route",
+        "unifi_traffic_route",
+        "unifi_vpn_client"
+      ]
+    },
+    {
+      "wave": 5,
+      "actions": [
+        "unifi_port"
+      ]
+    }
+  ]
+}

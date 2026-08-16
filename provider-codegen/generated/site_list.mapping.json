@@ -1,0 +1,44 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_site",
+  "resource": "unifi_site",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "desc",
+      "terraform_name": "desc",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.name",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "filter.value",
+      "structural_type": "invented",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

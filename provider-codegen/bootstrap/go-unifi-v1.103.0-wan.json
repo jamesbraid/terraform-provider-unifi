@@ -1,0 +1,1123 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "1f972a84a31cf15751fa0eaa2ff2394a0251fe8fe85cb80f415f961d2c33df1c"
+  },
+  "resource": {
+    "name": "unifi_wan",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool"
+      },
+      {
+        "name": "auto_scale_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcp_relay_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcp_relay_servers",
+        "type": "array<string>"
+      },
+      {
+        "name": "dhcpd_boot_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpd_boot_filename",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_boot_server",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_conflict_checking",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpd_dns_1",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_dns_2",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_dns_3",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_dns_4",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_dns_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpd_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpd_gateway",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_gateway_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpd_ip_1",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_ip_2",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_ip_3",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_leasetime",
+        "type": "int64"
+      },
+      {
+        "name": "dhcpd_mac_1",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_mac_2",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_mac_3",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_ntp_1",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_ntp_2",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_ntp_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpd_start",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_stop",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_tftp_server",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_time_offset",
+        "type": "int64"
+      },
+      {
+        "name": "dhcpd_time_offset_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpd_unifi_controller",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_wins_1",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_wins_2",
+        "type": "string"
+      },
+      {
+        "name": "dhcpd_wins_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpd_wpad_url",
+        "type": "string"
+      },
+      {
+        "name": "dhcpdv6_allow_slaac",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpdv6_dns_1",
+        "type": "string"
+      },
+      {
+        "name": "dhcpdv6_dns_2",
+        "type": "string"
+      },
+      {
+        "name": "dhcpdv6_dns_3",
+        "type": "string"
+      },
+      {
+        "name": "dhcpdv6_dns_4",
+        "type": "string"
+      },
+      {
+        "name": "dhcpdv6_dns_auto",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpdv6_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dhcpdv6_leasetime",
+        "type": "int64"
+      },
+      {
+        "name": "dhcpdv6_start",
+        "type": "string"
+      },
+      {
+        "name": "dhcpdv6_stop",
+        "type": "string"
+      },
+      {
+        "name": "dhcpguard_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "domain_name",
+        "type": "string"
+      },
+      {
+        "name": "dpi_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "dpigroup_id",
+        "type": "string"
+      },
+      {
+        "name": "enabled",
+        "type": "bool"
+      },
+      {
+        "name": "exposed_to_site_vpn",
+        "type": "bool"
+      },
+      {
+        "name": "firewall_zone_id",
+        "type": "string"
+      },
+      {
+        "name": "gateway_device",
+        "type": "string"
+      },
+      {
+        "name": "gateway_type",
+        "type": "string"
+      },
+      {
+        "name": "igmp_fastleave",
+        "type": "bool"
+      },
+      {
+        "name": "igmp_flood_unknown_multicast",
+        "type": "bool"
+      },
+      {
+        "name": "igmp_groupmembership",
+        "type": "int64"
+      },
+      {
+        "name": "igmp_maxresponse",
+        "type": "int64"
+      },
+      {
+        "name": "igmp_mcrtrexpiretime",
+        "type": "int64"
+      },
+      {
+        "name": "igmp_proxy_downstream_networkconf_ids",
+        "type": "array<string>"
+      },
+      {
+        "name": "igmp_proxy_for",
+        "type": "string"
+      },
+      {
+        "name": "igmp_proxy_upstream",
+        "type": "bool"
+      },
+      {
+        "name": "igmp_querier_switches",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "querier_address",
+            "type": "string"
+          },
+          {
+            "name": "switch_mac",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "igmp_snooping",
+        "type": "bool"
+      },
+      {
+        "name": "igmp_supression",
+        "type": "bool"
+      },
+      {
+        "name": "interface_mtu",
+        "type": "int64"
+      },
+      {
+        "name": "interface_mtu_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "internet_access_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "ip_aliases",
+        "type": "array<string>"
+      },
+      {
+        "name": "ip_subnet",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_dh_group",
+        "type": "int64"
+      },
+      {
+        "name": "ipsec_dynamic_routing",
+        "type": "bool"
+      },
+      {
+        "name": "ipsec_encryption",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_esp_dh_group",
+        "type": "int64"
+      },
+      {
+        "name": "ipsec_esp_encryption",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_esp_hash",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_esp_lifetime",
+        "type": "int64"
+      },
+      {
+        "name": "ipsec_hash",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_ike_dh_group",
+        "type": "int64"
+      },
+      {
+        "name": "ipsec_ike_encryption",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_ike_hash",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_ike_lifetime",
+        "type": "int64"
+      },
+      {
+        "name": "ipsec_interface",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_key_exchange",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_local_identifier",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_local_identifier_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "ipsec_local_ip",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_peer_ip",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_pfs",
+        "type": "bool"
+      },
+      {
+        "name": "ipsec_profile",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_remote_identifier",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_remote_identifier_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "ipsec_separate_ikev2_networks",
+        "type": "bool"
+      },
+      {
+        "name": "ipsec_tunnel_ip",
+        "type": "string"
+      },
+      {
+        "name": "ipsec_tunnel_ip_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "ipv6_aliases",
+        "type": "array<string>"
+      },
+      {
+        "name": "ipv6_client_address_assignment",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_interface_type",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_pd_auto_prefixid_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "ipv6_pd_interface",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_pd_prefixid",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_pd_start",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_pd_stop",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_ra_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "ipv6_ra_preferred_lifetime",
+        "type": "int64"
+      },
+      {
+        "name": "ipv6_ra_priority",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_ra_valid_lifetime",
+        "type": "int64"
+      },
+      {
+        "name": "ipv6_setting_preference",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_single_network_interface",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_subnet",
+        "type": "string"
+      },
+      {
+        "name": "ipv6_wan_delegation_type",
+        "type": "string"
+      },
+      {
+        "name": "is_nat",
+        "type": "bool"
+      },
+      {
+        "name": "l2tp_allow_weak_ciphers",
+        "type": "bool"
+      },
+      {
+        "name": "l2tp_interface",
+        "type": "string"
+      },
+      {
+        "name": "l2tp_local_wan_ip",
+        "type": "string"
+      },
+      {
+        "name": "l3_interface_type",
+        "type": "string"
+      },
+      {
+        "name": "local_port",
+        "type": "int64"
+      },
+      {
+        "name": "lte_lan_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mac_override",
+        "type": "string"
+      },
+      {
+        "name": "mac_override_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mdns_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mss_clamp",
+        "type": "string"
+      },
+      {
+        "name": "mss_clamp_ipv6",
+        "type": "string"
+      },
+      {
+        "name": "mss_clamp_mss",
+        "type": "int64"
+      },
+      {
+        "name": "mss_clamp_mss_ipv6",
+        "type": "int64"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "nat_outbound_ip_addresses",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "ip_address",
+            "type": "string"
+          },
+          {
+            "name": "ip_address_pool",
+            "type": "array<string>"
+          },
+          {
+            "name": "mode",
+            "type": "string"
+          },
+          {
+            "name": "wan_network_group",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "network_isolation_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "networkgroup",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_configuration",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_configuration_filename",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_encryption_cipher",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_interface",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_local_address",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_local_port",
+        "type": "int64"
+      },
+      {
+        "name": "openvpn_local_wan_ip",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_mode",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_remote_address",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_remote_host",
+        "type": "string"
+      },
+      {
+        "name": "openvpn_remote_port",
+        "type": "int64"
+      },
+      {
+        "name": "openvpn_username",
+        "type": "string"
+      },
+      {
+        "name": "pptpc_require_mppe",
+        "type": "bool"
+      },
+      {
+        "name": "pptpc_route_distance",
+        "type": "int64"
+      },
+      {
+        "name": "pptpc_server_ip",
+        "type": "string"
+      },
+      {
+        "name": "pptpc_username",
+        "type": "string"
+      },
+      {
+        "name": "priority",
+        "type": "int64"
+      },
+      {
+        "name": "purpose",
+        "type": "string"
+      },
+      {
+        "name": "radiusprofile_id",
+        "type": "string"
+      },
+      {
+        "name": "remote_site_id",
+        "type": "string"
+      },
+      {
+        "name": "remote_site_subnets",
+        "type": "array<string>"
+      },
+      {
+        "name": "remote_vpn_dynamic_subnets_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "remote_vpn_subnets",
+        "type": "array<string>"
+      },
+      {
+        "name": "report_wan_event",
+        "type": "bool"
+      },
+      {
+        "name": "require_mschapv2",
+        "type": "bool"
+      },
+      {
+        "name": "route_distance",
+        "type": "int64"
+      },
+      {
+        "name": "routed_lag_idx",
+        "type": "int64"
+      },
+      {
+        "name": "routed_port_idx",
+        "type": "int64"
+      },
+      {
+        "name": "sdwan_remote_site_id",
+        "type": "string"
+      },
+      {
+        "name": "setting_preference",
+        "type": "string"
+      },
+      {
+        "name": "single_network_lan",
+        "type": "string"
+      },
+      {
+        "name": "site_id",
+        "type": "string"
+      },
+      {
+        "name": "uid_policy_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "uid_policy_name",
+        "type": "string"
+      },
+      {
+        "name": "uid_public_gateway_port",
+        "type": "int64"
+      },
+      {
+        "name": "uid_traffic_rules_allowed_ips_and_hostnames",
+        "type": "array<string>"
+      },
+      {
+        "name": "uid_traffic_rules_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "uid_vpn_custom_routing",
+        "type": "array<string>"
+      },
+      {
+        "name": "uid_vpn_default_dns_suffix",
+        "type": "string"
+      },
+      {
+        "name": "uid_vpn_masquerade_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "uid_vpn_max_connection_time_seconds",
+        "type": "int64"
+      },
+      {
+        "name": "uid_vpn_sync_public_ip",
+        "type": "bool"
+      },
+      {
+        "name": "uid_vpn_type",
+        "type": "string"
+      },
+      {
+        "name": "uid_workspace_url",
+        "type": "string"
+      },
+      {
+        "name": "upnp_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "upnp_lan_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "upnp_nat_pmp_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "upnp_secure_mode",
+        "type": "bool"
+      },
+      {
+        "name": "upnp_wan_interface",
+        "type": "string"
+      },
+      {
+        "name": "usergroup_id",
+        "type": "string"
+      },
+      {
+        "name": "vlan",
+        "type": "int64"
+      },
+      {
+        "name": "vlan_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "vpn_binding_mode",
+        "type": "string"
+      },
+      {
+        "name": "vpn_client_configuration_remote_ip_override",
+        "type": "string"
+      },
+      {
+        "name": "vpn_client_configuration_remote_ip_override_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "vpn_client_default_route",
+        "type": "bool"
+      },
+      {
+        "name": "vpn_client_pull_dns",
+        "type": "bool"
+      },
+      {
+        "name": "vpn_protocol",
+        "type": "string"
+      },
+      {
+        "name": "vpn_type",
+        "type": "string"
+      },
+      {
+        "name": "vrrp_ip_subnet_gw1",
+        "type": "string"
+      },
+      {
+        "name": "vrrp_ip_subnet_gw2",
+        "type": "string"
+      },
+      {
+        "name": "vrrp_vrid",
+        "type": "int64"
+      },
+      {
+        "name": "wan_dhcp_cos",
+        "type": "int64"
+      },
+      {
+        "name": "wan_dhcp_options",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "optionNumber",
+            "type": "int64"
+          },
+          {
+            "name": "value",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "wan_dhcpv6_cos",
+        "type": "int64"
+      },
+      {
+        "name": "wan_dhcpv6_options",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "optionNumber",
+            "type": "int64"
+          },
+          {
+            "name": "value",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "wan_dhcpv6_pd_size",
+        "type": "int64"
+      },
+      {
+        "name": "wan_dhcpv6_pd_size_auto",
+        "type": "bool"
+      },
+      {
+        "name": "wan_dns1",
+        "type": "string"
+      },
+      {
+        "name": "wan_dns2",
+        "type": "string"
+      },
+      {
+        "name": "wan_dns3",
+        "type": "string"
+      },
+      {
+        "name": "wan_dns4",
+        "type": "string"
+      },
+      {
+        "name": "wan_dns_preference",
+        "type": "string"
+      },
+      {
+        "name": "wan_dslite_remote_host",
+        "type": "string"
+      },
+      {
+        "name": "wan_dslite_remote_host_auto",
+        "type": "bool"
+      },
+      {
+        "name": "wan_egress_qos",
+        "type": "int64"
+      },
+      {
+        "name": "wan_egress_qos_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "wan_failover_priority",
+        "type": "int64"
+      },
+      {
+        "name": "wan_gateway",
+        "type": "string"
+      },
+      {
+        "name": "wan_gateway_v6",
+        "type": "string"
+      },
+      {
+        "name": "wan_ip",
+        "type": "string"
+      },
+      {
+        "name": "wan_ip_aliases",
+        "type": "array<string>"
+      },
+      {
+        "name": "wan_ipv6",
+        "type": "string"
+      },
+      {
+        "name": "wan_ipv6_dns1",
+        "type": "string"
+      },
+      {
+        "name": "wan_ipv6_dns2",
+        "type": "string"
+      },
+      {
+        "name": "wan_ipv6_dns_preference",
+        "type": "string"
+      },
+      {
+        "name": "wan_load_balance_type",
+        "type": "string"
+      },
+      {
+        "name": "wan_load_balance_weight",
+        "type": "int64"
+      },
+      {
+        "name": "wan_netmask",
+        "type": "string"
+      },
+      {
+        "name": "wan_networkgroup",
+        "type": "string"
+      },
+      {
+        "name": "wan_pppoe_password_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "wan_pppoe_username_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "wan_prefixlen",
+        "type": "int64"
+      },
+      {
+        "name": "wan_provider_capabilities",
+        "type": "object",
+        "fields": [
+          {
+            "name": "download_kilobits_per_second",
+            "type": "int64"
+          },
+          {
+            "name": "upload_kilobits_per_second",
+            "type": "int64"
+          }
+        ]
+      },
+      {
+        "name": "wan_sla",
+        "type": "string"
+      },
+      {
+        "name": "wan_smartq_down_rate",
+        "type": "int64"
+      },
+      {
+        "name": "wan_smartq_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "wan_smartq_up_rate",
+        "type": "int64"
+      },
+      {
+        "name": "wan_type",
+        "type": "string"
+      },
+      {
+        "name": "wan_type_v6",
+        "type": "string"
+      },
+      {
+        "name": "wan_username",
+        "type": "string"
+      },
+      {
+        "name": "wan_vlan",
+        "type": "int64"
+      },
+      {
+        "name": "wan_vlan_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "wireguard_client_configuration_file",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_client_configuration_filename",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_client_mode",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_client_peer_ip",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_client_peer_port",
+        "type": "int64"
+      },
+      {
+        "name": "wireguard_client_peer_public_key",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_client_preshared_key",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_client_preshared_key_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "wireguard_interface",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_interface_binding_mode_ip_version",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_local_wan_ip",
+        "type": "string"
+      },
+      {
+        "name": "wireguard_public_key",
+        "type": "string"
+      },
+      {
+        "name": "x_auth_key",
+        "type": "string"
+      },
+      {
+        "name": "x_ca_crt",
+        "type": "string"
+      },
+      {
+        "name": "x_ca_key",
+        "type": "string"
+      },
+      {
+        "name": "x_dh_key",
+        "type": "string"
+      },
+      {
+        "name": "x_ipsec_pre_shared_key",
+        "type": "string"
+      },
+      {
+        "name": "x_openvpn_password",
+        "type": "string"
+      },
+      {
+        "name": "x_openvpn_shared_secret_key",
+        "type": "string"
+      },
+      {
+        "name": "x_pptpc_password",
+        "type": "string"
+      },
+      {
+        "name": "x_server_crt",
+        "type": "string"
+      },
+      {
+        "name": "x_server_key",
+        "type": "string"
+      },
+      {
+        "name": "x_shared_client_crt",
+        "type": "string"
+      },
+      {
+        "name": "x_shared_client_key",
+        "type": "string"
+      },
+      {
+        "name": "x_wan_password",
+        "type": "string"
+      },
+      {
+        "name": "x_wireguard_private_key",
+        "type": "string"
+      }
+    ]
+  }
+}

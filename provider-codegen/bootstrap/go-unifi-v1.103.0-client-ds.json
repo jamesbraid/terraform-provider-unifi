@@ -1,0 +1,156 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "e5954987b39335314530ab83fea2273eedce75dc442339e7626a9602c2e3aee7"
+  },
+  "resource": {
+    "name": "unifi_client",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool"
+      },
+      {
+        "name": "blocked",
+        "type": "bool"
+      },
+      {
+        "name": "display_name",
+        "type": "string"
+      },
+      {
+        "name": "fixed_ap_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "fixed_ap_mac",
+        "type": "string"
+      },
+      {
+        "name": "fixed_ip",
+        "type": "string"
+      },
+      {
+        "name": "hostname",
+        "type": "string"
+      },
+      {
+        "name": "last_ip",
+        "type": "string"
+      },
+      {
+        "name": "last_seen",
+        "type": "int64"
+      },
+      {
+        "name": "local_dns_record",
+        "type": "string"
+      },
+      {
+        "name": "local_dns_record_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "mac",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "network_id",
+        "type": "string"
+      },
+      {
+        "name": "network_members_group_ids",
+        "type": "array<string>"
+      },
+      {
+        "name": "note",
+        "type": "string"
+      },
+      {
+        "name": "site_id",
+        "type": "string"
+      },
+      {
+        "name": "use_fixedip",
+        "type": "bool"
+      },
+      {
+        "name": "usergroup_id",
+        "type": "string"
+      },
+      {
+        "name": "virtual_network_override_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "virtual_network_override_id",
+        "type": "string"
+      }
+    ]
+  },
+  "companions": [
+    {
+      "struct": "ClientGroup",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "qos_rate_max_down",
+          "type": "int64"
+        },
+        {
+          "name": "qos_rate_max_up",
+          "type": "int64"
+        },
+        {
+          "name": "site_id",
+          "type": "string"
+        }
+      ]
+    }
+  ]
+}

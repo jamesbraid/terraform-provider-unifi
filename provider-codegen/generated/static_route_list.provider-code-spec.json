@@ -1,0 +1,48 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "listresources": [
+    {
+      "name": "static_route",
+      "schema": {
+        "attributes": [
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The name of the site to list static routes from."
+            }
+          }
+        ],
+        "blocks": [
+          {
+            "list_nested": {
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "name",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "The name of the filter to apply. Supported values are: `name`, `type`. The `type` filter matches the static route type (`interface-route`, `nexthop-route`, `blackhole`)."
+                    }
+                  },
+                  {
+                    "name": "value",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "The value to filter by."
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "filter"
+          }
+        ],
+        "markdown_description": "List static routes in a site."
+      }
+    }
+  ]
+}

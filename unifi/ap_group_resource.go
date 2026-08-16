@@ -3,25 +3,20 @@ package unifi
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_ap_group"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_ap_group"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -105,56 +100,14 @@ func (r *apGroupResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		Description: "`unifi_ap_group` manages a group of access points, which can be referenced from wireless networks (`unifi_wlan`) to control where an SSID is broadcast. The controller's built-in default group (\"All APs\") is read-only; updating or deleting it through this resource fails with a controller error.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Description: "The ID of the AP group.",
-				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				Description: "The name of the site to associate the AP group with.",
-				Computed:    true,
-				Optional:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				Description: "The name of the AP group.",
-				Required:    true,
-				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
-				},
-			},
-			"device_macs": schema.SetAttribute{
-				Description: "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members. Omit it to leave the membership as the controller has it.",
-				// Optional + Computed rather than Required so the plan modifier
-				// below may keep the prior value: Terraform rejects a planned
-				// value that differs from config for a Required attribute, and
-				// keeping the prior spelling of a MAC is exactly that.
-				Optional: true,
-				Computed: true,
-				// hwtypes.MACAddressType gives each element semantic equality,
-				// which settles the value the controller reports against the one
-				// in state. It does not reach the set itself: see the modifier.
-				ElementType: hwtypes.MACAddressType{},
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.UseStateForUnknown(),
-					keepEquivalentMACs{},
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_ap_group.ApGroupResourceSchema(ctx)
+	// The released schema describes this surface in plain text, which a
+	// generated schema cannot express; see plainDescriptions.
+	plainDescriptions(&resp.Schema)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *apGroupResource) Configure(
@@ -493,7 +446,7 @@ func (r *apGroupResource) apGroupToModel(
 	// that never reaches the set itself: overwriting "AA-BB-.." with the
 	// controller's "aa:bb:.." leaves a diff that no apply can settle, because
 	// device_macs is Required and the config keeps producing the original form.
-	if !macSetsEqual(ctx, model.DeviceMacs, macs) {
+	if !planmodifiers.MACSetsEqual(ctx, model.DeviceMacs, macs) {
 		macsSet, d := types.SetValueFrom(ctx, hwtypes.MACAddressType{}, macs)
 		diags.Append(d...)
 		model.DeviceMacs = macsSet
@@ -502,109 +455,13 @@ func (r *apGroupResource) apGroupToModel(
 	return diags
 }
 
-// keepEquivalentMACs keeps the stored device_macs when the configuration names
-// the same addresses in a different format.
-//
-// hwtypes.MACAddressType compares elements semantically, but a Set identifies
-// its members by their string value, so that never reaches the set. Terraform
-// also never consults semantic equality while building a plan — the framework
-// applies it on create, read and update only. Rewriting an applied
-// aa:bb:cc:dd:ee:ff as AA-BB-CC-DD-EE-FF would otherwise plan a change with
-// nothing behind it. A real membership change still plans.
-type keepEquivalentMACs struct{}
-
-func (keepEquivalentMACs) Description(_ context.Context) string {
-	return "Keeps the stored MAC addresses when the configuration writes the same ones differently."
-}
-
-func (m keepEquivalentMACs) MarkdownDescription(ctx context.Context) string {
-	return m.Description(ctx)
-}
-
-func (keepEquivalentMACs) PlanModifySet(
-	ctx context.Context,
-	req planmodifier.SetRequest,
-	resp *planmodifier.SetResponse,
-) {
-	if req.StateValue.IsNull() || req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-
-	var configMACs []string
-	if diags := req.ConfigValue.ElementsAs(ctx, &configMACs, false); diags.HasError() {
-		return
-	}
-	if macSetsEqual(ctx, req.StateValue, configMACs) {
-		resp.PlanValue = req.StateValue
-	}
-}
-
-// canonicalMAC reduces a MAC to a comparable form, ignoring the separator and
-// case differences that distinguish "AA-BB-CC-DD-EE-FF" from "aa:bb:cc:dd:ee:ff".
-func canonicalMAC(mac string) string {
-	return strings.ToLower(strings.NewReplacer("-", "", ":", "", ".", "").Replace(mac))
-}
-
-// macSetsEqual reports whether a set already in state holds the same addresses
-// the controller returned, disregarding how each one is written.
-func macSetsEqual(ctx context.Context, current types.Set, apiMACs []string) bool {
-	if current.IsNull() || current.IsUnknown() {
-		return false
-	}
-
-	var stateMACs []string
-	if diags := current.ElementsAs(ctx, &stateMACs, false); diags.HasError() {
-		return false
-	}
-	if len(stateMACs) != len(apiMACs) {
-		return false
-	}
-
-	seen := make(map[string]int, len(stateMACs))
-	for _, mac := range stateMACs {
-		seen[canonicalMAC(mac)]++
-	}
-	for _, mac := range apiMACs {
-		key := canonicalMAC(mac)
-		if seen[key] == 0 {
-			return false
-		}
-		seen[key]--
-	}
-	return true
-}
-
 // ListResourceConfigSchema implements [list.ListResource].
 func (r *apGroupResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List AP groups in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list AP groups from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_ap_group.ApGroupListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

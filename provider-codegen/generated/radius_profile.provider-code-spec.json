@@ -1,0 +1,295 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "radius_profile",
+      "schema": {
+        "attributes": [
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Specifies whether to use RADIUS accounting."
+            },
+            "name": "accounting_enabled"
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Specifies whether to use interim_update."
+            },
+            "name": "interim_update_enabled"
+          },
+          {
+            "name": "interim_update_interval",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "default": {
+                "static": "1h0m0s"
+              },
+              "description": "Specifies the RADIUS interim update interval, as a Go duration string (e.g. `1h`, `3600s`). Defaults to `1h0m0s`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the profile."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the settings with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Specifies whether to use usg as a RADIUS accounting server."
+            },
+            "name": "use_usg_acct_server"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Specifies whether to use usg as a RADIUS authentication server."
+            },
+            "name": "use_usg_auth_server"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": false
+              },
+              "description": "Specifies whether to use vlan on wired connections."
+            },
+            "name": "vlan_enabled"
+          },
+          {
+            "name": "vlan_wlan_mode",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": ""
+              },
+              "description": "Specifies whether to use vlan on wireless connections. Must be one of `disabled`, `optional`, or `required`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"disabled\", \"optional\", \"required\")"
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "blocks": [
+          {
+            "list_nested": {
+              "description": "RADIUS accounting servers.",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "ip",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "IP address of the accounting server. Optional: the controller-managed default profile returns a server entry without an IP, so importing it must not force one.",
+                      "validators": [
+                        {
+                          "custom": {
+                            "imports": [
+                              {
+                                "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                              }
+                            ],
+                            "schema_definition": "validators.IPv4Validator()"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed_optional",
+                      "default": {
+                        "static": 1813
+                      },
+                      "description": "Port of accounting service.",
+                      "validators": [
+                        {
+                          "custom": {
+                            "imports": [
+                              {
+                                "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                              }
+                            ],
+                            "schema_definition": "int64validator.Between(1, 65535)"
+                          }
+                        }
+                      ]
+                    },
+                    "name": "port"
+                  },
+                  {
+                    "name": "secret",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "Shared secret for accounting server.",
+                      "sensitive": true
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "acct_server"
+          },
+          {
+            "list_nested": {
+              "description": "RADIUS authentication servers.",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "ip",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "IP address of the authentication server. Optional: the controller-managed default profile (e.g. the one created when a gateway RADIUS/VPN service is enabled, with `use_usg_auth_server = true`) returns a server entry without an IP, so importing it must not force one.",
+                      "validators": [
+                        {
+                          "custom": {
+                            "imports": [
+                              {
+                                "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                              }
+                            ],
+                            "schema_definition": "validators.IPv4Validator()"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed_optional",
+                      "default": {
+                        "static": 1812
+                      },
+                      "description": "Port of authentication service.",
+                      "validators": [
+                        {
+                          "custom": {
+                            "imports": [
+                              {
+                                "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                              }
+                            ],
+                            "schema_definition": "int64validator.Between(1, 65535)"
+                          }
+                        }
+                      ]
+                    },
+                    "name": "port"
+                  },
+                  {
+                    "name": "secret",
+                    "string": {
+                      "computed_optional_required": "required",
+                      "description": "Shared secret for authentication server.",
+                      "sensitive": true
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "auth_server"
+          }
+        ],
+        "markdown_description": "Manages RADIUS profiles."
+      }
+    }
+  ]
+}

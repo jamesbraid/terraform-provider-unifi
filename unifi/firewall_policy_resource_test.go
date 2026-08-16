@@ -12,8 +12,34 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
+
+func TestAccFirewallPolicyList_emptyOrSeeded(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		Steps: []resource.TestStep{{
+			Query: true,
+			Config: `
+provider "unifi" {}
+list "unifi_firewall_policy" "test" {
+  provider = unifi
+  config {}
+}
+`,
+			QueryResultChecks: []querycheck.QueryResultCheck{
+				querycheck.ExpectLengthAtLeast("unifi_firewall_policy.test", 0),
+			},
+		}},
+	})
+}
 
 func ptrInt64(v int64) *int64 { return &v }
 
@@ -1577,6 +1603,40 @@ func TestFirewallPolicyEndpointListsUseStateForUnknown(t *testing.T) {
 			if len(la.PlanModifiers) == 0 {
 				t.Errorf("%s.%s must have a plan modifier (UseStateForUnknown) (#338)", ep, key)
 			}
+		}
+	}
+}
+
+// The v0 schema is derived from the live one by swapping source/destination
+// `port` back to an integer, which is the only structural difference between
+// the versions. Since the schema is now generated, that attribute arrives
+// wrapped in a custom object type, and a custom type is what the framework asks
+// for the object's shape — so replacing the attribute without dropping the
+// custom type leaves the prior schema still calling `port` a string.
+//
+// Nothing else catches it. The upgrade path runs only against real v0 state, so
+// the fault would first appear as a decode failure in somebody's plan, long
+// after the change that caused it.
+func TestFirewallPolicyV0SchemaDescribesPortAsAnInteger(t *testing.T) {
+	ctx := context.Background()
+	upgrader, ok := (&firewallPolicyResource{}).UpgradeState(ctx)[0]
+	if !ok {
+		t.Fatal("no v0 state upgrader is registered")
+	}
+	if upgrader.PriorSchema == nil {
+		t.Fatal("the v0 upgrader carries no prior schema, so v0 state cannot be decoded")
+	}
+	for _, key := range []string{"source", "destination"} {
+		object, ok := upgrader.PriorSchema.Attributes[key].GetType().(attr.TypeWithAttributeTypes)
+		if !ok {
+			t.Fatalf("v0 %q is %T, which does not describe attribute types", key, upgrader.PriorSchema.Attributes[key].GetType())
+		}
+		port, exists := object.AttributeTypes()["port"]
+		if !exists {
+			t.Fatalf("v0 %q has no port attribute", key)
+		}
+		if port != types.Int64Type {
+			t.Errorf("v0 %s.port is %v, want types.Int64Type — v0 state stores it as a number", key, port)
 		}
 	}
 }

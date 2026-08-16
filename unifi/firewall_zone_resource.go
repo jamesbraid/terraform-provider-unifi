@@ -9,15 +9,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_firewall_zone"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -97,54 +95,11 @@ func (r *firewallZoneResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a zone-based firewall zone (UniFi OS 8.x+). Create a zone and " +
-			"attach networks to it, then reference its `id` from `unifi_firewall_policy`.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the firewall zone.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the zone belongs to.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the firewall zone.",
-				Required:            true,
-			},
-			"network_ids": schema.ListAttribute{
-				MarkdownDescription: "IDs of the networks assigned to this zone.",
-				ElementType:         types.StringType,
-				Optional:            true,
-				Computed:            true,
-			},
-			"zone_key": schema.StringAttribute{
-				MarkdownDescription: "The controller-assigned key of the zone.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"default_zone": schema.BoolAttribute{
-				MarkdownDescription: "Whether this is a controller default zone.",
-				Computed:            true,
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_firewall_zone.FirewallZoneResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *firewallZoneResource) Configure(
@@ -326,6 +281,9 @@ func (r *firewallZoneResource) Delete(
 
 	err := r.client.DeleteFirewallZone(ctx, site, data.ID.ValueString())
 	if err != nil {
+		if _, ok := err.(*unifi.NotFoundError); ok {
+			return
+		}
 		resp.Diagnostics.AddError("Error Deleting Firewall Zone", err.Error())
 		return
 	}
@@ -387,36 +345,14 @@ func (r *firewallZoneResource) firewallZoneToModel(
 }
 
 // ListResourceConfigSchema implements [list.ListResource].
+//
+// The schema is generated. See firewall_zone_list_resource_gen.go.
 func (r *firewallZoneResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List firewall zones in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list firewall zones from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_firewall_zone.FirewallZoneListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].

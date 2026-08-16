@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "surface_name": "unifi_dynamic_dns",
+  "resource": "unifi_dynamic_dns",
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "8138b4cc1fd1eedc3aab8c0144af83f451c00def5a5fa1c8f6e3058b52463152"
+  },
+  "baseline_digests": {
+    "resource": "",
+    "list_resource": "afb5029f384dcec79370aae8890e8eea114557841ff0441a0d79ae4e7e6448ea"
+  },
+  "structural_fields": 14,
+  "generated_attributes": 1,
+  "provider_owned_seams": 1,
+  "unresolved_fields": [],
+  "stale_policy_fields": []
+}

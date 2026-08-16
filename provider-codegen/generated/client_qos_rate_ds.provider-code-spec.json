@@ -1,0 +1,51 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "datasources": [
+    {
+      "name": "client_qos_rate_ds",
+      "schema": {
+        "attributes": [
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of this client QOS rate."
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "The name of the client QOS rate to look up."
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed",
+              "description": "The maximum download rate."
+            },
+            "name": "qos_rate_max_down"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed",
+              "description": "The maximum upload rate."
+            },
+            "name": "qos_rate_max_up"
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site the client QOS rate is associated with."
+            }
+          }
+        ],
+        "markdown_description": "Data source for client QOS rates."
+      }
+    }
+  ]
+}

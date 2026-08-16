@@ -9,25 +9,17 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_vpn_client"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_client"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -167,140 +159,15 @@ func (r *vpnClientResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "`unifi_vpn_client` manages WireGuard VPN client connections in the UniFi controller.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the VPN client.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the VPN client with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the VPN client.",
-				Required:            true,
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether the VPN client is enabled.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-			},
-			"subnet": schema.StringAttribute{
-				MarkdownDescription: "The local IP address for the WireGuard tunnel in CIDR notation (e.g., `10.0.0.2/24`).",
-				Required:            true,
-				CustomType:          cidrtypes.IPv4PrefixType{},
-			},
-			"default_route": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to use the VPN as the default route.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"pull_dns": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to pull DNS servers from the VPN.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"wireguard": schema.SingleNestedAttribute{
-				MarkdownDescription: "WireGuard VPN configuration. Specify either `configuration` for file upload mode or `peer` for manual configuration.",
-				Required:            true,
-				Attributes: map[string]schema.Attribute{
-					"private_key": schema.StringAttribute{
-						MarkdownDescription: "WireGuard private key for this client.",
-						Required:            true,
-						Sensitive:           true,
-					},
-					"configuration": schema.SingleNestedAttribute{
-						MarkdownDescription: "File-based WireGuard configuration. Provide a complete WireGuard .conf file.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"content": schema.StringAttribute{
-								MarkdownDescription: "Base64-encoded WireGuard configuration file content.",
-								Required:            true,
-								Sensitive:           true,
-							},
-							"filename": schema.StringAttribute{
-								MarkdownDescription: "Filename of the WireGuard configuration file.",
-								Required:            true,
-							},
-						},
-					},
-					"peer": schema.SingleNestedAttribute{
-						MarkdownDescription: "Manual WireGuard peer configuration. Specify peer endpoint and public key.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"ip": schema.StringAttribute{
-								MarkdownDescription: "WireGuard peer endpoint IP address.",
-								Required:            true,
-							},
-							"port": schema.Int64Attribute{
-								MarkdownDescription: "WireGuard peer endpoint port.",
-								Required:            true,
-								Validators: []validator.Int64{
-									int64validator.Between(1, 65535),
-								},
-							},
-							"public_key": schema.StringAttribute{
-								MarkdownDescription: "WireGuard peer public key.",
-								Required:            true,
-								Sensitive:           true,
-							},
-						},
-					},
-					"preshared_key_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether to use a preshared key for additional security.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"preshared_key": schema.StringAttribute{
-						MarkdownDescription: "WireGuard preshared key. Required when preshared_key_enabled is true.",
-						Optional:            true,
-						Sensitive:           true,
-					},
-					"interface": schema.StringAttribute{
-						MarkdownDescription: "WAN interface to use for the VPN connection (e.g., `wan`, `wan2`).",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("wan"),
-						Validators: []validator.String{
-							stringvalidator.RegexMatches(
-								regexp.MustCompile(`^wan[2-9]?$`),
-								"must be 'wan' or 'wan2' through 'wan9'",
-							),
-						},
-					},
-					"dns_servers": schema.ListAttribute{
-						MarkdownDescription: "DNS servers for the WireGuard interface. Required for manual mode. Must specify 1-2 DNS server addresses.",
-						Optional:            true,
-						ElementType:         types.StringType,
-						Validators: []validator.List{
-							listvalidator.SizeBetween(1, 2),
-						},
-					},
-				},
-			},
-			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-			}),
-		},
-	}
+	resp.Schema = resource_vpn_client.VpnClientResourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx, timeouts.Opts{
+		Create: true,
+		Read:   true,
+		Update: true,
+		Delete: true,
+	})
 }
 
 func (r *vpnClientResource) Configure(
@@ -848,31 +715,7 @@ func (r *vpnClientResource) ListResourceConfigSchema(
 	req list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List VPN client connections in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list VPN clients from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_vpn_client.VpnClientListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].
