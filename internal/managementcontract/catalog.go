@@ -24,7 +24,30 @@ type SurfaceContract struct {
 	catalogparity.SurfaceKey
 	State          catalogparity.AdmissionState `json:"state"`
 	EvidenceSHA256 string                       `json:"evidence_sha256,omitempty"`
-	AttemptResult  paritydiff.AttemptResult     `json:"attempt_result,omitempty"`
+
+	// AttemptResult IS NOT MEASURED TODAY, AND `pass` HERE MEANS "NOT YET
+	// MEASURED" RATHER THAN "COMPARED AND AGREED". Task 112.
+	//
+	// The intended producer is paritydiff.Compare, which classifies a released
+	// and a candidate Observation of one Scenario into exactly this type -- no
+	// conversion, the signatures already line up. What does not exist is the
+	// layer that would produce its inputs: nothing anywhere constructs a
+	// paritydiff.Observation, a Scenario or a History, so Compare has nothing
+	// to be called with and this field has nothing to be filled from.
+	//
+	// So its only non-test writer is a literal, at
+	// releasequalification/release.go, and that is not carelessness -- it is
+	// the only value available at a receipt-assembly site that holds digests of
+	// other receipts and no observations at all.
+	//
+	// The two checks below are therefore comparing a constant against itself.
+	// They are correct as written and must not be relaxed: the gate is right,
+	// its input is the defect. Wiring it is a subsystem rather than a call --
+	// an adapter harness that runs both providers per scenario and captures
+	// five dimensions each -- and 2026-08-05-wave-0-catalog-parity.md specifies
+	// the consuming half and stops, so this was never wired because the
+	// producing half was never specified.
+	AttemptResult paritydiff.AttemptResult `json:"attempt_result,omitempty"`
 }
 
 type CatalogEvidence struct {
@@ -106,6 +129,9 @@ func VerifyCatalogPromotion(contract CatalogContract, evidence CatalogEvidence, 
 		if surface.State != catalogparity.ReleaseReady {
 			return fmt.Errorf("surface %s/%s is %q, not release_ready", surface.Kind, surface.Name, surface.State)
 		}
+		// Vacuous today: the only non-test writer of AttemptResult is a
+		// literal Pass, because its producer's inputs are never built. See
+		// SurfaceContract.AttemptResult. Correct as written -- do not relax it.
 		if surface.AttemptResult != paritydiff.Pass {
 			return fmt.Errorf("surface %s/%s attempt result is %q, want pass", surface.Kind, surface.Name, surface.AttemptResult)
 		}
@@ -176,6 +202,8 @@ func verifySurfaceEvidence(surface SurfaceContract, entry catalogparity.LedgerEn
 			return fmt.Errorf("surface %s/%s: %w", surface.Kind, surface.Name, err)
 		}
 	}
+	// Vacuous today, for the same reason as the check in
+	// VerifyCatalogPromotion. See SurfaceContract.AttemptResult, task 112.
 	if surface.State == catalogparity.ReleaseReady && surface.AttemptResult != paritydiff.Pass {
 		return fmt.Errorf("surface %s/%s attempt result is %q, want pass", surface.Kind, surface.Name, surface.AttemptResult)
 	}

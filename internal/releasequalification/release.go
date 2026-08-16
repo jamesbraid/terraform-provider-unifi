@@ -220,6 +220,11 @@ func BuildReleaseReadyArtifacts(input ReleaseReadyInput) (ReleaseReadyArtifacts,
 		})
 		promotionSurfaces = append(promotionSurfaces, managementcontract.SurfaceContract{
 			SurfaceKey: entry.SurfaceKey, State: catalogparity.ReleaseReady,
+			// A LITERAL BECAUSE THERE IS NOTHING TO MEASURE IT FROM, not
+			// because the comparison was made and passed. paritydiff.Compare
+			// would produce this value, but nothing builds the Observations it
+			// consumes, and this site holds digests of other receipts rather
+			// than observations of a provider. Task 112.
 			EvidenceSHA256: receiptSHA256, AttemptResult: paritydiff.Pass,
 		})
 		measuredSurfaces[entry.SurfaceKey] = receiptSHA256
