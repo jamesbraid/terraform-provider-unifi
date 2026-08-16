@@ -56,9 +56,36 @@ type Finding struct {
 	Kind Kind
 }
 
-// String is the inventory line format: stable, sorted, one per line.
+// String is the inventory line format: stable, sorted, one per line, with the
+// defect this test is named after when there is one.
 func (f Finding) String() string {
-	return fmt.Sprintf("%s\t%s\t%s", f.File, f.Name, f.Kind)
+	line := fmt.Sprintf("%s\t%s\t%s", f.File, f.Name, f.Kind)
+	if slot, ok := knownBugSlots[f.File+"\t"+f.Name]; ok {
+		line += "\t" + slot
+	}
+	return line
+}
+
+// knownBugSlots names the defect a skipped test is already named after.
+//
+// These are not noise in the list, they are the most actionable entries in it.
+// Every one of these bugs was found by a controller, a schema diff or a code
+// read WHILE a test bearing its name sat green in CI, so when a fix lands the
+// reproduction has a slot waiting with the right name. Without this
+// cross-reference the next person to fix unifi_wan writes a new test beside
+// Test_wanResource_Create rather than filling it, and the skip survives another
+// round.
+//
+// Keyed on file and name rather than line, for the same reason the inventory
+// carries no line numbers: an edit above a test must not rewrite the file.
+var knownBugSlots = map[string]string{
+	"unifi/wan_resource_test.go\tTest_wanResource_Create":                      "task 99: unifi_wan cannot create a static WAN at all",
+	"unifi/wan_resource_test.go\tTest_wanResource_applyPlanToState":            "task 99: unifi_wan cannot create a static WAN at all",
+	"unifi/wlan_resource_test.go\tTest_wlanFrameworkResource_Create":           "task 102: unifi_wlan cannot create",
+	"unifi/wlan_resource_test.go\tTest_wlanFrameworkResource_Update":           "task 102: unifi_wlan cannot update",
+	"unifi/wlan_resource_test.go\tTest_wlanFrameworkResource_applyPlanToState": "task 102: unifi_wlan cannot create or update",
+	"unifi/wlan_resource_test.go\tTestAccWLANList_basic":                       "task 102: its own skip reason names the create bug",
+	"unifi/vpn_server_resource_test.go\tTest_vpnServerResource_ImportState":    "task 116: vpn_server drops a third DNS server (SDK marshalUserVPN)",
 }
 
 // methods on *testing.T that can actually fail a test. Skip and Log are
