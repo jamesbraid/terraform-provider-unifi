@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -89,7 +90,9 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies whether to use usg as a RADIUS authentication server.",
 				MarkdownDescription: "Specifies whether to use usg as a RADIUS authentication server.",
-				Default:             booldefault.StaticBool(false),
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"vlan_enabled": schema.BoolAttribute{
 				Optional:            true,

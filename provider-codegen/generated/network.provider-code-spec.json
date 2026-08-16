@@ -436,10 +436,19 @@
                 {
                   "bool": {
                     "computed_optional_required": "computed_optional",
-                    "default": {
-                      "static": false
-                    },
-                    "description": "Specifies whether DNS auto-discovery is enabled for DHCPv6."
+                    "description": "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
                   },
                   "name": "dns_auto"
                 },
