@@ -402,14 +402,14 @@ func walkResourceAttributes(
 		case rschema.ListNestedAttribute:
 			*found = append(*found, nestedAttribute{
 				Path: path, Members: attributeNames(attribute.NestedObject.Attributes),
-				CustomType: customTypeName(attribute.CustomType),
+				CustomType:        customTypeName(attribute.CustomType),
 				ElementCustomType: customTypeName(attribute.NestedObject.CustomType),
 			})
 			walkResourceAttributes(ctx, path, attribute.NestedObject.Attributes, found)
 		case rschema.SetNestedAttribute:
 			*found = append(*found, nestedAttribute{
 				Path: path, Members: attributeNames(attribute.NestedObject.Attributes),
-				CustomType: customTypeName(attribute.CustomType),
+				CustomType:        customTypeName(attribute.CustomType),
 				ElementCustomType: customTypeName(attribute.NestedObject.CustomType),
 			})
 			walkResourceAttributes(ctx, path, attribute.NestedObject.Attributes, found)
@@ -443,14 +443,14 @@ func walkDataSourceAttributes(
 		case dschema.ListNestedAttribute:
 			*found = append(*found, nestedAttribute{
 				Path: path, Members: dataSourceAttributeNames(attribute.NestedObject.Attributes),
-				CustomType: customTypeName(attribute.CustomType),
+				CustomType:        customTypeName(attribute.CustomType),
 				ElementCustomType: customTypeName(attribute.NestedObject.CustomType),
 			})
 			walkDataSourceAttributes(ctx, path, attribute.NestedObject.Attributes, found)
 		case dschema.SetNestedAttribute:
 			*found = append(*found, nestedAttribute{
 				Path: path, Members: dataSourceAttributeNames(attribute.NestedObject.Attributes),
-				CustomType: customTypeName(attribute.CustomType),
+				CustomType:        customTypeName(attribute.CustomType),
 				ElementCustomType: customTypeName(attribute.NestedObject.CustomType),
 			})
 			walkDataSourceAttributes(ctx, path, attribute.NestedObject.Attributes, found)
