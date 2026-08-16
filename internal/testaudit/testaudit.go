@@ -274,26 +274,66 @@ func isSkipStub(fd *ast.FuncDecl) bool {
 	return false
 }
 
-// rangesOverEmptyTable reports a range over a slice or map literal with no
-// elements, directly or through a variable.
+// rangesOverEmptyTable reports a range over a slice literal with no elements,
+// directly or through a variable that stays empty.
+//
+// "Declared empty" is not "empty". An accumulator is declared empty and then
+// filled -- census := map[string]int{} ... census[mode]++ ... range census --
+// and reading only the declaration reports a test that runs and asserts as one
+// whose body never executes. That was a real false positive here, in
+// TestEvidenceModesCoverTheCommittedInventory, which asserts perfectly well.
+//
+// Two conditions rather than one, and both are needed. The literal must be a
+// SLICE, because the table-driven shape this exists to find is always
+// tests := []struct{...}{} and an empty map is far more often an accumulator.
+// And the variable must never be written after, which is what separates a table
+// nobody filled in from an accumulator the loop above fills.
 func rangesOverEmptyTable(fd *ast.FuncDecl) bool {
 	empty := map[string]bool{}
+	written := map[string]bool{}
+
 	ast.Inspect(fd, func(n ast.Node) bool {
-		assign, ok := n.(*ast.AssignStmt)
-		if !ok {
-			return true
-		}
-		for i, rhs := range assign.Rhs {
-			lit, ok := rhs.(*ast.CompositeLit)
-			if !ok || len(lit.Elts) != 0 || i >= len(assign.Lhs) {
-				continue
+		switch stmt := n.(type) {
+		case *ast.AssignStmt:
+			// x[k] = v, or a second assignment to x, is a write.
+			for _, lhs := range stmt.Lhs {
+				switch target := lhs.(type) {
+				case *ast.IndexExpr:
+					if id, ok := target.X.(*ast.Ident); ok {
+						written[id.Name] = true
+					}
+				case *ast.Ident:
+					if stmt.Tok == token.ASSIGN {
+						written[target.Name] = true
+					}
+				}
 			}
-			if id, ok := assign.Lhs[i].(*ast.Ident); ok {
-				empty[id.Name] = true
+			for i, rhs := range stmt.Rhs {
+				lit, ok := rhs.(*ast.CompositeLit)
+				if !ok || len(lit.Elts) != 0 || i >= len(stmt.Lhs) {
+					continue
+				}
+				if _, isSlice := lit.Type.(*ast.ArrayType); !isSlice {
+					continue
+				}
+				if id, ok := stmt.Lhs[i].(*ast.Ident); ok {
+					empty[id.Name] = true
+				}
+			}
+		case *ast.IncDecStmt:
+			// census[mode]++ fills an accumulator.
+			if index, ok := stmt.X.(*ast.IndexExpr); ok {
+				if id, ok := index.X.(*ast.Ident); ok {
+					written[id.Name] = true
+				}
 			}
 		}
 		return true
 	})
+
+	for name := range written {
+		delete(empty, name)
+	}
 
 	found := false
 	ast.Inspect(fd, func(n ast.Node) bool {
