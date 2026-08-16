@@ -156,6 +156,12 @@ done
 # THIS IS THE CALL SITE. Until it existed, internal/schemaparity was a producer
 # nobody invoked: correct, unit-tested, and asked nothing.
 #
+# Each invocation is ONE LINE, deliberately. tree-state-coverage_test.sh finds
+# call sites with a per-line grep, so a continuation would hide the -tree-state
+# from it and report four call sites omitting a flag they in fact pass. Every
+# other guarded invocation in this repository is a single line for the same
+# reason.
+#
 # The `cd` is load-bearing. `go run` resolves a package against the CURRENT
 # module, not against the path it is handed, so an absolute path works only when
 # the caller already happens to be inside the repository. Proven from /tmp:
@@ -165,28 +171,12 @@ done
 # nothing else. Running the full binary here would rebuild both providers and
 # re-dump both CLIs, and the determinism, cross-CLI and inverted-control
 # assertions below would then be judging bytes it never saw.
-(cd "${repository_root}" && go run ./cmd/schema-parity \
-    -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" \
-    -cli terraform \
-    -released-canonical "${work_root}/released.terraform.canonical.json" \
-    -candidate-canonical "${work_root}/candidate.terraform.canonical.json")
-(cd "${repository_root}" && go run ./cmd/schema-parity \
-    -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" \
-    -cli tofu \
-    -released-canonical "${work_root}/released.tofu.canonical.json" \
-    -candidate-canonical "${work_root}/candidate.tofu.canonical.json")
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli terraform -released-canonical "${work_root}/released.terraform.canonical.json" -candidate-canonical "${work_root}/candidate.terraform.canonical.json" -tree-state "$(evidence_tree_json)")
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli tofu -released-canonical "${work_root}/released.tofu.canonical.json" -candidate-canonical "${work_root}/candidate.tofu.canonical.json" -tree-state "$(evidence_tree_json)")
 # The frozen released baseline against the built candidate: the same claim as
 # the pair above by a second route, so it goes through the same ledger.
-(cd "${repository_root}" && go run ./cmd/schema-parity \
-    -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" \
-    -cli terraform-baseline \
-    -released-canonical "${repository_root}/provider-contracts/schema/terraform-1.15.8.json" \
-    -candidate-canonical "${work_root}/candidate.terraform.canonical.json")
-(cd "${repository_root}" && go run ./cmd/schema-parity \
-    -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" \
-    -cli tofu-baseline \
-    -released-canonical "${repository_root}/provider-contracts/schema/tofu-1.12.1.json" \
-    -candidate-canonical "${work_root}/candidate.tofu.canonical.json")
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli terraform-baseline -released-canonical "${repository_root}/provider-contracts/schema/terraform-1.15.8.json" -candidate-canonical "${work_root}/candidate.terraform.canonical.json" -tree-state "$(evidence_tree_json)")
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli tofu-baseline -released-canonical "${repository_root}/provider-contracts/schema/tofu-1.12.1.json" -candidate-canonical "${work_root}/candidate.tofu.canonical.json" -tree-state "$(evidence_tree_json)")
 cmp "${repository_root}/build/m0/provider-schema-digests.json" \
     "${work_root}/candidate.terraform.digests.json"
 
