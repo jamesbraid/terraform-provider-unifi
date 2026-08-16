@@ -36,14 +36,31 @@ All notable changes to this project will be documented in this file.
   If you added an explicit value to work around one of these, it can be dropped. Upgrading plans no
   changes against existing state.
 
-- **`unifi_network`: a `dhcp_v6_server` block could not be applied unless `ipv6_interface_type` was
-  stated.** The apply failed on three attributes at once — `dhcp_v6_server.enabled`, `.start` and
-  `.stop` — which reads like three defects and is one. `ipv6_interface_type` defaulting to `none`
-  switched IPv6 off, and the block went down with it. An A/B against the same controller with the
-  same binary isolates it: with the attribute omitted the apply exits 1 and the controller's record
-  loses `dhcpdv6_enabled` entirely; with `ipv6_interface_type = "static"` stated, the same apply
-  exits 0 and every field survives. The block was never broken. Fixed by the default removal above,
-  and listed separately only because the symptom named the wrong attributes.
+- **`unifi_network`: a `dhcp_v6_server` block could not be applied unless the IPv6 attributes were
+  stated explicitly.** The apply failed naming `dhcp_v6_server.enabled`, `.start` and `.stop`, which
+  reads like three faults in one block. It was two faults, neither of them in the block.
+
+  The first is the default above. `ipv6_interface_type` defaulting to `none` switched IPv6 off and
+  `enabled` went down with it — established by an A/B against the same controller with the same
+  binary: with the attribute omitted the apply exits 1 and the controller's record loses
+  `dhcpdv6_enabled` entirely; with `ipv6_interface_type = "static"` stated, the same apply exits 0
+  and every field survives.
+
+  The second only became visible once the first was fixed and IPv6 stayed on. `ipv6_static_subnet`,
+  `dhcp_v6_server.start` and `.stop` are assigned by the controller but were `Optional` and not
+  `Computed`, so a configuration omitting them planned null while the read brought the controller's
+  value back, and the apply aborted — `.dhcp_v6_server.start: was null, but now
+  cty.StringVal("fd41:9::2")`. That is the same fault as `ap_group_ids` below, on a different
+  resource. All three are now `Optional + Computed`.
+
+  **All three carry a measured abort naming the attribute**, which is worth stating because the
+  `ap_group_ids` pair does not: there, one attribute was observed and the other argued from the read
+  path and labelled inferred. These were observed.
+
+  Two things follow that are easy to get backwards. Fixing a defect is how the second one was found,
+  not a regression it introduced — it had been hidden behind the larger failure the whole time. And
+  `dhcp_server`'s own `start`/`stop` pair is untouched and was never affected; the two pairs share
+  attribute names under different parents, and only the `dhcp_v6_server` pair moved.
 
 - **`unifi_wlan`: a configuration that omits `ap_group_ids` could not complete an apply at all.**
   The controller always returns an AP group, the read path copied it into state, and Terraform
