@@ -59,6 +59,17 @@ steps:
       - apt-get update
       - apt-get install --yes --no-install-recommends jq
       - export GOCACHE=/ci-cache/go-build GOMODCACHE=/ci-cache/go-mod GO_UNIFI_SOURCE_ROOT=/ci-cache/go-unifi-source
+      # Nothing invoked this until now. It reports which evidence generators
+      # carry the dirty-tree guard, over a population derived from the tree
+      # rather than listed in the check, and it fails when a generator appears
+      # in neither the guarded set nor the exemption list. A generator arrives
+      # in a push, and this is the only workflow that runs on every push, so
+      # this is where it has to be to catch one.
+      #
+      # It reads files and nothing else -- no network, no build, no controller
+      # -- so it goes ahead of everything expensive: a coverage regression
+      # should not wait on the Go suite to be reported.
+      - bash .woodpecker/scripts/tree-state-coverage_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
       - export GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org GOVCS='*:off' GOTOOLCHAIN=local
