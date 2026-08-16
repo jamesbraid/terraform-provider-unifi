@@ -317,11 +317,25 @@ for entry in "${committed_artifact[@]}"; do
     #                                             is not an invocation
     #   README.md + a real cmp line appended      ok -- the control, so the
     #                                             matcher is not simply broken
+    # BOTH halves are read from the comment-stripped body, and that symmetry is
+    # the point. The first version stripped comments only before looking for
+    # cmp, so a file naming the artifact in a COMMENT while running cmp on
+    # something else satisfied the conjunction. Deleting the real comparison
+    # from catalog-build-schema.sh left this green whenever a comment still
+    # mentioned the path, and that file runs seven other cmp calls.
+    #
+    # Proven with a discriminating pair, because one case alone cannot tell a
+    # working check from a lucky one:
+    #   cmp removed, no comment            FAIL, correct
+    #   cmp removed, a comment names it    PASSED before this fix, FAILs now
     comparer=""
     while IFS= read -r candidate; do
         [[ $(basename "${candidate}") == "$(basename "${BASH_SOURCE[0]}")" ]] && continue
-        sed 's/#.*//' "${candidate}" | grep -qE '(^|[^[:alnum:]_])cmp[[:space:]]' &&
-            comparer=${candidate} && break
+        candidate_body=$(sed 's/#.*//' "${candidate}")
+        printf '%s\n' "${candidate_body}" | grep -qF "${artifact}" || continue
+        printf '%s\n' "${candidate_body}" | grep -qE '(^|[^[:alnum:]_])cmp[[:space:]]' || continue
+        comparer=${candidate}
+        break
     done < <(grep -rlF "${artifact}" "${scripts}" 2>/dev/null)
     if [[ -z ${comparer} ]]; then
         fail "${name} is exempt because ${artifact} is compared byte for byte, but no script both names it and runs cmp; the reason no longer holds"
