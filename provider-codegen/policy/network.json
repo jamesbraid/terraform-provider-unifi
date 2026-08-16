@@ -878,8 +878,20 @@
   },
   {
    "attribute": {
-    "computed_optional_required": "optional",
-    "description": "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`."
+    "computed_optional_required": "computed_optional",
+    "description": "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
+    "plan_modifiers": [
+     {
+      "custom": {
+       "imports": [
+        {
+         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+        }
+       ],
+       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+      }
+     }
+    ]
    },
    "disposition": "managed",
    "structural_name": "ipv6_subnet",
@@ -2302,8 +2314,20 @@
     },
     {
      "attribute": {
-      "computed_optional_required": "optional",
-      "description": "The start of the DHCPv6 address range."
+      "computed_optional_required": "computed_optional",
+      "description": "The start of the DHCPv6 address range.",
+      "plan_modifiers": [
+       {
+        "custom": {
+         "imports": [
+          {
+           "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+          }
+         ],
+         "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+        }
+       }
+      ]
      },
      "disposition": "managed",
      "structural_name": "dhcpdv6_start",
@@ -2311,8 +2335,20 @@
     },
     {
      "attribute": {
-      "computed_optional_required": "optional",
-      "description": "The end of the DHCPv6 address range."
+      "computed_optional_required": "computed_optional",
+      "description": "The end of the DHCPv6 address range.",
+      "plan_modifiers": [
+       {
+        "custom": {
+         "imports": [
+          {
+           "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+          }
+         ],
+         "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+        }
+       }
+      ]
      },
      "disposition": "managed",
      "structural_name": "dhcpdv6_stop",
