@@ -552,10 +552,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Setting preference. Must be one of `auto` or `manual`.",
 				MarkdownDescription: "Setting preference. Must be one of `auto` or `manual`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("auto", "manual"),
 				},
-				Default: stringdefault.StaticString("auto"),
 			},
 			"site": schema.StringAttribute{
 				Optional:            true,
