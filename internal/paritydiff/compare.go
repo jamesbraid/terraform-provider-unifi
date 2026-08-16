@@ -61,11 +61,16 @@ func Compare(scenario Scenario, baseline, candidate Observation) Attempt {
 		return attempt
 	}
 
+	// What each dimension found, kept apart from the verdict. A dimension that
+	// could not be compared records why in Differences, so the length of that
+	// slice cannot distinguish "they differ" from "we could not look" -- which
+	// is why the verdict is decided from these three rather than from it.
+	var sawDivergence, sawInvalid, sawUncovered bool
 	for _, dimension := range dimensions {
 		baselineRaw := observationDimension(baseline, dimension)
 		candidateRaw := observationDimension(candidate, dimension)
 		if len(baselineRaw) == 0 || len(candidateRaw) == 0 {
-			attempt.Result = Uncovered
+			sawUncovered = true
 			attempt.Differences = append(attempt.Differences, Difference{
 				Dimension: dimension,
 				Pointer:   "/",
@@ -76,17 +81,21 @@ func Compare(scenario Scenario, baseline, candidate Observation) Attempt {
 		}
 		baselineValue, err := decodeJSON(baselineRaw)
 		if err != nil {
-			attempt.Result = Invalid
+			sawInvalid = true
 			attempt.Differences = append(attempt.Differences, Difference{Dimension: dimension, Pointer: "/", Baseline: err.Error()})
 			continue
 		}
 		candidateValue, err := decodeJSON(candidateRaw)
 		if err != nil {
-			attempt.Result = Invalid
+			sawInvalid = true
 			attempt.Differences = append(attempt.Differences, Difference{Dimension: dimension, Pointer: "/", Candidate: err.Error()})
 			continue
 		}
+		found := len(attempt.Differences)
 		diffValues(dimension, "", baselineValue, candidateValue, &attempt.Differences)
+		if len(attempt.Differences) > found {
+			sawDivergence = true
+		}
 	}
 
 	sort.Slice(attempt.Differences, func(i, j int) bool {
@@ -95,14 +104,30 @@ func Compare(scenario Scenario, baseline, candidate Observation) Attempt {
 		}
 		return attempt.Differences[i].Pointer < attempt.Differences[j].Pointer
 	})
-	if attempt.Result == Invalid || attempt.Result == Uncovered {
-		return attempt
-	}
-	if len(attempt.Differences) != 0 {
+
+	// Severity, not the order the dimensions happened to be compared in.
+	//
+	// A divergence outranks both excuses because it is the only one of the
+	// three an operator can act on: it says the candidate behaves differently,
+	// where Uncovered says go and collect more evidence and Invalid says the
+	// observation itself is malformed. Reporting an excuse over a divergence we
+	// already found sends someone to gather evidence that is sitting in
+	// Differences, unread. Invalid outranks Uncovered because a malformed
+	// observation is a harness fault worth fixing before an absent one is
+	// worth chasing.
+	//
+	// The excused dimensions stay in Differences either way. The verdict
+	// changes; the evidence does not shrink.
+	switch {
+	case sawDivergence:
 		attempt.Result = Divergent
-		return attempt
+	case sawInvalid:
+		attempt.Result = Invalid
+	case sawUncovered:
+		attempt.Result = Uncovered
+	default:
+		attempt.Result = Pass
 	}
-	attempt.Result = Pass
 	return attempt
 }
 
