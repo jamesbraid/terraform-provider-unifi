@@ -30,7 +30,8 @@
           },
           {
             "name": "x_secret",
-            "type": "string"
+            "type": "string",
+            "secret_candidate": true
           }
         ]
       },
@@ -64,7 +65,8 @@
           },
           {
             "name": "x_secret",
-            "type": "string"
+            "type": "string",
+            "secret_candidate": true
           }
         ]
       },
@@ -114,29 +116,36 @@
           },
           {
             "name": "x_ca_crt",
-            "type": "string"
+            "type": "string",
+            "secret_candidate": true
           }
-        ]
+        ],
+        "secret_candidate": true
       },
       {
         "name": "x_client_crt",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_client_crt_filename",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_client_private_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_client_private_key_filename",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_client_private_key_password",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       }
     ]
   }

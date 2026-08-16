@@ -72,6 +72,11 @@ type field struct {
 	Name   string  `json:"name"`
 	Type   string  `json:"type"`
 	Fields []field `json:"fields,omitempty"`
+	// SecretCandidate marks a field whose NAME says it carries a credential.
+	// UniFi prefixes those x_ on the wire. It is a CANDIDATE, not a verdict:
+	// the policy still decides whether the field is omitted or exposed-and-
+	// masked, and the compiler refuses anything that does neither.
+	SecretCandidate bool `json:"secret_candidate,omitempty"`
 }
 
 // stringList collects a flag given more than once, in the order given, because
@@ -222,7 +227,7 @@ func walk(s *types.Struct) []field {
 			continue
 		}
 		shape, nested := describe(member.Type())
-		entry := field{Name: name, Type: shape}
+		entry := field{Name: name, Type: shape, SecretCandidate: strings.HasPrefix(name, "x_")}
 		if nested != nil {
 			entry.Fields = walk(nested)
 		}

@@ -732,15 +732,18 @@
       },
       {
         "name": "x_iapp_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_passphrase",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_wep",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       }
     ]
   }
