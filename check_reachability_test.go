@@ -47,17 +47,53 @@ import (
 // names it as unreachable and undeclared. Adding a ledger entry for
 // upgrade-plan-runner, which the upgrade pipeline does invoke, reports that
 // entry as stale. Without the second direction the ledger would only ever grow.
+//
+// PROVEN AGAIN AFTER THE WALK GREW TO COVER PRODUCERS:
+//
+//   - UNDECLARED direction, by a REAL defect rather than a mutation. The first
+//     run of the widened walk named m0-uos-dns-qualification.sh, which no
+//     workflow, Makefile or script invokes. That is the finding, not a rehearsal
+//     of one.
+//   - RESOLVED direction, by mutation. Adding
+//     `bash .woodpecker/scripts/m0-uos-dns-qualification.sh` to fast-loop reports
+//     the new ledger entry as stale. The edit was confirmed present in the file
+//     by a separate grep before the test ran, because verifying a mutation with
+//     the mechanism that performed it is how a mutation that never applied
+//     returns what looks like proof.
+//
+// AND THE WIDENING'S FIRST RESULT WAS THREE FALSE ACCUSATIONS, which is worth
+// keeping because it is the failure mode that costs most. Requiring an
+// interpreter before the path was invisibly sufficient while this walked only
+// *_test.sh; production scripts are invoked bare, so catalog-upgrade-plan.sh,
+// m1-dns-compiler.sh and m3-dns-operation.sh were all reported dead while wired.
+// Fixing the pattern dropped exactly those three and kept the one real orphan.
 func TestEveryCheckIsReachable(t *testing.T) {
 	sources := loadRepositorySources(t)
 
-	var shellChecks, commands []string
+	var shellChecks, producers, commands []string
 	entries, err := os.ReadDir(filepath.Join(".woodpecker", "scripts"))
 	if err != nil {
 		t.Fatalf("reading .woodpecker/scripts: %v", err)
 	}
 	for _, entry := range entries {
-		if strings.HasSuffix(entry.Name(), "_test.sh") {
+		switch {
+		case strings.HasSuffix(entry.Name(), "_test.sh"):
 			shellChecks = append(shellChecks, entry.Name())
+		case strings.HasSuffix(entry.Name(), ".sh"):
+			// PRODUCERS, ADDED AFTER THIS TEST MISSED ONE. The walk used to
+			// cover *_test.sh and cmd/ and nothing else, so a production script
+			// that no pipeline invokes was invisible to it -- and there was one:
+			// m0-uos-dns-qualification.sh builds build/m0/uos-dns-qualification.json
+			// and is called by no workflow, no Makefile and no other script. I
+			// had filed that artifact as "producer runs but writes nowhere"
+			// because its output variable is never set. The truer statement is
+			// that the producer never runs at all, and THIS TEST SHOULD HAVE
+			// BEEN THE THING THAT TOLD ME.
+			//
+			// A producer nothing invokes is the same defect as a check nothing
+			// invokes: a file whose existence implies a guarantee the tree does
+			// not have. The ledger holds both, tagged by kind.
+			producers = append(producers, entry.Name())
 		}
 	}
 	commandEntries, err := os.ReadDir("cmd")
@@ -71,15 +107,20 @@ func TestEveryCheckIsReachable(t *testing.T) {
 	}
 	// Without this the whole test passes by finding nothing to check, which is
 	// the shape it exists to detect.
-	if len(shellChecks) < 5 || len(commands) < 5 {
-		t.Fatalf("found %d shell self-test(s) and %d command(s); the walk is not reaching the tree",
-			len(shellChecks), len(commands))
+	if len(shellChecks) < 5 || len(producers) < 5 || len(commands) < 5 {
+		t.Fatalf("found %d shell self-test(s), %d producer(s) and %d command(s); the walk is not reaching the tree",
+			len(shellChecks), len(producers), len(commands))
 	}
 
 	unreachable := map[string]bool{}
 	for _, name := range shellChecks {
 		if callers := shellCallersOf(name, filepath.Join(".woodpecker", "scripts", name), sources); len(callers) == 0 {
 			unreachable["script "+name] = true
+		}
+	}
+	for _, name := range producers {
+		if callers := shellCallersOf(name, filepath.Join(".woodpecker", "scripts", name), sources); len(callers) == 0 {
+			unreachable["producer "+name] = true
 		}
 	}
 	for _, name := range commands {
@@ -116,8 +157,8 @@ func TestEveryCheckIsReachable(t *testing.T) {
 			len(resolved), strings.Join(resolved, "\n    "))
 	}
 
-	t.Logf("%d shell self-test(s) and %d command(s) examined; %d declared unreachable",
-		len(shellChecks), len(commands), len(knownUnreachableChecks))
+	t.Logf("%d shell self-test(s), %d producer(s) and %d command(s) examined; %d declared unreachable",
+		len(shellChecks), len(producers), len(commands), len(knownUnreachableChecks))
 }
 
 // knownUnreachableChecks is a LEDGER, not a blessing. Every entry is a check
@@ -135,6 +176,12 @@ var knownUnreachableChecks = map[string]string{
 		"guarding tree-state.sh, which five production scripts source. Task 103.",
 	"script tree-state-coverage_test.sh": "RED on the current tree, and tree-state.sh:46 claims " +
 		"it enforces its list. It does not. Task 103.",
+	"producer m0-uos-dns-qualification.sh": "builds build/m0/uos-dns-qualification.json and is " +
+		"invoked by no workflow, no Makefile and no other script. Its output variable " +
+		"M0_UOS_RECEIPT_OUTPUT is also never set, so even if something did run it the receipt " +
+		"would go nowhere. This is the ONLY producer in .woodpecker/scripts that nothing runs, " +
+		"and it is not a one-line fix: wiring it needs a UOS qualification step nobody can " +
+		"verify from here. Task 114 P4, escalated to James rather than guessed at.",
 	"command catalog-release-ready": "the terminal release gate. No pipeline invokes it and " +
 		"three of its eight inputs have no producer. Task 106.",
 	"command policy-scaffold":  "authoring tool, run by hand when a surface is migrated.",
@@ -191,8 +238,30 @@ func loadRepositorySources(t *testing.T) map[string]string {
 	return sources
 }
 
+// shellCallersOf finds the files that invoke a script.
+//
+// TWO INVOCATION FORMS, AND ONLY ONE OF THEM USED TO BE DETECTED:
+//
+//	bash .woodpecker/scripts/foo.sh     an interpreter and a path
+//	.woodpecker/scripts/foo.sh          a bare path, executable with a shebang
+//	script=${root}/.woodpecker/scripts/foo.sh   assigned, then run through the variable
+//
+// The self-tests all use the first form, so requiring an interpreter was
+// invisibly sufficient while this test only walked *_test.sh. Extending it to
+// production scripts made the gap real at once: m1-dns-compiler.sh and
+// m3-dns-operation.sh are invoked bare from their workflows and were reported as
+// orphans. Accusing a wired script of being dead is the worse direction to fail
+// in -- it costs the reader's trust in every other row.
+//
+// A PATH IS REQUIRED IN EVERY FORM, and that is load-bearing rather than
+// incidental. tree-state-coverage_test.sh carries two arrays of BARE script
+// names, m0-uos-dns-qualification.sh among them. Matching a bare name would read
+// those arrays as call sites and report the one genuinely orphaned producer in
+// this repository as wired. The slash is what separates naming a script from
+// running one.
 func shellCallersOf(name, ownPath string, sources map[string]string) []string {
-	pattern := regexp.MustCompile(`(?:^|[\s;&|(])(?:bash|sh|source|\.)\s+\S*` + regexp.QuoteMeta(name) + `\b`)
+	pattern := regexp.MustCompile(
+		`(?:^|[\s;&|(=])(?:(?:bash|sh|source|\.)\s+)?\S*/` + regexp.QuoteMeta(name) + `\b`)
 	var callers []string
 	for path, body := range sources {
 		if path == ownPath {
