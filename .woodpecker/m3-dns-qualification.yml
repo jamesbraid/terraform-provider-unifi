@@ -51,6 +51,11 @@ steps:
       - apk add --no-cache bash coreutils curl git jq tar unzip
       - bash .woodpecker/scripts/m3-evidence-lib_test.sh
       - M3_CANDIDATE_PROVIDER_BINARY=$(pwd)/m3-candidate/terraform-provider-unifi M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
+      # BACKSTOP, NOT THE CHECK. Both fields are literals in
+      # m3-dns-qualification.sh's receipt, written only after the lifecycle work
+      # above them succeeded under set -e -- including one deliberate must-fail
+      # expectation that captures its own exit code. Retained against that abort
+      # regressing, not counted as verification. See catalog-build-schema.yml.
       - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true' build/m3/network-dns-qualification-ci.json
 
   - name: promotion-receipt
@@ -78,5 +83,11 @@ steps:
       - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - bash .woodpecker/scripts/m1-evidence-lib_test.sh
       - GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local M1_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 M1_EVIDENCE_OUTPUT_DIRECTORY=/tmp/provider-m1-evidence M1_EVIDENCE_ARCHIVE=/tmp/provider-m1-evidence.tar.gz M1_PRINT_EVIDENCE_BUNDLE=true M3_EXECUTION=woodpecker M3_LIFECYCLE_RECEIPT=build/m3/network-dns-qualification-ci.json M3_MANAGEMENT_SIDECAR_OUTPUT=build/m5/provider-contract-ci.json M3_RECEIPT_OUTPUT=build/m3/dns-operation-ci.json TERRAFORM_BIN=/usr/local/bin/terraform TOFU_BIN=/usr/local/bin/tofu .woodpecker/scripts/m3-dns-operation.sh
+      # BACKSTOP. Both are literals in m3-dns-operation.sh -- promotion
+      # "qualified" at :181 and lifecycle_result assigned at :155 -- written
+      # after the work above them succeeded under set -e.
       - jq -e '.promotion == "qualified" and .lifecycle.locked_target_result == "pass"' build/m3/dns-operation-ci.json
+      # THIS ONE IS NOT A BACKSTOP. It hashes a file produced by this step and
+      # compares it against a digest the receipt claims, so it can disagree.
+      # Keep it distinct from the line above when counting what is verified.
       - test "$(jq -r .management_sidecar_sha256 build/m3/dns-operation-ci.json)" = "$(sha256sum build/m5/provider-contract-ci.json | awk '{print $1}')"
