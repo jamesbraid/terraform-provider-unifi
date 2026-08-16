@@ -232,13 +232,49 @@ readonly ryuk_image=${CATALOG_RYUK_IMAGE:?CATALOG_RYUK_IMAGE is required}
 readonly herder_bin=${CATALOG_HERDER_BIN:?CATALOG_HERDER_BIN is required}
 readonly terraform_bin=${TERRAFORM_BIN:?TERRAFORM_BIN is required}
 
-test "$(uname -s)" = Linux
-test "$(uname -m)" = x86_64
-test -x "${herder_bin}"
-test -x "${terraform_bin}"
-docker image inspect "${controller_image}" >/dev/null
-docker image inspect "${synthetic_image}" >/dev/null
-docker image inspect "${ryuk_image}" >/dev/null
+# Each precondition says what it wanted and what it found. They used to be bare
+# `test` lines: under `set -euo pipefail` every one exited 1 printing nothing, so
+# a caller saw exit 1 and could not tell a wrong OS from a missing binary from an
+# unpulled image. Diagnosing "wrong OS" from that cost three full provisioning
+# runs and a bash -x trace. The dirty-tree guard above already explains itself;
+# this block now matches it.
+require() {
+    local what=$1 want=$2 have=$3 remedy=$4
+    if [ "${have}" != "${want}" ]; then
+        echo "cannot run the controller differential: ${what}" >&2
+        echo "  wanted: ${want}" >&2
+        echo "  found:  ${have}" >&2
+        echo "  ${remedy}" >&2
+        exit 1
+    fi
+}
+
+require "operating system" Linux "$(uname -s)" \
+    "This suite starts controllers and is built for the Linux CI builders. It cannot run on a developer workstation."
+require "architecture" x86_64 "$(uname -m)" \
+    "The controller and emulator images are x86_64 only."
+
+for bin_desc in "herder:${herder_bin}:CATALOG_HERDER_BIN" "terraform CLI:${terraform_bin}:TERRAFORM_BIN"; do
+    bin_label=${bin_desc%%:*}; bin_rest=${bin_desc#*:}
+    bin_path=${bin_rest%%:*}; bin_var=${bin_rest#*:}
+    if [ ! -x "${bin_path}" ]; then
+        echo "cannot run the controller differential: ${bin_label} is not executable" >&2
+        echo "  ${bin_var}=${bin_path}" >&2
+        echo "  Build it, or point ${bin_var} at a binary that exists." >&2
+        exit 1
+    fi
+done
+
+for img_desc in "controller:${controller_image}:CATALOG_CONTROLLER_IMAGE" "synthetic:${synthetic_image}:CATALOG_SYNTHETIC_IMAGE" "ryuk:${ryuk_image}:CATALOG_RYUK_IMAGE"; do
+    img_label=${img_desc%%:*}; img_rest=${img_desc#*:}
+    img_ref=${img_rest%:*}; img_var=${img_rest##*:}
+    if ! docker image inspect "${img_ref}" >/dev/null 2>&1; then
+        echo "cannot run the controller differential: ${img_label} image is not present locally" >&2
+        echo "  ${img_var}=${img_ref}" >&2
+        echo "  Pull or build it before running; this script does not fetch images." >&2
+        exit 1
+    fi
+done
 
 test_regex=$(jq -r '.test_names | join("|")' "${plan_path}")
 readonly test_regex
