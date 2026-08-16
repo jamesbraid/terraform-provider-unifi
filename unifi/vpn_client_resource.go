@@ -494,12 +494,7 @@ func (r *vpnClientResource) modelToNetwork(
 				d := wireguard.DnsServers.ElementsAs(ctx, &dnsServers, false)
 				diags.Append(d...)
 				if !diags.HasError() {
-					if len(dnsServers) > 0 {
-						network.DHCPDDNS1 = dnsServers[0]
-					}
-					if len(dnsServers) > 1 {
-						network.DHCPDDNS2 = dnsServers[1]
-					}
+					wireguardDNSServersToNetwork(dnsServers, network)
 				}
 			}
 
@@ -540,12 +535,7 @@ func (r *vpnClientResource) modelToNetwork(
 
 					// Use DNS servers from config file if not set explicitly
 					if len(parsed.DNS) > 0 && wireguard.DnsServers.IsNull() {
-						if len(parsed.DNS) > 0 {
-							network.DHCPDDNS1 = parsed.DNS[0]
-						}
-						if len(parsed.DNS) > 1 {
-							network.DHCPDDNS2 = parsed.DNS[1]
-						}
+						wireguardDNSServersToNetwork(parsed.DNS, network)
 					}
 				}
 			} else if !wireguard.Peer.IsNull() && !wireguard.Peer.IsUnknown() {
@@ -555,9 +545,7 @@ func (r *vpnClientResource) modelToNetwork(
 				diags.Append(d...)
 				if !diags.HasError() {
 					network.WireguardClientMode = util.Ptr("manual")
-					network.WireguardClientPeerIP = peer.IP.ValueStringPointer()
-					network.WireguardClientPeerPort = peer.Port.ValueInt64Pointer()
-					network.WireguardClientPeerPublicKey = peer.PublicKey.ValueStringPointer()
+					wireguardPeerToNetwork(peer, network)
 				}
 			}
 
@@ -630,14 +618,7 @@ func (r *vpnClientResource) networkToModel(
 		peerObj = types.ObjectNull(wireguardPeerModel{}.AttributeTypes())
 	} else if network.WireguardClientMode != nil && *network.WireguardClientMode == "manual" {
 		// Manual mode: populate peer from API response
-		peerValue := wireguardPeerModel{
-			IP:        strPtrToType(network.WireguardClientPeerIP),
-			Port:      types.Int64PointerValue(network.WireguardClientPeerPort),
-			PublicKey: strPtrToType(network.WireguardClientPeerPublicKey),
-		}
-		var d diag.Diagnostics
-		peerObj, d = types.ObjectValueFrom(ctx, peerValue.AttributeTypes(), peerValue)
-		diags.Append(d...)
+		peerObj = wireguardPeerFromNetwork(ctx, &diags, network)
 		configurationObj = types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes())
 	} else {
 		// No mode set or file mode returned by API - both null
@@ -655,20 +636,7 @@ func (r *vpnClientResource) networkToModel(
 		diags.Append(d...)
 		dnsServersList = priorWG.DnsServers
 	} else {
-		var dnsServers []string
-		if network.DHCPDDNS1 != "" {
-			dnsServers = append(dnsServers, network.DHCPDDNS1)
-		}
-		if network.DHCPDDNS2 != "" {
-			dnsServers = append(dnsServers, network.DHCPDDNS2)
-		}
-		if len(dnsServers) > 0 {
-			var d diag.Diagnostics
-			dnsServersList, d = types.ListValueFrom(ctx, types.StringType, dnsServers)
-			diags.Append(d...)
-		} else {
-			dnsServersList = types.ListNull(types.StringType)
-		}
+		dnsServersList = wireguardDNSServersFromNetwork(ctx, &diags, network)
 	}
 
 	// For private key and preshared key: when file mode was used, preserve the
@@ -798,4 +766,85 @@ func (r *vpnClientResource) List(
 			}
 		}
 	}
+}
+
+// The four functions below are the halves this resource's policy claims name.
+// Each relates one Terraform member to several observed fields, which is the
+// one thing the compiler cannot check, so the policy names a function and a
+// reader opens it. They were inline in modelToNetwork and networkToModel.
+
+// wireguardPeerToNetwork writes wireguard.peer into the three flat observed
+// fields the wire keeps apart.
+//
+// File mode writes the same three fields from a parsed configuration rather
+// than from this member, so it does not go through here: that is the
+// configuration member's business, not the peer's.
+func wireguardPeerToNetwork(peer wireguardPeerModel, network *unifi.Network) {
+	network.WireguardClientPeerIP = peer.IP.ValueStringPointer()
+	network.WireguardClientPeerPort = peer.Port.ValueInt64Pointer()
+	network.WireguardClientPeerPublicKey = peer.PublicKey.ValueStringPointer()
+}
+
+// wireguardDNSServersToNetwork distributes wireguard.dns_servers positionally
+// into the two observed slots. It does not clear the slots it does not use, so
+// a shorter list leaves whatever was there, and a third server is dropped.
+//
+// Both the configured list and the one parsed out of a configuration file
+// arrive here, because the distribution is the same either way.
+func wireguardDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
+	if len(dnsServers) > 0 {
+		network.DHCPDDNS1 = dnsServers[0]
+	}
+	if len(dnsServers) > 1 {
+		network.DHCPDDNS2 = dnsServers[1]
+	}
+}
+
+// wireguardPeerFromNetwork reads wireguard.peer back from the three flat
+// observed fields. Only manual mode has a peer; the caller decides that.
+func wireguardPeerFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.Object {
+	// The empty string is absent here, as it is everywhere the controller
+	// reports one of these.
+	absentAsNull := func(ptr *string) types.String {
+		if ptr == nil || *ptr == "" {
+			return types.StringNull()
+		}
+		return types.StringValue(*ptr)
+	}
+	peer := wireguardPeerModel{
+		IP:        absentAsNull(network.WireguardClientPeerIP),
+		Port:      types.Int64PointerValue(network.WireguardClientPeerPort),
+		PublicKey: absentAsNull(network.WireguardClientPeerPublicKey),
+	}
+	object, d := types.ObjectValueFrom(ctx, peer.AttributeTypes(), peer)
+	diags.Append(d...)
+	return object
+}
+
+// wireguardDNSServersFromNetwork collects wireguard.dns_servers from the two
+// observed slots, keeping only the non-empty ones. The write distributes
+// positionally and this compacts, so a value in slot two with slot one empty
+// reads back as the first element.
+func wireguardDNSServersFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	var servers []string
+	if network.DHCPDDNS1 != "" {
+		servers = append(servers, network.DHCPDDNS1)
+	}
+	if network.DHCPDDNS2 != "" {
+		servers = append(servers, network.DHCPDDNS2)
+	}
+	if len(servers) == 0 {
+		return types.ListNull(types.StringType)
+	}
+	list, d := types.ListValueFrom(ctx, types.StringType, servers)
+	diags.Append(d...)
+	return list
 }
