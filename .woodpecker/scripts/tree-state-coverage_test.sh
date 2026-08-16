@@ -68,7 +68,7 @@ readonly -a exempt=(
     #
     # TWO stay, for a different and permanent reason: their artifacts are
     # committed and compared byte for byte against a fresh run --
-    # catalog-evidence-inventory_test.sh:22 for one, catalog-build-schema.sh:152
+    # catalog-evidence-inventory_test.sh:23 for one, catalog-build-schema.sh:152
     # for the other. tree_state contains the commit, so an artifact recording
     # its own would never reproduce: generated at one commit, committed,
     # regenerated at the next, comparison fails forever. Neither needs one --
