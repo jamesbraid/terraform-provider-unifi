@@ -3,6 +3,14 @@ set -euo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 readonly repository_root
+
+# The receipt stamps provider_commit from git rev-parse HEAD, so on a dirty tree
+# it names a commit that does not contain the go.mod this gate just read. Take
+# the tree state first, before the pin is even sourced.
+# shellcheck source=.woodpecker/scripts/tree-state.sh
+source "${repository_root}/.woodpecker/scripts/tree-state.sh"
+evidence_tree_state "the dependency publishability receipt"
+
 # shellcheck source=.woodpecker/scripts/go-unifi-pin.sh
 source "${repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
 
@@ -87,11 +95,13 @@ jq --compact-output --null-input \
     --arg module_commit "${go_unifi_expected_commit}" \
     --arg module_zip_sha256 "${module_zip_sha256}" \
     --arg module_dir_sha256 "${module_dir_sha256}" \
+    --argjson tree "$(evidence_tree_json)" \
     '{
         format_version: 1,
         gate: "go-unifi-dependency-publishability",
         result: "pass",
         provider_commit: $provider_commit,
+        tree: $tree,
         module_path: $module_path,
         module_version: $module_version,
         module_commit: $module_commit,

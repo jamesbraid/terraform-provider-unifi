@@ -114,7 +114,14 @@ run_case() {
     # them in order and the later one wins, so putting "$@" first silently
     # discarded every override -- which made three cases measure the default
     # fixture while claiming to measure another.
+    # The script now takes the tree state before anything else, so on a
+    # developer's machine -- dirty, which is when tests get run -- it would
+    # refuse before reaching a single case. Acknowledge the dirt rather than
+    # demand a clean tree to run the suite. The refusal itself is not lost:
+    # tree-state_test.sh exercises refuse, permit and record against a
+    # throwaway repository, which is where that belongs.
     env PATH="${stub_dir}:${PATH}" \
+        EVIDENCE_ALLOW_DIRTY_TREE=1 \
         STUB_STATE_DIR="${state_dir}" \
         TERRAFORM_BIN="${stub_dir}/stub-cli" \
         UPGRADE_FIXTURE="${fixture}" \
