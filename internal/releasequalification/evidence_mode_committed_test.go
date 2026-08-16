@@ -181,6 +181,10 @@ func bestCaseEvidenceView(
 		planned:   make(map[catalogparity.SurfaceKey][]string, len(inventory.Surfaces)),
 		released:  map[string]struct{}{},
 		candidate: map[string]struct{}{},
+		// Read from the committed campaign policy rather than listed here. A
+		// census carrying its own copy of the declaration would agree with
+		// itself instead of with the policy the gate reads.
+		declaredMissing: committedDeclaredMissing(t),
 	}
 	for _, surface := range inventory.Surfaces {
 		view.inventory[surface.SurfaceKey] = surface
@@ -264,4 +268,32 @@ func resolveCommittedPragmatic(t *testing.T) catalogparity.PragmaticResolution {
 func sha256Hex(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
+}
+
+// committedDeclaredMissing reads the tests the campaign policy states the
+// released provider cannot run.
+//
+// The census must learn the declaration from the same file the gate does.
+// Hard-coding the names here would make this test agree with a copy rather
+// than with the policy, which is the second-home failure this project keeps
+// paying for.
+func committedDeclaredMissing(t *testing.T) map[string]struct{} {
+	t.Helper()
+	data, err := os.ReadFile("../../provider-codegen/policy/catalog-campaign.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var policy catalogparity.CampaignPolicy
+	if err := json.Unmarshal(data, &policy); err != nil {
+		t.Fatal(err)
+	}
+	if len(policy.ReleasedAllowedMissing) == 0 {
+		t.Fatal("the campaign policy declares no released_allowed_missing, so this " +
+			"census cannot tell an excused test from an unmeasured one")
+	}
+	declared := make(map[string]struct{}, len(policy.ReleasedAllowedMissing))
+	for _, name := range policy.ReleasedAllowedMissing {
+		declared[name] = struct{}{}
+	}
+	return declared
 }

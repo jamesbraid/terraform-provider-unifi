@@ -162,7 +162,17 @@ func TestBuildMigrationRecoveryReceiptFailsClosed(t *testing.T) {
 				input.Controller.Released.Missing = []string{deviceScenario(input)}
 				input.Controller.Plan.ReleasedAllowedMissing = []string{deviceScenario(input)}
 			},
-			want: "did not pass on the released provider",
+			// The mode is still refused and the receipt still fails closed.
+			// Only the reason moved, and it moved to a truer one.
+			//
+			// This fixture declares the device's ONLY scenario missing from the
+			// released provider. When it was written that declaration was inert
+			// here -- differential_scenario ignored it and reported the absence
+			// as a released-side failure. Now that a declared test is excused,
+			// a surface holding nothing but declared tests has no scenario
+			// comparing the two providers at all, and saying so beats calling
+			// an absence a failure.
+			want: "no scenario compares the two",
 		},
 		// A skip is the one way a scenario can legitimately go unrun on the
 		// CANDIDATE side -- the controller gate requires the candidate suite to
