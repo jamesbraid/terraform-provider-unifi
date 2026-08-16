@@ -32,6 +32,14 @@ set -euo pipefail
 repository_root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)
 readonly repository_root
 
+# The receipt stamps candidate_commit from git rev-parse HEAD, so on a dirty
+# tree it names a commit that does not contain what was measured. Take the tree
+# state here, before anything is built or planned, so what the receipt records
+# is the tree the run started from.
+# shellcheck source=.woodpecker/scripts/tree-state.sh
+source "${repository_root}/.woodpecker/scripts/tree-state.sh"
+evidence_tree_state "the upgrade-plan receipt"
+
 readonly cli_bin=${TERRAFORM_BIN:?TERRAFORM_BIN is required (this repository sets it to an OpenTofu binary)}
 readonly released_ref=${UPGRADE_RELEASED_REF:-v0.101.2}
 readonly fixture_dir=${UPGRADE_FIXTURE:-${repository_root}/.woodpecker/fixtures/upgrade}
@@ -264,8 +272,10 @@ jq -n \
     --argjson expect_old_plan "${expect_old_plan}" \
     --arg result "${result}" \
     --arg verdict "${verdict}" \
+    --argjson tree "$(evidence_tree_json)" \
     '{format_version: 1, gate: $gate, cli: $cli, released_ref: $released_ref,
       released_commit: $released_commit, candidate_commit: $candidate_commit,
+      tree: $tree,
       released_provenance: $released_provenance,
       released_provider_sha256: $old_sha256, candidate_provider_sha256: $new_sha256,
       fixture_files: $fixture_files, control_exit: $control_exit,
