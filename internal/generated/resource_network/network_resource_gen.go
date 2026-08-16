@@ -263,7 +263,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
 						MarkdownDescription: "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
-						Default:             booldefault.StaticBool(false),
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"dns_servers": schema.ListAttribute{
 						ElementType:         types.StringType,
@@ -288,13 +290,21 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					},
 					"start": schema.StringAttribute{
 						Optional:            true,
+						Computed:            true,
 						Description:         "The start of the DHCPv6 address range.",
 						MarkdownDescription: "The start of the DHCPv6 address range.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"stop": schema.StringAttribute{
 						Optional:            true,
+						Computed:            true,
 						Description:         "The end of the DHCPv6 address range.",
 						MarkdownDescription: "The end of the DHCPv6 address range.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 				},
 				Optional:            true,
@@ -381,10 +391,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
 				MarkdownDescription: "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("none", "pd", "static"),
 				},
-				Default: stringdefault.StaticString("none"),
 			},
 			"ipv6_pd_auto_prefixid_enabled": schema.BoolAttribute{
 				Optional:            true,
@@ -474,15 +486,21 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"ipv6_static_subnet": schema.StringAttribute{
 				Optional:            true,
+				Computed:            true,
 				Description:         "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
 				MarkdownDescription: "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"lte_lan": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Defaults to `true` (network stays available during LTE failover); set to `false` to disable it while on the LTE backup link. The controller may set this automatically, which is why existing networks can show differing values.",
-				MarkdownDescription: "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Defaults to `true` (network stays available during LTE failover); set to `false` to disable it while on the LTE backup link. The controller may set this automatically, which is why existing networks can show differing values.",
-				Default:             booldefault.StaticBool(true),
+				Description:         "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Set `false` to take the network off the LTE backup link. This is read back from the controller rather than defaulted: the controller sets it automatically, and a static `true` default stamped a network the controller held as `false` back to `true` on any plan that omitted the attribute.",
+				MarkdownDescription: "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Set `false` to take the network off the LTE backup link. This is read back from the controller rather than defaulted: the controller sets it automatically, and a static `true` default stamped a network the controller held as `false` back to `true` on any plan that omitted the attribute.",
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"multicast_dns": schema.BoolAttribute{
 				Optional:            true,

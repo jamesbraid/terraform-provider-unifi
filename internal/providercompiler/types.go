@@ -202,6 +202,20 @@ type fieldPolicy struct {
 // declared. It is still a migration rather than hand-authoring, because every
 // member names a field the catalog observed, and the compiler proves each
 // observed field is consumed exactly once across the whole policy.
+//
+// Resolving a Terraform path back to an API path therefore has two cases and
+// they go opposite ways. Under Fields the parent IS an observed struct, so the
+// structural path EXTENDS: destination.ip_group_id resolves to
+// destination.ip_group_id. Under a grouping the parent is invented and has no
+// API counterpart, so the path RESETS to the member's flat field:
+// dhcp_server.enabled resolves to dhcpd_enabled, not to
+// dhcp_server.dhcpd_enabled.
+//
+// Stated here because the two shapes are indistinguishable from a member's own
+// JSON -- only its position says which rule applies -- so a walker that handles
+// Fields alone resolves most attributes and silently reports the grouped ones
+// as unmapped. That reads as a finding about the provider rather than a gap in
+// the walker, which is the expensive way to discover this.
 type groupingPolicy struct {
 	TerraformName string `json:"terraform_name"`
 	// TerraformType is single_nested, list_nested or set_nested. As with

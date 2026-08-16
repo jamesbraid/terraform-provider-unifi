@@ -1029,11 +1029,36 @@ func (r *networkResource) networkToModel(
 			model.MulticastDNS = previousModel.MulticastDNS
 		}
 		model.GatewayType = previousModel.GatewayType
-		model.IPv6InterfaceType = previousModel.IPv6InterfaceType
-		model.IPv6StaticSubnet = previousModel.IPv6StaticSubnet
+		// ipv6_interface_type uses UseStateForUnknown and carries no default, so
+		// it is unknown during Create. Resolve it from the API value: the
+		// controller owns it, and a static "none" default is what made an apply
+		// that omitted the attribute switch IPv6 off and take the whole
+		// dhcp_v6_server block down with it.
+		if previousModel.IPv6InterfaceType.IsUnknown() {
+			model.IPv6InterfaceType = types.StringPointerValue(network.IPV6InterfaceType)
+		} else {
+			model.IPv6InterfaceType = previousModel.IPv6InterfaceType
+		}
+		// ipv6_static_subnet became Computed for the same reason as
+		// ipv6_interface_type: the controller assigns it, and a null plan
+		// against a populated read aborts the apply. Computed means the plan
+		// carries unknown on Create, so resolve it from the API rather than
+		// copying the unknown through.
+		if previousModel.IPv6StaticSubnet.IsUnknown() {
+			model.IPv6StaticSubnet = types.StringPointerValue(network.IPV6Subnet)
+		} else {
+			model.IPv6StaticSubnet = previousModel.IPv6StaticSubnet
+		}
 		model.IPv6PDInterface = previousModel.IPv6PDInterface
 		model.IPv6PDPrefixID = previousModel.IPv6PDPrefixID
-		model.LteLan = previousModel.LteLan
+		// lte_lan uses UseStateForUnknown, so it may be unknown during Create.
+		// Resolve it from the API value: the controller assigns this flag
+		// itself, which is why it must not carry a static default.
+		if previousModel.LteLan.IsUnknown() {
+			model.LteLan = types.BoolValue(network.LteLanEnabled)
+		} else {
+			model.LteLan = previousModel.LteLan
+		}
 		// The IPv6 attributes below are Computed + UseStateForUnknown. On Create
 		// there is no prior state, so the plan carries them as unknown; copying
 		// the plan value verbatim would leave them unknown in the result and

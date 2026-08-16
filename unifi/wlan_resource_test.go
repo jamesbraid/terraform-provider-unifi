@@ -72,19 +72,26 @@ func TestAccWLANFramework_additionalFields(t *testing.T) {
 					resource.TestCheckResourceAttrSet("unifi_wlan.test", "group_rekey"),
 					resource.TestCheckResourceAttrSet("unifi_wlan.test", "iapp_enabled"),
 					resource.TestCheckResourceAttrSet("unifi_wlan.test", "mlo_enabled"),
-					// Issue #176 (secondary): the API omits minimum_data_rate_*
-					// from GET responses, so the read path must surface them as 0
-					// (the schema default), not null, to avoid perpetual plan
-					// drift after import.
-					resource.TestCheckResourceAttr(
+					// Issue #176 (secondary) asked for 0 rather than null here,
+					// so an imported WLAN would not drift against the schema
+					// default. That default is gone: #323 removed it because
+					// the controller overrides it in auto mode, which is also
+					// why these are Computed. With no default there is nothing
+					// for a null to drift towards, and 0 is a rate a
+					// practitioner may legitimately ask for -- it is in both
+					// OneOf lists -- so recording it for "the controller said
+					// nothing" asserts something the controller did not say.
+					//
+					// The absence of drift is inferred from the schema and has
+					// not been observed. This step is what would show it, so a
+					// failure here is a finding, not a stale expectation.
+					resource.TestCheckNoResourceAttr(
 						"unifi_wlan.test",
 						"minimum_data_rate_2g_kbps",
-						"0",
 					),
-					resource.TestCheckResourceAttr(
+					resource.TestCheckNoResourceAttr(
 						"unifi_wlan.test",
 						"minimum_data_rate_5g_kbps",
-						"0",
 					),
 				),
 				ResourceName:  "unifi_wlan.test",

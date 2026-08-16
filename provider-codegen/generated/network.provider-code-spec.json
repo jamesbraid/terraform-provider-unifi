@@ -436,10 +436,19 @@
                 {
                   "bool": {
                     "computed_optional_required": "computed_optional",
-                    "default": {
-                      "static": false
-                    },
-                    "description": "Specifies whether DNS auto-discovery is enabled for DHCPv6."
+                    "description": "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
                   },
                   "name": "dns_auto"
                 },
@@ -485,15 +494,39 @@
                 {
                   "name": "start",
                   "string": {
-                    "computed_optional_required": "optional",
-                    "description": "The start of the DHCPv6 address range."
+                    "computed_optional_required": "computed_optional",
+                    "description": "The start of the DHCPv6 address range.",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
                   }
                 },
                 {
                   "name": "stop",
                   "string": {
-                    "computed_optional_required": "optional",
-                    "description": "The end of the DHCPv6 address range."
+                    "computed_optional_required": "computed_optional",
+                    "description": "The end of the DHCPv6 address range.",
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
                   }
                 }
               ],
@@ -658,9 +691,6 @@
             "name": "ipv6_interface_type",
             "string": {
               "computed_optional_required": "computed_optional",
-              "default": {
-                "static": "none"
-              },
               "description": "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
               "validators": [
                 {
@@ -671,6 +701,18 @@
                       }
                     ],
                     "schema_definition": "stringvalidator.OneOf(\"none\", \"pd\", \"static\")"
+                  }
+                }
+              ],
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                   }
                 }
               ]
@@ -908,17 +950,38 @@
           {
             "name": "ipv6_static_subnet",
             "string": {
-              "computed_optional_required": "optional",
-              "description": "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`."
+              "computed_optional_required": "computed_optional",
+              "description": "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
             }
           },
           {
             "bool": {
               "computed_optional_required": "computed_optional",
-              "default": {
-                "static": true
-              },
-              "description": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Defaults to `true` (network stays available during LTE failover); set to `false` to disable it while on the LTE backup link. The controller may set this automatically, which is why existing networks can show differing values."
+              "description": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Set `false` to take the network off the LTE backup link. This is read back from the controller rather than defaulted: the controller sets it automatically, and a static `true` default stamped a network the controller held as `false` back to `true` on any plan that omitted the attribute.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
             },
             "name": "lte_lan"
           },

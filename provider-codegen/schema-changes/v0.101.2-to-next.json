@@ -1,0 +1,152 @@
+{
+  "format_version": 1,
+  "from_version": "0.101.2",
+  "to_version": "next",
+  "entries": [
+    {
+      "surface": "unifi_network",
+      "attribute": "lte_lan",
+      "field": "description",
+      "old": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Defaults to `true` (network stays available during LTE failover); set to `false` to disable it while on the LTE backup link. The controller may set this automatically, which is why existing networks can show differing values.",
+      "new": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Set `false` to take the network off the LTE backup link. This is read back from the controller rather than defaulted: the controller sets it automatically, and a static `true` default stamped a network the controller held as `false` back to `true` on any plan that omitted the attribute.",
+      "why_not_breaking": "A description is not part of any configuration's contract: no config becomes invalid and no state migrates. The text is corrected because the released wording asserts a default the attribute no longer has, so keeping it would ship a statement known to be false about the behaviour shipping alongside it.",
+      "evidence": [
+        {
+          "claim": "The released schema documents a default that the candidate no longer declares.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json: lte_lan description says 'Defaults to `true`'; the candidate schema has no Default for lte_lan."
+        },
+        {
+          "claim": "Terraform never rejects a configuration on the basis of an attribute description.",
+          "kind": "inferred",
+          "source": "Terraform plugin protocol semantics. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_wlan",
+      "attribute": "ap_group_ids",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets ap_group_ids is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve, because on the released provider omitting it aborts the apply. The controller always returns an AP group, the read path copies that value into state, and Terraform rejects the result as inconsistent with a null plan. The one semantic difference Optional+Computed introduces -- removing a previously set attribute stops planning a change to null and instead retains the value -- is not reachable on v0.101.2 either, because after removal the config is null and the apply hits the same abort. Every path this widens is a path that currently terminates in an error.",
+      "evidence": [
+        {
+          "claim": "On the released provider, applying a unifi_wlan whose config omits ap_group_ids aborts with 'Provider produced inconsistent result after apply: .ap_group_ids: was null, but now cty.SetVal([]cty.Value{cty.StringVal(\"6a817f9bf588b98929005a32\")})'.",
+          "kind": "measured",
+          "source": "acceptance repro against a 10.4.57 simulation controller, apply exit=1; recorded in the wlan import/plan/apply repro run (wlan-repro2). The resource was imported, then planned and applied with the attribute omitted."
+        },
+        {
+          "claim": "The released schema declares ap_group_ids required=false, optional=true, computed=false, so Terraform accepts a config that omits it and the failure occurs at apply rather than at validate.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_wlan.block.attributes.ap_group_ids"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value is still authoritative, so configurations that set the attribute see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_wlan",
+      "attribute": "network_id",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "Same transition and same argument as ap_group_ids: still Optional, so a configuration that sets network_id is unaffected, and a configuration that omits it has no working behaviour to preserve. Stated plainly, because the ledger should not launder it: the aborting apply has been observed directly for ap_group_ids and NOT for network_id. The claim that network_id behaves the same rests on reading the resource, not on a run. The read path assigns the controller's networkconf_id into state whenever it is non-empty, and the update path only carries a planned value through when that value is non-null, so an omitted network_id reaches the consistency check as null against a populated read -- the same shape that aborted for ap_group_ids. A controller wlan document always carries a non-empty networkconf_id. If that reasoning is wrong, the failure mode is that this attribute did not need Computed, which shows up as a widened schema rather than as a broken configuration.",
+      "evidence": [
+        {
+          "claim": "The released schema declares network_id required=false, optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_wlan.block.attributes.network_id"
+        },
+        {
+          "claim": "The read path sets network_id from the controller response whenever it is non-empty, and the update path preserves the planned value only when it is neither null nor unknown -- so an omitted network_id is compared as null against a populated read.",
+          "kind": "inferred",
+          "source": "unifi/wlan_resource.go:1059-1062 (read) and unifi/wlan_resource.go:631-632 (update). Read from the source, not observed at runtime."
+        },
+        {
+          "claim": "No recorded acceptance run names network_id as the subject of a 'provider produced inconsistent result after apply' error; only ap_group_ids, minimum_data_rate_5g_kbps, purpose, third_party_gateway, dhcp_server.dns_servers and dns.servers appear.",
+          "kind": "measured",
+          "source": "search of every acceptance log in the run directory for 'unexpected new value'. This is stated as the limit of the evidence, not as support for the change."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "ipv6_static_subnet",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets ipv6_static_subnet is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve, because on the released provider omitting it aborts the apply -- the controller assigns the value, the read copies it into state, and Terraform rejects the result as inconsistent with a null plan. Removing a previously set value is not a surviving path either: after removal the config is null and the apply hits the same abort. Every path this widens currently terminates in an error.",
+      "evidence": [
+        {
+          "claim": "Applying a unifi_network whose config omits ipv6_static_subnet aborts with 'Provider produced inconsistent result after apply: .ipv6_static_subnet: was null, but now cty.StringVal(\"fd41:9::1/64\")'.",
+          "kind": "measured",
+          "source": "acceptance reproduction against a 10.4.57 simulation controller (ghcr.io/jamesbraid/unifi-network@sha256:584be3a2...), provider built at 5f00f7c4, apply exit=1. Recorded in the dhcp_v6_server reproduction run."
+        },
+        {
+          "claim": "The released schema declares ipv6_static_subnet required=false, optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, unifi_network.ipv6_static_subnet"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "dhcp_v6_server.start",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets dhcp_v6_server.start is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve, because on the released provider omitting it aborts the apply -- the controller assigns the value, the read copies it into state, and Terraform rejects the result as inconsistent with a null plan. Removing a previously set value is not a surviving path either: after removal the config is null and the apply hits the same abort. Every path this widens currently terminates in an error.",
+      "evidence": [
+        {
+          "claim": "Applying a unifi_network whose config omits dhcp_v6_server.start aborts with 'Provider produced inconsistent result after apply: .dhcp_v6_server.start: was null, but now cty.StringVal(\"fd41:9::2\")'.",
+          "kind": "measured",
+          "source": "acceptance reproduction against a 10.4.57 simulation controller (ghcr.io/jamesbraid/unifi-network@sha256:584be3a2...), provider built at 5f00f7c4, apply exit=1. Recorded in the dhcp_v6_server reproduction run."
+        },
+        {
+          "claim": "The released schema declares dhcp_v6_server.start required=false, optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, unifi_network.dhcp_v6_server.start"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "dhcp_v6_server.stop",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets dhcp_v6_server.stop is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve, because on the released provider omitting it aborts the apply -- the controller assigns the value, the read copies it into state, and Terraform rejects the result as inconsistent with a null plan. Removing a previously set value is not a surviving path either: after removal the config is null and the apply hits the same abort. Every path this widens currently terminates in an error.",
+      "evidence": [
+        {
+          "claim": "Applying a unifi_network whose config omits dhcp_v6_server.stop aborts with 'Provider produced inconsistent result after apply: .dhcp_v6_server.stop: was null, but now cty.StringVal(\"fd41:9::7d1\")'.",
+          "kind": "measured",
+          "source": "acceptance reproduction against a 10.4.57 simulation controller (ghcr.io/jamesbraid/unifi-network@sha256:584be3a2...), provider built at 5f00f7c4, apply exit=1. Recorded in the dhcp_v6_server reproduction run."
+        },
+        {
+          "claim": "The released schema declares dhcp_v6_server.stop required=false, optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, unifi_network.dhcp_v6_server.stop"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    }
+  ]
+}

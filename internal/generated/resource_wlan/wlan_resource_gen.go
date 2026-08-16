@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 	"strings"
 	"time"
@@ -38,8 +39,12 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 			"ap_group_ids": schema.SetAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
+				Computed:            true,
 				Description:         "List of AP group IDs to apply this WLAN to.",
 				MarkdownDescription: "List of AP group IDs to apply this WLAN to.",
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"ap_group_mode": schema.StringAttribute{
 				Optional:            true,
@@ -230,7 +235,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Minimum data rate for 2G clients in Kbps. When unset, the controller assigns a value (e.g. `1000` in `auto` mode), so this is computed rather than defaulted to `0`.",
 				MarkdownDescription: "Minimum data rate for 2G clients in Kbps. When unset, the controller assigns a value (e.g. `1000` in `auto` mode), so this is computed rather than defaulted to `0`.",
 				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
+					planmodifiers.UseStateUnlessSiblingChanges{Sibling: "minrate_setting_preference"},
 				},
 				Validators: []validator.Int64{
 					int64validator.OneOf(0, 1000, 2000, 5500, 6000, 9000, 11000, 12000, 18000, 24000, 36000, 48000, 54000),
@@ -242,7 +247,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Minimum data rate for 5G clients in Kbps. When unset, the controller assigns a value (e.g. `6000` in `auto` mode), so this is computed rather than defaulted to `0`.",
 				MarkdownDescription: "Minimum data rate for 5G clients in Kbps. When unset, the controller assigns a value (e.g. `6000` in `auto` mode), so this is computed rather than defaulted to `0`.",
 				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
+					planmodifiers.UseStateUnlessSiblingChanges{Sibling: "minrate_setting_preference"},
 				},
 				Validators: []validator.Int64{
 					int64validator.OneOf(0, 6000, 9000, 12000, 18000, 24000, 36000, 48000, 54000),
@@ -253,10 +258,12 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Minimum rate setting preference.",
 				MarkdownDescription: "Minimum rate setting preference.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("auto", "manual"),
 				},
-				Default: stringdefault.StaticString("auto"),
 			},
 			"mlo_enabled": schema.BoolAttribute{
 				Optional:            true,
@@ -289,8 +296,12 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"network_id": schema.StringAttribute{
 				Optional:            true,
+				Computed:            true,
 				Description:         "ID of the network for this WLAN.",
 				MarkdownDescription: "ID of the network for this WLAN.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"no2ghz_oui": schema.BoolAttribute{
 				Optional:            true,
