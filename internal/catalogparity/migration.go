@@ -359,8 +359,16 @@ func applyMigrationOverride(entry MigrationEntry, override MigrationOverride) (M
 //
 // It is exported so release qualification can hold the same rules over the
 // committed manifest that generation holds over the emitted one. It had a
-// same-named twin there that was not a superset either way, and five defects
+// same-named twin there that was not a superset either way, and six defects
 // this rejects passed that one -- see releasequalification.validateMigrationManifest.
+//
+// Two of the rules here are absolute where release qualification's are
+// relational: strict ordering, and validateReleasedCounts checking 28/13/25/1
+// per kind rather than a total. A total of 67 is satisfied by moving one
+// surface from one kind to another, and every check on the other side compares
+// two receipts, so a coherent regeneration satisfies all of them at once. The
+// per-kind count is the only thing in either package that a consistent drift
+// cannot satisfy by construction.
 func ValidateMigrationManifest(manifest MigrationManifest) error {
 	if manifest.FormatVersion != 1 || manifest.FromVersion != "0.101.2" || manifest.ToVersion == "" {
 		return fmt.Errorf("migration manifest identity is invalid")
