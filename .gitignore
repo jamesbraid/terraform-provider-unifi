@@ -86,4 +86,4 @@ __debug_bin*
 build/**/*-ci.json
 /m3-candidate/
 /.woodpecker/fixtures/catalog-acceptance/unifi-emu
-/.woodpecker/fixtures/catalog-acceptance/devices.fleet.json
+/.woodpecker/fixtures/catalog-acceptance/devices.fleet.json/upgrade-plan-runner
