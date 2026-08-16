@@ -154,9 +154,25 @@ git -C "${repository_root}" archive "${released_ref}" | tar -xf - -C "${released
 # the last copy reports that something is broken; vetting per layer reports
 # WHICH layer broke it, and the three layers have three different owners. Each
 # pass is a couple of seconds against a suite measured in tens of minutes.
+#
+# The log path comes from mktemp, NEVER from the layer label. Building it as
+# "released-vet-${layer}.log" put spaces and a slash into a filename -- the
+# label reads "grafting the candidate's internal/controllertest harness" -- so
+# the redirect failed, the subshell returned non-zero before go vet ran at all,
+# and this function reported that the released tree does not compile. It cost
+# pipeline 188. A check that cannot tell "the thing failed" from "I could not
+# run the check" is the defect this whole campaign exists to find, and this is
+# the third time tonight I have written it. The label is for the operator; the
+# filename is for the filesystem; they are not the same string.
 released_vet() {
     local layer=$1
-    local log="${work_root}/released-vet-${layer}.log"
+    local log
+    if ! log=$(mktemp "${work_root}/released-vet.XXXXXX"); then
+        echo "could not create a log for the released-tree vet after: ${layer}" >&2
+        echo "  This is the CHECK failing, not the tree. Do not read it as a" >&2
+        echo "  compile failure." >&2
+        return 1
+    fi
     if (cd "${released_root}" && env \
         GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 \
         GOTOOLCHAIN=local GOCACHE="${work_root}/released-vet-cache" \
