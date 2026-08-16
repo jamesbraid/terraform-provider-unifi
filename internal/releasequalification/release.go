@@ -304,12 +304,36 @@ func validateReleaseReadyInput(input ReleaseReadyInput) error {
 	return validateConfidentiality(input)
 }
 
+// acceptedReleaseBlockers is the set of evidence gaps this gate will ship with.
+//
+// IT IS A RELEASE DECISION, NOT A DERIVED FACT, AND THAT IS WHY IT IS WRITTEN
+// OUT RATHER THAN COMPUTED.
+//
+// DO NOT "fix" this by deriving it from input.Management.Admission.ReleaseBlockers.
+// That was tried and measured. validateReleaseContractParity already derives its
+// own expectation from that same field to check contract parity against the
+// admission, so deriving here too makes validateReleaseManagement compare that
+// field against itself. With the change in place, a catalog carrying twenty
+// fabricated unresolved gaps -- declared identically in both receipts, as two
+// artifacts from one campaign would be -- was ADMITTED with a "pass" receipt.
+//
+// The other two validators pin that the two receipts AGREE. This is the only
+// thing that pins WHICH gaps are acceptable, and agreement is not corroboration
+// here: the contract parity receipt has no producer anywhere in this repository,
+// so both sides of that comparison can arrive from the same hand.
+//
+// The staleness this invites is real and is handled by
+// TestAcceptedReleaseBlockersMatchTheCampaignPolicy rather than by hoping. A
+// pinned decision with a freshness check on its source is the pattern
+// evidence_mode_committed_test.go already uses in this package.
+var acceptedReleaseBlockers = []catalogparity.EvidenceGap{{
+	SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"},
+	Signal:     "hardware_claim",
+}}
+
 func validateReleaseManagement(input ReleaseReadyInput) error {
 	m := input.Management
-	wantBlocker := []catalogparity.EvidenceGap{{
-		SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"},
-		Signal:     "hardware_claim",
-	}}
+	wantBlocker := acceptedReleaseBlockers
 	if m.FormatVersion != 1 || m.Gate != "catalog-management-contract" ||
 		m.Result != "ready_for_downstream_verification" ||
 		m.ProviderAddress != catalogparity.CanonicalProviderAddress || len(m.Surfaces) != 67 ||
