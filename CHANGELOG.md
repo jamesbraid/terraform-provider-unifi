@@ -116,6 +116,35 @@ All notable changes to this project will be documented in this file.
   Both values must match, so a later drift to a third value fails again rather than living inside a
   permanent exemption.
 
+### 🔧 Maintenance
+
+- **The release gate over the migration manifest was missing six classes of defect that another
+  check already caught.** Two functions with the same name in different packages validated the same
+  artifact — one when it is generated, one when the release is qualified — and neither was a
+  superset of the other. Six things the first rejects passed the second: an identity migration
+  carrying an attribute mapping, a state move, an import transform or a schema version change,
+  entries out of order, and a shift in the per-kind surface counts. The second is the only guard
+  over the committed file, so those six were unheld at exactly the point a hand edit or a stale
+  regeneration would land. The shared name is why it stayed invisible from either side.
+
+  One now calls the other and keeps its release-specific rules on top. Two deliberately stay where
+  they are: the generator legitimately validates manifests that are not identity migrations, while
+  the release asserts that all 67 surfaces migrate by identity with snapshot recovery. Those are
+  claims about this release rather than about manifests in general.
+
+  **The per-kind count is the case worth reading twice.** The release gate checks that the manifest
+  has 67 entries, which a shift of one managed resource into one data source satisfies exactly.
+  Three further checks compare the manifest against other receipts, and each fires in turn as those
+  receipts are moved — until all four move together, which is what a regeneration produces, and then
+  every one of them falls silent. **A check that compares two records cannot see them drift as a
+  pair.** Only an absolute count catches that, and this gate had none.
+
+  Wiring the validator in failed the happy path immediately, because the test fixture was unsorted
+  where the real manifest is sorted. The fixture modelled a manifest the generator cannot emit, so
+  every test built on it had been running against a shape that could never arrive. That is the
+  second fixture found this way in this release; both were found by pointing a real check at
+  something that had only ever had to satisfy its consumer.
+
 ---
 
 ## [v0.102.0] - 2026-08-16
