@@ -253,10 +253,12 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Minimum rate setting preference.",
 				MarkdownDescription: "Minimum rate setting preference.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("auto", "manual"),
 				},
-				Default: stringdefault.StaticString("auto"),
 			},
 			"mlo_enabled": schema.BoolAttribute{
 				Optional:            true,
