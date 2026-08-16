@@ -59,34 +59,7 @@ func TestBuildEvidenceInventoryAccountsForEverySurfaceAndNamesGaps(t *testing.T)
 	// classifyTestSignals -- and neither could the literal. It does restate the
 	// bucket rule, which is a duplication, but one whose drift fails this test
 	// immediately rather than a number that goes stale in silence.
-	recount := map[string]int{}
-	for _, surface := range inventory.Surfaces {
-		recount["scenario_owner"]++
-		if surface.Signals.Constructor {
-			recount["constructor"]++
-		}
-		switch surface.Kind {
-		case ManagedResource:
-			if surface.Signals.Acceptance {
-				recount["acceptance"]++
-			}
-			if surface.Signals.Import {
-				recount["import"]++
-			}
-		case DataSource:
-			if surface.Signals.Acceptance {
-				recount["acceptance"]++
-			}
-		case ListResource:
-			if surface.Signals.ListAcceptance {
-				recount["list_acceptance"]++
-			}
-		case Action:
-			if surface.Signals.ActionAcceptance {
-				recount["action_acceptance"]++
-			}
-		}
-	}
+	recount := recountCoverage(inventory.Surfaces)
 	if !reflect.DeepEqual(inventory.CoverageCounts, recount) {
 		t.Fatalf("coverage counts = %v, recounted from the surfaces = %v", inventory.CoverageCounts, recount)
 	}

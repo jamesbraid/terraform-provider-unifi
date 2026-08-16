@@ -378,27 +378,92 @@ func validateAdmissionInventory(inventory EvidenceInventory, digest string) erro
 			}
 		}
 	}
-	// acceptance moved from 35 to 37 when firewall_policy and site_to_site_vpn
-	// gained acceptance files. These six numbers are the same measurement the
-	// campaign policy states as evidence_gap_count and accepted_evidence_gaps,
-	// counted a different way, so they move together: two surfaces gaining
-	// coverage is acceptance up two and gaps down two. Editing one of the four
-	// records and not the others leaves this gate contradicting the policy it
-	// validates.
+	// The gate checks that the inventory's coverage counts describe the
+	// inventory's own surfaces. It does NOT pin absolute values.
 	//
-	// This should be DERIVED from the per-surface signals and cross-checked
-	// against the accumulation, the way the inventory's own test now does it,
-	// rather than compared against six literals somebody typed. Until then,
-	// whoever adds the next acceptance test edits this map.
-	wantCoverage := map[string]int{
-		"scenario_owner": 67, "constructor": 67, "acceptance": 37,
-		"import": 27, "list_acceptance": 25, "action_acceptance": 1,
+	// It used to pin them, with acceptance hand-typed as 35. Adding an
+	// acceptance test to any surface made this gate refuse the tree, and refuse
+	// it with a message naming nothing, so the person whose work broke the
+	// release gate had six numbers and a boolean to work from. A count of how
+	// many surfaces have acceptance tests is a number that SHOULD rise; a gate
+	// that blocks on it is a ratchet against the work.
+	//
+	// What is expected of the tree is declared once, as the policy's evidence
+	// gaps. This is the integrity half: whatever the counts claim, they must be
+	// a true tally of the surfaces alongside them, so a hand-edited or truncated
+	// inventory is caught.
+	// EVERY disagreeing count is reported, not the first. Returning on the first
+	// makes the operator fix one number, run again, and discover the next --
+	// once per round trip through a gate that is not cheap to reach. The
+	// superseded version of this check printed both maps in full for the same
+	// reason, and that instinct was right even though the literal it defended
+	// was not.
+	recount := recountCoverage(inventory.Surfaces)
+	disagreements := make([]string, 0)
+	for _, key := range coverageKeys {
+		if inventory.CoverageCounts[key] != recount[key] {
+			disagreements = append(disagreements, fmt.Sprintf(
+				"%q is %d but its surfaces tally %d", key, inventory.CoverageCounts[key], recount[key]))
+		}
 	}
-	if !reflect.DeepEqual(inventory.CoverageCounts, wantCoverage) {
-		return fmt.Errorf("inventory coverage counts are %v, want %v",
-			inventory.CoverageCounts, wantCoverage)
+	if len(disagreements) != 0 {
+		return fmt.Errorf("inventory coverage counts contradict its surfaces: %s",
+			strings.Join(disagreements, "; "))
+	}
+	if len(inventory.CoverageCounts) != len(coverageKeys) {
+		return fmt.Errorf("inventory declares %d coverage counts, want %d",
+			len(inventory.CoverageCounts), len(coverageKeys))
 	}
 	return nil
+}
+
+var coverageKeys = []string{
+	"scenario_owner", "constructor", "acceptance", "import", "list_acceptance", "action_acceptance",
+}
+
+// recountCoverage tallies the coverage counts from the per-surface signals.
+//
+// DO NOT MAKE BuildEvidenceInventory CALL THIS. It restates the accumulation
+// that the generator performs inline, and the restatement is the entire point:
+// the gate compares the generator's tally with an independent count of the data
+// the generator emitted. Share the implementation and both sides derive from
+// one source, they agree no matter what either does, and the check becomes one
+// that cannot fail -- which is the exact mechanism behind a schema referee that
+// passed on a broken tree, a golden regenerated during a fix, and a pre-flight
+// comparing a plan to the stale artifact that produced it.
+func recountCoverage(surfaces []SurfaceEvidenceInventory) map[string]int {
+	counts := map[string]int{}
+	for _, key := range coverageKeys {
+		counts[key] = 0
+	}
+	for _, surface := range surfaces {
+		counts["scenario_owner"]++
+		if surface.Signals.Constructor {
+			counts["constructor"]++
+		}
+		switch surface.Kind {
+		case ManagedResource:
+			if surface.Signals.Acceptance {
+				counts["acceptance"]++
+			}
+			if surface.Signals.Import {
+				counts["import"]++
+			}
+		case DataSource:
+			if surface.Signals.Acceptance {
+				counts["acceptance"]++
+			}
+		case ListResource:
+			if surface.Signals.ListAcceptance {
+				counts["list_acceptance"]++
+			}
+		case Action:
+			if surface.Signals.ActionAcceptance {
+				counts["action_acceptance"]++
+			}
+		}
+	}
+	return counts
 }
 
 func validateBuildSchemaAdmission(receipt BuildSchemaReceipt, inventorySHA256 string) error {
