@@ -80,12 +80,22 @@ All notable changes to this project will be documented in this file.
   listed here rather than left out because this release fixes other things and a note that mentions
   only what was fixed reads as a clean bill of health.
 
-- **`unifi_network`'s `lte_lan` description still says "Defaults to `true`". It no longer does.**
-  The default was removed by the fix above and the prose was left exactly as released. This is not
-  an oversight: the schema baseline gate treats the released provider's descriptions as
-  authoritative and has no mechanism to accept a deliberate change to one, so correcting the text
-  would fail the gate. The contradiction is recorded rather than blessed, and the correction is
-  first in line once that mechanism exists.
+### 📖 Documentation
+
+- **`unifi_network`'s `lte_lan` description no longer promises a default it does not have.** The
+  released text said "Defaults to `true`", and the fix above removed that default, so the prose
+  asserted something false about the behaviour shipping beside it. It now says the value is read
+  back from the controller and explains what the old default did wrong.
+
+  Correcting it required building something first. The schema baseline gate treats the released
+  provider's schema as authoritative for every field of every attribute and had no way to accept a
+  change that was intended — its own failure message named a file to record one in, but that file
+  is a state-migration policy the test never reads, and its type has no field that can carry a
+  description. A deliberate change had nowhere to be declared. There is now a declaration that names
+  the surface, the attribute, the field and the exact old and new values, states why the change
+  cannot break an existing configuration, and labels each supporting claim measured or inferred.
+  Both values must match, so a later drift to a third value fails again rather than living inside a
+  permanent exemption.
 
 ---
 
