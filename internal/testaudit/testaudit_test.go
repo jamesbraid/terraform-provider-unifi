@@ -234,10 +234,11 @@ func Test_scanReportsTheThreeShapes(t *testing.T) {
 	got := scanFixture(t, "unfailable")
 
 	want := map[string]Kind{
-		"TestNothingHappens":    NoAssertion,
-		"TestEmptyTable":        EmptyTable,
-		"TestPopulatedButMute":  NoAssertion,
-		"TestUnconditionalSkip": SkipStub,
+		"TestNothingHappens":       NoAssertion,
+		"TestEmptyTable":           EmptyTable,
+		"TestPopulatedButMute":     NoAssertion,
+		"TestUnconditionalSkip":    SkipStub,
+		"TestEmptyMapNeverWritten": EmptyTable,
 	}
 	for name, kind := range want {
 		if got[name] != kind {
@@ -260,6 +261,15 @@ func Test_scanDoesNotReportATestThatCanFail(t *testing.T) {
 		"TestSubtestAsserts",
 		"TestConditionalSkipStillRuns",
 		"TestTableWithCases",
+		// The three below are about which way the default falls when the
+		// analyzer cannot resolve what is being ranged over. An accumulator is
+		// declared empty and filled; a directory listing cannot be resolved at
+		// all. "I could not tell" and "this cannot fail" are different
+		// statements, and reporting the second when only the first is true is
+		// the disease this package exists to find.
+		"TestAccumulatorIsNotAnEmptyTable",
+		"TestAppendAccumulatorIsNotAnEmptyTable",
+		"TestRangeOverRuntimeValueIsNotAnEmptyTable",
 	} {
 		if kind, reported := got[name]; reported {
 			t.Errorf("%s can fail but was reported as %q", name, kind)

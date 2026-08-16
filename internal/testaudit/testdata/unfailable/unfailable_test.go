@@ -45,3 +45,16 @@ func double(n int) int { return n * 2 }
 func TestUnconditionalSkip(t *testing.T) {
 	t.Skip("requires terraform state machinery")
 }
+
+// An empty map that is never written and then ranged over is a loop that never
+// runs, exactly like an unfilled slice table. This is the case a slice-only
+// rule would have missed, which is why the rule is "never written after"
+// rather than "must be a slice".
+func TestEmptyMapNeverWritten(t *testing.T) {
+	byName := map[string]int{}
+	for name, count := range byName {
+		if count != 0 {
+			t.Fatalf("%s: unreachable", name)
+		}
+	}
+}

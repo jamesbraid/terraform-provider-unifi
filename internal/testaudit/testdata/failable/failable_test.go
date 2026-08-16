@@ -100,3 +100,28 @@ func TestAppendAccumulatorIsNotAnEmptyTable(t *testing.T) {
 		}
 	}
 }
+
+// Ranges over values the analyzer CANNOT resolve: a directory listing and a
+// map the loop above fills. This is the shape that was reported as an empty
+// table before the detector required positive proof -- TestEveryCheckIsReachable
+// reads .woodpecker/scripts with os.ReadDir and asserts on what it finds.
+//
+// The point of the fixture is which way the DEFAULT falls. An analyzer that
+// cannot tell must not report a defect: "I could not resolve this" and "this
+// test cannot fail" are different statements, and reporting the second when
+// only the first is true is the same disease the audit exists to find.
+func TestRangeOverRuntimeValueIsNotAnEmptyTable(t *testing.T) {
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatalf("reading dir: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		seen[entry.Name()] = true
+	}
+	for name := range seen {
+		if name == "" {
+			t.Error("empty name")
+		}
+	}
+}
