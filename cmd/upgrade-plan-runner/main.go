@@ -71,6 +71,24 @@ func run() int {
 		}
 	}()
 
+	// THE FIREWALL ZONE COLLECTION IS NOT WRITABLE UNTIL THIS RUNS, and its
+	// absence does not announce itself: go-unifi reports
+	// "not found: type=*unifi.FirewallZone", which reads as a missing zone
+	// rather than a disabled controller feature. Every acceptance run performs
+	// this migration, so a fixture with a zone in it needs the same treatment or
+	// it fails for a reason that has nothing to do with the upgrade.
+	if err := controllertest.MigrateZoneBasedFirewall(
+		ctx,
+		os.Getenv("UNIFI_API"),
+		site(),
+		os.Getenv("UNIFI_USERNAME"),
+		os.Getenv("UNIFI_PASSWORD"),
+	); err != nil {
+		logger.Printf("the zone-based firewall migration failed: %v", err)
+		logger.Printf("a fixture containing a firewall zone would fail for that reason and not for an upgrade one")
+		return 1
+	}
+
 	// The script inherits this process's environment, which controllertest.Start
 	// has already populated with the controller's address and credentials.
 	command := exec.CommandContext(ctx, "bash", script)
@@ -93,4 +111,14 @@ func run() int {
 	}
 	logger.Printf("could not run %s: %v", script, err)
 	return 1
+}
+
+// site returns the controller site the fixtures are applied to. UNIFI_SITE is
+// what the provider reads, so the migration must target the same one or it
+// enables the feature somewhere the fixture never looks.
+func site() string {
+	if value := os.Getenv("UNIFI_SITE"); value != "" {
+		return value
+	}
+	return "default"
 }

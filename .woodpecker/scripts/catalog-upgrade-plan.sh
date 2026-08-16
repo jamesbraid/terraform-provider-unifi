@@ -61,6 +61,30 @@ fixture_count=$(find "${fixture_dir}" -maxdepth 1 -name '*.tf' -type f | wc -l |
 readonly fixture_count
 test "${fixture_count}" -gt 0 || fail "fixture directory ${fixture_dir} contains no .tf files"
 
+# THE CONTROL'S EXPECTED VALUE IS A PROPERTY OF THE FIXTURE, AND IT HAS NO
+# DEFAULT.
+#
+# Two different questions run through this same machinery and the control's
+# polarity is what tells them apart:
+#
+#   is the upgrade safe   expect 0 -- the released provider settles the fixture,
+#                         so a red subject is the candidate regressing
+#   does a fix work       expect 2 -- the released provider demonstrably does NOT
+#                         settle it, so a green subject is the fix working
+#
+# A fixture whose expectation is 0 when it should be 2 reports a fix as proven
+# by a fixture that never showed the defect. Defaulting either way rebuilds the
+# check that cannot fail one layer up, so an undeclared fixture is a hard error.
+expectation_file=${fixture_dir}/EXPECT_OLD_PLAN
+test -f "${expectation_file}" ||
+    fail "${fixture_dir} does not declare EXPECT_OLD_PLAN. A fixture that does not say whether the released provider should settle it cannot judge anything; write 0 (upgrade fixture) or 2 (regression fixture)."
+expect_old_plan=$(tr -d '[:space:]' <"${expectation_file}")
+readonly expect_old_plan
+case "${expect_old_plan}" in
+    0 | 2) ;;
+    *) fail "${expectation_file} says '${expect_old_plan}'; it must be 0 or 2" ;;
+esac
+
 work_root=$(mktemp -d "${TMPDIR:-/tmp}/catalog-upgrade.XXXXXX")
 readonly work_root
 cleanup() {
@@ -133,6 +157,17 @@ fi
 readonly released_provenance
 build_provider "${repository_root}" "${new_plugin_dir}" "candidate"
 
+# dev_overrides silently uses whatever sits in the directory, so a stale binary
+# is indistinguishable from a fresh one. accept nearly measured the wrong tree
+# this way. If the two providers are byte-identical there is nothing to compare
+# and a green means only that a program agrees with itself.
+old_sha=$(sha256sum "${old_plugin_dir}/terraform-provider-unifi" | awk '{print $1}')
+new_sha=$(sha256sum "${new_plugin_dir}/terraform-provider-unifi" | awk '{print $1}')
+readonly old_sha new_sha
+if [ "${old_sha}" = "${new_sha}" ]; then
+    fail "the released and candidate providers are byte-identical (${old_sha}); this measurement would be void"
+fi
+
 write_cli_config() {
     local plugin_dir=$1 destination=$2
     cat >"${destination}" <<EOF
@@ -194,29 +229,23 @@ run_cli "${old_cli_config}" "${work_root}/destroy.log" destroy -auto-approve -in
 
 result=pass
 verdict="a configuration applied by ${released_ref} plans clean under the candidate"
-case "${control_code}:${subject_code}" in
-    0:0) ;;
-    1:*)
-        result=void
-        verdict="the released provider could not plan its own state (exit 1); the subject result is meaningless"
-        ;;
-    2:*)
-        result=void
+if [ "${control_code}" -eq 1 ]; then
+    result=void
+    verdict="the released provider could not plan its own state (exit 1); the subject result is meaningless"
+elif [ "${control_code}" -ne "${expect_old_plan}" ]; then
+    result=void
+    if [ "${expect_old_plan}" -eq 0 ]; then
         verdict="the fixture does not settle under the released provider, so it cannot judge the candidate; fix the fixture, do not report a regression"
-        ;;
-    0:1)
-        result=fail
-        verdict="the candidate provider could not plan state written by ${released_ref} (exit 1)"
-        ;;
-    0:2)
-        result=fail
-        verdict="the candidate provider does not settle on state written by ${released_ref}; this is an upgrade regression"
-        ;;
-    *)
-        result=void
-        verdict="unrecognised exit pair control=${control_code} subject=${subject_code}"
-        ;;
-esac
+    else
+        verdict="the fixture was declared to demonstrate a defect under the released provider and did not (control ${control_code}, expected ${expect_old_plan}); a clean subject would prove nothing"
+    fi
+elif [ "${subject_code}" -eq 1 ]; then
+    result=fail
+    verdict="the candidate provider could not plan state written by ${released_ref} (exit 1)"
+elif [ "${subject_code}" -ne 0 ]; then
+    result=fail
+    verdict="the candidate provider does not settle on state written by ${released_ref}; this is an upgrade regression"
+fi
 
 mkdir -p "$(dirname "${output}")"
 jq -n \
@@ -226,12 +255,13 @@ jq -n \
     --arg released_provenance "${released_provenance}" \
     --arg released_commit "${released_commit}" \
     --arg candidate_commit "$(git -C "${repository_root}" rev-parse HEAD)" \
-    --arg old_sha256 "$(sha256sum "${old_plugin_dir}/terraform-provider-unifi" | awk '{print $1}')" \
-    --arg new_sha256 "$(sha256sum "${new_plugin_dir}/terraform-provider-unifi" | awk '{print $1}')" \
+    --arg old_sha256 "${old_sha}" \
+    --arg new_sha256 "${new_sha}" \
     --argjson fixture_files "${fixture_count}" \
     --argjson control_exit "${control_code}" \
     --argjson subject_exit "${subject_code}" \
     --argjson destroy_exit "${destroy_code}" \
+    --argjson expect_old_plan "${expect_old_plan}" \
     --arg result "${result}" \
     --arg verdict "${verdict}" \
     '{format_version: 1, gate: $gate, cli: $cli, released_ref: $released_ref,
@@ -239,12 +269,15 @@ jq -n \
       released_provenance: $released_provenance,
       released_provider_sha256: $old_sha256, candidate_provider_sha256: $new_sha256,
       fixture_files: $fixture_files, control_exit: $control_exit,
-      subject_exit: $subject_exit, destroy_exit: $destroy_exit,
+      subject_exit: $subject_exit, expected_control_exit: $expect_old_plan,
+      destroy_exit: $destroy_exit,
       result: $result, verdict: $verdict}' >"${output}"
 
 printf 'catalog-upgrade-plan: %s\n' "${verdict}"
-printf 'catalog-upgrade-plan: cli=%s control=%d subject=%d receipt=%s\n' \
-    "${cli_identity}" "${control_code}" "${subject_code}" "${output}"
+printf 'catalog-upgrade-plan: baseline=%s (%s) provenance=%s\n' \
+    "${released_ref}" "${released_commit}" "${released_provenance}"
+printf 'catalog-upgrade-plan: cli=%s control=%d (expected %d) subject=%d receipt=%s\n' \
+    "${cli_identity}" "${control_code}" "${expect_old_plan}" "${subject_code}" "${output}"
 
 if [ "${destroy_code}" -ne 0 ]; then
     printf 'catalog-upgrade-plan: the fixture was NOT destroyed (exit %d); the controller holds leftover objects\n' \
