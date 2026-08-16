@@ -293,9 +293,24 @@ for entry in "${committed_artifact[@]}"; do
     # failure against catalog-evidence-inventory_test.sh, which assigns the path
     # at line 21 and cmp's the variable at line 23 -- which is how anyone would
     # write it. A check narrower than the thing it checks fails honest code.
+    #
+    # THIS FILE IS EXCLUDED FROM ITS OWN SEARCH, and that is not tidiness. The
+    # second draft searched every script including this one, and this one names
+    # both artifacts (in the array above) and contains the letters cmp (in these
+    # comments). So it satisfied its own predicate: deleting the real comparer
+    # would have left the check green, pointing at itself as the evidence. It
+    # gave the right answer only because grep happened to reach the genuine
+    # script first. Mutating the entry to a tracked file nothing compares --
+    # build/m0/README.md -- passed, naming README.md "committed and compared".
+    #
+    # A MENTION IS NOT AN INVOCATION either, so comments are stripped before
+    # looking for cmp. Both holes are the shape this rule exists to catch: a
+    # reason that survives by nothing being able to contradict it.
     comparer=""
     while IFS= read -r candidate; do
-        grep -q 'cmp' "${candidate}" && comparer=${candidate} && break
+        [[ $(basename "${candidate}") == "$(basename "${BASH_SOURCE[0]}")" ]] && continue
+        sed 's/#.*//' "${candidate}" | grep -qE '(^|[^[:alnum:]_])cmp[[:space:]]' &&
+            comparer=${candidate} && break
     done < <(grep -rlF "${artifact}" "${scripts}" 2>/dev/null)
     if [[ -z ${comparer} ]]; then
         fail "${name} is exempt because ${artifact} is compared byte for byte, but no script both names it and runs cmp; the reason no longer holds"
