@@ -197,11 +197,31 @@ func run(args []string, stderr io.Writer) int {
 func walk(s *types.Struct) []field {
 	out := []field{}
 	for index := range s.NumFields() {
+		member := s.Field(index)
 		name := jsonName(s.Tag(index))
 		if name == "" {
+			// An embedded field carries no tag of its own, and its members
+			// appear on the wire as members of the OUTER struct -- which is
+			// what encoding/json does, and therefore what the controller
+			// sees. Skipping it drops every one of them with nothing to
+			// report: the compiler's exactly-once accounting checks the
+			// fields a bootstrap names, so a field never named is never
+			// observed, and the policy comes out complete with respect to a
+			// projection that is itself incomplete. That is the same defect
+			// as the six firewall_policy fields a hand-written bootstrap
+			// omitted, which is why deriving them was supposed to close it.
+			//
+			// An embedded field that DOES carry a tag is a named member
+			// rather than a promotion: it never reaches here, and takes the
+			// ordinary path below, so it keeps meaning what it did.
+			if member.Embedded() {
+				if _, nested := describe(member.Type()); nested != nil {
+					out = append(out, walk(nested)...)
+				}
+			}
 			continue
 		}
-		shape, nested := describe(s.Field(index).Type())
+		shape, nested := describe(member.Type())
 		entry := field{Name: name, Type: shape}
 		if nested != nil {
 			entry.Fields = walk(nested)
