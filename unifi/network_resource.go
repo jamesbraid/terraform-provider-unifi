@@ -1196,7 +1196,16 @@ func (r *networkResource) networkToModel(
 			model.MulticastDNS = previousModel.MulticastDNS
 		}
 		model.GatewayType = previousModel.GatewayType
-		model.IPv6InterfaceType = previousModel.IPv6InterfaceType
+		// ipv6_interface_type uses UseStateForUnknown and carries no default, so
+		// it is unknown during Create. Resolve it from the API value: the
+		// controller owns it, and a static "none" default is what made an apply
+		// that omitted the attribute switch IPv6 off and take the whole
+		// dhcp_v6_server block down with it.
+		if previousModel.IPv6InterfaceType.IsUnknown() {
+			model.IPv6InterfaceType = types.StringPointerValue(network.IPV6InterfaceType)
+		} else {
+			model.IPv6InterfaceType = previousModel.IPv6InterfaceType
+		}
 		model.IPv6StaticSubnet = previousModel.IPv6StaticSubnet
 		model.IPv6PDInterface = previousModel.IPv6PDInterface
 		model.IPv6PDPrefixID = previousModel.IPv6PDPrefixID
