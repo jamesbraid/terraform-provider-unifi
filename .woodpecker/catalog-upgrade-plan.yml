@@ -74,3 +74,32 @@ steps:
       - go build -o /tmp/upgrade-plan-runner ./cmd/upgrade-plan-runner
       - /tmp/upgrade-plan-runner
       - jq '.' build/release-ready/catalog-upgrade-plan.json
+      # THE REGRESSION FIXTURE, run as a second invocation rather than by
+      # teaching the harness to loop. One fixture per run is the design:
+      # UPGRADE_FIXTURE already selects it and the receipt describes exactly one
+      # measurement, which is what makes control_exit and subject_exit readable.
+      #
+      # It was written for the third_party_gateway defect and then called by
+      # nothing, which made it a check that never ran. Running it here turns
+      # both of this release's network fixes into a standing guard rather than a
+      # one-off receipt:
+      #
+      #   control 2 (expected 2)  the released provider genuinely does NOT
+      #                           settle this configuration -- that is the
+      #                           defect, and a control of 0 means the fixture
+      #                           has stopped demonstrating it
+      #   subject 0               the candidate does settle it, so
+      #                           setting_preference and third_party_gateway are
+      #                           still fixed
+      #
+      # If either regresses this goes red on its own, naming the candidate
+      # rather than the fixture, because the two reds carry different exit codes
+      # and different verdicts.
+      # $(pwd) rather than a CI variable, matching m3-dns-qualification.yml:49.
+      # The script resolves its own repository root from its location and the
+      # fixture path must be absolute, so this is the one place the workspace
+      # has to be named.
+      - export UPGRADE_FIXTURE=$(pwd)/.woodpecker/fixtures/upgrade-regression
+      - export UPGRADE_OUTPUT=/tmp/catalog-upgrade-plan-regression.json
+      - /tmp/upgrade-plan-runner
+      - jq '.' /tmp/catalog-upgrade-plan-regression.json
