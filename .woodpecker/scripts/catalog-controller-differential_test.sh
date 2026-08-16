@@ -144,6 +144,26 @@ fi
 # rather than through the policy.
 readonly released_ref=${CATALOG_RELEASED_REF:-v0.101.2}
 
+# ASSERT THE REF BEFORE READING IT. The tag oracle asks git whether each planned
+# test is defined at ${released_ref}. If that ref is not in the clone every ask
+# fails, every test looks absent from the released tree, and the disagreement
+# with the inventory is reported as a stale inventory -- which is a confident,
+# detailed, entirely wrong diagnosis. That is exactly what happened in pipeline
+# 186: the differential workflow invoked this self-test fourteen lines BEFORE it
+# fetched refs/tags/v0.101.2, so a missing ref was blamed on the artifact.
+#
+# A check that cannot tell "absent" from "could not look" is not a check. This
+# assertion is what makes the silent 2>/dev/null on the greps below safe: past
+# this point a failed grep means the symbol is genuinely not there.
+if ! git -C "${repository_root}" rev-parse --verify --quiet "${released_ref}^{commit}" >/dev/null; then
+    echo "the released ref ${released_ref} is not in this clone, so the tag oracle cannot run:" >&2
+    git -C "${repository_root}" rev-parse --verify "${released_ref}^{commit}" >&2 || true
+    echo "  Fetch the tag BEFORE invoking this self-test. Nothing below can" >&2
+    echo "  distinguish a missing ref from a missing symbol, so the run must stop" >&2
+    echo "  here rather than report the inventory as stale." >&2
+    exit 1
+fi
+
 # grafted_scenarios prints every scenario name whose surface the policy excepts,
 # because those DO run on the released tree and so are not missing from it.
 grafted_scenarios() {
