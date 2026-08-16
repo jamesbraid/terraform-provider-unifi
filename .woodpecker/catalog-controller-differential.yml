@@ -93,7 +93,20 @@ steps:
       # started exiting non-zero above it, so lines 79 to 98 are unexercised
       # rather than merely stale. They should derive from the policy and the
       # receipt instead of carrying literals.
-      - jq -e '.result == "blocked_evidence" and (.released.result == "pass" or .released.result == "accepted_limitation") and .candidate.result == "pass" and .plan.evidence_gap_count == 6' /tmp/catalog-controller-differential.json
+      - jq -e '.result == "blocked_evidence" and (.released.result == "pass" or .released.result == "accepted_limitation") and .candidate.result == "pass"' /tmp/catalog-controller-differential.json
+      # The gap count is a CEILING here, and deliberately absolute rather than
+      # relational. The followup script two steps down asserts that the plan and
+      # the campaign policy agree; that is blind to both of them growing
+      # together, and this is the only thing that catches it. Measured:
+      #
+      #   plan=7 policy=7   relational PASSES, this FAILS
+      #   plan=5 policy=5   relational passes, this passes
+      #
+      # It used to read == 6, which failed the second row: a surface GAINING
+      # coverage turned the gate red. A gate that rejects improvement is a
+      # defect; a gate that pins an upper bound is a third opinion. Lower the
+      # ceiling when coverage improves. Raising it is a release decision.
+      - gaps=$(jq -r '.plan.evidence_gap_count' /tmp/catalog-controller-differential.json); test "${gaps}" -le 6 || { printf 'evidence_gap_count is %s, above the ceiling of 6\n' "${gaps}" >&2; exit 1; }
       - jq '.' /tmp/catalog-controller-differential.json
       - if bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq diagnostic_complete; then exit 0; fi; bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq full
       - source .woodpecker/scripts/tree-state.sh && evidence_tree_state "the hardware disposition receipt" && env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-hardware-disposition -controller /tmp/catalog-controller-differential.json -output /tmp/catalog-hardware-disposition.json -tree-state "$(evidence_tree_json)"
