@@ -439,6 +439,56 @@ func validateAdmissionInventory(inventory EvidenceInventory, digest string) erro
 	return nil
 }
 
+// repeatedTestNames returns the names appearing more than once, sorted.
+//
+// The block above compares len(receipt.Plan.TestNames) against the policy's
+// declared count, and a LENGTH is satisfied by padding: a plan that repeats one
+// name and drops another hits the same total while covering fewer distinct
+// tests. Nothing else in Go would notice.
+//
+// This is not hypothetical. The fixture in admission_test.go carried exactly
+// that shape until it was corrected alongside this check -- 156 entries, 124
+// distinct, against a declared count of 156 -- because it derived one name per
+// stem with the surface kind discarded. The suite that validates admission was
+// itself the padded plan.
+//
+// Uniqueness is guaranteed in production by exactly one thing:
+// catalog-controller-differential.sh:61 ends its test_names with `| unique`.
+// That is the reason to check it here rather than the reason not to. A
+// guarantee held in one layer and unverified in the next is how
+// cmd/schema-baseline kept a refuted exemption reason and how allowed_skips sat
+// unbound -- the shell being right is not the question, whether anything
+// notices when it stops being right is.
+//
+// It names the repeats rather than reporting a count, because a gate that says
+// the plan is wrong without saying which entry is wrong leaves the reader to
+// diff two lists by eye.
+//
+// PROVEN TO FAIL, both directions, each restored:
+//
+//	deleting this block leaves the "controller plan repeats a test name" case
+//	reporting `error = <nil>, want "repeats 1 test name"`, so the check is what
+//	catches it rather than some neighbouring assertion.
+//
+//	reverting admission_test.go's surfaceTestStem to the kind-ignoring name
+//	turns the ordinary happy-path test red with "repeats 24 test name(s)" --
+//	no mutation of the plan required. That is how this was found: the check
+//	fired on the fixture before it could be aimed at anything.
+func repeatedTestNames(names []string) []string {
+	seen := make(map[string]int, len(names))
+	for _, name := range names {
+		seen[name]++
+	}
+	repeated := make([]string, 0)
+	for name, count := range seen {
+		if count > 1 {
+			repeated = append(repeated, fmt.Sprintf("%s (x%d)", name, count))
+		}
+	}
+	sort.Strings(repeated)
+	return repeated
+}
+
 var coverageKeys = []string{
 	"scenario_owner", "constructor", "acceptance", "import", "list_acceptance", "action_acceptance",
 }
@@ -611,6 +661,10 @@ func validateControllerAdmission(
 		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedFailures, policy.ReleasedAllowedFailures) ||
 		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedMissing, policy.ReleasedAllowedMissing) {
 		return fmt.Errorf("controller plan surfaces or counts are incomplete")
+	}
+	if repeated := repeatedTestNames(receipt.Plan.TestNames); len(repeated) > 0 {
+		return fmt.Errorf("controller plan repeats %d test name(s), so it covers fewer distinct tests than it declares: %s",
+			len(repeated), strings.Join(repeated, ", "))
 	}
 	if err := validateSharedScenarioOwners(receipt.Plan.SharedScenarioOwners, inventory, policy); err != nil {
 		return err
