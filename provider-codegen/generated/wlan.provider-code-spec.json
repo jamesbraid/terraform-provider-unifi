@@ -404,10 +404,10 @@
                   "custom": {
                     "imports": [
                       {
-                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
                       }
                     ],
-                    "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                    "schema_definition": "planmodifiers.UseStateUnlessSiblingChanges{Sibling: \"minrate_setting_preference\"}"
                   }
                 }
               ],
@@ -435,10 +435,10 @@
                   "custom": {
                     "imports": [
                       {
-                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
                       }
                     ],
-                    "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                    "schema_definition": "planmodifiers.UseStateUnlessSiblingChanges{Sibling: \"minrate_setting_preference\"}"
                   }
                 }
               ],
