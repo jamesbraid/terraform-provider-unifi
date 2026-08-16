@@ -319,6 +319,20 @@ func validateReleaseManagement(input ReleaseReadyInput) error {
 		!reflect.DeepEqual(m.RequiredDimensions, releaseContractDimensions) {
 		return fmt.Errorf("management contract is not a complete admitted catalog")
 	}
+	// PRESENCE AND SHAPE ONLY, AND THAT IS THE MOST THIS GATE CAN HONESTLY SAY.
+	//
+	// Measured: both digests can be replaced with any other 64 hex characters,
+	// and both versions can read "0.0.0-not-a-release", and nothing here
+	// notices. That is not an oversight to close in place. The only artifact
+	// that knows what a toolchain's canonical schema digest SHOULD be is the
+	// build-schema receipt, which is not an input to this gate, so any
+	// comparison written here would be a second opinion about a fact
+	// .woodpecker/scripts/catalog-build-schema.sh already owns -- and a second
+	// home for a fact is what this project keeps paying for.
+	//
+	// So these four fields are carried, not verified. Closing it means giving
+	// this gate the build-schema receipt, which is a change to its inputs and a
+	// decision rather than a repair.
 	for _, name := range []string{"terraform", "tofu"} {
 		toolchain, ok := m.Provider.Schema.Toolchains[name]
 		if !ok || toolchain.Version == "" || !validHex(toolchain.BinarySHA256, 64) ||
@@ -395,21 +409,51 @@ func validateReleaseLedger(input ReleaseReadyInput) error {
 		!validHex(l.BaselineSHA256, 64) || len(l.Entries) != 67 {
 		return fmt.Errorf("input ledger identity is invalid")
 	}
-	want := make(map[catalogparity.SurfaceKey]struct{}, 67)
+	want := make(map[catalogparity.SurfaceKey]managementcontract.CatalogManagementSurface, 67)
 	for _, surface := range input.Management.Surfaces {
-		want[surface.SurfaceKey] = struct{}{}
+		want[surface.SurfaceKey] = surface
 	}
 	seen := make(map[catalogparity.SurfaceKey]struct{}, 67)
 	counts := map[catalogparity.SurfaceKind]int{}
 	for _, entry := range l.Entries {
-		if _, ok := want[entry.SurfaceKey]; !ok {
+		upstream, ok := want[entry.SurfaceKey]
+		if !ok {
 			return fmt.Errorf("ledger surface set differs at %s/%s", entry.Kind, entry.Name)
+		}
+		// THE LEDGER HAS TO HAVE EARNED PROMOTION, NOT MERELY BE PRESENT.
+		//
+		// BuildReleaseReadyArtifacts stamps State, ReceiptSHA256 and
+		// Implementation onto every entry it is handed. Until these three
+		// checks existed nothing read the incoming values, so all three were
+		// overwritten unexamined and the gate promoted whatever ledger it was
+		// given. Measured: a ledger whose sixty-seven entries were all
+		// shadow_only -- a catalog in which nothing had been admitted at all --
+		// came out release_ready with a "pass" receipt.
+		//
+		// The state is compared against the management contract's own entry for
+		// the same surface rather than against a constant. Both inputs describe
+		// the same sixty-seven surfaces and the gate already holds both, so the
+		// agreement is derived rather than declared, and it cannot go stale when
+		// the admitted state is renamed.
+		if entry.State != upstream.State {
+			return fmt.Errorf("ledger surface %s/%s is %q, but the management contract admitted it as %q; "+
+				"this gate promotes the ledger it is given, so a surface that never reached the "+
+				"admitted state would be stamped release-ready unexamined",
+				entry.Kind, entry.Name, entry.State, upstream.State)
+		}
+		if entry.Implementation != "candidate" {
+			return fmt.Errorf("ledger surface %s/%s is implemented by %q, not the candidate; "+
+				"release-ready promotes the candidate and would relabel this one",
+				entry.Kind, entry.Name, entry.Implementation)
 		}
 		if _, duplicate := seen[entry.SurfaceKey]; duplicate {
 			return fmt.Errorf("duplicate ledger surface %s/%s", entry.Kind, entry.Name)
 		}
 		if !validHex(entry.BaselineSchemaSHA256, 64) {
 			return fmt.Errorf("ledger surface %s/%s schema digest is invalid", entry.Kind, entry.Name)
+		}
+		if !validHex(entry.ReceiptSHA256, 64) {
+			return fmt.Errorf("ledger surface %s/%s carries no admission receipt digest", entry.Kind, entry.Name)
 		}
 		seen[entry.SurfaceKey] = struct{}{}
 		counts[entry.Kind]++
