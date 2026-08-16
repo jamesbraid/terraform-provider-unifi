@@ -22,6 +22,56 @@
           "source": "Terraform plugin protocol semantics. Reasoning, not observation."
         }
       ]
+    },
+    {
+      "surface": "unifi_wlan",
+      "attribute": "ap_group_ids",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets ap_group_ids is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve, because on the released provider omitting it aborts the apply. The controller always returns an AP group, the read path copies that value into state, and Terraform rejects the result as inconsistent with a null plan. The one semantic difference Optional+Computed introduces -- removing a previously set attribute stops planning a change to null and instead retains the value -- is not reachable on v0.101.2 either, because after removal the config is null and the apply hits the same abort. Every path this widens is a path that currently terminates in an error.",
+      "evidence": [
+        {
+          "claim": "On the released provider, applying a unifi_wlan whose config omits ap_group_ids aborts with 'Provider produced inconsistent result after apply: .ap_group_ids: was null, but now cty.SetVal([]cty.Value{cty.StringVal(\"6a817f9bf588b98929005a32\")})'.",
+          "kind": "measured",
+          "source": "acceptance repro against a 10.4.57 simulation controller, apply exit=1; recorded in the wlan import/plan/apply repro run (wlan-repro2). The resource was imported, then planned and applied with the attribute omitted."
+        },
+        {
+          "claim": "The released schema declares ap_group_ids required=false, optional=true, computed=false, so Terraform accepts a config that omits it and the failure occurs at apply rather than at validate.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_wlan.block.attributes.ap_group_ids"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value is still authoritative, so configurations that set the attribute see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_wlan",
+      "attribute": "network_id",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "Same transition and same argument as ap_group_ids: still Optional, so a configuration that sets network_id is unaffected, and a configuration that omits it has no working behaviour to preserve. Stated plainly, because the ledger should not launder it: the aborting apply has been observed directly for ap_group_ids and NOT for network_id. The claim that network_id behaves the same rests on reading the resource, not on a run. The read path assigns the controller's networkconf_id into state whenever it is non-empty, and the update path only carries a planned value through when that value is non-null, so an omitted network_id reaches the consistency check as null against a populated read -- the same shape that aborted for ap_group_ids. A controller wlan document always carries a non-empty networkconf_id. If that reasoning is wrong, the failure mode is that this attribute did not need Computed, which shows up as a widened schema rather than as a broken configuration.",
+      "evidence": [
+        {
+          "claim": "The released schema declares network_id required=false, optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_wlan.block.attributes.network_id"
+        },
+        {
+          "claim": "The read path sets network_id from the controller response whenever it is non-empty, and the update path preserves the planned value only when it is neither null nor unknown -- so an omitted network_id is compared as null against a populated read.",
+          "kind": "inferred",
+          "source": "unifi/wlan_resource.go:1059-1062 (read) and unifi/wlan_resource.go:631-632 (update). Read from the source, not observed at runtime."
+        },
+        {
+          "claim": "No recorded acceptance run names network_id as the subject of a 'provider produced inconsistent result after apply' error; only ap_group_ids, minimum_data_rate_5g_kbps, purpose, third_party_gateway, dhcp_server.dns_servers and dns.servers appear.",
+          "kind": "measured",
+          "source": "search of every acceptance log in the run directory for 'unexpected new value'. This is stated as the limit of the evidence, not as support for the change."
+        }
+      ]
     }
   ]
 }
