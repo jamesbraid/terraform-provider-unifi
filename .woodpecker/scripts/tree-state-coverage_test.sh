@@ -220,10 +220,35 @@ fi
 #    A shell generator records by calling evidence_tree_json. A Go one records
 #    by being passed -tree-state, which the derivation above already required,
 #    so it is recording by construction and needs no separate check.
+#    One shell generator cannot record, and it is the flagship:
+#    catalog-evidence-inventory.sh never touches its own artifact -- it hands
+#    the path to `go run ./cmd/catalog-evidence`, which writes the JSON. The
+#    script and the binary are two halves of one producer, so it inherits the
+#    binary's exemption rather than earning a new one, and that artifact is the
+#    committed, byte-compared one that must not carry a tree state at all.
+readonly -a records_exempt=(
+    "catalog-evidence-inventory.sh|writes nothing itself: cmd/catalog-evidence writes the artifact, and that artifact is committed and byte-compared, so it must not carry a tree state"
+)
+records_is_exempt() {
+    local entry
+    for entry in "${records_exempt[@]}"; do
+        [[ $1 == "${entry%%|*}" ]] && return 0
+    done
+    return 1
+}
 for name in "${guarded[@]:-}"; do
     case ${name} in cmd/*) continue ;; esac
+    records_is_exempt "${name}" && continue
     if ! grep -q 'evidence_tree_json' "${scripts}/${name}"; then
         fail "${name} calls the guard but never embeds evidence_tree_json; an acknowledged-dirty run would be indistinguishable from a clean one"
+    fi
+done
+# And an exemption here must not go stale either: if it starts recording, the
+# reason is wrong and the entry has to go.
+for entry in "${records_exempt[@]}"; do
+    name=${entry%%|*}
+    if grep -q 'evidence_tree_json' "${scripts}/${name}" 2>/dev/null; then
+        fail "${name} is exempt from recording but now embeds evidence_tree_json; delete its exemption"
     fi
 done
 
