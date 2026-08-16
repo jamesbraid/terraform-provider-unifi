@@ -44,11 +44,15 @@ clone:
 steps:
   - name: fast-deterministic-loop
     image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
-    # Raised from 5m for the inventory check: it fetches the released tag, two
-    # SDK archives, and compiles cmd/catalog-evidence. A timeout would be a red
-    # that says nothing about the inventory, which is the failure this step
-    # exists to report clearly.
-    timeout: 8m
+    # WANTED: 8m, raised from 5m for the inventory check, which fetches the
+    # released tag, two SDK archives, and compiles cmd/catalog-evidence. A
+    # timeout would be a red that says nothing about the inventory, which is the
+    # failure this step exists to report clearly.
+    #
+    # NOT SET, AND NEVER WAS. The reasoning above was sound and the mechanism it
+    # configured does not exist: a step `timeout:` is parsed and discarded.
+    # Pipeline 220 ran seventeen minutes here and was never killed; it ended
+    # because someone superseded it. See check_inert_workflow_keys_test.go.
     # The skunkworks guest's Docker volume lives on its persistent cache disk.
     # Keep Go's build/module cache and the locked go-unifi checkout between
     # jobs; the workflow still verifies the checkout and source commit on each
