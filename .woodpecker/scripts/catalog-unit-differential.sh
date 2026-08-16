@@ -69,9 +69,24 @@ run_suite() {
         sort_by([.package, .test, .action])) as $normalized |
       {
         exit_code: $exit_code,
+        # A FLOOR ON THE MEASUREMENT, not only on the failures.
+        #
+        # The three conditions below it all hold over an empty run: exit code
+        # zero, no failing events, and every line parsed because there were no
+        # lines. Measured by feeding this filter empty input -- it returns
+        # result "pass" with package_pass_count 0. A `go test ./...` that
+        # produced nothing was therefore indistinguishable from a full green
+        # suite, and this receipt is consumed by catalog admission.
+        #
+        # catalog-unit-differential_test.sh already asserts package_pass_count
+        # is above zero. That file is invoked by no pipeline and no script, so
+        # the one assertion standing between us and a hollow pass lived
+        # somewhere nothing runs. It belongs in the thing that always runs.
         result: (if $exit_code == 0 and
                     ([$normalized[] | select(.action == "fail")] | length) == 0 and
-                    ($lines | length) == ($parsed | length)
+                    ($lines | length) == ($parsed | length) and
+                    ([$normalized[] |
+                      select(.test == null and .action == "pass")] | length) > 0
                  then "pass" else "fail" end),
         unparsed_line_count: (($lines | length) - ($parsed | length)),
         package_pass_count: ([$normalized[] |
