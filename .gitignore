@@ -87,3 +87,37 @@ build/**/*-ci.json
 /m3-candidate/
 /.woodpecker/fixtures/catalog-acceptance/unifi-emu
 /.woodpecker/fixtures/catalog-acceptance/devices.fleet.json/upgrade-plan-runner
+
+# Executables left at the repository root by `go build ./cmd/<name>`.
+#
+# Without an -o, go build writes the binary into the working directory named
+# after the command's directory. Run from the root -- which is where every
+# other go command here is run -- that leaves a multi-megabyte executable
+# beside the source, untracked and easy to sweep into a `git add`. One such
+# commit added five of them, 19 MB, and they reached a shared branch.
+#
+# THE FIRST ATTEMPT AT THIS RULE IS ALREADY IN THIS FILE AND HAS NEVER WORKED:
+# a missing newline joined it to the line above, so
+# `/.woodpecker/fixtures/catalog-acceptance/devices.fleet.json/upgrade-plan-runner`
+# is one path that matches nothing rather than two that match something. It has
+# been dead since it was written and nothing noticed, which is why the list
+# below is bound to cmd/ by check_stray_binaries_test.go rather than trusted.
+/action-gen
+/catalog-admission
+/catalog-evidence
+/catalog-hardware-disposition
+/catalog-management-contract
+/catalog-migration-recovery
+/catalog-parity
+/catalog-pragmatic-evidence
+/catalog-release-ready
+/list-policy-scaffold
+/list-resource-gen
+/nested-custom-type-strip
+/nested-type-dedup
+/policy-scaffold
+/provider-spec-compiler
+/schema-baseline
+/schema-behaviour
+/sdk-bootstrap
+/upgrade-plan-runner
