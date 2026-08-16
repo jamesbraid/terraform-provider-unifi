@@ -61,12 +61,21 @@ readonly -a exempt=(
     "m1-dns-compiler.sh|cannot be executed to verify: the pipeline that exercises it is down"
     "m0-uos-dns-qualification.sh|cannot be executed to verify: the pipeline that exercises it is down"
     "m3-dns-qualification.sh|cannot be executed to verify: the pipeline that exercises it is down"
-    "cmd/catalog-admission|Go: the guard is a bash library a Go binary cannot source (task 56)"
-    "cmd/catalog-evidence|Go: the guard is a bash library a Go binary cannot source (task 56)"
-    "cmd/catalog-hardware-disposition|Go: the guard is a bash library a Go binary cannot source (task 56)"
-    "cmd/catalog-management-contract|Go: the guard is a bash library a Go binary cannot source (task 56)"
-    "cmd/catalog-migration-recovery|Go: the guard is a bash library a Go binary cannot source (task 56)"
-    "cmd/catalog-pragmatic-evidence|Go: the guard is a bash library a Go binary cannot source (task 56)"
+    # Five Go binaries left this list when they gained -tree-state. The reason
+    # they carried -- "a Go binary cannot source a bash library" -- was true of
+    # a Go binary MEASURING the tree and false of one being HANDED the answer,
+    # which is the distinction the fix turned on.
+    #
+    # catalog-evidence stays, for a different and permanent reason. Its
+    # artifact is committed, and catalog-evidence-inventory_test.sh compares a
+    # fresh run against the committed copy byte for byte. tree_state contains
+    # the commit, so an artifact recording its own would never reproduce:
+    # generated at one commit, committed, regenerated at the next, comparison
+    # fails forever. It does not need one either -- reproducing byte for byte
+    # is a stronger claim about which tree it describes than a self-declared
+    # field. Tree state belongs in transient receipts; a committed artifact
+    # proves its tree by being reproducible.
+    "cmd/catalog-evidence|its artifact is committed and compared byte for byte, so a recorded commit could never reproduce; reproducibility is the stronger claim"
     "cmd/schema-baseline|Go: the guard is a bash library a Go binary cannot source (task 56)"
 )
 
@@ -118,9 +127,25 @@ for dir in "${repository_root}"/cmd/*/; do
     [[ ${writes} -eq 0 ]] && continue
 
     population+=("cmd/${command_name}")
-    # No Go generator carries the guard. Rule 4 asserts that rather than
-    # assuming it, so this loop cannot quietly keep reporting zero after
-    # somebody does the work.
+
+    # A Go binary is guarded when BOTH halves hold, and the second is the one
+    # that actually matters. The binary must declare -tree-state, and every
+    # workflow line that runs it must pass it. A binary that demands the flag
+    # while a call site omits it is not guarded, it is broken -- and that is the
+    # only shape this can fail in, because the flag has no default.
+    #
+    # The guard itself stays in bash. Go never measures the tree; it is handed
+    # the answer and refuses without one. So this looks for the seam, not for a
+    # Go reimplementation.
+    grep -qE '"tree-state"' "${dir}"*.go 2>/dev/null || continue
+    call_sites=$(grep -rhoE "go run [^|&]*cmd/${command_name}[^|&]*" "${repository_root}/.woodpecker" || true)
+    [[ -z ${call_sites} ]] && continue
+    unpassed=$(printf '%s\n' "${call_sites}" | grep -vc -- '-tree-state' || true)
+    if [[ ${unpassed} -ne 0 ]]; then
+        fail "cmd/${command_name} takes -tree-state but ${unpassed} workflow call site(s) do not pass it; the binary will refuse at run time"
+        continue
+    fi
+    guarded+=("cmd/${command_name}")
 done
 
 # ------------------------------------------------------------------------ rules
@@ -156,13 +181,51 @@ for entry in "${exempt[@]}"; do
     fi
 done
 
-# 4. There is still no Go dirty-tree guard. Asserted, not assumed: without this
-#    the Go half of the exemption list would keep its reason forever, and the
-#    day somebody writes the guard the count would go on reporting zero because
-#    nothing here knows how to see a Go call site.
+# 4. No Go binary measures the tree for itself.
+#
+#    This rule used to read "there is still no Go dirty-tree guard", and it was
+#    right to assert rather than assume -- but it asserted the absence of the
+#    wrong thing. Its trigger was EVIDENCE_ALLOW_DIRTY_TREE appearing in a .go
+#    file, which detects a Go REIMPLEMENTATION of the guard. The guard that was
+#    actually built passes the measured state IN as a required flag and never
+#    reads the environment, so the old trigger would have stayed silent while
+#    five Go binaries began demanding and recording tree state -- and the five
+#    exemptions saying "a Go binary cannot source a bash library" would have
+#    stayed on this list, false, with nothing able to notice.
+#
+#    So the assertion is inverted to the thing we actually want to stay true:
+#    the measurement has ONE home. A Go file reading the environment variable,
+#    or shelling out to git for status, means the rule has grown a second
+#    implementation that can disagree with the first.
 if grep -rq 'EVIDENCE_ALLOW_DIRTY_TREE' --include='*.go' "${repository_root}"; then
-    fail "a Go file now honours EVIDENCE_ALLOW_DIRTY_TREE; teach this check to detect Go call sites, then move the covered commands out of the exemption list"
+    fail "a Go file reads EVIDENCE_ALLOW_DIRTY_TREE; the measurement belongs in tree-state.sh alone, and a second implementation in another language can disagree with the first"
 fi
+if grep -rqE 'git.*status --porcelain' --include='*.go' "${repository_root}"; then
+    fail "a Go file measures the working tree itself; it should be handed the state that tree-state.sh measured, not measure it again"
+fi
+
+# 5. A guarded generator RECORDS the state, it does not merely ask for it.
+#
+#    Calling the guard and recording its answer are different things, and for a
+#    long time every guarded script did the first and none did the second. The
+#    refusal worked; the third case in tree-state.sh -- dirty, acknowledged,
+#    RECORD it -- wrote nothing, so under EVIDENCE_ALLOW_DIRTY_TREE=1 an
+#    acknowledged-dirty artifact came out byte-identical to a clean one. That is
+#    the case the library's own header calls "the point".
+#
+#    It went unseen because the rules above ask whether the guard is CALLED and
+#    stop there. A check on one half of a mechanism reads as coverage of the
+#    whole -- the same defect the guard exists to remove, one level up.
+#
+#    A shell generator records by calling evidence_tree_json. A Go one records
+#    by being passed -tree-state, which the derivation above already required,
+#    so it is recording by construction and needs no separate check.
+for name in "${guarded[@]:-}"; do
+    case ${name} in cmd/*) continue ;; esac
+    if ! grep -q 'evidence_tree_json' "${scripts}/${name}"; then
+        fail "${name} calls the guard but never embeds evidence_tree_json; an acknowledged-dirty run would be indistinguishable from a clean one"
+    fi
+done
 
 # ----------------------------------------------------------------------- report
 printf '\n'

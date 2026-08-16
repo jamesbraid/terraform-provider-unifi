@@ -175,6 +175,7 @@ jq --indent 2 --null-input \
     --arg lifecycle_sha256 "${lifecycle_sha256}" \
     --arg management_sidecar_sha256 "${management_sidecar_sha256}" \
     --slurpfile schema_gate "${work_root}/schema-gate.json" \
+    --argjson tree_state "$(evidence_tree_json)" \
     '{
         format_version: 1,
         milestone: "M3",
@@ -182,6 +183,9 @@ jq --indent 2 --null-input \
         promotion: "qualified",
         execution: $execution,
         source_commit: $source_commit,
+        # source_commit alone can name a commit this receipt does not
+        # describe. tree_state says whether it does.
+        tree_state: $tree_state,
         go_unifi: {
             module: $module_path,
             replacement: null,
