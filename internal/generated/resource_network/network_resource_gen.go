@@ -290,13 +290,21 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					},
 					"start": schema.StringAttribute{
 						Optional:            true,
+						Computed:            true,
 						Description:         "The start of the DHCPv6 address range.",
 						MarkdownDescription: "The start of the DHCPv6 address range.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"stop": schema.StringAttribute{
 						Optional:            true,
+						Computed:            true,
 						Description:         "The end of the DHCPv6 address range.",
 						MarkdownDescription: "The end of the DHCPv6 address range.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 				},
 				Optional:            true,
@@ -478,8 +486,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"ipv6_static_subnet": schema.StringAttribute{
 				Optional:            true,
+				Computed:            true,
 				Description:         "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
 				MarkdownDescription: "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"lte_lan": schema.BoolAttribute{
 				Optional:            true,

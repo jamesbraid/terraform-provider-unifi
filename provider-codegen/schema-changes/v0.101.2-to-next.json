@@ -72,6 +72,81 @@
           "source": "search of every acceptance log in the run directory for 'unexpected new value'. This is stated as the limit of the evidence, not as support for the change."
         }
       ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "ipv6_static_subnet",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets ipv6_static_subnet is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve, because on the released provider omitting it aborts the apply -- the controller assigns the value, the read copies it into state, and Terraform rejects the result as inconsistent with a null plan. Removing a previously set value is not a surviving path either: after removal the config is null and the apply hits the same abort. Every path this widens currently terminates in an error.",
+      "evidence": [
+        {
+          "claim": "Applying a unifi_network whose config omits ipv6_static_subnet aborts with 'Provider produced inconsistent result after apply: .ipv6_static_subnet: was null, but now cty.StringVal(\"fd41:9::1/64\")'.",
+          "kind": "measured",
+          "source": "acceptance reproduction against a 10.4.57 simulation controller (ghcr.io/jamesbraid/unifi-network@sha256:584be3a2...), provider built at 5f00f7c4, apply exit=1. Recorded in the dhcp_v6_server reproduction run."
+        },
+        {
+          "claim": "The released schema declares ipv6_static_subnet required=false, optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, unifi_network.ipv6_static_subnet"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "dhcp_v6_server.start",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets dhcp_v6_server.start is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve, because on the released provider omitting it aborts the apply -- the controller assigns the value, the read copies it into state, and Terraform rejects the result as inconsistent with a null plan. Removing a previously set value is not a surviving path either: after removal the config is null and the apply hits the same abort. Every path this widens currently terminates in an error.",
+      "evidence": [
+        {
+          "claim": "Applying a unifi_network whose config omits dhcp_v6_server.start aborts with 'Provider produced inconsistent result after apply: .dhcp_v6_server.start: was null, but now cty.StringVal(\"fd41:9::2\")'.",
+          "kind": "measured",
+          "source": "acceptance reproduction against a 10.4.57 simulation controller (ghcr.io/jamesbraid/unifi-network@sha256:584be3a2...), provider built at 5f00f7c4, apply exit=1. Recorded in the dhcp_v6_server reproduction run."
+        },
+        {
+          "claim": "The released schema declares dhcp_v6_server.start required=false, optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, unifi_network.dhcp_v6_server.start"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "dhcp_v6_server.stop",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets dhcp_v6_server.stop is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve, because on the released provider omitting it aborts the apply -- the controller assigns the value, the read copies it into state, and Terraform rejects the result as inconsistent with a null plan. Removing a previously set value is not a surviving path either: after removal the config is null and the apply hits the same abort. Every path this widens currently terminates in an error.",
+      "evidence": [
+        {
+          "claim": "Applying a unifi_network whose config omits dhcp_v6_server.stop aborts with 'Provider produced inconsistent result after apply: .dhcp_v6_server.stop: was null, but now cty.StringVal(\"fd41:9::7d1\")'.",
+          "kind": "measured",
+          "source": "acceptance reproduction against a 10.4.57 simulation controller (ghcr.io/jamesbraid/unifi-network@sha256:584be3a2...), provider built at 5f00f7c4, apply exit=1. Recorded in the dhcp_v6_server reproduction run."
+        },
+        {
+          "claim": "The released schema declares dhcp_v6_server.stop required=false, optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, unifi_network.dhcp_v6_server.stop"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
     }
   ]
 }

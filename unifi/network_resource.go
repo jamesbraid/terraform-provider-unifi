@@ -1206,7 +1206,16 @@ func (r *networkResource) networkToModel(
 		} else {
 			model.IPv6InterfaceType = previousModel.IPv6InterfaceType
 		}
-		model.IPv6StaticSubnet = previousModel.IPv6StaticSubnet
+		// ipv6_static_subnet became Computed for the same reason as
+		// ipv6_interface_type: the controller assigns it, and a null plan
+		// against a populated read aborts the apply. Computed means the plan
+		// carries unknown on Create, so resolve it from the API rather than
+		// copying the unknown through.
+		if previousModel.IPv6StaticSubnet.IsUnknown() {
+			model.IPv6StaticSubnet = types.StringPointerValue(network.IPV6Subnet)
+		} else {
+			model.IPv6StaticSubnet = previousModel.IPv6StaticSubnet
+		}
 		model.IPv6PDInterface = previousModel.IPv6PDInterface
 		model.IPv6PDPrefixID = previousModel.IPv6PDPrefixID
 		// lte_lan uses UseStateForUnknown, so it may be unknown during Create.
