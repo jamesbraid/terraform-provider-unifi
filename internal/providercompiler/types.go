@@ -60,6 +60,8 @@ type bootstrapField struct {
 	// than from policy; what each member becomes in Terraform is still a
 	// policy decision.
 	Fields []bootstrapField `json:"fields,omitempty"`
+	// SecretCandidate is set by cmd/sdk-bootstrap for x_-prefixed SDK fields.
+	SecretCandidate bool `json:"secret_candidate,omitempty"`
 }
 
 type observedCatalog struct {

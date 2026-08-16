@@ -70,7 +70,8 @@
       },
       {
         "name": "x_password",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       }
     ]
   }
