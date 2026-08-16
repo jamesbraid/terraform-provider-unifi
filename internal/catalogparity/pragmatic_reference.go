@@ -40,6 +40,31 @@ type FleetSurfaceReference struct {
 	ShapeSHA256          string   `json:"shape_sha256,omitempty"`
 }
 
+// FleetReferenceSummary is build/restricted/catalog-fleet-gap-summary.json,
+// and it is the one committed artifact here that CANNOT be regenerated, in
+// principle rather than for want of a producer.
+//
+// It is an OBSERVATION OF A LIVE FLEET: which surfaces are configured on real
+// hardware, how many of each, and which attributes are set. Value-free by
+// design -- attribute names only, never their values. Nothing in this tree can
+// produce it, because the answer is not a function of the tree. Re-observing
+// gives a different answer whenever the fleet has changed, which is the normal
+// case rather than the exceptional one.
+//
+// SO THE COMMITTED-ARTIFACT RULE DOES NOT APPLY. Regenerate-and-byte-compare is
+// right for the evidence inventory and for provider-schema-digests.json, and
+// asking it of this file would make every fleet change look like a defect. It
+// is anchored differently and correctly: catalog-pragmatic-references.json pins
+// it by fleet_summary_sha256, so it cannot be edited without the pin moving.
+//
+// WHAT IT ACTUALLY LACKS is provenance. The fields below are the whole file:
+// format_version, provider_address, surfaces. There is no capture date, no
+// controller identity and no controller version, so nothing in the repository
+// can say WHEN this was observed or against WHAT. An observation with no
+// observation date cannot go stale visibly -- it can only be believed. Closing
+// that means adding those fields and a staleness bound the gate can enforce,
+// and it needs the next capture rather than an edit: back-filling a date we do
+// not know would be a worse lie than the absent field.
 type FleetReferenceSummary struct {
 	FormatVersion   int                     `json:"format_version"`
 	ProviderAddress string                  `json:"provider_address"`
