@@ -258,6 +258,78 @@ for entry in "${records_exempt[@]}"; do
     fi
 done
 
+# 6. The committed-and-byte-compared reason is CHECKED, not trusted.
+#
+#    schema-baseline sat on this list carrying a refuted reason -- "a Go binary
+#    cannot source a bash library" -- straight through the change that refuted
+#    it. It was not among the five that moved, so nothing revisited it, and a
+#    reason survives by not being looked at. Every other rule here checks a
+#    claim against the tree; the reasons themselves were the one thing taken on
+#    trust.
+#
+#    Most reasons cannot be checked -- "the pipeline that exercises it is down"
+#    is a fact about the world. But this class makes two claims that are purely
+#    mechanical: the artifact is committed, and something compares it against a
+#    fresh run. If either stops holding, the exemption is wrong and the binary
+#    should be guarded like any other. So the artifact is NAMED rather than
+#    described, and both halves are verified.
+readonly -a committed_artifact=(
+    "cmd/catalog-evidence|build/release-ready/catalog-evidence-inventory.json"
+    "cmd/schema-baseline|build/m0/provider-schema-digests.json"
+)
+for entry in "${committed_artifact[@]}"; do
+    name=${entry%%|*}
+    artifact=${entry#*|}
+    if ! is_exempt "${name}"; then
+        fail "${name} names a committed artifact but is not exempt; either it is guarded now or this entry is stale"
+        continue
+    fi
+    if ! git -C "${repository_root}" ls-files --error-unmatch "${artifact}" >/dev/null 2>&1; then
+        fail "${name} is exempt because ${artifact} is committed, but git does not track it; the reason no longer holds"
+        continue
+    fi
+    # A script that NAMES the artifact and ALSO runs cmp, not both on one line.
+    # The first draft demanded them on the same line and reported a false
+    # failure against catalog-evidence-inventory_test.sh, which assigns the path
+    # at line 21 and cmp's the variable at line 23 -- which is how anyone would
+    # write it. A check narrower than the thing it checks fails honest code.
+    #
+    # THIS FILE IS EXCLUDED FROM ITS OWN SEARCH, and that is not tidiness. The
+    # second draft searched every script including this one, and this one names
+    # both artifacts (in the array above) and contains the letters cmp (in these
+    # comments). So it satisfied its own predicate: deleting the real comparer
+    # would have left the check green, pointing at itself as the evidence. It
+    # gave the right answer only because grep happened to reach the genuine
+    # script first. Mutating the entry to a tracked file nothing compares --
+    # build/m0/README.md -- passed, naming README.md "committed and compared".
+    #
+    # A MENTION IS NOT AN INVOCATION either, so comments are stripped before
+    # looking for cmp. Both holes are the shape this rule exists to catch: a
+    # reason that survives by nothing being able to contradict it.
+    #
+    # Mutation-proven, all four against the schema-baseline entry:
+    #   artifact -> build/m0/not-tracked.json     FAIL "git does not track it"
+    #   artifact -> build/m0/README.md            FAIL "no script both names it
+    #                                             and runs cmp" -- this one
+    #                                             PASSED before the two fixes
+    #   README.md + "# cmp build/m0/README.md"
+    #     appended to catalog-evidence-inventory  FAIL, same message: a comment
+    #                                             is not an invocation
+    #   README.md + a real cmp line appended      ok -- the control, so the
+    #                                             matcher is not simply broken
+    comparer=""
+    while IFS= read -r candidate; do
+        [[ $(basename "${candidate}") == "$(basename "${BASH_SOURCE[0]}")" ]] && continue
+        sed 's/#.*//' "${candidate}" | grep -qE '(^|[^[:alnum:]_])cmp[[:space:]]' &&
+            comparer=${candidate} && break
+    done < <(grep -rlF "${artifact}" "${scripts}" 2>/dev/null)
+    if [[ -z ${comparer} ]]; then
+        fail "${name} is exempt because ${artifact} is compared byte for byte, but no script both names it and runs cmp; the reason no longer holds"
+        continue
+    fi
+    printf 'ok   reason verified:        %s -- %s is committed and compared\n' "${name}" "${artifact}"
+done
+
 # ----------------------------------------------------------------------- report
 printf '\n'
 for name in "${population[@]}"; do
