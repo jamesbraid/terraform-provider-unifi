@@ -143,12 +143,50 @@ for build in released candidate; do
     run_schema "${tofu_bin}" tofu "${build}"
 done
 
-cmp "${work_root}/released.terraform.canonical.json" "${work_root}/candidate.terraform.canonical.json"
-cmp "${work_root}/released.tofu.canonical.json" "${work_root}/candidate.tofu.canonical.json"
-cmp "${repository_root}/provider-contracts/schema/terraform-1.15.8.json" \
-    "${work_root}/candidate.terraform.canonical.json"
-cmp "${repository_root}/provider-contracts/schema/tofu-1.12.1.json" \
-    "${work_root}/candidate.tofu.canonical.json"
+# Parity is the ONE claim in this file that is no longer byte-identity, so it is
+# the one claim that stopped being a cmp. A schema difference is allowed when the
+# schema-change ledger declares that exact transition -- surface, attribute,
+# field, old and new -- and forbidden otherwise. Everything else here still
+# compares bytes and must keep doing so.
+#
+# cmp reported the first differing byte and stopped, so it could say
+# "differ: char 139633, line 1" and nothing about which attribute, how many, or
+# whether anyone intended it. The answer turned out to be six.
+#
+# THIS IS THE CALL SITE. Until it existed, internal/schemaparity was a producer
+# nobody invoked: correct, unit-tested, and asked nothing.
+#
+# The `cd` is load-bearing. `go run` resolves a package against the CURRENT
+# module, not against the path it is handed, so an absolute path works only when
+# the caller already happens to be inside the repository. Proven from /tmp:
+# "go.mod file not found in current directory or any parent directory".
+#
+# compare-only reads the projections this script ALREADY built and asserts
+# nothing else. Running the full binary here would rebuild both providers and
+# re-dump both CLIs, and the determinism, cross-CLI and inverted-control
+# assertions below would then be judging bytes it never saw.
+(cd "${repository_root}" && go run ./cmd/schema-parity \
+    -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" \
+    -cli terraform \
+    -released-canonical "${work_root}/released.terraform.canonical.json" \
+    -candidate-canonical "${work_root}/candidate.terraform.canonical.json")
+(cd "${repository_root}" && go run ./cmd/schema-parity \
+    -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" \
+    -cli tofu \
+    -released-canonical "${work_root}/released.tofu.canonical.json" \
+    -candidate-canonical "${work_root}/candidate.tofu.canonical.json")
+# The frozen released baseline against the built candidate: the same claim as
+# the pair above by a second route, so it goes through the same ledger.
+(cd "${repository_root}" && go run ./cmd/schema-parity \
+    -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" \
+    -cli terraform-baseline \
+    -released-canonical "${repository_root}/provider-contracts/schema/terraform-1.15.8.json" \
+    -candidate-canonical "${work_root}/candidate.terraform.canonical.json")
+(cd "${repository_root}" && go run ./cmd/schema-parity \
+    -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" \
+    -cli tofu-baseline \
+    -released-canonical "${repository_root}/provider-contracts/schema/tofu-1.12.1.json" \
+    -candidate-canonical "${work_root}/candidate.tofu.canonical.json")
 cmp "${repository_root}/build/m0/provider-schema-digests.json" \
     "${work_root}/candidate.terraform.digests.json"
 
