@@ -310,11 +310,17 @@ func isSkipStub(fd *ast.FuncDecl) bool {
 // whose body never executes. That was a real false positive here, in
 // TestEvidenceModesCoverTheCommittedInventory, which asserts perfectly well.
 //
-// Two conditions rather than one, and both are needed. The literal must be a
-// SLICE, because the table-driven shape this exists to find is always
-// tests := []struct{...}{} and an empty map is far more often an accumulator.
-// And the variable must never be written after, which is what separates a table
-// nobody filled in from an accumulator the loop above fills.
+// ONE condition does the work: the variable must never be written after it is
+// declared empty. That is what separates a table nobody filled in from an
+// accumulator the loop above fills.
+//
+// It briefly had a second condition, that the literal be a slice, on the
+// reasoning that the gotests shape is always tests := []struct{...}{} and an
+// empty map is more often an accumulator. Mutation testing refuted that:
+// removing it changed no fixture and no count, because every accumulator is
+// caught by being written to. It was also wrong in principle -- an empty map
+// that is never written and then ranged over is a loop that never runs, which
+// is exactly what this reports, so requiring a slice would have missed one.
 func rangesOverEmptyTable(fd *ast.FuncDecl) bool {
 	empty := map[string]bool{}
 	written := map[string]bool{}
@@ -338,9 +344,6 @@ func rangesOverEmptyTable(fd *ast.FuncDecl) bool {
 			for i, rhs := range stmt.Rhs {
 				lit, ok := rhs.(*ast.CompositeLit)
 				if !ok || len(lit.Elts) != 0 || i >= len(stmt.Lhs) {
-					continue
-				}
-				if _, isSlice := lit.Type.(*ast.ArrayType); !isSlice {
 					continue
 				}
 				if id, ok := stmt.Lhs[i].(*ast.Ident); ok {
