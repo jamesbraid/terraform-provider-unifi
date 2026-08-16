@@ -69,11 +69,11 @@ func realLedger() Ledger {
 	}
 	return Ledger{FormatVersion: 1, FromVersion: "0.101.2", ToVersion: "next", Entries: []Entry{
 		entry("unifi_network", "lte_lan", "description", "Defaults to `true`.", "Read back from the controller."),
-		entry("unifi_network", "ipv6_static_subnet", "computed", "", "true"),
-		entry("unifi_network", "dhcp_v6_server.start", "computed", "", "true"),
-		entry("unifi_network", "dhcp_v6_server.stop", "computed", "", "true"),
-		entry("unifi_wlan", "ap_group_ids", "computed", "", "true"),
-		entry("unifi_wlan", "network_id", "computed", "", "true"),
+		entry("unifi_network", "ipv6_static_subnet", "computed", "false", "true"),
+		entry("unifi_network", "dhcp_v6_server.start", "computed", "false", "true"),
+		entry("unifi_network", "dhcp_v6_server.stop", "computed", "false", "true"),
+		entry("unifi_wlan", "ap_group_ids", "computed", "false", "true"),
+		entry("unifi_wlan", "network_id", "computed", "false", "true"),
 	}}
 }
 

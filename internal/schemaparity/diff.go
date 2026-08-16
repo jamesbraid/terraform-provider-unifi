@@ -39,11 +39,11 @@ func (d Difference) String() string {
 // out to be six.
 //
 // Absence is a difference. A key present on one side and missing on the other
-// is reported as a transition to or from the empty string, because that is
-// exactly how the canonical form encodes a false boolean: computed:false is
-// omitted rather than emitted, so "computed added" and "computed false -> true"
-// are the same event and must compare equal against a ledger entry that says
-// so.
+// is reported as a transition to or from the empty string, which is how the
+// canonical form encodes a false boolean -- it omits rather than emits it.
+// Reconciling that with the ledger's spelling of "false" happens in sameValue,
+// not here. This comment previously said the two "must compare equal" as though
+// stating the requirement satisfied it.
 func Diff(released, candidate any) []Difference {
 	var out []Difference
 	walk(released, candidate, "", &out)
@@ -118,13 +118,15 @@ func difference(path string, old, new any) Difference {
 	}
 }
 
-// scalar renders a value the way the ledger writes it.
+// scalar renders an observed value. A missing key becomes the empty string.
 //
-// A missing key becomes the empty string rather than "null", so that a ledger
-// entry declaring `"old": "false", "new": "true"` matches a canonical form that
-// omits the false. The ledger is authored by hand and says false; the schema
-// says nothing. Reconciling that here is better than asking every author to
-// know which booleans the canonicaliser drops.
+// It does NOT reconcile that with the ledger's spelling -- see sameValue, which
+// does, and which this comment used to claim was unnecessary. The first version
+// of this file asserted the reconciliation happened here and it did not, so
+// every Computed flip in the real ledger failed to match. That went unnoticed
+// because the unit fixtures were written with `old: ""`, agreeing with the
+// implementation instead of with the artifact. Running the gate against
+// verify-main found it in one pass.
 func scalar(v any) string {
 	switch t := v.(type) {
 	case nil:
@@ -237,7 +239,7 @@ func Classify(diffs []Difference, ledger Ledger) (declared, undeclared []Differe
 		matched := false
 		for i, e := range ledger.Entries {
 			if e.Surface == d.Surface && e.Attribute == d.Attribute && e.Field == d.Field &&
-				e.Old == d.Old && e.New == d.New {
+				sameValue(d.Old, e.Old) && sameValue(d.New, e.New) {
 				used[i] = true
 				matched = true
 				break
@@ -255,4 +257,26 @@ func Classify(diffs []Difference, ledger Ledger) (declared, undeclared []Differe
 		}
 	}
 	return declared, undeclared, unmatched
+}
+
+// sameValue compares an observed value against a value written in the ledger.
+//
+// The canonical schema NEVER EMITS false. Measured over the committed contract:
+// 1924 occurrences of `:true`, zero of `:false`. A boolean field is present and
+// true, or absent and thereby false -- there is no third state, and that is a
+// property of the format rather than a convention worth arguing with.
+//
+// So a ledger entry authored by hand as `"old": "false"` describes exactly what
+// the schema spells as an absent key, which Diff renders as "". Collapsing the
+// two is unambiguous BECAUSE false is never emitted: no observed value can be
+// the string "false", so nothing else can be confused with it.
+//
+// Written after the gate reported five undeclared differences and five
+// unmatched declarations on verify-main -- the same five, seen from both sides,
+// which is what set equality looks like when the two spellings never meet.
+func sameValue(observed, declared string) bool {
+	if declared == "false" {
+		declared = ""
+	}
+	return observed == declared
 }
