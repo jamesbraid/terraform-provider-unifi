@@ -37,6 +37,15 @@
 #   did not make the tree dirty, so every case below would prove nothing" --
 #   which is the case that matters most, because without it a suite that
 #   dirtied nothing would report seven passes against seven clean-tree runs.
+#
+#   replacing tree-state.sh's `printf '%s\n\n' "${dirty}"` with a fixed string,
+#   so the guard still refuses and still says "refusing" but no longer names
+#   the file, turned it red on all seven with "refused without naming the file
+#   that made the tree dirty" and "0 of 7". That attacks the SECOND assertion
+#   rather than the first, and it is the one that proves the naming half is
+#   load-bearing: a guard that refuses without saying what to commit would
+#   satisfy a weaker test and leave the operator nothing to act on. Found by
+#   scope, reproduced here before being written down.
 set -uo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
