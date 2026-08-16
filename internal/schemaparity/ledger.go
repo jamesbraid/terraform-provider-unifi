@@ -141,7 +141,7 @@ func (l Ledger) Validate(where string) error {
 func (l Ledger) Licenses(d Difference) bool {
 	for _, e := range l.Entries {
 		if e.Surface == d.Surface && e.Attribute == d.Attribute && e.Field == d.Field &&
-			e.Old == d.Old && e.New == d.New {
+			sameValue(d.Old, e.Old) && sameValue(d.New, e.New) {
 			return true
 		}
 	}
