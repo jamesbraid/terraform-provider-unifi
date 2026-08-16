@@ -62,6 +62,7 @@ type ResolvedPragmaticSignal struct {
 
 type PragmaticResolution struct {
 	FormatVersion           int                       `json:"format_version"`
+	TreeState               *TreeState                `json:"tree_state,omitempty"`
 	Result                  string                    `json:"result"`
 	ProviderAddress         string                    `json:"provider_address"`
 	InventorySHA256         string                    `json:"inventory_sha256"`

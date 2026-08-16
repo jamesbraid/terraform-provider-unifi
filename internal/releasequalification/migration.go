@@ -104,6 +104,7 @@ type MigrationRecoverySurface struct {
 type MigrationRecoveryReceipt struct {
 	FormatVersion   int                        `json:"format_version"`
 	Gate            string                     `json:"gate"`
+	TreeState       *catalogparity.TreeState   `json:"tree_state,omitempty"`
 	Result          string                     `json:"result"`
 	ProviderAddress string                     `json:"provider_address"`
 	SourceCommit    string                     `json:"source_commit"`
