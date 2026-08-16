@@ -22,6 +22,27 @@ if [[ -n ${evidence_directory} ]]; then
     evidence_directory=$(prepare_evidence_directory "${evidence_directory}" "${repository_root}")
 fi
 readonly terraform_bin tofu_bin output evidence_directory
+# DO NOT REGENERATE THIS FILE FROM THE TREE. It lives under build/ next to
+# artifacts that are receipts, and it is not one. It is the EXPECTATION side of
+# the promotion_blockers comparison further down, which reads go_version,
+# platform, the two CLI versions and their binary digests out of it and checks
+# the LIVE environment against them.
+#
+# Regenerating it would make both sides of that comparison come from the same
+# place, and the check would then agree with whatever machine last ran it --
+# passing on a toolchain nobody chose. That is the defect this campaign has been
+# cataloguing, installed by the cure for a different one.
+#
+# So it is exempt from the committed-artifact rule (regenerable, byte-compared)
+# that build/m0/provider-schema-digests.json and the evidence inventory follow.
+# It is a declared expectation, and it changes when a human decides the pinned
+# toolchain has moved, not when a pipeline observes that it has.
+#
+# catalog-unit-differential.sh reads it as well, and for the same reason: it
+# takes released_commit from it, and repeats the go_version and platform checks.
+# The exemption covers both readers. No line numbers here on purpose -- an
+# earlier draft of this comment cited them and this edit moved them by
+# seventeen.
 baseline_manifest=${repository_root}/build/m0/provider-baseline.json
 readonly baseline_manifest
 
