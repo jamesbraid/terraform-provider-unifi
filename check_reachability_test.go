@@ -18,13 +18,18 @@ import (
 // fail, 11 more say it only in a commit message and are therefore invisible to
 // anyone reading a checkout, and 115 say it nowhere.
 //
-// WHY THIS IS A GO TEST AND NOT A SHELL SCRIPT. There is already a shell
-// script that checks a version of this: .woodpecker/scripts/tree-state-coverage_test.sh.
-// It is invoked by nothing, it is RED on the current tree, and tree-state.sh:46
-// claims it "enforces this list". A coverage check that nothing runs is the
-// defect it exists to find, wearing its own clothes. `go test ./...` is the one
-// thing every push executes, so that is where a check about reachability has to
-// live.
+// WHY THIS IS A GO TEST AND NOT A SHELL SCRIPT. `go test ./...` is the one
+// thing every push executes. A check about whether other checks run has to live
+// somewhere that itself always runs, or it inherits the defect it looks for.
+//
+// This paragraph used to argue from tree-state-coverage_test.sh instead: that it
+// was invoked by nothing, RED, and falsely claimed by tree-state.sh:46 to be
+// enforcing its list. All three were true when written and all three were false
+// within hours -- sweep wired it at 9dfbb44e, struck the false claim at e322b7b9
+// and made it green at 3612d278. The conclusion survived; the argument did not.
+// Kept as a marker, because a comment explaining why something is correct does
+// not expire when its reason does, and nothing in this repository checks that it
+// still holds.
 //
 // DETECTION IS NOT GREP, AND BOTH DIRECTIONS OF THAT BIT ME WHILE WRITING IT:
 //
