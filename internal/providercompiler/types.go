@@ -329,10 +329,40 @@ type claimPolicy struct {
 // function is a claim someone wrote down and that a reader can open and check.
 type mappingFunctions struct {
 	// ToAPI builds the observed fields from the attribute's value.
-	ToAPI string `json:"to_api"`
+	//
+	// Required on a surface that writes, and REFUSED on one that does not. A
+	// data source never writes, so a to_api on one names a transform that
+	// cannot exist -- and three of them carried one, six of those verbatim
+	// copies of the managed resource's write-function names. That is a false
+	// claim rather than a missing function, so the compiler rejects it instead
+	// of asking someone to supply a name.
+	ToAPI string `json:"to_api,omitempty"`
 	// FromAPI builds the attribute's value from the observed fields.
 	FromAPI string `json:"from_api"`
+	// Kind says whether the named functions ARE the transform or merely
+	// CONTAIN it, because those are different strengths of claim and a reader
+	// cannot tell them apart from a name.
+	//
+	//   dedicated  -- the function does this relation and nothing else, so
+	//                 opening it shows the relation.
+	//   containing -- the relation is inline inside a larger conversion
+	//                 function, so opening it shows the relation among many
+	//                 others and the reader still has to find it.
+	//
+	// Required, and deliberately not defaulted. Every claim in this provider is
+	// "containing" today: the conversions live in two large per-resource
+	// functions rather than one helper each. Naming the containing function is
+	// true and openable; naming a helper that does not exist was neither, and
+	// read as the stronger claim. Making the weaker claim say its name is what
+	// stops the distinction being lost silently.
+	Kind string `json:"kind"`
 }
+
+// mapping kinds. See mappingFunctions.Kind.
+const (
+	mappingDedicated  = "dedicated"
+	mappingContaining = "containing"
+)
 
 // flatteningPolicy declares an observed nested struct whose members the
 // provider presents as top-level Terraform attributes.

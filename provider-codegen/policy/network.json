@@ -7,8 +7,9 @@
  "claims": [
   {
    "mapping": {
-    "from_api": "networkVLANFromNetwork",
-    "to_api": "networkVLANToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released vlan number over the observed number AND its enable flag: vlan_enabled is set from whether vlan is configured at all, so neither field alone is the attribute's source",
    "structural_names": [
@@ -21,8 +22,9 @@
   },
   {
    "mapping": {
-    "from_api": "networkPurposeFromNetwork",
-    "to_api": "networkPurposeToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "two released attributes over one observed field: purpose is honoured when configured and then OVERWRITTEN to vlan-only when third_party_gateway is true, and on read both are computed from the one field",
    "structural_names": [
@@ -35,8 +37,9 @@
   },
   {
    "mapping": {
-    "from_api": "networkDHCPGuardingServersFromNetwork",
-    "to_api": "networkDHCPGuardingServersToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released list distributed positionally into three observed slots, and read back by collecting the non-empty ones; the write does not clear the slots it does not use",
    "structural_names": [
@@ -50,8 +53,9 @@
   },
   {
    "mapping": {
-    "from_api": "networkDHCPServerDNSFromNetwork",
-    "to_api": "networkDHCPServerDNSToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released list distributed positionally into four observed slots, clearing the trailing ones it does not use and truncating a fifth value, and read back by collecting the non-empty ones",
    "structural_names": [
@@ -66,8 +70,9 @@
   },
   {
    "mapping": {
-    "from_api": "networkDHCPV6ServerDNSFromNetwork",
-    "to_api": "networkDHCPV6ServerDNSToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released list distributed positionally into four observed slots and read back by collecting the non-empty ones",
    "structural_names": [
@@ -82,8 +87,9 @@
   },
   {
    "mapping": {
-    "from_api": "networkWINSFromNetwork",
-    "to_api": "networkWINSToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released object over an enable flag and two address slots, the addresses distributed positionally and read back compacted",
    "structural_names": [
@@ -97,8 +103,9 @@
   },
   {
    "mapping": {
-    "from_api": "networkBootFromNetwork",
-    "to_api": "networkBootToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released object grouping three flat observed fields the wire keeps apart",
    "structural_names": [

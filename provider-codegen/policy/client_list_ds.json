@@ -6,7 +6,7 @@
   {
    "mapping": {
     "from_api": "networkIDValue",
-    "to_api": "clientListNetworkIDToClient"
+    "kind": "dedicated"
    },
    "reason": "an ORDERED PREFERENCE over two observed fields of the LEAD struct: networkIDValue reports virtual_network_override_id when it is set and network_id otherwise, so neither alone is the attribute's source",
    "structural_names": [

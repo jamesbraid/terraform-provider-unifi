@@ -5,8 +5,8 @@
  "claims": [
   {
    "mapping": {
-    "from_api": "networkDataSourcePurposeFromNetwork",
-    "to_api": "networkDataSourcePurposeToModel"
+    "from_api": "setDataSourceData",
+    "kind": "containing"
    },
    "reason": "two released attributes computed from one observed field: purpose is reported as read and third_party_gateway as whether that value is vlan-only",
    "structural_names": [
@@ -19,8 +19,8 @@
   },
   {
    "mapping": {
-    "from_api": "networkWANDNSFromNetwork",
-    "to_api": "networkWANDNSToNetwork"
+    "from_api": "setDataSourceData",
+    "kind": "containing"
    },
    "reason": "one released list collected from four observed slots, the first two pointers and the last two plain strings, keeping only the non-empty ones",
    "structural_names": [
@@ -35,8 +35,8 @@
   },
   {
    "mapping": {
-    "from_api": "networkDHCPGuardingServersFromNetwork",
-    "to_api": "networkDHCPGuardingServersToNetwork"
+    "from_api": "setDataSourceData",
+    "kind": "containing"
    },
    "reason": "one released list collected from three observed slots, keeping only the non-empty ones",
    "structural_names": [
@@ -50,8 +50,8 @@
   },
   {
    "mapping": {
-    "from_api": "networkDHCPServerDNSFromNetwork",
-    "to_api": "networkDHCPServerDNSToNetwork"
+    "from_api": "setDataSourceData",
+    "kind": "containing"
    },
    "reason": "one released list collected from four observed slots, keeping only the non-empty ones",
    "structural_names": [
@@ -66,8 +66,8 @@
   },
   {
    "mapping": {
-    "from_api": "networkDHCPV6ServerDNSFromNetwork",
-    "to_api": "networkDHCPV6ServerDNSToNetwork"
+    "from_api": "setDataSourceData",
+    "kind": "containing"
    },
    "reason": "one released list collected from four observed slots, keeping only the non-empty ones",
    "structural_names": [
@@ -82,8 +82,8 @@
   },
   {
    "mapping": {
-    "from_api": "networkWINSFromNetwork",
-    "to_api": "networkWINSToNetwork"
+    "from_api": "setDataSourceData",
+    "kind": "containing"
    },
    "reason": "one released object over an enable flag and two address slots, the addresses collected non-empty",
    "structural_names": [
@@ -97,8 +97,8 @@
   },
   {
    "mapping": {
-    "from_api": "networkBootFromNetwork",
-    "to_api": "networkBootToNetwork"
+    "from_api": "setDataSourceData",
+    "kind": "containing"
    },
    "reason": "one released object grouping three flat observed fields the wire keeps apart",
    "structural_names": [
