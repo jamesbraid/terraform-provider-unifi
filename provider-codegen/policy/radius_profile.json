@@ -272,10 +272,19 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "default": {
-          "static": false
-        },
-        "description": "Specifies whether to use usg as a RADIUS authentication server."
+        "description": "Specifies whether to use usg as a RADIUS authentication server.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       },
       "disposition": "managed",
       "structural_name": "use_usg_auth_server",

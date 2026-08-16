@@ -263,7 +263,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
 						MarkdownDescription: "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
-						Default:             booldefault.StaticBool(false),
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"dns_servers": schema.ListAttribute{
 						ElementType:         types.StringType,
