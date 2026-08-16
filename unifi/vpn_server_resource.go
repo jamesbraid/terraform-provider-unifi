@@ -967,7 +967,15 @@ func vpnServerWANInterfaceFromNetwork(network *unifi.Network) types.String {
 
 // vpnServerDNSServersToNetwork distributes dns.servers positionally into the
 // two observed slots. It does not clear the slot it does not use, so a shorter
-// list leaves whatever was there, and a third server is dropped.
+// list leaves whatever was there.
+//
+// A THIRD SERVER IS SILENTLY DROPPED, and this is the only one of the three
+// that does it: network's dhcp_server.dns_servers carries
+// listvalidator.SizeAtMost(4) and vpn_client's wireguard.dns_servers carries
+// SizeBetween(1, 2), so both refuse an over-long list with a diagnostic. This
+// attribute carries no size validator at all, so a third is accepted, applied,
+// and never written. Reported rather than fixed here: adding the bound is a
+// public schema change, not a refactor.
 func vpnServerDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
 	if len(dnsServers) > 0 {
 		network.DHCPDDNS1 = dnsServers[0]
