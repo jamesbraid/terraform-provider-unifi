@@ -1472,7 +1472,8 @@
       },
       {
         "name": "x_baresip_password",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "y",

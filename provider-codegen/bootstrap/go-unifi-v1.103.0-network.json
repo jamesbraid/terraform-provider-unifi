@@ -1064,59 +1064,73 @@
       },
       {
         "name": "x_auth_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_ca_crt",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_ca_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_dh_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_ipsec_pre_shared_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_openvpn_password",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_openvpn_shared_secret_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_pptpc_password",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_server_crt",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_server_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_shared_client_crt",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_shared_client_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_wan_password",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       },
       {
         "name": "x_wireguard_private_key",
-        "type": "string"
+        "type": "string",
+        "secret_candidate": true
       }
     ]
   }
