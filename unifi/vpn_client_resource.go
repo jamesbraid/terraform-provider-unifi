@@ -786,8 +786,11 @@ func wireguardPeerToNetwork(peer wireguardPeerModel, network *unifi.Network) {
 }
 
 // wireguardDNSServersToNetwork distributes wireguard.dns_servers positionally
-// into the two observed slots. It does not clear the slots it does not use, so
-// a shorter list leaves whatever was there, and a third server is dropped.
+// into the two observed slots. It does not clear the slot it does not use, so
+// a shorter list leaves whatever was there.
+//
+// A third server never reaches here: the schema carries
+// listvalidator.SizeBetween(1, 2), so validation rejects it with a diagnostic.
 //
 // Both the configured list and the one parsed out of a configuration file
 // arrive here, because the distribution is the same either way.

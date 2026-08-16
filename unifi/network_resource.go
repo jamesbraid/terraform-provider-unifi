@@ -1503,10 +1503,15 @@ func networkDHCPGuardingServersFromNetwork(
 // networkDHCPServerDNSToNetwork distributes dhcp_server.dns_servers positionally
 // into the four observed slots, clearing the trailing ones it does not use.
 //
-// A FIFTH server is dropped without a diagnostic. That, and the compaction in
-// networkDHCPServerDNSFromNetwork, are why a value can move slot on a read-write
-// round trip: the write never leaves a gap, but a gap arriving from anywhere
-// else reads back compacted and writes back one slot earlier.
+// A fifth server never reaches here: the schema carries
+// listvalidator.SizeAtMost(4), so validation rejects it with a diagnostic and
+// the loop below cannot truncate. The bound is defence in depth, not the
+// behaviour.
+//
+// What IS behaviour is the pairing with networkDHCPServerDNSFromNetwork, which
+// compacts. The write never leaves a gap, but a gap arriving from anywhere else
+// reads back compacted and writes back one slot earlier, so a value moves slot
+// on a read-write round trip.
 func networkDHCPServerDNSToNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
