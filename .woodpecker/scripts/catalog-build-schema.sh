@@ -200,6 +200,7 @@ jq --indent 2 --null-input \
     --arg result "${result}" \
     --argjson promotion_blockers "${promotion_blockers_json}" \
     --arg source_commit "$(git -C "${repository_root}" rev-parse HEAD)" \
+    --argjson tree_state "$(evidence_tree_json)" \
     --arg released_commit "${released_commit}" \
     --arg platform "${platform}" \
     --arg go_version "${go_version}" \
@@ -219,7 +220,7 @@ jq --indent 2 --null-input \
     --arg tofu_candidate_raw_sha256 "$(sha256_file "${work_root}/candidate.tofu.raw.json")" \
     --arg tofu_canonical_sha256 "$(sha256_file "${work_root}/candidate.tofu.canonical.json")" \
     --arg shared_schema_sha256 "$(sha256_file "${work_root}/candidate.terraform.shared.json")" \
-    '{format_version: 1, gate: "catalog-build-schema", result: $result, promotion_blockers: $promotion_blockers, source_commit: $source_commit, released_commit: $released_commit, platform: $platform, go_version: $go_version, build_network: "none", clean_builds: {released: 2, candidate: 2}, provider_binaries: {released_source_rebuild_sha256: $released_source_binary_sha256, released_authority: $released_authority, released_authority_sha256: $released_authority_binary_sha256, candidate_sha256: $candidate_binary_sha256}, catalog_evidence_inventory_sha256: $inventory_sha256, schema_evidence: {terraform: {version: $terraform_version, binary_sha256: $terraform_binary_sha256, released_raw_sha256: $terraform_released_raw_sha256, candidate_raw_sha256: $terraform_candidate_raw_sha256, canonical_sha256: $terraform_canonical_sha256}, tofu: {version: $tofu_version, binary_sha256: $tofu_binary_sha256, released_raw_sha256: $tofu_released_raw_sha256, candidate_raw_sha256: $tofu_candidate_raw_sha256, canonical_sha256: $tofu_canonical_sha256}, release_to_candidate_within_cli: true, shared_cli_projection_equal: true, full_cli_projection_equal: false, shared_schema_sha256: $shared_schema_sha256, terraform_only_categories: ["action_schemas", "list_resource_schemas"]}}' \
+    '{format_version: 1, gate: "catalog-build-schema", result: $result, promotion_blockers: $promotion_blockers, source_commit: $source_commit, tree_state: $tree_state, released_commit: $released_commit, platform: $platform, go_version: $go_version, build_network: "none", clean_builds: {released: 2, candidate: 2}, provider_binaries: {released_source_rebuild_sha256: $released_source_binary_sha256, released_authority: $released_authority, released_authority_sha256: $released_authority_binary_sha256, candidate_sha256: $candidate_binary_sha256}, catalog_evidence_inventory_sha256: $inventory_sha256, schema_evidence: {terraform: {version: $terraform_version, binary_sha256: $terraform_binary_sha256, released_raw_sha256: $terraform_released_raw_sha256, candidate_raw_sha256: $terraform_candidate_raw_sha256, canonical_sha256: $terraform_canonical_sha256}, tofu: {version: $tofu_version, binary_sha256: $tofu_binary_sha256, released_raw_sha256: $tofu_released_raw_sha256, candidate_raw_sha256: $tofu_candidate_raw_sha256, canonical_sha256: $tofu_canonical_sha256}, release_to_candidate_within_cli: true, shared_cli_projection_equal: true, full_cli_projection_equal: false, shared_schema_sha256: $shared_schema_sha256, terraform_only_categories: ["action_schemas", "list_resource_schemas"]}}' \
     >"${output}"
 
 if [[ -n ${evidence_directory} ]]; then

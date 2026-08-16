@@ -310,10 +310,13 @@ jq -n --slurpfile plan "${plan_path}" \
    --arg ryuk_id "${ryuk_id}" \
    --arg herder_sha256 "${herder_sha256}" \
    --arg terraform_sha256 "${terraform_sha256}" \
-   --arg plan_sha256 "${plan_sha256}" '
+   --arg plan_sha256 "${plan_sha256}" \
+   --argjson tree_state "$(evidence_tree_json)" '
   {
     format_version: 1,
     gate: "catalog controller differential",
+    # Which tree this receipt describes, not just which commit it names.
+    tree_state: $tree_state,
     result: (if ($released[0].result == "pass" or
                  $released[0].result == "accepted_limitation") and
                 $candidate[0].result == "pass"

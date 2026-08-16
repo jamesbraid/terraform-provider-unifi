@@ -131,6 +131,7 @@ jq --indent 2 --null-input \
     --arg result "${result}" \
     --argjson promotion_blockers "${promotion_blockers_json}" \
     --arg source_commit "$(git -C "${repository_root}" rev-parse HEAD)" \
+    --argjson tree_state "$(evidence_tree_json)" \
     --arg released_commit "${released_commit}" \
     --arg platform "${platform}" \
     --arg go_version "${go_version}" \
@@ -148,6 +149,9 @@ jq --indent 2 --null-input \
         promotion_blockers: $promotion_blockers,
         network: "none",
         source_commit: $source_commit,
+        # source_commit alone can be a commit this receipt does not describe.
+        # tree_state says whether it does.
+        tree_state: $tree_state,
         released_commit: $released_commit,
         platform: $platform,
         go_version: $go_version,
