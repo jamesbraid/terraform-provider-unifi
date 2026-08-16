@@ -665,13 +665,20 @@ func TestDifferentialScenarioIsPerTestNotPerFile(t *testing.T) {
 // the merge still looks like a success.
 //
 // PROVEN BY MUTATION, both directions, restored afterwards. Deleting the
-// catalogparity.ValidateMigrationManifest call from validateMigrationManifest
-// (587 -> 584 lines, counted rather than re-grepped) turns the first six
-// green -- attribute_mapping, state_moves, import_transform, schema version,
-// ordering and the kind shift all ACCEPT -- while StateUpgrader and
-// manual_rollback keep REJECTING with this package's own message. That is the
-// asymmetry reproduced through the merged validator, and it is what establishes
-// the six are held by the delegation rather than by anything already here.
+// three-line catalogparity.ValidateMigrationManifest call from
+// validateMigrationManifest turns the first six green -- attribute_mapping,
+// state_moves, import_transform, schema version, ordering and the kind shift
+// all ACCEPT -- while StateUpgrader and manual_rollback keep REJECTING with
+// this package's own message. That is the asymmetry reproduced through the
+// merged validator, and it is what establishes the six are held by the
+// delegation rather than by anything already here.
+//
+// The mutation was confirmed by a line count rather than by re-running the
+// pattern that performed it, which is the only way to know an edit landed.
+// The count itself is deliberately not recorded: an absolute line number is a
+// fact about this file that this file's own later edits invalidate, and the
+// first version of this comment cited one that was stale within the hour.
+// Cite what the change IS, not how big the file was when it was made.
 func TestMigrationManifestGateHoldsBothValidatorsRules(t *testing.T) {
 	bumped := int64(1)
 	tests := map[string]struct {
