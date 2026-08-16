@@ -66,17 +66,23 @@ readonly -a exempt=(
     # a Go binary MEASURING the tree and false of one being HANDED the answer,
     # which is the distinction the fix turned on.
     #
-    # catalog-evidence stays, for a different and permanent reason. Its
-    # artifact is committed, and catalog-evidence-inventory_test.sh compares a
-    # fresh run against the committed copy byte for byte. tree_state contains
-    # the commit, so an artifact recording its own would never reproduce:
-    # generated at one commit, committed, regenerated at the next, comparison
-    # fails forever. It does not need one either -- reproducing byte for byte
-    # is a stronger claim about which tree it describes than a self-declared
-    # field. Tree state belongs in transient receipts; a committed artifact
-    # proves its tree by being reproducible.
+    # TWO stay, for a different and permanent reason: their artifacts are
+    # committed and compared byte for byte against a fresh run --
+    # catalog-evidence-inventory_test.sh:22 for one, catalog-build-schema.sh:152
+    # for the other. tree_state contains the commit, so an artifact recording
+    # its own would never reproduce: generated at one commit, committed,
+    # regenerated at the next, comparison fails forever. Neither needs one --
+    # reproducing byte for byte is a stronger claim about which tree an artifact
+    # describes than a self-declared field. Tree state belongs in transient
+    # receipts; a committed artifact proves its tree by being reproducible.
+    #
+    # schema-baseline reached this list carrying the refuted reason rather than
+    # this one. It was not among the five that changed, so nothing revisited it,
+    # and a reason survives by not being looked at. Its artifact,
+    # build/m0/provider-schema-digests.json, is committed and cmp'd, which puts
+    # it in this class and always did.
     "cmd/catalog-evidence|its artifact is committed and compared byte for byte, so a recorded commit could never reproduce; reproducibility is the stronger claim"
-    "cmd/schema-baseline|Go: the guard is a bash library a Go binary cannot source (task 56)"
+    "cmd/schema-baseline|its artifact is committed and cmp'd at catalog-build-schema.sh:152, so a recorded commit could never reproduce; reproducibility is the stronger claim"
 )
 
 is_exempt() {
