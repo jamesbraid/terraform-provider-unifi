@@ -13,10 +13,24 @@ import (
 // cannot currently answer about itself: DOES ANYTHING RUN THIS CHECK?
 //
 // The other question -- has this check ever been shown to fail -- is not
-// mechanically answerable and is not attempted here. Measured while writing
-// this: of 142 check files, 16 say in the file that they have been shown to
-// fail, 11 more say it only in a commit message and are therefore invisible to
-// anyone reading a checkout, and 115 say it nowhere.
+// mechanically answerable and is not attempted here. When this test was written
+// the great majority of check files said nowhere in the file that they had ever
+// been watched failing; a large minority said it only in a commit message, which
+// is invisible to anyone reading a checkout.
+//
+// THIS PARAGRAPH USED TO CARRY THE EXACT COUNTS AND THEY WENT STALE INSIDE A DAY.
+// It said 142 files, 16 with in-file proof, 11 commit-message-only, 115 silent.
+// Adding this file and its two siblings moved the total to 145, and a later
+// measurement put the in-file figure at 27 rather than 16 -- so two of the three
+// components and the total were wrong, while 16+11+115 still summed to 142 and
+// read as reliable for exactly that reason. Nothing checked any of it: the test
+// below is executable and cannot go stale without going red, and the prose beside
+// it drifted within the hour.
+//
+// A COUNT IN A COMMENT IS A CLAIM WITH NO CHECK ON IT. The shape above is stated
+// without numbers deliberately, because the shape is what the reader needs and it
+// does not drift. Anyone wanting the figures should re-derive them rather than
+// trust a frozen copy.
 //
 // WHY THIS IS A GO TEST AND NOT A SHELL SCRIPT. `go test ./...` is the one
 // thing every push executes. A check about whether other checks run has to live
