@@ -108,6 +108,9 @@ All notable changes to this project will be documented in this file.
 
 - **The `unifi_port_profile` data source now reports the stored VLAN mode, actual tagged-network set, and raw exclusion set.** `tagged_networkconf_ids` is derived from the site network inventory instead of always returning null. `tagged_vlan_mgmt` and `excluded_networkconf_ids` expose the controller representation when it matters.
 
+---
+
+
 ## [v0.101.1] - 2026-08-02
 
 ### 🐛 Bug Fixes
@@ -117,6 +120,9 @@ All notable changes to this project will be documented in this file.
 ### 🔧 Maintenance
 
 - **A schema test now pins every `Optional + Computed` attribute that also carries a `Default`.** That combination is what caused the bug above and #323 before it: `Computed` says the controller may own the value, and a `Default` overrides it. The inventory lives in `unifi/testdata/optional_computed_defaults.txt` (166 attributes), and a new one fails the build until it is added deliberately. The list is a record of what still needs checking against a live controller, not a set of approved patterns.
+
+---
+
 
 ## [v0.101.0] - 2026-08-01
 
@@ -158,6 +164,9 @@ All notable changes to this project will be documented in this file.
 
 - **go-unifi updated to v1.101.0**, which is where the network encoder fixes above come from. Two settings objects moved on the controller as part of UniFi Network 10.x: geo IP filtering left the `usg` setting for a separate `usg_geo` object, and IPS suppression left `ips` for `ips_suppression`. The Terraform schema is unchanged — `usg.geo_ip_filtering_*` and `ips.suppression_alerts` / `suppression_whitelist` stay exactly where they were, and no state migration is required — but the provider now reads and writes those attributes through the new objects. Two consequences: a controller that does not expose them reports an explicit error when the attributes are configured (it previously wrote them to an endpoint that quietly ignored them), and the first plan after a controller upgrade may re-apply an existing geo IP filtering config once. Geo IP filtering attributes left unset in Terraform are no longer written at all, so a configuration set in the controller UI survives.
 
+---
+
+
 ## [v0.55.0] - 2026-07-10
 
 ### ✨ Features
@@ -171,11 +180,17 @@ All notable changes to this project will be documented in this file.
 - **`unifi_device` / `unifi_setting`: stop controller-managed lists churning to "known after apply" on unrelated edits.** Several `Optional + Computed` lists were replanned as `(known after apply)` whenever any other field on the same resource changed — a spurious diff (the same class as #338). They now use `UseStateForUnknown`, keeping their prior value unless explicitly changed: `unifi_device` `radio_table` and `outlet_overrides`, and `unifi_setting` `contents` (syslog facilities), `server_names` (DoH), `enabled_categories` / `enabled_networks` (IPS), and `network_ids` (IGMP snooping).
 - **`unifi_ap_group`: allow empty membership and stop empty groups reading back as `null`.** `device_macs` was `Required` with a `SizeAtLeast(1)` validator, and the read mapped an empty member list to `SetNull` — so a group the controller legitimately allows to have zero members (the API returns 201 for an empty membership) could not be authored, and importing one surfaced as an empty-vs-`null` inconsistency. `device_macs` now accepts an empty set and reads empty back as an empty set. The built-in default "All APs" group (which the controller marks read-only) is documented as non-editable through the resource.
 
+---
+
+
 ## [v0.54.1] - 2026-07-05
 
 ### 🐛 Bug Fixes
 
 - **`unifi_radius_profile`: make `auth_server` / `acct_server` `ip` optional so the default profile can be imported.** The controller-managed default RADIUS profile (created when a gateway RADIUS/VPN service is enabled, with `use_usg_auth_server = true`) returns a server entry without an IP. `ip` was `Required`, so re-declaring an imported profile failed with `The argument "ip" is required`, and an empty IP read back as `""` instead of null. `ip` is now `Optional` and an absent IP maps to null, so the default profile round-trips cleanly (#356)
+
+---
+
 
 ## [v0.54.0] - 2026-07-02
 
@@ -195,6 +210,9 @@ All notable changes to this project will be documented in this file.
 - **`unifi_wan`: fix `inconsistent result after apply` on `dns` address fields (`primary`, `secondary`, `ipv6_primary`, `ipv6_secondary`).** When no DNS server is configured the controller persists and returns an empty string `""`, but these Optional fields plan as `null`, so the post-apply read conflicted with the plan (e.g. after import with IPv6 DNS preference `auto`). The read now normalizes `""` (and a nil pointer) to `null`, so unset addresses stay null and a real address still round-trips (#333)
 - **`unifi_firewall_policy`: make `index` read-only to stop `inconsistent result after apply` and a perpetual diff.** Pinning `index` failed: the controller ignores a client-supplied value and always appends the policy at the end of its source/destination zone-pair, so the post-apply read (e.g. `10010` → `10020`) conflicted with the plan and then looped forever. Verified against a real UniFi OS 10.x controller — the supported integration API rejects `index` as input and exposes no reorder operation, so policy ordering cannot be managed through the provider. `index` is now `Computed` (controller-assigned) and the provider no longer sends it; reorder policies in the UniFi UI if needed (#348)
 
+---
+
+
 ## [v0.53.0] - 2026-06-24
 
 ### ✨ Features
@@ -211,6 +229,9 @@ All notable changes to this project will be documented in this file.
 
 - **`unifi_device`: document the `mgmt_network_id` tag-upstream-first requirement.** Setting the Network Override tags the device's management onto the target VLAN; if that VLAN is not tagged on the device's upstream port the device drops off and the apply fails with an inconsistent-result error. The description now spells out the two-step apply (tag the uplink first, then set `mgmt_network_id`) (#329, #330)
 
+---
+
+
 ## [v0.52.4] - 2026-06-17
 
 ### 🐛 Bug Fixes
@@ -221,11 +242,17 @@ All notable changes to this project will be documented in this file.
 
 - **`unifi_network`: clarify that `subnet` sets the gateway IP.** A custom gateway is already supported — the host portion of `subnet` is the gateway (e.g. `10.0.10.254/24` → gateway `.254`); it need not be the first usable address (#308, #309)
 
+---
+
+
 ## [v0.52.3] - 2026-06-17
 
 ### 🐛 Bug Fixes
 
 - Fix operation timeouts for the list resources, and add acceptance tests for them
+
+---
+
 
 ## [v0.52.2] - 2026-06-16
 
