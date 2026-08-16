@@ -21,10 +21,13 @@ clone:
 
 steps:
   - name: upgrade-plan
-    # Far shorter than the differential, which runs the whole suite twice. This
-    # applies one fixture and plans it twice. Bounded anyway, because an
-    # unbounded controller step can hold the runner until somebody notices.
-    timeout: 30m
+    # WANTED: 30m. Far shorter than the differential, which runs the whole
+    # suite twice; this applies one fixture and plans it twice. Worth bounding
+    # anyway, because an unbounded controller step can hold the runner until
+    # somebody notices.
+    #
+    # NOT SET, AND NOT SETTABLE HERE -- a step `timeout:` is parsed and
+    # discarded. See check_inert_workflow_keys_test.go.
     image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
