@@ -382,6 +382,11 @@ func frameworkAttrFacts(
 func compareBaselineFacts(t *testing.T, surface string, want, have map[string]attrFact) {
 	t.Helper()
 
+	// Deliberate, declared changes are licensed one named transition at a time.
+	// See baseline_schema_change_ledger_test.go for why this exists and what an
+	// entry has to argue.
+	declared := loadSchemaChangeLedger(t)
+
 	for _, path := range sortedFactPaths(have) {
 		if _, ok := want[path]; !ok {
 			t.Errorf("%s: attribute %q present in built schema, absent from baseline", surface, path)
@@ -411,6 +416,11 @@ func compareBaselineFacts(t *testing.T, surface string, want, have map[string]at
 			{"deprecation_message", w.Deprecation, h.Deprecation},
 		} {
 			if f.want != f.have {
+				if schemaChangeDeclared(declared, surface, path, f.field, f.want, f.have) {
+					t.Logf("%s: attribute %q: %s changed by declaration in %s",
+						surface, path, f.field, schemaChangeLedgerPath)
+					continue
+				}
 				t.Errorf("%s: attribute %q: %s\n%s", surface, path, f.field, baselineMismatch(f.want, f.have))
 			}
 		}
@@ -428,9 +438,14 @@ func baselineMismatch(want, have string) string {
 	return fmt.Sprintf(
 		"%s%s\n%s%s\n\n"+
 			"The released v0.101.2 schema is authoritative. If this change is\n"+
-			"intentional, it is a public compatibility event: record it in\n"+
-			"provider-codegen/migrations/v0.101.2-to-next.json and re-derive\n"+
-			"build/m0/provider-schema-digests.json. Do not edit the baseline.",
+			"intentional, declare it in\n"+
+			"provider-codegen/schema-changes/v0.101.2-to-next.json: an entry names\n"+
+			"the surface, attribute and field, carries the exact old and new values,\n"+
+			"and must argue why the change cannot break an existing configuration.\n"+
+			"Do not edit the baseline.\n"+
+			"\n"+
+			"An entry licenses ONE named transition. Drifting to a third value fails\n"+
+			"here again, which is deliberate.",
 		baselineLabel, want, builtLabel, have,
 	)
 }
