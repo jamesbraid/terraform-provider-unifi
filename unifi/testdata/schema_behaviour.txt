@@ -836,7 +836,7 @@ unifi_wlan.minimum_data_rate_2g_kbps	plan_modifier	int64planmodifier.useStateFor
 unifi_wlan.minimum_data_rate_2g_kbps	validator	int64validator.oneOfValidator	"value must be one of: [\"0\" \"1000\" \"2000\" \"5500\" \"6000\" \"9000\" \"11000\" \"12000\" \"18000\" \"24000\" \"36000\" \"48000\" \"54000\"]"
 unifi_wlan.minimum_data_rate_5g_kbps	plan_modifier	int64planmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wlan.minimum_data_rate_5g_kbps	validator	int64validator.oneOfValidator	"value must be one of: [\"0\" \"6000\" \"9000\" \"12000\" \"18000\" \"24000\" \"36000\" \"48000\" \"54000\"]"
-unifi_wlan.minrate_setting_preference	default	stringdefault.staticStringDefault	"value defaults to auto"
+unifi_wlan.minrate_setting_preference	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_wlan.minrate_setting_preference	validator	stringvalidator.oneOfValidator	"value must be one of: [\"auto\" \"manual\"]"
 unifi_wlan.mlo_enabled	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_wlan.multicast_enhance	default	booldefault.staticBoolDefault	"value defaults to false"
