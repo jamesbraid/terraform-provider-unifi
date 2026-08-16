@@ -60,9 +60,17 @@ steps:
       #
       # Woodpecker knows the commit; this step's own output did not carry it, so
       # a green fast-loop was not evidence about any particular tree once the log
-      # scrolled. Measured before adding this: zero of the sixteen commands
+      # scrolled. Measured before adding this: not one command in the step
       # emitted a commit, verified against `git rev-parse HEAD` as a positive
-      # control so the zero meant something.
+      # control so the zero meant something. This line is now the only one that
+      # does.
+      #
+      # That sentence used to say "zero of the sixteen commands", which was true
+      # when it was written and stopped being checkable the moment this command
+      # made it seventeen. A reader counting the file would find one more than
+      # the comment claims and have no way to tell which of them is wrong. A
+      # count of a thing the same file controls should not be written down at
+      # all -- say the property, and let anyone who wants the number count it.
       #
       # The tree-state work does not reach here and structurally cannot. fast-loop
       # runs checks, not producers; the one guarded generator it reaches --
