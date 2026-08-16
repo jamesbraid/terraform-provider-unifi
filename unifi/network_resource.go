@@ -698,7 +698,7 @@ func (r *networkResource) modelToNetwork(
 		AutoScaleEnabled:            model.AutoScale.ValueBool(),
 		IPSubnet:                    model.Subnet.ValueStringPointer(),
 		NetworkIsolationEnabled:     model.NetworkIsolation.ValueBool(),
-		SettingPreference:           model.SettingPreference.ValueStringPointer(),
+		SettingPreference:           optStr(model.SettingPreference),
 		InternetAccessEnabled:       model.InternetAccess.ValueBool(),
 		MdnsEnabled:                 model.MulticastDNS.ValueBool(),
 		GatewayType:                 model.GatewayType.ValueStringPointer(),
@@ -1106,7 +1106,16 @@ func (r *networkResource) networkToModel(
 	if isVLANOnly && previousModel != nil {
 		model.Subnet = previousModel.Subnet
 		model.AutoScale = previousModel.AutoScale
-		model.SettingPreference = previousModel.SettingPreference
+		// setting_preference carries no default and uses UseStateForUnknown, so
+		// it is unknown during Create. Preserving that leaves it unknown after
+		// apply, which Terraform rejects. Resolve it from the API value instead
+		// -- null when the controller reports nothing, which is what a vlan-only
+		// network gets and is a known value.
+		if previousModel.SettingPreference.IsUnknown() {
+			model.SettingPreference = types.StringPointerValue(network.SettingPreference)
+		} else {
+			model.SettingPreference = previousModel.SettingPreference
+		}
 		model.InternetAccess = previousModel.InternetAccess
 		// multicast_dns uses UseStateForUnknown, so it may be unknown during
 		// Create. Resolve it from the API value (the controller does not honor

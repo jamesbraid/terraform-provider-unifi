@@ -371,7 +371,7 @@ unifi_network.multicast_dns	plan_modifier	boolplanmodifier.useStateForUnknownMod
 unifi_network.network_isolation	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_network.purpose	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.purpose	validator	stringvalidator.oneOfValidator	"value must be one of: [\"corporate\" \"guest\" \"vlan-only\"]"
-unifi_network.setting_preference	default	stringdefault.staticStringDefault	"value defaults to auto"
+unifi_network.setting_preference	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.setting_preference	validator	stringvalidator.oneOfValidator	"value must be one of: [\"auto\" \"manual\"]"
 unifi_network.site	plan_modifier	stringplanmodifier.requiresReplaceIfModifier	"If the value of this attribute changes, Terraform will destroy and recreate the resource."
 unifi_network.site	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
