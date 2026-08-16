@@ -114,6 +114,21 @@ func TestBuildAdmissionRejectsUnboundOrIncompleteEvidence(t *testing.T) {
 			mutate: func(input *AdmissionInput) { input.Unit.Candidate.FailedTestCount = 1 },
 			want:   "candidate unit suite",
 		},
+		// Padding, not truncation: one name is repeated and another dropped, so
+		// len(TestNames) still equals policy.TestNameCount exactly and every
+		// other assertion in that block passes. Only the uniqueness check sees
+		// it. Shortening the list instead would be caught by the count, which is
+		// why the mutation has to preserve the length to prove anything.
+		//
+		// This was the fixture's own shape until surfaceTestStem was corrected:
+		// 156 entries, 124 distinct. The check found it on its first run.
+		"controller plan repeats a test name": {
+			mutate: func(input *AdmissionInput) {
+				names := input.Controller.Plan.TestNames
+				names[len(names)-1] = names[0]
+			},
+			want: "repeats 1 test name",
+		},
 		"controller missing test": {
 			mutate: func(input *AdmissionInput) {
 				input.Controller.Candidate.Missing = append(input.Controller.Candidate.Missing, "TestAccMissing")
@@ -354,7 +369,7 @@ func validAdmissionInput(t *testing.T) AdmissionInput {
 		// The surfaces named by the campaign policy carry their real test
 		// names so the policy's allowed failures and allowed missing tests
 		// resolve against this plan the way they do against a real one.
-		tests := []string{"TestAcc" + strings.TrimPrefix(surface.Name, "unifi_")}
+		tests := []string{"TestAcc" + surfaceTestStem(surface.SurfaceKey)}
 		switch {
 		case surface.Kind == ManagedResource && surface.Name == "unifi_device":
 			tests = []string{"TestAccDeviceFramework_basic"}
@@ -584,5 +599,34 @@ func TestAdmissionRejectsCoverageCountsThatContradictTheirSurfaces(t *testing.T)
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error = %q, want it to name %q; a gate that says less than its test is one nobody can act on", err, want)
 		}
+	}
+}
+
+// surfaceTestStem keeps the fixture's default test names unique PER SURFACE and
+// preserves the list/non-list distinction the real plan builder depends on.
+//
+// The default used to be "TestAcc" + the stem with the kind discarded, so a
+// managed resource, its list companion and its data source all claimed one
+// name. That gave 156 entries, 124 distinct, 32 repeats -- against a policy
+// TestNameCount of 156, because the count is a length and a length counts
+// repeats. Every admission test was therefore validated against a plan the real
+// producer cannot emit: catalog-controller-differential.sh splits acceptance
+// tests by kind, giving a managed surface the names WITHOUT "List" and its list
+// companion the ones with, and its output measures 156/156/0.
+//
+// A fixture modelling something the producer cannot emit gives every assertion
+// built on it a false foundation, and this one modelled precisely the padding
+// that validateControllerPlan now refuses.
+func surfaceTestStem(key SurfaceKey) string {
+	stem := strings.TrimPrefix(key.Name, "unifi_")
+	switch key.Kind {
+	case ListResource:
+		return stem + "List"
+	case DataSource:
+		return stem + "DataSource"
+	case Action:
+		return stem + "Action"
+	default:
+		return stem
 	}
 }

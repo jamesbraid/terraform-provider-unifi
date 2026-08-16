@@ -5,8 +5,8 @@
  "claims": [
   {
    "mapping": {
-    "from_api": "Read",
-    "kind": "containing"
+    "from_api": "networkIDValue",
+    "kind": "dedicated"
    },
    "reason": "an ORDERED PREFERENCE rather than a choice: the data source reports virtual_network_override_id when it is set and network_id otherwise, so one released attribute relates to two observed fields and neither alone is its source",
    "structural_names": [

@@ -7,9 +7,9 @@
   "claims": [
     {
       "mapping": {
-        "from_api": "networkToModel",
-        "kind": "containing",
-        "to_api": "modelToNetwork"
+        "from_api": "wireguardPeerFromNetwork",
+        "kind": "dedicated",
+        "to_api": "wireguardPeerToNetwork"
       },
       "reason": "one released peer object over three flat observed fields; the schema groups the endpoint and key that the wire keeps apart",
       "structural_names": [
@@ -23,9 +23,9 @@
     },
     {
       "mapping": {
-        "from_api": "networkToModel",
-        "kind": "containing",
-        "to_api": "modelToNetwork"
+        "from_api": "wireguardDNSServersFromNetwork",
+        "kind": "dedicated",
+        "to_api": "wireguardDNSServersToNetwork"
       },
       "reason": "one released list distributed positionally into two observed slots, and read back by collecting the non-empty ones",
       "structural_names": [

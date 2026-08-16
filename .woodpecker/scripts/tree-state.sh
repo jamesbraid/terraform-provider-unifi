@@ -43,9 +43,50 @@
 # shape of change that looks like coverage and is not, so they are left undone
 # and written down rather than done blind.
 #
-# tree-state-coverage_test.sh enforces this list: it fails if one of the three
+# tree-state-coverage_test.sh CHECKS this list -- it fails if one of the three
 # quietly gains the guard, or if a new evidence generator appears in neither
-# list.
+# list -- but NOTHING INVOKES IT. It is referenced by no workflow and no script;
+# an unbounded grep for its name across the tree returns only this sentence.
+# It said "enforces" here from the day it was written. It does not enforce; it
+# reports, to nobody.
+#
+# It is red right now, and has been for hours, on a true finding:
+# catalog-upgrade-plan.sh writes build/release-ready/catalog-upgrade-plan.json,
+# stamps candidate_commit from git rev-parse HEAD, sources nothing, and is in
+# neither list. Rule 4 exists exactly so a generator arriving later cannot
+# arrive unnoticed, and it caught one within hours of that script landing.
+#
+# Its count is also wrong. It reports 5 of 8; deriving the population instead of
+# reading the arrays -- every script naming a build/ path OR an *OUTPUT* env
+# var -- gives TEN. The two it omits fail differently, and the second is worse:
+#
+#   catalog-upgrade-plan.sh             unlisted, and rule 4 FAILS on it
+#   catalog-dependency-publishability.sh unlisted, and rule 4 CANNOT SEE IT --
+#                                       it writes only to
+#                                       ${CATALOG_DEPENDENCY_OUTPUT}, and rule 4
+#                                       matches literal build/x/y.json paths
+#
+# A generator that takes its destination from the environment is invisible to
+# the check that exists to notice new generators. So the check looks sound to
+# anyone auditing it: there is a real FAIL on screen, produced by the half that
+# still works.
+#
+# Wiring it in, and deciding whether catalog-upgrade-plan.sh should be guarded
+# or declared deliberately unguarded, are both assertions about someone else's
+# generator and are held for review. This comment is corrected on its own
+# because a false statement about what is enforced costs something every day it
+# stands, and correcting it asserts nothing.
+#
+# It also cannot see a generator that is not a shell script. Seven commands
+# under cmd/ are invoked from a workflow and write an artifact, and not one has
+# any dirty-tree awareness, because this guard is a bash library a Go binary
+# cannot source. That is task 56.
+#
+# A further seven are named by go:generate directives, and those must NEVER
+# carry this guard. A code generator's working condition is a tree it is about
+# to change, so refusing a dirty one would refuse the job. The two sets are
+# disjoint, which is what makes "invoked from a workflow" usable as the rule
+# rather than "writes a file".
 #
 # SEPARATELY: thirteen of the nineteen evidence artifacts under build/ have no
 # producer at all, including all five wave receipts, which are maintained by

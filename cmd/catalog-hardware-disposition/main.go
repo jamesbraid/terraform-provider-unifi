@@ -24,6 +24,8 @@ func run(args []string, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	controllerPath := flags.String("controller", "", "catalog controller differential receipt")
 	outputPath := flags.String("output", "", "scoped port-action hardware disposition")
+	treeStateRaw := flags.String("tree-state", "",
+		"tree state JSON from evidence_tree_json, measured in THIS step")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -33,6 +35,15 @@ func run(args []string, stderr io.Writer) int {
 	}
 	if flags.NArg() != 0 {
 		fmt.Fprintln(stderr, "positional arguments are not supported")
+		return 2
+	}
+	// After the argument check -- which touches nothing -- and before any file is
+	// opened. tree-state.sh puts its own guard before the work it protects for
+	// the same reason: a run that cannot say which tree it describes should cost
+	// nothing to refuse. There is no default; see ParseTreeState.
+	treeState, treeStateErr := catalogparity.ParseTreeState(*treeStateRaw)
+	if treeStateErr != nil {
+		fmt.Fprintf(stderr, "%v\n", treeStateErr)
 		return 2
 	}
 
@@ -47,6 +58,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "hardware disposition: %v\n", err)
 		return 1
 	}
+	receipt.TreeState = treeState
 	data, err := json.Marshal(receipt)
 	if err != nil {
 		fmt.Fprintf(stderr, "encode hardware disposition: %v\n", err)

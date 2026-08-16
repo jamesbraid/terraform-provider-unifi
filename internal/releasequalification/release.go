@@ -67,9 +67,10 @@ type FleetSoakReceipt struct {
 }
 
 type HardwareDispositionReceipt struct {
-	FormatVersion int    `json:"format_version"`
-	Gate          string `json:"gate"`
-	Result        string `json:"result"`
+	FormatVersion int                      `json:"format_version"`
+	Gate          string                   `json:"gate"`
+	TreeState     *catalogparity.TreeState `json:"tree_state,omitempty"`
+	Result        string                   `json:"result"`
 	catalogparity.SurfaceKey
 	Mode                    string `json:"mode"`
 	ClaimScope              string `json:"claim_scope"`
@@ -219,6 +220,11 @@ func BuildReleaseReadyArtifacts(input ReleaseReadyInput) (ReleaseReadyArtifacts,
 		})
 		promotionSurfaces = append(promotionSurfaces, managementcontract.SurfaceContract{
 			SurfaceKey: entry.SurfaceKey, State: catalogparity.ReleaseReady,
+			// A LITERAL BECAUSE THERE IS NOTHING TO MEASURE IT FROM, not
+			// because the comparison was made and passed. paritydiff.Compare
+			// would produce this value, but nothing builds the Observations it
+			// consumes, and this site holds digests of other receipts rather
+			// than observations of a provider. Task 112.
 			EvidenceSHA256: receiptSHA256, AttemptResult: paritydiff.Pass,
 		})
 		measuredSurfaces[entry.SurfaceKey] = receiptSHA256

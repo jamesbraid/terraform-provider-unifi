@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
@@ -83,6 +85,9 @@ func TestRunWritesBoundReferenceResolution(t *testing.T) {
 		"-references", filepath.Join(root, "provider-codegen", "policy", "catalog-pragmatic-references.json"),
 		"-controller-receipt", controllerReceipt,
 		"-output", output,
+		// What evidence_tree_json renders on a clean tree. The pipeline measures
+		// this in the same step that runs the binary; a test supplies it.
+		"-tree-state", `{"status":"clean","commit":"0000000000000000000000000000000000000000","dirty_paths":[]}`,
 	}
 	if code := run(args, os.Stderr); code != 0 {
 		t.Fatalf("run() exit = %d", code)
@@ -186,5 +191,27 @@ func TestValidateControllerReceiptRejectsBroaderReleasedMissing(t *testing.T) {
 func TestRunRejectsIncompleteArguments(t *testing.T) {
 	if code := run(nil, os.Stderr); code != 2 {
 		t.Fatalf("run(nil) = %d, want 2", code)
+	}
+}
+
+// TestRefusesWithoutATreeState makes the refusal a check rather than an
+// intention.
+//
+// A missing -tree-state must fail, never default. A default -- "unknown", or a
+// zero value -- would put a tree_state in every receipt that no measurement
+// produced, and any gate reading it would be comparing a constant against
+// itself. That is the shape where one producer writes a literal and the
+// consumers dutifully check it, and it passes review because the branch is
+// reachable in a test while the input can never vary in production.
+//
+// Deleting the ParseTreeState call, or giving it a fallback, fails this.
+func TestRefusesWithoutATreeState(t *testing.T) {
+	var stderr bytes.Buffer
+	code := run([]string{"-policy", "/dev/null", "-inventory", "/dev/null", "-fleet-summary", "/dev/null", "-references", "/dev/null", "-output", "/dev/null"}, &stderr)
+	if code == 0 {
+		t.Fatalf("catalog-pragmatic-evidence ran without a tree state; exit = 0")
+	}
+	if !strings.Contains(stderr.String(), "tree state is required") {
+		t.Fatalf("stderr = %q, want it to say the tree state is required", stderr.String())
 	}
 }

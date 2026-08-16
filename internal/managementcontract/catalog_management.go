@@ -58,6 +58,7 @@ type CatalogManagementSurface struct {
 type CatalogManagementContract struct {
 	FormatVersion      int                        `json:"format_version"`
 	Gate               string                     `json:"gate"`
+	TreeState          *catalogparity.TreeState   `json:"tree_state,omitempty"`
 	Mode               string                     `json:"mode"`
 	Result             string                     `json:"result"`
 	ProviderAddress    string                     `json:"provider_address"`

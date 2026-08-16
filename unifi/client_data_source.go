@@ -195,13 +195,7 @@ func (d *clientDataSource) Read(
 
 	state.FixedApMAC = util.MACValueOrNull(client.FixedApMAC)
 
-	if client.VirtualNetworkOverrideID != "" {
-		state.NetworkID = types.StringValue(client.VirtualNetworkOverrideID)
-	} else if client.NetworkID != "" {
-		state.NetworkID = types.StringValue(client.NetworkID)
-	} else {
-		state.NetworkID = types.StringNull()
-	}
+	state.NetworkID = networkIDValue(client)
 
 	// Resolve NetworkMembersGroupIDs to tag names
 	if len(client.NetworkMembersGroupIDs) > 0 {
