@@ -376,7 +376,6 @@ unifi_network.setting_preference	validator	stringvalidator.oneOfValidator	"value
 unifi_network.site	plan_modifier	stringplanmodifier.requiresReplaceIfModifier	"If the value of this attribute changes, Terraform will destroy and recreate the resource."
 unifi_network.site	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_network.subnet	custom_type	cidrtypes.IPv4PrefixType	"<carries no description>"
-unifi_network.third_party_gateway	default	booldefault.staticBoolDefault	"value defaults to false"
 unifi_network.timeouts	custom_type	timeouts.Type	"<carries no description>"
 unifi_network.timeouts.create	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
 unifi_network.timeouts.delete	validator	validators.timeDurationValidator	"must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
