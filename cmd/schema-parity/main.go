@@ -41,6 +41,21 @@ type options struct {
 	output       string
 	wantActions  int
 	wantLists    int
+
+	// Compare-only inputs. When both are set, main does NO orchestration: no
+	// tag extraction, no provider build, no CLI invocation. It reads two
+	// canonical projections somebody else produced and answers the parity
+	// question about them.
+	//
+	// That mode exists so the shell gate can keep the orchestration it already
+	// does. Invoking the full binary from inside that script would build both
+	// providers a second time and dump both CLIs again, and the script's own
+	// determinism, cross-CLI and inverted-control assertions would then be
+	// judging artifacts this binary never saw. Two copies of one fact, on two
+	// sets of bytes, is the defect this package was written to remove.
+	releasedCanonical  string
+	candidateCanonical string
+	cli                string
 }
 
 func main() {
@@ -55,6 +70,11 @@ func main() {
 	flag.StringVar(&o.output, "output", "", "write the receipt here (default: stdout)")
 	flag.IntVar(&o.wantActions, "want-actions", 1, "action schemas terraform must report")
 	flag.IntVar(&o.wantLists, "want-lists", 25, "list resource schemas terraform must report")
+	flag.StringVar(&o.releasedCanonical, "released-canonical", "",
+		"compare-only: an already canonicalised released projection")
+	flag.StringVar(&o.candidateCanonical, "candidate-canonical", "",
+		"compare-only: an already canonicalised candidate projection")
+	flag.StringVar(&o.cli, "cli", "terraform", "compare-only: which CLI produced the two projections")
 	flag.Parse()
 
 	if err := run(o); err != nil {
@@ -88,6 +108,10 @@ type projection struct {
 }
 
 func run(o options) error {
+	if o.releasedCanonical != "" || o.candidateCanonical != "" {
+		return compareOnly(o)
+	}
+
 	repo, err := filepath.Abs(o.repo)
 	if err != nil {
 		return err
@@ -329,6 +353,18 @@ provider "unifi" {}
 	if err != nil {
 		return projection{}, fmt.Errorf("canonicalize %s/%s: %w", label, cliName, err)
 	}
+	// Persist both projections beside the run. They are the evidence behind
+	// every finding, and a reader who wants to know what "six differences"
+	// means needs the two files rather than a summary of them. With -work they
+	// outlive the process; without it they go with the temp directory.
+	for name, blob := range map[string][]byte{
+		label + "." + cliName + ".canonical.json": canonicalRaw,
+		label + "." + cliName + ".digests.json":   digests,
+	} {
+		if err := os.WriteFile(filepath.Join(work, name), blob, 0o600); err != nil {
+			return projection{}, err
+		}
+	}
 	var canonical, rawDoc any
 	if err := json.Unmarshal(canonicalRaw, &canonical); err != nil {
 		return projection{}, err
@@ -363,4 +399,51 @@ func cliVersion(bin string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0]), nil
+}
+
+// compareOnly answers the parity question about two projections that already
+// exist, and asserts nothing else.
+//
+// It deliberately does NOT re-run determinism, cross-CLI or the inverted
+// control. Those are separate claims about artifacts the caller produced and
+// still holds; asserting them here as well would put a second copy of each in a
+// second place, judging a second set of bytes.
+func compareOnly(o options) error {
+	if o.releasedCanonical == "" || o.candidateCanonical == "" {
+		return fmt.Errorf("compare-only needs both -released-canonical and -candidate-canonical")
+	}
+	ledger, err := schemaparity.LoadLedger(o.ledgerPath)
+	if err != nil {
+		return err
+	}
+	released, err := readJSON(o.releasedCanonical)
+	if err != nil {
+		return err
+	}
+	candidate, err := readJSON(o.candidateCanonical)
+	if err != nil {
+		return err
+	}
+	findings := schemaparity.CheckParity(o.cli, released, candidate, ledger)
+	if len(findings) > 0 {
+		for _, f := range findings {
+			fmt.Fprintln(os.Stderr, f.String())
+		}
+		return fmt.Errorf("%d assertion(s) failed", len(findings))
+	}
+	fmt.Fprintf(os.Stderr, "schema-parity/%s: pass. %d declared schema change(s), all observed.\n",
+		o.cli, len(ledger.Entries))
+	return nil
+}
+
+func readJSON(path string) (any, error) {
+	raw, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return nil, err
+	}
+	var doc any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	return doc, nil
 }
