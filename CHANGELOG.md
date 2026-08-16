@@ -53,9 +53,11 @@ All notable changes to this project will be documented in this file.
   cty.StringVal("fd41:9::2")`. That is the same fault as `ap_group_ids` below, on a different
   resource. All three are now `Optional + Computed`.
 
-  **All three carry a measured abort naming the attribute**, which is worth stating because the
-  `ap_group_ids` pair does not: there, one attribute was observed and the other argued from the read
-  path and labelled inferred. These were observed.
+  **All three carry a measured abort naming the attribute** — the failure was observed for each,
+  not inferred from the other two. That is worth stating because `network_id` below is the one
+  attribute fixed in this release where it was *not*: its case argues from the read and update
+  paths, is labelled inferred, and records the measured fact that no run names it as the subject of
+  an abort. `ap_group_ids` has its own observed failure, as these three do.
 
   Two things follow that are easy to get backwards. Fixing a defect is how the second one was found,
   not a regression it introduced — it had been hidden behind the larger failure the whole time. And
