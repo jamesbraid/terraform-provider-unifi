@@ -788,7 +788,6 @@ func (r *networkResource) modelToNetwork(
 		IPV6PDStop:                optStr(model.IPv6PDStop),
 		IPV6PDAutoPrefixidEnabled: model.IPv6PDAutoPrefixidEnabled.ValueBool(),
 		LteLanEnabled:             model.LteLan.ValueBool(),
-		VLANEnabled:               !model.Vlan.IsNull() && !model.Vlan.IsUnknown(),
 		Enabled:                   model.Enabled.ValueBool(),
 		IGMPSnooping:              model.IgmpSnooping.ValueBool(),
 		IPAliases:                 []string{},
@@ -797,13 +796,7 @@ func (r *networkResource) modelToNetwork(
 	// Purpose: default corporate, honor an explicitly configured value (guest,
 	// vlan-only, corporate). third_party_gateway is the legacy way to request
 	// vlan-only and takes precedence so existing configs keep working.
-	if !model.Purpose.IsNull() && !model.Purpose.IsUnknown() &&
-		model.Purpose.ValueString() != "" {
-		network.Purpose = model.Purpose.ValueString()
-	}
-	if model.ThirdPartyGateway.ValueBool() {
-		network.Purpose = unifi.PurposeVLANOnly
-	}
+	networkPurposeToNetwork(model.Purpose, model.ThirdPartyGateway, network)
 
 	// Handle DHCP guarding configuration
 	if !model.DhcpGuarding.IsNull() && !model.DhcpGuarding.IsUnknown() {
@@ -814,22 +807,7 @@ func (r *networkResource) modelToNetwork(
 			network.DHCPguardEnabled = dhcpGuarding.Enabled.ValueBool()
 
 			// Map servers to dhcpd_ip_1..3
-			if !dhcpGuarding.Servers.IsNull() && !dhcpGuarding.Servers.IsUnknown() {
-				var servers []string
-				d := dhcpGuarding.Servers.ElementsAs(ctx, &servers, false)
-				diags.Append(d...)
-				if !diags.HasError() {
-					if len(servers) > 0 {
-						network.DHCPDIP1 = servers[0]
-					}
-					if len(servers) > 1 {
-						network.DHCPDIP2 = servers[1]
-					}
-					if len(servers) > 2 {
-						network.DHCPDIP3 = servers[2]
-					}
-				}
-			}
+			networkDHCPGuardingServersToNetwork(ctx, &diags, dhcpGuarding.Servers, network)
 		}
 	}
 
@@ -837,7 +815,7 @@ func (r *networkResource) modelToNetwork(
 	network.DomainName = model.DomainName.ValueStringPointer()
 
 	// Handle optional int64 pointer fields
-	network.VLAN = model.Vlan.ValueInt64Pointer()
+	networkVLANToNetwork(model.Vlan, network)
 
 	// Handle NAT outbound IP addresses
 	if !model.NatOutboundIPAddresses.IsNull() && !model.NatOutboundIPAddresses.IsUnknown() {
@@ -896,28 +874,7 @@ func (r *networkResource) modelToNetwork(
 		diags.Append(d...)
 		if !diags.HasError() {
 			// Handle DHCP boot configuration
-			if !dhcpServer.Boot.IsNull() && !dhcpServer.Boot.IsUnknown() {
-				var dhcpBoot dhcpBootModel
-				d := dhcpServer.Boot.As(ctx, &dhcpBoot, basetypes.ObjectAsOptions{})
-				diags.Append(d...)
-				if !diags.HasError() {
-					network.DHCPDBootEnabled = dhcpBoot.Enabled.ValueBool()
-					if dhcpBoot.Server.IsNull() || dhcpBoot.Server.IsUnknown() {
-						network.DHCPDBootServer = ""
-					} else {
-						network.DHCPDBootServer = dhcpBoot.Server.ValueString()
-					}
-					if dhcpBoot.Filename.IsNull() || dhcpBoot.Filename.IsUnknown() {
-						network.DHCPDBootFilename = util.Ptr("")
-					} else {
-						network.DHCPDBootFilename = dhcpBoot.Filename.ValueStringPointer()
-					}
-				}
-			} else {
-				network.DHCPDBootEnabled = false
-				network.DHCPDBootServer = ""
-				network.DHCPDBootFilename = util.Ptr("")
-			}
+			networkBootToNetwork(ctx, &diags, dhcpServer.Boot, network)
 			network.DHCPDEnabled = dhcpServer.Enabled.ValueBool()
 			network.DHCPDStart = dhcpServer.Start.ValueStringPointer()
 			network.DHCPDStop = dhcpServer.Stop.ValueStringPointer()
@@ -929,48 +886,7 @@ func (r *networkResource) modelToNetwork(
 			network.DHCPDLeaseTime = util.DurationUnitsPtr(dhcpServer.Leasetime, time.Second)
 
 			// Handle WINS configuration
-			if !dhcpServer.Wins.IsNull() && !dhcpServer.Wins.IsUnknown() {
-				var wins winsModel
-				d := dhcpServer.Wins.As(ctx, &wins, basetypes.ObjectAsOptions{})
-				diags.Append(d...)
-				if !diags.HasError() {
-					network.DHCPDWinsEnabled = wins.Enabled.ValueBool()
-					if !wins.Addresses.IsNull() && !wins.Addresses.IsUnknown() {
-						var addresses []string
-						d := wins.Addresses.ElementsAs(ctx, &addresses, false)
-						diags.Append(d...)
-						if !diags.HasError() {
-							for i, addr := range addresses {
-								if i >= 2 {
-									break
-								}
-								switch i {
-								case 0:
-									network.DHCPDWins1 = util.Ptr(addr)
-								case 1:
-									network.DHCPDWins2 = util.Ptr(addr)
-								}
-							}
-							// Set remaining WINS servers to empty string
-							for i := len(addresses); i < 2; i++ {
-								switch i {
-								case 0:
-									network.DHCPDWins1 = util.Ptr("")
-								case 1:
-									network.DHCPDWins2 = util.Ptr("")
-								}
-							}
-						}
-					} else {
-						network.DHCPDWins1 = util.Ptr("")
-						network.DHCPDWins2 = util.Ptr("")
-					}
-				}
-			} else {
-				network.DHCPDWinsEnabled = false
-				network.DHCPDWins1 = util.Ptr("")
-				network.DHCPDWins2 = util.Ptr("")
-			}
+			networkWINSToNetwork(ctx, &diags, dhcpServer.Wins, network)
 
 			if dhcpServer.WpadUrl.IsNull() || dhcpServer.WpadUrl.IsUnknown() {
 				network.DHCPDWPAdUrl = util.Ptr("")
@@ -991,47 +907,7 @@ func (r *networkResource) modelToNetwork(
 			}
 
 			// Handle DNS servers
-			if !dhcpServer.DnsServers.IsNull() && !dhcpServer.DnsServers.IsUnknown() {
-				var dnsServers []string
-				d := dhcpServer.DnsServers.ElementsAs(ctx, &dnsServers, false)
-				diags.Append(d...)
-				if !diags.HasError() {
-					for i, dns := range dnsServers {
-						if i >= 4 {
-							break
-						}
-						switch i {
-						case 0:
-							network.DHCPDDNS1 = dns
-						case 1:
-							network.DHCPDDNS2 = dns
-						case 2:
-							network.DHCPDDNS3 = dns
-						case 3:
-							network.DHCPDDNS4 = dns
-						}
-					}
-					// Set remaining DNS servers to empty string
-					for i := len(dnsServers); i < 4; i++ {
-						switch i {
-						case 0:
-							network.DHCPDDNS1 = ""
-						case 1:
-							network.DHCPDDNS2 = ""
-						case 2:
-							network.DHCPDDNS3 = ""
-						case 3:
-							network.DHCPDDNS4 = ""
-						}
-					}
-				}
-			} else {
-				// Set all DNS servers to empty string when not configured
-				network.DHCPDDNS1 = ""
-				network.DHCPDDNS2 = ""
-				network.DHCPDDNS3 = ""
-				network.DHCPDDNS4 = ""
-			}
+			networkDHCPServerDNSToNetwork(ctx, &diags, dhcpServer.DnsServers, network)
 		}
 	} else if !relayEnabled {
 		// Set defaults when DHCP server is not configured (and relay is off).
@@ -1070,45 +946,7 @@ func (r *networkResource) modelToNetwork(
 			network.DHCPDV6LeaseTime = dhcpV6Server.Lease.ValueInt64Pointer()
 
 			// Handle DHCPv6 DNS servers
-			if !dhcpV6Server.DNSServers.IsNull() && !dhcpV6Server.DNSServers.IsUnknown() {
-				var dnsServers []string
-				d := dhcpV6Server.DNSServers.ElementsAs(ctx, &dnsServers, false)
-				diags.Append(d...)
-				if !diags.HasError() {
-					for i, dns := range dnsServers {
-						if i >= 4 {
-							break
-						}
-						switch i {
-						case 0:
-							network.DHCPDV6DNS1 = util.Ptr(dns)
-						case 1:
-							network.DHCPDV6DNS2 = util.Ptr(dns)
-						case 2:
-							network.DHCPDV6DNS3 = util.Ptr(dns)
-						case 3:
-							network.DHCPDV6DNS4 = util.Ptr(dns)
-						}
-					}
-					for i := len(dnsServers); i < 4; i++ {
-						switch i {
-						case 0:
-							network.DHCPDV6DNS1 = util.Ptr("")
-						case 1:
-							network.DHCPDV6DNS2 = util.Ptr("")
-						case 2:
-							network.DHCPDV6DNS3 = util.Ptr("")
-						case 3:
-							network.DHCPDV6DNS4 = util.Ptr("")
-						}
-					}
-				}
-			} else {
-				network.DHCPDV6DNS1 = util.Ptr("")
-				network.DHCPDV6DNS2 = util.Ptr("")
-				network.DHCPDV6DNS3 = util.Ptr("")
-				network.DHCPDV6DNS4 = util.Ptr("")
-			}
+			networkDHCPV6ServerDNSToNetwork(ctx, &diags, dhcpV6Server.DNSServers, network)
 		}
 	}
 
@@ -1156,7 +994,7 @@ func (r *networkResource) networkToModel(
 
 	// Set third_party_gateway based on API purpose
 	isVLANOnly := network.Purpose == unifi.PurposeVLANOnly
-	model.ThirdPartyGateway = types.BoolValue(isVLANOnly)
+	model.Purpose, model.ThirdPartyGateway = networkPurposeFromNetwork(network)
 
 	// Reflect the controller's actual purpose. On ZBF controllers the purpose is
 	// driven by the network's firewall zone (e.g. guest ⇄ Hotspot zone), so we
@@ -1164,11 +1002,6 @@ func (r *networkResource) networkToModel(
 	// (Computed) resolves to whatever the controller reports, and a configured
 	// value that the controller rejects surfaces as an inconsistent-result error
 	// instead of silently drifting.
-	if network.Purpose != "" {
-		model.Purpose = types.StringValue(network.Purpose)
-	} else {
-		model.Purpose = types.StringValue(unifi.PurposeCorporate)
-	}
 
 	// For vlan-only networks, the API does not return fields like subnet, gateway_type,
 	// setting_preference, etc. Preserve the plan/state values for these irrelevant fields
@@ -1325,15 +1158,7 @@ func (r *networkResource) networkToModel(
 	}
 
 	if shouldPopulateDhcpGuarding {
-		var serversList types.List
-		servers := collectNonEmptyStrings(network.DHCPDIP1, network.DHCPDIP2, network.DHCPDIP3)
-		if len(servers) > 0 {
-			var d diag.Diagnostics
-			serversList, d = types.ListValueFrom(ctx, types.StringType, servers)
-			diags.Append(d...)
-		} else {
-			serversList = types.ListNull(types.StringType)
-		}
+		serversList := networkDHCPGuardingServersFromNetwork(ctx, &diags, network)
 
 		dhcpGuardingValue := dhcpGuardingModel{
 			Enabled: types.BoolValue(network.DHCPguardEnabled),
@@ -1350,7 +1175,7 @@ func (r *networkResource) networkToModel(
 		model.DhcpGuarding = types.ObjectNull(dhcpGuardingModel{}.AttributeTypes())
 	}
 
-	model.Vlan = types.Int64PointerValue(network.VLAN)
+	model.Vlan = networkVLANFromNetwork(network)
 
 	// Handle lists - for now set to null
 	model.NatOutboundIPAddresses = types.ListNull(
@@ -1377,70 +1202,13 @@ func (r *networkResource) networkToModel(
 			return types.StringValue(*ptr)
 		}
 
-		bootServer := types.StringNull()
-		if network.DHCPDBootServer != "" {
-			bootServer = types.StringValue(network.DHCPDBootServer)
-		}
-		dhcpBootValue := dhcpBootModel{
-			Enabled:  types.BoolValue(network.DHCPDBootEnabled),
-			Server:   bootServer,
-			Filename: strPtrToType(network.DHCPDBootFilename),
-		}
-
-		dhcpBootObj, d := types.ObjectValueFrom(
-			ctx,
-			dhcpBootValue.AttributeTypes(),
-			dhcpBootValue,
-		)
-		diags.Append(d...)
+		dhcpBootObj := networkBootFromNetwork(ctx, &diags, network)
 
 		// Build DNS servers list from DHCPDDNS1-4
-		var dnsServers []string
-		if network.DHCPDDNS1 != "" {
-			dnsServers = append(dnsServers, network.DHCPDDNS1)
-		}
-		if network.DHCPDDNS2 != "" {
-			dnsServers = append(dnsServers, network.DHCPDDNS2)
-		}
-		if network.DHCPDDNS3 != "" {
-			dnsServers = append(dnsServers, network.DHCPDDNS3)
-		}
-		if network.DHCPDDNS4 != "" {
-			dnsServers = append(dnsServers, network.DHCPDDNS4)
-		}
+		dnsServersList := networkDHCPServerDNSFromNetwork(ctx, &diags, network)
 
-		var dnsServersList types.List
-		if len(dnsServers) > 0 {
-			dnsServersList, d = types.ListValueFrom(ctx, types.StringType, dnsServers)
-			diags.Append(d...)
-		} else {
-			dnsServersList = types.ListNull(types.StringType)
-		}
-
-		// Build WINS addresses list from DHCPDWins1-2
-		var winsAddresses []string
-		if network.DHCPDWins1 != nil && *network.DHCPDWins1 != "" {
-			winsAddresses = append(winsAddresses, *network.DHCPDWins1)
-		}
-		if network.DHCPDWins2 != nil && *network.DHCPDWins2 != "" {
-			winsAddresses = append(winsAddresses, *network.DHCPDWins2)
-		}
-
-		var winsAddressesList types.List
-		if len(winsAddresses) > 0 {
-			winsAddressesList, d = types.ListValueFrom(ctx, types.StringType, winsAddresses)
-			diags.Append(d...)
-		} else {
-			winsAddressesList = types.ListNull(types.StringType)
-		}
-
-		winsValue := winsModel{
-			Enabled:   types.BoolValue(network.DHCPDWinsEnabled),
-			Addresses: winsAddressesList,
-		}
-
-		winsObj, d := types.ObjectValueFrom(ctx, winsValue.AttributeTypes(), winsValue)
-		diags.Append(d...)
+		// Build WINS from the enable flag and DHCPDWins1-2
+		winsObj := networkWINSFromNetwork(ctx, &diags, network)
 
 		dhcpServerValue := dhcpServerModel{
 			Boot:              dhcpBootObj,
@@ -1482,18 +1250,7 @@ func (r *networkResource) networkToModel(
 	}
 
 	if shouldPopulateDhcpV6 {
-		dhcpv6DNS := collectNonEmptyStringPointers(
-			network.DHCPDV6DNS1, network.DHCPDV6DNS2,
-			network.DHCPDV6DNS3, network.DHCPDV6DNS4,
-		)
-		var dhcpv6DNSList types.List
-		if len(dhcpv6DNS) > 0 {
-			var d diag.Diagnostics
-			dhcpv6DNSList, d = types.ListValueFrom(ctx, types.StringType, dhcpv6DNS)
-			diags.Append(d...)
-		} else {
-			dhcpv6DNSList = types.ListNull(types.StringType)
-		}
+		dhcpv6DNSList := networkDHCPV6ServerDNSFromNetwork(ctx, &diags, network)
 
 		dhcpV6ServerValue := dhcpV6ServerModel{
 			Enabled:    types.BoolValue(network.DHCPDV6Enabled),
@@ -1647,4 +1404,314 @@ func (r *networkResource) List(
 			}
 		}
 	}
+}
+
+// The fourteen functions below are the halves this resource's policy claims
+// name. Each relates one Terraform member to several observed fields, which is
+// the one thing the compiler cannot check, so the policy names a function and a
+// reader opens it. They were inline in modelToNetwork and networkToModel, which
+// are long enough that "the relation is in there" was not an answer.
+//
+// Absence is part of each relation, so a member that is null or unknown is
+// handled here rather than by the caller. The one exception is the block that
+// resets every dhcp_server field when there is no dhcp_server at all: that is
+// the absence of the whole grouping, not of any one member.
+
+// networkVLANToNetwork writes the one released vlan number into the observed
+// number AND its enable flag: vlan_enabled is set from whether vlan is
+// configured at all, so neither field alone is the attribute's source.
+func networkVLANToNetwork(vlan types.Int64, network *unifi.Network) {
+	network.VLAN = vlan.ValueInt64Pointer()
+	network.VLANEnabled = !vlan.IsNull() && !vlan.IsUnknown()
+}
+
+// networkVLANFromNetwork reads the vlan number back. vlan_enabled is not read:
+// a network with no vlan reports a null number, which is the same thing.
+func networkVLANFromNetwork(network *unifi.Network) types.Int64 {
+	return types.Int64PointerValue(network.VLAN)
+}
+
+// networkPurposeToNetwork writes two released attributes onto one observed
+// field. purpose is honoured when configured and then OVERWRITTEN to vlan-only
+// when third_party_gateway is true, which is the legacy way to ask for it.
+func networkPurposeToNetwork(
+	purpose types.String,
+	thirdPartyGateway types.Bool,
+	network *unifi.Network,
+) {
+	if !purpose.IsNull() && !purpose.IsUnknown() && purpose.ValueString() != "" {
+		network.Purpose = purpose.ValueString()
+	}
+	if thirdPartyGateway.ValueBool() {
+		network.Purpose = unifi.PurposeVLANOnly
+	}
+}
+
+// networkPurposeFromNetwork computes both released attributes from the one
+// observed field: purpose as the controller reports it, and
+// third_party_gateway as whether that value is vlan-only. A controller that
+// reports no purpose is reported as corporate, which is what it means.
+func networkPurposeFromNetwork(network *unifi.Network) (types.String, types.Bool) {
+	purpose := types.StringValue(unifi.PurposeCorporate)
+	if network.Purpose != "" {
+		purpose = types.StringValue(network.Purpose)
+	}
+	return purpose, types.BoolValue(network.Purpose == unifi.PurposeVLANOnly)
+}
+
+// networkDHCPGuardingServersToNetwork distributes dhcp_guarding.servers
+// positionally into the three observed slots. It does NOT clear the slots it
+// does not use -- unlike the dhcp_server DNS write below -- so a shorter list
+// leaves whatever was there.
+func networkDHCPGuardingServersToNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	servers types.List,
+	network *unifi.Network,
+) {
+	if servers.IsNull() || servers.IsUnknown() {
+		return
+	}
+	var values []string
+	diags.Append(servers.ElementsAs(ctx, &values, false)...)
+	if diags.HasError() {
+		return
+	}
+	if len(values) > 0 {
+		network.DHCPDIP1 = values[0]
+	}
+	if len(values) > 1 {
+		network.DHCPDIP2 = values[1]
+	}
+	if len(values) > 2 {
+		network.DHCPDIP3 = values[2]
+	}
+}
+
+// networkDHCPGuardingServersFromNetwork collects the three observed slots back
+// into the one released list, keeping only the non-empty ones.
+func networkDHCPGuardingServersFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
+		network.DHCPDIP1, network.DHCPDIP2, network.DHCPDIP3,
+	))
+}
+
+// networkDHCPServerDNSToNetwork distributes dhcp_server.dns_servers positionally
+// into the four observed slots, clearing the trailing ones it does not use.
+//
+// A FIFTH server is dropped without a diagnostic. That, and the compaction in
+// networkDHCPServerDNSFromNetwork, are why a value can move slot on a read-write
+// round trip: the write never leaves a gap, but a gap arriving from anywhere
+// else reads back compacted and writes back one slot earlier.
+func networkDHCPServerDNSToNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	dnsServers types.List,
+	network *unifi.Network,
+) {
+	slots := []*string{
+		&network.DHCPDDNS1, &network.DHCPDDNS2, &network.DHCPDDNS3, &network.DHCPDDNS4,
+	}
+	if dnsServers.IsNull() || dnsServers.IsUnknown() {
+		for _, slot := range slots {
+			*slot = ""
+		}
+		return
+	}
+	var values []string
+	diags.Append(dnsServers.ElementsAs(ctx, &values, false)...)
+	if diags.HasError() {
+		return
+	}
+	for i, slot := range slots {
+		if i < len(values) {
+			*slot = values[i]
+			continue
+		}
+		*slot = ""
+	}
+}
+
+// networkDHCPServerDNSFromNetwork collects the four observed slots back into the
+// one released list, keeping only the non-empty ones. See the write half for why
+// compacting matters.
+func networkDHCPServerDNSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
+		network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
+	))
+}
+
+// networkDHCPV6ServerDNSToNetwork distributes dhcp_v6_server.dns_servers
+// positionally into the four observed slots, clearing the trailing ones. The
+// same fifth-server truncation applies as for the v4 slots.
+func networkDHCPV6ServerDNSToNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	dnsServers types.List,
+	network *unifi.Network,
+) {
+	slots := []**string{
+		&network.DHCPDV6DNS1, &network.DHCPDV6DNS2,
+		&network.DHCPDV6DNS3, &network.DHCPDV6DNS4,
+	}
+	if dnsServers.IsNull() || dnsServers.IsUnknown() {
+		for _, slot := range slots {
+			*slot = util.Ptr("")
+		}
+		return
+	}
+	var values []string
+	diags.Append(dnsServers.ElementsAs(ctx, &values, false)...)
+	if diags.HasError() {
+		return
+	}
+	for i, slot := range slots {
+		if i < len(values) {
+			*slot = util.Ptr(values[i])
+			continue
+		}
+		*slot = util.Ptr("")
+	}
+}
+
+// networkDHCPV6ServerDNSFromNetwork collects the four observed slots back into
+// the one released list, keeping only the non-empty ones.
+func networkDHCPV6ServerDNSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
+		network.DHCPDV6DNS1, network.DHCPDV6DNS2,
+		network.DHCPDV6DNS3, network.DHCPDV6DNS4,
+	))
+}
+
+// networkWINSToNetwork writes dhcp_server.wins over an enable flag and two
+// address slots, the addresses distributed positionally and the trailing one
+// cleared. An absent wins block disables it and clears both slots.
+func networkWINSToNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	winsObject types.Object,
+	network *unifi.Network,
+) {
+	if winsObject.IsNull() || winsObject.IsUnknown() {
+		network.DHCPDWinsEnabled = false
+		network.DHCPDWins1 = util.Ptr("")
+		network.DHCPDWins2 = util.Ptr("")
+		return
+	}
+
+	var wins winsModel
+	diags.Append(winsObject.As(ctx, &wins, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return
+	}
+	network.DHCPDWinsEnabled = wins.Enabled.ValueBool()
+
+	slots := []**string{&network.DHCPDWins1, &network.DHCPDWins2}
+	if wins.Addresses.IsNull() || wins.Addresses.IsUnknown() {
+		for _, slot := range slots {
+			*slot = util.Ptr("")
+		}
+		return
+	}
+	var addresses []string
+	diags.Append(wins.Addresses.ElementsAs(ctx, &addresses, false)...)
+	if diags.HasError() {
+		return
+	}
+	for i, slot := range slots {
+		if i < len(addresses) {
+			*slot = util.Ptr(addresses[i])
+			continue
+		}
+		*slot = util.Ptr("")
+	}
+}
+
+// networkWINSFromNetwork reads dhcp_server.wins back from the enable flag and
+// the two address slots, the addresses compacted.
+func networkWINSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.Object {
+	value := winsModel{
+		Enabled: types.BoolValue(network.DHCPDWinsEnabled),
+		Addresses: stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
+			network.DHCPDWins1, network.DHCPDWins2,
+		)),
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	diags.Append(d...)
+	return object
+}
+
+// networkBootToNetwork writes dhcp_server.boot over the three flat observed
+// fields the wire keeps apart. An absent boot block disables it and empties
+// both strings.
+func networkBootToNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	bootObject types.Object,
+	network *unifi.Network,
+) {
+	if bootObject.IsNull() || bootObject.IsUnknown() {
+		network.DHCPDBootEnabled = false
+		network.DHCPDBootServer = ""
+		network.DHCPDBootFilename = util.Ptr("")
+		return
+	}
+
+	var boot dhcpBootModel
+	diags.Append(bootObject.As(ctx, &boot, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return
+	}
+	network.DHCPDBootEnabled = boot.Enabled.ValueBool()
+	if boot.Server.IsNull() || boot.Server.IsUnknown() {
+		network.DHCPDBootServer = ""
+	} else {
+		network.DHCPDBootServer = boot.Server.ValueString()
+	}
+	if boot.Filename.IsNull() || boot.Filename.IsUnknown() {
+		network.DHCPDBootFilename = util.Ptr("")
+	} else {
+		network.DHCPDBootFilename = boot.Filename.ValueStringPointer()
+	}
+}
+
+// networkBootFromNetwork groups the three flat observed fields back into
+// dhcp_server.boot, the empty string reading as absent for both strings.
+func networkBootFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.Object {
+	server := types.StringNull()
+	if network.DHCPDBootServer != "" {
+		server = types.StringValue(network.DHCPDBootServer)
+	}
+	filename := types.StringNull()
+	if network.DHCPDBootFilename != nil && *network.DHCPDBootFilename != "" {
+		filename = types.StringValue(*network.DHCPDBootFilename)
+	}
+	value := dhcpBootModel{
+		Enabled:  types.BoolValue(network.DHCPDBootEnabled),
+		Server:   server,
+		Filename: filename,
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	diags.Append(d...)
+	return object
 }
