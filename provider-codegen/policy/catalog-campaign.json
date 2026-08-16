@@ -3,7 +3,7 @@
   "gate": "catalog controller differential",
   "surface_count": 67,
   "evidence_gap_count": 6,
-  "test_name_count": 154,
+  "test_name_count": 156,
   "shared_scenario_exceptions": [
     {
       "kind": "action",
