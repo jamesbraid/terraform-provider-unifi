@@ -2,6 +2,93 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### 🐛 Bug Fixes
+
+- **Six attributes the controller owns were being overwritten by a value the provider invented.**
+  This is one defect with six instances, and they are grouped because the shape matters more than
+  the list. Each attribute carried a static default in the schema. Terraform fills a default in
+  *before* the provider is consulted, so a configuration that never mentioned the attribute still
+  planned the default — and the write path, seeing a value that was always known, sent it. A setting
+  the controller held was replaced by one nobody asked for, on every apply.
+
+  | resource | attribute | controller held | provider wrote |
+  | --- | --- | --- | --- |
+  | `unifi_wan` | `type` | `static` | `dhcp` |
+  | `unifi_wlan` | `minrate_setting_preference` | `manual` | `auto` |
+  | `unifi_network` | `lte_lan` | `false` | `true` |
+  | `unifi_network` | `ipv6_interface_type` | a real interface type | `none` |
+  | `unifi_network` | `dhcp_v6_server.dns_auto` | `true` | `false` |
+  | `unifi_radius_profile` | `use_usg_auth_server` | `true` | `false` |
+
+  Each was reproduced against a 10.4.57 controller with one fixture and only the provider binary
+  differing: import, plan with the attribute omitted, apply, then read the controller back. The
+  clearest is `use_usg_auth_server` — the controller held it on, the plan showed `true -> false`, the
+  apply exited 0, and the controller then held it off. An apply that mentioned nothing turned a
+  setting off.
+
+  In every case the default is dropped and `UseStateForUnknown` added, so omitting the attribute
+  keeps whatever the controller holds. Each value is one a practitioner could legitimately choose,
+  which is what made the fault invisible: `none` is in `ipv6_interface_type`'s own list of accepted
+  values, so "the controller was never asked" was indistinguishable from "turn IPv6 off".
+
+  If you added an explicit value to work around one of these, it can be dropped. Upgrading plans no
+  changes against existing state.
+
+- **`unifi_network`: a `dhcp_v6_server` block could not be applied unless `ipv6_interface_type` was
+  stated.** The apply failed on three attributes at once — `dhcp_v6_server.enabled`, `.start` and
+  `.stop` — which reads like three defects and is one. `ipv6_interface_type` defaulting to `none`
+  switched IPv6 off, and the block went down with it. An A/B against the same controller with the
+  same binary isolates it: with the attribute omitted the apply exits 1 and the controller's record
+  loses `dhcpdv6_enabled` entirely; with `ipv6_interface_type = "static"` stated, the same apply
+  exits 0 and every field survives. The block was never broken. Fixed by the default removal above,
+  and listed separately only because the symptom named the wrong attributes.
+
+- **`unifi_wlan`: a configuration that omits `ap_group_ids` could not complete an apply at all.**
+  The controller always returns an AP group, the read path copied it into state, and Terraform
+  rejected the result against a null plan with `Provider produced inconsistent result after apply:
+  .ap_group_ids: was null, but now cty.SetVal([...])`. `ap_group_ids` and `network_id` were
+  `Optional` and not `Computed`, which tells Terraform the practitioner owns the value and the
+  provider must leave it null. That is wrong for a value the controller assigns. Both are now
+  `Optional + Computed` with `UseStateForUnknown`. A configuration that sets either is unaffected.
+
+  The two attributes do not have equal evidence and the ledger entry says so: the aborting apply was
+  observed for `ap_group_ids`, while `network_id` is argued from the read and update paths and
+  labelled inferred.
+
+- **`unifi_wlan`: changing `minrate_setting_preference` to `auto` failed the apply.** Handing the
+  minimum data rates to the controller makes it recompute them, but both rate attributes promised
+  Terraform the stored value would survive, so the apply died with `.minimum_data_rate_5g_kbps: was
+  cty.NumberIntVal(0), but now cty.NumberIntVal(6000)` — with the preference flip as the only change
+  in the plan. The rates now stay at their stored value except when that sibling is changing, and
+  are left unknown then so the controller may supply them. Planning them unknown unconditionally
+  would have shown a spurious "(known after apply)" on every plan.
+
+- **`unifi_wlan`: a data rate the controller does not report is no longer recorded as `0`.** The
+  controller omits `minrate_n{a,g}_data_rate_kbps` when they are unset, and the read path turned
+  that absence into zero. Zero is a rate a practitioner can legitimately request — it is in both
+  attributes' accepted values — so storing it for "the controller said nothing" recorded a value the
+  controller never gave, indistinguishable from one it did.
+
+### 📋 Known Issues
+
+- **`unifi_vpn_server` still drops the third and fourth DNS servers.** A VPN server configured with
+  four DNS servers writes only two. The cause is in the `go-unifi` SDK rather than in this provider:
+  its marshaller emits two of the four slots. The SDK fix is written and pushed but **not tagged**,
+  so this provider cannot consume it yet, and no amount of provider-side change fixes it. It is
+  listed here rather than left out because this release fixes other things and a note that mentions
+  only what was fixed reads as a clean bill of health.
+
+- **`unifi_network`'s `lte_lan` description still says "Defaults to `true`". It no longer does.**
+  The default was removed by the fix above and the prose was left exactly as released. This is not
+  an oversight: the schema baseline gate treats the released provider's descriptions as
+  authoritative and has no mechanism to accept a deliberate change to one, so correcting the text
+  would fail the gate. The contradiction is recorded rather than blessed, and the correction is
+  first in line once that mechanism exists.
+
+---
+
 ## [v0.102.0] - 2026-08-16
 
 ### 🐛 Bug Fixes
