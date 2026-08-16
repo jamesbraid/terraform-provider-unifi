@@ -1,6 +1,7 @@
 package unifi
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -14,20 +15,23 @@ import (
 )
 
 // mappingPolicy is the part of a policy this test reads: the function names a
-// multi-field member says relate its attribute to the observed fields.
+// claim says relate its Terraform members to the observed fields.
+//
+// The names live at .claims[].mapping. They were read from
+// .groupings[].members[].mapping until the format moved, and nothing noticed:
+// a struct that decodes no such key yields a zero-length slice, the loop below
+// ran zero times, and the test reported success. The unreachable check below
+// is what makes that same move fail next time rather than pass.
 type mappingPolicy struct {
-	Resource  string `json:"resource"`
-	Groupings []struct {
-		TerraformName string `json:"terraform_name"`
-		Members       []struct {
-			TerraformName   string   `json:"terraform_name"`
-			StructuralNames []string `json:"structural_names"`
-			Mapping         *struct {
-				ToAPI   string `json:"to_api"`
-				FromAPI string `json:"from_api"`
-			} `json:"mapping"`
-		} `json:"members"`
-	} `json:"groupings"`
+	Resource string `json:"resource"`
+	Claims   []struct {
+		TerraformMembers []string `json:"terraform_members"`
+		StructuralNames  []string `json:"structural_names"`
+		Mapping          *struct {
+			ToAPI   string `json:"to_api"`
+			FromAPI string `json:"from_api"`
+		} `json:"mapping"`
+	} `json:"claims"`
 }
 
 // Test_policyMappingsNameFunctionsThatExist makes a mapping a checkable claim
@@ -70,7 +74,7 @@ func Test_policyMappingsNameFunctionsThatExist(t *testing.T) {
 		t.Fatalf("listing policies: %v", err)
 	}
 
-	var missing []string
+	var missing, unreachable []string
 	mappings := 0
 	for _, path := range policies {
 		body, err := os.ReadFile(path)
@@ -81,36 +85,66 @@ func Test_policyMappingsNameFunctionsThatExist(t *testing.T) {
 		if err := json.Unmarshal(body, &policy); err != nil || policy.Resource == "" {
 			continue
 		}
-		for _, grouping := range policy.Groupings {
-			for _, member := range grouping.Members {
-				if member.Mapping == nil {
+
+		found := 0
+		for _, claim := range policy.Claims {
+			if claim.Mapping == nil {
+				continue
+			}
+			// The file name is part of the owner because it is not redundant:
+			// network.json and network_ds.json both declare resource
+			// "unifi_network", and several of their claims cover the same
+			// members with different functions. Without it the two collapse
+			// into duplicate lines naming no file anyone can open.
+			owner := fmt.Sprintf("%s (%s) %s",
+				policy.Resource, filepath.Base(path), strings.Join(claim.TerraformMembers, "+"))
+			for _, named := range []struct{ half, name string }{
+				{"to_api", claim.Mapping.ToAPI},
+				{"from_api", claim.Mapping.FromAPI},
+			} {
+				found++
+				mappings++
+				if named.name == "" || declared[named.name] {
 					continue
 				}
-				owner := fmt.Sprintf("%s %s.%s",
-					policy.Resource, grouping.TerraformName, member.TerraformName)
-				for _, named := range []struct{ half, name string }{
-					{"to_api", member.Mapping.ToAPI},
-					{"from_api", member.Mapping.FromAPI},
-				} {
-					mappings++
-					if named.name == "" || declared[named.name] {
-						continue
-					}
-					missing = append(missing, fmt.Sprintf(
-						"%s names %s %q, which package unifi does not declare",
-						owner, named.half, named.name))
-				}
+				missing = append(missing, fmt.Sprintf(
+					"%s names %s %q, which package unifi does not declare",
+					owner, named.half, named.name))
 			}
+		}
+
+		// The denominator is derived from the corpus rather than counted by
+		// hand. A file that carries the key but yields nothing means the struct
+		// above no longer reaches it -- which is exactly how this test came to
+		// check nothing at all -- and it is named here rather than skipped.
+		if found == 0 && bytes.Contains(body, []byte(`"mapping"`)) {
+			unreachable = append(unreachable, filepath.Base(path))
 		}
 	}
 
 	sort.Strings(missing)
+	sort.Strings(unreachable)
+
+	// Before reporting on what was checked, establish that anything was. A
+	// mapping that moves to another key is invisible to the decode, and an
+	// empty corpus and a clean one are the same green run.
+	if len(unreachable) > 0 {
+		t.Errorf("%d polic(ies) carry a \"mapping\" key that mappingPolicy does not reach:\n    %s\n\n"+
+			"    The names are still there and are no longer being checked. Point the\n"+
+			"    struct at wherever they moved to; do not delete this check.",
+			len(unreachable), strings.Join(unreachable, "\n    "))
+	}
+	if mappings == 0 {
+		t.Fatal("no mapping was read from any policy, so every check below would pass " +
+			"vacuously; mappingPolicy expects the names at .claims[].mapping")
+	}
+
 	if len(missing) > 0 {
-		t.Errorf("%d mapping function name(s) that cannot be opened:\n    %s\n\n"+
+		t.Errorf("%d of %d mapping function name(s) cannot be opened:\n    %s\n\n"+
 			"    A mapping is taken on trust by the compiler because nothing can verify\n"+
 			"    what the function does. That is only defensible while the name resolves\n"+
 			"    to something a reader can read.",
-			len(missing), strings.Join(missing, "\n    "))
+			len(missing), mappings, strings.Join(missing, "\n    "))
 	}
 	t.Logf("%d mapping function name(s) checked against %d function(s) declared in package unifi",
 		mappings, len(declared))

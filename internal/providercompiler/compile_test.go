@@ -1087,8 +1087,10 @@ func testClaim(members, fields []any) map[string]any {
 	return map[string]any{
 		"terraform_members": members,
 		"structural_names":  fields,
-		"mapping":           map[string]any{"to_api": "splitEndpoint", "from_api": "joinEndpoint"},
-		"reason":            "the released attribute set does not correspond one to one with the wire",
+		"mapping": map[string]any{
+			"to_api": "splitEndpoint", "from_api": "joinEndpoint", "kind": "dedicated",
+		},
+		"reason": "the released attribute set does not correspond one to one with the wire",
 	}
 }
 
@@ -1265,16 +1267,48 @@ func TestCompileRejectsClaimsThatAreNotDerivations(t *testing.T) {
 		},
 		"a mapping naming only the write direction": {
 			mutate: func(rules map[string]any) {
-				firstClaim(rules)["mapping"] = map[string]any{"to_api": "splitEndpoint"}
+				firstClaim(rules)["mapping"] = map[string]any{
+					"to_api": "splitEndpoint", "kind": "dedicated",
+				}
 			},
 			want: "declares a mapping with no from_api function",
 		},
 		"a mapping naming only the read direction": {
 			mutate: func(rules map[string]any) {
-				firstClaim(rules)["mapping"] = map[string]any{"from_api": "joinEndpoint"}
+				firstClaim(rules)["mapping"] = map[string]any{
+					"from_api": "joinEndpoint", "kind": "dedicated",
+				}
 			},
 			want: "declares a mapping with no to_api function",
 		},
+		// A name cannot say whether it IS the relation or merely contains it,
+		// and the two are different strengths of claim. Every claim in this
+		// provider is the weaker kind; leaving that unsaid is how it read as
+		// the stronger one for as long as it did.
+		"a mapping that does not say whether the name is the transform": {
+			mutate: func(rules map[string]any) {
+				delete(firstClaim(rules)["mapping"].(map[string]any), "kind")
+			},
+			want: "declares a mapping with no kind",
+		},
+		"a mapping claiming a kind that does not exist": {
+			mutate: func(rules map[string]any) {
+				firstClaim(rules)["mapping"].(map[string]any)["kind"] = "inline"
+			},
+			want: `declares mapping kind "inline"`,
+		},
+		// NOT COVERED HERE: a to_api on a surface that never writes.
+		//
+		// The rule is in claimedStructuralFields and fires -- it rejects the
+		// nine that client_ds, client_list_ds and network_ds carried, naming
+		// each one. It has no case in this table because every input here is a
+		// managed_resource and the baseline digest is keyed by surface kind:
+		// flipping rules["surface_kind"] to data_source fails on "baseline
+		// data_source digest mismatch" before reaching the claim at all, so
+		// the case would pass for the wrong reason. Covering it needs a
+		// claim-bearing data-source fixture, which surfaceKindInput does not
+		// build today. Named rather than omitted, because a silently absent
+		// case and a covered one look identical in a green run.
 		"a claim with no reason": {
 			mutate: func(rules map[string]any) { delete(firstClaim(rules), "reason") },
 			want:   "declares no reason",

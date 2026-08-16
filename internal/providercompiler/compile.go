@@ -129,7 +129,7 @@ func Compile(input CompileInput) (Result, error) {
 		return Result{}, err
 	}
 
-	claimedFields, claimedMembers, err := claimedStructuralFields(rules.Claims)
+	claimedFields, claimedMembers, err := claimedStructuralFields(rules.SurfaceKind, rules.Claims)
 	if err != nil {
 		return Result{}, err
 	}
@@ -2120,7 +2120,14 @@ func marshalCanonical(value any) ([]byte, error) {
 // that both write one field must be listed TOGETHER, under ONE named function,
 // rather than each asserting the field separately -- and that listing is
 // precisely what a reviewer has to check.
-func claimedStructuralFields(claims []claimPolicy) (map[string]string, map[string]string, error) {
+func claimedStructuralFields(
+	kind catalogparity.SurfaceKind,
+	claims []claimPolicy,
+) (map[string]string, map[string]string, error) {
+	// Only a managed resource writes. A data source, a list resource and an
+	// action all read or invoke, so none of them has a to_api direction to
+	// describe.
+	writes := kind == catalogparity.ManagedResource
 	fields := map[string]string{}
 	members := map[string]string{}
 	for index, claim := range claims {
@@ -2157,22 +2164,50 @@ func claimedStructuralFields(claims []claimPolicy) (map[string]string, map[strin
 					"bound static_route's type and wlan's schedule to the wrong field",
 				owner, len(claim.TerraformMembers), len(claim.StructuralNames))
 		}
-		// Both halves, always. The two directions are different functions and
-		// are not inverses -- network's dhcp_server.dns_servers writes
-		// positionally and reads compacted, so a value moves slot on a round
-		// trip -- and one name would describe half the behaviour while reading
-		// as though it described all of it.
-		for _, half := range []struct{ name, value, does string }{
-			{"to_api", claim.Mapping.ToAPI, "builds the observed fields from the members"},
-			{"from_api", claim.Mapping.FromAPI, "builds the members from the observed fields"},
-		} {
-			if half.value == "" {
-				return nil, nil, fmt.Errorf(
-					"%s declares a mapping with no %s function, which %s; both directions "+
-						"are named because they are different functions here, not inverses "+
-						"of one another",
-					owner, half.name, half.does)
-			}
+		// from_api always. to_api only where there is a write to describe.
+		//
+		// The two directions are different functions and are not inverses --
+		// network's dhcp_server.dns_servers writes positionally and reads
+		// compacted, so a value moves slot on a round trip -- and one name
+		// would describe half the behaviour while reading as though it
+		// described all of it. That argument holds only on a surface that
+		// writes. A data source does not, so requiring to_api there does not
+		// buy a second direction; it demands a name for a transform that
+		// cannot exist, and what it got was six copies of the managed
+		// resource's write-function names.
+		if claim.Mapping.FromAPI == "" {
+			return nil, nil, fmt.Errorf(
+				"%s declares a mapping with no from_api function, which builds the members "+
+					"from the observed fields", owner)
+		}
+		if writes && claim.Mapping.ToAPI == "" {
+			return nil, nil, fmt.Errorf(
+				"%s declares a mapping with no to_api function, which builds the observed "+
+					"fields from the members; both directions are named because they are "+
+					"different functions here, not inverses of one another",
+				owner)
+		}
+		if !writes && claim.Mapping.ToAPI != "" {
+			return nil, nil, fmt.Errorf(
+				"%s declares to_api %q on a %s, which never writes; a name for a transform "+
+					"that cannot run is a false claim, not a missing function -- remove it",
+				owner, claim.Mapping.ToAPI, kind)
+		}
+		// A name alone cannot say whether it IS the relation or merely contains
+		// it, and those are different strengths of claim.
+		switch claim.Mapping.Kind {
+		case mappingDedicated, mappingContaining:
+		case "":
+			return nil, nil, fmt.Errorf(
+				"%s declares a mapping with no kind; say %q when the named function does "+
+					"this relation and nothing else, or %q when the relation is inline "+
+					"inside a larger conversion function, because a reader cannot tell "+
+					"which they have from a name",
+				owner, mappingDedicated, mappingContaining)
+		default:
+			return nil, nil, fmt.Errorf(
+				"%s declares mapping kind %q; the only kinds are %q and %q",
+				owner, claim.Mapping.Kind, mappingDedicated, mappingContaining)
 		}
 
 		for _, bare := range claim.StructuralNames {

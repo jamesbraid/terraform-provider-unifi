@@ -7,8 +7,9 @@
  "claims": [
   {
    "mapping": {
-    "from_api": "vpnServerLocalPortFromNetwork",
-    "to_api": "vpnServerLocalPortToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one observed local_port serves whichever VPN type is configured, and the released schema exposes it under that type's own block, so two members relate to the one field",
    "structural_names": [
@@ -21,8 +22,9 @@
   },
   {
    "mapping": {
-    "from_api": "vpnServerWANIPFromNetwork",
-    "to_api": "vpnServerWANIPToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released wan.ip written to the field belonging to the configured VPN type, and read back from whichever of the three is set",
    "structural_names": [
@@ -36,8 +38,9 @@
   },
   {
    "mapping": {
-    "from_api": "vpnServerWANInterfaceFromNetwork",
-    "to_api": "vpnServerWANInterfaceToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released wan.interface written to the field belonging to the configured VPN type, and read back from whichever of the three is set",
    "structural_names": [
@@ -51,8 +54,9 @@
   },
   {
    "mapping": {
-    "from_api": "vpnServerDNSServersFromNetwork",
-    "to_api": "vpnServerDNSServersToNetwork"
+    "from_api": "networkToModel",
+    "kind": "containing",
+    "to_api": "modelToNetwork"
    },
    "reason": "one released list distributed positionally into two observed slots, and read back by collecting the non-empty ones",
    "structural_names": [
