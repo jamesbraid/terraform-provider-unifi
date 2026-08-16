@@ -29,9 +29,46 @@ GO_UNIFI_EXPECTED_COMMIT="${commit}" \
 GO_UNIFI_EXPECTED_SUM=skip \
     bash "${script_directory}/bootstrap-go-unifi-proxy.sh"
 
-readonly module_json=$(cd "${work_root}" && env GOMODCACHE="${work_root}/cache" \
+# Assigned first and made readonly on its own line, as the production script
+# does at bootstrap-go-unifi-proxy.sh:67-71.
+#
+# `readonly x=$(cmd)` DOES NOT TRIP set -e. The exit status of the whole
+# statement is readonly's, not the substitution's, so a failing go mod download
+# was reported as a success and execution continued:
+#
+#   bash -c 'set -euo pipefail; readonly x=$(false); echo SURVIVED'  -> SURVIVED, rc 0
+#   bash -c 'set -euo pipefail; x=$(false); echo NOPRINT'            -> rc 1
+# Captured with `if !` rather than left to set -e. set -e would abort here
+# correctly but SILENTLY, and a gate whose whole defect was reporting nothing
+# should not fail the same way it used to pass.
+if ! module_json=$(cd "${work_root}" && env GOMODCACHE="${work_root}/cache" \
     GOPROXY="file://${work_root}/proxy" GOSUMDB=off 'GOVCS=*:off' \
     GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local \
-    go mod download -json github.com/ubiquiti-community/go-unifi@v1.103.0)
+    go mod download -json github.com/ubiquiti-community/go-unifi@v1.103.0); then
+    echo "go mod download could not fetch the module from the proxy this test" >&2
+    echo "  just built. THE PROXY IS BROKEN, not this check. It said:" >&2
+    printf '%s\n' "${module_json}" | sed 's/^/    /' >&2
+    exit 1
+fi
+readonly module_json
 test "$(jq -r .Path <<<"${module_json}")" = github.com/ubiquiti-community/go-unifi
 test "$(jq -r .Version <<<"${module_json}")" = v1.103.0
+# .Sum is asserted because it is the only field here that a FAILED download does
+# not emit. go mod download -json prints .Path and .Version even when it exits 1
+# -- they are echoed from the argument, not learned from the proxy -- so the two
+# assertions above pass just as readily on a proxy that served nothing:
+#
+#   {"Path": "...", "Version": "v1.103.0", "Error": "module lookup disabled ..."}
+#
+# Relying on set -e alone would make this check correct but silent about why,
+# and would break again the moment someone collapses the assignment above.
+# Asserting a field that only exists on success makes the assertions themselves
+# discriminate.
+if [ -z "$(jq -r '.Sum // empty' <<<"${module_json}")" ] ||
+    [ -n "$(jq -r '.Error // empty' <<<"${module_json}")" ]; then
+    echo "the proxy did not serve the module; this gate is reporting the PROXY" >&2
+    echo "  as broken, not itself. go mod download said:" >&2
+    jq . <<<"${module_json}" 2>/dev/null | sed 's/^/    /' >&2 ||
+        printf '    %s\n' "${module_json}" >&2
+    exit 1
+fi
