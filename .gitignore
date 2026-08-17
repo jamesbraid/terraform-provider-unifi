@@ -125,4 +125,5 @@ build/**/*-ci.json
 /schema-baseline
 /schema-behaviour
 /sdk-bootstrap
+/tree-state
 /upgrade-plan-runner

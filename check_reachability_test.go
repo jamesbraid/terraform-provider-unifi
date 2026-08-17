@@ -200,6 +200,11 @@ var knownUnreachableChecks = map[string]string{
 		"would go nowhere. This is the ONLY producer in .woodpecker/scripts that nothing runs, " +
 		"and it is not a one-line fix: wiring it needs a UOS qualification step nobody can " +
 		"verify from here. Task 114 P4, escalated to James rather than guessed at.",
+	"command tree-state": "the Go replacement for tree-state.sh, landed BEFORE its callers " +
+		"are migrated so the two can be compared on one tree. Seventeen call sites across seven " +
+		"shell scripts still source the shell version. THIS ENTRY IS TEMPORARY and comes out in " +
+		"the commit that migrates them -- if it is still here after the shell files are deleted, " +
+		"something went wrong with that migration rather than with this binary. Task 149.",
 	"command catalog-release-ready": "the terminal release gate. No pipeline invokes it and " +
 		"three of its eight inputs have no producer. Task 106.",
 	"command policy-scaffold":  "authoring tool, run by hand when a surface is migrated.",
