@@ -24,7 +24,15 @@ import (
 func ResolveCommit(repository, tag string) (string, error) {
 	out, err := exec.Command("git", "-C", repository, "rev-parse", tag+"^{commit}").Output()
 	if err != nil {
-		return "", fmt.Errorf("resolve %s in %s: %w", tag, repository, err)
+		// NAME THE PREREQUISITE. `git rev-parse` on an absent tag exits 128 with
+		// "ambiguous argument", which reads like a broken invocation rather than
+		// a clone that has no tags -- and a tagless or shallow clone is exactly
+		// what a CI checkout can be. A reader who is told the tag is missing
+		// fetches it; a reader who is told the argument is ambiguous goes
+		// looking at this code.
+		return "", fmt.Errorf("cannot resolve %s in %s: %w. The released tag must be present "+
+			"locally: a shallow or tagless clone does not have it, and nothing here fetches it",
+			tag, repository, err)
 	}
 	commit := strings.TrimSpace(string(out))
 	if commit == "" {
