@@ -205,7 +205,16 @@ func (q *qualification) waitHealthy() error {
 			return nil
 		}
 		running, runningErr := q.dockerOutput("inspect", "--format", "{{.State.Running}}", q.controller)
-		if runningErr == nil && running != "true" {
+		if runningErr != nil {
+			// The container cannot be inspected at all, so it is gone rather
+			// than unhealthy. Retrying cannot change that, and waiting out the
+			// full timeout would spend twenty minutes to report a fact already
+			// known. The shell exited here too: its `status=$(docker inspect
+			// ...)` failed the assignment and set -e ended the run.
+			return fmt.Errorf("controller %s cannot be inspected, so it no longer exists: %w",
+				q.controller, runningErr)
+		}
+		if running != "true" {
 			q.dumpController()
 			return fmt.Errorf("controller %s stopped before becoming healthy (last status %q)",
 				q.controller, status)
