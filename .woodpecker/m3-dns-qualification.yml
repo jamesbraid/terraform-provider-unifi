@@ -23,8 +23,7 @@ steps:
     commands:
       - apt-get update
       - apt-get install --yes --no-install-recommends jq
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - go run ./cmd/go-unifi-proxy
       # Deliberately not "all" -- see catalog-controller-differential.yml. It
       # writes graph-wide sums into go.sum and the promotion receipt below
       # then refuses the dirty tree.
@@ -75,8 +74,7 @@ steps:
       - unzip -q /tmp/tofu.zip -d /usr/local/bin
       - mkdir -p /tmp/released-provider
       - unzip -q /tmp/provider.zip -d /tmp/released-provider
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - go run ./cmd/go-unifi-proxy
       # Deliberately not "all" -- see catalog-controller-differential.yml. It
       # writes graph-wide sums into go.sum and the promotion receipt below
       # then refuses the dirty tree.

@@ -122,8 +122,7 @@ steps:
       # purpose and requires each to refuse and name the dirt. Without it,
       # "guarded" is a claim about a string rather than about behaviour, which
       # is the shape the coverage check itself exists to find.
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - go run ./cmd/go-unifi-proxy
       - export GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org GOVCS='*:off' GOTOOLCHAIN=local
       - go test ./...
       - go vet ./...

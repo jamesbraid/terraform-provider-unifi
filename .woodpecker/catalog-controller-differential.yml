@@ -43,8 +43,7 @@ steps:
       # from a vet that was correct and a cache that was empty. The tag fix moved
       # one producer above its consumer and then I gave the same consumer a new
       # dependency without re-running the audit.
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - go run ./cmd/go-unifi-proxy
       # Deliberately not "all". That resolves the entire module graph and
       # writes sums for test dependencies OF dependencies into go.sum, leaving
       # ` M go.sum` behind -- which every evidence generator below then refuses
