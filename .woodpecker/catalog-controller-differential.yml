@@ -80,18 +80,22 @@ steps:
       # weaker claim beside the one that already holds.
       - git diff --exit-code -- build/release-ready/catalog-evidence-inventory.json
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-dependency-publishability -output /tmp/catalog-dependency-publishability.json -resolution-runner remote_ci -tree-state "$(go run ./cmd/tree-state -what 'the dependency publishability receipt')"
-      # BACKSTOP, AND ONLY replace_present IS MEASURED. See
-      # catalog-build-schema.yml for the full reasoning; the other four
-      # conjuncts compare a constant, or this line's own argument, to itself.
-      # MOVED INTO Go, and the analysis above is why it was worth doing rather
-      # than deleting. Four of the five conjuncts compare a constant to itself;
-      # replace_present is the one with a measurement behind it. The Go gate
-      # keeps all five, marked as the backstop they are, and adds the facts the
-      # receipt already carries that nothing read: both digests checked for
-      # alphabet as well as length, refused if identical because the archive and
-      # the extracted tree cannot hash alike unless one was copied, the provider
-      # commit, the module version, and the tree state. Fourteen mutations cover
-      # them one clause at a time -- see CheckDependencyPublishabilityReceipt.
+      # THE BACKSTOP MOVED INTO Go, AND WAS WORTH MOVING RATHER THAN DELETING.
+      # It was a jq -e of five conjuncts, four of which compared a constant to
+      # itself -- result, module_path and network_boundary are values the binary
+      # derives or is handed, and resolution_runner was this step's own argument
+      # read back. replace_present is the one with a measurement behind it:
+      # `go list -m -json` is asked whether a replace directive is in force,
+      # where the shell asked the same question and wrote the literal false
+      # regardless.
+      #
+      # The Go gate keeps all five, marked as the backstop they are, and adds the
+      # facts the receipt already carries that nothing read: both digests checked
+      # for alphabet as well as length, refused if identical because the archive
+      # and the extracted tree cannot hash alike unless one was copied, the
+      # provider commit, the module version, and the tree state. Fourteen
+      # mutations cover them one clause at a time -- see
+      # CheckDependencyPublishabilityReceipt.
       - go run ./cmd/receipt-gate -gate catalog-dependency-publishability -receipt /tmp/catalog-dependency-publishability.json
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-build-schema -released-provider-binary /tmp/released-provider/terraform-provider-unifi_v0.101.2 -inventory build/release-ready/catalog-evidence-inventory.json -evidence-directory /tmp/catalog-build-evidence -terraform /tmp/terraform -tofu /tmp/tofu -output /tmp/catalog-build-schema.json -tree-state "$(go run ./cmd/tree-state -what 'the released schema baseline and digests')"
       # BACKSTOP -- the schema comparison is in the binary, which writes the

@@ -39,24 +39,22 @@ steps:
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-dependency-publishability -output /tmp/catalog-dependency-publishability.json -resolution-runner remote_ci -tree-state "$(go run ./cmd/tree-state -what 'the dependency publishability receipt')"
-      # BACKSTOP, AND NARROWER THAN IT READS. The binary derives result from its
-      # own checks and returns non-zero before it can report a verdict it did
-      # not earn, so result, module_path and network_boundary compare a constant
-      # to itself, and resolution_runner compares this line's own argument to
-      # itself. replace_present is the one conjunct with a measurement behind
-      # it: `go list -m -json` is asked whether a replace directive is in force,
+      # THE BACKSTOP MOVED INTO Go, AND WAS WORTH MOVING RATHER THAN DELETING.
+      # It was a jq -e of five conjuncts, four of which compared a constant to
+      # itself -- result, module_path and network_boundary are values the binary
+      # derives or is handed, and resolution_runner was this step's own argument
+      # read back. replace_present is the one with a measurement behind it:
+      # `go list -m -json` is asked whether a replace directive is in force,
       # where the shell asked the same question and wrote the literal false
-      # regardless. Keep the line for that field. Do not count the other four
-      # when tallying what this pipeline verifies.
-      # MOVED INTO Go, and the analysis above is why it was worth doing rather
-      # than deleting. Four of the five conjuncts compare a constant to itself;
-      # replace_present is the one with a measurement behind it. The Go gate
-      # keeps all five, marked as the backstop they are, and adds the facts the
-      # receipt already carries that nothing read: both digests checked for
-      # alphabet as well as length, refused if identical because the archive and
-      # the extracted tree cannot hash alike unless one was copied, the provider
-      # commit, the module version, and the tree state. Fourteen mutations cover
-      # them one clause at a time -- see CheckDependencyPublishabilityReceipt.
+      # regardless.
+      #
+      # The Go gate keeps all five, marked as the backstop they are, and adds the
+      # facts the receipt already carries that nothing read: both digests checked
+      # for alphabet as well as length, refused if identical because the archive
+      # and the extracted tree cannot hash alike unless one was copied, the
+      # provider commit, the module version, and the tree state. Fourteen
+      # mutations cover them one clause at a time -- see
+      # CheckDependencyPublishabilityReceipt.
       - go run ./cmd/receipt-gate -gate catalog-dependency-publishability -receipt /tmp/catalog-dependency-publishability.json
       # The inventory is committed evidence describing the tree it was generated
       # from, and the receipt below records its digest. Regenerate and compare,
