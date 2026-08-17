@@ -255,3 +255,41 @@ func readJSON(t *testing.T, path string, into any) {
 		t.Fatalf("parse %s: %v", path, err)
 	}
 }
+
+// TestAPlanCannotBothLendATestAndDeclareItAbsent.
+//
+// released_allowed_missing says the released provider does not have these
+// tests; a lent scenario file copies the candidate's tests onto the released
+// tree, so anything it carries IS there. A name in both is a plan that
+// contradicts itself, and the contradiction used to surface much later as the
+// released suite reporting fewer missing tests than declared -- a message about
+// the suite for a defect in the plan.
+func TestAPlanCannotBothLendATestAndDeclareItAbsent(t *testing.T) {
+	inventory := Inventory{Surfaces: []InventorySurface{
+		surface("managed_resource", "unifi_lent", 1, "identical", "lent_test.go",
+			"TestAccLent_basic", "TestAccLent_extra"),
+	}}
+	policy := CampaignPolicy{ReleasedAllowedMissing: []string{"TestAccLent_extra"}}
+
+	_, err := BuildPlan(inventory, policy, []int{1})
+	if err == nil {
+		t.Fatal("a plan that lends the file defining TestAccLent_extra while declaring that test " +
+			"missing from the released tree was accepted")
+	}
+	if !strings.Contains(err.Error(), "TestAccLent_extra") {
+		t.Fatalf("refused with %q, which does not name the contradicted test", err)
+	}
+}
+
+// TestTheCommittedPlanHasNoSuchContradiction is the control, and it is the
+// measurement the assertion was written from: 17 allowed-missing tests against
+// 49 carried by the three lent files, zero overlap. Without it the refusal
+// above is satisfied by a rule that refuses every real plan too.
+func TestTheCommittedPlanHasNoSuchContradiction(t *testing.T) {
+	plan := buildFromCommittedFiles(t, frozenPlan(t).Waves)
+	if len(plan.ReleasedAllowedMissing) == 0 || len(plan.SharedScenarioOwners) == 0 {
+		t.Fatalf("the committed plan declares %d missing and lends %d owner(s); with either at "+
+			"zero the disjointness holds trivially and this control checks nothing",
+			len(plan.ReleasedAllowedMissing), len(plan.SharedScenarioOwners))
+	}
+}
