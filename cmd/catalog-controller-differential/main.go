@@ -88,8 +88,19 @@ func run() error {
 	flag.StringVar(&o.terraformBin, "terraform", "", "the CLI the acceptance harness drives")
 	flag.BoolVar(&o.printDiagnostics, "print-failure-diagnostics", false,
 		"print the sanitised log lines for each failed test")
+	// -followup classifies a receipt this command already wrote, and prints one
+	// word. It replaces catalog-controller-followup.sh, whose single caller ran
+	// it TWICE -- once grepping for diagnostic_complete and again for full --
+	// because a script that prints a word was the only way a workflow could ask
+	// it a question. One invocation answers both: the word on stdout, and a
+	// non-zero exit with every failed condition named on stderr.
+	followup := flag.String("followup", "",
+		"classify an existing receipt as full or diagnostic_complete and exit")
 	flag.Parse()
 
+	if *followup != "" {
+		return classifyReceipt(o, *followup)
+	}
 	if o.output == "" {
 		return errors.New("-output is required")
 	}
@@ -347,6 +358,15 @@ func runSuite(o options, work, label, root string, plan catalogparity.Controller
 	if o.printDiagnostics {
 		for _, failed := range suite.Failed {
 			fmt.Printf("sanitized controller diagnostic: %s/%s\n", label, failed)
+			// SANITISED, and the word in that heading was a lie until now. The
+			// port printed the name and none of the output, so nothing redacted
+			// anything -- see SanitiseDiagnostics. A controller log carries the
+			// controller's URL, the runner's workspace path, the fleet's MAC
+			// addresses and the container network's addresses, and a CI log is
+			// the least private place a failure goes.
+			for _, line := range controllerdifferential.SanitiseDiagnostics(raw, failed) {
+				fmt.Print(line)
+			}
 		}
 	}
 	return suite, nil
@@ -427,4 +447,37 @@ func gitOutput(repo string, args ...string) (string, error) {
 		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// classifyReceipt answers what a completed run was, and says why not when it
+// cannot.
+//
+// The shell printed nothing on refusal -- one jq -e of fourteen conjuncts with
+// its output discarded -- so an operator saw a failed step and re-derived which
+// conjunct was false. Followup reports every failed condition, each naming its
+// own subject.
+func classifyReceipt(o options, path string) error {
+	repo, err := filepath.Abs(o.repository)
+	if err != nil {
+		return err
+	}
+	var receipt catalogparity.ControllerDifferentialReceipt
+	if err := readJSON(path, &receipt); err != nil {
+		return err
+	}
+	var policy controllerdifferential.CampaignPolicy
+	if err := readJSON(filepath.Join(repo, o.policy), &policy); err != nil {
+		return err
+	}
+	var counts controllerdifferential.CampaignCounts
+	if err := readJSON(filepath.Join(repo, o.policy), &counts); err != nil {
+		return err
+	}
+
+	classification, err := controllerdifferential.Followup(receipt, policy, counts)
+	if err != nil {
+		return err
+	}
+	fmt.Println(classification)
+	return nil
 }

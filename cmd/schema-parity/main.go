@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/evidencebundle"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasedtree"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/schemabaseline"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/schemaparity"
@@ -61,6 +62,10 @@ type options struct {
 	// records released_authority: source_rebuild and blocks promotion, rather
 	// than presenting the rebuild as the release.
 	releasedAuthorityBinary string
+	// evidenceDirectory is CATALOG_BUILD_SCHEMA_EVIDENCE_DIRECTORY. Empty means
+	// publish nothing, which is what every caller but the controller workflow
+	// wants.
+	evidenceDirectory string
 
 	// Compare-only inputs. When both are set, main does NO orchestration: no
 	// tag extraction, no provider build, no CLI invocation. It reads two
@@ -113,6 +118,8 @@ func main() {
 		"promotion expectations, relative to -repo")
 	flag.StringVar(&o.inventoryPath, "inventory", "",
 		"catalog evidence inventory whose digest this run records")
+	flag.StringVar(&o.evidenceDirectory, "evidence-directory", "",
+		"publish the candidate binary and both canonical schemas here, with a SHA256SUMS")
 	flag.StringVar(&o.releasedAuthorityBinary, "released-provider-binary", "",
 		"published release archive; without it the released side is a source rebuild and cannot promote")
 	flag.Parse()
@@ -455,6 +462,12 @@ func run(o options) error {
 	// consumers, so a findings key would break every one of them. It is also
 	// what the shell did: a failing cmp killed the script and no receipt was
 	// written at all. This is the same contract with a better message.
+	if o.evidenceDirectory != "" {
+		if err := publishEvidence(o.evidenceDirectory, repo, rebuilt["candidate"], work); err != nil {
+			return err
+		}
+	}
+
 	// MarshalReceipt already terminates with a newline, and it is the only
 	// renderer either branch uses, so the file and the log carry the same bytes.
 	encoded, err := catalogparity.MarshalReceipt(receipt)
@@ -698,4 +711,24 @@ func readJSON(path string) (any, error) {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	return doc, nil
+}
+
+// publishEvidence writes the reviewable artifacts of this run.
+//
+// The directory is PREPARED first -- not a symlink, outside the repository,
+// empty -- because those refusals are what stop a run from archiving files it
+// did not produce or writing into the tree it just measured. evidencebundle
+// holds them, and this was the caller it was missing: the package landed with
+// no importer, so the shell's evidence directory had no Go equivalent at all
+// until now.
+func publishEvidence(directory, repo, candidateBinary, work string) error {
+	prepared, err := evidencebundle.Prepare(directory, repo)
+	if err != nil {
+		return err
+	}
+	return evidencebundle.Publish(prepared, []evidencebundle.Member{
+		{Name: "terraform-provider-unifi", Source: candidateBinary, Executable: true},
+		{Name: "terraform-schema.json", Source: filepath.Join(work, "candidate.terraform.canonical.json")},
+		{Name: "tofu-schema.json", Source: filepath.Join(work, "candidate.tofu.canonical.json")},
+	})
 }

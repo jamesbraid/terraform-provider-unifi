@@ -320,3 +320,39 @@ func runFollowupScriptWithCounts(t *testing.T, receipt catalogparity.ControllerD
 	}
 	return strings.TrimSpace(string(out))
 }
+
+// TestMissingFEWERThanDeclaredIsAlsoARefusal is the direction nothing covered,
+// found by evidence's adversarial pass over this branch.
+//
+// The sibling comparison three lines up treats released_allowed_failures as a
+// SUBSET -- failing fewer than licensed is fine -- so the exactness here read as
+// an accident until somebody asked. It is not: allowed_failures is a licence
+// and allowed_missing is a CLAIM ABOUT THE RELEASED TREE. A test that was
+// declared absent and turns out to run means the plan describes something other
+// than the tree it is about, and everything downstream reads that plan.
+//
+// Without this test, changing the comparison to a subset would break nothing.
+func TestMissingFEWERThanDeclaredIsAlsoARefusal(t *testing.T) {
+	policy, counts := campaign(t)
+	receipt := frozenReceipt(t)
+	if len(receipt.Released.Missing) < 2 {
+		t.Fatalf("the frozen released suite is missing %d test(s); this test needs at least two "+
+			"to remove one and still have a set", len(receipt.Released.Missing))
+	}
+
+	// One of the declared-missing tests turns out to run and pass. Nothing about
+	// the campaign got worse; the plan stopped describing the tree.
+	recovered := receipt.Released.Missing[0]
+	receipt.Released.Missing = receipt.Released.Missing[1:]
+	receipt.Released.Passed = append(append([]string(nil), receipt.Released.Passed...), recovered)
+
+	_, err := Followup(receipt, policy, counts)
+	if err == nil {
+		t.Fatalf("a released suite missing FEWER tests than the plan declares was accepted. %q "+
+			"ran on a tree the plan says does not contain it, so the plan is describing "+
+			"something else", recovered)
+	}
+	if !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("refused with %q, which does not name the disagreement", err)
+	}
+}
