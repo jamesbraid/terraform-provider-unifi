@@ -128,8 +128,6 @@ func TestEveryEvidenceGeneratorIsGuarded(t *testing.T) {
 // matters because it decides what would have to change for the exemption to
 // clear, which is the only thing an exemption is for.
 var unguardedGenerators = map[string]string{
-	"m0-uos-dns-qualification.sh": "no caller anywhere: no workflow, no Makefile, no other " +
-		"script. Nothing to run it under, so nothing to verify against.",
 	"m3-dns-qualification.sh": "its pipeline does not fail, it does not finish. Pipeline 232's " +
 		"locked-network-lifecycle log shows create, update, a no-op plan and a correct " +
 		"replacement plan, then stops -- with zero occurrences of error, fatal, failed, cannot " +
