@@ -31,8 +31,6 @@
 # three do not, and the reason is the same in each: the guard has to run before
 # anything it protects, and there is no usable repository root at that point.
 #
-#   m1-dns-compiler.sh           resolves its root at line 145, inside a
-#                                function
 #   m3-dns-qualification.sh      the same, gated on M3_LIFECYCLE_RECEIPT_OUTPUT
 #
 # What unblocks them is being able to EXECUTE them. The five that are wired were
