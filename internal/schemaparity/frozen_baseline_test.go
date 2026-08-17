@@ -3,7 +3,10 @@ package schemaparity
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -111,5 +114,111 @@ func TestFrozenBaselineGuardHasSubjects(t *testing.T) {
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("%s: frozen baseline is missing, so the guard asserts nothing: %v", path, err)
 		}
+	}
+}
+
+// TestCommittedDigestsDescribeTheFrozenContract is the assertion nothing was
+// making, and it is what the digests comparison should have been.
+//
+// build/m0/provider-schema-digests.json is DERIVED from
+// provider-contracts/schema/terraform-1.15.8.json: its canonical_schema_sha256
+// is the sha256 of that file, measured e054aef83f2cf19c… on both sides. Roughly
+// eighty consumers pass the digests as -baseline and assume the two agree, and
+// until now nothing checked it -- so a regeneration of one without the other
+// would have left eighty readers using a record of a contract that no longer
+// exists, silently.
+//
+// The comparison this replaces was the committed digests against the freshly
+// built CANDIDATE, which is the same claim as the frozen-contract-versus-
+// candidate call in catalog-build-schema.sh, one hash level up and with less
+// information. Two copies of one fact on two sets of bytes. This is the claim
+// that was actually missing.
+func TestCommittedDigestsDescribeTheFrozenContract(t *testing.T) {
+	const (
+		contract = "../../provider-contracts/schema/terraform-1.15.8.json"
+		digests  = "../../build/m0/provider-schema-digests.json"
+	)
+	raw, err := os.ReadFile(contract)
+	if err != nil {
+		t.Fatalf("read %s: %v", contract, err)
+	}
+	sum := sha256.Sum256(raw)
+	want := hex.EncodeToString(sum[:])
+
+	blob, err := os.ReadFile(digests)
+	if err != nil {
+		t.Fatalf("read %s: %v", digests, err)
+	}
+	var recorded struct {
+		CanonicalSHA256 string            `json:"canonical_schema_sha256"`
+		SchemaSHA256    map[string]string `json:"schema_sha256"`
+	}
+	if err := json.Unmarshal(blob, &recorded); err != nil {
+		t.Fatalf("parse %s: %v", digests, err)
+	}
+	if recorded.CanonicalSHA256 != want {
+		t.Errorf(`%s no longer describes %s.
+
+  the contract hashes to        %s
+  the digests file records      %s
+
+These two committed artifacts are the released baseline together, and roughly
+eighty consumers pass the digests as -baseline assuming they agree. One was
+regenerated without the other, or one was edited by hand. Whichever it is, every
+consumer is now reading a record of a contract that does not exist.
+
+Do not silence this by regenerating the digests. Establish which artifact moved
+and why: they are the released record, and the released record is not supposed
+to move at all.`, digests, contract, want, recorded.CanonicalSHA256)
+	}
+	if len(recorded.SchemaSHA256) == 0 {
+		t.Error("the per-surface digest map is empty, so the check above is the only thing asserting anything")
+	}
+}
+
+// TestNoComparisonMixesCommittedAndRunOperands is the structural rule, and the
+// one that does not depend on anybody classifying correctly.
+//
+// Every comparison in catalog-build-schema.sh that turned out to be wrong had
+// one operand under ${repository_root}: first the schema contents, then the
+// digests a second time. Every one that stays byte-exact -- determinism,
+// cross-CLI agreement, the inverted control -- has two operands under
+// ${work_root}.
+//
+// So the discriminator is the PROVENANCE of the operands, not the file's name.
+// A committed operand means the comparison asserts something about the released
+// baseline, which is the claim the schema-change ledger now governs. Both times
+// this was got wrong, the line was classified by what the file was called.
+//
+// PROVEN: restoring the original digests cmp makes this fail and name the line.
+func TestNoComparisonMixesCommittedAndRunOperands(t *testing.T) {
+	raw, err := os.ReadFile("../../.woodpecker/scripts/catalog-build-schema.sh")
+	if err != nil {
+		t.Fatalf("read the script: %v", err)
+	}
+	lines := strings.Split(string(raw), "\n")
+	cmpLine := regexp.MustCompile(`^\s*(if\s+)?cmp\b`)
+	var mixed []string
+	for i, line := range lines {
+		if !cmpLine.MatchString(line) {
+			continue
+		}
+		operands := line
+		for j := i; j < len(lines)-1 && strings.HasSuffix(strings.TrimSpace(operands), `\`); j++ {
+			operands += lines[j+1]
+		}
+		if strings.Contains(operands, "${repository_root}") && strings.Contains(operands, "${work_root}") {
+			mixed = append(mixed, strings.TrimSpace(line))
+		}
+	}
+	if len(mixed) > 0 {
+		t.Errorf(`%d comparison(s) put a committed artifact against one built by this run:
+
+  %s
+
+A ${repository_root} operand means the comparison asserts something about the
+RELEASED BASELINE, which the schema-change ledger governs. Two ${work_root}
+operands mean it asserts something about this run, and those stay byte-exact.`,
+			len(mixed), strings.Join(mixed, "\n  "))
 	}
 }
