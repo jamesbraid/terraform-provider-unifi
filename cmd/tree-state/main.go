@@ -6,7 +6,7 @@
 // acknowledged, and when it is, record the dirt in the artifact rather than
 // hiding it.
 //
-// Usage, as a drop-in for `source tree-state.sh; evidence_tree_state "..."`:
+// Usage:
 //
 //	tree_state=$(go run ./cmd/tree-state -what "the M1 compiler receipt") || exit 1
 //

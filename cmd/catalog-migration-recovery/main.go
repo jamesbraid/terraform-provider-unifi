@@ -45,9 +45,9 @@ func run(args []string, stderr io.Writer) int {
 		return 2
 	}
 	// After the argument check -- which touches nothing -- and before any file is
-	// opened. tree-state.sh puts its own guard before the work it protects for
-	// the same reason: a run that cannot say which tree it describes should cost
-	// nothing to refuse. There is no default; see ParseTreeState.
+	// opened, because a run that cannot say which tree it describes should cost
+	// nothing to refuse. The shell gate this replaced ordered its own guard the
+	// same way, for the same reason. There is no default; see ParseTreeState.
 	treeState, treeStateErr := catalogparity.ParseTreeState(*treeStateRaw)
 	if treeStateErr != nil {
 		fmt.Fprintf(stderr, "%v\n", treeStateErr)

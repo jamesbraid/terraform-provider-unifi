@@ -12,7 +12,7 @@ import (
 // struct -- every receipt would carry a tree_state that no measurement
 // produced, and the gate reading it would compare a constant against itself.
 // That is the AttemptResult defect rebuilt deliberately. So absence is an
-// error, and so is a state that does not say what tree-state.sh says.
+// error, and so is a state that does not say what cmd/tree-state says.
 func TestParseTreeStateRefusesWhatItCannotVouchFor(t *testing.T) {
 	for name, test := range map[string]struct {
 		raw  string
