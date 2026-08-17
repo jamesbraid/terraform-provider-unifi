@@ -129,3 +129,4 @@ build/**/*-ci.json
 /sdk-bootstrap
 /tree-state
 /upgrade-plan-runner
+/workspace-provenance

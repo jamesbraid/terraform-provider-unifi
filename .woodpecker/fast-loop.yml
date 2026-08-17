@@ -99,11 +99,17 @@ steps:
       # all, and because the first question asked of a green run is which tree it
       # was.
       #
-      # No colon in the format string. YAML reads `printf 'fast-loop: ...` as a
-      # mapping rather than a command, which parses without error and hands
-      # Woodpecker something that is not a string -- caught by parsing this file
-      # rather than by reading it.
-      - printf 'fast-loop commit=%s tree=%s\n' "$(git rev-parse HEAD)" "$(test -z "$(git status --porcelain)" && echo clean || echo dirty)"
+      # THE COMMIT ALONE TURNED OUT NOT TO BE ENOUGH, which is why this is a
+      # command rather than the printf it replaces. Pipeline 255 called a script
+      # unguarded and 257 passed the same script unchanged, with the same SHA in
+      # both clone steps -- the workspace held files that were not its commit's.
+      # `git rev-parse HEAD` reads .git and would have printed the right answer
+      # through all of it. The digests are of the files that get read.
+      #
+      # Every workflow runs this as its first command now, not just this one:
+      # the contaminated run was m3-dns-qualification, so a line only here would
+      # have missed it.
+      - go run ./cmd/workspace-provenance
       - apt-get update
       - apt-get install --yes --no-install-recommends jq
       - export GOCACHE=/ci-cache/go-build GOMODCACHE=/ci-cache/go-mod GO_UNIFI_SOURCE_ROOT=/ci-cache/go-unifi-source
