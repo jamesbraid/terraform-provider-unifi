@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -261,6 +262,52 @@ func TestVerifyChecksCompleteRefusesAnUnrunCheck(t *testing.T) {
 		if err := q.verifyChecksComplete(); err == nil {
 			t.Errorf("clearing one check still produced a receipt: %+v", q.checks)
 		}
+	}
+}
+
+// TestRenderCanonicalSortsKeys pins the property that makes the artifact
+// independent of Go struct layout.
+//
+// encoding/json emits struct fields in declaration order, so without the
+// generic round-trip a field moved for readability would rewrite a release
+// artifact that other gates compare byte for byte. Sorting is also what lets
+// this receipt be compared against a shell-produced one through a single
+// canonical writer rather than by matching jq's insertion order.
+func TestRenderCanonicalSortsKeys(t *testing.T) {
+	rendered, err := renderCanonical(releasequalification.DNSLifecycleReceipt{
+		FormatVersion:   1,
+		Gate:            gateName,
+		Result:          "pass",
+		SourceCommit:    "abc",
+		Platform:        platform,
+		ProviderVersion: providerVersion,
+	})
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+
+	var keys []string
+	for _, line := range strings.Split(string(rendered), "\n") {
+		if !strings.HasPrefix(line, `  "`) {
+			continue
+		}
+		keys = append(keys, strings.SplitN(strings.TrimPrefix(line, `  "`), `"`, 2)[0])
+	}
+	if len(keys) == 0 {
+		t.Fatal("no top-level keys parsed; the helper is broken, not the receipt")
+	}
+	if !sort.StringsAreSorted(keys) {
+		t.Errorf("top-level keys are not sorted, so the artifact depends on struct order:\n%v", keys)
+	}
+	// The declaration order starts format_version, gate, ...; sorted order must
+	// not. Without this the test would pass for a struct that happened to be
+	// declared alphabetically and prove nothing about the sorting.
+	if keys[0] == "format_version" {
+		t.Errorf("first key is %q, which is also the first declared field -- "+
+			"the round-trip is not reordering anything", keys[0])
+	}
+	if !strings.HasSuffix(string(rendered), "\n") {
+		t.Error("rendered receipt does not end with a newline")
 	}
 }
 

@@ -180,15 +180,57 @@ func run(argv []string, stdout, stderr io.Writer) error {
 	}
 	receipt.TreeState = treeState
 
-	encoded, err := json.Marshal(receipt)
+	// The ARTIFACT is rendered canonically: sorted keys, two-space indent, one
+	// trailing newline. encoding/json emits struct fields in DECLARATION order,
+	// so marshalling the struct directly would let a field moved for
+	// readability change a release artifact that other gates compare byte for
+	// byte.
+	//
+	// This duplicates catalogparity.MarshalReceipt, which does not exist on this
+	// branch yet -- it arrives with the catalog-build-schema port. The algorithm
+	// is copied from it deliberately so the two render identical bytes; when
+	// that branch merges, delete renderCanonical and call MarshalReceipt.
+	encoded, err := renderCanonical(receipt)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(*outputPath, append(encoded, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(*outputPath, encoded, 0o644); err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "M3_DNS_RECEIPT=%s\n", encoded)
+
+	// The LOG line stays compact and single-line. It is a convenience for
+	// grepping a pipeline log, not the artifact, and a receipt spread over
+	// twenty lines is worse at that job.
+	compact, err := json.Marshal(receipt)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "M3_DNS_RECEIPT=%s\n", compact)
 	return nil
+}
+
+// renderCanonical round-trips through a generic value so that map key ordering,
+// not Go struct field order, decides the bytes. json.Marshal sorts map keys; it
+// never sorts struct fields, which is the whole reason this exists.
+func renderCanonical(value any) ([]byte, error) {
+	direct, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("marshal receipt: %w", err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(direct))
+	decoder.UseNumber()
+	var generic any
+	if err := decoder.Decode(&generic); err != nil {
+		return nil, fmt.Errorf("re-read receipt for canonical ordering: %w", err)
+	}
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetIndent("", "  ")
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(generic); err != nil {
+		return nil, fmt.Errorf("render canonical receipt: %w", err)
+	}
+	return out.Bytes(), nil
 }
 
 func (q *qualification) execute() (releasequalification.DNSLifecycleReceipt, error) {
