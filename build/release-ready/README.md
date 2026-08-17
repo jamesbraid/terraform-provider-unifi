@@ -5,17 +5,17 @@ v0.101.2 source tree and assigns its current test file as the scenario owner.
 It records file digests for both trees and pins the v1.101.0 and v1.102.0
 `go-unifi` module archives.
 
-Run the inventory gate from a clone that already has the v0.101.2 tag and both
-module archives in its Go cache:
+The inventory gate is regenerate-and-compare: rebuild the artifact and require
+it to match the tracked one byte for byte. It needs a clone that already has
+the v0.101.2 tag and both module archives in its Go cache, because it extracts
+the released tree from the local tag and checks the cached archives against
+`provider-codegen/policy/catalog-evidence.json` with module lookup and VCS
+fetching disabled.
 
-```sh
-bash .woodpecker/scripts/catalog-evidence-inventory_test.sh
-```
-
-The script disables module lookup and VCS fetching. It extracts the released
-tree from the local tag, checks the cached module archives against
-`provider-codegen/policy/catalog-evidence.json`, regenerates the inventory, and
-compares it byte-for-byte with the tracked artifact.
+The shell self-test that used to be named here has been deleted; its coverage
+is in `go test ./...` and the regeneration runs in CI. The workflow step is the
+authority on how it is invoked -- naming a command here would be a second home
+for that, and this file cannot notice when it goes stale.
 
 The missing-signal list drives the controller campaign. A source-identical file
 or an existing acceptance test does not satisfy adapter parity, admission,

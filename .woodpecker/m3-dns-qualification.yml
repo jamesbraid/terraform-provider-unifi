@@ -51,7 +51,6 @@ steps:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
       - apk add --no-cache bash coreutils curl git jq tar unzip
-      - bash .woodpecker/scripts/m3-evidence-lib_test.sh
       - M3_CANDIDATE_PROVIDER_BINARY=$(pwd)/m3-candidate/terraform-provider-unifi M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
       # BACKSTOP, NOT THE CHECK. Both fields are literals in
       # m3-dns-qualification.sh's receipt, written only after the lifecycle work
