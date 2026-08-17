@@ -28,8 +28,7 @@ steps:
       - unzip -q /tmp/provider.zip -d /tmp/released-provider
       - chmod +x /tmp/terraform /tmp/tofu /tmp/released-provider/terraform-provider-unifi_v0.101.2
       - env GIT_TERMINAL_PROMPT=0 git fetch --force --no-tags https://github.com/jamesbraid/terraform-provider-unifi.git refs/tags/v0.101.2:refs/tags/v0.101.2
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - go run ./cmd/go-unifi-proxy
       # Deliberately not "all" -- see catalog-controller-differential.yml. It
       # writes graph-wide sums into go.sum and the schema baseline generator
       # then refuses the dirty tree.

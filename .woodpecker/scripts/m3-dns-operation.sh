@@ -3,8 +3,6 @@ set -euo pipefail
 
 m3_repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 readonly m3_repository_root
-# shellcheck source=.woodpecker/scripts/go-unifi-pin.sh
-source "${m3_repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
 
 # This receipt attests a controller operation actually ran. Generated from a
 # dirty tree it would attest the run against code that is in no commit, which is
@@ -22,10 +20,11 @@ readonly evidence_tree_json
 # reason a repoint that updated go.mod left this script asserting the previous
 # release. The catalog path below stays literal on purpose: that artifact is
 # keyed on the controller it was captured from, not on the module.
-readonly expected_module=${go_unifi_module_path}
-expected_version=$(go_unifi_declared_version "${m3_repository_root}")
+expected_module=$(cd "${m3_repository_root}" && go run ./cmd/go-unifi-pin -field module-path) || exit 1
+readonly expected_module
+expected_version=$(cd "${m3_repository_root}" && go run ./cmd/go-unifi-pin -field declared-version) || exit 1
 readonly expected_version
-expected_sum=$(go_unifi_declared_sum "${m3_repository_root}" "${expected_version}")
+expected_sum=$(cd "${m3_repository_root}" && go run ./cmd/go-unifi-pin -field declared-sum) || exit 1
 readonly expected_sum
 readonly expected_catalog_source_commit=62add0c72d932aba663164fd794d510fb56aebae
 readonly expected_catalog_sha256=a07b8a4b91d68aaaf35b7bb8a2d8f3d877531ffff64cbd44a44748ab736b9ac1
