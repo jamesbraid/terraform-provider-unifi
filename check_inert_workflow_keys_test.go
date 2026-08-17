@@ -130,3 +130,78 @@ func scanKeys(t *testing.T, path string, pattern *regexp.Regexp) []keyHit {
 	}
 	return hits
 }
+
+// TestNoWorkflowCommandUsesAShellVariable answers the sibling question to the
+// one above: NOT "does Woodpecker discard what we wrote", but "does Woodpecker
+// REWRITE it before the shell sees it".
+//
+// Woodpecker substitutes ${name} in a command with its own pipeline variable.
+// An undefined name becomes the EMPTY STRING, silently, and the shell is handed
+// a command that never contained a variable at all.
+//
+// MEASURED on pipeline 228, and it cost the whole run:
+//
+//	written    gaps=$(jq -r '.plan.evidence_gap_count' r.json); test "${gaps}" -le 6
+//	executed   gaps=$(jq -r '.plan.evidence_gap_count' r.json); test "" -le 6
+//	result     /bin/sh: test: Illegal number:
+//
+// The receipt carried evidence_gap_count 6 against a ceiling of 6, so the gate
+// would have PASSED. The controller differential had already passed on its
+// merits -- released pass, candidate pass, no failures, no unexpected failures,
+// nothing missing -- and the pipeline went red on its own gate's variable.
+//
+// THE POPULATION WAS ONE AND IT WAS THE BUG. Those two references were the only
+// ${...} shell variables in every workflow in this repository, so there was no
+// working instance to pattern-match against and nothing to notice.
+//
+// The rule is lowercase-only on purpose. ${CI_COMMIT_SHA} and its siblings are
+// what the substitution is FOR, and they are conventionally uppercase; a
+// lowercase name is a shell variable someone expected the shell to expand. The
+// cure is to write the command with no name for Woodpecker to eat, rather than
+// to escape it as $${name} -- escaping is a rule a person must remember, and
+// this repository has zero other instances to remind them.
+//
+// PROVEN TO FAIL: restoring either half of the original line reports it by file
+// and line. The control below is what keeps that from being vacuous, and the
+// comment skip is what keeps the prose in catalog-controller-differential.yml --
+// which quotes the broken form on purpose -- from being reported as the defect.
+func TestNoWorkflowCommandUsesAShellVariable(t *testing.T) {
+	workflows, err := filepath.Glob(filepath.Join(".woodpecker", "*.yml"))
+	if err != nil {
+		t.Fatalf("glob .woodpecker: %v", err)
+	}
+	sort.Strings(workflows)
+	if len(workflows) == 0 {
+		t.Fatal(".woodpecker contains no workflows, so this test would pass without reading anything")
+	}
+
+	// $${name} is the escape and must NOT be reported, so the pattern requires a
+	// dollar that is not itself preceded by one.
+	// The leading alternation is NON-CAPTURING on purpose: scanKeys reports
+	// submatch 1 as the key, so a capturing group here would name the character
+	// before the dollar instead of the variable. Caught by reading the failure
+	// text of the mutation run, which said `uses ${"}`.
+	shellVariable := regexp.MustCompile(`(?:^|[^$])\$\{([a-z_][a-z0-9_]*)\}`)
+
+	// Without a control this test passes on a tree it cannot read. `$(` is the
+	// command substitution every workflow already uses and which Woodpecker does
+	// NOT touch, so finding it proves the scanner reaches command text.
+	control := regexp.MustCompile(`\$\(`)
+	seen := 0
+	for _, workflow := range workflows {
+		seen += len(scanKeys(t, workflow, control))
+	}
+	if seen == 0 {
+		t.Fatal("control: the scanner found no `$(` in any workflow, so it is not reading command text and every case below would pass vacuously")
+	}
+
+	for _, workflow := range workflows {
+		for _, hit := range scanKeys(t, workflow, shellVariable) {
+			t.Errorf("%s:%d uses ${%s}, which Woodpecker substitutes with its own "+
+				"variable before the shell runs; an undefined name becomes the empty "+
+				"string. Rewrite the command so it needs no shell variable -- let jq "+
+				"or the script do the work -- rather than escaping it.",
+				workflow, hit.line, hit.key)
+		}
+	}
+}
