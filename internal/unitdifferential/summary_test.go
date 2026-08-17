@@ -150,18 +150,24 @@ func TestTheDigestMovesWithTheEvents(t *testing.T) {
 	}
 }
 
-func TestAnEmptyLogIsNotAPass(t *testing.T) {
+// TestAnEmptyLogIsAFailure is the FLOOR ON THE MEASUREMENT, and it is the
+// condition this port originally got wrong.
+//
+// The other three all hold over an empty run: exit zero, no failing events, and
+// every line parsed because there were no lines. This test used to assert that
+// an empty log therefore PASSED, with a note saying the protection lived in the
+// count fields. The shell moved the protection into the result while this
+// branch was in flight, and the differential against the deployed jq program is
+// what reported the disagreement.
+func TestAnEmptyLogIsAFailure(t *testing.T) {
 	got := Summarise(nil, 0)
 	if got.Receipt.PackagePassCount != 0 || got.Receipt.PassedTestCount != 0 {
 		t.Fatalf("an empty log produced counts: %+v", got.Receipt)
 	}
-	// It IS a pass by the three conditions -- zero exit, no failures, nothing
-	// unparsed -- and that is worth pinning rather than leaving as a surprise:
-	// the gate's protection against a suite that ran nothing is the counts in
-	// the receipt, not this result field.
-	if got.Receipt.Result != "pass" {
-		t.Fatalf("result = %q; an empty log meets all three conditions, and the check that a "+
-			"run happened is the count fields", got.Receipt.Result)
+	if got.Receipt.Result != "fail" {
+		t.Fatalf("result = %q; a run that produced nothing is indistinguishable from a full "+
+			"green suite unless the result says so, and this receipt is consumed by admission",
+			got.Receipt.Result)
 	}
 	rendered, err := RenderEvents(got.Events)
 	if err != nil {
@@ -170,5 +176,13 @@ func TestAnEmptyLogIsNotAPass(t *testing.T) {
 	if string(rendered) != "[]\n" {
 		t.Fatalf("empty events rendered as %q, want an empty array. A null here would decode "+
 			"to a nil slice and read as absent rather than as empty", rendered)
+	}
+}
+
+// TestASuiteWithOnlyNonOutcomeEventsIsAFailure. A log of run and output events
+// and nothing else is a suite that started and produced no result.
+func TestASuiteWithOnlyNonOutcomeEventsIsAFailure(t *testing.T) {
+	if got := Summarise(log(testRun, testOutput), 0); got.Receipt.Result != "fail" {
+		t.Fatalf("result = %q for a log with no outcomes at all", got.Receipt.Result)
 	}
 }

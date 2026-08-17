@@ -32,8 +32,11 @@ func main() {
 func run() error {
 	repository := flag.String("repo", ".", "repository whose go.mod declares the dependency")
 	output := flag.String("output", "", "write the receipt here; required")
-	expectedCommit := flag.String("expected-commit", "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
-		"the commit the pinned tag must still resolve to")
+	// No literal here. The reviewed commit has ONE home, internal/gounifipin,
+	// and an empty flag means "use it" rather than "use the copy that happens
+	// to be in this file".
+	expectedCommit := flag.String("expected-commit", "",
+		"override the commit the pinned tag must resolve to (default: the pinned one)")
 	treeStateRaw := flag.String("tree-state", "",
 		"JSON from evidence_tree_json describing the working tree; required, no default")
 	// resolutionRunner cannot be measured from inside this process, so it is an
@@ -65,7 +68,10 @@ func run() error {
 	pin := dependencypin.Pin{
 		ModulePath:     dependencypin.ModulePath,
 		ModuleOrigin:   dependencypin.ModuleOrigin,
-		ExpectedCommit: *expectedCommit,
+		ExpectedCommit: dependencypin.ExpectedCommit(),
+	}
+	if *expectedCommit != "" {
+		pin.ExpectedCommit = *expectedCommit
 	}
 	declared, err := dependencypin.ReadDeclared(repo, pin.ModulePath)
 	if err != nil {
