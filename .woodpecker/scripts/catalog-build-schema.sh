@@ -10,9 +10,13 @@ source "${repository_root}/.woodpecker/scripts/m1-evidence-lib.sh"
 # other gate compares against, so a dirty run poisons the comparison rather than
 # just one artifact -- and it would do it while every downstream check stayed
 # green, because they would all agree with the same wrong baseline.
-# shellcheck source=.woodpecker/scripts/tree-state.sh
-source "${repository_root}/.woodpecker/scripts/tree-state.sh"
-evidence_tree_state "the released schema baseline and digests"
+# The guard runs before anything it protects, and it REFUSES a dirty tree
+# unless EVIDENCE_ALLOW_DIRTY_TREE acknowledges it -- in which case the dirt
+# is recorded in the receipt rather than hidden. cmd/tree-state prints the
+# JSON on stdout and the refusal on stderr, so a failure here stops the run
+# whether or not anybody reads the message.
+evidence_tree_json=$(cd "${repository_root}" && go run ./cmd/tree-state -what "the released schema baseline and digests") || exit 1
+readonly evidence_tree_json
 
 terraform_bin=${TERRAFORM_BIN:-terraform}
 tofu_bin=${TOFU_BIN:-tofu}
@@ -192,12 +196,12 @@ done
 # nothing else. Running the full binary here would rebuild both providers and
 # re-dump both CLIs, and the determinism, cross-CLI and inverted-control
 # assertions below would then be judging bytes it never saw.
-(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli terraform -released-canonical "${work_root}/released.terraform.canonical.json" -candidate-canonical "${work_root}/candidate.terraform.canonical.json" -tree-state "$(evidence_tree_json)")
-(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli tofu -released-canonical "${work_root}/released.tofu.canonical.json" -candidate-canonical "${work_root}/candidate.tofu.canonical.json" -tree-state "$(evidence_tree_json)")
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli terraform -released-canonical "${work_root}/released.terraform.canonical.json" -candidate-canonical "${work_root}/candidate.terraform.canonical.json" -tree-state "${evidence_tree_json}")
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli tofu -released-canonical "${work_root}/released.tofu.canonical.json" -candidate-canonical "${work_root}/candidate.tofu.canonical.json" -tree-state "${evidence_tree_json}")
 # The frozen released baseline against the built candidate: the same claim as
 # the pair above by a second route, so it goes through the same ledger.
-(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli terraform-baseline -released-canonical "${repository_root}/provider-contracts/schema/terraform-1.15.8.json" -candidate-canonical "${work_root}/candidate.terraform.canonical.json" -tree-state "$(evidence_tree_json)")
-(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli tofu-baseline -released-canonical "${repository_root}/provider-contracts/schema/tofu-1.12.1.json" -candidate-canonical "${work_root}/candidate.tofu.canonical.json" -tree-state "$(evidence_tree_json)")
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli terraform-baseline -released-canonical "${repository_root}/provider-contracts/schema/terraform-1.15.8.json" -candidate-canonical "${work_root}/candidate.terraform.canonical.json" -tree-state "${evidence_tree_json}")
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli tofu-baseline -released-canonical "${repository_root}/provider-contracts/schema/tofu-1.12.1.json" -candidate-canonical "${work_root}/candidate.tofu.canonical.json" -tree-state "${evidence_tree_json}")
 # THE DIGESTS COMPARISON IS GONE, and its absence is the point.
 #
 # Line 180 used to cmp build/m0/provider-schema-digests.json against the
@@ -263,7 +267,7 @@ jq --indent 2 --null-input \
     --arg result "${result}" \
     --argjson promotion_blockers "${promotion_blockers_json}" \
     --arg source_commit "$(git -C "${repository_root}" rev-parse HEAD)" \
-    --argjson tree_state "$(evidence_tree_json)" \
+    --argjson tree_state "${evidence_tree_json}" \
     --arg released_commit "${released_commit}" \
     --arg platform "${platform}" \
     --arg go_version "${go_version}" \

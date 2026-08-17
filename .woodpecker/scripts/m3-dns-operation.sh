@@ -9,9 +9,13 @@ source "${m3_repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
 # This receipt attests a controller operation actually ran. Generated from a
 # dirty tree it would attest the run against code that is in no commit, which is
 # the one claim an operation receipt exists to make.
-# shellcheck source=.woodpecker/scripts/tree-state.sh
-source "${m3_repository_root}/.woodpecker/scripts/tree-state.sh"
-evidence_tree_state "the M3 DNS operation receipt"
+# The guard runs before anything it protects, and it REFUSES a dirty tree
+# unless EVIDENCE_ALLOW_DIRTY_TREE acknowledges it -- in which case the dirt
+# is recorded in the receipt rather than hidden. cmd/tree-state prints the
+# JSON on stdout and the refusal on stderr, so a failure here stops the run
+# whether or not anybody reads the message.
+evidence_tree_json=$(cd "${m3_repository_root}" && go run ./cmd/tree-state -what "the M3 DNS operation receipt") || exit 1
+readonly evidence_tree_json
 
 # The module version and its hash are read from go.mod and go.sum. They used to
 # be pinned here as well, which made this the fourth home for one fact and the
@@ -175,7 +179,7 @@ jq --indent 2 --null-input \
     --arg lifecycle_sha256 "${lifecycle_sha256}" \
     --arg management_sidecar_sha256 "${management_sidecar_sha256}" \
     --slurpfile schema_gate "${work_root}/schema-gate.json" \
-    --argjson tree_state "$(evidence_tree_json)" \
+    --argjson tree_state "${evidence_tree_json}" \
     '{
         format_version: 1,
         milestone: "M3",

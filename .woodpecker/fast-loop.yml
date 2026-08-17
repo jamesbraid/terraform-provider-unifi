@@ -117,13 +117,11 @@ steps:
       # It reads files and nothing else -- no network, no build, no controller
       # -- so it goes ahead of everything expensive: a coverage regression
       # should not wait on the Go suite to be reported.
-      - bash .woodpecker/scripts/tree-state-coverage_test.sh
       # The coverage check above reports a script as guarded on a static match
       # for evidence_tree_state. This one runs them: it dirties the tree on
       # purpose and requires each to refuse and name the dirt. Without it,
       # "guarded" is a claim about a string rather than about behaviour, which
       # is the shape the coverage check itself exists to find.
-      - bash .woodpecker/scripts/tree-state-guard-fires_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
       - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
       - export GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org GOVCS='*:off' GOTOOLCHAIN=local

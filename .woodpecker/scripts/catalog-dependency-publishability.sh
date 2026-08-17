@@ -7,9 +7,13 @@ readonly repository_root
 # The receipt stamps provider_commit from git rev-parse HEAD, so on a dirty tree
 # it names a commit that does not contain the go.mod this gate just read. Take
 # the tree state first, before the pin is even sourced.
-# shellcheck source=.woodpecker/scripts/tree-state.sh
-source "${repository_root}/.woodpecker/scripts/tree-state.sh"
-evidence_tree_state "the dependency publishability receipt"
+# The guard runs before anything it protects, and it REFUSES a dirty tree
+# unless EVIDENCE_ALLOW_DIRTY_TREE acknowledges it -- in which case the dirt
+# is recorded in the receipt rather than hidden. cmd/tree-state prints the
+# JSON on stdout and the refusal on stderr, so a failure here stops the run
+# whether or not anybody reads the message.
+evidence_tree_json=$(cd "${repository_root}" && go run ./cmd/tree-state -what "the dependency publishability receipt") || exit 1
+readonly evidence_tree_json
 
 # shellcheck source=.woodpecker/scripts/go-unifi-pin.sh
 source "${repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
@@ -95,7 +99,7 @@ jq --compact-output --null-input \
     --arg module_commit "${go_unifi_expected_commit}" \
     --arg module_zip_sha256 "${module_zip_sha256}" \
     --arg module_dir_sha256 "${module_dir_sha256}" \
-    --argjson tree "$(evidence_tree_json)" \
+    --argjson tree "${evidence_tree_json}" \
     '{
         format_version: 1,
         gate: "go-unifi-dependency-publishability",

@@ -6,9 +6,13 @@ readonly repository_root
 
 # This receipt attests a differential run against a live controller. Generated
 # from a dirty tree it attests a comparison of code that is in no commit.
-# shellcheck source=.woodpecker/scripts/tree-state.sh
-source "${repository_root}/.woodpecker/scripts/tree-state.sh"
-evidence_tree_state "the controller differential receipt"
+# The guard runs before anything it protects, and it REFUSES a dirty tree
+# unless EVIDENCE_ALLOW_DIRTY_TREE acknowledges it -- in which case the dirt
+# is recorded in the receipt rather than hidden. cmd/tree-state prints the
+# JSON on stdout and the refusal on stderr, so a failure here stops the run
+# whether or not anybody reads the message.
+evidence_tree_json=$(cd "${repository_root}" && go run ./cmd/tree-state -what "the controller differential receipt") || exit 1
+readonly evidence_tree_json
 readonly inventory=${CATALOG_EVIDENCE_INVENTORY:-${repository_root}/build/release-ready/catalog-evidence-inventory.json}
 readonly campaign_policy=${CATALOG_CAMPAIGN_POLICY:-${repository_root}/provider-codegen/policy/catalog-campaign.json}
 readonly waves=${CATALOG_ACCEPTANCE_WAVES:-1,2,3,4}
@@ -347,7 +351,7 @@ jq -n --slurpfile plan "${plan_path}" \
    --arg herder_sha256 "${herder_sha256}" \
    --arg terraform_sha256 "${terraform_sha256}" \
    --arg plan_sha256 "${plan_sha256}" \
-   --argjson tree_state "$(evidence_tree_json)" '
+   --argjson tree_state "${evidence_tree_json}" '
   {
     format_version: 1,
     gate: "catalog controller differential",
