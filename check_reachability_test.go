@@ -204,6 +204,12 @@ var knownUnreachableChecks = map[string]string{
 	"command schema-behaviour": "authoring tool, run by hand when a surface is migrated.",
 	"command list-policy-scaffold": "authoring tool for list policies, run by hand. Its output " +
 		"is checked by the compiler and by rename_binding_test.go.",
+	"script m1-evidence-lib_test.sh": "tests m1-evidence-lib.sh, which sweep is porting to Go; " +
+		"the test goes with the port. Its only two callers were m1-dns-compiler.yml and the " +
+		"promotion-receipt step of m3-dns-qualification.yml, both removed here because they " +
+		"invoked scripts that no longer exist. Worth noting that BOTH were event: manual, so " +
+		"the self-test for a shared library has never had an automatic runner -- removing " +
+		"those steps exposed that rather than causing it.",
 }
 
 // loadRepositorySources reads every file that could invoke something, with
@@ -283,7 +289,7 @@ func shellCallersOf(name, ownPath string, sources map[string]string) []string {
 		if path == ownPath {
 			continue
 		}
-		if pattern.MatchString(body) {
+		if pattern.MatchString(joinShellContinuations(body)) {
 			callers = append(callers, path)
 		}
 	}
@@ -298,9 +304,27 @@ func commandCallersOf(name string, sources map[string]string) []string {
 		if strings.HasPrefix(path, filepath.Join("cmd", name)+string(filepath.Separator)) {
 			continue
 		}
-		if pattern.MatchString(body) {
+		if pattern.MatchString(joinShellContinuations(body)) {
 			callers = append(callers, path)
 		}
 	}
 	return callers
+}
+
+// joinShellContinuations folds `\` line continuations into one line, because
+// both patterns above are anchored with [^\n]* and a shell command split across
+// lines is still one command.
+//
+// FOUND BY A FALSE ACCUSATION, not by review. catalog-build-schema.sh really
+// does build ./cmd/schema-baseline, over five lines with the `go build` on one
+// and the package path on the next. The check called the command unreachable
+// and was wrong. It stayed hidden because m1-dns-compiler.sh happened to invoke
+// the same command on a single line, so one real caller was masking the fact
+// that the other could never be seen -- and deleting the dead script is what
+// exposed it.
+//
+// The pattern was narrower than the claim it made. Nothing in the tree is
+// obliged to keep a command on one line for a regex's benefit.
+func joinShellContinuations(body string) string {
+	return strings.NewReplacer("\\\n", " ", "\\\r\n", " ").Replace(body)
 }
