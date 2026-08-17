@@ -107,25 +107,43 @@ steps:
       - apt-get update
       - apt-get install --yes --no-install-recommends jq
       - export GOCACHE=/ci-cache/go-build GOMODCACHE=/ci-cache/go-mod GO_UNIFI_SOURCE_ROOT=/ci-cache/go-unifi-source
-      # Nothing invoked this until now. It reports which evidence generators
-      # carry the dirty-tree guard, over a population derived from the tree
-      # rather than listed in the check, and it fails when a generator appears
-      # in neither the guarded set nor the exemption list. A generator arrives
-      # in a push, and this is the only workflow that runs on every push, so
-      # this is where it has to be to catch one.
-      #
-      # It reads files and nothing else -- no network, no build, no controller
-      # -- so it goes ahead of everything expensive: a coverage regression
-      # should not wait on the Go suite to be reported.
-      # The coverage check above reports a script as guarded on a static match
-      # for evidence_tree_state. This one runs them: it dirties the tree on
-      # purpose and requires each to refuse and name the dirt. Without it,
-      # "guarded" is a claim about a string rather than about behaviour, which
-      # is the shape the coverage check itself exists to find.
+      # The two tree-state guard checks used to be invoked here as shell
+      # self-tests. They are Go tests now, so `go test ./...` below runs them,
+      # and this is still the only workflow with an automatic trigger -- which
+      # was the reason they were wired here in the first place.
       - go run ./cmd/go-unifi-proxy
       - export GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org GOVCS='*:off' GOTOOLCHAIN=local
       - go test ./...
       - go vet ./...
+      # THE LINTER RUNS SOMEWHERE ELSE, ON CODE THAT NEVER COMES HERE.
+      # .github/workflows/ci.yaml gates golangci-lint with only-new-issues, and
+      # it works -- it has failed four of the last fifteen runs. But it fires on
+      # GitHub pull requests and pushes to GitHub main, and our work lives on
+      # forgejo branches, so the newest code in the repository is the least
+      # linted code in the repository until after it has landed.
+      #
+      # FOUR LINTERS, CHOSEN BY MEASUREMENT RATHER THAN TASTE: each reports zero
+      # across the tree today AND was watched firing on a planted violation.
+      # That pair matters -- a linter that reports zero because it never runs
+      # looks identical to a clean tree. Any hit here is therefore new, and the
+      # gate cannot accumulate a backlog it then has to excuse.
+      #
+      # The other twelve enabled linters report 284 findings between them, most
+      # of it golines formatting and forcetypeassert in test files. Turning
+      # those on would be a gate whose remedy has nothing to do with the change
+      # in front of whoever trips it. They are paid down separately, and each
+      # joins this list when it reaches zero -- so membership stays a measured
+      # fact rather than a preference.
+      #
+      # --no-config is deliberate. This answers a different question from the
+      # GitHub job (four clean linters over the whole tree, versus every linter
+      # over the diff), so it must not silently inherit .golangci.yaml and
+      # become a third thing. Do not "harmonise" them.
+      #
+      # The version is pinned here and nowhere else. If it goes stale the linter
+      # merely ages; nothing breaks, which is why there is no guard on it.
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+      - golangci-lint run --no-config --default=none --enable=ineffassign --enable=makezero --enable=misspell --enable=unconvert --timeout 5m ./...
       # The evidence inventory describes the tree it was generated from, and
       # nothing has ever checked that it still does. The check already existed
       # and already failed -- it was wired to no workflow, so a stale inventory
