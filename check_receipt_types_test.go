@@ -274,6 +274,14 @@ var knownReceiptMismatches = map[string]struct{ keys, why string }{
 // pairing against a script that is being replaced this week would pin the shape
 // of the thing being deleted. They pair as each producer lands.
 var unpairedStrictConsumers = map[string]string{
+	// Arrived with sweep's merge and was named by this check on the first run
+	// after it: a new strict decoder landing with nothing paired to it, which is
+	// the state both original instances were found in.
+	"catalog-migration-verify": "reads the migration and recovery receipt, whose producer is " +
+		"catalog-migration-recovery -- a Go binary, so the two agree by sharing a type rather " +
+		"than by a key set someone has to keep in step. Pairing Go to Go is a different check " +
+		"from this one, which exists because a shell producer and a Go consumer have nothing " +
+		"between them at all.",
 	"catalog-admission":            "producer catalog-controller-differential.sh is being ported by sweep",
 	"catalog-evidence":             "producer folded into the binary by sweep; artifact is committed and byte-compared",
 	"catalog-hardware-disposition": "reads the controller receipt, which sweep is porting",
