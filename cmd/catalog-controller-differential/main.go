@@ -57,36 +57,40 @@ type options struct {
 }
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "catalog controller differential: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+// run takes its arguments rather than reading the package-level flag set, so a
+// test can exercise the refusals without os.Args and without a second test in
+// the same binary redefining a flag.
+func run(args []string) error {
 	var o options
-	flag.StringVar(&o.repository, "repo", ".", "repository holding the candidate tree")
-	flag.StringVar(&o.inventory, "inventory", "build/release-ready/catalog-evidence-inventory.json",
+	flags := flag.NewFlagSet("catalog-controller-differential", flag.ContinueOnError)
+	flags.StringVar(&o.repository, "repo", ".", "repository holding the candidate tree")
+	flags.StringVar(&o.inventory, "inventory", "build/release-ready/catalog-evidence-inventory.json",
 		"evidence inventory, relative to -repo")
-	flag.StringVar(&o.policy, "campaign-policy", "provider-codegen/policy/catalog-campaign.json",
+	flags.StringVar(&o.policy, "campaign-policy", "provider-codegen/policy/catalog-campaign.json",
 		"campaign policy, relative to -repo")
-	flag.StringVar(&o.waves, "waves", "1,2,3,4", "waves to select")
-	flag.StringVar(&o.testNames, "test-names", "",
+	flags.StringVar(&o.waves, "waves", "1,2,3,4", "waves to select")
+	flags.StringVar(&o.testNames, "test-names", "",
 		"diagnostic: run only these tests, comma or semicolon separated. Every name must already "+
 			"be in the plan")
-	flag.StringVar(&o.output, "output", "", "write the receipt here; required")
-	flag.StringVar(&o.treeStateRaw, "tree-state", "",
+	flags.StringVar(&o.output, "output", "", "write the receipt here; required")
+	flags.StringVar(&o.treeStateRaw, "tree-state", "",
 		"JSON from the tree-state measurement; required, no default")
-	flag.StringVar(&o.releasedRef, "released-ref", "v0.101.2", "the released side's tag")
-	flag.BoolVar(&o.planOnly, "plan-only", false, "write the plan as the receipt and stop")
-	flag.BoolVar(&o.prepareOnly, "prepare-only", false,
+	flags.StringVar(&o.releasedRef, "released-ref", "v0.101.2", "the released side's tag")
+	flags.BoolVar(&o.planOnly, "plan-only", false, "write the plan as the receipt and stop")
+	flags.BoolVar(&o.prepareOnly, "prepare-only", false,
 		"prepare and vet the released tree and stop; needs no controller")
-	flag.StringVar(&o.controllerImage, "controller-image", "", "controller image, already pulled")
-	flag.StringVar(&o.syntheticImage, "synthetic-image", "", "synthetic fleet image, already pulled")
-	flag.StringVar(&o.ryukImage, "ryuk-image", "", "testcontainers ryuk image, already pulled")
-	flag.StringVar(&o.herderBin, "herder", "", "the fleet herder binary")
-	flag.StringVar(&o.terraformBin, "terraform", "", "the CLI the acceptance harness drives")
-	flag.BoolVar(&o.printDiagnostics, "print-failure-diagnostics", false,
+	flags.StringVar(&o.controllerImage, "controller-image", "", "controller image, already pulled")
+	flags.StringVar(&o.syntheticImage, "synthetic-image", "", "synthetic fleet image, already pulled")
+	flags.StringVar(&o.ryukImage, "ryuk-image", "", "testcontainers ryuk image, already pulled")
+	flags.StringVar(&o.herderBin, "herder", "", "the fleet herder binary")
+	flags.StringVar(&o.terraformBin, "terraform", "", "the CLI the acceptance harness drives")
+	flags.BoolVar(&o.printDiagnostics, "print-failure-diagnostics", false,
 		"print the sanitised log lines for each failed test")
 	// -followup classifies a receipt this command already wrote, and prints one
 	// word. It replaces catalog-controller-followup.sh, whose single caller ran
@@ -94,9 +98,11 @@ func run() error {
 	// because a script that prints a word was the only way a workflow could ask
 	// it a question. One invocation answers both: the word on stdout, and a
 	// non-zero exit with every failed condition named on stderr.
-	followup := flag.String("followup", "",
+	followup := flags.String("followup", "",
 		"classify an existing receipt as full or diagnostic_complete and exit")
-	flag.Parse()
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
 
 	if *followup != "" {
 		return classifyReceipt(o, *followup)
