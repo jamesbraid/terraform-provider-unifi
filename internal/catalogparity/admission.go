@@ -122,6 +122,25 @@ type ControllerPlanReceipt struct {
 	AllowedSkips            []string                `json:"allowed_skips"`
 	ReleasedAllowedFailures []string                `json:"released_allowed_failures"`
 	ReleasedAllowedMissing  []string                `json:"released_allowed_missing"`
+
+	// A DIAGNOSTIC RUN adds these two, and until now nothing here could hold
+	// them: setting CATALOG_ACCEPTANCE_TEST_NAMES made the producer write
+	// diagnostic_selection and catalog_test_count into the plan, and
+	// cmd/catalog-admission -- run against that same file one step later in the
+	// same workflow -- decodes with DisallowUnknownFields and failed on
+	// "unknown field \"diagnostic_selection\"".
+	//
+	// The trigger is what makes it expensive: an operator narrows the run when
+	// something is ALREADY broken, and the pipeline answers by failing a later
+	// step with a JSON error the narrowing itself caused.
+	//
+	// catalog-controller-followup.sh reads both to decide whether a diagnostic
+	// run counts as complete, so they are load-bearing rather than incidental:
+	// one consumer needed them while another could not survive them.
+	//
+	// omitempty so a normal run's receipt is unchanged.
+	DiagnosticSelection bool `json:"diagnostic_selection,omitempty"`
+	CatalogTestCount    int  `json:"catalog_test_count,omitempty"`
 }
 
 type ControllerImageReceipt struct {
