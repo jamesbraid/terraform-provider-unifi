@@ -151,6 +151,34 @@ func BuildPlan(inventory Inventory, policy CampaignPolicy, waves []int) (catalog
 	plan.ReleasedAllowedFailures = intersect(policy.ReleasedAllowedFailures, plan.TestNames)
 	plan.ReleasedAllowedMissing = intersect(policy.ReleasedAllowedMissing, plan.TestNames)
 
+	// A TEST CANNOT BE BOTH DECLARED ABSENT FROM THE RELEASED TREE AND PUT
+	// THERE BY THE GRAFT.
+	//
+	// released_allowed_missing says the released provider does not have these
+	// tests. A lent scenario file copies the candidate's tests onto the
+	// released tree, so anything it carries IS there. A name in both is a plan
+	// that contradicts itself, and the contradiction surfaces much later as the
+	// released suite reporting fewer missing tests than declared -- a message
+	// about the suite for a defect in the plan.
+	//
+	// Measured before asserting: on the committed inventory and policy the two
+	// sets are disjoint, 17 allowed-missing against 49 tests in the three lent
+	// files, zero overlap. This keeps them that way.
+	if lent := lentTests(inventory, plan.SharedScenarioOwners); len(lent) > 0 {
+		var contradicted []string
+		for _, name := range plan.ReleasedAllowedMissing {
+			if lent[name] {
+				contradicted = append(contradicted, name)
+			}
+		}
+		if len(contradicted) > 0 {
+			sort.Strings(contradicted)
+			return plan, fmt.Errorf("the plan declares %d test(s) missing from the released tree "+
+				"and lends the scenario file that defines them: %s. A test cannot be both absent "+
+				"and grafted", len(contradicted), strings.Join(contradicted, ", "))
+		}
+	}
+
 	if plan.SurfaceCount == 0 || len(plan.TestNames) == 0 {
 		return plan, fmt.Errorf("the plan selects %d surface(s) and %d test(s); a run with nothing "+
 			"to do would produce a receipt that looks like a clean pass",
@@ -232,4 +260,32 @@ func intersect(values, allowed []string) []string {
 		}
 	}
 	return out
+}
+
+// lentTests names every test function carried by a lent scenario file.
+//
+// It reads the inventory rather than the plan because the plan records which
+// tests a surface OWNS for the run, and the question here is what a FILE
+// contains once it is copied -- a scenario file brings all of its functions,
+// not only the ones this wave selected.
+func lentTests(inventory Inventory, owners []string) map[string]bool {
+	lent := map[string]bool{}
+	if len(owners) == 0 {
+		return lent
+	}
+	wanted := map[string]bool{}
+	for _, owner := range owners {
+		wanted[owner] = true
+	}
+	for _, surface := range inventory.Surfaces {
+		for _, owner := range surface.ScenarioOwners {
+			if !wanted[owner] {
+				continue
+			}
+			for _, name := range surface.TestFunctions {
+				lent[name] = true
+			}
+		}
+	}
+	return lent
 }

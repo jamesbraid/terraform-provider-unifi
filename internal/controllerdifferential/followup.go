@@ -134,6 +134,25 @@ func releasedShortfallProblems(receipt catalogparity.ControllerDifferentialRecei
 			problems = append(problems, fmt.Sprintf(
 				"the released suite reports unexpected failures %v", sorted(released.UnexpectedFailures)))
 		}
+		// EXACT, WHERE THE FAILURES ABOVE ARE A SUBSET, and the asymmetry is the
+		// point rather than an oversight.
+		//
+		// released_allowed_failures is a LICENCE: the released provider may
+		// fail these. Failing fewer than licensed uses less of the permission,
+		// and no claim is invalidated -- so a subset is right.
+		//
+		// released_allowed_missing is a CLAIM ABOUT THE RELEASED TREE: these
+		// tests are not in it. If one of them runs, the tree contains a test
+		// the plan said it lacked, and the plan is describing something other
+		// than the tree it is about. Everything downstream reads that plan, so
+		// the right response is to fail rather than to treat a shrinking
+		// Missing as an improvement.
+		//
+		// The two ways it can shrink are both plan defects, not campaign
+		// progress: a scenario file lent to the released tree brings its tests
+		// with it, or the policy names a test that is no longer new. BuildPlan
+		// now refuses the first case at the source, so a failure here is the
+		// second.
 		if !sameSet(released.Missing, receipt.Plan.ReleasedAllowedMissing) {
 			problems = append(problems, fmt.Sprintf(
 				"the released suite is missing %v, the plan allows %v",
