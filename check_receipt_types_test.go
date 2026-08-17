@@ -338,6 +338,7 @@ var unpairedStrictConsumers = map[string]string{
 	// Arrived with sweep's merge and was named by this check on the first run
 	// after it: a new strict decoder landing with nothing paired to it, which is
 	// the state both original instances were found in.
+	"export-gate": "reads .woodpecker/policy/export-denylist.json, which has no producer because it is not a receipt. It is a human DECLARATION of what must never ship, and deriving it from the tree it checks would make it vacuous by construction -- the tree would be defining its own acceptability. There is nothing to pair it with, and that is the design rather than a gap.",
 	"catalog-migration-verify": "reads the migration and recovery receipt, whose producer is " +
 		"catalog-migration-recovery -- a Go binary, so the two agree by sharing a type rather " +
 		"than by a key set someone has to keep in step. Pairing Go to Go is a different check " +

@@ -1,0 +1,47 @@
+{
+  "denied_paths": [
+    ".woodpecker/",
+    "build/",
+    "provider-codegen/bootstrap/",
+    "provider-codegen/generated/",
+    "provider-codegen/policy/",
+    "docs/superpowers/",
+    "provider-contracts/"
+  ],
+  "terms": [
+    {
+      "value": "op://",
+      "why": "1Password secret reference; a published tree must not tell readers where credentials live"
+    },
+    {
+      "value": "OP_SERVICE_ACCOUNT_TOKEN",
+      "why": "1Password service-account token variable"
+    },
+    {
+      "value": "loreland.org",
+      "why": "personal domain used for maintainer addresses"
+    }
+  ],
+  "hashed_terms": [
+    {
+      "sha256": "ecac3b938ecdf79e217a457dab7335c9985b13186d1b2a9cc6255598405a4f2a",
+      "label": "private services domain"
+    },
+    {
+      "sha256": "714b74b9fd79bf335839a273ce69ae2e28f7ab92dda4dd803f713f80d712f0ab",
+      "label": "private host name"
+    },
+    {
+      "sha256": "a36da96d71ad692194cfdae218cdffa2e5d72c0d7dd0c663bef84c66f862392e",
+      "label": "private forge CI account"
+    },
+    {
+      "sha256": "649e9f878ad44a06aff8395a7039df78837dc8bba4c1a5d349a82cecb32ae462",
+      "label": "private forge admin account"
+    },
+    {
+      "sha256": "388065d0a6c84b90aa956488dee873d60a0c2ed42cff7a9ce9a2685269fcd0ea",
+      "label": "private identity service"
+    }
+  ]
+}
