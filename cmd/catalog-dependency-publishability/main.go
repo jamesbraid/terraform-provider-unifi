@@ -23,21 +23,25 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "dependency publishability: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
-	repository := flag.String("repo", ".", "repository whose go.mod declares the dependency")
-	output := flag.String("output", "", "write the receipt here; required")
+// run takes its arguments rather than reading the package-level flag set, so a
+// test can exercise the refusals without os.Args and without a second test in
+// the same binary redefining a flag.
+func run(args []string) error {
+	flags := flag.NewFlagSet("catalog-dependency-publishability", flag.ContinueOnError)
+	repository := flags.String("repo", ".", "repository whose go.mod declares the dependency")
+	output := flags.String("output", "", "write the receipt here; required")
 	// No literal here. The reviewed commit has ONE home, internal/gounifipin,
 	// and an empty flag means "use it" rather than "use the copy that happens
 	// to be in this file".
-	expectedCommit := flag.String("expected-commit", "",
+	expectedCommit := flags.String("expected-commit", "",
 		"override the commit the pinned tag must resolve to (default: the pinned one)")
-	treeStateRaw := flag.String("tree-state", "",
+	treeStateRaw := flags.String("tree-state", "",
 		"JSON from evidence_tree_json describing the working tree; required, no default")
 	// resolutionRunner cannot be measured from inside this process, so it is an
 	// input. It defaults to what the environment can show rather than to the
@@ -46,9 +50,11 @@ func run() error {
 	// this has not been confirmed against the CI runner's environment, and a
 	// default that wrongly blocks is recoverable where one that wrongly passes
 	// is the defect this gate is full of.
-	resolutionRunner := flag.String("resolution-runner", "",
+	resolutionRunner := flags.String("resolution-runner", "",
 		"who resolved the dependency (default: remote_ci when CI is set, else local_workstation)")
-	flag.Parse()
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
 
 	if *output == "" {
 		return errors.New("-output is required")
