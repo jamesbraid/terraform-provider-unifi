@@ -247,6 +247,13 @@ func gitInFixture(t *testing.T, root string, args ...string) string {
 // keeping the linter off the fast-loop gate. The divergence is deliberate and
 // explained above; a directive naming this line is a smaller exception than
 // leaving the whole rule unenforced.
+//
+// AND ITS PREMISE HAS AN ORACLE, which is what separates this from the usual
+// nolint. A directive's justification normally sits in a comment where nothing
+// can notice it stopping being true. This one asserts that the proxy root must
+// be under /tmp, and TestCheckProxyRoot above requires checkProxyRoot to refuse
+// "/etc", "/tmp/../etc", "/tmp" itself, a relative path and the empty string.
+// Relax the guard and that test goes red before this reason goes stale.
 func scratchDirectory(t *testing.T, purpose string) string {
 	t.Helper()
 	directory, err := os.MkdirTemp("/tmp", "gounifipin-"+purpose+".") //nolint:usetesting // the proxy root must be under /tmp; see above
