@@ -289,15 +289,7 @@ func (q *qualification) expectChanges(cli, stateVolume, fixture, plan, cliConfig
 	if err != nil {
 		return err
 	}
-	switch code {
-	case 2:
-		return nil
-	case 0:
-		return fmt.Errorf("plan against fixture %q reported no changes; this step exists to prove "+
-			"the change is planned, so an empty plan is a failure", fixture)
-	default:
-		return fmt.Errorf("plan against fixture %q exited %d, want 2", fixture, code)
-	}
+	return classifyExpectChanges(code, fixture)
 }
 
 // expectNoChanges requires plan -detailed-exitcode to report 0. Under the shell
@@ -311,6 +303,33 @@ func (q *qualification) expectNoChanges(cli, stateVolume, fixture, cliConfig str
 	if err != nil {
 		return err
 	}
+	return classifyExpectNoChanges(code, fixture, cliConfig)
+}
+
+// classifyExpectChanges and classifyExpectNoChanges are separated from the
+// Docker calls above for one reason: on a run that PASSES, the only exit codes
+// these ever see are 2 and 0 respectively. Every other branch -- including the
+// distinction between "the plan errored" and "the plan reported drift", which
+// is the improvement this port makes over the shell's bare set -e -- is
+// unreachable on the run that any side-by-side diff would record. Logic a
+// recorded run never reaches cannot be protected by comparing against that run;
+// deleting it would leave the comparison green. So it is tested directly, with
+// codes the passing run never produces.
+
+func classifyExpectChanges(code int, fixture string) error {
+	switch code {
+	case 2:
+		return nil
+	case 0:
+		return fmt.Errorf("plan against fixture %q reported no changes; this step exists to prove "+
+			"the change is planned, so an empty plan is a failure", fixture)
+	default:
+		return fmt.Errorf("plan against fixture %q exited %d, want 2 (the plan itself failed, which "+
+			"is not the same as planning nothing)", fixture, code)
+	}
+}
+
+func classifyExpectNoChanges(code int, fixture, cliConfig string) error {
 	switch code {
 	case 0:
 		return nil

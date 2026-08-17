@@ -339,3 +339,58 @@ func TestRunRequiresRunID(t *testing.T) {
 		t.Errorf("error = %v, want the run-id refusal", err)
 	}
 }
+
+// TestPlanExitCodesAreClassifiedApart covers branches a PASSING run never
+// reaches, which is exactly why they need covering.
+//
+// On a run that succeeds, expectChanges only ever sees 2 and expectNoChanges
+// only ever sees 0. Every other case here -- and in particular the distinction
+// between "the plan errored" and "the plan reported drift" -- is unreachable on
+// the run a side-by-side diff would record. A frozen or recorded run cannot
+// protect logic it never executes: delete the distinction and the comparison
+// stays green. So these pass codes the successful run does not produce.
+//
+// The distinction is the improvement over the shell. There, both calls were
+// unguarded under set -e, so exit 1 (the plan itself failed) and exit 2 (drift)
+// both merely stopped the script with no statement of which had happened.
+func TestPlanExitCodesAreClassifiedApart(t *testing.T) {
+	if err := classifyExpectChanges(2, "replacement"); err != nil {
+		t.Errorf("exit 2 is the wanted outcome for expectChanges, got: %v", err)
+	}
+	if err := classifyExpectNoChanges(0, "imported", "cli.tfrc"); err != nil {
+		t.Errorf("exit 0 is the wanted outcome for expectNoChanges, got: %v", err)
+	}
+
+	// The two silent-pass shapes: a change that plans nothing, and drift where
+	// none should exist.
+	noPlan := classifyExpectChanges(0, "replacement")
+	if noPlan == nil {
+		t.Fatal("a plan reporting NO changes satisfied the step that exists to prove a change is planned")
+	}
+	if !strings.Contains(noPlan.Error(), "empty plan is a failure") {
+		t.Errorf("error should name the silent pass: %v", noPlan)
+	}
+	drift := classifyExpectNoChanges(2, "imported", "cli-legacy.tfrc")
+	if drift == nil {
+		t.Fatal("a plan reporting changes satisfied the no-op assertion")
+	}
+	if !strings.Contains(drift.Error(), "cli-legacy.tfrc") {
+		t.Errorf("error should name which provider config saw the drift: %v", drift)
+	}
+
+	// Exit 1 is a BROKEN plan, not a verdict about drift. Conflating it with 2
+	// is what the shell did, and it is the failure most likely to be
+	// misdiagnosed as a provider bug.
+	for _, code := range []int{1, 3, 127} {
+		broken := classifyExpectNoChanges(code, "imported", "cli.tfrc")
+		if broken == nil {
+			t.Fatalf("exit %d was accepted as no-changes", code)
+		}
+		if !strings.Contains(broken.Error(), "not the same as reporting drift") {
+			t.Errorf("exit %d should be distinguished from drift, got: %v", code, broken)
+		}
+		if brokenChanges := classifyExpectChanges(code, "replacement"); brokenChanges == nil {
+			t.Fatalf("exit %d was accepted as a planned change", code)
+		}
+	}
+}
