@@ -38,10 +38,30 @@ import (
 // receipt, and a naive "first object mentioning format_version" picked it and
 // returned a single key.
 //
-// So the anchor is a floor rather than a better guess: a candidate object counts
-// as the receipt only if its TOP-LEVEL keys include both format_version and
-// gate, and a script where no object qualifies FAILS rather than being skipped.
-// Misidentification is then loud, which is the direction to be wrong in.
+// THAT FLOOR WAS REPLACED, because it could not do the job it was documented as
+// doing. catalog-controller-differential.sh builds a PLAN object carrying
+// format_version and gate -- with the same gate string as the receipt -- four
+// hundred lines before the receipt itself. The floor cannot tell them apart. The
+// old scanner only ever reached the receipt because a quote-pairing bug made the
+// plan literal parse as a single key; fix the parse and the floor picks the plan.
+// THE CHECK HAD BEEN PASSING FOR THE WRONG REASON.
+//
+// The anchor is now what the script DOES with the object: all three producers
+// write their receipt with >"${output}" and nothing else goes there, so the
+// receipt is the last jq object opened before that redirect. A script with no
+// such redirect FAILS rather than being skipped. No quotes are counted at any
+// point, so an apostrophe in a comment -- which is what broke the previous
+// version -- cannot reach it.
+//
+// PROVEN THREE WAYS, each run and each reverted:
+//
+//	adding an unknown field to the RECEIPT   red, naming zz_probe_field
+//	removing the >"${output}" redirect       refuses, comparing nothing
+//	adding a field to the PLAN               GREEN -- correctly ignored
+//
+// The third is the one the old anchor could not have passed, and it is the
+// reason the redirect is a better anchor than the key set: it distinguishes two
+// objects that are indistinguishable by content.
 func TestShellReceiptFieldsAreKnownToTheirConsumers(t *testing.T) {
 	producers := []struct {
 		script   string
@@ -114,37 +134,101 @@ func TestShellReceiptFieldsAreKnownToTheirConsumers(t *testing.T) {
 // so scanning for quote pairs is exact rather than approximate. What is heuristic
 // is WHICH object is the receipt, and that is what the two-key floor decides.
 func receiptKeys(script string) ([]string, bool) {
-	for index := 0; index < len(script); {
-		open := strings.IndexByte(script[index:], '\'')
-		if open < 0 {
-			return nil, false
-		}
-		open += index
-		shut := strings.IndexByte(script[open+1:], '\'')
-		if shut < 0 {
-			return nil, false
-		}
-		shut += open + 1
-		candidate := script[open+1 : shut]
-		index = shut + 1
-		if !strings.Contains(candidate, "format_version") {
-			continue
-		}
-		keys := topLevelKeys(candidate)
-		hasVersion, hasGate := false, false
-		for _, key := range keys {
-			switch key {
-			case "format_version":
-				hasVersion = true
-			case "gate":
-				hasGate = true
-			}
-		}
-		if hasVersion && hasGate {
-			return keys, true
+	// THE ANCHOR IS WHAT THE SCRIPT DOES WITH THE OBJECT, not what the object
+	// contains. All three producers write their receipt with the same redirect,
+	// >"${output}", and nothing else in any of them is written there. So the
+	// receipt is the last jq object opened before that redirect.
+	//
+	// The previous anchor -- "the first object whose top-level keys include both
+	// format_version and gate" -- CANNOT discriminate here and never could.
+	// catalog-controller-differential.sh builds a PLAN object carrying both keys,
+	// with the same gate string as the receipt, four hundred lines earlier. The
+	// old quote-pairing scanner reached the receipt only because the plan literal
+	// parsed as a single key under it; once the parse improved, the floor picked
+	// the plan and reported six fields the consumer does not carry. THE CHECK HAD
+	// BEEN PASSING FOR THE WRONG REASON.
+	redirect := strings.LastIndex(script, `>"${output}"`)
+	if redirect < 0 {
+		return nil, false
+	}
+	var receipt = -1
+	for _, at := range fieldOffsets(script[:redirect], "format_version") {
+		receipt = at
+	}
+	if receipt < 0 {
+		return nil, false
+	}
+	open, ok := enclosingObject(script, receipt)
+	if !ok {
+		return nil, false
+	}
+	shut, ok := matchBrace(script, open)
+	if !ok {
+		return nil, false
+	}
+	keys := topLevelKeys(script[open : shut+1])
+	hasVersion, hasGate := false, false
+	for _, key := range keys {
+		switch key {
+		case "format_version":
+			hasVersion = true
+		case "gate":
+			hasGate = true
 		}
 	}
-	return nil, false
+	if !hasVersion || !hasGate {
+		return nil, false
+	}
+	return keys, true
+}
+
+// fieldOffsets returns every offset where name appears as a jq object key.
+func fieldOffsets(script, name string) []int {
+	var found []int
+	for index := 0; ; {
+		at := strings.Index(script[index:], name+":")
+		if at < 0 {
+			return found
+		}
+		found = append(found, index+at)
+		index += at + len(name)
+	}
+}
+
+// enclosingObject walks BACKWARD from at to the brace that opens the object
+// containing it, counting depth so a nested object's closing brace does not
+// mislead. No quotes are consulted.
+func enclosingObject(script string, at int) (int, bool) {
+	depth := 0
+	for index := at; index >= 0; index-- {
+		switch script[index] {
+		case '}':
+			depth++
+		case '{':
+			if depth == 0 {
+				return index, true
+			}
+			depth--
+		}
+	}
+	return 0, false
+}
+
+// matchBrace returns the offset of the brace closing the one at open.
+func matchBrace(script string, open int) (int, bool) {
+	depth := 0
+	for index := open; index < len(script); index++ {
+		switch script[index] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return index, true
+			}
+		}
+	}
+	return 0, false
 }
 
 // topLevelKeys parses `key:` at depth one of the first brace-delimited object.
