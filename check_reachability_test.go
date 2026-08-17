@@ -233,12 +233,6 @@ var knownUnreachableChecks = map[string]string{
 	"command schema-behaviour": "authoring tool, run by hand when a surface is migrated.",
 	"command list-policy-scaffold": "authoring tool for list policies, run by hand. Its output " +
 		"is checked by the compiler and by rename_binding_test.go.",
-	"script m1-evidence-lib_test.sh": "tests m1-evidence-lib.sh, which sweep is porting to Go; " +
-		"the test goes with the port. Its only two callers were m1-dns-compiler.yml and the " +
-		"promotion-receipt step of m3-dns-qualification.yml, both removed here because they " +
-		"invoked scripts that no longer exist. Worth noting that BOTH were event: manual, so " +
-		"the self-test for a shared library has never had an automatic runner -- removing " +
-		"those steps exposed that rather than causing it.",
 }
 
 // loadRepositorySources reads every file that could invoke something, with
