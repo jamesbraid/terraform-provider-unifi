@@ -3,16 +3,12 @@ package controllerdifferential
 import (
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
-
-const summaryProgram = "../../.woodpecker/scripts/catalog-controller-summary.jq"
 
 // synthesiseLog builds a go test -json log that reports the given outcomes, so
 // a summary can be exercised without a controller.
@@ -194,98 +190,6 @@ func TestTheSkipComparisonIsASetAndTheShellsWasNot(t *testing.T) {
 		t.Fatalf("an unsorted allowed-skip list produced %q. The comparison must be about the "+
 			"set of skipped tests, not about the order somebody wrote them in", got.Result)
 	}
-}
-
-// TestTheSummaryAgreesWithTheShellsJQProgram runs the deployed jq file, not a
-// copy of it, over the same synthesised logs.
-//
-// DELETE THIS TEST IN THE COMMIT THAT DELETES THE JQ FILE. It does not skip
-// when the file is missing.
-func TestTheSummaryAgreesWithTheShellsJQProgram(t *testing.T) {
-	if _, err := os.Stat(summaryProgram); err != nil {
-		t.Fatalf("%s is gone, so this comparison measures nothing: %v.\nIf it was deleted "+
-			"deliberately, delete this test in the same commit.", summaryProgram, err)
-	}
-	if _, err := exec.LookPath("jq"); err != nil {
-		t.Fatalf("jq is required to compare against the shell implementation: %v", err)
-	}
-
-	receipt := frozenReceipt(t)
-	for _, c := range []struct {
-		name          string
-		plan          catalogparity.ControllerPlanReceipt
-		label         string
-		exit          int
-		passed        []string
-		skipped       []string
-		failed        []string
-		packageOutput []string
-	}{
-		{name: "the frozen released suite", plan: receipt.Plan, label: "released",
-			exit: receipt.Released.ExitCode, passed: receipt.Released.Passed,
-			skipped: receipt.Released.Skipped, failed: receipt.Released.Failed},
-		{name: "the frozen candidate suite", plan: receipt.Plan, label: "candidate",
-			exit: receipt.Candidate.ExitCode, passed: receipt.Candidate.Passed,
-			skipped: receipt.Candidate.Skipped, failed: receipt.Candidate.Failed},
-		{name: "a candidate regression", plan: receipt.Plan, label: "candidate", exit: 1,
-			passed: receipt.Candidate.Passed[1:], failed: receipt.Candidate.Passed[:1]},
-		{name: "a released suite that never ran", plan: receipt.Plan, label: "released", exit: 1,
-			packageOutput: []string{"could not start the controller\n"}},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			log := synthesiseLog(c.passed, c.skipped, c.failed, c.packageOutput)
-			byShell := runSummaryJQ(t, log, c.plan, c.label, c.exit)
-			byGo := SummariseSuite(log, c.plan, c.label, c.exit)
-
-			if byShell.Result != byGo.Result {
-				t.Errorf("result: shell %q, Go %q", byShell.Result, byGo.Result)
-			}
-			for _, field := range []struct {
-				name       string
-				shell, got []string
-			}{
-				{"passed", byShell.Passed, byGo.Passed},
-				{"skipped", byShell.Skipped, byGo.Skipped},
-				{"failed", byShell.Failed, byGo.Failed},
-				{"accepted_failures", byShell.AcceptedFailures, byGo.AcceptedFailures},
-				{"unexpected_failures", byShell.UnexpectedFailures, byGo.UnexpectedFailures},
-				{"missing", byShell.Missing, byGo.Missing},
-				{"pre_test_diagnostics", byShell.PreTestDiagnostics, byGo.PreTestDiagnostics},
-			} {
-				if !sameSet(field.shell, field.got) {
-					t.Errorf("%s: shell %v, Go %v", field.name, field.shell, field.got)
-				}
-			}
-		})
-	}
-}
-
-func runSummaryJQ(t *testing.T, log []byte, plan catalogparity.ControllerPlanReceipt, label string, exitCode int) catalogparity.ControllerSuiteReceipt {
-	t.Helper()
-	planFile := filepath.Join(t.TempDir(), "plan.json")
-	encoded, err := json.Marshal(plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(planFile, encoded, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	command := exec.Command("jq", "--slurpfile", "plan", planFile,
-		"--arg", "suite_label", label,
-		"--argjson", "exit_code", strconv.Itoa(exitCode),
-		"-s", "-f", summaryProgram)
-	command.Stdin = strings.NewReader(string(log))
-	var complaint strings.Builder
-	command.Stderr = &complaint
-	out, err := command.Output()
-	if err != nil {
-		t.Fatalf("run the shell's summary program: %v\n%s", err, complaint.String())
-	}
-	var summary catalogparity.ControllerSuiteReceipt
-	if err := json.Unmarshal(out, &summary); err != nil {
-		t.Fatalf("parse the shell's summary: %v\n%s", err, out)
-	}
-	return summary
 }
 
 func frozenReceipt(t *testing.T) catalogparity.ControllerDifferentialReceipt {

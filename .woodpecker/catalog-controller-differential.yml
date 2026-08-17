@@ -71,23 +71,27 @@ steps:
       # The inventory is committed evidence describing the tree it was
       # generated from. Regenerate it here so a test or runtime edit can never
       # leave it asserting a digest that no longer exists.
-      - bash .woodpecker/scripts/catalog-evidence-inventory.sh
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local go run ./cmd/catalog-evidence -baseline build/m0/provider-schema-digests.json -contracts provider-codegen/generated/catalog-surface-contracts.json -policy provider-codegen/policy/catalog-evidence.json -candidate-root . -output build/release-ready/catalog-evidence-inventory.json
+      # NO -tree-state HERE, DELIBERATELY. This artifact is committed and then
+      # byte-compared on the next line, which is a stronger statement than a
+      # tree-state field: a dirty tree that changes the inventory fails the
+      # comparison, and one that does not change it cannot have described this
+      # artifact wrongly. Recording tree state as well would put a second,
+      # weaker claim beside the one that already holds.
       - git diff --exit-code -- build/release-ready/catalog-evidence-inventory.json
-      - CATALOG_DEPENDENCY_OUTPUT=/tmp/catalog-dependency-publishability.json bash .woodpecker/scripts/catalog-dependency-publishability.sh
-      # BACKSTOP, NOT THE CHECK -- every field is a constant the script writes
-      # only after its own expect() calls passed, and fail() exits 1 under
-      # set -e. Kept against the script's abort regressing. See
-      # catalog-build-schema.yml for the full reasoning; do not count these
-      # three as verification when tallying what this pipeline proves.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-dependency-publishability -output /tmp/catalog-dependency-publishability.json -resolution-runner remote_ci -tree-state "$(go run ./cmd/tree-state -what 'the dependency publishability receipt')"
+      # BACKSTOP, AND ONLY replace_present IS MEASURED. See
+      # catalog-build-schema.yml for the full reasoning; the other four
+      # conjuncts compare a constant, or this line's own argument, to itself.
       - jq -e '.result == "pass" and .module_path == "github.com/ubiquiti-community/go-unifi" and .replace_present == false and .resolution_runner == "remote_ci" and .network_boundary == "remote_ci_only"' /tmp/catalog-dependency-publishability.json
-      - CATALOG_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json CATALOG_BUILD_SCHEMA_EVIDENCE_DIRECTORY=/tmp/catalog-build-evidence TERRAFORM_BIN=/tmp/terraform TOFU_BIN=/tmp/tofu bash .woodpecker/scripts/catalog-build-schema.sh
-      # BACKSTOP -- the schema comparison is five cmp calls inside the script,
-      # under set -e, against the released projections and committed contracts.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-build-schema -released-provider-binary /tmp/released-provider/terraform-provider-unifi_v0.101.2 -inventory build/release-ready/catalog-evidence-inventory.json -evidence-directory /tmp/catalog-build-evidence -terraform /tmp/terraform -tofu /tmp/tofu -output /tmp/catalog-build-schema.json -tree-state "$(go run ./cmd/tree-state -what 'the released schema baseline and digests')"
+      # BACKSTOP -- the schema comparison is in the binary, which writes the
+      # receipt before returning non-zero. This decodes it strictly from outside
+      # the process that wrote it.
       - go run ./cmd/receipt-gate -gate catalog-build-schema -receipt /tmp/catalog-build-schema.json
-      # Orphaned until now: the self-test existed and no workflow ran it, so it
-      # reported to nobody. It needs no binaries and no controller, so it goes
-      # straight before the producer it covers.
-      - CATALOG_UNIT_OUTPUT=/tmp/catalog-unit-differential.json bash .woodpecker/scripts/catalog-unit-differential.sh
+      # Needs no binaries and no controller, so it goes straight before the
+      # producer it covers.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-unit-differential -output /tmp/catalog-unit-differential.json -tree-state "$(go run ./cmd/tree-state -what 'the unit differential receipt')"
       # BACKSTOP for result and network; the per-suite results are derived from
       # the go test event stream and DO carry information, including the floor
       # that an empty run is not a pass.
@@ -100,19 +104,30 @@ steps:
       - cp /tmp/unifi-emu/scripts/devices.fleet.json .woodpecker/fixtures/catalog-acceptance/devices.fleet.json
       - docker build --network=none --tag local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55 .woodpecker/fixtures/catalog-acceptance
       - docker pull docker.io/testcontainers/ryuk@sha256:31b31269d06603366cbfd0284708dcd2e281e8a4188e53fce3d3304439d0df3d
-      - CATALOG_CONTROLLER_IMAGE=ghcr.io/jamesbraid/unifi-network@sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4 CATALOG_SYNTHETIC_IMAGE=local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55 CATALOG_RYUK_IMAGE=docker.io/testcontainers/ryuk@sha256:31b31269d06603366cbfd0284708dcd2e281e8a4188e53fce3d3304439d0df3d CATALOG_HERDER_BIN=/tmp/unifi-emu-herder TERRAFORM_BIN=/tmp/terraform CATALOG_ACCEPTANCE_WAVES=1,2,3,4,5 CATALOG_PRINT_FAILURE_DIAGNOSTICS=true CATALOG_ACCEPTANCE_OUTPUT=/tmp/catalog-controller-differential.json CATALOG_REQUIRE_COMPLETE=false bash .woodpecker/scripts/catalog-controller-differential.sh
-      # Six gaps, not eight. firewall_policy and site_to_site_vpn stopped being
-      # gaps when they gained their own acceptance files. This assertion and the
-      # two below encode a fact that has moved twice today and could not fail
-      # while it was wrong: nothing has reached this line since the differential
-      # started exiting non-zero above it, so lines 79 to 98 are unexercised
-      # rather than merely stale. They should derive from the policy and the
-      # receipt instead of carrying literals.
-      - jq -e '.result == "blocked_evidence" and (.released.result == "pass" or .released.result == "accepted_limitation") and .candidate.result == "pass"' /tmp/catalog-controller-differential.json
+      # -waves IS PASSED EXPLICITLY. The binary's default is 1,2,3,4 and this
+      # campaign runs five, so relying on the default would silently drop a wave
+      # -- the shell had the same split and the workflow set it there too.
+      # CATALOG_REQUIRE_COMPLETE has no flag: it was false here, which selected
+      # the shell's default of not additionally requiring result == "pass", and
+      # that is what this binary does without being asked.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-controller-differential -controller-image ghcr.io/jamesbraid/unifi-network@sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4 -synthetic-image local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55 -ryuk-image docker.io/testcontainers/ryuk@sha256:31b31269d06603366cbfd0284708dcd2e281e8a4188e53fce3d3304439d0df3d -herder /tmp/unifi-emu-herder -terraform /tmp/terraform -waves 1,2,3,4,5 -print-failure-diagnostics -output /tmp/catalog-controller-differential.json -tree-state "$(go run ./cmd/tree-state -what 'the controller differential receipt')"
+      # THE .result CONJUNCT IS GONE FROM THIS LINE, and its removal is the last
+      # of task 160's doors. It read `.result == "blocked_evidence"`, which is
+      # the campaign's state today and not a property of a correct run: the
+      # moment the evidence gaps close the producer emits "pass" and this line
+      # would have turned red on the success it exists to wait for. The rule it
+      # was reaching for is that the result must FOLLOW from the gap count, and
+      # that rule now has one home -- catalogparity.ControllerResultForGaps --
+      # which receipt-gate applies two lines down.
+      #
+      # The two suite results stay, because they are about this run rather than
+      # about the campaign: the released side may pass or carry an accepted
+      # limitation, the candidate side may only pass.
+      - jq -e '(.released.result == "pass" or .released.result == "accepted_limitation") and .candidate.result == "pass"' /tmp/catalog-controller-differential.json
       # The gap count is a CEILING here, and deliberately absolute rather than
-      # relational. The followup script two steps down asserts that the plan and
-      # the campaign policy agree; that is blind to both of them growing
-      # together, and this is the only thing that catches it. Measured:
+      # relational. The followup step below asserts that the plan and the
+      # campaign policy agree; that is blind to both of them growing together,
+      # and this is the only thing that catches it. Measured:
       #
       #   plan=7 policy=7   relational PASSES, this FAILS
       #   plan=5 policy=5   relational passes, this passes
@@ -138,7 +153,16 @@ steps:
       # whether the plan lists any surfaces at all.
       - go run ./cmd/receipt-gate -gate catalog-controller-differential -receipt /tmp/catalog-controller-differential.json
       - jq '.' /tmp/catalog-controller-differential.json
-      - if bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq diagnostic_complete; then exit 0; fi; bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq full
+      # ONE INVOCATION, WHERE THE SHELL NEEDED TWO. The script printed a word and
+      # said nothing on a rejection -- one jq -e of fourteen conjuncts, exit 1,
+      # no output -- so this line ran it once grepping for diagnostic_complete
+      # and again for full, and an operator who failed it learned only that one
+      # of fourteen was false. The binary prints the word on stdout and names
+      # every failed condition on stderr.
+      #
+      # It takes no -tree-state because it produces no evidence: it classifies a
+      # receipt that already exists.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-controller-differential -followup /tmp/catalog-controller-differential.json
       # EVERY COMMAND HERE RUNS UNDER THE IMAGE'S /bin/sh, NOT BASH. A bashism
       # fails at its first word, and since these are `&&` chains the rest of the
       # line never runs, so the file it was going to write is simply absent.

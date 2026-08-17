@@ -21,34 +21,31 @@ The missing-signal list drives the controller campaign. A source-identical file
 or an existing acceptance test does not satisfy adapter parity, admission,
 contract parity, or `release_ready`.
 
-`catalog-build-schema.sh` builds the released source and candidate twice, then
+`cmd/catalog-build-schema` builds the released source and candidate twice, then
 drives both binaries through Terraform and OpenTofu development overrides. It
 requires the pinned Linux toolchain and published release binary for a passing
-promotion receipt. A developer can set `CATALOG_ALLOW_DIAGNOSTIC_TOOLCHAIN=true`
-to inspect another platform or CLI patch level. That receipt is marked
-`diagnostic_pass` and lists every promotion blocker.
+promotion receipt. A run on another platform or CLI patch level still produces
+a receipt, with `result: blocked` and every promotion blocker named.
 
-```sh
-CATALOG_ALLOW_DIAGNOSTIC_TOOLCHAIN=true \
-CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json \
-TERRAFORM_BIN=/path/to/terraform \
-TOFU_BIN=/path/to/tofu \
-bash .woodpecker/scripts/catalog-build-schema.sh
-```
+The workflow step is the authority on how it is invoked, for the same reason
+the inventory gate's is: an invocation written here is a second home that
+cannot notice when it goes stale. Pass the verified v0.101.2 binary through
+`-released-provider-binary`; without it the released side is a source rebuild,
+which the receipt records as such and which cannot promote.
 
-The gate performs no dependency or VCS fetch. Final evidence must also set
-`CATALOG_RELEASED_PROVIDER_BINARY` to the verified v0.101.2 binary retained in
-the private evidence store.
+The gate performs no dependency or VCS fetch.
 
-`catalog-unit-differential.sh` extracts the exact v0.101.2 source tree and runs
+`cmd/catalog-unit-differential` extracts the exact v0.101.2 source tree and runs
 the complete released and candidate Go suites. `TF_ACC` is removed so this
 layer covers unit and in-process HTTP-boundary tests without a controller. The
 runner disables module, checksum-database, toolchain, and VCS acquisition,
 keeps raw JSON logs outside the repository, and emits only counts plus hashes
-of the raw logs and normalized package/test outcomes. As with the build/schema
-gate, a non-baseline local toolchain can only produce `diagnostic_pass`.
+of the raw logs and normalized package/test outcomes. A non-baseline local
+toolchain stops it, unless `-allow-diagnostic-toolchain` is passed, which
+records `diagnostic_pass` instead. The build/schema gate differs here: it has no
+such flag and always writes its receipt, with the blockers named.
 
-`catalog-controller-differential.sh` plans the Wave 1-5 acceptance corpus and
+`cmd/catalog-controller-differential` plans the Wave 1-5 acceptance corpus and
 runs those test names against the released and candidate source trees. Both
 attempts use the same digest-pinned, locally cached controller and the same
 source-pinned synthetic fleet and Ryuk helper. Controller registry pulls are
@@ -63,8 +60,9 @@ requested port override in the controller.
 That proves the action protocol, not electrical PoE behavior. A passing
 differential can still report `blocked_evidence`: missing acceptance, import,
 list, or hardware signals remain blockers until a scenario or a pragmatic
-fleet reference covers them. Only `CATALOG_REQUIRE_COMPLETE=true` turns the
-diagnostic into a promotion gate.
+fleet reference covers them. The differential itself does not turn that into a
+failure; `receipt-gate` and the release path decide what an outstanding gap
+means.
 
 The private carrier reconciles non-lifecycle Wave 1-4 gaps with
 `cmd/catalog-pragmatic-evidence`. The reconciler requires a value-free fleet

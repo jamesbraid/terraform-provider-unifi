@@ -38,6 +38,11 @@ import (
 // careless port turns into a pass.
 
 // Finding is one failed assertion, named by the check that produced it.
+//
+// The names here are ASSERTION names -- "schema-parity/terraform" is the parity
+// comparison for one CLI, not the command. The command that runs them is
+// cmd/catalog-build-schema; it was called schema-parity until it grew into the
+// whole gate. The assertion keeps the name because that is what it is.
 type Finding struct {
 	Check   string
 	Detail  string

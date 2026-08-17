@@ -74,7 +74,7 @@ type attrFact struct {
 // freshly built binary.
 //
 // The real gate is the dual-CLI installed-binary comparison in
-// catalog-build-schema.sh, which runs cmd/schema-parity against both CLIs.
+// cmd/catalog-build-schema, which drives both CLIs.
 // It also named m1-dns-compiler.sh until that proof was deleted, having
 // finished its job -- nothing outside its own workflow ever read its receipt.
 // This test fails fast at authoring time so that gate is not where a

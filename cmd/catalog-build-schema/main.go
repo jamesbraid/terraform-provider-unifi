@@ -1,7 +1,14 @@
-// Command schema-parity decides whether the candidate provider's served schema
-// may differ from the released one, and reports exactly how.
+// Command catalog-build-schema decides whether the candidate provider's served
+// schema may differ from the released one, and reports exactly how.
 //
-// It replaces the schema half of .woodpecker/scripts/catalog-build-schema.sh.
+// It replaces .woodpecker/scripts/catalog-build-schema.sh -- all of it, not the
+// schema half. It was called schema-parity while it was only the parity
+// assertion and kept that name as it grew into the whole gate, which cost a map
+// of scripts to binaries reading this script as having no replacement and
+// nearly cost a second binary being written for a job this one already did. A
+// thing existing under a name nobody would search for is indistinguishable from
+// a thing that does not exist.
+//
 // That script asserted parity with `cmp`, which reports the first differing
 // byte and stops: it could say "differ: char 139633, line 1" and nothing about
 // which attribute, how many, or whether anyone intended it.
@@ -67,21 +74,6 @@ type options struct {
 	// wants.
 	evidenceDirectory string
 
-	// Compare-only inputs. When both are set, main does NO orchestration: no
-	// tag extraction, no provider build, no CLI invocation. It reads two
-	// canonical projections somebody else produced and answers the parity
-	// question about them.
-	//
-	// That mode exists so the shell gate can keep the orchestration it already
-	// does. Invoking the full binary from inside that script would build both
-	// providers a second time and dump both CLIs again, and the script's own
-	// determinism, cross-CLI and inverted-control assertions would then be
-	// judging artifacts this binary never saw. Two copies of one fact, on two
-	// sets of bytes, is the defect this package was written to remove.
-	releasedCanonical  string
-	candidateCanonical string
-	cli                string
-
 	// treeStateRaw is the JSON from evidence_tree_json, and it has no default.
 	//
 	// This binary writes a receipt naming candidate_commit, taken from
@@ -89,7 +81,7 @@ type options struct {
 	// bytes that were measured, so the receipt would be honest about what it
 	// saw and wrong about what exists -- and it heals silently once the files
 	// land, leaving no trace of the window where it was wrong. The measurement
-	// stays in tree-state.sh; this side is handed the answer and refuses
+	// stays in cmd/tree-state; this side is handed the answer and refuses
 	// without one.
 	treeStateRaw string
 }
@@ -107,11 +99,6 @@ func main() {
 	flag.StringVar(&o.output, "output", "", "write the receipt here (default: stdout)")
 	flag.IntVar(&o.wantActions, "want-actions", 1, "action schemas terraform must report")
 	flag.IntVar(&o.wantLists, "want-lists", 25, "list resource schemas terraform must report")
-	flag.StringVar(&o.releasedCanonical, "released-canonical", "",
-		"compare-only: an already canonicalised released projection")
-	flag.StringVar(&o.candidateCanonical, "candidate-canonical", "",
-		"compare-only: an already canonicalised candidate projection")
-	flag.StringVar(&o.cli, "cli", "terraform", "compare-only: which CLI produced the two projections")
 	flag.StringVar(&o.treeStateRaw, "tree-state", "",
 		"JSON from evidence_tree_json describing the working tree; required, no default")
 	flag.StringVar(&o.baselinePath, "baseline-manifest", "build/m0/provider-baseline.json",
@@ -125,7 +112,7 @@ func main() {
 	flag.Parse()
 
 	if err := run(o); err != nil {
-		fmt.Fprintf(os.Stderr, "schema-parity: %v\n", err)
+		fmt.Fprintf(os.Stderr, "catalog-build-schema: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -223,17 +210,13 @@ type projection struct {
 }
 
 func run(o options) error {
-	// Parsed before anything else in both modes. tree-state.sh already refuses a
-	// dirty tree before this binary is reached, so this is the seam rather than
-	// a second measurement: a call site that forgot the flag fails here instead
-	// of producing a receipt nobody can check.
+	// Parsed before anything else. cmd/tree-state already refuses a dirty tree
+	// before this binary is reached, so this is the seam rather than a second
+	// measurement: a call site that forgot the flag fails here instead of
+	// producing a receipt nobody can check.
 	treeState, err := catalogparity.ParseTreeState(o.treeStateRaw)
 	if err != nil {
 		return err
-	}
-
-	if o.releasedCanonical != "" || o.candidateCanonical != "" {
-		return compareOnly(o)
 	}
 
 	repo, err := filepath.Abs(o.repo)
@@ -243,7 +226,7 @@ func run(o options) error {
 
 	work := o.workRoot
 	if work == "" {
-		work, err = os.MkdirTemp("", "schema-parity-")
+		work, err = os.MkdirTemp("", "catalog-build-schema-")
 		if err != nil {
 			return err
 		}
@@ -368,12 +351,48 @@ func run(o options) error {
 	// group, and those booleans have to be the outcome of the assertion rather
 	// than a value written beside it. The shell wrote all three as literals in
 	// its jq template, so the receipt asserted them however the run had gone.
-	var parity, cross, inverted []schemaparity.Finding
+	//
+	// frozen is separate from parity for that reason and not for tidiness:
+	// parity's outcome IS release_to_candidate_within_cli in the receipt, and a
+	// candidate that disagreed with the committed contract would set a field
+	// about the released-to-candidate comparison instead of naming its own.
+	var parity, frozen, cross, inverted []schemaparity.Finding
 
 	// PARITY -- the only assertion that loses byte-identity.
 	for _, cliName := range []string{"terraform", "tofu"} {
 		parity = append(parity, schemaparity.CheckParity(cliName,
 			proj["released"][cliName].canonical, proj["candidate"][cliName].canonical, ledger)...)
+	}
+
+	// THE FROZEN CONTRACT, WHICH THIS BINARY DID NOT COMPARE AGAINST AT ALL
+	// UNTIL THE CUTOVER FOUND IT MISSING. The shell made four compare-only
+	// calls: two are the loop above, and two put the candidate against the
+	// COMMITTED projections in provider-contracts/schema. Porting picked up the
+	// first pair and left the second, and nothing noticed because the shell was
+	// still running them -- the comparison would have gone silently missing at
+	// the moment the workflow stopped invoking the script.
+	//
+	// It is not implied by the loop above. That one compares the candidate to
+	// the released tag REBUILT, so the two together say the rebuild and the
+	// committed contract still agree about the tag. Dropping this half would
+	// leave the frozen file with nothing in any run comparing it to anything,
+	// free to drift while every comparison against it kept passing.
+	//
+	// THE PATH IS DERIVED FROM THE PINNED CLI VERSION rather than written out.
+	// The shell hardcoded terraform-1.15.8.json beside a baseline manifest that
+	// pins 1.15.8, so a CLI bump moved one and not the other with nothing
+	// comparing them.
+	for _, c := range []struct{ cli, version string }{
+		{"terraform", baseline.Clients.Terraform.Version},
+		{"tofu", baseline.Clients.OpenTofu.Version},
+	} {
+		contract := filepath.Join(repo, "provider-contracts", "schema", c.cli+"-"+c.version+".json")
+		committed, err := readJSON(contract)
+		if err != nil {
+			return fmt.Errorf("frozen %s contract: %w", c.cli, err)
+		}
+		frozen = append(frozen, schemaparity.CheckParity(c.cli+"-baseline",
+			committed, proj["candidate"][c.cli].canonical, ledger)...)
 	}
 
 	// CROSS-CLI -- byte-identity on the surface both CLIs report.
@@ -388,6 +407,7 @@ func run(o options) error {
 		proj["candidate"]["terraform"].canonical, proj["candidate"]["tofu"].canonical)
 
 	findings = append(findings, parity...)
+	findings = append(findings, frozen...)
 	findings = append(findings, cross...)
 	findings = append(findings, inverted...)
 	findings = append(findings, schemaparity.CheckShape(
@@ -491,7 +511,7 @@ func run(o options) error {
 		}
 		return fmt.Errorf("%d assertion(s) failed", len(findings))
 	}
-	fmt.Fprintf(os.Stderr, "schema-parity: pass. %d declared schema change(s), all observed.\n", len(ledger.Entries))
+	fmt.Fprintf(os.Stderr, "catalog-build-schema: pass. %d declared schema change(s), all observed.\n", len(ledger.Entries))
 	return nil
 }
 
@@ -664,41 +684,6 @@ func cliVersion(bin string) (string, error) {
 		return "", fmt.Errorf("%s reported no terraform_version", bin)
 	}
 	return reported.Version, nil
-}
-
-// compareOnly answers the parity question about two projections that already
-// exist, and asserts nothing else.
-//
-// It deliberately does NOT re-run determinism, cross-CLI or the inverted
-// control. Those are separate claims about artifacts the caller produced and
-// still holds; asserting them here as well would put a second copy of each in a
-// second place, judging a second set of bytes.
-func compareOnly(o options) error {
-	if o.releasedCanonical == "" || o.candidateCanonical == "" {
-		return fmt.Errorf("compare-only needs both -released-canonical and -candidate-canonical")
-	}
-	ledger, err := schemaparity.LoadLedger(o.ledgerPath)
-	if err != nil {
-		return err
-	}
-	released, err := readJSON(o.releasedCanonical)
-	if err != nil {
-		return err
-	}
-	candidate, err := readJSON(o.candidateCanonical)
-	if err != nil {
-		return err
-	}
-	findings := schemaparity.CheckParity(o.cli, released, candidate, ledger)
-	if len(findings) > 0 {
-		for _, f := range findings {
-			fmt.Fprintln(os.Stderr, f.String())
-		}
-		return fmt.Errorf("%d assertion(s) failed", len(findings))
-	}
-	fmt.Fprintf(os.Stderr, "schema-parity/%s: pass. %d declared schema change(s), all observed.\n",
-		o.cli, len(ledger.Entries))
-	return nil
 }
 
 func readJSON(path string) (any, error) {

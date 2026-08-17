@@ -90,6 +90,11 @@ func TestCheckUnitDifferentialReceipt(t *testing.T) {
 
 func passingControllerDifferential() ControllerDifferentialReceipt {
 	return ControllerDifferentialReceipt{
+		// The result is set rather than left at the zero value because the gate
+		// now requires it to follow from the gap count. An empty string used to
+		// pass here, which is how a receipt with no result at all would have
+		// reached the release path.
+		Result: "blocked_evidence",
 		Plan: ControllerPlanReceipt{
 			EvidenceGapCount: ControllerGapCeiling,
 			Surfaces:         []ControllerPlanSurface{{Wave: 1}},
@@ -121,8 +126,36 @@ func TestCheckControllerDifferentialReceipt(t *testing.T) {
 	t.Run("a genuinely clean plan is accepted", func(t *testing.T) {
 		receipt := passingControllerDifferential()
 		receipt.Plan.EvidenceGapCount = 0
+		receipt.Result = "pass"
 		if err := CheckControllerDifferentialReceipt(receipt); err != nil {
 			t.Errorf("zero gaps with surfaces present should pass this gate: %v", err)
+		}
+	})
+
+	// THE LAST OF TASK 160'S DOORS, AND IT WAS IN THE WORKFLOW RATHER THAN IN
+	// GO. catalog-controller-differential.yml carried
+	// `jq -e '.result == "blocked_evidence" ...'`, which is unreachable for a
+	// completed campaign; the conjunct moved here, where it is the AGREEMENT
+	// rather than a literal.
+	//
+	// Both directions, because either alone is satisfied by deleting the call.
+	// The accepting direction is the subtest above -- a completed campaign,
+	// which the workflow line rejected.
+	t.Run("a result that does not follow from the gap count", func(t *testing.T) {
+		for _, c := range []struct {
+			name   string
+			result string
+			gaps   int
+		}{
+			{"claims pass with gaps outstanding", "pass", ControllerGapCeiling},
+			{"claims blocked with no gaps", "blocked_evidence", 0},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				receipt := passingControllerDifferential()
+				receipt.Result = c.result
+				receipt.Plan.EvidenceGapCount = c.gaps
+				requireGateFailure(t, CheckControllerDifferentialReceipt(receipt), "evidence gap")
+			})
 		}
 	})
 }
