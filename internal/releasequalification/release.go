@@ -353,6 +353,32 @@ func validateReleaseReadyInput(input ReleaseReadyInput) error {
 // entry is wrong and the gap needs closing, or the policy needs to stop
 // accepting it. The question to answer before adding one is never "does the
 // policy declare this" -- it is "do we ship without this evidence".
+//
+// AND BEFORE WRITING A REASON, READ THE ONE THAT ALREADY EXISTS. Two records of
+// the same fact can already disagree, and copying either into a third place is
+// what performs the comparison nobody ran. That is worse than one fact with
+// several homes: there is no moment where somebody edits two copies and might
+// notice, because the disagreement is already there and silent. The copy is the
+// first thing that would ever have caught it.
+//
+// The example is the entry that was NOT added here. The campaign policy records
+// unifi_power_supervisor's acceptance gap as arising because "its
+// zero_use_endpoint reference to list_resource/unifi_power_supervisor was
+// withdrawn". A second cause was independently reasoned for the same gap -- that
+// the controller has no Device Supervisor attached, so no lifecycle acceptance
+// test can exist. Both are plausible, they are different claims, and nobody
+// noticed they disagreed until one was about to be written HERE as the
+// justification for shipping without that evidence.
+//
+// What was measured is narrower than either. unifi/power_supervisor_resource_test.go
+// carries thirteen test functions and exactly one TestAcc, and that one exercises
+// the LIST surface. The cause is unestablished. An entry stating an unestablished
+// cause reads, for as long as it survives, as a decision somebody made on
+// evidence.
+//
+// This warning lives in one place on purpose. A caution about one fact having
+// several homes should not acquire a second home. If it earns a wider audience,
+// MOVE it rather than copying it.
 var acceptedReleaseBlockers = []catalogparity.EvidenceGap{{
 	SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"},
 	Signal:     "hardware_claim",
