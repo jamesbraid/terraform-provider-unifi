@@ -84,7 +84,7 @@ steps:
       - CATALOG_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json CATALOG_BUILD_SCHEMA_EVIDENCE_DIRECTORY=/tmp/catalog-build-evidence TERRAFORM_BIN=/tmp/terraform TOFU_BIN=/tmp/tofu bash .woodpecker/scripts/catalog-build-schema.sh
       # BACKSTOP -- the schema comparison is five cmp calls inside the script,
       # under set -e, against the released projections and committed contracts.
-      - jq -e '.result == "pass" and .promotion_blockers == [] and .build_network == "none"' /tmp/catalog-build-schema.json
+      - go run ./cmd/receipt-gate -gate catalog-build-schema -receipt /tmp/catalog-build-schema.json
       # Orphaned until now: the self-test existed and no workflow ran it, so it
       # reported to nobody. It needs no binaries and no controller, so it goes
       # straight before the producer it covers.
@@ -93,7 +93,7 @@ steps:
       # BACKSTOP for result and network; the per-suite results are derived from
       # the go test event stream and DO carry information, including the floor
       # that an empty run is not a pass.
-      - jq -e '.result == "pass" and .network == "none" and .promotion_blockers == [] and .released.result == "pass" and .candidate.result == "pass"' /tmp/catalog-unit-differential.json
+      - go run ./cmd/receipt-gate -gate catalog-unit-differential -receipt /tmp/catalog-unit-differential.json
       - jq '.' /tmp/catalog-unit-differential.json
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go -C /tmp/unifi-emu mod download all
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local CGO_ENABLED=0 go -C /tmp/unifi-emu build -trimpath -buildvcs=false -o /tmp/unifi-emu-herder ./cmd/unifi-emu-herder
@@ -123,20 +123,22 @@ steps:
       # coverage turned the gate red. A gate that rejects improvement is a
       # defect; a gate that pins an upper bound is a third opinion. Lower the
       # ceiling when coverage improves. Raising it is a release decision.
-      # NO SHELL VARIABLE HERE, DELIBERATELY. Woodpecker substitutes a
-      # dollar-brace name in a command with its OWN pipeline variable before the
-      # shell runs, and an undefined name becomes the empty string. The previous
-      # form assigned gaps from jq and then compared it; /bin/sh received
-      # `test "" -le 6` and died "Illegal number:" on pipeline 228, AFTER the
-      # campaign had passed on its merits. jq does the comparison and the
-      # reporting, so there is no name left for Woodpecker to eat.
+      # NO SHELL VARIABLE HERE, DELIBERATELY, and now no shell expression at
+      # all. Woodpecker substitutes a dollar-brace name in a command with its
+      # OWN pipeline variable before the shell runs, and an undefined name
+      # becomes the empty string. An earlier form assigned gaps from jq and
+      # compared it; /bin/sh received `test "" -le 6` and died "Illegal number:"
+      # on pipeline 228, AFTER the campaign had passed on its merits. A command
+      # that takes only literal arguments leaves nothing for Woodpecker to eat.
       #
-      # THE TYPE GUARD IS LOAD-BEARING. `null <= 6` is TRUE in jq, so the
-      # obvious filter passes when the field is ABSENT -- green exactly when the
-      # receipt stops carrying the number the gate exists to bound. Measured:
-      # 6 passes, 7 refuses, a missing field refuses, a string refuses, and only
-      # the last two need the type check.
-      - jq -e '(.plan.evidence_gap_count | type) == "number" and .plan.evidence_gap_count <= 6' /tmp/catalog-controller-differential.json >/dev/null || { jq -r '"evidence_gap_count is \(.plan.evidence_gap_count | tojson), not a number at or below the ceiling of 6"' /tmp/catalog-controller-differential.json >&2; exit 1; }
+      # THE CEILING AND ITS EDGE CASES LIVE IN internal/catalogparity NOW, where
+      # each one is watched failing. The jq form needed an explicit type test
+      # because `null <= 6` is TRUE in jq, so it passed when the field was
+      # absent -- green exactly when the receipt stopped carrying the number the
+      # gate exists to bound. Go has the opposite trap, absent decoding to zero,
+      # and the check tells zero-because-clean from zero-because-missing by
+      # whether the plan lists any surfaces at all.
+      - go run ./cmd/receipt-gate -gate catalog-controller-differential -receipt /tmp/catalog-controller-differential.json
       - jq '.' /tmp/catalog-controller-differential.json
       - if bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq diagnostic_complete; then exit 0; fi; bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq full
       # EVERY COMMAND HERE RUNS UNDER THE IMAGE'S /bin/sh, NOT BASH. A bashism
