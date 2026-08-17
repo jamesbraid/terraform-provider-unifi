@@ -254,6 +254,7 @@ var knownUnreachableChecks = map[string]string{
 		"the shell's output; three differences, two declared and one a defect (task 158). " +
 		"Wires in at the YAML cutover; task 148.",
 
+	"command export-gate": "answers what a publication would ship, and is deliberately not wired. Its denied_paths are a FIRST-PASS declaration of the publication boundary and it reports 376 findings on this tree today -- every one a file that genuinely exists and would genuinely ship, not a defect. Wiring it before that boundary is agreed would make every push red for a judgement nobody has made yet, and a gate people learn to ignore is worse than one they have not switched on. Task 130.",
 	"command catalog-release-ready": "the terminal release gate. No pipeline invokes it and " +
 		"three of its eight inputs have no producer. Task 106.",
 	"command m3-dns-qualification": "the Go port of m3-dns-qualification.sh, landed BESIDE the " +

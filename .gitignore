@@ -120,6 +120,7 @@ build/**/*-ci.json
 /catalog-parity
 /catalog-pragmatic-evidence
 /catalog-release-ready
+/export-gate
 /go-unifi-pin
 /go-unifi-proxy
 /list-policy-scaffold
