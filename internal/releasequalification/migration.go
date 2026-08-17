@@ -286,10 +286,14 @@ func validateMigrationBuild(input MigrationRecoveryInput) error {
 func validateMigrationController(input MigrationRecoveryInput) error {
 	c := input.Controller
 	if c.FormatVersion != 1 || c.Gate != "catalog controller differential" ||
-		c.Result != "blocked_evidence" || c.CandidateCommit != input.Admission.SourceCommit ||
+		c.CandidateCommit != input.Admission.SourceCommit ||
 		c.ReleasedCommit != input.Admission.ReleasedCommit || c.Plan.SurfaceCount != 67 ||
 		len(c.Plan.Surfaces) != 67 || len(c.Plan.TestNames) == 0 {
 		return fmt.Errorf("controller differential identity is invalid")
+	}
+	// Agreement with the gap count, not the literal "blocked_evidence".
+	if err := catalogparity.RequireControllerResultAgreesWithGaps(c); err != nil {
+		return err
 	}
 	admitted := admittedSurfaceSet(input.Admission)
 	planned := make(map[catalogparity.SurfaceKey]struct{}, len(c.Plan.Surfaces))

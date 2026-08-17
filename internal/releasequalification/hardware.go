@@ -17,9 +17,15 @@ func BuildHardwareDispositionReceipt(
 		return HardwareDispositionReceipt{}, fmt.Errorf("controller receipt SHA-256 is invalid")
 	}
 	if controller.FormatVersion != 1 || controller.Gate != "catalog controller differential" ||
-		controller.Result != "blocked_evidence" || controller.Plan.SurfaceCount != 67 ||
-		len(controller.Plan.Surfaces) != 67 {
+		controller.Plan.SurfaceCount != 67 || len(controller.Plan.Surfaces) != 67 {
 		return HardwareDispositionReceipt{}, fmt.Errorf("controller receipt is not a complete catalog differential")
+	}
+	// The result must AGREE WITH THE GAP COUNT rather than be the literal
+	// "blocked_evidence". See catalogparity.ControllerResultForGaps: six sites
+	// required that string outright, so the release path could not accept a
+	// completed campaign.
+	if err := catalogparity.RequireControllerResultAgreesWithGaps(controller); err != nil {
+		return HardwareDispositionReceipt{}, err
 	}
 	want := catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"}
 	var port *catalogparity.ControllerPlanSurface

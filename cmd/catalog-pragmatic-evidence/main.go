@@ -148,8 +148,24 @@ func validateControllerReceipt(path string, policy catalogparity.CampaignPolicy)
 	if receipt.FormatVersion != 1 || receipt.Gate != "catalog controller differential" {
 		return "", fmt.Errorf("identity is invalid")
 	}
-	if receipt.Result != "blocked_evidence" || receipt.Plan.EvidenceGapCount != policy.EvidenceGapCount {
-		return "", fmt.Errorf("catalog result is %q with %d gaps", receipt.Result, receipt.Plan.EvidenceGapCount)
+	// TWO SEPARATE QUESTIONS, kept separate. Whether the receipt's result
+	// follows from its own gap count is internal consistency; whether that gap
+	// count is the one the campaign declared is a comparison against the
+	// policy. Merged, a receipt with the wrong number of gaps could pass by
+	// agreeing with itself.
+	//
+	// This command decodes into its OWN controllerReceipt rather than
+	// catalogparity.ControllerDifferentialReceipt -- a second declaration of a
+	// shape the repository already types, and task 162's class. Comparing
+	// against ControllerResultForGaps keeps the RULE in one place even while
+	// the type is in two.
+	if want := catalogparity.ControllerResultForGaps(receipt.Plan.EvidenceGapCount); receipt.Result != want {
+		return "", fmt.Errorf("catalog result is %q with %d evidence gap(s), want %q",
+			receipt.Result, receipt.Plan.EvidenceGapCount, want)
+	}
+	if receipt.Plan.EvidenceGapCount != policy.EvidenceGapCount {
+		return "", fmt.Errorf("catalog reports %d evidence gap(s); the campaign declares %d",
+			receipt.Plan.EvidenceGapCount, policy.EvidenceGapCount)
 	}
 	releasedAllowedFailures := policy.ReleasedAllowedFailures
 	releasedAllowedMissing := policy.ReleasedAllowedMissing
