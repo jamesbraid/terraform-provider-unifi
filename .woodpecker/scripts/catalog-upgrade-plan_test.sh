@@ -101,6 +101,12 @@ undeclared=${work}/undeclared
 mkdir -p "${undeclared}"
 echo '# fixture' >"${undeclared}/main.tf"
 
+# The suite must not need a TAG. A CI clone carries none, and the workflow
+# fetches v0.101.2 fourteen lines AFTER this runs, so every behavioural case
+# died at ref resolution -- which is what "needs neither controller nor
+# network" was supposed to mean.
+self_test_ref=$(git -C "${repository_root}" rev-parse HEAD)
+
 failures=0
 run_case() {
     local name=$1 want_exit=$2 want_text=$3
@@ -122,6 +128,7 @@ run_case() {
     # throwaway repository, which is where that belongs.
     env PATH="${stub_dir}:${PATH}" \
         EVIDENCE_ALLOW_DIRTY_TREE=1 \
+        UPGRADE_RELEASED_REF="${self_test_ref}" \
         STUB_STATE_DIR="${state_dir}" \
         TERRAFORM_BIN="${stub_dir}/stub-cli" \
         UPGRADE_FIXTURE="${fixture}" \
@@ -165,7 +172,7 @@ run_case subject_error 1 "could not plan state written by" \
 # 4. Silence must not read as success.
 run_case apply_fails 1 "could not apply the fixture" STUB_APPLY_EXIT=3
 run_case no_state 1 "wrote no state" STUB_APPLY_WRITES_STATE=0
-run_case old_build_fails 1 "released" STUB_GO_FAIL_IN=released
+run_case old_build_fails 1 "released .*provider did not build" STUB_GO_FAIL_IN=released
 
 # 5. The receipt must carry what the CLI called itself, not the variable name.
 if [ -f "${work}/pass.json" ]; then
