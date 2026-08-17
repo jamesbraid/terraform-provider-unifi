@@ -17,6 +17,17 @@ import (
 type BaselineManifest struct {
 	Provider struct {
 		Platform string `json:"platform"`
+		// ReleasedCommit is the manifest's claim about which commit the
+		// released tag names, and it is the EXPECTATION half of the provenance
+		// check -- the run resolves the tag itself and the two must agree.
+		// Taking the commit from git alone would make the released side of
+		// every comparison below an unidentified tree.
+		ReleasedCommit string `json:"released_commit"`
+		// ReleaseBinarySHA256 identifies the published archive. A run that
+		// injects a released binary must prove it is that one; a run that
+		// rebuilds from source is a different authority and is recorded as
+		// such rather than passed off as the same thing.
+		ReleaseBinarySHA256 string `json:"release_binary_sha256"`
 	} `json:"provider"`
 	Toolchain struct {
 		GoVersion string `json:"go_version"`

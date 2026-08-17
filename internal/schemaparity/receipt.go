@@ -43,6 +43,18 @@ type SchemaRun struct {
 
 	ReleaseToCandidateWithinCLI bool
 
+	// CleanBuilds is how many times each side was actually built.
+	//
+	// CARRIED, NOT A CONSTANT, and the first version of this file got that
+	// wrong: it wrote {released: 2, candidate: 2} as a literal under a comment
+	// claiming the number was "recorded rather than assumed". It was assumed.
+	// The determinism assertion is only worth anything if a side was built more
+	// than once, and a receipt that always says 2 cannot report the run where
+	// somebody made it 1. That is the same defect as the projection literals in
+	// the jq template, reproduced in Go by someone who had just finished
+	// describing it.
+	CleanBuilds catalogparity.BuildCounts
+
 	TreeState         *catalogparity.TreeState
 	PromotionBlockers []string
 }
@@ -90,10 +102,7 @@ func BuildSchemaReceipt(m SchemaRun) catalogparity.BuildSchemaReceipt {
 		Platform:          m.Platform,
 		GoVersion:         m.GoVersion,
 		BuildNetwork:      "none",
-		// Two builds of each side, which is what makes the determinism
-		// assertion above meaningful. Recorded rather than assumed so a reader
-		// can see the claim rested on a repeat rather than one build.
-		CleanBuilds: catalogparity.BuildCounts{Released: 2, Candidate: 2},
+		CleanBuilds:       m.CleanBuilds,
 		ProviderBinaries: catalogparity.ProviderBinaryEvidence{
 			ReleasedSourceRebuildSHA256: m.ReleasedSourceRebuildSHA256,
 			ReleasedAuthority:           m.ReleasedAuthority,
