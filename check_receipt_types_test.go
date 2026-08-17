@@ -252,16 +252,10 @@ func TestEveryStrictConsumerIsPaired(t *testing.T) {
 // decided to carry and a defect nobody has noticed, and the exact key set is
 // recorded so the entry cannot quietly come to cover a second one.
 var knownReceiptMismatches = map[string]struct{ keys, why string }{
-	"dependency-publishability": {
-		keys: "tree",
-		why: "#158. The script writes `tree`; every other receipt in the tree calls the same " +
-			"thing `tree_state`, and the odd name is the tell that the field was added without " +
-			"anyone opening the type. Measured live on BOTH main and go/catalog-build-schema " +
-			"even though the task reads completed -- proven and recorded is not the same as " +
-			"fixed. The consumer, catalog-release-ready, is wired to no workflow, which is the " +
-			"only reason this has cost nothing yet. Whether to add the field or wire the " +
-			"consumer is the same open question as whether that binary should exist.",
-	},
+	// #158's entry was here and is gone. This check reported it stale the
+	// moment the fix landed -- `recorded: tree, found: (nothing)` -- which is
+	// the ledger working: an entry that has stopped describing a defect asks
+	// to be deleted rather than sitting as a live-looking excuse.
 	"controller-differential plan": {
 		keys: "catalog_test_count,diagnostic_selection",
 		why: "#159. Added to the plan only when CATALOG_ACCEPTANCE_TEST_NAMES is set -- the mode " +
