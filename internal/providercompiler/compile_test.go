@@ -13,6 +13,22 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
 
+// PROVEN TO FAIL, recorded here rather than only in the commit that proved it.
+// The exactly-once accounting catches a field ADDED to the SDK and a field
+// REMOVED from it -- both confirmed by mutation -- because either leaves a field
+// unclassified or a policy entry stale. (11bd12cb)
+//
+// THE LIMIT, from the same commit and worth as much as the proof: a RETYPED
+// field is still present and still classified, so it passes. The source digest
+// does not reach it either. That hole was closed separately by refusing an
+// override that changes cardinality, after a field declared as a list over a
+// field the SDK observes as a scalar compiled clean.
+//
+// WHAT THESE TESTS DO NOT COVER: 44 of the 47 are fixture-driven, and only
+// dns_record is compiled from a real committed policy. The other 61 surfaces are
+// compiled solely by `go generate ./...` under CI's git-diff gate -- and that
+// job's paths filter does not fire on a JSON-only policy edit.
+
 const testSpecificationDigest = "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad"
 
 func TestCompileResolvesCompletePolicy(t *testing.T) {

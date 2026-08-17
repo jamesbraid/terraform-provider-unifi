@@ -10,6 +10,30 @@
 # controller, no network and no provider build. What the stubs cannot prove is
 # that the REAL tofu returns the exit codes this assumes; that needs the
 # controller and is the one proof this file does not carry.
+#
+# WHAT HAS BEEN PROVEN AGAINST A REAL CONTROLLER, recorded here rather than only
+# in the commits that measured it:
+#
+#   - A deliberately mis-declared fixture made the script exit 2 while `go run`
+#     reported 1. That is why the workflow builds the runner and executes the
+#     binary rather than using `go run`: under it a void fixture and an upgrade
+#     regression collapse into one exit code, which is the coin flip the control
+#     plan exists to prevent.
+#   - The regression fixture measured control 2 (expected 2) and subject 0, so
+#     the released provider genuinely does NOT settle that configuration and the
+#     candidate does. A control of 0 would mean the fixture had stopped
+#     demonstrating the defect. (bf59ccfd)
+#   - EXPECT_OLD_PLAN has no default, and a fixture declaring nothing is refused,
+#     because defaulting either way rebuilds the check that cannot fail one layer
+#     up. (cdf7cc5e)
+#
+# THREE KNOWN HOLES IN THIS FILE, stated because a proof that hides its scope is
+# worth less than one that states it. The receipt assertions in the pass,
+# published_binary and source-build cases sit inside `if [ -f ... ]` with no else
+# branch, so if the case that produces the receipt failed, four assertions vanish
+# silently rather than failing. run_case never asserts that a receipt was written
+# at all. And the old_build_fails case greps for the bare string "released",
+# which at exit 1 is also emitted by three other branches.
 set -euo pipefail
 
 repository_root=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)
@@ -29,10 +53,50 @@ mkdir -p "${stub_dir}"
 # The Go stub writes a file where a binary was asked for, unless told to fail
 # for a particular tree. Which tree it is building is decided by the working
 # directory, because that is what the script varies.
+#
+# A STUB THAT SUCCEEDS PRODUCING NOTHING IS A CHECK THAT CANNOT FAIL WEARING A
+# STUB'S CLOTHES. This used to end `if [ "$1" != "build" ]; then exit 0; fi`,
+# and a stub named `go` is on PATH for every subcommand, not just the one it
+# implements -- so it answered success, silently, to questions it had never been
+# taught.
+#
+# It cost twelve cases and none of them named the cause.
+# catalog-upgrade-plan.sh takes its tree state from `go run ./cmd/tree-state`,
+# the stub swallowed the run and printed nothing, and `jq --argjson` reported
+# invalid JSON -- naming the consumer, three steps from the stub that emptied
+# the variable.
+#
+# `run` ANSWERS WITH A FIXED VALUE RATHER THAN THE REAL TOOLCHAIN. This suite
+# tests upgrade-plan's logic, not tree-state's, so a well-formed constant is the
+# right fidelity. The commit is deliberately forty zeros, so nothing downstream
+# can mistake it for a tree that existed.
+#
+# Passing `run` through to the real toolchain also works and also passes; it was
+# tried and replaced. It recompiles cmd/tree-state once per case, which is work
+# this suite has no reason to do. No wall-clock figure is quoted for that,
+# because two runs of THIS file on a shared machine measured 6.4s and 16.8s --
+# the variance is larger than the difference, and an earlier draft of this
+# comment cited a three-fold speedup that the second run refuted.
+#
+# ANY OTHER SUBCOMMAND IS A HARD ERROR, which is the half that stops this
+# recurring. Answering `run` alone would fix the instance and leave the class:
+# the next `go vet`, `go list` or `go mod` added to the script would be
+# swallowed exactly as `run` was.
 cat >"${stub_dir}/go" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-if [ "${1:-}" != "build" ]; then exit 0; fi
+case "${1:-}" in
+build) ;;
+run)
+    printf '{"status":"clean","commit":"%s","dirty_paths":[]}\n' 0000000000000000000000000000000000000000
+    exit 0
+    ;;
+*)
+    echo "stub go: no behaviour defined for \`go ${1:-}\`. Teach it one here rather" >&2
+    echo "  than letting it succeed silently -- that is what cost twelve cases." >&2
+    exit 1
+    ;;
+esac
 destination=""
 while [ "$#" -gt 0 ]; do
     if [ "$1" = "-o" ]; then destination=$2; shift 2; continue; fi

@@ -12,6 +12,27 @@ import (
 	"testing"
 )
 
+// PROVEN TO FAIL. Recorded here rather than only in the commit that proved it,
+// so a reader with a checkout can tell these cases from a table nobody has ever
+// seen go red.
+//
+// Four mutations of the declared-missing machinery: a declared name that DOES
+// run on the released tree, a candidate-only test left undeclared,
+// shared_scenario_exceptions emptied -- which proves the port-action exception
+// is doing work rather than merely being written down -- and an inventory with
+// its added scenarios flattened. (cf32d48d)
+//
+// The shared-scenario owner guard is proven separately and deliberately, in
+// shared_scenario_test.go, because building the plan from the policy and then
+// checking it agrees is agreement by construction. Those mutations hold one
+// side fixed while moving the other. (3da49bdc)
+//
+// RETRODICTION, on a defect this gate had already shipped: the coverage counts
+// were pinned by hand, acceptance among them at 35, so adding an acceptance test
+// to any surface made the release gate refuse the tree -- a number that should
+// rise, wired as a condition for shipping. It survived because a stale inventory
+// digest failed first and stopped the gate before it was reached. (7264bd4c)
+
 func TestBuildAdmissionAdmitsCatalogAndRetainsHardwareReleaseBlocker(t *testing.T) {
 	input := validAdmissionInput(t)
 
@@ -75,21 +96,38 @@ func TestBuildAdmissionIsDeterministic(t *testing.T) {
 	}
 }
 
+// TestBuildAdmissionAcceptsDeclaredControllerTargetSkips proves the escape
+// hatch works: a test the CAMPAIGN agreed to skip may be skipped.
+//
+// It used to take the last three planned names instead of the policy's, which
+// passed because nothing compared the plan's skips to the policy at all. So it
+// asserted that a receipt may grant itself any three skips it likes, and read
+// as evidence that declared skips are handled -- documenting the hole while
+// testing something else.
 func TestBuildAdmissionAcceptsDeclaredControllerTargetSkips(t *testing.T) {
 	input := validAdmissionInput(t)
-	firstAllowed := len(input.Controller.Plan.TestNames) - 3
-	allowed := append([]string(nil), input.Controller.Plan.TestNames[firstAllowed:]...)
+	allowed := append([]string(nil), input.Policy.AllowedSkips...)
+	if len(allowed) == 0 {
+		t.Fatal("the campaign policy declares no allowed_skips, so this test would " +
+			"assert that skipping nothing is accepted, which every other case already covers")
+	}
 	input.Controller.Plan.AllowedSkips = allowed
 	for _, suite := range []*ControllerSuiteReceipt{
 		&input.Controller.Released,
 		&input.Controller.Candidate,
 	} {
-		suite.Passed = append([]string(nil), input.Controller.Plan.TestNames[:firstAllowed]...)
+		var passed []string
+		for _, name := range input.Controller.Plan.TestNames {
+			if !controllerContainsString(allowed, name) {
+				passed = append(passed, name)
+			}
+		}
+		suite.Passed = passed
 		suite.Skipped = append([]string(nil), allowed...)
 	}
 
 	if _, err := BuildAdmission(input); err != nil {
-		t.Fatalf("BuildAdmission() rejected declared target skips: %v", err)
+		t.Fatalf("BuildAdmission() rejected the skips the campaign policy declares: %v", err)
 	}
 }
 
@@ -143,17 +181,58 @@ func TestBuildAdmissionRejectsUnboundOrIncompleteEvidence(t *testing.T) {
 			},
 			want: "candidate controller suite",
 		},
+		// This declares a skip the POLICY permits, so it reaches
+		// validateControllerSuite and tests the rule it is named for. Before
+		// the plan's skips were bound to the policy any planned name would do;
+		// now a name the campaign never agreed to is refused earlier by a
+		// different rule, and a case that trips the wrong check is not evidence
+		// about the one it claims to cover.
 		"declared controller skip was not skipped": {
 			mutate: func(input *AdmissionInput) {
-				input.Controller.Plan.AllowedSkips = []string{input.Controller.Plan.TestNames[0]}
+				input.Controller.Plan.AllowedSkips = []string{input.Policy.AllowedSkips[0]}
 			},
 			want: "released controller suite",
 		},
+		// A name outside the plan is also outside the policy, so this is now
+		// caught by the policy binding rather than by the plan-subset rule in
+		// validateControllerSuite. The rule below still stands for a name the
+		// policy allows that the plan does not carry; this input no longer
+		// reaches it.
 		"allowed skip outside plan": {
 			mutate: func(input *AdmissionInput) {
 				input.Controller.Plan.AllowedSkips = []string{"TestAccNotInPlan"}
 			},
-			want: "released controller suite",
+			want: "controller plan surfaces or counts are incomplete",
+		},
+		// THE HOLE ITSELF: a receipt granting itself an excusal the campaign
+		// never gave. Measured before the binding existed -- 106 of the 156
+		// planned tests declared skipped, 50 actually run, ADMITTED.
+		"receipt declares skips the campaign never agreed to": {
+			mutate: func(input *AdmissionInput) {
+				var extra []string
+				for _, name := range input.Controller.Plan.TestNames {
+					if len(extra) == 40 {
+						break
+					}
+					if !controllerContainsString(extra, name) {
+						extra = append(extra, name)
+					}
+				}
+				input.Controller.Plan.AllowedSkips = extra
+				for _, suite := range []*ControllerSuiteReceipt{
+					&input.Controller.Released, &input.Controller.Candidate,
+				} {
+					var passed []string
+					for _, name := range input.Controller.Plan.TestNames {
+						if !controllerContainsString(extra, name) {
+							passed = append(passed, name)
+						}
+					}
+					suite.Passed = passed
+					suite.Skipped = append([]string(nil), extra...)
+				}
+			},
+			want: "controller plan surfaces or counts are incomplete",
 		},
 		"controller receipt digest": {
 			mutate: func(input *AdmissionInput) {
