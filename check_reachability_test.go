@@ -145,13 +145,27 @@ func TestEveryCheckIsReachable(t *testing.T) {
 	// read. An unreadable directory is a broken walk; an empty one is a
 	// completed migration, and only the first should stop anybody.
 	//
-	// cmd/ is checked the same way and not exempted for being large today. The
-	// reason this needed changing is that a number which happens to be
-	// comfortable is not a property.
+	// BUT cmd/ KEEPS ITS COUNT, and dropping it was a mistake this comment
+	// exists to stop being repeated. The first version of this fix removed all
+	// three floors, reasoning that a number which happens to be comfortable is
+	// not a property. That misses the case os.Stat cannot see: a directory that
+	// resolves, reads without error, and returns three entries where there
+	// should be twenty-six. Pipeline 255 was exactly that -- a workspace holding
+	// another branch's files -- and only a count catches it.
+	//
+	// The shell populations cannot use one because they are being emptied on
+	// purpose. cmd/ can, because the migration only adds to it. So: a count
+	// where the population grows, a walk-succeeded assertion where it shrinks,
+	// each aimed at the failure its own population is able to have.
 	for _, directory := range []string{filepath.Join(".woodpecker", "scripts"), "cmd"} {
 		if _, err := os.Stat(directory); err != nil {
 			t.Fatalf("%s cannot be read, so an empty population would mean nothing: %v", directory, err)
 		}
+	}
+	if len(commands) < 5 {
+		t.Fatalf("found %d command(s) under cmd/, a population that only grows; a truncated "+
+			"read here would leave every verdict below describing a tree that is not this one",
+			len(commands))
 	}
 	if len(sources) == 0 {
 		t.Fatal("no sources were loaded, so every reachability verdict below would be vacuous")
