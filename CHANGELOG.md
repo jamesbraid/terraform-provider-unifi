@@ -116,6 +116,25 @@ All notable changes to this project will be documented in this file.
   Both values must match, so a later drift to a third value fails again rather than living inside a
   permanent exemption.
 
+  **Changing the description was not free.** It regenerated `docs/resources/network.md`, which had to
+  be committed alongside it. A description is documentation and generated documentation is an
+  artifact, so editing prose moves a file that looks unrelated to the change.
+
+- **Six schema changes ship in this release and all six are declared.** Every difference between this
+  provider's schema and v0.101.2's is named in the ledger — surface, attribute, field, and both exact
+  values — and the gate compares the declared set against the observed set **in both directions**, so
+  an undeclared change fails and a declaration for a change that did not happen fails too. The six are
+  `lte_lan`'s description and `ap_group_ids`, `network_id`, `ipv6_static_subnet`,
+  `dhcp_v6_server.start` and `.stop` becoming Computed.
+
+  **Their evidence is not equal, and the ledger says so rather than averaging it.** Four carry a
+  reproduction in which `terraform apply` exits 1 naming the attribute: `ap_group_ids`,
+  `ipv6_static_subnet`, `dhcp_v6_server.start` and `.stop`. **`network_id` does not.** Its case argues
+  from the read and update paths, is labelled inferred, and records the measured fact that no recorded
+  run names it as the subject of an abort — which is a searched-and-found-nothing rather than a
+  did-not-look. If you set `network_id` explicitly nothing changes for you either way; if you omit it,
+  it is the one attribute here whose old behaviour nobody has reproduced failing.
+
 ### 🔧 Maintenance
 
 - **The release gate over the migration manifest was missing six classes of defect that another
