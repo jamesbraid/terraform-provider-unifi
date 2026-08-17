@@ -113,14 +113,24 @@ func TestEveryEvidenceGeneratorIsGuarded(t *testing.T) {
 // unguardedGenerators is a LEDGER, not a blessing: scripts that write evidence
 // and do not establish their tree.
 //
-// Every entry is the same reason, and it is an honest one. These three cannot be
-// executed to verify, because the pipeline that exercises them is down. A call
-// site never seen to run is the shape of change that looks like coverage and is
-// not, so they are left undone and written down rather than done blind.
+// None of these three can be executed to verify, and a call site never seen to
+// run is the shape of change that looks like coverage and is not -- so they are
+// left undone and written down rather than done blind.
+//
+// The reasons used to read "the pipeline that exercises it is down" for all
+// three, which was one wrong word applied three times. "Down" says the pipeline
+// tried and failed, and the correct answer differs per entry: one has no caller
+// at all, one lost its workflow, and one runs correctly and is killed. That
+// matters because it decides what would have to change for the exemption to
+// clear, which is the only thing an exemption is for.
 var unguardedGenerators = map[string]string{
-	"m1-dns-compiler.sh":          "cannot be executed to verify: the pipeline that exercises it is down",
-	"m0-uos-dns-qualification.sh": "cannot be executed to verify: the pipeline that exercises it is down",
-	"m3-dns-qualification.sh":     "cannot be executed to verify: the pipeline that exercises it is down",
+	"m0-uos-dns-qualification.sh": "no caller anywhere: no workflow, no Makefile, no other " +
+		"script. Nothing to run it under, so nothing to verify against.",
+	"m3-dns-qualification.sh": "its pipeline does not fail, it does not finish. Pipeline 232's " +
+		"locked-network-lifecycle log shows create, update, a no-op plan and a correct " +
+		"replacement plan, then stops -- with zero occurrences of error, fatal, failed, cannot " +
+		"or refused across all 258 lines. A kill mid-stride, so there is no completed run to " +
+		"check a guard against.",
 }
 
 // withoutShellComments removes whole-line comments so a script that merely
