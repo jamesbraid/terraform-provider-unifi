@@ -277,12 +277,14 @@ done
 #    should be guarded like any other. So the artifact is NAMED rather than
 #    described, and both halves are verified.
 readonly -a committed_artifact=(
-    "cmd/catalog-evidence|build/release-ready/catalog-evidence-inventory.json"
-    "cmd/schema-baseline|build/m0/provider-schema-digests.json"
+    "cmd/catalog-evidence|build/release-ready/catalog-evidence-inventory.json|.woodpecker/scripts/catalog-evidence-inventory_test.sh"
+    "cmd/schema-baseline|build/m0/provider-schema-digests.json|internal/schemaparity/frozen_baseline_test.go"
 )
 for entry in "${committed_artifact[@]}"; do
     name=${entry%%|*}
-    artifact=${entry#*|}
+    rest=${entry#*|}
+    artifact=${rest%%|*}
+    verifier=${rest#*|}
     if ! is_exempt "${name}"; then
         fail "${name} names a committed artifact but is not exempt; either it is guarded now or this entry is stale"
         continue
@@ -331,37 +333,36 @@ for entry in "${committed_artifact[@]}"; do
     # working check from a lucky one:
     #   cmp removed, no comment            FAIL, correct
     #   cmp removed, a comment names it    PASSED before this fix, FAILs now
-    # THE COMPARER MAY BE IN EITHER LANGUAGE, and that is not a loosening.
+    # THE VERIFIER IS NAMED, not searched for, and that is a strengthening.
     #
-    # The digests comparison was a bash cmp until the ledger-aware gate replaced
-    # the schema comparisons around it; the cmp then became redundant with the
-    # frozen-contract call above it and was deleted. Its OTHER job -- being the
-    # thing that made the artifact committed-and-compared -- went with it, and
-    # this rule caught that within the minute, which is what it is for.
+    # The old predicate was "some file under scripts/ names the artifact AND
+    # contains cmp" -- not on the same line, deliberately, because an honest
+    # script assigns the path on one line and compares the variable on another.
+    # But that made it satisfiable by coincidence, and it WAS: after the digests
+    # cmp was deleted, five separate files still matched, and the one grep
+    # happened to return first names the artifact once and runs cmp on entirely
+    # different things. The check passed for a reason unconnected to the
+    # artifact, which is worse than failing.
     #
-    # The claim is unchanged: something compares this artifact against a computed
-    # value. What moved is where that lives. A bash comparer runs cmp; a Go one
-    # reads the file and compares a sha256. Refusing the Go form would force the
-    # comparison back into bash to satisfy a check about bash, which is the
-    # check dictating the design rather than describing it.
-    comparer=""
-    while IFS= read -r candidate; do
-        [[ $(basename "${candidate}") == "$(basename "${BASH_SOURCE[0]}")" ]] && continue
-        case ${candidate} in
-        *.go) candidate_body=$(sed 's|//.*||' "${candidate}") ;;
-        *) candidate_body=$(sed 's/#.*//' "${candidate}") ;;
-        esac
-        printf '%s\n' "${candidate_body}" | grep -qF "${artifact}" || continue
-        printf '%s\n' "${candidate_body}" |
-            grep -qE '(^|[^[:alnum:]_])cmp[[:space:]]|sha256' || continue
-        comparer=${candidate}
-        break
-    done < <(grep -rlF "${artifact}" "${scripts}" "${repository_root}/internal" 2>/dev/null)
-    if [[ -z ${comparer} ]]; then
-        fail "${name} is exempt because ${artifact} is compared byte for byte, but nothing both names it and compares it -- no script runs cmp on it and no Go file hashes it; the reason no longer holds"
+    # Widening it to accept a Go verifier made that worse rather than better --
+    # more candidates, same coincidence. So the entry now NAMES its verifier and
+    # this checks that specific file: it exists, and it names the artifact
+    # outside comments. A wrong name fails; a deleted verifier fails; a verifier
+    # that stops mentioning the artifact fails. None of those can be satisfied
+    # by an unrelated file that happens to contain the right letters.
+    if [[ ! -f ${repository_root}/${verifier} ]]; then
+        fail "${name} is exempt because ${artifact} is verified by ${verifier}, but that file does not exist"
         continue
     fi
-    printf 'ok   reason verified:        %s -- %s is committed and compared\n' "${name}" "${artifact}"
+    case ${verifier} in
+    *.go) verifier_body=$(sed 's|//.*||' "${repository_root}/${verifier}") ;;
+    *) verifier_body=$(sed 's/#.*//' "${repository_root}/${verifier}") ;;
+    esac
+    if ! printf '%s\n' "${verifier_body}" | grep -qF "${artifact}"; then
+        fail "${name} is exempt because ${verifier} verifies ${artifact}, but that file does not name it outside comments; the reason no longer holds"
+        continue
+    fi
+    printf 'ok   reason verified:        %s -- %s is committed, and %s checks it\n' "${name}" "${artifact}" "${verifier}"
 done
 
 # ----------------------------------------------------------------------- report

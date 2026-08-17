@@ -1,11 +1,13 @@
 package schemaparity
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -117,22 +119,26 @@ func TestFrozenBaselineGuardHasSubjects(t *testing.T) {
 	}
 }
 
-// TestCommittedDigestsDescribeTheFrozenContract is the assertion nothing was
-// making, and it is what the digests comparison should have been.
+// TestCommittedDigestsDescribeTheFrozenContract recomputes every digest in
+// build/m0/provider-schema-digests.json from the frozen contract.
 //
-// build/m0/provider-schema-digests.json is DERIVED from
-// provider-contracts/schema/terraform-1.15.8.json: its canonical_schema_sha256
-// is the sha256 of that file, measured e054aef83f2cf19c… on both sides. Roughly
-// eighty consumers pass the digests as -baseline and assume the two agree, and
-// until now nothing checked it -- so a regeneration of one without the other
-// would have left eighty readers using a record of a contract that no longer
-// exists, silently.
+// NOTHING IN THIS TREE WRITES THAT FILE. Outside tests its only mentions are
+// comments, and roughly eighty consumers pass it as -baseline. An artifact with
+// eighty readers, no producer and no check is the worst combination in the
+// repository, and it held 95 recorded facts of which exactly one was asserted:
+// the first version of this test checked canonical_schema_sha256 and then
+// checked the 94-entry map only for len() != 0. Mutating a single per-surface
+// digest left it green, which its own failure message admitted while passing.
 //
-// The comparison this replaces was the committed digests against the freshly
-// built CANDIDATE, which is the same claim as the frozen-contract-versus-
-// candidate call in catalog-build-schema.sh, one hash level up and with less
-// information. Two copies of one fact on two sets of bytes. This is the claim
-// that was actually missing.
+// So all 94 are recomputed. The canonicalisation is the one the artifact was
+// produced with -- compact JSON, keys sorted, no trailing newline, equivalent
+// to `jq -cS '.<section>.<surface>' | sha256`, and 94 of 94 reproduce.
+//
+// SetEscapeHTML(false) is deliberate and currently unobservable: no description
+// in the contract contains <, > or &, so both settings reproduce today. jq is
+// the reference implementation and does not escape, so the day a description
+// gains an ampersand this stays right instead of failing for a reason nobody
+// would connect to the change.
 func TestCommittedDigestsDescribeTheFrozenContract(t *testing.T) {
 	const (
 		contract = "../../provider-contracts/schema/terraform-1.15.8.json"
@@ -143,7 +149,7 @@ func TestCommittedDigestsDescribeTheFrozenContract(t *testing.T) {
 		t.Fatalf("read %s: %v", contract, err)
 	}
 	sum := sha256.Sum256(raw)
-	want := hex.EncodeToString(sum[:])
+	wantCanonical := hex.EncodeToString(sum[:])
 
 	blob, err := os.ReadFile(digests)
 	if err != nil {
@@ -156,23 +162,109 @@ func TestCommittedDigestsDescribeTheFrozenContract(t *testing.T) {
 	if err := json.Unmarshal(blob, &recorded); err != nil {
 		t.Fatalf("parse %s: %v", digests, err)
 	}
-	if recorded.CanonicalSHA256 != want {
+	if recorded.CanonicalSHA256 != wantCanonical {
 		t.Errorf(`%s no longer describes %s.
 
-  the contract hashes to        %s
-  the digests file records      %s
+  the contract hashes to    %s
+  the digests file records  %s
 
 These two committed artifacts are the released baseline together, and roughly
-eighty consumers pass the digests as -baseline assuming they agree. One was
-regenerated without the other, or one was edited by hand. Whichever it is, every
-consumer is now reading a record of a contract that does not exist.
-
-Do not silence this by regenerating the digests. Establish which artifact moved
-and why: they are the released record, and the released record is not supposed
-to move at all.`, digests, contract, want, recorded.CanonicalSHA256)
+eighty consumers pass the digests as -baseline assuming they agree. Do not
+silence this by regenerating: establish which artifact moved and why. The
+released record is not supposed to move at all.`, digests, contract, wantCanonical, recorded.CanonicalSHA256)
 	}
-	if len(recorded.SchemaSHA256) == 0 {
-		t.Error("the per-surface digest map is empty, so the check above is the only thing asserting anything")
+
+	var doc map[string]map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("parse %s as sections: %v", contract, err)
+	}
+	// Most sections map surface name to schema. `provider` is NOT one of them:
+	// it IS a schema, carrying block and version directly, and the digests file
+	// records it under the bare key "provider". Discriminating on the presence
+	// of a "block" key rather than on the name means a second provider-shaped
+	// section would be handled without an edit -- and it is how the mismatch
+	// announced itself, as 95 derived against 94 recorded rather than as a
+	// digest that silently disagreed.
+	derived := map[string]string{}
+	digestOf := func(key string, body []byte) {
+		var value any
+		if err := json.Unmarshal(body, &value); err != nil {
+			return
+		}
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		enc.SetEscapeHTML(false)
+		if err := enc.Encode(sortedValue(value)); err != nil {
+			t.Fatalf("re-encode %s: %v", key, err)
+		}
+		h := sha256.Sum256(bytes.TrimRight(buf.Bytes(), "\n"))
+		derived[key] = hex.EncodeToString(h[:])
+	}
+	for section, surfaces := range doc {
+		if _, isSchema := surfaces["block"]; isSchema {
+			whole, err := json.Marshal(surfaces)
+			if err != nil {
+				t.Fatalf("re-encode section %s: %v", section, err)
+			}
+			digestOf(section, whole)
+			continue
+		}
+		for surface, body := range surfaces {
+			digestOf(section+"."+surface, body)
+		}
+	}
+
+	if len(derived) != len(recorded.SchemaSHA256) {
+		t.Errorf("the contract yields %d surfaces and the digests file records %d; "+
+			"one of them gained or lost a surface without the other",
+			len(derived), len(recorded.SchemaSHA256))
+	}
+	var wrong []string
+	for key, want := range recorded.SchemaSHA256 {
+		got, ok := derived[key]
+		switch {
+		case !ok:
+			wrong = append(wrong, key+" is recorded but the contract has no such surface")
+		case got != want:
+			wrong = append(wrong, key+" recorded "+want[:16]+"… but the contract yields "+got[:16]+"…")
+		}
+	}
+	sort.Strings(wrong)
+	if len(wrong) > 0 {
+		t.Errorf(`%d of %d per-surface digest(s) no longer describe %s:
+
+  %s
+
+Each entry is the sha256 of that surface's subtree, compact with sorted keys.
+A mismatch means the digests file and the contract disagree about what the
+released provider served for that surface, and eighty consumers are reading
+whichever one they happened to be handed.`,
+			len(wrong), len(recorded.SchemaSHA256), contract, strings.Join(wrong, "\n  "))
+	}
+}
+
+// sortedValue rebuilds a decoded document with map keys in sorted order.
+//
+// encoding/json already emits map keys sorted, so this is belt and braces
+// rather than the mechanism -- it exists so that the canonicalisation is
+// STATED here rather than inherited from an implementation detail that a Go
+// release could quietly change.
+func sortedValue(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, vv := range t {
+			out[k] = sortedValue(vv)
+		}
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i, vv := range t {
+			out[i] = sortedValue(vv)
+		}
+		return out
+	default:
+		return v
 	}
 }
 
