@@ -177,11 +177,22 @@ done
 # the pair above by a second route, so it goes through the same ledger.
 (cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli terraform-baseline -released-canonical "${repository_root}/provider-contracts/schema/terraform-1.15.8.json" -candidate-canonical "${work_root}/candidate.terraform.canonical.json" -tree-state "$(evidence_tree_json)")
 (cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli tofu-baseline -released-canonical "${repository_root}/provider-contracts/schema/tofu-1.12.1.json" -candidate-canonical "${work_root}/candidate.tofu.canonical.json" -tree-state "$(evidence_tree_json)")
-# The same claim as the four above, one abstraction up. This file is the
-# RELEASED BASELINE -- roughly eighty references pass it as -baseline, and this
-# was the only line reading it as an expected candidate. Counting the consumers
-# settled it, exactly as it settled provider-contracts/schema.
-(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -released-digests "${repository_root}/build/m0/provider-schema-digests.json" -candidate-digests "${work_root}/candidate.terraform.digests.json" -tree-state "$(evidence_tree_json)")
+# THE DIGESTS COMPARISON IS GONE, and its absence is the point.
+#
+# Line 180 used to cmp build/m0/provider-schema-digests.json against the
+# candidate's digests. That is the SAME CLAIM as the terraform-baseline call
+# above, one hash level up and with strictly less information: the committed
+# canonical_schema_sha256 is byte-identical to the sha256 of the frozen
+# contract, so comparing the digests compares hashes of the two files that call
+# already compares directly. It can say which surface moved; the call above says
+# which attribute.
+#
+# Two copies of one fact on two sets of bytes is what this package was written
+# to remove, so a second ledger-aware comparator was the wrong answer to it.
+# What the digests file needs instead is an assertion nobody was making: that it
+# still describes the contract it was derived from, which ~80 consumers assume
+# every time they pass it as -baseline. That lives in
+# internal/schemaparity/frozen_baseline_test.go and runs on every push.
 
 for build in released candidate; do
     jq --sort-keys 'del(.action_schemas, .list_resource_schemas)' \
