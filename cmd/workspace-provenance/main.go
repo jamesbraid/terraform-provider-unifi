@@ -7,15 +7,20 @@
 // of the classified script it was simultaneously reading. One workspace, two
 // branches' files.
 //
-// It took three attempts to diagnose -- contamination, then an amend and a
-// force-push, then contamination again once the SHAs were read from the clone
-// steps and the reflog showed no amend. Nobody was careless. The runs recorded
-// verdicts and never recorded what produced them, so every explanation had to
-// be reconstructed from outside, and each was plausible enough to stop at.
+// FOUR CONFIDENT AND CONFLICTING STATEMENTS WERE MADE ABOUT THIS ONE INCIDENT
+// before it settled: contamination, then an amend and a force-push, then
+// contamination again once the SHAs were read from the clone steps and the
+// reflog showed no amend, and separately a wrong workflow -- the failing step
+// was in fast-loop, misread from the branch name accept/m3-port.
 //
-// A REFUTED CAUSE SPENT AN HOUR RECORDED AS THE ESTABLISHED ONE, in a comment,
-// which is the same failure one layer up: a claim with nothing checking it,
-// written down confidently because the person who wrote it had not measured it.
+// Nobody was careless. The runs recorded verdicts and never recorded what
+// produced them, so every explanation had to be reconstructed from outside, and
+// each was plausible enough to stop at. Two of the four reached this comment
+// and were removed from it later.
+//
+// That is the argument for this command, and it is stronger than any single
+// cause would have been. A run that names its own tree ends the reconstruction
+// before it starts.
 //
 // THE COMMIT ALONE IS NOT ENOUGH, and that is the whole design. `git rev-parse
 // HEAD` reads .git; the checks read files. A workspace written into after
