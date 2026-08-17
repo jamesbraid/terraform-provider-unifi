@@ -79,7 +79,12 @@ func TestEachWayToFailTheFollowupFiresOnItsOwn(t *testing.T) {
 			}},
 		{"a disposition was dropped", "allowed_skips in the plan",
 			func(r *catalogparity.ControllerDifferentialReceipt) { r.Plan.AllowedSkips = nil }},
-		{"the result disagrees with the gap count", "evidence gap(s); want",
+		// The wording moved when this check was delegated to
+		// catalogparity.RequireControllerResultAgreesWithGaps, the single home
+		// of the gap-count-to-result rule. Asserting "must report" rather than
+		// the old "; want" keeps this about the message NAMING the required
+		// result, not about one phrasing of it.
+		{"the result disagrees with the gap count", "must report",
 			func(r *catalogparity.ControllerDifferentialReceipt) { r.Result = "pass" }},
 	} {
 		t.Run(c.name, func(t *testing.T) {
