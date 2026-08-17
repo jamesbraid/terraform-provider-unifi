@@ -12,20 +12,28 @@ import (
 // port that carried the headline and quietly dropped the controls would look
 // like a success.
 //
-// Enumerated from catalog-build-schema.sh before writing any of this:
+// Enumerated from catalog-build-schema.sh before writing any of this. BY WHAT
+// EACH ONE ASSERTS, NOT BY LINE NUMBER -- the first version of this list cited
+// lines 52, 72, 85-86, 146-152, 160, 162 and 166-168, and by the time anyone
+// read it every one of those numbers was wrong: the script had moved, and four
+// of the comparisons had become invocations of this package. A number
+// describing a file this comment does not control is a claim that goes stale
+// silently and takes the rest of the paragraph's credibility with it.
 //
-//	 52        the v0.101.2 tag resolves to the baseline manifest's commit  PROVENANCE
-//	 72        the same tree built twice yields one binary                  DETERMINISM
-//	 85-86     an injected released binary matches its declared sha256      PROVENANCE
-//	146-147    built released vs built candidate, both CLIs                 PARITY, ledger-aware
-//	148-151    frozen baseline vs built candidate, both CLIs                PARITY, ledger-aware
-//	152        committed digests vs candidate digests                       DIGEST
-//	160        terraform vs tofu agree on the shared surface                CROSS-CLI
-//	162        terraform vs tofu MUST differ on the full projection         INVERTED CONTROL
-//	166-168    action count 1, list count 25, tofu has neither key          SHAPE
+//	the released tag resolves to the manifest's commit       PROVENANCE
+//	the same tree built twice yields one binary              DETERMINISM
+//	an injected released binary matches its declared sha256  PROVENANCE
+//	built released vs built candidate, both CLIs             PARITY, ledger-aware
+//	frozen baseline vs built candidate, both CLIs            PARITY, ledger-aware
+//	committed digests describe the frozen contract           DIGEST, see frozen_baseline_test.go
+//	terraform vs tofu agree on the shared surface            CROSS-CLI
+//	terraform vs tofu MUST differ on the full projection     INVERTED CONTROL
+//	action count, list count, tofu has neither key           SHAPE
+//	seven environment identities against the manifest        PROMOTION, see baseline.go
 //
-// Relaxing 72 would admit a non-deterministic build. Relaxing 160 would let the
-// two CLIs disagree. Relaxing 162 would delete a deliberate negative control --
+// Relaxing determinism would admit a build that is not a function of its
+// source. Relaxing cross-CLI would let the two CLIs disagree. Relaxing the
+// inverted control would delete a deliberate negative check --
 // it fails when the two projections are the SAME, which is the one direction a
 // careless port turns into a pass.
 
