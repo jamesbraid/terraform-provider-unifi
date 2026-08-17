@@ -2,6 +2,172 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### 🐛 Bug Fixes
+
+- **Six attributes the controller owns were being overwritten by a value the provider invented.**
+  This is one defect with six instances, and they are grouped because the shape matters more than
+  the list. Each attribute carried a static default in the schema. Terraform fills a default in
+  *before* the provider is consulted, so a configuration that never mentioned the attribute still
+  planned the default — and the write path, seeing a value that was always known, sent it. A setting
+  the controller held was replaced by one nobody asked for, on every apply.
+
+  | resource | attribute | controller held | provider wrote |
+  | --- | --- | --- | --- |
+  | `unifi_wan` | `type` | `static` | `dhcp` |
+  | `unifi_wlan` | `minrate_setting_preference` | `manual` | `auto` |
+  | `unifi_network` | `lte_lan` | `false` | `true` |
+  | `unifi_network` | `ipv6_interface_type` | a real interface type | `none` |
+  | `unifi_network` | `dhcp_v6_server.dns_auto` | `true` | `false` |
+  | `unifi_radius_profile` | `use_usg_auth_server` | `true` | `false` |
+
+  Each was reproduced against a 10.4.57 controller with one fixture and only the provider binary
+  differing: import, plan with the attribute omitted, apply, then read the controller back. The
+  clearest is `use_usg_auth_server` — the controller held it on, the plan showed `true -> false`, the
+  apply exited 0, and the controller then held it off. An apply that mentioned nothing turned a
+  setting off.
+
+  In every case the default is dropped and `UseStateForUnknown` added, so omitting the attribute
+  keeps whatever the controller holds. Each value is one a practitioner could legitimately choose,
+  which is what made the fault invisible: `none` is in `ipv6_interface_type`'s own list of accepted
+  values, so "the controller was never asked" was indistinguishable from "turn IPv6 off".
+
+  If you added an explicit value to work around one of these, it can be dropped. Upgrading plans no
+  changes against existing state.
+
+- **`unifi_network`: a `dhcp_v6_server` block could not be applied unless the IPv6 attributes were
+  stated explicitly.** The apply failed naming `dhcp_v6_server.enabled`, `.start` and `.stop`, which
+  reads like three faults in one block. It was two faults, neither of them in the block.
+
+  The first is the default above. `ipv6_interface_type` defaulting to `none` switched IPv6 off and
+  `enabled` went down with it — established by an A/B against the same controller with the same
+  binary: with the attribute omitted the apply exits 1 and the controller's record loses
+  `dhcpdv6_enabled` entirely; with `ipv6_interface_type = "static"` stated, the same apply exits 0
+  and every field survives.
+
+  The second only became visible once the first was fixed and IPv6 stayed on. `ipv6_static_subnet`,
+  `dhcp_v6_server.start` and `.stop` are assigned by the controller but were `Optional` and not
+  `Computed`, so a configuration omitting them planned null while the read brought the controller's
+  value back, and the apply aborted — `.dhcp_v6_server.start: was null, but now
+  cty.StringVal("fd41:9::2")`. That is the same fault as `ap_group_ids` below, on a different
+  resource. All three are now `Optional + Computed`.
+
+  **All three carry a measured abort naming the attribute** — the failure was observed for each,
+  not inferred from the other two. That is worth stating because `network_id` below is the one
+  attribute fixed in this release where it was *not*: its case argues from the read and update
+  paths, is labelled inferred, and records the measured fact that no run names it as the subject of
+  an abort. `ap_group_ids` has its own observed failure, as these three do.
+
+  Two things follow that are easy to get backwards. Fixing a defect is how the second one was found,
+  not a regression it introduced — it had been hidden behind the larger failure the whole time. And
+  `dhcp_server`'s own `start`/`stop` pair is untouched and was never affected; the two pairs share
+  attribute names under different parents, and only the `dhcp_v6_server` pair moved.
+
+- **`unifi_wlan`: a configuration that omits `ap_group_ids` could not complete an apply at all.**
+  The controller always returns an AP group, the read path copied it into state, and Terraform
+  rejected the result against a null plan with `Provider produced inconsistent result after apply:
+  .ap_group_ids: was null, but now cty.SetVal([...])`. `ap_group_ids` and `network_id` were
+  `Optional` and not `Computed`, which tells Terraform the practitioner owns the value and the
+  provider must leave it null. That is wrong for a value the controller assigns. Both are now
+  `Optional + Computed` with `UseStateForUnknown`. A configuration that sets either is unaffected.
+
+  The two attributes do not have equal evidence and the ledger entry says so: the aborting apply was
+  observed for `ap_group_ids`, while `network_id` is argued from the read and update paths and
+  labelled inferred.
+
+- **`unifi_wlan`: changing `minrate_setting_preference` to `auto` failed the apply.** Handing the
+  minimum data rates to the controller makes it recompute them, but both rate attributes promised
+  Terraform the stored value would survive, so the apply died with `.minimum_data_rate_5g_kbps: was
+  cty.NumberIntVal(0), but now cty.NumberIntVal(6000)` — with the preference flip as the only change
+  in the plan. The rates now stay at their stored value except when that sibling is changing, and
+  are left unknown then so the controller may supply them. Planning them unknown unconditionally
+  would have shown a spurious "(known after apply)" on every plan.
+
+- **`unifi_wlan`: a data rate the controller does not report is no longer recorded as `0`.** The
+  controller omits `minrate_n{a,g}_data_rate_kbps` when they are unset, and the read path turned
+  that absence into zero. Zero is a rate a practitioner can legitimately request — it is in both
+  attributes' accepted values — so storing it for "the controller said nothing" recorded a value the
+  controller never gave, indistinguishable from one it did.
+
+### 📋 Known Issues
+
+- **`unifi_vpn_server` still drops the third and fourth DNS servers.** A VPN server configured with
+  four DNS servers writes only two. The cause is in the `go-unifi` SDK rather than in this provider:
+  its marshaller emits two of the four slots. The SDK fix is written and pushed but **not tagged**,
+  so this provider cannot consume it yet, and no amount of provider-side change fixes it. It is
+  listed here rather than left out because this release fixes other things and a note that mentions
+  only what was fixed reads as a clean bill of health.
+
+### 📖 Documentation
+
+- **`unifi_network`'s `lte_lan` description no longer promises a default it does not have.** The
+  released text said "Defaults to `true`", and the fix above removed that default, so the prose
+  asserted something false about the behaviour shipping beside it. It now says the value is read
+  back from the controller and explains what the old default did wrong.
+
+  Correcting it required building something first. The schema baseline gate treats the released
+  provider's schema as authoritative for every field of every attribute and had no way to accept a
+  change that was intended — its own failure message named a file to record one in, but that file
+  is a state-migration policy the test never reads, and its type has no field that can carry a
+  description. A deliberate change had nowhere to be declared. There is now a declaration that names
+  the surface, the attribute, the field and the exact old and new values, states why the change
+  cannot break an existing configuration, and labels each supporting claim measured or inferred.
+  Both values must match, so a later drift to a third value fails again rather than living inside a
+  permanent exemption.
+
+  **Changing the description was not free.** It regenerated `docs/resources/network.md`, which had to
+  be committed alongside it. A description is documentation and generated documentation is an
+  artifact, so editing prose moves a file that looks unrelated to the change.
+
+- **Six schema changes ship in this release and all six are declared.** Every difference between this
+  provider's schema and v0.101.2's is named in the ledger — surface, attribute, field, and both exact
+  values — and the gate compares the declared set against the observed set **in both directions**, so
+  an undeclared change fails and a declaration for a change that did not happen fails too. The six are
+  `lte_lan`'s description and `ap_group_ids`, `network_id`, `ipv6_static_subnet`,
+  `dhcp_v6_server.start` and `.stop` becoming Computed.
+
+  **Their evidence is not equal, and the ledger says so rather than averaging it.** Four carry a
+  reproduction in which `terraform apply` exits 1 naming the attribute: `ap_group_ids`,
+  `ipv6_static_subnet`, `dhcp_v6_server.start` and `.stop`. **`network_id` does not.** Its case argues
+  from the read and update paths, is labelled inferred, and records the measured fact that no recorded
+  run names it as the subject of an abort — which is a searched-and-found-nothing rather than a
+  did-not-look. If you set `network_id` explicitly nothing changes for you either way; if you omit it,
+  it is the one attribute here whose old behaviour nobody has reproduced failing.
+
+### 🔧 Maintenance
+
+- **The release gate over the migration manifest was missing six classes of defect that another
+  check already caught.** Two functions with the same name in different packages validated the same
+  artifact — one when it is generated, one when the release is qualified — and neither was a
+  superset of the other. Six things the first rejects passed the second: an identity migration
+  carrying an attribute mapping, a state move, an import transform or a schema version change,
+  entries out of order, and a shift in the per-kind surface counts. The second is the only guard
+  over the committed file, so those six were unheld at exactly the point a hand edit or a stale
+  regeneration would land. The shared name is why it stayed invisible from either side.
+
+  One now calls the other and keeps its release-specific rules on top. Two deliberately stay where
+  they are: the generator legitimately validates manifests that are not identity migrations, while
+  the release asserts that all 67 surfaces migrate by identity with snapshot recovery. Those are
+  claims about this release rather than about manifests in general.
+
+  **The per-kind count is the case worth reading twice.** The release gate checks that the manifest
+  has 67 entries, which a shift of one managed resource into one data source satisfies exactly.
+  Three further checks compare the receipts against each other, and each fires in turn as they are
+  moved one at a time — until all four move together, which is what a regeneration produces, and
+  then every one of them falls silent. Only the first of those three involves the manifest at all;
+  the others compare two of the remaining receipts. **A check that compares two records cannot see
+  them drift as a pair, and a coherent regeneration satisfies every pairwise comparison in the set.**
+  Only an absolute count catches that, and this gate had none.
+
+  Wiring the validator in failed the happy path immediately, because the test fixture was unsorted
+  where the real manifest is sorted. The fixture modelled a manifest the generator cannot emit, so
+  every test built on it had been running against a shape that could never arrive. That is the
+  second fixture found this way in this release; both were found by pointing a real check at
+  something that had only ever had to satisfy its consumer.
+
+---
+
 ## [v0.102.0] - 2026-08-16
 
 ### 🐛 Bug Fixes
@@ -108,6 +274,9 @@ All notable changes to this project will be documented in this file.
 
 - **The `unifi_port_profile` data source now reports the stored VLAN mode, actual tagged-network set, and raw exclusion set.** `tagged_networkconf_ids` is derived from the site network inventory instead of always returning null. `tagged_vlan_mgmt` and `excluded_networkconf_ids` expose the controller representation when it matters.
 
+---
+
+
 ## [v0.101.1] - 2026-08-02
 
 ### 🐛 Bug Fixes
@@ -117,6 +286,9 @@ All notable changes to this project will be documented in this file.
 ### 🔧 Maintenance
 
 - **A schema test now pins every `Optional + Computed` attribute that also carries a `Default`.** That combination is what caused the bug above and #323 before it: `Computed` says the controller may own the value, and a `Default` overrides it. The inventory lives in `unifi/testdata/optional_computed_defaults.txt` (166 attributes), and a new one fails the build until it is added deliberately. The list is a record of what still needs checking against a live controller, not a set of approved patterns.
+
+---
+
 
 ## [v0.101.0] - 2026-08-01
 
@@ -158,6 +330,9 @@ All notable changes to this project will be documented in this file.
 
 - **go-unifi updated to v1.101.0**, which is where the network encoder fixes above come from. Two settings objects moved on the controller as part of UniFi Network 10.x: geo IP filtering left the `usg` setting for a separate `usg_geo` object, and IPS suppression left `ips` for `ips_suppression`. The Terraform schema is unchanged — `usg.geo_ip_filtering_*` and `ips.suppression_alerts` / `suppression_whitelist` stay exactly where they were, and no state migration is required — but the provider now reads and writes those attributes through the new objects. Two consequences: a controller that does not expose them reports an explicit error when the attributes are configured (it previously wrote them to an endpoint that quietly ignored them), and the first plan after a controller upgrade may re-apply an existing geo IP filtering config once. Geo IP filtering attributes left unset in Terraform are no longer written at all, so a configuration set in the controller UI survives.
 
+---
+
+
 ## [v0.55.0] - 2026-07-10
 
 ### ✨ Features
@@ -171,11 +346,17 @@ All notable changes to this project will be documented in this file.
 - **`unifi_device` / `unifi_setting`: stop controller-managed lists churning to "known after apply" on unrelated edits.** Several `Optional + Computed` lists were replanned as `(known after apply)` whenever any other field on the same resource changed — a spurious diff (the same class as #338). They now use `UseStateForUnknown`, keeping their prior value unless explicitly changed: `unifi_device` `radio_table` and `outlet_overrides`, and `unifi_setting` `contents` (syslog facilities), `server_names` (DoH), `enabled_categories` / `enabled_networks` (IPS), and `network_ids` (IGMP snooping).
 - **`unifi_ap_group`: allow empty membership and stop empty groups reading back as `null`.** `device_macs` was `Required` with a `SizeAtLeast(1)` validator, and the read mapped an empty member list to `SetNull` — so a group the controller legitimately allows to have zero members (the API returns 201 for an empty membership) could not be authored, and importing one surfaced as an empty-vs-`null` inconsistency. `device_macs` now accepts an empty set and reads empty back as an empty set. The built-in default "All APs" group (which the controller marks read-only) is documented as non-editable through the resource.
 
+---
+
+
 ## [v0.54.1] - 2026-07-05
 
 ### 🐛 Bug Fixes
 
 - **`unifi_radius_profile`: make `auth_server` / `acct_server` `ip` optional so the default profile can be imported.** The controller-managed default RADIUS profile (created when a gateway RADIUS/VPN service is enabled, with `use_usg_auth_server = true`) returns a server entry without an IP. `ip` was `Required`, so re-declaring an imported profile failed with `The argument "ip" is required`, and an empty IP read back as `""` instead of null. `ip` is now `Optional` and an absent IP maps to null, so the default profile round-trips cleanly (#356)
+
+---
+
 
 ## [v0.54.0] - 2026-07-02
 
@@ -195,6 +376,9 @@ All notable changes to this project will be documented in this file.
 - **`unifi_wan`: fix `inconsistent result after apply` on `dns` address fields (`primary`, `secondary`, `ipv6_primary`, `ipv6_secondary`).** When no DNS server is configured the controller persists and returns an empty string `""`, but these Optional fields plan as `null`, so the post-apply read conflicted with the plan (e.g. after import with IPv6 DNS preference `auto`). The read now normalizes `""` (and a nil pointer) to `null`, so unset addresses stay null and a real address still round-trips (#333)
 - **`unifi_firewall_policy`: make `index` read-only to stop `inconsistent result after apply` and a perpetual diff.** Pinning `index` failed: the controller ignores a client-supplied value and always appends the policy at the end of its source/destination zone-pair, so the post-apply read (e.g. `10010` → `10020`) conflicted with the plan and then looped forever. Verified against a real UniFi OS 10.x controller — the supported integration API rejects `index` as input and exposes no reorder operation, so policy ordering cannot be managed through the provider. `index` is now `Computed` (controller-assigned) and the provider no longer sends it; reorder policies in the UniFi UI if needed (#348)
 
+---
+
+
 ## [v0.53.0] - 2026-06-24
 
 ### ✨ Features
@@ -211,6 +395,9 @@ All notable changes to this project will be documented in this file.
 
 - **`unifi_device`: document the `mgmt_network_id` tag-upstream-first requirement.** Setting the Network Override tags the device's management onto the target VLAN; if that VLAN is not tagged on the device's upstream port the device drops off and the apply fails with an inconsistent-result error. The description now spells out the two-step apply (tag the uplink first, then set `mgmt_network_id`) (#329, #330)
 
+---
+
+
 ## [v0.52.4] - 2026-06-17
 
 ### 🐛 Bug Fixes
@@ -221,11 +408,17 @@ All notable changes to this project will be documented in this file.
 
 - **`unifi_network`: clarify that `subnet` sets the gateway IP.** A custom gateway is already supported — the host portion of `subnet` is the gateway (e.g. `10.0.10.254/24` → gateway `.254`); it need not be the first usable address (#308, #309)
 
+---
+
+
 ## [v0.52.3] - 2026-06-17
 
 ### 🐛 Bug Fixes
 
 - Fix operation timeouts for the list resources, and add acceptance tests for them
+
+---
+
 
 ## [v0.52.2] - 2026-06-16
 

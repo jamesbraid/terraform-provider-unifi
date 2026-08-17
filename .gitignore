@@ -117,6 +117,8 @@ build/**/*-ci.json
 /catalog-parity
 /catalog-pragmatic-evidence
 /catalog-release-ready
+/go-unifi-pin
+/go-unifi-proxy
 /list-policy-scaffold
 /list-resource-gen
 /m3-dns-qualification
@@ -127,4 +129,6 @@ build/**/*-ci.json
 /schema-baseline
 /schema-behaviour
 /sdk-bootstrap
+/tree-state
 /upgrade-plan-runner
+/workspace-provenance

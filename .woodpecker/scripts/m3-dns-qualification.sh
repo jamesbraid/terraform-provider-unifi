@@ -162,7 +162,7 @@ if [[ -z ${candidate_provider_binary} ]]; then
     # unavailable on the isolated build network.
     if [[ ! -d ${go_unifi_proxy_root} ]]; then
         echo "go-unifi proxy root ${go_unifi_proxy_root} is missing:" \
-            "bootstrap it on this host with bootstrap-go-unifi-proxy.sh or" \
+            "bootstrap it on this host with go run ./cmd/go-unifi-proxy or" \
             "pass a prebuilt candidate via M3_CANDIDATE_PROVIDER_BINARY" >&2
         exit 1
     fi

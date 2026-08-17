@@ -59,6 +59,19 @@ const header = `# Optional + Computed attributes that also carry a Default.
 // controller does not return its own value for that field — create the resource
 // without the attribute, then check a refresh plans empty. If it does not, drop
 // the Default and use UseStateForUnknown instead.
+//
+// PROVEN TO FAIL, and against a defect that had already shipped rather than one
+// invented for the occasion: reinstating the Default on
+// roaming_assistant_na_enabled makes this test name the attribute. (6f27ffc8)
+// Walking nested attributes is what found unifi_network.dhcp_server.wins
+// carrying a Default of its own, which nothing had been reading.
+//
+// TWO LIMITS THE PROOFS DO NOT COVER, stated because a proof that hides its
+// scope is worth less than one that states it. Blocks are not walked at all —
+// resp.Schema.Blocks is never passed to walk — so an Optional+Computed default
+// inside device.port_override or wlan.schedule is invisible here. And the type
+// switch has no default arm, so an attribute type the framework adds later
+// contributes nothing and is not reported as unread.
 func Test_schemaOptionalComputedDefaults(t *testing.T) {
 	got := optionalComputedDefaults(t)
 

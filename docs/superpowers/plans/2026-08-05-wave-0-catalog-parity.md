@@ -740,6 +740,34 @@ git commit -m "providercompiler: bind compilation to catalog admission"
 - Produces: `Compare(Scenario, Observation, Observation) Attempt` with one of
   `pass`, `uncovered`, `divergent`, `inconclusive`, or `invalid`.
 
+> **THIS TASK SPECIFIES HALF A MECHANISM AND READS AS COMPLETE. It says what
+> consumes an `Observation` and never says what produces one.**
+>
+> That gap survived into the code and is still there. `Compare` was built, it is
+> correct, and it is exercised. `Observation` is constructed in exactly one file
+> — `internal/paritydiff/compare_test.go` — and nowhere outside a test. Nothing
+> in the pipeline, no adapter, and no controller harness ever makes one. So
+> `Compare` has never been called on a real pair and cannot be, and the parity
+> plane is a consumer waiting on a producer that was never designed.
+>
+> The visible consequence is at `internal/releasequalification/release.go`,
+> where a parity verdict would be recorded. Everything in scope there is a
+> digest, so it could not host a verdict even if one existed. That field and
+> both gates reading it are annotated to say `Pass` means **not yet measured**
+> rather than measured-and-passed. The annotation is honest about the code; this
+> note is the missing half, because the plan is where a reader meets the
+> specification and decides it is finished.
+>
+> **Specifying the consumer and stopping is the same shape as a check that
+> cannot fail.** Both look complete, both pass every review, and neither can
+> produce the outcome it exists to produce. A design document is subject to that
+> failure exactly as code is, and unlike the code this half had not been
+> corrected.
+>
+> **What is still owed: what an `Observation` is captured FROM, by what, and
+> when.** Until that is specified, `Compare` cannot be wired to anything and the
+> `Pass` in the release record stays a placeholder. Tracked as task 112.
+
 - [ ] **Step 1: Write failing result-classification tests**
 
 ```go

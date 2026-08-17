@@ -8,9 +8,13 @@ readonly repository_root
 # dirty tree once: it digested evidence files that had not been committed, so it
 # pinned content in no commit, and it healed silently when they landed. The
 # guard runs first so a refusal costs nothing and reaches no dependency.
-# shellcheck source=.woodpecker/scripts/tree-state.sh
-source "${repository_root}/.woodpecker/scripts/tree-state.sh"
-evidence_tree_state "the catalog evidence inventory"
+# The guard runs before anything it protects, and it REFUSES a dirty tree
+# unless EVIDENCE_ALLOW_DIRTY_TREE acknowledges it -- in which case the dirt
+# is recorded in the receipt rather than hidden. cmd/tree-state prints the
+# JSON on stdout and the refusal on stderr, so a failure here stops the run
+# whether or not anybody reads the message.
+evidence_tree_json=$(cd "${repository_root}" && go run ./cmd/tree-state -what "the catalog evidence inventory") || exit 1
+readonly evidence_tree_json
 
 policy=${repository_root}/provider-codegen/policy/catalog-evidence.json
 readonly policy

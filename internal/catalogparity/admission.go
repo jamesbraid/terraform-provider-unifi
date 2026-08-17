@@ -659,7 +659,28 @@ func validateControllerAdmission(
 		receipt.Plan.EvidenceGapCount != policy.EvidenceGapCount ||
 		len(receipt.Plan.TestNames) != policy.TestNameCount ||
 		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedFailures, policy.ReleasedAllowedFailures) ||
-		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedMissing, policy.ReleasedAllowedMissing) {
+		!reflect.DeepEqual(receipt.Plan.ReleasedAllowedMissing, policy.ReleasedAllowedMissing) ||
+		// AllowedSkips sat outside this block while its two neighbours were in
+		// it, and the difference was not deliberate: a skip is the one excusal
+		// the receipt could grant itself.
+		//
+		// validateControllerSuite constrains skips only in shape -- unique, a
+		// subset of the PLANNED names, no longer than the plan. Nothing tied
+		// them to what the campaign actually agreed to skip, so the receipt
+		// declared its own allowance and the gate checked the receipt against
+		// itself. Measured against this fixture: the policy declares 3 allowed
+		// skips, and a receipt declaring 106 of the 156 planned tests skipped
+		// -- with only 50 actually running -- was ADMITTED. That was not a
+		// ceiling either; 106 was the size of the pool the probe drew from.
+		//
+		// SUBSET, NOT EQUALITY, and the fixture is what settled that. Its plan
+		// declares no skips at all against a policy permitting three, and it is
+		// right to: a test the campaign was willing to skip that ran anyway is a
+		// better run, not a broken one. The direction that matters is the other
+		// one -- a receipt may never skip something the campaign did not agree
+		// to. Its two neighbours above are exact because they describe the
+		// released side's known limitations, where fewer is as suspect as more.
+		!allStringsInSet(receipt.Plan.AllowedSkips, policy.AllowedSkips) {
 		return fmt.Errorf("controller plan surfaces or counts are incomplete")
 	}
 	if repeated := repeatedTestNames(receipt.Plan.TestNames); len(repeated) > 0 {
