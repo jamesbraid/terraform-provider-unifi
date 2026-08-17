@@ -1,0 +1,1271 @@
+{
+  "candidate": {
+    "accepted_failures": [],
+    "exit_code": 0,
+    "failed": [],
+    "missing": [],
+    "passed": [
+      "TestAccAPGroupDataSource_basic",
+      "TestAccAPGroupFramework_basic",
+      "TestAccAPGroupFramework_withDevices",
+      "TestAccAPGroupList_basic",
+      "TestAccBGPConfig_basic",
+      "TestAccBGPConfig_structured",
+      "TestAccClientDataSource_basic",
+      "TestAccClientFramework_basic",
+      "TestAccClientFramework_blocked",
+      "TestAccClientFramework_fixedIP",
+      "TestAccClientFramework_groups",
+      "TestAccClientInfoListDataSource_basic",
+      "TestAccClientListDataSource_basic",
+      "TestAccClientListDataSource_filtered",
+      "TestAccClientList_basic",
+      "TestAccClientQosRateDataSource_basic",
+      "TestAccClientQosRateList_basic",
+      "TestAccClientQosRate_basic",
+      "TestAccClientQosRate_qos",
+      "TestAccClientQosRate_update",
+      "TestAccDNSRecordDataSource_basic",
+      "TestAccDNSRecordFramework_basic",
+      "TestAccDNSRecordList_basic",
+      "TestAccDeviceFramework_basic",
+      "TestAccDeviceList_basic",
+      "TestAccDynamicDNSList_basic",
+      "TestAccDynamicDNS_dyndns",
+      "TestAccFirewallGroupFramework_basic",
+      "TestAccFirewallGroupFramework_portGroup",
+      "TestAccFirewallGroupList_basic",
+      "TestAccFirewallPolicyFramework_basic",
+      "TestAccFirewallPolicyList_emptyOrSeeded",
+      "TestAccFirewallRuleList_basic",
+      "TestAccFirewallRule_accept",
+      "TestAccFirewallRule_basic",
+      "TestAccFirewallRule_disabled",
+      "TestAccFirewallRule_guestRuleset",
+      "TestAccFirewallRule_highRuleIndex",
+      "TestAccFirewallRule_reject",
+      "TestAccFirewallRule_update",
+      "TestAccFirewallRule_withDstAddress",
+      "TestAccFirewallRule_withFirewallGroups",
+      "TestAccFirewallRule_withLogging",
+      "TestAccFirewallRule_withProtocol",
+      "TestAccFirewallRule_withSrcAddress",
+      "TestAccFirewallRule_withSrcMac",
+      "TestAccFirewallRule_withStateMatching",
+      "TestAccFirewallZoneDataSource_basic",
+      "TestAccFirewallZoneFramework_basic",
+      "TestAccFirewallZoneList_emptyOrSeeded",
+      "TestAccNetworkFrameworkDataSource_basic",
+      "TestAccNetworkFrameworkDataSource_byID",
+      "TestAccNetworkFrameworkDataSource_dhcpGuardingServers",
+      "TestAccNetworkFrameworkDataSource_dhcpRelayServers",
+      "TestAccNetworkFrameworkDataSource_ipv6",
+      "TestAccNetworkFrameworkDataSource_outputFields",
+      "TestAccNetworkFramework_basic",
+      "TestAccNetworkFramework_dhcp",
+      "TestAccNetworkFramework_dhcpGuardingCorporate",
+      "TestAccNetworkFramework_dhcpRelay",
+      "TestAccNetworkFramework_dhcpV6",
+      "TestAccNetworkFramework_guest",
+      "TestAccNetworkFramework_ipv6Static",
+      "TestAccNetworkFramework_purposeConflict",
+      "TestAccNetworkFramework_purposeVLANOnlyDirect",
+      "TestAccNetworkFramework_thirdPartyGateway",
+      "TestAccNetworkFramework_thirdPartyGatewayMinimal",
+      "TestAccNetworkList_basic",
+      "TestAccPortAction_persistsPoeOverride",
+      "TestAccPortForwardList_basic",
+      "TestAccPortForward_anyIP",
+      "TestAccPortForward_basic",
+      "TestAccPortForward_destinationIPs",
+      "TestAccPortForward_protocols",
+      "TestAccPortForward_sourceLimitingFirewallGroup",
+      "TestAccPortForward_sourceLimitingIP",
+      "TestAccPortForward_syslogLogging",
+      "TestAccPortForward_update",
+      "TestAccPortForward_wan",
+      "TestAccPortProfileDataSource_basic",
+      "TestAccPortProfileFramework_basic",
+      "TestAccPortProfileFramework_exactTaggedNetworks",
+      "TestAccPortProfileFramework_vlanFields",
+      "TestAccPortProfileList_basic",
+      "TestAccPowerSupervisorList_emptyOrSeeded",
+      "TestAccRadiusProfileDataSource_accountingEnabled",
+      "TestAccRadiusProfileDataSource_basic",
+      "TestAccRadiusProfileDataSource_withAuthServer",
+      "TestAccRadiusProfileList_basic",
+      "TestAccRadiusProfile_basic",
+      "TestAccRadiusProfile_importWithSite",
+      "TestAccRadiusProfile_update",
+      "TestAccRadiusProfile_withAcctServer",
+      "TestAccRadiusProfile_withAuthAndAcctServers",
+      "TestAccRadiusProfile_withAuthServer",
+      "TestAccRadiusProfile_withAuthServerCustomPort",
+      "TestAccRadiusProfile_withInterimUpdate",
+      "TestAccRadiusProfile_withVlan",
+      "TestAccRadiusUserDataSource_basic",
+      "TestAccRadiusUserDataSource_passwordSensitive",
+      "TestAccRadiusUserDataSource_withNetworkID",
+      "TestAccRadiusUserList_basic",
+      "TestAccRadiusUser_basic",
+      "TestAccRadiusUser_moveFromAccount",
+      "TestAccRadiusUser_tunnelType13",
+      "TestAccRadiusUser_vlan",
+      "TestAccSettingResource_combined",
+      "TestAccSettingResource_doh",
+      "TestAccSettingResource_ips",
+      "TestAccSettingResource_mgmt",
+      "TestAccSettingResource_radius",
+      "TestAccSettingResource_sshKeys",
+      "TestAccSettingResource_usg",
+      "TestAccSiteFramework_basic",
+      "TestAccSiteList_basic",
+      "TestAccSiteToSiteVPNFramework_basic",
+      "TestAccSiteToSiteVPNList_empty",
+      "TestAccStaticRouteFramework_basic",
+      "TestAccStaticRouteFramework_enabledAndGateway",
+      "TestAccStaticRouteFramework_ipv6NextHop",
+      "TestAccStaticRouteList_basic",
+      "TestAccTrafficRouteList_basic",
+      "TestAccTrafficRoute_basic",
+      "TestAccTrafficRoute_fullConfig",
+      "TestAccTrafficRoute_ipAddresses",
+      "TestAccTrafficRoute_ipRanges",
+      "TestAccTrafficRoute_regions",
+      "TestAccTrafficRoute_sourceDefault",
+      "TestAccTrafficRoute_update",
+      "TestAccVPNClientList_basic",
+      "TestAccVPNClient_file_mode",
+      "TestAccVPNClient_manual_mode",
+      "TestAccVPNClient_with_preshared_key",
+      "TestAccVPNServerList_basic",
+      "TestAccVPNServer_l2tp_basic",
+      "TestAccVPNServer_l2tp_update",
+      "TestAccVPNServer_openvpn_basic",
+      "TestAccVPNServer_openvpn_update",
+      "TestAccVPNServer_wireguard_basic",
+      "TestAccVPNServer_wireguard_custom_wan",
+      "TestAccVPNServer_wireguard_disabled",
+      "TestAccVPNServer_wireguard_update",
+      "TestAccVPNServer_wireguard_with_dns",
+      "TestAccWANFramework_additionalFields",
+      "TestAccWANFramework_basic",
+      "TestAccWANFramework_minimal",
+      "TestAccWANFramework_withNestedObjects",
+      "TestAccWANList_basic",
+      "TestAccWLANFramework_additionalFields",
+      "TestAccWLANFramework_basic",
+      "TestAccWireguardPeerList_basic",
+      "TestAccWireguardPeer_basic",
+      "TestAccWireguardPeer_update"
+    ],
+    "pre_test_diagnostics": [],
+    "result": "pass",
+    "skipped": [
+      "TestAccSettingResource_dohCustomServers",
+      "TestAccSettingResource_ipsHoneypot",
+      "TestAccWLANList_basic"
+    ],
+    "unexpected_failures": []
+  },
+  "candidate_commit": "b8f5c1cdc34e48bd7e7ac2a793b485f6d02d9aad",
+  "fleet": {
+    "herder_sha256": "73cc87d766ca43742c448bc7b10201927afd12b3176cb6f9b78ad6714103e5f7",
+    "image": "local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55",
+    "image_id": "sha256:28bf5374b6a776138283500562c2b5a797c6ca10b24a8bd2f05ebdd8c2c61916"
+  },
+  "format_version": 1,
+  "gate": "catalog controller differential",
+  "plan": {
+    "allowed_skips": [
+      "TestAccSettingResource_dohCustomServers",
+      "TestAccSettingResource_ipsHoneypot",
+      "TestAccWLANList_basic"
+    ],
+    "evidence_gap_count": 6,
+    "format_version": 1,
+    "gate": "catalog controller differential",
+    "released_allowed_failures": [
+      "TestAccDeviceFramework_basic"
+    ],
+    "released_allowed_missing": [
+      "TestAccAPGroupDataSource_basic",
+      "TestAccAPGroupList_basic",
+      "TestAccClientQosRateDataSource_basic",
+      "TestAccDNSRecordDataSource_basic",
+      "TestAccDeviceList_basic",
+      "TestAccFirewallPolicyFramework_basic",
+      "TestAccFirewallPolicyList_emptyOrSeeded",
+      "TestAccFirewallZoneDataSource_basic",
+      "TestAccFirewallZoneFramework_basic",
+      "TestAccFirewallZoneList_emptyOrSeeded",
+      "TestAccNetworkFramework_purposeConflict",
+      "TestAccNetworkFramework_purposeVLANOnlyDirect",
+      "TestAccPortProfileDataSource_basic",
+      "TestAccPowerSupervisorList_emptyOrSeeded",
+      "TestAccSiteToSiteVPNFramework_basic",
+      "TestAccSiteToSiteVPNList_empty",
+      "TestAccWANList_basic"
+    ],
+    "shared_scenario_owners": [
+      "unifi/account_deprecated_test.go",
+      "unifi/port_action_test.go",
+      "unifi/setting_resource_test.go"
+    ],
+    "surface_count": 67,
+    "surfaces": [
+      {
+        "kind": "managed_resource",
+        "missing_signals": [
+          "acceptance",
+          "import"
+        ],
+        "name": "unifi_account",
+        "test_names": [],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_ap_group",
+        "test_names": [
+          "TestAccAPGroupFramework_basic",
+          "TestAccAPGroupFramework_withDevices"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_bgp",
+        "test_names": [
+          "TestAccBGPConfig_basic",
+          "TestAccBGPConfig_structured"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_client",
+        "test_names": [
+          "TestAccClientFramework_basic",
+          "TestAccClientFramework_blocked",
+          "TestAccClientFramework_fixedIP",
+          "TestAccClientFramework_groups"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_client_qos_rate",
+        "test_names": [
+          "TestAccClientQosRate_basic",
+          "TestAccClientQosRate_qos",
+          "TestAccClientQosRate_update"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_device",
+        "test_names": [
+          "TestAccDeviceFramework_basic"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_dns_record",
+        "test_names": [
+          "TestAccDNSRecordFramework_basic"
+        ],
+        "wave": 2
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_dynamic_dns",
+        "test_names": [
+          "TestAccDynamicDNS_dyndns"
+        ],
+        "wave": 2
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_firewall_group",
+        "test_names": [
+          "TestAccFirewallGroupFramework_basic",
+          "TestAccFirewallGroupFramework_portGroup"
+        ],
+        "wave": 2
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_firewall_policy",
+        "test_names": [
+          "TestAccFirewallPolicyFramework_basic"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_firewall_rule",
+        "test_names": [
+          "TestAccFirewallRule_accept",
+          "TestAccFirewallRule_basic",
+          "TestAccFirewallRule_disabled",
+          "TestAccFirewallRule_guestRuleset",
+          "TestAccFirewallRule_highRuleIndex",
+          "TestAccFirewallRule_reject",
+          "TestAccFirewallRule_update",
+          "TestAccFirewallRule_withDstAddress",
+          "TestAccFirewallRule_withFirewallGroups",
+          "TestAccFirewallRule_withLogging",
+          "TestAccFirewallRule_withProtocol",
+          "TestAccFirewallRule_withSrcAddress",
+          "TestAccFirewallRule_withSrcMac",
+          "TestAccFirewallRule_withStateMatching"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_firewall_zone",
+        "test_names": [
+          "TestAccFirewallZoneFramework_basic"
+        ],
+        "wave": 2
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_network",
+        "test_names": [
+          "TestAccNetworkFramework_basic",
+          "TestAccNetworkFramework_dhcp",
+          "TestAccNetworkFramework_dhcpGuardingCorporate",
+          "TestAccNetworkFramework_dhcpRelay",
+          "TestAccNetworkFramework_dhcpV6",
+          "TestAccNetworkFramework_guest",
+          "TestAccNetworkFramework_ipv6Static",
+          "TestAccNetworkFramework_purposeConflict",
+          "TestAccNetworkFramework_purposeVLANOnlyDirect",
+          "TestAccNetworkFramework_thirdPartyGateway",
+          "TestAccNetworkFramework_thirdPartyGatewayMinimal"
+        ],
+        "wave": 2
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_port_forward",
+        "test_names": [
+          "TestAccPortForward_anyIP",
+          "TestAccPortForward_basic",
+          "TestAccPortForward_destinationIPs",
+          "TestAccPortForward_protocols",
+          "TestAccPortForward_sourceLimitingFirewallGroup",
+          "TestAccPortForward_sourceLimitingIP",
+          "TestAccPortForward_syslogLogging",
+          "TestAccPortForward_update",
+          "TestAccPortForward_wan"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_port_profile",
+        "test_names": [
+          "TestAccPortProfileFramework_basic",
+          "TestAccPortProfileFramework_exactTaggedNetworks",
+          "TestAccPortProfileFramework_vlanFields"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [
+          "acceptance"
+        ],
+        "name": "unifi_power_supervisor",
+        "test_names": [],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_radius_profile",
+        "test_names": [
+          "TestAccRadiusProfile_basic",
+          "TestAccRadiusProfile_importWithSite",
+          "TestAccRadiusProfile_update",
+          "TestAccRadiusProfile_withAcctServer",
+          "TestAccRadiusProfile_withAuthAndAcctServers",
+          "TestAccRadiusProfile_withAuthServer",
+          "TestAccRadiusProfile_withAuthServerCustomPort",
+          "TestAccRadiusProfile_withInterimUpdate",
+          "TestAccRadiusProfile_withVlan"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_radius_user",
+        "test_names": [
+          "TestAccRadiusUser_basic",
+          "TestAccRadiusUser_moveFromAccount",
+          "TestAccRadiusUser_tunnelType13",
+          "TestAccRadiusUser_vlan"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_setting",
+        "test_names": [
+          "TestAccSettingResource_combined",
+          "TestAccSettingResource_doh",
+          "TestAccSettingResource_dohCustomServers",
+          "TestAccSettingResource_ips",
+          "TestAccSettingResource_ipsHoneypot",
+          "TestAccSettingResource_mgmt",
+          "TestAccSettingResource_radius",
+          "TestAccSettingResource_sshKeys",
+          "TestAccSettingResource_usg"
+        ],
+        "wave": 2
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_site",
+        "test_names": [
+          "TestAccSiteFramework_basic"
+        ],
+        "wave": 2
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_site_to_site_vpn",
+        "test_names": [
+          "TestAccSiteToSiteVPNFramework_basic"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_static_route",
+        "test_names": [
+          "TestAccStaticRouteFramework_basic",
+          "TestAccStaticRouteFramework_enabledAndGateway",
+          "TestAccStaticRouteFramework_ipv6NextHop"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_traffic_route",
+        "test_names": [
+          "TestAccTrafficRoute_basic",
+          "TestAccTrafficRoute_fullConfig",
+          "TestAccTrafficRoute_ipAddresses",
+          "TestAccTrafficRoute_ipRanges",
+          "TestAccTrafficRoute_regions",
+          "TestAccTrafficRoute_sourceDefault",
+          "TestAccTrafficRoute_update"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_vpn_client",
+        "test_names": [
+          "TestAccVPNClient_file_mode",
+          "TestAccVPNClient_manual_mode",
+          "TestAccVPNClient_with_preshared_key"
+        ],
+        "wave": 4
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_vpn_server",
+        "test_names": [
+          "TestAccVPNServer_l2tp_basic",
+          "TestAccVPNServer_l2tp_update",
+          "TestAccVPNServer_openvpn_basic",
+          "TestAccVPNServer_openvpn_update",
+          "TestAccVPNServer_wireguard_basic",
+          "TestAccVPNServer_wireguard_custom_wan",
+          "TestAccVPNServer_wireguard_disabled",
+          "TestAccVPNServer_wireguard_update",
+          "TestAccVPNServer_wireguard_with_dns"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_wan",
+        "test_names": [
+          "TestAccWANFramework_additionalFields",
+          "TestAccWANFramework_basic",
+          "TestAccWANFramework_minimal",
+          "TestAccWANFramework_withNestedObjects"
+        ],
+        "wave": 2
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_wireguard_peer",
+        "test_names": [
+          "TestAccWireguardPeer_basic",
+          "TestAccWireguardPeer_update"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "managed_resource",
+        "missing_signals": [],
+        "name": "unifi_wlan",
+        "test_names": [
+          "TestAccWLANFramework_additionalFields",
+          "TestAccWLANFramework_basic"
+        ],
+        "wave": 3
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [
+          "acceptance"
+        ],
+        "name": "unifi_account",
+        "test_names": [],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_ap_group",
+        "test_names": [
+          "TestAccAPGroupDataSource_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_client",
+        "test_names": [
+          "TestAccClientDataSource_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [
+          "acceptance"
+        ],
+        "name": "unifi_client_info",
+        "test_names": [],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_client_info_list",
+        "test_names": [
+          "TestAccClientInfoListDataSource_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_client_list",
+        "test_names": [
+          "TestAccClientListDataSource_basic",
+          "TestAccClientListDataSource_filtered"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_client_qos_rate",
+        "test_names": [
+          "TestAccClientQosRateDataSource_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_dns_record",
+        "test_names": [
+          "TestAccDNSRecordDataSource_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_firewall_zone",
+        "test_names": [
+          "TestAccFirewallZoneDataSource_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_network",
+        "test_names": [
+          "TestAccNetworkFrameworkDataSource_basic",
+          "TestAccNetworkFrameworkDataSource_byID",
+          "TestAccNetworkFrameworkDataSource_dhcpGuardingServers",
+          "TestAccNetworkFrameworkDataSource_dhcpRelayServers",
+          "TestAccNetworkFrameworkDataSource_ipv6",
+          "TestAccNetworkFrameworkDataSource_outputFields"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_port_profile",
+        "test_names": [
+          "TestAccPortProfileDataSource_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_radius_profile",
+        "test_names": [
+          "TestAccRadiusProfileDataSource_accountingEnabled",
+          "TestAccRadiusProfileDataSource_basic",
+          "TestAccRadiusProfileDataSource_withAuthServer"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "data_source",
+        "missing_signals": [],
+        "name": "unifi_radius_user",
+        "test_names": [
+          "TestAccRadiusUserDataSource_basic",
+          "TestAccRadiusUserDataSource_passwordSensitive",
+          "TestAccRadiusUserDataSource_withNetworkID"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_ap_group",
+        "test_names": [
+          "TestAccAPGroupList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_client",
+        "test_names": [
+          "TestAccClientList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_client_qos_rate",
+        "test_names": [
+          "TestAccClientQosRateList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_device",
+        "test_names": [
+          "TestAccDeviceList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_dns_record",
+        "test_names": [
+          "TestAccDNSRecordList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_dynamic_dns",
+        "test_names": [
+          "TestAccDynamicDNSList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_firewall_group",
+        "test_names": [
+          "TestAccFirewallGroupList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_firewall_policy",
+        "test_names": [
+          "TestAccFirewallPolicyList_emptyOrSeeded"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_firewall_rule",
+        "test_names": [
+          "TestAccFirewallRuleList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_firewall_zone",
+        "test_names": [
+          "TestAccFirewallZoneList_emptyOrSeeded"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_network",
+        "test_names": [
+          "TestAccNetworkList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_port_forward",
+        "test_names": [
+          "TestAccPortForwardList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_port_profile",
+        "test_names": [
+          "TestAccPortProfileList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_power_supervisor",
+        "test_names": [
+          "TestAccPowerSupervisorList_emptyOrSeeded"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_radius_profile",
+        "test_names": [
+          "TestAccRadiusProfileList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_radius_user",
+        "test_names": [
+          "TestAccRadiusUserList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_site",
+        "test_names": [
+          "TestAccSiteList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_site_to_site_vpn",
+        "test_names": [
+          "TestAccSiteToSiteVPNList_empty"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_static_route",
+        "test_names": [
+          "TestAccStaticRouteList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_traffic_route",
+        "test_names": [
+          "TestAccTrafficRouteList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_vpn_client",
+        "test_names": [
+          "TestAccVPNClientList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_vpn_server",
+        "test_names": [
+          "TestAccVPNServerList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_wan",
+        "test_names": [
+          "TestAccWANList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_wireguard_peer",
+        "test_names": [
+          "TestAccWireguardPeerList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "list_resource",
+        "missing_signals": [],
+        "name": "unifi_wlan",
+        "test_names": [
+          "TestAccWLANList_basic"
+        ],
+        "wave": 1
+      },
+      {
+        "kind": "action",
+        "missing_signals": [
+          "hardware_claim"
+        ],
+        "name": "unifi_port",
+        "test_names": [
+          "TestAccPortAction_persistsPoeOverride"
+        ],
+        "wave": 5
+      }
+    ],
+    "test_names": [
+      "TestAccAPGroupDataSource_basic",
+      "TestAccAPGroupFramework_basic",
+      "TestAccAPGroupFramework_withDevices",
+      "TestAccAPGroupList_basic",
+      "TestAccBGPConfig_basic",
+      "TestAccBGPConfig_structured",
+      "TestAccClientDataSource_basic",
+      "TestAccClientFramework_basic",
+      "TestAccClientFramework_blocked",
+      "TestAccClientFramework_fixedIP",
+      "TestAccClientFramework_groups",
+      "TestAccClientInfoListDataSource_basic",
+      "TestAccClientListDataSource_basic",
+      "TestAccClientListDataSource_filtered",
+      "TestAccClientList_basic",
+      "TestAccClientQosRateDataSource_basic",
+      "TestAccClientQosRateList_basic",
+      "TestAccClientQosRate_basic",
+      "TestAccClientQosRate_qos",
+      "TestAccClientQosRate_update",
+      "TestAccDNSRecordDataSource_basic",
+      "TestAccDNSRecordFramework_basic",
+      "TestAccDNSRecordList_basic",
+      "TestAccDeviceFramework_basic",
+      "TestAccDeviceList_basic",
+      "TestAccDynamicDNSList_basic",
+      "TestAccDynamicDNS_dyndns",
+      "TestAccFirewallGroupFramework_basic",
+      "TestAccFirewallGroupFramework_portGroup",
+      "TestAccFirewallGroupList_basic",
+      "TestAccFirewallPolicyFramework_basic",
+      "TestAccFirewallPolicyList_emptyOrSeeded",
+      "TestAccFirewallRuleList_basic",
+      "TestAccFirewallRule_accept",
+      "TestAccFirewallRule_basic",
+      "TestAccFirewallRule_disabled",
+      "TestAccFirewallRule_guestRuleset",
+      "TestAccFirewallRule_highRuleIndex",
+      "TestAccFirewallRule_reject",
+      "TestAccFirewallRule_update",
+      "TestAccFirewallRule_withDstAddress",
+      "TestAccFirewallRule_withFirewallGroups",
+      "TestAccFirewallRule_withLogging",
+      "TestAccFirewallRule_withProtocol",
+      "TestAccFirewallRule_withSrcAddress",
+      "TestAccFirewallRule_withSrcMac",
+      "TestAccFirewallRule_withStateMatching",
+      "TestAccFirewallZoneDataSource_basic",
+      "TestAccFirewallZoneFramework_basic",
+      "TestAccFirewallZoneList_emptyOrSeeded",
+      "TestAccNetworkFrameworkDataSource_basic",
+      "TestAccNetworkFrameworkDataSource_byID",
+      "TestAccNetworkFrameworkDataSource_dhcpGuardingServers",
+      "TestAccNetworkFrameworkDataSource_dhcpRelayServers",
+      "TestAccNetworkFrameworkDataSource_ipv6",
+      "TestAccNetworkFrameworkDataSource_outputFields",
+      "TestAccNetworkFramework_basic",
+      "TestAccNetworkFramework_dhcp",
+      "TestAccNetworkFramework_dhcpGuardingCorporate",
+      "TestAccNetworkFramework_dhcpRelay",
+      "TestAccNetworkFramework_dhcpV6",
+      "TestAccNetworkFramework_guest",
+      "TestAccNetworkFramework_ipv6Static",
+      "TestAccNetworkFramework_purposeConflict",
+      "TestAccNetworkFramework_purposeVLANOnlyDirect",
+      "TestAccNetworkFramework_thirdPartyGateway",
+      "TestAccNetworkFramework_thirdPartyGatewayMinimal",
+      "TestAccNetworkList_basic",
+      "TestAccPortAction_persistsPoeOverride",
+      "TestAccPortForwardList_basic",
+      "TestAccPortForward_anyIP",
+      "TestAccPortForward_basic",
+      "TestAccPortForward_destinationIPs",
+      "TestAccPortForward_protocols",
+      "TestAccPortForward_sourceLimitingFirewallGroup",
+      "TestAccPortForward_sourceLimitingIP",
+      "TestAccPortForward_syslogLogging",
+      "TestAccPortForward_update",
+      "TestAccPortForward_wan",
+      "TestAccPortProfileDataSource_basic",
+      "TestAccPortProfileFramework_basic",
+      "TestAccPortProfileFramework_exactTaggedNetworks",
+      "TestAccPortProfileFramework_vlanFields",
+      "TestAccPortProfileList_basic",
+      "TestAccPowerSupervisorList_emptyOrSeeded",
+      "TestAccRadiusProfileDataSource_accountingEnabled",
+      "TestAccRadiusProfileDataSource_basic",
+      "TestAccRadiusProfileDataSource_withAuthServer",
+      "TestAccRadiusProfileList_basic",
+      "TestAccRadiusProfile_basic",
+      "TestAccRadiusProfile_importWithSite",
+      "TestAccRadiusProfile_update",
+      "TestAccRadiusProfile_withAcctServer",
+      "TestAccRadiusProfile_withAuthAndAcctServers",
+      "TestAccRadiusProfile_withAuthServer",
+      "TestAccRadiusProfile_withAuthServerCustomPort",
+      "TestAccRadiusProfile_withInterimUpdate",
+      "TestAccRadiusProfile_withVlan",
+      "TestAccRadiusUserDataSource_basic",
+      "TestAccRadiusUserDataSource_passwordSensitive",
+      "TestAccRadiusUserDataSource_withNetworkID",
+      "TestAccRadiusUserList_basic",
+      "TestAccRadiusUser_basic",
+      "TestAccRadiusUser_moveFromAccount",
+      "TestAccRadiusUser_tunnelType13",
+      "TestAccRadiusUser_vlan",
+      "TestAccSettingResource_combined",
+      "TestAccSettingResource_doh",
+      "TestAccSettingResource_dohCustomServers",
+      "TestAccSettingResource_ips",
+      "TestAccSettingResource_ipsHoneypot",
+      "TestAccSettingResource_mgmt",
+      "TestAccSettingResource_radius",
+      "TestAccSettingResource_sshKeys",
+      "TestAccSettingResource_usg",
+      "TestAccSiteFramework_basic",
+      "TestAccSiteList_basic",
+      "TestAccSiteToSiteVPNFramework_basic",
+      "TestAccSiteToSiteVPNList_empty",
+      "TestAccStaticRouteFramework_basic",
+      "TestAccStaticRouteFramework_enabledAndGateway",
+      "TestAccStaticRouteFramework_ipv6NextHop",
+      "TestAccStaticRouteList_basic",
+      "TestAccTrafficRouteList_basic",
+      "TestAccTrafficRoute_basic",
+      "TestAccTrafficRoute_fullConfig",
+      "TestAccTrafficRoute_ipAddresses",
+      "TestAccTrafficRoute_ipRanges",
+      "TestAccTrafficRoute_regions",
+      "TestAccTrafficRoute_sourceDefault",
+      "TestAccTrafficRoute_update",
+      "TestAccVPNClientList_basic",
+      "TestAccVPNClient_file_mode",
+      "TestAccVPNClient_manual_mode",
+      "TestAccVPNClient_with_preshared_key",
+      "TestAccVPNServerList_basic",
+      "TestAccVPNServer_l2tp_basic",
+      "TestAccVPNServer_l2tp_update",
+      "TestAccVPNServer_openvpn_basic",
+      "TestAccVPNServer_openvpn_update",
+      "TestAccVPNServer_wireguard_basic",
+      "TestAccVPNServer_wireguard_custom_wan",
+      "TestAccVPNServer_wireguard_disabled",
+      "TestAccVPNServer_wireguard_update",
+      "TestAccVPNServer_wireguard_with_dns",
+      "TestAccWANFramework_additionalFields",
+      "TestAccWANFramework_basic",
+      "TestAccWANFramework_minimal",
+      "TestAccWANFramework_withNestedObjects",
+      "TestAccWANList_basic",
+      "TestAccWLANFramework_additionalFields",
+      "TestAccWLANFramework_basic",
+      "TestAccWLANList_basic",
+      "TestAccWireguardPeerList_basic",
+      "TestAccWireguardPeer_basic",
+      "TestAccWireguardPeer_update"
+    ],
+    "waves": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  "plan_sha256": "bc27f73845d2e73dca3e99630d5d7489e567d23c70ff426707a82bcd7d256392",
+  "released": {
+    "accepted_failures": [],
+    "exit_code": 0,
+    "failed": [],
+    "missing": [
+      "TestAccAPGroupDataSource_basic",
+      "TestAccAPGroupList_basic",
+      "TestAccClientQosRateDataSource_basic",
+      "TestAccDNSRecordDataSource_basic",
+      "TestAccDeviceList_basic",
+      "TestAccFirewallPolicyFramework_basic",
+      "TestAccFirewallPolicyList_emptyOrSeeded",
+      "TestAccFirewallZoneDataSource_basic",
+      "TestAccFirewallZoneFramework_basic",
+      "TestAccFirewallZoneList_emptyOrSeeded",
+      "TestAccNetworkFramework_purposeConflict",
+      "TestAccNetworkFramework_purposeVLANOnlyDirect",
+      "TestAccPortProfileDataSource_basic",
+      "TestAccPowerSupervisorList_emptyOrSeeded",
+      "TestAccSiteToSiteVPNFramework_basic",
+      "TestAccSiteToSiteVPNList_empty",
+      "TestAccWANList_basic"
+    ],
+    "passed": [
+      "TestAccAPGroupFramework_basic",
+      "TestAccAPGroupFramework_withDevices",
+      "TestAccBGPConfig_basic",
+      "TestAccBGPConfig_structured",
+      "TestAccClientDataSource_basic",
+      "TestAccClientFramework_basic",
+      "TestAccClientFramework_blocked",
+      "TestAccClientFramework_fixedIP",
+      "TestAccClientFramework_groups",
+      "TestAccClientInfoListDataSource_basic",
+      "TestAccClientListDataSource_basic",
+      "TestAccClientListDataSource_filtered",
+      "TestAccClientList_basic",
+      "TestAccClientQosRateList_basic",
+      "TestAccClientQosRate_basic",
+      "TestAccClientQosRate_qos",
+      "TestAccClientQosRate_update",
+      "TestAccDNSRecordFramework_basic",
+      "TestAccDNSRecordList_basic",
+      "TestAccDeviceFramework_basic",
+      "TestAccDynamicDNSList_basic",
+      "TestAccDynamicDNS_dyndns",
+      "TestAccFirewallGroupFramework_basic",
+      "TestAccFirewallGroupFramework_portGroup",
+      "TestAccFirewallGroupList_basic",
+      "TestAccFirewallRuleList_basic",
+      "TestAccFirewallRule_accept",
+      "TestAccFirewallRule_basic",
+      "TestAccFirewallRule_disabled",
+      "TestAccFirewallRule_guestRuleset",
+      "TestAccFirewallRule_highRuleIndex",
+      "TestAccFirewallRule_reject",
+      "TestAccFirewallRule_update",
+      "TestAccFirewallRule_withDstAddress",
+      "TestAccFirewallRule_withFirewallGroups",
+      "TestAccFirewallRule_withLogging",
+      "TestAccFirewallRule_withProtocol",
+      "TestAccFirewallRule_withSrcAddress",
+      "TestAccFirewallRule_withSrcMac",
+      "TestAccFirewallRule_withStateMatching",
+      "TestAccNetworkFrameworkDataSource_basic",
+      "TestAccNetworkFrameworkDataSource_byID",
+      "TestAccNetworkFrameworkDataSource_dhcpGuardingServers",
+      "TestAccNetworkFrameworkDataSource_dhcpRelayServers",
+      "TestAccNetworkFrameworkDataSource_ipv6",
+      "TestAccNetworkFrameworkDataSource_outputFields",
+      "TestAccNetworkFramework_basic",
+      "TestAccNetworkFramework_dhcp",
+      "TestAccNetworkFramework_dhcpGuardingCorporate",
+      "TestAccNetworkFramework_dhcpRelay",
+      "TestAccNetworkFramework_dhcpV6",
+      "TestAccNetworkFramework_guest",
+      "TestAccNetworkFramework_ipv6Static",
+      "TestAccNetworkFramework_thirdPartyGateway",
+      "TestAccNetworkFramework_thirdPartyGatewayMinimal",
+      "TestAccNetworkList_basic",
+      "TestAccPortAction_persistsPoeOverride",
+      "TestAccPortForwardList_basic",
+      "TestAccPortForward_anyIP",
+      "TestAccPortForward_basic",
+      "TestAccPortForward_destinationIPs",
+      "TestAccPortForward_protocols",
+      "TestAccPortForward_sourceLimitingFirewallGroup",
+      "TestAccPortForward_sourceLimitingIP",
+      "TestAccPortForward_syslogLogging",
+      "TestAccPortForward_update",
+      "TestAccPortForward_wan",
+      "TestAccPortProfileFramework_basic",
+      "TestAccPortProfileFramework_exactTaggedNetworks",
+      "TestAccPortProfileFramework_vlanFields",
+      "TestAccPortProfileList_basic",
+      "TestAccRadiusProfileDataSource_accountingEnabled",
+      "TestAccRadiusProfileDataSource_basic",
+      "TestAccRadiusProfileDataSource_withAuthServer",
+      "TestAccRadiusProfileList_basic",
+      "TestAccRadiusProfile_basic",
+      "TestAccRadiusProfile_importWithSite",
+      "TestAccRadiusProfile_update",
+      "TestAccRadiusProfile_withAcctServer",
+      "TestAccRadiusProfile_withAuthAndAcctServers",
+      "TestAccRadiusProfile_withAuthServer",
+      "TestAccRadiusProfile_withAuthServerCustomPort",
+      "TestAccRadiusProfile_withInterimUpdate",
+      "TestAccRadiusProfile_withVlan",
+      "TestAccRadiusUserDataSource_basic",
+      "TestAccRadiusUserDataSource_passwordSensitive",
+      "TestAccRadiusUserDataSource_withNetworkID",
+      "TestAccRadiusUserList_basic",
+      "TestAccRadiusUser_basic",
+      "TestAccRadiusUser_moveFromAccount",
+      "TestAccRadiusUser_tunnelType13",
+      "TestAccRadiusUser_vlan",
+      "TestAccSettingResource_combined",
+      "TestAccSettingResource_doh",
+      "TestAccSettingResource_ips",
+      "TestAccSettingResource_mgmt",
+      "TestAccSettingResource_radius",
+      "TestAccSettingResource_sshKeys",
+      "TestAccSettingResource_usg",
+      "TestAccSiteFramework_basic",
+      "TestAccSiteList_basic",
+      "TestAccStaticRouteFramework_basic",
+      "TestAccStaticRouteFramework_enabledAndGateway",
+      "TestAccStaticRouteFramework_ipv6NextHop",
+      "TestAccStaticRouteList_basic",
+      "TestAccTrafficRouteList_basic",
+      "TestAccTrafficRoute_basic",
+      "TestAccTrafficRoute_fullConfig",
+      "TestAccTrafficRoute_ipAddresses",
+      "TestAccTrafficRoute_ipRanges",
+      "TestAccTrafficRoute_regions",
+      "TestAccTrafficRoute_sourceDefault",
+      "TestAccTrafficRoute_update",
+      "TestAccVPNClientList_basic",
+      "TestAccVPNClient_file_mode",
+      "TestAccVPNClient_manual_mode",
+      "TestAccVPNClient_with_preshared_key",
+      "TestAccVPNServerList_basic",
+      "TestAccVPNServer_l2tp_basic",
+      "TestAccVPNServer_l2tp_update",
+      "TestAccVPNServer_openvpn_basic",
+      "TestAccVPNServer_openvpn_update",
+      "TestAccVPNServer_wireguard_basic",
+      "TestAccVPNServer_wireguard_custom_wan",
+      "TestAccVPNServer_wireguard_disabled",
+      "TestAccVPNServer_wireguard_update",
+      "TestAccVPNServer_wireguard_with_dns",
+      "TestAccWANFramework_additionalFields",
+      "TestAccWANFramework_basic",
+      "TestAccWANFramework_minimal",
+      "TestAccWANFramework_withNestedObjects",
+      "TestAccWLANFramework_additionalFields",
+      "TestAccWLANFramework_basic",
+      "TestAccWireguardPeerList_basic",
+      "TestAccWireguardPeer_basic",
+      "TestAccWireguardPeer_update"
+    ],
+    "pre_test_diagnostics": [],
+    "result": "accepted_limitation",
+    "skipped": [
+      "TestAccSettingResource_dohCustomServers",
+      "TestAccSettingResource_ipsHoneypot",
+      "TestAccWLANList_basic"
+    ],
+    "unexpected_failures": []
+  },
+  "released_commit": "4e677062f23f232be9fda3e559279937a0f3d007",
+  "result": "blocked_evidence",
+  "target": {
+    "image": "ghcr.io/jamesbraid/unifi-network@sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4",
+    "image_id": "sha256:5a9624d7671e1cead43755f3f2bdb37d852460fe58e75b184af85eb67635751a",
+    "pull_policy": "never"
+  },
+  "terraform_binary_sha256": "8b6cb96cd46080ee1287baf646c70078715a99123b9b3a6ce2a7fe3892ec703a",
+  "testcontainers": {
+    "ryuk_image": "docker.io/testcontainers/ryuk@sha256:31b31269d06603366cbfd0284708dcd2e281e8a4188e53fce3d3304439d0df3d",
+    "ryuk_image_id": "sha256:b75bc7ce94c36dfb9349cf8b10111504a60119b51a0ac47ae9f6be9006f72f72"
+  },
+  "tree_state": {
+    "commit": "b8f5c1cdc34e48bd7e7ac2a793b485f6d02d9aad",
+    "dirty_paths": [],
+    "status": "clean"
+  }
+}
