@@ -274,6 +274,22 @@ var knownReceiptMismatches = map[string]struct{ keys, why string }{
 // pairing against a script that is being replaced this week would pin the shape
 // of the thing being deleted. They pair as each producer lands.
 var unpairedStrictConsumers = map[string]string{
+	// This check named its own executor, which is correct and is kept rather
+	// than special-cased away. cmd/receipt-gate decodes strictly because
+	// decoding IS its first assertion, and the types it decodes into are exactly
+	// the ones receiptPairs already covers -- so every pair above checks it, and
+	// an entry of its own would count the same question twice.
+	//
+	// It does expose a real imprecision. The walk keys on the package containing
+	// the DisallowUnknownFields CALL, while a pair is about the package owning
+	// the TYPE, and those differ whenever a command decodes a type declared
+	// elsewhere -- which is most of them. Recorded rather than fixed: keying on
+	// the type means resolving it, and a wrong answer there would silently drop
+	// consumers from the population instead of listing them here, which is the
+	// worse failure of the two.
+	"receipt-gate": "the command that executes the pairs in receiptPairs; its decoding is " +
+		"checked by every entry there rather than by one of its own",
+
 	// Arrived with sweep's merge and was named by this check on the first run
 	// after it: a new strict decoder landing with nothing paired to it, which is
 	// the state both original instances were found in.
