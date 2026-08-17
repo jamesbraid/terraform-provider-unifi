@@ -3,7 +3,6 @@ package controllerdifferential
 import (
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -79,7 +78,12 @@ func TestEachWayToFailTheFollowupFiresOnItsOwn(t *testing.T) {
 			}},
 		{"a disposition was dropped", "allowed_skips in the plan",
 			func(r *catalogparity.ControllerDifferentialReceipt) { r.Plan.AllowedSkips = nil }},
-		{"the result disagrees with the gap count", "evidence gap(s); want",
+		// The wording moved when this check was delegated to
+		// catalogparity.RequireControllerResultAgreesWithGaps, the single home
+		// of the gap-count-to-result rule. Asserting "must report" rather than
+		// the old "; want" keeps this about the message NAMING the required
+		// result, not about one phrasing of it.
+		{"the result disagrees with the gap count", "must report",
 			func(r *catalogparity.ControllerDifferentialReceipt) { r.Result = "pass" }},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -191,134 +195,6 @@ func TestTheDispositionComparisonIsASet(t *testing.T) {
 		t.Fatalf("reordering the allowed-skip list was rejected: %v.\nThe comparison is about "+
 			"which tests are dispositioned, not about the order somebody wrote them in", err)
 	}
-}
-
-const followupScript = "../../.woodpecker/scripts/catalog-controller-followup.sh"
-
-// TestFollowupAgreesWithTheShell runs the deployed script, not a copy, on the
-// two classifications a live pipeline produces.
-//
-// DELETE THIS TEST IN THE COMMIT THAT DELETES THE SCRIPT. It does not skip when
-// the script is missing.
-//
-// It compares the two shapes the shell can express -- the word it prints, and
-// whether it exited zero. It cannot compare messages, because on a rejection
-// the shell prints NOTHING AT ALL: it is one jq -e expression of fourteen
-// conjuncts, so a failed run tells an operator only that one of them was false.
-func TestFollowupAgreesWithTheShell(t *testing.T) {
-	if _, err := os.Stat(followupScript); err != nil {
-		t.Fatalf("%s is gone, so this comparison measures nothing: %v.\nIf it was deleted "+
-			"deliberately, delete this test in the same commit.", followupScript, err)
-	}
-	policy, counts := campaign(t)
-
-	full := frozenReceipt(t)
-	diagnostic := frozenReceipt(t)
-	diagnostic.Plan.DiagnosticSelection = true
-	diagnostic.Plan.CatalogTestCount = counts.TestNameCount
-	diagnostic.Plan.TestNames = diagnostic.Plan.TestNames[:1]
-
-	for _, c := range []struct {
-		name    string
-		receipt catalogparity.ControllerDifferentialReceipt
-	}{
-		{"a full campaign run", full},
-		{"a narrowed diagnostic run", diagnostic},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			byShell := runFollowupScript(t, c.receipt)
-			byGo, err := Followup(c.receipt, policy, counts)
-			if err != nil {
-				byGo = ""
-			}
-			if byShell != byGo {
-				t.Fatalf("shell says %q, Go says %q (err %v)", byShell, byGo, err)
-			}
-		})
-	}
-}
-
-// TestTheShellFollowupFailsOnACompletedCampaign records the divergence by
-// MEASURING it rather than reasoning about it.
-//
-// A campaign with its evidence gaps closed produces result "pass". The shell
-// requires "blocked_evidence" outright, so it rejects exactly the run the
-// campaign is working towards -- and rejects it silently, with exit 1 and no
-// output. Run here so the claim in Followup's comment is a measurement.
-func TestTheShellFollowupFailsOnACompletedCampaign(t *testing.T) {
-	if _, err := os.Stat(followupScript); err != nil {
-		t.Fatalf("%s is gone; delete this test in the same commit: %v", followupScript, err)
-	}
-	policy, counts := campaign(t)
-
-	finished := frozenReceipt(t)
-	finished.Result = "pass"
-	finished.Plan.EvidenceGapCount = 0
-	for i := range finished.Plan.Surfaces {
-		finished.Plan.Surfaces[i].MissingSignals = []string{}
-	}
-	counts.EvidenceGapCount = 0
-
-	if verdict := runFollowupScriptWithCounts(t, finished, counts); verdict != "" {
-		t.Fatalf("the shell accepted a completed campaign with %q; this test exists because it "+
-			"does not, and the divergence in Followup is written on that basis", verdict)
-	}
-	if _, err := Followup(finished, policy, counts); err != nil {
-		t.Fatalf("the Go rejected a completed campaign too: %v", err)
-	}
-}
-
-func runFollowupScript(t *testing.T, receipt catalogparity.ControllerDifferentialReceipt) string {
-	t.Helper()
-	_, counts := campaign(t)
-	return runFollowupScriptWithCounts(t, receipt, counts)
-}
-
-// runFollowupScriptWithCounts returns the word the script printed, or "" when
-// it refused.
-func runFollowupScriptWithCounts(t *testing.T, receipt catalogparity.ControllerDifferentialReceipt, counts CampaignCounts) string {
-	t.Helper()
-	work := t.TempDir()
-
-	receiptPath := filepath.Join(work, "receipt.json")
-	encoded, err := json.Marshal(receipt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(receiptPath, encoded, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	// The policy the script reads must carry the counts this case is about, so
-	// a completed-campaign case is judged against a completed campaign's policy
-	// rather than against today's.
-	rawPolicy, err := os.ReadFile(filepath.Join(repositoryRoot, "provider-codegen", "policy", "catalog-campaign.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var document map[string]any
-	if err := json.Unmarshal(rawPolicy, &document); err != nil {
-		t.Fatal(err)
-	}
-	document["surface_count"] = counts.SurfaceCount
-	document["evidence_gap_count"] = counts.EvidenceGapCount
-	document["test_name_count"] = counts.TestNameCount
-	policyPath := filepath.Join(work, "campaign.json")
-	adjusted, err := json.Marshal(document)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(policyPath, adjusted, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	command := exec.Command("bash", followupScript, receiptPath)
-	command.Env = append(os.Environ(), "CATALOG_CAMPAIGN_POLICY="+policyPath)
-	out, err := command.Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
 }
 
 // TestMissingFEWERThanDeclaredIsAlsoARefusal is the direction nothing covered,

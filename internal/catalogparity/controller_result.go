@@ -18,6 +18,11 @@ import "fmt"
 //	releasequalification.BuildHardwareDispositionReceipt
 //	releasequalification.validateMigrationController
 //
+// All six are closed. The four Go ones call this function; the followup script
+// is deleted and its replacement asks the same question here; and the jq gate's
+// .result conjunct moved into CheckControllerDifferentialReceipt, which is the
+// one that was still live after the Go sweep.
+//
 // THE CONSEQUENCE IS THAT THE RELEASE PATH ASSUMES THE CAMPAIGN NEVER
 // COMPLETES. The moment the gaps close the producer emits "pass", and admission,
 // hardware disposition and migration recovery all reject it -- so the success

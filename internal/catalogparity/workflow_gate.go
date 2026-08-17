@@ -124,8 +124,17 @@ const ControllerGapCeiling = 6
 // when the receipt stopped carrying the number the gate exists to bound. In Go
 // an absent field decodes to zero, which passes the ceiling for a different
 // wrong reason, so the count is checked against the plan it came from instead.
+//
+// IT ALSO ABSORBS THE .result CONJUNCT THE WORKFLOW USED TO CARRY, which was the
+// last of task 160's doors: the YAML required the literal "blocked_evidence", so
+// the gate would have turned red on the run the campaign is working towards.
+// Asked of ControllerResultForGaps rather than written out again here -- that
+// literal had six homes, and a seventh would be the defect rather than the fix.
 func CheckControllerDifferentialReceipt(receipt ControllerDifferentialReceipt) error {
 	failure := &GateFailure{Gate: "catalog-controller-differential"}
+	if err := RequireControllerResultAgreesWithGaps(receipt); err != nil {
+		failure.Mismatch = append(failure.Mismatch, err.Error())
+	}
 	if receipt.Plan.EvidenceGapCount > ControllerGapCeiling {
 		failure.Mismatch = append(failure.Mismatch,
 			fmt.Sprintf("plan.evidence_gap_count is %d, want at most %d",

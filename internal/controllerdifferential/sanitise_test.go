@@ -2,12 +2,9 @@ package controllerdifferential
 
 import (
 	"encoding/json"
-	"os/exec"
 	"strings"
 	"testing"
 )
-
-const diagnosticsScript = "../../.woodpecker/scripts/catalog-controller-diagnostics.sh"
 
 // TestEveryIdentifierIsRedacted. Each of the four is a thing this repository
 // says must never leave it, and a CI log is the least private place a failure
@@ -78,49 +75,6 @@ func TestOnlyTheNamedTestsOutputIsReturned(t *testing.T) {
 	}
 }
 
-// TestSanitiseAgreesWithTheShell runs the deployed script over the same log.
-//
-// DELETE THIS TEST IN THE COMMIT THAT DELETES THE SCRIPT. It does not skip when
-// the script is missing.
-func TestSanitiseAgreesWithTheShell(t *testing.T) {
-	if _, err := exec.LookPath("jq"); err != nil {
-		t.Fatalf("jq is required to run the shell implementation: %v", err)
-	}
-	log := diagnosticLog(t,
-		event{"output", "TestAccOne", "dial https://unifi.example.internal:8443/api/s/default failed\n"},
-		event{"output", "TestAccOne", "device 00:1A:2B:3C:4D:5E at 192.168.7.31 did not appear\n"},
-		event{"output", "TestAccOne", "open /woodpecker/src/git.example.dev/infra/provider/x.go\n"},
-		event{"output", "TestAccTwo", "another test's line https://other.internal/z\n"},
-	)
-
-	command := exec.Command("bash", diagnosticsScript, "TestAccOne")
-	command.Stdin = strings.NewReader(string(log))
-	out, err := command.Output()
-	if err != nil {
-		t.Fatalf("run %s: %v.\nIf it was deleted deliberately, delete this test in the same "+
-			"commit rather than letting it skip", diagnosticsScript, err)
-	}
-	// BLANK LINES ARE DROPPED FROM BOTH SIDES, and that is a declared
-	// divergence rather than a loosened comparison. Each Output value already
-	// ends in a newline, and `jq -r` adds its own, so the shell emits an empty
-	// line after every real one. Three lines of diagnostics come out as five.
-	// The redacted CONTENT is identical; only the doubling differs, and
-	// reproducing it would be preserving an artifact of how the shell printed
-	// rather than anything the reader wants.
-	byShell := nonEmpty(strings.Split(string(out), "\n"))
-	byGo := nonEmpty(SanitiseDiagnostics(log, "TestAccOne"))
-
-	if len(byShell) != len(byGo) {
-		t.Fatalf("shell returned %d line(s), Go returned %d:\nshell %q\ngo    %q",
-			len(byShell), len(byGo), byShell, byGo)
-	}
-	for i := range byShell {
-		if byGo[i] != byShell[i] {
-			t.Fatalf("line %d:\n  shell %q\n  go    %q", i, byShell[i], byGo[i])
-		}
-	}
-}
-
 type event struct{ action, test, output string }
 
 func diagnosticLog(t *testing.T, events ...event) []byte {
@@ -138,14 +92,4 @@ func diagnosticLog(t *testing.T, events ...event) []byte {
 		lines = append(lines, string(encoded))
 	}
 	return []byte(strings.Join(lines, "\n") + "\n")
-}
-
-func nonEmpty(lines []string) []string {
-	out := []string{}
-	for _, line := range lines {
-		if trimmed := strings.TrimRight(line, "\n"); trimmed != "" {
-			out = append(out, trimmed)
-		}
-	}
-	return out
 }

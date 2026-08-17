@@ -93,35 +93,17 @@ import (
 // *_test.sh; production scripts are invoked bare, so catalog-upgrade-plan.sh,
 // m1-dns-compiler.sh and m3-dns-operation.sh were all reported dead while wired.
 // Fixing the pattern dropped exactly those three and kept the one real orphan.
+//
+// THE SHELL HALF IS GONE, WITH ITS SUBJECT. This walked .woodpecker/scripts for
+// self-tests and producers until that directory held nothing and ceased to
+// exist; a walk of a directory that cannot be there is not a narrower check, it
+// is a check with no population, and the ReadDir would have failed rather than
+// reported an empty one. What it caught -- a producer nothing invokes -- is the
+// same question the command half asks, now that every producer is a command.
 func TestEveryCheckIsReachable(t *testing.T) {
 	sources := loadRepositorySources(t)
 
-	var shellChecks, producers, commands []string
-	entries, err := os.ReadDir(filepath.Join(".woodpecker", "scripts"))
-	if err != nil {
-		t.Fatalf("reading .woodpecker/scripts: %v", err)
-	}
-	for _, entry := range entries {
-		switch {
-		case strings.HasSuffix(entry.Name(), "_test.sh"):
-			shellChecks = append(shellChecks, entry.Name())
-		case strings.HasSuffix(entry.Name(), ".sh"):
-			// PRODUCERS, ADDED AFTER THIS TEST MISSED ONE. The walk used to
-			// cover *_test.sh and cmd/ and nothing else, so a production script
-			// that no pipeline invokes was invisible to it -- and there was one:
-			// m0-uos-dns-qualification.sh builds build/m0/uos-dns-qualification.json
-			// and is called by no workflow, no Makefile and no other script. I
-			// had filed that artifact as "producer runs but writes nowhere"
-			// because its output variable is never set. The truer statement is
-			// that the producer never runs at all, and THIS TEST SHOULD HAVE
-			// BEEN THE THING THAT TOLD ME.
-			//
-			// A producer nothing invokes is the same defect as a check nothing
-			// invokes: a file whose existence implies a guarantee the tree does
-			// not have. The ledger holds both, tagged by kind.
-			producers = append(producers, entry.Name())
-		}
-	}
+	var commands []string
 	commandEntries, err := os.ReadDir("cmd")
 	if err != nil {
 		t.Fatalf("reading cmd: %v", err)
@@ -131,37 +113,17 @@ func TestEveryCheckIsReachable(t *testing.T) {
 			commands = append(commands, entry.Name())
 		}
 	}
-	// THE FLOOR IS THAT THE WALK WORKED, NOT THAT IT FOUND A LOT.
+	// cmd/ KEEPS ITS COUNT, and dropping it was a mistake this comment exists to
+	// stop being repeated. An earlier fix removed every floor here, reasoning
+	// that a number which happens to be comfortable is not a property. That
+	// misses the case os.Stat cannot see: a directory that resolves, reads
+	// without error, and returns three entries where there should be twenty-six.
+	// Pipeline 255 was exactly that -- a workspace holding another branch's
+	// files -- and only a count catches it.
 	//
-	// This used to require five of each. That was right while the populations
-	// could only shrink by accident, and it is wrong now: two of the three are
-	// being deleted on purpose, and the self-test count was four deletions from
-	// firing. A guard that trips when the work succeeds is a guard aimed at the
-	// wrong event.
-	//
-	// A count cannot tell "found nothing because the walk broke" from "found
-	// nothing because we finished". Both are zero. So the assertion moves to the
-	// thing that stays answerable at zero: the directories resolved and were
-	// read. An unreadable directory is a broken walk; an empty one is a
-	// completed migration, and only the first should stop anybody.
-	//
-	// BUT cmd/ KEEPS ITS COUNT, and dropping it was a mistake this comment
-	// exists to stop being repeated. The first version of this fix removed all
-	// three floors, reasoning that a number which happens to be comfortable is
-	// not a property. That misses the case os.Stat cannot see: a directory that
-	// resolves, reads without error, and returns three entries where there
-	// should be twenty-six. Pipeline 255 was exactly that -- a workspace holding
-	// another branch's files -- and only a count catches it.
-	//
-	// The shell populations cannot use one because they are being emptied on
-	// purpose. cmd/ can, because the migration only adds to it. So: a count
-	// where the population grows, a walk-succeeded assertion where it shrinks,
-	// each aimed at the failure its own population is able to have.
-	for _, directory := range []string{filepath.Join(".woodpecker", "scripts"), "cmd"} {
-		if _, err := os.Stat(directory); err != nil {
-			t.Fatalf("%s cannot be read, so an empty population would mean nothing: %v", directory, err)
-		}
-	}
+	// The floor belongs here and belonged nowhere else, because cmd/ is the one
+	// population that only grows. The shell populations were being emptied on
+	// purpose, so a count there would have fired on the migration succeeding.
 	if len(commands) < 5 {
 		t.Fatalf("found %d command(s) under cmd/, a population that only grows; a truncated "+
 			"read here would leave every verdict below describing a tree that is not this one",
@@ -172,16 +134,6 @@ func TestEveryCheckIsReachable(t *testing.T) {
 	}
 
 	unreachable := map[string]bool{}
-	for _, name := range shellChecks {
-		if callers := shellCallersOf(name, filepath.Join(".woodpecker", "scripts", name), sources); len(callers) == 0 {
-			unreachable["script "+name] = true
-		}
-	}
-	for _, name := range producers {
-		if callers := shellCallersOf(name, filepath.Join(".woodpecker", "scripts", name), sources); len(callers) == 0 {
-			unreachable["producer "+name] = true
-		}
-	}
 	for _, name := range commands {
 		if callers := commandCallersOf(name, sources); len(callers) == 0 {
 			unreachable["command "+name] = true
@@ -205,7 +157,7 @@ func TestEveryCheckIsReachable(t *testing.T) {
 	// Same reason as in the coverage check: this walks the working tree, so a
 	// verdict has to say which files it read. See classifiedTreeIdentity.
 	if len(undeclared) > 0 || len(resolved) > 0 {
-		t.Log(classifiedTreeIdentity(t, filepath.Join(".woodpecker", "scripts")))
+		t.Log(classifiedTreeIdentity(t, "cmd"))
 	}
 	if len(undeclared) > 0 {
 		t.Errorf("%d check(s) are invoked by nothing and are not in the ledger below:\n    %s\n\n"+
@@ -221,8 +173,8 @@ func TestEveryCheckIsReachable(t *testing.T) {
 			len(resolved), strings.Join(resolved, "\n    "))
 	}
 
-	t.Logf("%d shell self-test(s), %d producer(s) and %d command(s) examined; %d declared unreachable",
-		len(shellChecks), len(producers), len(commands), len(knownUnreachableChecks))
+	t.Logf("%d command(s) examined; %d declared unreachable",
+		len(commands), len(knownUnreachableChecks))
 }
 
 // knownUnreachableChecks is a LEDGER, not a blessing. Every entry is a check
@@ -230,33 +182,35 @@ func TestEveryCheckIsReachable(t *testing.T) {
 // down so the set cannot grow without somebody saying so, and so a reader can
 // see what is unguarded without running anything.
 var knownUnreachableChecks = map[string]string{
-	// LANDED BESIDE THE SHELL, ON PURPOSE, AND FOR A BOUNDED TIME. Both replace
-	// a .woodpecker/scripts gate that is still authoritative, and both are
-	// compared against it by a test that runs on every push -- the unit
-	// differential extracts the deployed jq program from the script rather than
-	// copying it, and the dependency gate was diffed field by field against the
-	// shell's own output. That comparison is only possible while BOTH exist,
-	// which is the whole reason these are unwired rather than swapped in.
-	//
-	// They leave this ledger when .woodpecker/*.yml points at them, which is
-	// the YAML lane's cutover. Both declare -tree-state with no default and
-	// refuse without it, so every call site written for them must pass it.
-	"command catalog-controller-differential": "replaces " +
-		"catalog-controller-differential.sh, which still runs. Its plan is reproduced from the " +
-		"two committed inputs, its suite summariser is compared against the script's own jq " +
-		"program, and its two controller-free modes -- -plan-only and -prepare-only -- are run " +
-		"for real by tests. Wires in at the YAML cutover; task 148.",
-	"command catalog-unit-differential": "replaces catalog-unit-differential.sh, which still " +
-		"runs. Its summariser is compared against the script's own jq program on every push. " +
-		"Wires in at the YAML cutover; task 148.",
-	"command catalog-dependency-publishability": "replaces " +
-		"catalog-dependency-publishability.sh, which still runs. Diffed field by field against " +
-		"the shell's output; three differences, two declared and one a defect (task 158). " +
-		"Wires in at the YAML cutover; task 148.",
+	// THREE ENTRIES LEFT THIS LEDGER AT THE CUTOVER, which is the event their
+	// own reasons named: catalog-controller-differential, catalog-unit-differential
+	// and catalog-dependency-publishability were unwired on purpose while the
+	// scripts they replace were still authoritative, so each could be compared
+	// against the deployed shell by a test that runs on every push. The workflows
+	// now invoke all three and the scripts are deleted, so this test reports them
+	// reachable and the entries had to go with them. An exemption that has stopped
+	// being true reads as a live excuse.
 
 	"command export-gate": "answers what a publication would ship, and is deliberately not wired. Its denied_paths are a FIRST-PASS declaration of the publication boundary and it reports 376 findings on this tree today -- every one a file that genuinely exists and would genuinely ship, not a defect. Wiring it before that boundary is agreed would make every push red for a judgement nobody has made yet, and a gate people learn to ignore is worse than one they have not switched on. Task 130.",
 	"command catalog-release-ready": "the terminal release gate. No pipeline invokes it and " +
 		"three of its eight inputs have no producer. Task 106.",
+	// NAMED BY THIS TEST AT THE CUTOVER, WHICH IS THE FINDING RATHER THAN A
+	// REHEARSAL OF ONE. catalog-build-schema.sh built and ran it over five lines,
+	// and was its only caller; deleting the script left it with none. The
+	// binary that replaced the script does the same work by calling
+	// internal/schemabaseline directly, so this command exists for the OTHER
+	// caller it always had and nothing enforces: a person regenerating
+	// build/m0/provider-schema-digests.json, which build/m0/README.md documents
+	// with the exact invocation.
+	//
+	// That artifact is the EXPECTATION side of every parity check in this
+	// repository. Producing it from a pipeline that runs against the tree being
+	// checked would make the comparison vacuous, which is why the tool is
+	// deliberately hand-run and why this is an entry rather than a deletion.
+	"command schema-baseline": "authoring tool: it renders a CLI's raw schema dump into the " +
+		"committed M0 baseline, by hand, per build/m0/README.md. Its only automated caller was " +
+		"catalog-build-schema.sh, and the binary that replaced that script uses the library " +
+		"rather than the command.",
 	"command policy-scaffold":  "authoring tool, run by hand when a surface is migrated.",
 	"command schema-behaviour": "authoring tool, run by hand when a surface is migrated.",
 	"command list-policy-scaffold": "authoring tool for list policies, run by hand. Its output " +
@@ -309,42 +263,6 @@ func loadRepositorySources(t *testing.T) map[string]string {
 		t.Fatalf("read only %d source files; the walk is not reaching the tree", len(sources))
 	}
 	return sources
-}
-
-// shellCallersOf finds the files that invoke a script.
-//
-// TWO INVOCATION FORMS, AND ONLY ONE OF THEM USED TO BE DETECTED:
-//
-//	bash .woodpecker/scripts/foo.sh     an interpreter and a path
-//	.woodpecker/scripts/foo.sh          a bare path, executable with a shebang
-//	script=${root}/.woodpecker/scripts/foo.sh   assigned, then run through the variable
-//
-// The self-tests all use the first form, so requiring an interpreter was
-// invisibly sufficient while this test only walked *_test.sh. Extending it to
-// production scripts made the gap real at once: m1-dns-compiler.sh and
-// m3-dns-operation.sh are invoked bare from their workflows and were reported as
-// orphans. Accusing a wired script of being dead is the worse direction to fail
-// in -- it costs the reader's trust in every other row.
-//
-// A PATH IS REQUIRED IN EVERY FORM, and that is load-bearing rather than
-// incidental. tree-state-coverage_test.sh carries two arrays of BARE script
-// names, m0-uos-dns-qualification.sh among them. Matching a bare name would read
-// those arrays as call sites and report the one genuinely orphaned producer in
-// this repository as wired. The slash is what separates naming a script from
-// running one.
-func shellCallersOf(name, ownPath string, sources map[string]string) []string {
-	pattern := regexp.MustCompile(
-		`(?:^|[\s;&|(=])(?:(?:bash|sh|source|\.)\s+)?\S*/` + regexp.QuoteMeta(name) + `\b`)
-	var callers []string
-	for path, body := range sources {
-		if path == ownPath {
-			continue
-		}
-		if pattern.MatchString(joinShellContinuations(body)) {
-			callers = append(callers, path)
-		}
-	}
-	return callers
 }
 
 func commandCallersOf(name string, sources map[string]string) []string {

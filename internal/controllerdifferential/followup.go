@@ -42,13 +42,21 @@ func Followup(receipt catalogparity.ControllerDifferentialReceipt, policy Campai
 	// guards starts working is one somebody deletes rather than reads. The
 	// invariant it was reaching for is the agreement, so that is what is
 	// checked.
-	wantResult := "blocked_evidence"
-	if receipt.Plan.EvidenceGapCount == 0 {
-		wantResult = "pass"
-	}
-	if receipt.Result != wantResult {
-		add("result is %q with %d evidence gap(s); want %q",
-			receipt.Result, receipt.Plan.EvidenceGapCount, wantResult)
+	//
+	// DELEGATED RATHER THAN REPEATED. This function used to map the gap count to
+	// the wanted result itself, which made it the SIXTH site holding that rule
+	// and the only one not asking catalogparity for it -- admission.go:660,
+	// hardware.go:27, migration.go:295 and cmd/catalog-pragmatic-evidence all go
+	// through the helper, and ControllerResultForGaps is its single home. A rule
+	// with two implementations is a rule that can disagree with itself, which is
+	// the shape this lane exists to remove and would have been reintroduced by
+	// the fix for it.
+	//
+	// The error is COLLECTED as a problem rather than returned, so a receipt
+	// with several faults still reports all of them in one pass. A gate that
+	// stops at the first fault makes the operator re-run to find the second.
+	if err := catalogparity.RequireControllerResultAgreesWithGaps(receipt); err != nil {
+		add("%v", err)
 	}
 
 	problems = append(problems, releasedShortfallProblems(receipt)...)

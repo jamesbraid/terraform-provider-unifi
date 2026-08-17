@@ -91,7 +91,7 @@ build/**/*-ci.json
 /catalog-controller-differential
 /catalog-dependency-publishability
 /catalog-unit-differential
-/schema-parity
+/catalog-build-schema
 
 # Executables left at the repository root by `go build ./cmd/<name>`.
 #

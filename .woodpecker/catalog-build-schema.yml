@@ -38,24 +38,30 @@ steps:
       - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
-      - CATALOG_DEPENDENCY_OUTPUT=/tmp/catalog-dependency-publishability.json bash .woodpecker/scripts/catalog-dependency-publishability.sh
-      # BACKSTOP, NOT THE CHECK. Every field below is a constant the script
-      # writes only after its own expect() calls have passed -- fail() exits 1
-      # and runs under set -e, so a real disagreement aborts before this line is
-      # reached. Redundant is not vacuous: this catches the script's abort
-      # regressing, which is why it stays. It is not evidence that the
-      # dependency was verified here, and it should not be counted as a check
-      # when someone next tallies what this pipeline verifies.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-dependency-publishability -output /tmp/catalog-dependency-publishability.json -resolution-runner remote_ci -tree-state "$(go run ./cmd/tree-state -what 'the dependency publishability receipt')"
+      # BACKSTOP, AND NARROWER THAN IT READS. The binary derives result from its
+      # own checks and returns non-zero before it can report a verdict it did
+      # not earn, so result, module_path and network_boundary compare a constant
+      # to itself, and resolution_runner compares this line's own argument to
+      # itself. replace_present is the one conjunct with a measurement behind
+      # it: `go list -m -json` is asked whether a replace directive is in force,
+      # where the shell asked the same question and wrote the literal false
+      # regardless. Keep the line for that field. Do not count the other four
+      # when tallying what this pipeline verifies.
       - jq -e '.result == "pass" and .module_path == "github.com/ubiquiti-community/go-unifi" and .replace_present == false and .resolution_runner == "remote_ci" and .network_boundary == "remote_ci_only"' /tmp/catalog-dependency-publishability.json
-      # The self-test existed and nothing invoked it, so a break in the script
-      # it covers and no break at all looked identical. It goes immediately
-      # before the producer, and after the CLI downloads, because it needs the
-      # same two binaries the producer does.
-      - CATALOG_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json TERRAFORM_BIN=/tmp/terraform TOFU_BIN=/tmp/tofu bash -x .woodpecker/scripts/catalog-build-schema.sh
-      # BACKSTOP, NOT THE CHECK. The schema comparison happens in the script:
-      # five cmp calls under set -e against the released canonical projections
-      # and the committed contracts, any of which aborts before result is
-      # written. promotion_blockers covers toolchain pins only, and the script
-      # exits 1 on them unless CATALOG_ALLOW_DIAGNOSTIC_TOOLCHAIN is set.
+      # The inventory is committed evidence describing the tree it was generated
+      # from, and the receipt below records its digest. Regenerate and compare,
+      # so that digest names a file which exists in the commit. The shell
+      # generated its own copy into a temp directory and hashed that, which
+      # nobody downstream could look up -- and catalog-admission compares the
+      # field against the committed file.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local go run ./cmd/catalog-evidence -baseline build/m0/provider-schema-digests.json -contracts provider-codegen/generated/catalog-surface-contracts.json -policy provider-codegen/policy/catalog-evidence.json -candidate-root . -output build/release-ready/catalog-evidence-inventory.json
+      - git diff --exit-code -- build/release-ready/catalog-evidence-inventory.json
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-build-schema -released-provider-binary /tmp/released-provider/terraform-provider-unifi_v0.101.2 -inventory build/release-ready/catalog-evidence-inventory.json -terraform /tmp/terraform -tofu /tmp/tofu -output /tmp/catalog-build-schema.json -tree-state "$(go run ./cmd/tree-state -what 'the released schema baseline and digests')"
+      # BACKSTOP. The schema comparison is in the binary, which names the
+      # attribute and the count where the shell's cmp named the first differing
+      # byte, and which writes the receipt before returning non-zero. This
+      # decodes that receipt strictly and re-checks its fields from outside the
+      # process that wrote them.
       - go run ./cmd/receipt-gate -gate catalog-build-schema -receipt /tmp/catalog-build-schema.json
       - jq '.' /tmp/catalog-build-schema.json

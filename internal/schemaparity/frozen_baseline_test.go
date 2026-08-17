@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -268,63 +267,43 @@ func sortedValue(v any) any {
 	}
 }
 
-// TestNoComparisonMixesCommittedAndRunOperands is the structural rule, and the
-// one that does not depend on anybody classifying correctly.
+// TestTheFrozenContractsAreTheOnesTheBaselineManifestPINS closes the seam the
+// cutover opened.
 //
-// Every comparison in catalog-build-schema.sh that turned out to be wrong had
-// one operand under ${repository_root}: first the schema contents, then the
-// digests a second time. Every one that stays byte-exact -- determinism,
-// cross-CLI agreement, the inverted control -- has two operands under
-// ${work_root}.
+// catalog-build-schema.sh compared the candidate's live projection against these
+// two files by name, hardcoded, beside a baseline manifest that pins the same
+// two CLI versions -- so a CLI bump moved one and not the other and nothing
+// compared them. cmd/catalog-build-schema now DERIVES the path from the pinned
+// version, which removes that split and creates a different way to be wrong: a
+// version bumped in the manifest with no contract file beside it makes the gate
+// fail on an unreadable path, in a manual pipeline, after two provider builds.
 //
-// So the discriminator is the PROVENANCE of the operands, not the file's name.
-// A committed operand means the comparison asserts something about the released
-// baseline, which is the claim the schema-change ledger now governs. Both times
-// this was got wrong, the line was classified by what the file was called.
-//
-// PROVEN: restoring the original digests cmp makes this fail and name the line.
-//
-// WHAT IT DOES NOT COVER, and the counterexample is real rather than
-// hypothetical. m1-dns-compiler.sh built BOTH the released provider and the
-// candidate into its work root, then compared them -- two ${work_root}
-// operands, and still a released-versus-candidate claim that had never heard of
-// the ledger. Pipeline 228 failed on it with the six declared changes. So "no
-// mixed operands" does not mean "no unledgered released-versus-candidate
-// comparison anywhere": a released schema REBUILT during a run is still the
-// released schema, and provenance of the bytes is not provenance of the claim.
-//
-// This rule is kept narrow deliberately. Stretching one predicate over two
-// distinctions is how the digests comparison came to be classified by the name
-// of its file, and widening this one to chase the m1 case would trade a rule
-// that is exactly right for one that is approximately right about more.
-func TestNoComparisonMixesCommittedAndRunOperands(t *testing.T) {
-	raw, err := os.ReadFile("../../.woodpecker/scripts/catalog-build-schema.sh")
+// This is that failure moved to push time, and it is the only part of the
+// derivation a test can reach. The comparison itself needs both CLIs and two
+// provider builds.
+func TestTheFrozenContractsAreTheOnesTheBaselineManifestPINS(t *testing.T) {
+	manifest, err := LoadBaselineManifest("../../build/m0/provider-baseline.json")
 	if err != nil {
-		t.Fatalf("read the script: %v", err)
+		t.Fatal(err)
 	}
-	lines := strings.Split(string(raw), "\n")
-	cmpLine := regexp.MustCompile(`^\s*(if\s+)?cmp\b`)
-	var mixed []string
-	for i, line := range lines {
-		if !cmpLine.MatchString(line) {
+	for _, c := range []struct{ cli, version string }{
+		{"terraform", manifest.Clients.Terraform.Version},
+		{"tofu", manifest.Clients.OpenTofu.Version},
+	} {
+		if c.version == "" {
+			t.Errorf("the manifest pins no %s version, so the derived path would be %s-.json "+
+				"and the gate would fail on an unreadable file rather than on a schema difference",
+				c.cli, c.cli)
 			continue
 		}
-		operands := line
-		for j := i; j < len(lines)-1 && strings.HasSuffix(strings.TrimSpace(operands), `\`); j++ {
-			operands += lines[j+1]
+		derived := "../../provider-contracts/schema/" + c.cli + "-" + c.version + ".json"
+		if _, frozen := frozenBaselines[derived]; !frozen {
+			t.Errorf("the manifest pins %s %s, so cmd/catalog-build-schema reads %s -- which is "+
+				"not one of the frozen baselines this file guards.\n\n"+
+				"    Either the CLI was bumped without adding its contract, or the contract was "+
+				"added without pinning it. The two must move together: the derived file is the "+
+				"released baseline the candidate is compared against, and a missing one turns a "+
+				"schema gate into a file-not-found in a manual pipeline.", c.cli, c.version, derived)
 		}
-		if strings.Contains(operands, "${repository_root}") && strings.Contains(operands, "${work_root}") {
-			mixed = append(mixed, strings.TrimSpace(line))
-		}
-	}
-	if len(mixed) > 0 {
-		t.Errorf(`%d comparison(s) put a committed artifact against one built by this run:
-
-  %s
-
-A ${repository_root} operand means the comparison asserts something about the
-RELEASED BASELINE, which the schema-change ledger governs. Two ${work_root}
-operands mean it asserts something about this run, and those stay byte-exact.`,
-			len(mixed), strings.Join(mixed, "\n  "))
 	}
 }
