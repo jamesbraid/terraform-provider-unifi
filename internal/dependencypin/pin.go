@@ -12,7 +12,6 @@
 package dependencypin
 
 import (
-	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -20,19 +19,37 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/gounifipin"
 )
 
-// The pin. Version is deliberately NOT here: which version we depend on is a
-// decision recorded in go.mod, and restating it would create the second home
-// this replaces. The commit and the archive hash are separate CLAIMS rather
-// than restatements -- that the tag still resolves to the commit that was
-// reviewed, and that the archive still hashes to what was recorded. go.mod can
-// tell us neither.
+// THE PIN LIVES IN internal/gounifipin AND NOWHERE ELSE, including here.
+//
+// This package declared its own copy of the module path, the origin and the
+// reviewed commit for several hours, in parallel with gounifipin being written
+// for the same facts. That is precisely the defect go-unifi-pin.sh was created
+// to prevent -- "both used to carry their own copies of these facts, so a
+// repoint that updated one and not the other produced a green tree locally and
+// a failure an hour into CI" -- reproduced in Go by two ports running at once,
+// and it would have been WORSE than the shell version, because a Go constant
+// looks authoritative in a way a sourced variable does not.
+//
+// Re-exported rather than re-declared so a reader of this package can still see
+// what it compares against, while there is exactly one place to change it.
 const (
-	ModulePath   = "github.com/ubiquiti-community/go-unifi"
-	ModuleOrigin = "https://github.com/ubiquiti-community/go-unifi"
+	ModulePath   = gounifipin.ModulePath
+	ModuleOrigin = gounifipin.ModuleOrigin
 )
+
+// ExpectedCommit is the commit the pinned tag must still resolve to, from the
+// single home.
+func ExpectedCommit() string { return gounifipin.ExpectedCommit() }
+
+// ExpectedSum is the module hash the archive must still have, from the single
+// home. Nothing in this gate compared it before; go.sum is checked against what
+// the toolchain resolved, and this is the separate claim that the recorded
+// archive has not been rebuilt.
+func ExpectedSum() string { return gounifipin.ExpectedSum() }
 
 // Pin is the expectation a run is measured against.
 type Pin struct {
@@ -79,49 +96,18 @@ type Declared struct {
 // directive -- are exactly the cases where they differ.
 func ReadDeclared(root, modulePath string) (Declared, error) {
 	var declared Declared
-	version, err := firstField(filepath.Join(root, "go.mod"), func(fields []string) (string, bool) {
-		if len(fields) >= 2 && fields[0] == modulePath {
-			return fields[1], true
-		}
-		return "", false
-	})
+	if modulePath != ModulePath {
+		return declared, fmt.Errorf("this gate is about %s, not %s", ModulePath, modulePath)
+	}
+	version, err := gounifipin.DeclaredVersion(root)
 	if err != nil {
 		return declared, err
 	}
-	if version == "" {
-		return declared, fmt.Errorf("go.mod declares no requirement on %s", modulePath)
-	}
-	declared.Version = version
-
-	sum, err := firstField(filepath.Join(root, "go.sum"), func(fields []string) (string, bool) {
-		if len(fields) >= 3 && fields[0] == modulePath && fields[1] == version {
-			return fields[2], true
-		}
-		return "", false
-	})
+	sum, err := gounifipin.DeclaredSum(root, version)
 	if err != nil {
 		return declared, err
 	}
-	if sum == "" {
-		return declared, fmt.Errorf("go.sum records no hash for %s %s", modulePath, version)
-	}
-	declared.Sum = sum
-	return declared, nil
-}
-
-func firstField(path string, match func([]string) (string, bool)) (string, error) {
-	handle, err := os.Open(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	defer handle.Close()
-	scanner := bufio.NewScanner(handle)
-	for scanner.Scan() {
-		if value, ok := match(strings.Fields(scanner.Text())); ok {
-			return value, nil
-		}
-	}
-	return "", scanner.Err()
+	return Declared{Version: version, Sum: sum}, nil
 }
 
 // Check reports every way the resolved dependency fails to be publishable.

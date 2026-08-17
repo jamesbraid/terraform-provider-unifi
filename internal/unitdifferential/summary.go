@@ -63,12 +63,13 @@ type Summary struct {
 
 // Summarise reduces a `go test -json` log to one suite's receipt.
 //
-// THE THREE FAILURE CONDITIONS ARE DIFFERENT QUESTIONS and all three must hold
-// for a pass:
+// THE FOUR CONDITIONS ARE DIFFERENT QUESTIONS and all four must hold for a
+// pass:
 //
 //   - the command exited zero,
 //   - no reported outcome was a failure,
-//   - and every non-empty line parsed as JSON.
+//   - every non-empty line parsed as JSON,
+//   - and at least one package actually passed.
 //
 // The third looks redundant and is not. The suite's stderr is redirected into
 // the same log, so a build error, a panic outside a test, or a toolchain
@@ -76,6 +77,15 @@ type Summary struct {
 // failing outcome at all: the failure count stays zero while the log describes
 // a run that partly did not happen. Reporting them as unparsed_line_count is
 // what stops "no failures" from meaning "nothing was read".
+//
+// THE FOURTH IS A FLOOR ON THE MEASUREMENT RATHER THAN ON THE FAILURES, and it
+// came from the shell after this port was written -- caught by the differential
+// against the deployed jq program rather than by reading. The other three all
+// hold over an empty run: exit zero, no failing events, and every line parsed
+// because there were no lines. So a `go test ./...` that produced nothing was
+// indistinguishable from a full green suite, in a receipt catalog admission
+// consumes. The assertion that stood between us and that hollow pass lived in
+// catalog-unit-differential_test.sh, which no pipeline invokes.
 func Summarise(raw []byte, exitCode int) Summary {
 	var lineCount, parsedCount int
 	seen := map[eventKey]bool{}
@@ -136,7 +146,8 @@ func Summarise(raw []byte, exitCode int) Summary {
 	}
 
 	failed := summary.Receipt.PackageFailCount > 0 || summary.Receipt.FailedTestCount > 0
-	if exitCode == 0 && !failed && summary.Receipt.UnparsedLineCount == 0 {
+	if exitCode == 0 && !failed && summary.Receipt.UnparsedLineCount == 0 &&
+		summary.Receipt.PackagePassCount > 0 {
 		summary.Receipt.Result = "pass"
 	} else {
 		summary.Receipt.Result = "fail"

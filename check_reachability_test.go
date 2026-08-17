@@ -203,6 +203,25 @@ var knownUnreachableChecks = map[string]string{
 		"would go nowhere. This is the ONLY producer in .woodpecker/scripts that nothing runs, " +
 		"and it is not a one-line fix: wiring it needs a UOS qualification step nobody can " +
 		"verify from here. Task 114 P4, escalated to James rather than guessed at.",
+	// LANDED BESIDE THE SHELL, ON PURPOSE, AND FOR A BOUNDED TIME. Both replace
+	// a .woodpecker/scripts gate that is still authoritative, and both are
+	// compared against it by a test that runs on every push -- the unit
+	// differential extracts the deployed jq program from the script rather than
+	// copying it, and the dependency gate was diffed field by field against the
+	// shell's own output. That comparison is only possible while BOTH exist,
+	// which is the whole reason these are unwired rather than swapped in.
+	//
+	// They leave this ledger when .woodpecker/*.yml points at them, which is
+	// the YAML lane's cutover. Both declare -tree-state with no default and
+	// refuse without it, so every call site written for them must pass it.
+	"command catalog-unit-differential": "replaces catalog-unit-differential.sh, which still " +
+		"runs. Its summariser is compared against the script's own jq program on every push. " +
+		"Wires in at the YAML cutover; task 148.",
+	"command catalog-dependency-publishability": "replaces " +
+		"catalog-dependency-publishability.sh, which still runs. Diffed field by field against " +
+		"the shell's output; three differences, two declared and one a defect (task 158). " +
+		"Wires in at the YAML cutover; task 148.",
+
 	"command catalog-release-ready": "the terminal release gate. No pipeline invokes it and " +
 		"three of its eight inputs have no producer. Task 106.",
 	"command policy-scaffold":  "authoring tool, run by hand when a surface is migrated.",
