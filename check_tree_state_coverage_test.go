@@ -151,6 +151,16 @@ func TestEveryEvidenceGeneratorIsGuarded(t *testing.T) {
 // site, not a forgotten flag. The flags have no defaults and the binaries
 // refuse without them, so a missed call site also fails at run time -- this
 // turns that into a failure at push time, naming the line.
+//
+// A KNOWN FALSE-POSITIVE SHAPE THAT DOES NOT EXIST YET, written down before
+// it does. A command can be BUILT and then run rather than `go run`, and the
+// build line names ./cmd/x while carrying no flags -- those appear on the
+// separate line that runs the binary. catalog-upgrade-plan.yml does exactly
+// this for upgrade-plan-runner today and is not caught, only because that
+// command measures its own tree state instead of declaring the flag. The
+// first flag-taking command invoked that way will read as a missing call
+// site. The fix then is to recognise the build form and check the line that
+// runs the binary, not to loosen the match.
 func TestEveryGeneratorCallSitePassesTheTreeState(t *testing.T) {
 	workflows, err := filepath.Glob(filepath.Join(".woodpecker", "*.yml"))
 	if err != nil {
