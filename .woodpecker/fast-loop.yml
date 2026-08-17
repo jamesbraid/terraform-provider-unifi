@@ -10,13 +10,25 @@ when:
   # This step runs the only check that can see a served schema disagreeing with
   # its runtime model, which is the class that produced 54 controller
   # regressions; with main absent from this list, that check would sit un-run on
-  # the branch it protects. Working branches are still listed explicitly, and a
-  # branch not named here gets no fast feedback on push.
+  # the branch it protects.
+  #
+  # EVERY BRANCH, because the previous three-name list meant a work branch got a
+  # pipeline record and no execution. That is the worst of the three outcomes:
+  # `pipeline ls` shows a row whose status is "created", which reads at a glance
+  # like a run, so a branch with no CI at all looked like a branch with CI. Every
+  # green claimed for a work branch was one laptop.
+  #
+  # Widening is cheap precisely because of the note above: the other four
+  # workflows are manual-only, so a push can only ever start this one, and it is
+  # about a minute with no controller and no docker.
+  #
+  # Matching is doublestar, so ** spans slashes and a bare * would not have
+  # matched any of the prefixed branches everyone actually uses.
   - event: push
     branch:
-      - main
-      - emdash/control-plane-completion
-      - campaign/unblock-controller-run
+      include: ["**"]
+      # Frozen pre-rewrite lines, kept for provenance and never developed on.
+      exclude: ["archive/**"]
   # Measured rather than assumed, because the obvious guess was wrong. Opening
   # a pull request against this repository produced NO PIPELINE AT ALL. ALLOW
   # PULL is enabled so the event reaches the server, but with no workflow
