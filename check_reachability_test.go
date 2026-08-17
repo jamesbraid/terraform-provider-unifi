@@ -131,11 +131,30 @@ func TestEveryCheckIsReachable(t *testing.T) {
 			commands = append(commands, entry.Name())
 		}
 	}
-	// Without this the whole test passes by finding nothing to check, which is
-	// the shape it exists to detect.
-	if len(shellChecks) < 5 || len(producers) < 5 || len(commands) < 5 {
-		t.Fatalf("found %d shell self-test(s), %d producer(s) and %d command(s); the walk is not reaching the tree",
-			len(shellChecks), len(producers), len(commands))
+	// THE FLOOR IS THAT THE WALK WORKED, NOT THAT IT FOUND A LOT.
+	//
+	// This used to require five of each. That was right while the populations
+	// could only shrink by accident, and it is wrong now: two of the three are
+	// being deleted on purpose, and the self-test count was four deletions from
+	// firing. A guard that trips when the work succeeds is a guard aimed at the
+	// wrong event.
+	//
+	// A count cannot tell "found nothing because the walk broke" from "found
+	// nothing because we finished". Both are zero. So the assertion moves to the
+	// thing that stays answerable at zero: the directories resolved and were
+	// read. An unreadable directory is a broken walk; an empty one is a
+	// completed migration, and only the first should stop anybody.
+	//
+	// cmd/ is checked the same way and not exempted for being large today. The
+	// reason this needed changing is that a number which happens to be
+	// comfortable is not a property.
+	for _, directory := range []string{filepath.Join(".woodpecker", "scripts"), "cmd"} {
+		if _, err := os.Stat(directory); err != nil {
+			t.Fatalf("%s cannot be read, so an empty population would mean nothing: %v", directory, err)
+		}
+	}
+	if len(sources) == 0 {
+		t.Fatal("no sources were loaded, so every reachability verdict below would be vacuous")
 	}
 
 	unreachable := map[string]bool{}
