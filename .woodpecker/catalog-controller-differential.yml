@@ -136,6 +136,18 @@ steps:
       - jq -e '(.plan.evidence_gap_count | type) == "number" and .plan.evidence_gap_count <= 6' /tmp/catalog-controller-differential.json >/dev/null || { jq -r '"evidence_gap_count is \(.plan.evidence_gap_count | tojson), not a number at or below the ceiling of 6"' /tmp/catalog-controller-differential.json >&2; exit 1; }
       - jq '.' /tmp/catalog-controller-differential.json
       - if bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq diagnostic_complete; then exit 0; fi; bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq full
+      # EVERY COMMAND HERE RUNS UNDER THE IMAGE'S /bin/sh, NOT BASH. A bashism
+      # fails at its first word, and since these are `&&` chains the rest of the
+      # line never runs, so the file it was going to write is simply absent.
+      #
+      # That matters less for what it breaks than for how it reads. The five
+      # commands below each began `source .woodpecker/scripts/tree-state.sh &&`
+      # until they were migrated; `source` is not a /bin/sh builtin, so pipeline
+      # 232 failed on the NEXT line with `jq: Could not open file
+      # /tmp/catalog-hardware-disposition.json`. The error names the consumer,
+      # and whoever follows it reads the generator and finds nothing wrong --
+      # because the generator never ran. Reach for a command, not a shell
+      # feature, and the failure names its own subject.
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-hardware-disposition -controller /tmp/catalog-controller-differential.json -output /tmp/catalog-hardware-disposition.json -tree-state "$(go run ./cmd/tree-state -what 'the hardware disposition receipt')"
       - jq -e '.result == "pass" and .kind == "action" and .name == "unifi_port" and .mode == "protocol_sufficient" and .claim_scope == "controller_poe_configuration_persistence" and .physical_electrical_claim == false and .resolved_signal == "hardware_claim"' /tmp/catalog-hardware-disposition.json
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-pragmatic-evidence -policy provider-codegen/policy/catalog-campaign.json -inventory build/release-ready/catalog-evidence-inventory.json -fleet-summary build/restricted/catalog-fleet-gap-summary.json -references provider-codegen/policy/catalog-pragmatic-references.json -controller-receipt /tmp/catalog-controller-differential.json -output /tmp/catalog-pragmatic-resolution.json -tree-state "$(go run ./cmd/tree-state -what 'the pragmatic resolution receipt')"
