@@ -67,6 +67,12 @@ type options struct {
 	// stays in tree-state.sh; this side is handed the answer and refuses
 	// without one.
 	treeStateRaw string
+
+	// Digests-only inputs, the same shape as compare-only: two artifacts the
+	// caller already produced, and the parity question about them one
+	// abstraction up.
+	releasedDigests  string
+	candidateDigests string
 }
 
 func main() {
@@ -86,6 +92,10 @@ func main() {
 	flag.StringVar(&o.candidateCanonical, "candidate-canonical", "",
 		"compare-only: an already canonicalised candidate projection")
 	flag.StringVar(&o.cli, "cli", "terraform", "compare-only: which CLI produced the two projections")
+	flag.StringVar(&o.releasedDigests, "released-digests", "",
+		"digests-only: the committed released digests")
+	flag.StringVar(&o.candidateDigests, "candidate-digests", "",
+		"digests-only: the freshly built candidate digests")
 	flag.StringVar(&o.treeStateRaw, "tree-state", "",
 		"JSON from evidence_tree_json describing the working tree; required, no default")
 	flag.Parse()
@@ -131,6 +141,9 @@ func run(o options) error {
 		return err
 	}
 
+	if o.releasedDigests != "" || o.candidateDigests != "" {
+		return digestsOnly(o)
+	}
 	if o.releasedCanonical != "" || o.candidateCanonical != "" {
 		return compareOnly(o)
 	}
@@ -470,4 +483,42 @@ func readJSON(path string) (any, error) {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	return doc, nil
+}
+
+// digestsOnly answers the parity question about two digest artifacts.
+//
+// Same shape as compareOnly and the same reason: the caller already built both,
+// and re-deriving them here would put a second copy of the fact on a second set
+// of bytes.
+func digestsOnly(o options) error {
+	if o.releasedDigests == "" || o.candidateDigests == "" {
+		return fmt.Errorf("digests-only needs both -released-digests and -candidate-digests")
+	}
+	ledger, err := schemaparity.LoadLedger(o.ledgerPath)
+	if err != nil {
+		return err
+	}
+	var released, candidate schemaparity.Digests
+	for _, pair := range []struct {
+		path string
+		into *schemaparity.Digests
+	}{{o.releasedDigests, &released}, {o.candidateDigests, &candidate}} {
+		raw, err := os.ReadFile(filepath.Clean(pair.path))
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(raw, pair.into); err != nil {
+			return fmt.Errorf("parse %s: %w", pair.path, err)
+		}
+	}
+	findings := schemaparity.CheckDigests(released, candidate, ledger)
+	if len(findings) > 0 {
+		for _, f := range findings {
+			fmt.Fprintln(os.Stderr, f.String())
+		}
+		return fmt.Errorf("%d assertion(s) failed", len(findings))
+	}
+	fmt.Fprintf(os.Stderr, "schema-digests: pass. %d declared change(s), and the surfaces that moved are exactly those declared.\n",
+		len(ledger.Entries))
+	return nil
 }
