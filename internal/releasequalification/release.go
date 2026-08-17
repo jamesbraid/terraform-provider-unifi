@@ -80,34 +80,33 @@ type HardwareDispositionReceipt struct {
 }
 
 type DependencyPublishabilityReceipt struct {
-	FormatVersion int    `json:"format_version"`
-	Gate          string `json:"gate"`
-	// TreeState says whether provider_commit describes the tree this gate
-	// actually read. It is not decoration: the receipt stamps that commit from
-	// git rev-parse HEAD, so on a dirty tree it names a commit that does not
-	// contain the go.mod the dependency was resolved from.
+	FormatVersion    int    `json:"format_version"`
+	Gate             string `json:"gate"`
+	Result           string `json:"result"`
+	ProviderCommit   string `json:"provider_commit"`
+	ModulePath       string `json:"module_path"`
+	ModuleVersion    string `json:"module_version"`
+	ModuleCommit     string `json:"module_commit"`
+	ModuleZipSHA256  string `json:"module_zip_sha256"`
+	ModuleDirSHA256  string `json:"module_dir_sha256"`
+	ReplacePresent   bool   `json:"replace_present"`
+	ResolutionRunner string `json:"resolution_runner"`
+	NetworkBoundary  string `json:"network_boundary"`
+
+	// THE PRODUCER HAS ALWAYS WRITTEN THIS AND THIS TYPE NEVER ACCEPTED IT, so
+	// catalog-release-ready could not decode the receipt at all. It has cost
+	// nothing only because no workflow runs that consumer.
 	//
-	// The producer has been writing this since it was added and NO CONSUMER
-	// COULD SEE IT. The shell calls the key "tree" where every other receipt
-	// here calls it "tree_state", this type had no field for either, and
-	// catalog-release-ready reads the file with DisallowUnknownFields -- so it
-	// fails on "unknown field \"tree\"" before reading anything else. Nothing
-	// noticed because no workflow invokes catalog-release-ready.
+	// The script's key was `tree`. Every other receipt in the repository spells
+	// it `tree_state`, and the odd spelling is the tell that the field was added
+	// without anyone opening the type. Renamed in the script rather than matched
+	// here, so a one-off spelling does not become the convention by being the
+	// thing that was easiest to accept.
 	//
-	// A POINTER with omitempty so a receipt without a measured tree state stays
-	// without one. Re-emitting an empty object would read as "clean" to anyone
-	// scanning for the key, which is a claim nothing made.
-	TreeState        *catalogparity.TreeState `json:"tree_state,omitempty"`
-	Result           string                   `json:"result"`
-	ProviderCommit   string                   `json:"provider_commit"`
-	ModulePath       string                   `json:"module_path"`
-	ModuleVersion    string                   `json:"module_version"`
-	ModuleCommit     string                   `json:"module_commit"`
-	ModuleZipSHA256  string                   `json:"module_zip_sha256"`
-	ModuleDirSHA256  string                   `json:"module_dir_sha256"`
-	ReplacePresent   bool                     `json:"replace_present"`
-	ResolutionRunner string                   `json:"resolution_runner"`
-	NetworkBoundary  string                   `json:"network_boundary"`
+	// A pointer with omitempty, matching the receipt at line 72: absent when no
+	// run measured a tree, and additive, so every strict decoder that already
+	// works keeps working.
+	TreeState *catalogparity.TreeState `json:"tree_state,omitempty"`
 }
 
 type ConfidentialityReceipt struct {

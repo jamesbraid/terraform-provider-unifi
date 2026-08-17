@@ -129,6 +129,7 @@ build/**/*-ci.json
 /nested-type-dedup
 /policy-scaffold
 /provider-spec-compiler
+/receipt-gate
 /schema-baseline
 /schema-behaviour
 /sdk-bootstrap

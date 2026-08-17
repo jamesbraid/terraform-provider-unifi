@@ -109,7 +109,7 @@ jq --compact-output --null-input \
         gate: "go-unifi-dependency-publishability",
         result: "pass",
         provider_commit: $provider_commit,
-        tree: $tree,
+        tree_state: $tree,
         module_path: $module_path,
         module_version: $module_version,
         module_commit: $module_commit,

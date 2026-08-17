@@ -58,5 +58,5 @@ steps:
       # and the committed contracts, any of which aborts before result is
       # written. promotion_blockers covers toolchain pins only, and the script
       # exits 1 on them unless CATALOG_ALLOW_DIAGNOSTIC_TOOLCHAIN is set.
-      - jq -e '.result == "pass" and (.promotion_blockers | length) == 0 and .build_network == "none"' /tmp/catalog-build-schema.json
+      - go run ./cmd/receipt-gate -gate catalog-build-schema -receipt /tmp/catalog-build-schema.json
       - jq '.' /tmp/catalog-build-schema.json
