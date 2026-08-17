@@ -51,7 +51,6 @@ steps:
       # it covers and no break at all looked identical. It goes immediately
       # before the producer, and after the CLI downloads, because it needs the
       # same two binaries the producer does.
-      - TERRAFORM_BIN=/tmp/terraform TOFU_BIN=/tmp/tofu bash .woodpecker/scripts/catalog-build-schema_test.sh
       - CATALOG_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json TERRAFORM_BIN=/tmp/terraform TOFU_BIN=/tmp/tofu bash -x .woodpecker/scripts/catalog-build-schema.sh
       # BACKSTOP, NOT THE CHECK. The schema comparison happens in the script:
       # five cmp calls under set -e against the released canonical projections

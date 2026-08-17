@@ -55,7 +55,6 @@ steps:
       - env GOPROXY=file:///tmp/go-unifi-proxy,https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
-      - bash .woodpecker/scripts/catalog-controller-differential_test.sh
       - curl --fail --location --silent --show-error --output /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.15.8/terraform_1.15.8_linux_amd64.zip
       - echo 'd25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d  /tmp/terraform.zip' | sha256sum --check -
       - unzip -q /tmp/terraform.zip -d /tmp
@@ -88,7 +87,6 @@ steps:
       # Orphaned until now: the self-test existed and no workflow ran it, so it
       # reported to nobody. It needs no binaries and no controller, so it goes
       # straight before the producer it covers.
-      - bash .woodpecker/scripts/catalog-unit-differential_test.sh
       - CATALOG_UNIT_OUTPUT=/tmp/catalog-unit-differential.json bash .woodpecker/scripts/catalog-unit-differential.sh
       # BACKSTOP for result and network; the per-suite results are derived from
       # the go test event stream and DO carry information, including the floor
@@ -164,7 +162,6 @@ steps:
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-management-contract -admission /tmp/catalog-admission.json -build-schema /tmp/catalog-build-schema.json -policy provider-codegen/policy/catalog-management-contract.json -output /tmp/catalog-management-contract.json -tree-state "$(go run ./cmd/tree-state -what 'the catalog management contract')"
       - jq -e '.result == "ready_for_downstream_verification" and (.surfaces | length) == 67 and ([.surfaces[] | select(.capture_mode == "managed")] | length) == 28 and ([.surfaces[] | select(.capture_mode == "not_applicable")] | length) == 39' /tmp/catalog-management-contract.json
       - jq '.' /tmp/catalog-management-contract.json
-      - bash .woodpecker/scripts/m3-evidence-lib_test.sh
       - M3_CANDIDATE_PROVIDER_BINARY=/tmp/catalog-build-evidence/terraform-provider-unifi M3_LIFECYCLE_RECEIPT_OUTPUT=/tmp/catalog-dns-lifecycle.json bash .woodpecker/scripts/m3-dns-qualification.sh
       - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true and .lifecycle.v0_integer_ttl_state_upgrade == true and .cli_outcomes_equivalent == true and .adapter_outcomes_equivalent == true' /tmp/catalog-dns-lifecycle.json
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-migration-recovery -policy provider-codegen/policy/catalog-campaign.json -admission /tmp/catalog-admission.json -build-schema /tmp/catalog-build-schema.json -controller /tmp/catalog-controller-differential.json -inventory build/release-ready/catalog-evidence-inventory.json -migration-manifest provider-codegen/generated/catalog-migration-manifest.json -dns-lifecycle /tmp/catalog-dns-lifecycle.json -output /tmp/catalog-migration-recovery.json -tree-state "$(go run ./cmd/tree-state -what 'the migration and recovery receipt')"

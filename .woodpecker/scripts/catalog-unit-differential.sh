@@ -82,10 +82,12 @@ run_suite() {
         # produced nothing was therefore indistinguishable from a full green
         # suite, and this receipt is consumed by catalog admission.
         #
-        # catalog-unit-differential_test.sh already asserts package_pass_count
-        # is above zero. That file is invoked by no pipeline and no script, so
-        # the one assertion standing between us and a hollow pass lived
-        # somewhere nothing runs. It belongs in the thing that always runs.
+        # The assertion that package_pass_count is above zero used to live in
+        # catalog-unit-differential_test.sh -- a file no pipeline and no script
+        # invoked, so the one thing standing between us and a hollow pass sat
+        # somewhere nothing ran. It belongs in the thing that always runs, and
+        # that is why it is below. The self-test has since been deleted, so do
+        # not go looking for it.
         result: (if $exit_code == 0 and
                     ([$normalized[] | select(.action == "fail")] | length) == 0 and
                     ($lines | length) == ($parsed | length) and

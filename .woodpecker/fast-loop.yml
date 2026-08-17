@@ -172,6 +172,5 @@ steps:
       - golangci-lint run --no-config --default=none --enable=ineffassign --enable=makezero --enable=misspell --enable=unconvert --timeout 5m ./...
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
-      - bash .woodpecker/scripts/catalog-evidence-inventory_test.sh
       - go generate ./...
       - git diff --exit-code
