@@ -92,6 +92,21 @@ type DependencyPublishabilityReceipt struct {
 	ReplacePresent   bool   `json:"replace_present"`
 	ResolutionRunner string `json:"resolution_runner"`
 	NetworkBoundary  string `json:"network_boundary"`
+
+	// THE PRODUCER HAS ALWAYS WRITTEN THIS AND THIS TYPE NEVER ACCEPTED IT, so
+	// catalog-release-ready could not decode the receipt at all. It has cost
+	// nothing only because no workflow runs that consumer.
+	//
+	// The script's key was `tree`. Every other receipt in the repository spells
+	// it `tree_state`, and the odd spelling is the tell that the field was added
+	// without anyone opening the type. Renamed in the script rather than matched
+	// here, so a one-off spelling does not become the convention by being the
+	// thing that was easiest to accept.
+	//
+	// A pointer with omitempty, matching the receipt at line 72: absent when no
+	// run measured a tree, and additive, so every strict decoder that already
+	// works keeps working.
+	TreeState *catalogparity.TreeState `json:"tree_state,omitempty"`
 }
 
 type ConfidentialityReceipt struct {
