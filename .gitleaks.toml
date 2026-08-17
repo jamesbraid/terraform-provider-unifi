@@ -1,0 +1,94 @@
+# gitleaks configuration for the provider tree.
+#
+# Written after cmd/export-gate reported seven findings on the first run of the
+# first export gate this repository has ever had. Each entry below records WHY a
+# match is not a secret, established by measurement rather than by assumption --
+# an allowlist entry asserts that something is safe, and asserting that without
+# checking is how a scanner becomes decoration.
+#
+
+[extend]
+useDefault = true
+
+
+# SCOPED BY VALUE, NOT BY PATH, AND THE ROUTE HERE IS WORTH RECORDING.
+#
+# The first draft allowlisted the four file PATHS. A control measured what that
+# cost: a GitHub token pasted into unifi/wireguard_config_test.go was NOT
+# reported. So the second draft added condition = "AND" to require both path and
+# value -- and the same control showed the token STILL unreported, because this
+# gitleaks accepts the key and does not apply it. A config that reads tighter
+# than it behaves is worse than one that reads as loose as it is.
+#
+# So the paths are gone. These entries excuse specific KNOWN literals wherever
+# they appear, and every other secret is caught in every file including these.
+# The values are already present in the tree, so naming them adds no exposure.
+
+[[allowlists]]
+description = """
+RADIUS MAC-authentication bypass account: the `password` is a MAC address.
+
+examples/resources/unifi_radius_user/resource.tf documents the convention three
+lines above the match -- "For MAC auth, use the uppercased MAC (no colons or
+periods) as both name and password" -- which is UniFi's MAB behaviour rather
+than a credential this project chose. The same file's ordinary RADIUS example
+uses `password = var.radius_user_password`, so good practice is demonstrated
+alongside the documented exception.
+
+The literal is present in ubiquiti-community's tree, so it is inherited.
+docs/resources/radius_user.md is GENERATED from this example by tfplugindocs
+(main.go:15) -- the same decision, not a second one.
+"""
+regexes = [
+  '''7B\+2Z3odPbDNsfVr\+F8invj6/mBKLVaolOHXZoCaBA0=''',
+  '''A1B2C3D4E5F6''',
+  '''F3JcsRyn9Hywwyhl4EznlV4ZThatbB5Hi4U9b3emM\+g=''',
+  '''WPiBa/Ak1W\+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ\+kFg=''',
+  '''guest\-key\-1234''',
+  '''iot\-key\-5678''',
+]
+
+[[allowlists]]
+description = """
+WLAN example passphrase in a demonstration configuration.
+
+examples/resources/unifi_wlan/resource.tf builds an illustrative WLAN alongside
+a VLAN, a DHCP range and a network; the passphrase is the field being
+demonstrated. The literal is present in ubiquiti-community's tree, so it is
+inherited. docs/resources/wlan.md is GENERATED from it.
+"""
+regexes = [
+  '''7B\+2Z3odPbDNsfVr\+F8invj6/mBKLVaolOHXZoCaBA0=''',
+  '''A1B2C3D4E5F6''',
+  '''F3JcsRyn9Hywwyhl4EznlV4ZThatbB5Hi4U9b3emM\+g=''',
+  '''WPiBa/Ak1W\+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ\+kFg=''',
+  '''guest\-key\-1234''',
+  '''iot\-key\-5678''',
+]
+
+[[allowlists]]
+description = """
+WireGuard test fixture keys, inherited from upstream and built from
+documentation address ranges.
+
+The same key literals appear in ubiquiti-community's
+unifi/wireguard_config_test.go, and the fixture uses Endpoint 192.0.2.1:51820 --
+TEST-NET-1, which RFC 5737 reserves for documentation -- with an RFC 1918
+interface address. Nobody's tunnel terminates on TEST-NET-1.
+
+The same value appears in unifi/vpn_client_resource_test.go: one fixture key
+used by two tests, not two secrets.
+
+Triaged first and deliberately, because it is the only match whose shape a
+reader cannot distinguish from a real key, and it sits in a test rather than in
+documentation. Had it been ours it would have needed rotating rather than
+deleting, since it is already published in v0.101.2.
+"""
+regexes = [
+  '''7B\+2Z3odPbDNsfVr\+F8invj6/mBKLVaolOHXZoCaBA0=''',
+  '''A1B2C3D4E5F6''',
+  '''F3JcsRyn9Hywwyhl4EznlV4ZThatbB5Hi4U9b3emM\+g=''',
+  '''WPiBa/Ak1W\+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ\+kFg=''',
+  '''guest\-key\-1234''',
+  '''iot\-key\-5678''',
+]

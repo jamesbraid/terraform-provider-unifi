@@ -11,15 +11,25 @@
   "terms": [
     {
       "value": "op://",
-      "why": "1Password secret reference; a published tree must not tell readers where credentials live"
+      "why": "1Password secret reference; a published tree must not tell readers where credentials live -- permitted in the declaration that names it, and in the gate's own self-test fixture, because a term cannot be declared or tested without being written down once",
+      "permitted_paths": [
+        ".woodpecker/policy/export-denylist.json",
+        "internal/exportgate/gate_test.go"
+      ]
     },
     {
       "value": "OP_SERVICE_ACCOUNT_TOKEN",
-      "why": "1Password service-account token variable"
+      "why": "1Password service-account token variable -- permitted in the declaration that names it, and in the gate's own self-test fixture, because a term cannot be declared or tested without being written down once",
+      "permitted_paths": [
+        ".woodpecker/policy/export-denylist.json"
+      ]
     },
     {
       "value": "loreland.org",
-      "why": "personal domain used for maintainer addresses"
+      "why": "personal domain used for maintainer addresses -- permitted in the declaration that names it, and in the gate's own self-test fixture, because a term cannot be declared or tested without being written down once",
+      "permitted_paths": [
+        ".woodpecker/policy/export-denylist.json"
+      ]
     }
   ],
   "hashed_terms": [
