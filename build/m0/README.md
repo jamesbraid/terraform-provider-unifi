@@ -23,23 +23,26 @@ also compares the shared projection exactly.
 The first passing private carrier retained the raw outputs only for the life of
 the job. The baseline keeps `raw_linux_cli_outputs_retained` false until
 `receipts/provider-baseline/receipt.json` verifies the Terraform 1.15.8 and
-OpenTofu 1.12.1 raw files in the private evidence repository. The M1 script
-rejects an evidence output directory inside this repository.
+OpenTofu 1.12.1 raw files in the private evidence repository.
 
-M1 builds the same HEAD provider binary twice with fresh Go build caches,
-networked module lookup disabled, and VCS embedding disabled. The lifecycle
-builder uses the same flags even though it builds from a Git archive. M1 drives
-both schema CLIs through development overrides against that binary, then
-repeats the queries against the released v0.101.2 binary. Release and HEAD must
-match within each CLI. Terraform and OpenTofu must also match after removing
-only the categories absent from OpenTofu 1.12.1.
+WHAT M1 DID, PAST TENSE. `m1-dns-compiler.sh` has been deleted; the paragraphs
+below described how to run it and are kept as a record of what produced
+`build/m1/dns-compiler-receipt.json`, not as instructions. Nothing reads
+`M1_EVIDENCE_OUTPUT_DIRECTORY`, `M1_EVIDENCE_ARCHIVE` or `M1_LIFECYCLE_RECEIPT`
+any more -- measured across the Go, the shell and the workflows -- so setting
+them does nothing.
 
-Set `M1_EVIDENCE_OUTPUT_DIRECTORY` to a restricted external directory to retain
-the four raw envelopes, the two canonical HEAD projections, checksums, and the
-M1 receipt. `M1_EVIDENCE_ARCHIVE` optionally writes the same verified bundle as
-a compressed archive. Set `M1_LIFECYCLE_RECEIPT` during qualification to emit
-an exact-binary management sidecar; its source commit and provider hash must
-match the lifecycle receipt.
+M1 built the same HEAD provider binary twice with fresh Go build caches,
+networked module lookup disabled, and VCS embedding disabled. It drove both
+schema CLIs through development overrides against that binary, then repeated the
+queries against the released v0.101.2 binary, requiring release and HEAD to
+match within each CLI and Terraform and OpenTofu to match after removing only
+the categories absent from OpenTofu 1.12.1. It refused an evidence output
+directory inside this repository.
+
+The schema comparison itself survives and is not M1's: `cmd/schema-parity`
+performs it, and `internal/schemaparity` holds the frozen contract it is checked
+against.
 
 `port-forward-shadow.json` records the nested-shape and mapping-test shadow
 baseline. It deliberately does not claim acceptance, lifecycle, migration, or
