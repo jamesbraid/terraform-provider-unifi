@@ -58,7 +58,6 @@ fail() {
 # refusing on a real dirty tree, and a call site never seen to run is the shape
 # of change that looks like coverage and is not.
 readonly -a exempt=(
-    "m1-dns-compiler.sh|cannot be executed to verify: the pipeline that exercises it is down"
     "m3-dns-qualification.sh|cannot be executed to verify: the pipeline that exercises it is down"
     # Five Go binaries left this list when they gained -tree-state. The reason
     # they carried -- "a Go binary cannot source a bash library" -- was true of
