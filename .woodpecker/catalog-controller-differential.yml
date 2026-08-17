@@ -111,7 +111,20 @@ steps:
       # coverage turned the gate red. A gate that rejects improvement is a
       # defect; a gate that pins an upper bound is a third opinion. Lower the
       # ceiling when coverage improves. Raising it is a release decision.
-      - gaps=$(jq -r '.plan.evidence_gap_count' /tmp/catalog-controller-differential.json); test "${gaps}" -le 6 || { printf 'evidence_gap_count is %s, above the ceiling of 6\n' "${gaps}" >&2; exit 1; }
+      # NO SHELL VARIABLE HERE, DELIBERATELY. Woodpecker substitutes a
+      # dollar-brace name in a command with its OWN pipeline variable before the
+      # shell runs, and an undefined name becomes the empty string. The previous
+      # form assigned gaps from jq and then compared it; /bin/sh received
+      # `test "" -le 6` and died "Illegal number:" on pipeline 228, AFTER the
+      # campaign had passed on its merits. jq does the comparison and the
+      # reporting, so there is no name left for Woodpecker to eat.
+      #
+      # THE TYPE GUARD IS LOAD-BEARING. `null <= 6` is TRUE in jq, so the
+      # obvious filter passes when the field is ABSENT -- green exactly when the
+      # receipt stops carrying the number the gate exists to bound. Measured:
+      # 6 passes, 7 refuses, a missing field refuses, a string refuses, and only
+      # the last two need the type check.
+      - jq -e '(.plan.evidence_gap_count | type) == "number" and .plan.evidence_gap_count <= 6' /tmp/catalog-controller-differential.json >/dev/null || { jq -r '"evidence_gap_count is \(.plan.evidence_gap_count | tojson), not a number at or below the ceiling of 6"' /tmp/catalog-controller-differential.json >&2; exit 1; }
       - jq '.' /tmp/catalog-controller-differential.json
       - if bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq diagnostic_complete; then exit 0; fi; bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq full
       - source .woodpecker/scripts/tree-state.sh && evidence_tree_state "the hardware disposition receipt" && env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-hardware-disposition -controller /tmp/catalog-controller-differential.json -output /tmp/catalog-hardware-disposition.json -tree-state "$(evidence_tree_json)"
