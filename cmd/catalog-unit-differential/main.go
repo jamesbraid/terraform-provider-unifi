@@ -26,26 +26,32 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "catalog-unit-differential: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
-	repository := flag.String("repo", ".", "repository holding the candidate tree")
-	baselinePath := flag.String("baseline-manifest", "build/m0/provider-baseline.json",
+// run takes its arguments rather than reading the package-level flag set, so a
+// test can exercise the refusals without os.Args and without a second test in
+// the same binary redefining a flag.
+func run(args []string) error {
+	flags := flag.NewFlagSet("catalog-unit-differential", flag.ContinueOnError)
+	repository := flags.String("repo", ".", "repository holding the candidate tree")
+	baselinePath := flags.String("baseline-manifest", "build/m0/provider-baseline.json",
 		"promotion expectations, relative to -repo")
-	inventoryPath := flag.String("inventory", "build/release-ready/catalog-evidence-inventory.json",
+	inventoryPath := flags.String("inventory", "build/release-ready/catalog-evidence-inventory.json",
 		"evidence inventory whose digest this run records, relative to -repo")
-	releasedRef := flag.String("released-ref", "", "released tag (default: the baseline manifest's)")
-	output := flag.String("output", "", "write the receipt here; required")
-	logRoot := flag.String("logs", "", "keep the raw test logs here (default: a temp dir, removed on exit)")
-	treeStateRaw := flag.String("tree-state", "",
+	releasedRef := flags.String("released-ref", "", "released tag (default: the baseline manifest's)")
+	output := flags.String("output", "", "write the receipt here; required")
+	logRoot := flags.String("logs", "", "keep the raw test logs here (default: a temp dir, removed on exit)")
+	treeStateRaw := flags.String("tree-state", "",
 		"JSON from evidence_tree_json describing the working tree; required, no default")
-	allowDiagnostic := flag.Bool("allow-diagnostic-toolchain", false,
+	allowDiagnostic := flags.Bool("allow-diagnostic-toolchain", false,
 		"record diagnostic_pass instead of stopping when the environment does not match the baseline")
-	flag.Parse()
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
 
 	if *output == "" {
 		return errors.New("-output is required")
