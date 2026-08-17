@@ -36,9 +36,13 @@ readonly repository_root
 # tree it names a commit that does not contain what was measured. Take the tree
 # state here, before anything is built or planned, so what the receipt records
 # is the tree the run started from.
-# shellcheck source=.woodpecker/scripts/tree-state.sh
-source "${repository_root}/.woodpecker/scripts/tree-state.sh"
-evidence_tree_state "the upgrade-plan receipt"
+# The guard runs before anything it protects, and it REFUSES a dirty tree
+# unless EVIDENCE_ALLOW_DIRTY_TREE acknowledges it -- in which case the dirt
+# is recorded in the receipt rather than hidden. cmd/tree-state prints the
+# JSON on stdout and the refusal on stderr, so a failure here stops the run
+# whether or not anybody reads the message.
+evidence_tree_json=$(cd "${repository_root}" && go run ./cmd/tree-state -what "the upgrade-plan receipt") || exit 1
+readonly evidence_tree_json
 
 readonly cli_bin=${TERRAFORM_BIN:?TERRAFORM_BIN is required (this repository sets it to an OpenTofu binary)}
 readonly released_ref=${UPGRADE_RELEASED_REF:-v0.101.2}
@@ -272,7 +276,7 @@ jq -n \
     --argjson expect_old_plan "${expect_old_plan}" \
     --arg result "${result}" \
     --arg verdict "${verdict}" \
-    --argjson tree "$(evidence_tree_json)" \
+    --argjson tree "${evidence_tree_json}" \
     '{format_version: 1, gate: $gate, cli: $cli, released_ref: $released_ref,
       released_commit: $released_commit, candidate_commit: $candidate_commit,
       tree: $tree,

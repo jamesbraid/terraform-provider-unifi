@@ -118,6 +118,41 @@ func TestBuildReleaseReadyArtifactsFailsClosed(t *testing.T) {
 			},
 			want: "ledger surface set",
 		},
+		// The four below were all measured BLIND before validateReleaseLedger
+		// read the incoming state. BuildReleaseReadyArtifacts overwrites State,
+		// Implementation and ReceiptSHA256 on every entry, so until these ran
+		// the gate promoted whatever ledger it was handed.
+		"one ledger surface never reached admitted": {
+			mutate: func(input *ReleaseReadyInput) {
+				input.Ledger.Entries[0].State = catalogparity.ShadowOnly
+			},
+			want: "the management contract admitted it as",
+		},
+		// The whole-catalog case is kept separately from the single-surface one.
+		// A loop that stops at the first mismatch passes both; a check keyed on
+		// some aggregate -- a count, a majority -- passes this one and fails the
+		// other, and the difference between "one surface slipped" and "nothing
+		// was ever admitted" is the difference worth having.
+		"NO ledger surface reached admitted": {
+			mutate: func(input *ReleaseReadyInput) {
+				for index := range input.Ledger.Entries {
+					input.Ledger.Entries[index].State = catalogparity.ShadowOnly
+				}
+			},
+			want: "the management contract admitted it as",
+		},
+		"ledger describes the released tree": {
+			mutate: func(input *ReleaseReadyInput) {
+				input.Ledger.Entries[4].Implementation = "released"
+			},
+			want: "is implemented by",
+		},
+		"ledger surface carries no admission receipt": {
+			mutate: func(input *ReleaseReadyInput) {
+				input.Ledger.Entries[1].ReceiptSHA256 = ""
+			},
+			want: "carries no admission receipt digest",
+		},
 	}
 
 	for name, test := range tests {

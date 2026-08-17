@@ -80,6 +80,28 @@ type claim struct {
 // attribute at all -- a helper, a loop, a switch, a computed value -- this
 // reports it as unchecked rather than failing, because a referee that guesses is
 // the thing being guarded against.
+//
+// PROVEN TO FAIL, TWICE, and the second time is the reason these records belong
+// in the file rather than only in a commit.
+//
+//   - Zero findings is worthless from a referee that cannot fail, so that was
+//     tested rather than assumed: injecting the exact static_route trap into its
+//     policy -- type claiming the discriminator -- turns the run red with
+//     `unifi_static_route.type claims "type" but static_route_resource.go pairs
+//     it with static-route_type`. (e7d57956)
+//   - THE CONTROL FLOW LATER CHANGED, and the trap was injected again rather
+//     than the old proof being assumed to carry. It still turned red, still
+//     naming the surface. (bb079169)
+//
+// That second one is the whole argument. A proof lives in a commit describing a
+// version of the file that no longer exists; re-proving after a refactor is only
+// possible when the original proof is readable where the code is. This paragraph
+// exists so the next person to change the control flow knows exactly which
+// mutation to re-run.
+//
+// The referee has also been wrong about itself once: an earlier matching rule
+// let wan's five attributes named `enabled` cross-claim, which produced a false
+// CONTRADICTION and is how the rule was found. (706d80e0)
 func Test_policyRenamesMatchTheConversionCode(t *testing.T) {
 	derived, err := renamecheck.Derive(".")
 	if err != nil {

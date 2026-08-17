@@ -69,6 +69,26 @@ const behaviourHeader = `# Validators, plan modifiers, defaults and custom types
 // Coverage is managed resources and data sources at every attribute depth, and
 // actions at their single depth. List resources and identity schemas are
 // separate schemas and are reported as uncovered rather than passed over.
+//
+// PROVEN TO FAIL, recorded here rather than only in the commits that proved it,
+// so a reader with a checkout can tell this from a check nobody has seen go red.
+//
+//   - Seven mutations of a policy -- dropping a validator, changing an enum
+//     value, dropping a plan modifier, dropping a default, changing a default's
+//     value, adding a validator, dropping a nested validator -- each fail and
+//     name the attribute. Reordering the policy does not. (37313392)
+//   - Deleting wlan's schedule block fails this and the baseline projection,
+//     each naming the surface; deleting one validator inside that block fails
+//     this one alone, because the protocol cannot express a validator. (5d1b8bf5)
+//   - Retrodicted against the migration it was written for: regenerated at the
+//     commit before the firewall_policy rewire and at the commit after, all 731
+//     lines were identical -- while that same class of migration had silently
+//     dropped nine validators elsewhere, seven of them enum constraints. (37313392)
+//
+// THE PROOFS ARE WORTH WHAT THE REMOVAL GUARD IS WORTH. Each says this test goes
+// red; none says the red survives. writeGolden's refusal is what stops a
+// regeneration erasing the evidence, and that refusal is defeated by deleting
+// the golden first. See golden_update_test.go.
 func Test_schemaBehaviourInventory(t *testing.T) {
 	ctx := context.Background()
 	got, opaque := schemaBehaviourFacts(ctx, t)

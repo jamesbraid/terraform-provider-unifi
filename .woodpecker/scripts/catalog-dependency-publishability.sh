@@ -6,13 +6,14 @@ readonly repository_root
 
 # The receipt stamps provider_commit from git rev-parse HEAD, so on a dirty tree
 # it names a commit that does not contain the go.mod this gate just read. Take
-# the tree state first, before the pin is even sourced.
-# shellcheck source=.woodpecker/scripts/tree-state.sh
-source "${repository_root}/.woodpecker/scripts/tree-state.sh"
-evidence_tree_state "the dependency publishability receipt"
-
-# shellcheck source=.woodpecker/scripts/go-unifi-pin.sh
-source "${repository_root}/.woodpecker/scripts/go-unifi-pin.sh"
+# the tree state first, before the pin is even read.
+# The guard runs before anything it protects, and it REFUSES a dirty tree
+# unless EVIDENCE_ALLOW_DIRTY_TREE acknowledges it -- in which case the dirt
+# is recorded in the receipt rather than hidden. cmd/tree-state prints the
+# JSON on stdout and the refusal on stderr, so a failure here stops the run
+# whether or not anybody reads the message.
+evidence_tree_json=$(cd "${repository_root}" && go run ./cmd/tree-state -what "the dependency publishability receipt") || exit 1
+readonly evidence_tree_json
 
 readonly output=${CATALOG_DEPENDENCY_OUTPUT:?CATALOG_DEPENDENCY_OUTPUT is required}
 
@@ -31,11 +32,18 @@ expect() {
     fi
 }
 
-module_path=${go_unifi_module_path}
-readonly module_path
-declared_version=$(go_unifi_declared_version "${repository_root}")
-declared_sum=$(go_unifi_declared_sum "${repository_root}" "${declared_version}")
-readonly declared_version declared_sum
+# The pin lives in internal/gounifipin, which is the single home for these
+# facts: this gate and the proxy bootstrap used to carry their own copies, so a
+# repoint that updated one and not the other produced a green tree locally and a
+# failure an hour into CI.
+pin() { (cd "${repository_root}" && go run ./cmd/go-unifi-pin -field "$1"); }
+
+module_path=$(pin module-path) || exit 1
+module_origin=$(pin module-origin) || exit 1
+expected_commit=$(pin expected-commit) || exit 1
+declared_version=$(pin declared-version) || exit 1
+declared_sum=$(pin declared-sum) || exit 1
+readonly module_path module_origin expected_commit declared_version declared_sum
 
 module_json=$(env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' \
     GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local \
@@ -67,8 +75,8 @@ readonly module_info=${version_root}/${declared_version}.info
 
 # The commit is a claim about the tag rather than a restatement of it: a tag
 # moved underneath us keeps its version and changes its commit.
-expect "module origin commit" "${go_unifi_expected_commit}" "$(jq -r .Origin.Hash "${module_info}")"
-expect "module origin URL" "${go_unifi_module_origin}" "$(jq -r .Origin.URL "${module_info}")"
+expect "module origin commit" "${expected_commit}" "$(jq -r .Origin.Hash "${module_info}")"
+expect "module origin URL" "${module_origin}" "$(jq -r .Origin.URL "${module_info}")"
 
 module_zip_sha256=$(sha256sum "${module_zip}" | awk '{print $1}')
 module_dir_sha256=$(
@@ -92,10 +100,10 @@ jq --compact-output --null-input \
     --arg provider_commit "${provider_commit}" \
     --arg module_path "${module_path}" \
     --arg module_version "${declared_version}" \
-    --arg module_commit "${go_unifi_expected_commit}" \
+    --arg module_commit "${expected_commit}" \
     --arg module_zip_sha256 "${module_zip_sha256}" \
     --arg module_dir_sha256 "${module_dir_sha256}" \
-    --argjson tree "$(evidence_tree_json)" \
+    --argjson tree "${evidence_tree_json}" \
     '{
         format_version: 1,
         gate: "go-unifi-dependency-publishability",

@@ -28,6 +28,9 @@ steps:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
+      # First command in the first step, so a run that read the wrong workspace
+      # says so before any verdict it produces. See cmd/workspace-provenance.
+      - go run ./cmd/workspace-provenance
       - apt-get update
       - apt-get install --yes --no-install-recommends ca-certificates curl docker.io git jq unzip
       # The released tag must exist BEFORE the self-test, not fourteen lines
@@ -43,8 +46,7 @@ steps:
       # from a vet that was correct and a cache that was empty. The tag fix moved
       # one producer above its consumer and then I gave the same consumer a new
       # dependency without re-running the audit.
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy_test.sh
-      - bash .woodpecker/scripts/bootstrap-go-unifi-proxy.sh
+      - go run ./cmd/go-unifi-proxy
       # Deliberately not "all". That resolves the entire module graph and
       # writes sums for test dependencies OF dependencies into go.sum, leaving
       # ` M go.sum` behind -- which every evidence generator below then refuses
@@ -73,14 +75,24 @@ steps:
       - bash .woodpecker/scripts/catalog-evidence-inventory.sh
       - git diff --exit-code -- build/release-ready/catalog-evidence-inventory.json
       - CATALOG_DEPENDENCY_OUTPUT=/tmp/catalog-dependency-publishability.json bash .woodpecker/scripts/catalog-dependency-publishability.sh
+      # BACKSTOP, NOT THE CHECK -- every field is a constant the script writes
+      # only after its own expect() calls passed, and fail() exits 1 under
+      # set -e. Kept against the script's abort regressing. See
+      # catalog-build-schema.yml for the full reasoning; do not count these
+      # three as verification when tallying what this pipeline proves.
       - jq -e '.result == "pass" and .module_path == "github.com/ubiquiti-community/go-unifi" and .replace_present == false and .resolution_runner == "remote_ci" and .network_boundary == "remote_ci_only"' /tmp/catalog-dependency-publishability.json
       - CATALOG_RELEASED_PROVIDER_BINARY=/tmp/released-provider/terraform-provider-unifi_v0.101.2 CATALOG_BUILD_SCHEMA_OUTPUT=/tmp/catalog-build-schema.json CATALOG_BUILD_SCHEMA_EVIDENCE_DIRECTORY=/tmp/catalog-build-evidence TERRAFORM_BIN=/tmp/terraform TOFU_BIN=/tmp/tofu bash .woodpecker/scripts/catalog-build-schema.sh
+      # BACKSTOP -- the schema comparison is five cmp calls inside the script,
+      # under set -e, against the released projections and committed contracts.
       - jq -e '.result == "pass" and .promotion_blockers == [] and .build_network == "none"' /tmp/catalog-build-schema.json
       # Orphaned until now: the self-test existed and no workflow ran it, so it
       # reported to nobody. It needs no binaries and no controller, so it goes
       # straight before the producer it covers.
       - bash .woodpecker/scripts/catalog-unit-differential_test.sh
       - CATALOG_UNIT_OUTPUT=/tmp/catalog-unit-differential.json bash .woodpecker/scripts/catalog-unit-differential.sh
+      # BACKSTOP for result and network; the per-suite results are derived from
+      # the go test event stream and DO carry information, including the floor
+      # that an empty run is not a pass.
       - jq -e '.result == "pass" and .network == "none" and .promotion_blockers == [] and .released.result == "pass" and .candidate.result == "pass"' /tmp/catalog-unit-differential.json
       - jq '.' /tmp/catalog-unit-differential.json
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go -C /tmp/unifi-emu mod download all
@@ -127,20 +139,32 @@ steps:
       - jq -e '(.plan.evidence_gap_count | type) == "number" and .plan.evidence_gap_count <= 6' /tmp/catalog-controller-differential.json >/dev/null || { jq -r '"evidence_gap_count is \(.plan.evidence_gap_count | tojson), not a number at or below the ceiling of 6"' /tmp/catalog-controller-differential.json >&2; exit 1; }
       - jq '.' /tmp/catalog-controller-differential.json
       - if bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq diagnostic_complete; then exit 0; fi; bash .woodpecker/scripts/catalog-controller-followup.sh /tmp/catalog-controller-differential.json | grep -Fxq full
-      - source .woodpecker/scripts/tree-state.sh && evidence_tree_state "the hardware disposition receipt" && env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-hardware-disposition -controller /tmp/catalog-controller-differential.json -output /tmp/catalog-hardware-disposition.json -tree-state "$(evidence_tree_json)"
+      # EVERY COMMAND HERE RUNS UNDER THE IMAGE'S /bin/sh, NOT BASH. A bashism
+      # fails at its first word, and since these are `&&` chains the rest of the
+      # line never runs, so the file it was going to write is simply absent.
+      #
+      # That matters less for what it breaks than for how it reads. The five
+      # commands below each began `source .woodpecker/scripts/tree-state.sh &&`
+      # until they were migrated; `source` is not a /bin/sh builtin, so pipeline
+      # 232 failed on the NEXT line with `jq: Could not open file
+      # /tmp/catalog-hardware-disposition.json`. The error names the consumer,
+      # and whoever follows it reads the generator and finds nothing wrong --
+      # because the generator never ran. Reach for a command, not a shell
+      # feature, and the failure names its own subject.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-hardware-disposition -controller /tmp/catalog-controller-differential.json -output /tmp/catalog-hardware-disposition.json -tree-state "$(go run ./cmd/tree-state -what 'the hardware disposition receipt')"
       - jq -e '.result == "pass" and .kind == "action" and .name == "unifi_port" and .mode == "protocol_sufficient" and .claim_scope == "controller_poe_configuration_persistence" and .physical_electrical_claim == false and .resolved_signal == "hardware_claim"' /tmp/catalog-hardware-disposition.json
-      - source .woodpecker/scripts/tree-state.sh && evidence_tree_state "the pragmatic resolution receipt" && env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-pragmatic-evidence -policy provider-codegen/policy/catalog-campaign.json -inventory build/release-ready/catalog-evidence-inventory.json -fleet-summary build/restricted/catalog-fleet-gap-summary.json -references provider-codegen/policy/catalog-pragmatic-references.json -controller-receipt /tmp/catalog-controller-differential.json -output /tmp/catalog-pragmatic-resolution.json -tree-state "$(evidence_tree_json)"
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-pragmatic-evidence -policy provider-codegen/policy/catalog-campaign.json -inventory build/release-ready/catalog-evidence-inventory.json -fleet-summary build/restricted/catalog-fleet-gap-summary.json -references provider-codegen/policy/catalog-pragmatic-references.json -controller-receipt /tmp/catalog-controller-differential.json -output /tmp/catalog-pragmatic-resolution.json -tree-state "$(go run ./cmd/tree-state -what 'the pragmatic resolution receipt')"
       - jq -e '.result == "blocked_evidence" and .resolved_signal_count == 4 and .remaining_signal_count == 2 and (.controller_receipt_sha256 | length) == 64' /tmp/catalog-pragmatic-resolution.json
       - jq '.' /tmp/catalog-pragmatic-resolution.json
-      - source .woodpecker/scripts/tree-state.sh && evidence_tree_state "the catalog admission receipt" && env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-admission -policy provider-codegen/policy/catalog-campaign.json -inventory build/release-ready/catalog-evidence-inventory.json -build-schema /tmp/catalog-build-schema.json -unit /tmp/catalog-unit-differential.json -controller /tmp/catalog-controller-differential.json -pragmatic /tmp/catalog-pragmatic-resolution.json -output /tmp/catalog-admission.json -tree-state "$(evidence_tree_json)"
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-admission -policy provider-codegen/policy/catalog-campaign.json -inventory build/release-ready/catalog-evidence-inventory.json -build-schema /tmp/catalog-build-schema.json -unit /tmp/catalog-unit-differential.json -controller /tmp/catalog-controller-differential.json -pragmatic /tmp/catalog-pragmatic-resolution.json -output /tmp/catalog-admission.json -tree-state "$(go run ./cmd/tree-state -what 'the catalog admission receipt')"
       - jq -e '.result == "pass" and .admitted_surface_count == 67 and .release_blocker_count == 2 and .release_blockers == [{"kind":"managed_resource","name":"unifi_power_supervisor","signal":"acceptance"},{"kind":"action","name":"unifi_port","signal":"hardware_claim"}] and ([.surfaces[] | select(.state != "admitted" or .adapter_state != "adapter_parity")] | length) == 0' /tmp/catalog-admission.json
       - jq '.' /tmp/catalog-admission.json
-      - source .woodpecker/scripts/tree-state.sh && evidence_tree_state "the catalog management contract" && env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-management-contract -admission /tmp/catalog-admission.json -build-schema /tmp/catalog-build-schema.json -policy provider-codegen/policy/catalog-management-contract.json -output /tmp/catalog-management-contract.json -tree-state "$(evidence_tree_json)"
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-management-contract -admission /tmp/catalog-admission.json -build-schema /tmp/catalog-build-schema.json -policy provider-codegen/policy/catalog-management-contract.json -output /tmp/catalog-management-contract.json -tree-state "$(go run ./cmd/tree-state -what 'the catalog management contract')"
       - jq -e '.result == "ready_for_downstream_verification" and (.surfaces | length) == 67 and ([.surfaces[] | select(.capture_mode == "managed")] | length) == 28 and ([.surfaces[] | select(.capture_mode == "not_applicable")] | length) == 39' /tmp/catalog-management-contract.json
       - jq '.' /tmp/catalog-management-contract.json
       - bash .woodpecker/scripts/m3-evidence-lib_test.sh
       - M3_CANDIDATE_PROVIDER_BINARY=/tmp/catalog-build-evidence/terraform-provider-unifi M3_LIFECYCLE_RECEIPT_OUTPUT=/tmp/catalog-dns-lifecycle.json bash .woodpecker/scripts/m3-dns-qualification.sh
       - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true and .lifecycle.v0_integer_ttl_state_upgrade == true and .cli_outcomes_equivalent == true and .adapter_outcomes_equivalent == true' /tmp/catalog-dns-lifecycle.json
-      - source .woodpecker/scripts/tree-state.sh && evidence_tree_state "the migration and recovery receipt" && env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-migration-recovery -policy provider-codegen/policy/catalog-campaign.json -admission /tmp/catalog-admission.json -build-schema /tmp/catalog-build-schema.json -controller /tmp/catalog-controller-differential.json -inventory build/release-ready/catalog-evidence-inventory.json -migration-manifest provider-codegen/generated/catalog-migration-manifest.json -dns-lifecycle /tmp/catalog-dns-lifecycle.json -output /tmp/catalog-migration-recovery.json -tree-state "$(evidence_tree_json)"
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-migration-recovery -policy provider-codegen/policy/catalog-campaign.json -admission /tmp/catalog-admission.json -build-schema /tmp/catalog-build-schema.json -controller /tmp/catalog-controller-differential.json -inventory build/release-ready/catalog-evidence-inventory.json -migration-manifest provider-codegen/generated/catalog-migration-manifest.json -dns-lifecycle /tmp/catalog-dns-lifecycle.json -output /tmp/catalog-migration-recovery.json -tree-state "$(go run ./cmd/tree-state -what 'the migration and recovery receipt')"
       - jq -e '.result == "pass" and .surface_count == 67 and .recovery_count == 67 and .strategy_counts == {"identity":67} and .evidence_modes == {"dns_bidirectional_state":1,"dns_list_controller":1,"source_identity":65} and ([.surfaces[] | select(.state != "migration_recovery_pass" or (.receipt_sha256 | length) != 64)] | length) == 0' /tmp/catalog-migration-recovery.json
       - jq '.' /tmp/catalog-migration-recovery.json

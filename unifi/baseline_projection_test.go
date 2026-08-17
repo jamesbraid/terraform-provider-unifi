@@ -81,6 +81,22 @@ type attrFact struct {
 // Coverage today is managed resources, their attributes at any depth, and their
 // blocks. Data sources, identity and list-resource schemas are separate fact
 // sets and are not read here.
+//
+// PROVEN TO FAIL, and the proofs are recorded here rather than only in the
+// commits that made them, so a reader with a checkout can tell this apart from
+// a check nobody has ever seen go red.
+//
+//   - Deleting wlan's schedule block fails this test and the behaviour
+//     inventory, each naming the surface; deleting one validator inside that
+//     block fails the inventory alone. That is the division of labour -- the
+//     protocol cannot express a validator, so this projection is right not to
+//     look for one. (5d1b8bf5)
+//   - Flipping unifi_dynamic_dns.password from Sensitive: true to false fails
+//     here and NOWHERE ELSE in the tree. This is the only automatic guard
+//     against a secret losing its mask.
+//   - Deleting a resource from Resources() leaves every assertion above green
+//     and is caught only by the surface-count floor below, which is why that
+//     floor exists. (27626936)
 func TestBuiltSchemaMatchesReleasedBaseline(t *testing.T) {
 	ctx := context.Background()
 
@@ -90,6 +106,7 @@ func TestBuiltSchemaMatchesReleasedBaseline(t *testing.T) {
 		t.Fatalf("%s: resource_schemas missing or not an object", baselinePath)
 	}
 
+	compared := 0
 	for _, newResource := range (&unifiProvider{}).Resources(ctx) {
 		res := newResource()
 
@@ -124,6 +141,37 @@ func TestBuiltSchemaMatchesReleasedBaseline(t *testing.T) {
 			have[path] = fact
 		}
 		compareBaselineFacts(t, name, want, have)
+		compared++
+	}
+
+	// THE FLOOR. This test went without one while its three siblings had theirs
+	// -- action:71, list:79, datasource:79.
+	//
+	// Everything above iterates the REGISTERED set and looks each surface up in
+	// the baseline, so a surface that disappears from Resources() is never
+	// visited and no assertion above can say a word about it. The surfaces that
+	// remain still match, and this test still passes.
+	//
+	// That is measured, not feared. Deleting NewWANResource from provider.go
+	// failed only Test_schemaBehaviourInventory and
+	// Test_schemaOptionalComputedDefaults, because their goldens lost lines.
+	// Running the command those two failures instruct you to run --
+	// UPDATE_GOLDEN=1 UPDATE_GOLDEN_ALLOW_REMOVAL=1 -- rewrote the goldens and
+	// left the whole suite green with a managed resource gone from the provider.
+	//
+	// The baseline is what makes a floor here worth having. It is the released
+	// v0.101.2 projection; UPDATE_GOLDEN cannot rewrite it, and nothing in the
+	// tree regenerates it. So it is the one count in this package that does not
+	// move when the tree moves. A floor over a regenerable golden would assert
+	// only that the tree agrees with itself.
+	if compared != len(resourceSchemas) {
+		t.Errorf("compared %d managed resources, the released baseline declares %d (%s).\n"+
+			"    This test looks each REGISTERED surface up in the baseline, so a surface missing\n"+
+			"    from Resources() is never visited and every assertion above passes without it.\n"+
+			"    Either a resource has been dropped from the provider, or the baseline names one\n"+
+			"    the provider no longer serves. Either way the served set and the released\n"+
+			"    contract disagree, and that is a change to what practitioners can write.",
+			compared, len(resourceSchemas), baselineDisplayPath)
 	}
 }
 
