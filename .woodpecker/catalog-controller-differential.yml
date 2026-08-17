@@ -28,6 +28,9 @@ steps:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
+      # First command in the first step, so a run that read the wrong workspace
+      # says so before any verdict it produces. See cmd/workspace-provenance.
+      - go run ./cmd/workspace-provenance
       - apt-get update
       - apt-get install --yes --no-install-recommends ca-certificates curl docker.io git jq unzip
       # The released tag must exist BEFORE the self-test, not fourteen lines

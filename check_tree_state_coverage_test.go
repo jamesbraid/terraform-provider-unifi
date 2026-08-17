@@ -140,21 +140,25 @@ var unguardedGenerators = map[string]string{
 // classifiedTreeIdentity reports which files this check actually read, for the
 // failure message, so a wrong verdict says what it was looking at.
 //
-// WRITTEN AFTER TWO RUNS OF "THE SAME COMMIT" DISAGREED. Pipeline 255 reported
-// catalog-controller-differential.sh as unguarded and 257 passed it, with no
-// change in between. The cause turned out to be an amend and a force-push: one
-// commit MESSAGE, two different trees. Cross-branch contamination was the first
-// theory and was refuted.
+// WRITTEN AFTER TWO RUNS OF ONE COMMIT DISAGREED. Pipeline 255 reported
+// catalog-controller-differential.sh as unguarded; 257 passed it with nothing
+// changed. Both clone steps show the same SHA, and the unguarded state exists
+// in exactly one tree in the repository -- the one that had deleted
+// tree-state.sh -- while two builds of that branch bracketed 255. The workspace
+// did not match its commit.
 //
-// So the two halves catch different things and both are reported. An amended
-// commit changes its SHA, which is what the commit line settles. A working tree
-// written into after checkout keeps a perfectly correct SHA, because HEAD comes
-// from .git while this check reads files -- only the divergence shows that.
-// Neither is redundant, and neither alone would have answered this.
+// THAT DIAGNOSIS WAS REVERSED TWICE BEFORE IT SETTLED, which is the actual
+// argument for this function. Contamination, then an amend and a force-push,
+// then contamination again on SHAs read from the clone steps. Three confident
+// readings of one incident, because the runs recorded a verdict and not the
+// files behind it -- so every explanation had to be reconstructed from outside,
+// and each was plausible enough to stop at.
 //
-// The point is not which theory was right. It is that the run said nothing
-// about what it had read, so the answer had to be reconstructed hours later
-// from outside. A verdict about files should name the files.
+// Both halves are reported because they catch different things. An amended
+// commit changes its SHA, which the commit line settles. A workspace written
+// into after checkout keeps a correct SHA, because HEAD comes from .git while
+// this check reads files -- only the divergence shows that. Neither alone
+// covers both readings this incident went through.
 //
 // It is not an assertion. A dirty scripts directory is normal while someone is
 // editing one, and failing on that would make the check unusable locally. This

@@ -21,6 +21,9 @@ steps:
     image: >-
       golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
     commands:
+      # First command in the first step, so a run that read the wrong workspace
+      # says so before any verdict it produces. See cmd/workspace-provenance.
+      - go run ./cmd/workspace-provenance
       - apt-get update
       - apt-get install --yes --no-install-recommends jq
       - go run ./cmd/go-unifi-proxy
