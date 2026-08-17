@@ -67,9 +67,12 @@ readonly -a exempt=(
     # which is the distinction the fix turned on.
     #
     # TWO stay, for a different and permanent reason: their artifacts are
-    # committed and compared byte for byte against a fresh run --
-    # catalog-evidence-inventory_test.sh:23 for one, catalog-build-schema.sh:152
-    # for the other. tree_state contains the commit, so an artifact recording
+    # committed and compared byte for byte --
+    # catalog-evidence-inventory_test.sh:23 for one, and for the other
+    # internal/schemaparity/frozen_baseline_test.go, which checks that the
+    # digests still describe the frozen contract they were derived from. That
+    # comparison used to be a cmp in catalog-build-schema.sh; it moved when the
+    # cmp turned out to duplicate the frozen-contract call beside it. tree_state contains the commit, so an artifact recording
     # its own would never reproduce: generated at one commit, committed,
     # regenerated at the next, comparison fails forever. Neither needs one --
     # reproducing byte for byte is a stronger claim about which tree an artifact
@@ -82,7 +85,7 @@ readonly -a exempt=(
     # build/m0/provider-schema-digests.json, is committed and cmp'd, which puts
     # it in this class and always did.
     "cmd/catalog-evidence|its artifact is committed and compared byte for byte, so a recorded commit could never reproduce; reproducibility is the stronger claim"
-    "cmd/schema-baseline|its artifact is committed and cmp'd at catalog-build-schema.sh:152, so a recorded commit could never reproduce; reproducibility is the stronger claim"
+    "cmd/schema-baseline|its artifact is committed and its digest is checked against the frozen contract it describes, so a recorded commit could never reproduce; reproducibility is the stronger claim"
 )
 
 is_exempt() {
@@ -328,17 +331,34 @@ for entry in "${committed_artifact[@]}"; do
     # working check from a lucky one:
     #   cmp removed, no comment            FAIL, correct
     #   cmp removed, a comment names it    PASSED before this fix, FAILs now
+    # THE COMPARER MAY BE IN EITHER LANGUAGE, and that is not a loosening.
+    #
+    # The digests comparison was a bash cmp until the ledger-aware gate replaced
+    # the schema comparisons around it; the cmp then became redundant with the
+    # frozen-contract call above it and was deleted. Its OTHER job -- being the
+    # thing that made the artifact committed-and-compared -- went with it, and
+    # this rule caught that within the minute, which is what it is for.
+    #
+    # The claim is unchanged: something compares this artifact against a computed
+    # value. What moved is where that lives. A bash comparer runs cmp; a Go one
+    # reads the file and compares a sha256. Refusing the Go form would force the
+    # comparison back into bash to satisfy a check about bash, which is the
+    # check dictating the design rather than describing it.
     comparer=""
     while IFS= read -r candidate; do
         [[ $(basename "${candidate}") == "$(basename "${BASH_SOURCE[0]}")" ]] && continue
-        candidate_body=$(sed 's/#.*//' "${candidate}")
+        case ${candidate} in
+        *.go) candidate_body=$(sed 's|//.*||' "${candidate}") ;;
+        *) candidate_body=$(sed 's/#.*//' "${candidate}") ;;
+        esac
         printf '%s\n' "${candidate_body}" | grep -qF "${artifact}" || continue
-        printf '%s\n' "${candidate_body}" | grep -qE '(^|[^[:alnum:]_])cmp[[:space:]]' || continue
+        printf '%s\n' "${candidate_body}" |
+            grep -qE '(^|[^[:alnum:]_])cmp[[:space:]]|sha256' || continue
         comparer=${candidate}
         break
-    done < <(grep -rlF "${artifact}" "${scripts}" 2>/dev/null)
+    done < <(grep -rlF "${artifact}" "${scripts}" "${repository_root}/internal" 2>/dev/null)
     if [[ -z ${comparer} ]]; then
-        fail "${name} is exempt because ${artifact} is compared byte for byte, but no script both names it and runs cmp; the reason no longer holds"
+        fail "${name} is exempt because ${artifact} is compared byte for byte, but nothing both names it and compares it -- no script runs cmp on it and no Go file hashes it; the reason no longer holds"
         continue
     fi
     printf 'ok   reason verified:        %s -- %s is committed and compared\n' "${name}" "${artifact}"
