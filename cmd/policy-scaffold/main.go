@@ -191,7 +191,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		})
 	}
 	sort.Slice(fields, func(i, j int) bool {
-		return fields[i]["structural_name"].(string) < fields[j]["structural_name"].(string)
+		return structuralName(fields[i]) < structuralName(fields[j])
 	})
 
 	policy := map[string]any{
@@ -356,6 +356,16 @@ func object(value any) map[string]any {
 func baselineString(value any) string {
 	s, _ := value.(string)
 	return s
+}
+
+// structuralName is the sort key for a scaffolded field. Every entry is built
+// in this file with a string structural_name, so the assertion held -- but it
+// sat inside a sort.Slice comparator, where a malformed entry would panic
+// naming sort.Slice rather than the field that caused it. An entry without one
+// sorts first and stays visible in the output.
+func structuralName(field map[string]any) string {
+	name, _ := field["structural_name"].(string)
+	return name
 }
 
 func sortedKeys(m map[string]any) []string {
