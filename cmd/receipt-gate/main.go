@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasequalification"
 )
 
 func main() {
@@ -75,6 +76,12 @@ func run(gate, path string) error {
 			return err
 		}
 		return catalogparity.CheckControllerDifferentialReceipt(parsed)
+	case "catalog-dependency-publishability":
+		var parsed releasequalification.DependencyPublishabilityReceipt
+		if err := decode(gate, path, body, &parsed); err != nil {
+			return err
+		}
+		return releasequalification.CheckDependencyPublishabilityReceipt(parsed)
 	default:
 		return fmt.Errorf("unknown gate %q; one of %s", gate, strings.Join(gateNames(), ", "))
 	}
@@ -100,6 +107,7 @@ func decode(gate, path string, body []byte, into any) error {
 func gateNames() []string {
 	names := []string{
 		"catalog-build-schema",
+		"catalog-dependency-publishability",
 		"catalog-unit-differential",
 		"catalog-controller-differential",
 	}
