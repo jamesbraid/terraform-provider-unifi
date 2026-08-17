@@ -179,11 +179,11 @@ func TestTreeDigestDescribesContentAndNames(t *testing.T) {
 
 func TestBuildReceiptDerivesResultFromTheChecks(t *testing.T) {
 	pin, declared, resolved := goodPin(), goodDeclared(), goodResolved()
-	if got := BuildReceipt(pin, declared, resolved, strings.Repeat("d", 40), "remote_ci").Result; got != "pass" {
+	if got := BuildReceipt(pin, declared, resolved, strings.Repeat("d", 40), "remote_ci", nil).Result; got != "pass" {
 		t.Fatalf("a publishable dependency produced result %q", got)
 	}
 	resolved.ReplacePresent = true
-	receipt := BuildReceipt(pin, declared, resolved, strings.Repeat("d", 40), "remote_ci")
+	receipt := BuildReceipt(pin, declared, resolved, strings.Repeat("d", 40), "remote_ci", nil)
 	if receipt.Result == "pass" {
 		t.Fatal("a replaced module produced a passing receipt. In the shell result was a literal, " +
 			"so it said pass whatever the checks had found")

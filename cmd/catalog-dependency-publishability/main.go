@@ -34,6 +34,8 @@ func run() error {
 	output := flag.String("output", "", "write the receipt here; required")
 	expectedCommit := flag.String("expected-commit", "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
 		"the commit the pinned tag must still resolve to")
+	treeStateRaw := flag.String("tree-state", "",
+		"JSON from evidence_tree_json describing the working tree; required, no default")
 	// resolutionRunner cannot be measured from inside this process, so it is an
 	// input. It defaults to what the environment can show rather than to the
 	// answer that passes: a run that cannot demonstrate it was CI records
@@ -47,6 +49,13 @@ func run() error {
 
 	if *output == "" {
 		return errors.New("-output is required")
+	}
+	// Parsed before anything is measured. provider_commit comes from
+	// git rev-parse HEAD, which on a dirty tree names a commit that does not
+	// contain the go.mod this gate is about to read.
+	treeState, err := catalogparity.ParseTreeState(*treeStateRaw)
+	if err != nil {
+		return err
 	}
 	repo, err := filepath.Abs(*repository)
 	if err != nil {
@@ -79,7 +88,7 @@ func run() error {
 		}
 	}
 
-	receipt := dependencypin.BuildReceipt(pin, declared, resolved, providerCommit, runner)
+	receipt := dependencypin.BuildReceipt(pin, declared, resolved, providerCommit, runner, treeState)
 	encoded, err := catalogparity.MarshalReceipt(receipt)
 	if err != nil {
 		return err

@@ -1,6 +1,7 @@
 package dependencypin
 
 import (
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasequalification"
 )
 
@@ -26,7 +27,9 @@ import (
 // it was CI records something else and is REJECTED downstream, which is the
 // right way round. A wrong value that blocks is recoverable; a wrong value that
 // passes is what this comment is about.
-func BuildReceipt(pin Pin, declared Declared, resolved Resolved, providerCommit, resolutionRunner string) releasequalification.DependencyPublishabilityReceipt {
+func BuildReceipt(pin Pin, declared Declared, resolved Resolved, providerCommit, resolutionRunner string,
+	treeState *catalogparity.TreeState,
+) releasequalification.DependencyPublishabilityReceipt {
 	result := "pass"
 	if len(Check(pin, declared, resolved)) > 0 {
 		result = "blocked"
@@ -34,6 +37,7 @@ func BuildReceipt(pin Pin, declared Declared, resolved Resolved, providerCommit,
 	return releasequalification.DependencyPublishabilityReceipt{
 		FormatVersion:    1,
 		Gate:             "go-unifi-dependency-publishability",
+		TreeState:        treeState,
 		Result:           result,
 		ProviderCommit:   providerCommit,
 		ModulePath:       resolved.Path,
