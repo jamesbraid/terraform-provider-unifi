@@ -169,6 +169,11 @@ func TestEveryCheckIsReachable(t *testing.T) {
 	sort.Strings(undeclared)
 	sort.Strings(resolved)
 
+	// Same reason as in the coverage check: this walks the working tree, so a
+	// verdict has to say which files it read. See classifiedTreeIdentity.
+	if len(undeclared) > 0 || len(resolved) > 0 {
+		t.Log(classifiedTreeIdentity(t, filepath.Join(".woodpecker", "scripts")))
+	}
 	if len(undeclared) > 0 {
 		t.Errorf("%d check(s) are invoked by nothing and are not in the ledger below:\n    %s\n\n"+
 			"    A check nothing runs is not a check. Either wire it into a pipeline, or add it\n"+

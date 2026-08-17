@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -93,6 +94,9 @@ func TestEveryEvidenceGeneratorIsGuarded(t *testing.T) {
 	sort.Strings(unguarded)
 	sort.Strings(stale)
 
+	if len(unguarded) > 0 || len(stale) > 0 {
+		t.Log(classifiedTreeIdentity(t, filepath.Join(".woodpecker", "scripts")))
+	}
 	if len(unguarded) > 0 {
 		t.Errorf("%d evidence generator(s) write an artifact without establishing which tree it describes:\n    %s\n\n"+
 			"    Add `evidence_tree_json=$(cd \"${repository_root}\" && go run ./cmd/tree-state -what \"...\") || exit 1`\n"+
@@ -131,6 +135,48 @@ var unguardedGenerators = map[string]string{
 		"replacement plan, then stops -- with zero occurrences of error, fatal, failed, cannot " +
 		"or refused across all 258 lines. A kill mid-stride, so there is no completed run to " +
 		"check a guard against.",
+}
+
+// classifiedTreeIdentity reports which files this check actually read, for the
+// failure message, so a wrong verdict says what it was looking at.
+//
+// WRITTEN AFTER TWO RUNS OF "THE SAME COMMIT" DISAGREED. Pipeline 255 reported
+// catalog-controller-differential.sh as unguarded and 257 passed it, with no
+// change in between. The cause turned out to be an amend and a force-push: one
+// commit MESSAGE, two different trees. Cross-branch contamination was the first
+// theory and was refuted.
+//
+// So the two halves catch different things and both are reported. An amended
+// commit changes its SHA, which is what the commit line settles. A working tree
+// written into after checkout keeps a perfectly correct SHA, because HEAD comes
+// from .git while this check reads files -- only the divergence shows that.
+// Neither is redundant, and neither alone would have answered this.
+//
+// The point is not which theory was right. It is that the run said nothing
+// about what it had read, so the answer had to be reconstructed hours later
+// from outside. A verdict about files should name the files.
+//
+// It is not an assertion. A dirty scripts directory is normal while someone is
+// editing one, and failing on that would make the check unusable locally. This
+// only has to turn "why did that fail" into something the log already answers.
+func classifiedTreeIdentity(t *testing.T, directory string) string {
+	t.Helper()
+	head, err := exec.Command("git", "rev-parse", "HEAD").Output()
+	if err != nil {
+		return "could not identify the tree this check classified: " + err.Error()
+	}
+	commit := strings.TrimSpace(string(head))
+
+	status, err := exec.Command("git", "status", "--porcelain", "--", directory).Output()
+	if err != nil {
+		return fmt.Sprintf("classified %s at %s; its state could not be read: %v", directory, commit, err)
+	}
+	if strings.TrimSpace(string(status)) == "" {
+		return fmt.Sprintf("classified %s at commit %s, matching the commit", directory, commit)
+	}
+	return fmt.Sprintf("classified %s at commit %s, but the files DIVERGE from it:\n%s\n"+
+		"    The verdict above describes those files, not that commit. If nobody is editing\n"+
+		"    them, something else wrote into this checkout.", directory, commit, strings.TrimRight(string(status), "\n"))
 }
 
 // withoutShellComments removes whole-line comments so a script that merely
