@@ -106,8 +106,8 @@ func TestCompileFailsClosed(t *testing.T) {
 			policyFields:    dnsFieldNames(),
 			digest:          testSpecificationDigest,
 			mutatePolicy: func(policy map[string]any) {
-				fields := policy["fields"].([]any)
-				fields[0].(map[string]any)["terraform_name"] = "name"
+				fields := jsonArray(policy["fields"])
+				jsonObject(fields[0])["terraform_name"] = "name"
 			},
 			want: "duplicate terraform attribute",
 		},
@@ -212,7 +212,7 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 		},
 		"locked target policy mismatch": {
 			mutate: func(catalog map[string]any) {
-				catalog["target"].(map[string]any)["name"] = "different-target"
+				jsonObject(catalog["target"])["name"] = "different-target"
 			},
 			want: "locked catalog target does not match provider policy",
 		},
@@ -224,26 +224,26 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 		},
 		"source digest policy mismatch": {
 			mutate: func(catalog map[string]any) {
-				catalog["sources"].(map[string]any)["capture_lock_sha256"] = strings.Repeat("8", 64)
+				jsonObject(catalog["sources"])["capture_lock_sha256"] = strings.Repeat("8", 64)
 			},
 			want: "catalog source digests do not match provider policy",
 		},
 		"incomplete coverage": {
 			mutate: func(catalog map[string]any) {
-				catalog["coverage"] = catalog["coverage"].([]any)[1:]
+				catalog["coverage"] = jsonArray(catalog["coverage"])[1:]
 			},
 			want: "incomplete catalog coverage",
 		},
 		"missing observed record": {
 			mutate: func(catalog map[string]any) {
-				catalog["observed_records"] = catalog["observed_records"].([]any)[1:]
+				catalog["observed_records"] = jsonArray(catalog["observed_records"])[1:]
 			},
 			want: "missing observed record",
 		},
 		"duplicate observed semantic ID": {
 			mutate: func(catalog map[string]any) {
-				records := catalog["observed_records"].([]any)
-				records[1].(map[string]any)["id"] = records[0].(map[string]any)["id"]
+				records := jsonArray(catalog["observed_records"])
+				jsonObject(records[1])["id"] = jsonObject(records[0])["id"]
 			},
 			want: "duplicate observed semantic ID",
 		},
@@ -253,33 +253,33 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 		},
 		"unknown observed semantic ID": {
 			mutate: func(catalog map[string]any) {
-				records := catalog["observed_records"].([]any)
-				records[0].(map[string]any)["id"] = "unifi.network.dns_record.field.unknown"
+				records := jsonArray(catalog["observed_records"])
+				jsonObject(records[0])["id"] = "unifi.network.dns_record.field.unknown"
 			},
 			want: "unknown observed semantic ID",
 		},
 		"definition digest disagreement": {
 			mutate: func(catalog map[string]any) {
-				catalog["structural_records"].([]any)[0].(map[string]any)["definition_sha256"] = strings.Repeat("0", 64)
+				jsonObject(jsonArray(catalog["structural_records"])[0])["definition_sha256"] = strings.Repeat("0", 64)
 			},
 			want: "definition digest mismatch",
 		},
 		"observed type disagreement": {
 			mutate: func(catalog map[string]any) {
-				catalog["observed_records"].([]any)[0].(map[string]any)["json_type"] = "string"
+				jsonObject(jsonArray(catalog["observed_records"])[0])["json_type"] = "string"
 			},
 			want: "observed type mismatch",
 		},
 		"uncovered field": {
 			mutate: func(catalog map[string]any) {
-				catalog["coverage"].([]any)[0].(map[string]any)["state"] = "not_observed"
+				jsonObject(jsonArray(catalog["coverage"])[0])["state"] = "not_observed"
 			},
 			want: "incomplete catalog coverage",
 		},
 		"unsafe secret candidate": {
 			mutate: func(catalog map[string]any) {
-				catalog["structural_records"].([]any)[0].(map[string]any)["secret_candidate"] = true
-				rehashCatalogDefinition(t, catalog["structural_records"].([]any)[0].(map[string]any))
+				jsonObject(jsonArray(catalog["structural_records"])[0])["secret_candidate"] = true
+				rehashCatalogDefinition(t, jsonObject(jsonArray(catalog["structural_records"])[0]))
 			},
 			want: "secret candidate",
 		},
@@ -301,13 +301,13 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 		},
 		"unstable semantic ID": {
 			mutate: func(catalog map[string]any) {
-				catalog["structural_records"].([]any)[0].(map[string]any)["id"] = "dns.enabled"
+				jsonObject(jsonArray(catalog["structural_records"])[0])["id"] = "dns.enabled"
 			},
 			want: "unstable catalog ID",
 		},
 		"unpinned operation": {
 			mutate: func(catalog map[string]any) {
-				catalog["admission"].(map[string]any)["operation_digest"] = "different-operation"
+				jsonObject(catalog["admission"])["operation_digest"] = "different-operation"
 			},
 			want: "admitted operation digest mismatch",
 		},
@@ -331,8 +331,8 @@ func TestCompileCatalogFailsClosed(t *testing.T) {
 			policy["catalog_sha256"] = byteDigest(catalogBytes)
 			addTestCatalogSource(policy)
 			if name == "duplicate policy semantic ID" {
-				fields := policy["fields"].([]any)
-				fields[1].(map[string]any)["semantic_id"] = fields[0].(map[string]any)["semantic_id"]
+				fields := jsonArray(policy["fields"])
+				jsonObject(fields[1])["semantic_id"] = jsonObject(fields[0])["semantic_id"]
 			}
 			if name == "unpinned catalog" {
 				policy["catalog_sha256"] = strings.Repeat("0", 64)
@@ -492,7 +492,7 @@ func collectionInput(t *testing.T, mutate func(field map[string]any)) CompileInp
 	t.Helper()
 	names := append(dnsFieldNames(), "tags")
 	rules := testPolicyObject(names, testSpecificationDigest)
-	for _, raw := range rules["fields"].([]any) {
+	for _, raw := range jsonArray(rules["fields"]) {
 		field, ok := raw.(map[string]any)
 		if !ok || field["structural_name"] != "tags" {
 			continue
@@ -649,7 +649,7 @@ func nestedInput(t *testing.T, structuralType string, mutate func(field map[stri
 	t.Helper()
 	names := append(dnsFieldNames(), "endpoint")
 	rules := testPolicyObject(names, testSpecificationDigest)
-	for _, raw := range rules["fields"].([]any) {
+	for _, raw := range jsonArray(rules["fields"]) {
 		field, ok := raw.(map[string]any)
 		if !ok || field["structural_name"] != "endpoint" {
 			continue
@@ -677,7 +677,7 @@ func nestedInput(t *testing.T, structuralType string, mutate func(field map[stri
 	if err := json.Unmarshal(testBootstrap(t, names), &source); err != nil {
 		t.Fatal(err)
 	}
-	for _, raw := range source["resource"].(map[string]any)["fields"].([]any) {
+	for _, raw := range jsonArray(jsonObject(source["resource"])["fields"]) {
 		field, ok := raw.(map[string]any)
 		if !ok || field["name"] != "endpoint" {
 			continue
@@ -768,7 +768,7 @@ func TestCompileRejectsUnderivableNesting(t *testing.T) {
 		"member the catalog does not observe": {
 			structuralType: "object",
 			mutate: func(field map[string]any) {
-				field["fields"] = append(field["fields"].([]any), map[string]any{
+				field["fields"] = append(jsonArray(field["fields"]), map[string]any{
 					"structural_name": "ghost", "terraform_name": "ghost", "disposition": "managed",
 					"attribute": map[string]any{"computed_optional_required": "optional"},
 				})
@@ -778,7 +778,7 @@ func TestCompileRejectsUnderivableNesting(t *testing.T) {
 		"unclassified member": {
 			structuralType: "object",
 			mutate: func(field map[string]any) {
-				field["fields"] = []any{field["fields"].([]any)[0]}
+				field["fields"] = []any{jsonArray(field["fields"])[0]}
 			},
 			want: `member "port" is unclassified`,
 		},
@@ -813,8 +813,8 @@ func groupingInput(t *testing.T, mutate func(rules map[string]any)) CompileInput
 
 	// port and priority move out of the top level and into the grouping.
 	kept := []any{}
-	for _, raw := range rules["fields"].([]any) {
-		field := raw.(map[string]any)
+	for _, raw := range jsonArray(rules["fields"]) {
+		field := jsonObject(raw)
 		if field["structural_name"] == "port" || field["structural_name"] == "priority" {
 			continue
 		}
@@ -850,11 +850,11 @@ func groupingInput(t *testing.T, mutate func(rules map[string]any)) CompileInput
 }
 
 func firstGrouping(rules map[string]any) map[string]any {
-	return rules["groupings"].([]any)[0].(map[string]any)
+	return jsonObject(jsonArray(rules["groupings"])[0])
 }
 
 func groupingMembers(rules map[string]any) []any {
-	return firstGrouping(rules)["members"].([]any)
+	return jsonArray(firstGrouping(rules)["members"])
 }
 
 func TestCompileEmitsADeclaredGrouping(t *testing.T) {
@@ -897,13 +897,13 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 	}{
 		"member names no observed field": {
 			mutate: func(rules map[string]any) {
-				groupingMembers(rules)[0].(map[string]any)["structural_name"] = "nonexistent"
+				jsonObject(groupingMembers(rules)[0])["structural_name"] = "nonexistent"
 			},
 			want: `consumes "nonexistent", which the catalog does not observe`,
 		},
 		"member claims a field also classified at the top level": {
 			mutate: func(rules map[string]any) {
-				rules["fields"] = append(rules["fields"].([]any), map[string]any{
+				rules["fields"] = append(jsonArray(rules["fields"]), map[string]any{
 					"structural_name": "port", "semantic_id": "unifi.network.dns_record.field.port",
 					"terraform_name": "port_again", "disposition": "managed",
 					"attribute": map[string]any{"computed_optional_required": "optional"},
@@ -913,7 +913,7 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 		},
 		"two groupings consume the same field": {
 			mutate: func(rules map[string]any) {
-				rules["groupings"] = append(rules["groupings"].([]any), map[string]any{
+				rules["groupings"] = append(jsonArray(rules["groupings"]), map[string]any{
 					"terraform_name": "other", "terraform_type": "single_nested",
 					"attribute": map[string]any{"computed_optional_required": "optional"},
 					"members": []any{map[string]any{
@@ -933,20 +933,20 @@ func TestCompileRejectsGroupingsThatAreNotDerivations(t *testing.T) {
 		"one grouping consumes the same field in two members": {
 			mutate: func(rules map[string]any) {
 				members := groupingMembers(rules)
-				members[1].(map[string]any)["structural_name"] = "port"
+				jsonObject(members[1])["structural_name"] = "port"
 				firstGrouping(rules)["members"] = members
 			},
 			want: `grouping "endpoint" consumes structural field "port" twice, in members "port" and "priority"`,
 		},
 		"member names nothing and is not declared invented": {
 			mutate: func(rules map[string]any) {
-				delete(groupingMembers(rules)[0].(map[string]any), "structural_name")
+				delete(jsonObject(groupingMembers(rules)[0]), "structural_name")
 			},
 			want: "names no structural field, is not declared invented, and is not named by any claim",
 		},
 		"invented member also claims an observed field": {
 			mutate: func(rules map[string]any) {
-				member := groupingMembers(rules)[0].(map[string]any)
+				member := jsonObject(groupingMembers(rules)[0])
 				member["invented"] = "computed from whether a group is set"
 			},
 			want: "declared invented and also names structural field",
@@ -1015,7 +1015,7 @@ func TestCompileAdmitsAnInventedMemberOnlyWhenDeclared(t *testing.T) {
 	_, err = Compile(groupingInput(t, func(rules map[string]any) {
 		declared(rules)
 		members := groupingMembers(rules)
-		delete(members[len(members)-1].(map[string]any), "terraform_type")
+		delete(jsonObject(members[len(members)-1]), "terraform_type")
 	}))
 	if err == nil || !strings.Contains(err.Error(), "must declare terraform_type") {
 		t.Fatalf("Compile() error = %v, want a missing type failure", err)
@@ -1063,7 +1063,7 @@ func TestMappingRecordsAnInventedMemberAsInvented(t *testing.T) {
 func oneToManyInput(t *testing.T, mutate func(rules map[string]any)) CompileInput {
 	t.Helper()
 	return groupingInput(t, func(rules map[string]any) {
-		member := groupingMembers(rules)[0].(map[string]any)
+		member := jsonObject(groupingMembers(rules)[0])
 		delete(member, "structural_name")
 		member["terraform_type"] = "string"
 		firstGrouping(rules)["members"] = []any{member}
@@ -1081,11 +1081,11 @@ func manyToOneInput(t *testing.T, mutate func(rules map[string]any)) CompileInpu
 	t.Helper()
 	return groupingInput(t, func(rules map[string]any) {
 		for _, raw := range groupingMembers(rules) {
-			member := raw.(map[string]any)
+			member := jsonObject(raw)
 			delete(member, "structural_name")
 			member["terraform_type"] = "string"
 		}
-		rules["fields"] = append(rules["fields"].([]any), map[string]any{
+		rules["fields"] = append(jsonArray(rules["fields"]), map[string]any{
 			"structural_name": "priority", "semantic_id": "unifi.network.dns_record.field.priority",
 			"terraform_name": "priority_at_top", "disposition": "managed",
 			"attribute": map[string]any{"computed_optional_required": "optional"},
@@ -1111,7 +1111,7 @@ func testClaim(members, fields []any) map[string]any {
 }
 
 func firstClaim(rules map[string]any) map[string]any {
-	return rules["claims"].([]any)[0].(map[string]any)
+	return jsonObject(jsonArray(rules["claims"])[0])
 }
 
 // dropTopLevelField frees a structural field for a second claim to consume.
@@ -1121,7 +1121,7 @@ func dropTopLevelField(rules map[string]any, names ...string) {
 		drop[name] = true
 	}
 	kept := []any{}
-	for _, raw := range rules["fields"].([]any) {
+	for _, raw := range jsonArray(rules["fields"]) {
 		if field, ok := raw.(map[string]any); ok && drop[fmt.Sprint(field["structural_name"])] {
 			continue
 		}
@@ -1136,7 +1136,7 @@ func bothMembersInput(t *testing.T, mutate func(rules map[string]any)) CompileIn
 	t.Helper()
 	return groupingInput(t, func(rules map[string]any) {
 		for _, raw := range groupingMembers(rules) {
-			member := raw.(map[string]any)
+			member := jsonObject(raw)
 			delete(member, "structural_name")
 			member["terraform_type"] = "string"
 		}
@@ -1199,7 +1199,7 @@ func TestCompileConstructsTwoMembersOverOneField(t *testing.T) {
 // nor any field. A refusal that names nothing is treated as a defect here.
 func TestCompileRefusesAClaimedMemberWithNoDeclaredType(t *testing.T) {
 	_, err := Compile(oneToManyInput(t, func(rules map[string]any) {
-		delete(groupingMembers(rules)[0].(map[string]any), "terraform_type")
+		delete(jsonObject(groupingMembers(rules)[0]), "terraform_type")
 	}))
 	if err == nil {
 		t.Fatal("Compile() accepted a claimed member with no terraform_type")
@@ -1303,13 +1303,13 @@ func TestCompileRejectsClaimsThatAreNotDerivations(t *testing.T) {
 		// the stronger one for as long as it did.
 		"a mapping that does not say whether the name is the transform": {
 			mutate: func(rules map[string]any) {
-				delete(firstClaim(rules)["mapping"].(map[string]any), "kind")
+				delete(jsonObject(firstClaim(rules)["mapping"]), "kind")
 			},
 			want: "declares a mapping with no kind",
 		},
 		"a mapping claiming a kind that does not exist": {
 			mutate: func(rules map[string]any) {
-				firstClaim(rules)["mapping"].(map[string]any)["kind"] = "inline"
+				jsonObject(firstClaim(rules)["mapping"])["kind"] = "inline"
 			},
 			want: `declares mapping kind "inline"`,
 		},
@@ -1334,7 +1334,7 @@ func TestCompileRejectsClaimsThatAreNotDerivations(t *testing.T) {
 		"a claim relating one member to one field": {
 			mutate: func(rules map[string]any) {
 				firstClaim(rules)["structural_names"] = []any{"port"}
-				rules["fields"] = append(rules["fields"].([]any), map[string]any{
+				rules["fields"] = append(jsonArray(rules["fields"]), map[string]any{
 					"structural_name": "priority", "semantic_id": "unifi.network.dns_record.field.priority",
 					"terraform_name": "priority_at_top", "disposition": "managed",
 					"attribute": map[string]any{"computed_optional_required": "optional"},
@@ -1357,20 +1357,20 @@ func TestCompileRejectsClaimsThatAreNotDerivations(t *testing.T) {
 		"a claim naming a member no grouping declares": {
 			mutate: func(rules map[string]any) {
 				dropTopLevelField(rules, "ttl", "weight")
-				rules["claims"] = append(rules["claims"].([]any),
+				rules["claims"] = append(jsonArray(rules["claims"]),
 					testClaim([]any{"endpoint.nonexistent"}, []any{"ttl", "weight"}))
 			},
 			want: "which is neither a top-level field nor a member of any grouping",
 		},
 		"a claimed member that also names a field": {
 			mutate: func(rules map[string]any) {
-				groupingMembers(rules)[0].(map[string]any)["structural_name"] = "port"
+				jsonObject(groupingMembers(rules)[0])["structural_name"] = "port"
 			},
 			want: "the claim already says which fields it relates to",
 		},
 		"a claimed member that is also declared invented": {
 			mutate: func(rules map[string]any) {
-				groupingMembers(rules)[0].(map[string]any)["invented"] = "computed by the provider"
+				jsonObject(groupingMembers(rules)[0])["invented"] = "computed by the provider"
 			},
 			want: "is declared invented and is also named by",
 		},
@@ -1429,8 +1429,8 @@ func elementMemberInput(t *testing.T, mutate func(member map[string]any)) Compil
 	names := append(dnsFieldNames(), "options")
 	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
 	kept := []any{}
-	for _, raw := range rules["fields"].([]any) {
-		field := raw.(map[string]any)
+	for _, raw := range jsonArray(rules["fields"]) {
+		field := jsonObject(raw)
 		if field["structural_name"] == "port" || field["structural_name"] == "priority" {
 			continue
 		}
@@ -1463,7 +1463,7 @@ func elementMemberInput(t *testing.T, mutate func(member map[string]any)) Compil
 			"attribute": map[string]any{"computed_optional_required": "optional"},
 		}},
 	}}
-	rules["fields"] = append(rules["fields"].([]any), map[string]any{
+	rules["fields"] = append(jsonArray(rules["fields"]), map[string]any{
 		"structural_name": "priority", "semantic_id": "unifi.network.dns_record.field.priority",
 		"terraform_name": "priority", "disposition": "managed",
 		"attribute": map[string]any{"computed_optional_required": "optional"},
@@ -1527,8 +1527,8 @@ func TestCompileRejectsACollapseTheCatalogContradicts(t *testing.T) {
 		},
 		"a second member left live": {
 			mutate: func(member map[string]any) {
-				member["fields"].([]any)[0].(map[string]any)["disposition"] = "managed"
-				member["fields"].([]any)[0].(map[string]any)["attribute"] =
+				jsonObject(jsonArray(member["fields"])[0])["disposition"] = "managed"
+				jsonObject(jsonArray(member["fields"])[0])["attribute"] =
 					map[string]any{"computed_optional_required": "optional"}
 			},
 			want: "leaves 2 member(s) not omitted (optionNumber, value); a list of scalars carries exactly one",
@@ -1539,17 +1539,17 @@ func TestCompileRejectsACollapseTheCatalogContradicts(t *testing.T) {
 		"an element type the catalog contradicts": {
 			mutate: func(member map[string]any) {
 				member["element_member"] = "optionNumber"
-				fields := member["fields"].([]any)
-				fields[0].(map[string]any)["disposition"] = "managed"
-				fields[0].(map[string]any)["attribute"] =
+				fields := jsonArray(member["fields"])
+				jsonObject(fields[0])["disposition"] = "managed"
+				jsonObject(fields[0])["attribute"] =
 					map[string]any{"computed_optional_required": "optional"}
-				fields[1].(map[string]any)["disposition"] = "omitted"
+				jsonObject(fields[1])["disposition"] = "omitted"
 			},
 			want: `declares element type "string" but the catalog observes "options"."optionNumber" as "int64"`,
 		},
 		"a member of the element left undecided": {
 			mutate: func(member map[string]any) {
-				member["fields"] = []any{member["fields"].([]any)[1]}
+				member["fields"] = []any{jsonArray(member["fields"])[1]}
 			},
 			want: `leaves member "optionNumber" undecided`,
 		},
@@ -1574,7 +1574,7 @@ func TestCompileRejectsACollapseTheCatalogContradicts(t *testing.T) {
 func TestCompileConstructsClaimedTopLevelFields(t *testing.T) {
 	input := groupingInput(t, func(rules map[string]any) {
 		dropTopLevelField(rules, "ttl")
-		rules["fields"] = append(rules["fields"].([]any),
+		rules["fields"] = append(jsonArray(rules["fields"]),
 			map[string]any{
 				"terraform_name": "ttl", "terraform_type": "string", "disposition": "managed",
 				"attribute": map[string]any{"computed_optional_required": "optional"},
@@ -1624,7 +1624,7 @@ func TestCompileConstructsClaimedTopLevelFields(t *testing.T) {
 	// A top-level field naming nothing and claimed by nobody is a typo, not a
 	// shape: it would occupy an attribute name and account for no field.
 	_, err = Compile(groupingInput(t, func(rules map[string]any) {
-		rules["fields"] = append(rules["fields"].([]any), map[string]any{
+		rules["fields"] = append(jsonArray(rules["fields"]), map[string]any{
 			"terraform_name": "orphan", "terraform_type": "string", "disposition": "managed",
 			"attribute": map[string]any{"computed_optional_required": "optional"},
 		})
@@ -1710,8 +1710,8 @@ func flatteningInput(t *testing.T, mutate func(rules map[string]any)) CompileInp
 	rules := testPolicyObject(names, testSpecificationDigest)
 
 	kept := []any{}
-	for _, raw := range rules["fields"].([]any) {
-		field := raw.(map[string]any)
+	for _, raw := range jsonArray(rules["fields"]) {
+		field := jsonObject(raw)
 		if field["structural_name"] == "settings" {
 			continue
 		}
@@ -1740,8 +1740,8 @@ func flatteningInput(t *testing.T, mutate func(rules map[string]any)) CompileInp
 	if err := json.Unmarshal(testBootstrap(t, names), &source); err != nil {
 		t.Fatal(err)
 	}
-	for _, raw := range source["resource"].(map[string]any)["fields"].([]any) {
-		field := raw.(map[string]any)
+	for _, raw := range jsonArray(jsonObject(source["resource"])["fields"]) {
+		field := jsonObject(raw)
 		if field["name"] != "settings" {
 			continue
 		}
@@ -1763,11 +1763,11 @@ func flatteningInput(t *testing.T, mutate func(rules map[string]any)) CompileInp
 }
 
 func firstFlattening(rules map[string]any) map[string]any {
-	return rules["flattenings"].([]any)[0].(map[string]any)
+	return jsonObject(jsonArray(rules["flattenings"])[0])
 }
 
 func flattenedMembers(rules map[string]any) []any {
-	return firstFlattening(rules)["members"].([]any)
+	return jsonArray(firstFlattening(rules)["members"])
 }
 
 // A flattened member becomes a top-level attribute, taking its type from the
@@ -1813,7 +1813,7 @@ func TestCompileRejectsFlatteningsThatLoseTrackOfMembers(t *testing.T) {
 	}{
 		"member the object does not carry": {
 			mutate: func(rules map[string]any) {
-				flattenedMembers(rules)[0].(map[string]any)["structural_name"] = "nonexistent"
+				jsonObject(flattenedMembers(rules)[0])["structural_name"] = "nonexistent"
 			},
 			want: `promotes "nonexistent", which that object does not carry`,
 		},
@@ -1837,7 +1837,7 @@ func TestCompileRejectsFlatteningsThatLoseTrackOfMembers(t *testing.T) {
 		},
 		"struct also classified at the top level": {
 			mutate: func(rules map[string]any) {
-				rules["fields"] = append(rules["fields"].([]any), map[string]any{
+				rules["fields"] = append(jsonArray(rules["fields"]), map[string]any{
 					"structural_name": "settings", "terraform_name": "settings_too",
 					"disposition": "managed",
 					"attribute":   map[string]any{"computed_optional_required": "optional"},
@@ -1874,7 +1874,7 @@ func TestCompileRejectsFlatteningsThatLoseTrackOfMembers(t *testing.T) {
 // Omitting a member is a decision and must be allowed, so long as it is stated.
 func TestCompileAcceptsAnOmittedFlattenedMember(t *testing.T) {
 	result, err := Compile(flatteningInput(t, func(rules map[string]any) {
-		flattenedMembers(rules)[1].(map[string]any)["disposition"] = "omitted"
+		jsonObject(flattenedMembers(rules)[1])["disposition"] = "omitted"
 	}))
 	if err != nil {
 		t.Fatalf("Compile() rejected an omitted member: %v", err)
@@ -1994,7 +1994,7 @@ func surfaceKindInput(t *testing.T, kind catalogparity.SurfaceKind) CompileInput
 	if err := json.Unmarshal(testBootstrap(t, dnsFieldNames()), &source); err != nil {
 		t.Fatal(err)
 	}
-	source["resource"].(map[string]any)["name"] = surfaceKindSubject(kind)
+	jsonObject(source["resource"])["name"] = surfaceKindSubject(kind)
 
 	return CompileInput{
 		Bootstrap:       mustJSON(t, source),
@@ -2370,9 +2370,9 @@ func rehashCatalogDefinition(t *testing.T, record map[string]any) {
 	t.Helper()
 	record["definition_sha256"] = expectedCatalogDefinitionDigest(
 		t,
-		record["field"].(string),
-		record["type"].(string),
-		record["secret_candidate"].(bool),
+		jsonString(record["field"]),
+		jsonString(record["type"]),
+		jsonBool(record["secret_candidate"]),
 	)
 }
 
@@ -2441,7 +2441,7 @@ func TestCompileRequiresBothSidesToNameTheirSource(t *testing.T) {
 	if err := json.Unmarshal(input.Bootstrap, &source); err != nil {
 		t.Fatal(err)
 	}
-	source["source"].(map[string]any)["specification_sha256"] = ""
+	jsonObject(source["source"])["specification_sha256"] = ""
 	input.Bootstrap = mustJSON(t, source)
 
 	var rules map[string]any
@@ -2467,8 +2467,8 @@ func scalarOverrideInput(t *testing.T, structural, declared string) CompileInput
 	t.Helper()
 	names := dnsFieldNames()
 	rules := testPolicyObject(names, testSpecificationDigest)
-	for _, raw := range rules["fields"].([]any) {
-		field := raw.(map[string]any)
+	for _, raw := range jsonArray(rules["fields"]) {
+		field := jsonObject(raw)
 		if field["structural_name"] != "value" {
 			continue
 		}
@@ -2483,8 +2483,8 @@ func scalarOverrideInput(t *testing.T, structural, declared string) CompileInput
 	if err := json.Unmarshal(testBootstrap(t, names), &source); err != nil {
 		t.Fatal(err)
 	}
-	for _, raw := range source["resource"].(map[string]any)["fields"].([]any) {
-		field := raw.(map[string]any)
+	for _, raw := range jsonArray(jsonObject(source["resource"])["fields"]) {
+		field := jsonObject(raw)
 		if field["name"] == "value" {
 			field["type"] = structural
 		}
@@ -2576,7 +2576,7 @@ func blockInput(t *testing.T, declared string) CompileInput {
 	if declared == "list_nested_block" || declared == "set_nested_block" {
 		structural = "settings"
 	}
-	rules["fields"] = append(rules["fields"].([]any), map[string]any{
+	rules["fields"] = append(jsonArray(rules["fields"]), map[string]any{
 		"structural_name": structural,
 		"terraform_name":  "settings",
 		"terraform_type":  declared,
@@ -2596,8 +2596,8 @@ func blockInput(t *testing.T, declared string) CompileInput {
 		if err := json.Unmarshal(input.Bootstrap, &source); err != nil {
 			t.Fatal(err)
 		}
-		for _, raw := range source["resource"].(map[string]any)["fields"].([]any) {
-			if field := raw.(map[string]any); field["name"] == "settings" {
+		for _, raw := range jsonArray(jsonObject(source["resource"])["fields"]) {
+			if field := jsonObject(raw); field["name"] == "settings" {
 				field["type"] = "array<object>"
 			}
 		}
@@ -2620,8 +2620,8 @@ func TestCompileRejectsADispositionOnABlock(t *testing.T) {
 	if err := json.Unmarshal(input.Policy, &rules); err != nil {
 		t.Fatal(err)
 	}
-	for _, raw := range rules["fields"].([]any) {
-		field := raw.(map[string]any)
+	for _, raw := range jsonArray(rules["fields"]) {
+		field := jsonObject(raw)
 		if field["terraform_name"] == "settings" {
 			field["attribute"] = map[string]any{"computed_optional_required": "optional"}
 		}
@@ -2652,10 +2652,10 @@ func TestCompileAdmitsAnInventedNestedMemberOnlyWhenDeclared(t *testing.T) {
 		if err := json.Unmarshal(input.Policy, &rules); err != nil {
 			t.Fatal(err)
 		}
-		for _, raw := range rules["fields"].([]any) {
-			field := raw.(map[string]any)
+		for _, raw := range jsonArray(rules["fields"]) {
+			field := jsonObject(raw)
 			if field["terraform_name"] == "settings" {
-				field["fields"] = append(field["fields"].([]any), member)
+				field["fields"] = append(jsonArray(field["fields"]), member)
 			}
 		}
 		input.Policy = mustJSON(t, rules)
@@ -2890,8 +2890,8 @@ func bootstrapWithObjectMember(t *testing.T) []byte {
 	if err := json.Unmarshal(testBootstrap(t, dnsFieldNames()), &document); err != nil {
 		t.Fatal(err)
 	}
-	resource := document["resource"].(map[string]any)
-	resource["fields"] = append(resource["fields"].([]any), map[string]any{
+	resource := jsonObject(document["resource"])
+	resource["fields"] = append(jsonArray(resource["fields"]), map[string]any{
 		"name": "options",
 		"type": "array<object>",
 		"fields": []any{
@@ -2923,7 +2923,7 @@ func companionInput(t *testing.T, mutate func(bootstrap, rules map[string]any)) 
 	}}
 
 	rules := testPolicyObject(dnsFieldNames(), testSpecificationDigest)
-	rules["fields"] = append(rules["fields"].([]any),
+	rules["fields"] = append(jsonArray(rules["fields"]),
 		map[string]any{
 			"structural_name": "label", "structural_source": "Sidecar",
 			"terraform_name": "sidecar_label", "disposition": "managed",
@@ -2992,8 +2992,8 @@ func TestCompileConsumesACompanionStructsFields(t *testing.T) {
 func TestCompileRefusesAnUnclassifiedCompanionField(t *testing.T) {
 	_, err := Compile(companionInput(t, func(_, rules map[string]any) {
 		kept := []any{}
-		for _, raw := range rules["fields"].([]any) {
-			field := raw.(map[string]any)
+		for _, raw := range jsonArray(rules["fields"]) {
+			field := jsonObject(raw)
 			if field["terraform_name"] == "sidecar_port" {
 				continue
 			}
@@ -3014,7 +3014,7 @@ func TestCompileRejectsAmbiguousCompanions(t *testing.T) {
 	}{
 		"the same struct named twice": {
 			mutate: func(document, _ map[string]any) {
-				document["companions"] = append(document["companions"].([]any),
+				document["companions"] = append(jsonArray(document["companions"]),
 					map[string]any{"struct": "Sidecar", "fields": []any{}})
 			},
 			want: `names companion struct "Sidecar" twice`,
@@ -3024,20 +3024,20 @@ func TestCompileRejectsAmbiguousCompanions(t *testing.T) {
 		// both in that form.
 		"a struct named like a field of the lead": {
 			mutate: func(document, _ map[string]any) {
-				document["companions"].([]any)[0].(map[string]any)["struct"] = "port"
+				jsonObject(jsonArray(document["companions"])[0])["struct"] = "port"
 			},
 			want: "same name as an observed field of the lead struct",
 		},
 		"a companion with no struct name": {
 			mutate: func(document, _ map[string]any) {
-				delete(document["companions"].([]any)[0].(map[string]any), "struct")
+				delete(jsonObject(jsonArray(document["companions"])[0]), "struct")
 			},
 			want: "companion has no struct name",
 		},
 		"a policy naming a struct the bootstrap does not carry": {
 			mutate: func(_, rules map[string]any) {
-				for _, raw := range rules["fields"].([]any) {
-					field := raw.(map[string]any)
+				for _, raw := range jsonArray(rules["fields"]) {
+					field := jsonObject(raw)
 					if field["terraform_name"] == "sidecar_label" {
 						field["structural_source"] = "Nonexistent"
 					}

@@ -119,13 +119,13 @@ func Test_mergeWritesBehaviourIntoThePolicy(t *testing.T) {
 	if !ok || len(validators) != 1 {
 		t.Fatalf("source.kind carries %v, want one validator", kind["validators"])
 	}
-	entry := validators[0].(map[string]any)["custom"].(map[string]any)
+	entry := jsonObject(jsonObject(validators[0])["custom"])
 	if entry["schema_definition"] != `stringvalidator.OneOf("any", "one")` {
 		t.Errorf("source.kind's validator was written as %v", entry["schema_definition"])
 	}
 	imports, ok := entry["imports"].([]any)
 	if !ok || len(imports) != 1 ||
-		imports[0].(map[string]any)["path"] != "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator" {
+		jsonObject(imports[0])["path"] != "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator" {
 		t.Errorf("source.kind's validator imports were written as %v", entry["imports"])
 	}
 }

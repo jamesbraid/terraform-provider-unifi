@@ -180,9 +180,9 @@ func TestStaleDeclarationIsCaught(t *testing.T) {
 // comment claims: an entry licenses one transition, not an attribute. If the
 // built schema moves to some third value the declaration must stop applying.
 func TestDriftToAThirdValueStopsMatching(t *testing.T) {
-	drifted := mustParse(t, candidateFixture).(map[string]any)
-	attrs := drifted["resource_schemas"].(map[string]any)["unifi_wlan"].(map[string]any)["block"].(map[string]any)["attributes"].(map[string]any)
-	attrs["ap_group_ids"].(map[string]any)["computed"] = "yes-please"
+	drifted := jsonObject(mustParse(t, candidateFixture))
+	attrs := jsonObject(jsonObject(jsonObject(jsonObject(drifted["resource_schemas"])["unifi_wlan"])["block"])["attributes"])
+	jsonObject(attrs["ap_group_ids"])["computed"] = "yes-please"
 
 	_, undeclared, _ := Classify(Diff(mustParse(t, releasedFixture), drifted), realLedger())
 	if len(undeclared) != 1 || undeclared[0].New != "yes-please" {

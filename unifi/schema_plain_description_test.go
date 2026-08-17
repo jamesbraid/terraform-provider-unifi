@@ -86,8 +86,9 @@ func Test_plainDescriptions(t *testing.T) {
 	// GetNestedObject().GetAttributes() returns an unexported map type that
 	// cannot be named outside the module, and every member below has to be
 	// reached by name anyway for the depth to be proven.
-	block := built.Blocks["block"].(schema.ListNestedBlock)
-	deeper := block.NestedObject.Blocks["deeper"].(schema.ListNestedBlock)
+	block := mustBe[schema.ListNestedBlock](t, built.Blocks["block"], `Blocks["block"]`)
+	deeper := mustBe[schema.ListNestedBlock](t, block.NestedObject.Blocks["deeper"],
+		`Blocks["block"].NestedObject.Blocks["deeper"]`)
 
 	for _, member := range []struct {
 		path string
@@ -103,13 +104,15 @@ func Test_plainDescriptions(t *testing.T) {
 		{"nested", built.Attributes["nested"], "a nested attribute"},
 		{
 			"nested.inner",
-			built.Attributes["nested"].(schema.SingleNestedAttribute).Attributes["inner"],
+			mustBe[schema.SingleNestedAttribute](t, built.Attributes["nested"],
+				`Attributes["nested"]`).Attributes["inner"],
 			"inside a nested attribute",
 		},
 		{"listnested", built.Attributes["listnested"], "a list nested attribute"},
 		{
 			"listnested.inner",
-			built.Attributes["listnested"].(schema.ListNestedAttribute).NestedObject.Attributes["inner"],
+			mustBe[schema.ListNestedAttribute](t, built.Attributes["listnested"],
+				`Attributes["listnested"]`).NestedObject.Attributes["inner"],
 			"inside a list nested attribute",
 		},
 		{"block", block, "a block"},
@@ -124,4 +127,20 @@ func Test_plainDescriptions(t *testing.T) {
 			t.Errorf("%s: description = %q, want %q", member.path, got, member.want)
 		}
 	}
+}
+
+// mustBe asserts one of the framework's schema types and says what it found.
+//
+// The four call sites above navigate a built schema by name, and an unchecked
+// assertion there panics with "interface conversion" and nothing about which
+// attribute was wrong. This names the path. It is a test helper rather than
+// four inline comma-ok blocks because the navigation reads as a path and
+// splitting each step across four lines would bury what the test is about.
+func mustBe[T any](t *testing.T, value any, path string) T {
+	t.Helper()
+	typed, ok := value.(T)
+	if !ok {
+		t.Fatalf("%s is %T, want %T", path, value, typed)
+	}
+	return typed
 }
