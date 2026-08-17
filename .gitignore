@@ -118,6 +118,7 @@ build/**/*-ci.json
 /catalog-release-ready
 /list-policy-scaffold
 /list-resource-gen
+/m3-dns-qualification
 /nested-custom-type-strip
 /nested-type-dedup
 /policy-scaffold
