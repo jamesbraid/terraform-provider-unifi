@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,26 +10,26 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 )
 
 // TestEveryGeneratorCallSitePassesTheTreeState is the half that survived the
-// shell going away, and it is now the whole file.
+// shell going away.
 //
-// THIS FILE USED TO HOLD TWO MORE TESTS AND THEIR SUBJECTS ARE GONE.
+// THIS FILE USED TO HOLD TWO TESTS ABOUT SCRIPTS AND THEIR SUBJECTS ARE GONE.
 // TestEveryEvidenceGeneratorIsGuarded walked .woodpecker/scripts/*.sh for
 // generators that write an artifact without establishing which tree it
 // describes, and TestEveryGuardedGeneratorRefusesADirtyTree ran each of those
 // scripts against a deliberately dirtied tree and required it to refuse. Both
 // were deleted with the last script, in the commit that deleted it.
 //
-// WHAT THAT COST, STATED RATHER THAN GLOSSED. The second one was the only
-// END-TO-END proof that the guard fires: it dirtied the tree, ran the real
-// generator, and read the refusal. What remains is a unit test of
-// catalogparity.MeasureTreeState, which is where the refusal is decided, plus
-// this static check that every call site passes the flag, plus per-command
-// tests that a binary refuses when the flag is absent. The composition of those
-// three is not watched failing anywhere; nothing runs `go run ./cmd/tree-state`
-// on a dirty tree and reads the exit code.
+// The second one was the only END-TO-END proof that the guard fires, and losing
+// it left three separate claims -- a unit test of catalogparity.MeasureTreeState,
+// this static check that every call site passes the flag, and per-command tests
+// that a binary refuses when the flag is absent -- none of which runs the guard.
+// TestTheTreeStateGuardRefusesADirtyTreeEndToEnd at the bottom of this file is
+// the replacement, and it explains what it does and does not cover.
 //
 // A BINARY'S GUARD LIVES AT ITS CALL SITE, not inside it. It is handed the tree
 // state rather than measuring it -- deliberately, so there is one measurement
@@ -202,4 +204,92 @@ func classifiedTreeIdentity(t *testing.T, directory string) string {
 	return fmt.Sprintf("classified %s at commit %s, but the files DIVERGE from it:\n%s\n"+
 		"    The verdict above describes those files, not that commit. If nobody is editing\n"+
 		"    them, something else wrote into this checkout.", directory, commit, strings.TrimRight(string(status), "\n"))
+}
+
+// TestTheTreeStateGuardRefusesADirtyTreeEndToEnd replaces
+// TestEveryGuardedGeneratorRefusesADirtyTree, which was deleted with the
+// scripts that were its population.
+//
+// THE OLD ONE PROVED A COMPOSITION AND THE PIECES THAT REPLACED IT DO NOT. It
+// dirtied the tree, ran a real generator, and read the refusal -- one act
+// covering measurement, refusal, and the generator being wired to both. What
+// took its place is three separate claims: catalogparity.MeasureTreeState
+// reports dirty (a unit test), every workflow line carries -tree-state (the
+// static check above), and each binary refuses an empty one (a test per
+// command). Each is true and none of them runs the guard.
+//
+// WHAT THE WORKFLOW ACTUALLY WRITES is the thing to reproduce:
+//
+//	go run ./cmd/X ... -tree-state "$(go run ./cmd/tree-state -what '...')"
+//
+// A command substitution whose inner command FAILS yields the empty string and
+// the outer command runs on regardless -- the shell does not propagate the
+// failure. So the dirty-tree path is: tree-state exits non-zero, the outer
+// binary receives "", and the outer binary refuses. This covers the first link
+// and the per-command tests cover the second; the join is the empty string,
+// which is written down here because nothing enforces it.
+//
+// THE ACKNOWLEDGEMENT RUN IS THE CONTROL, and it is deliberately not "run it on
+// a clean tree". A clean-tree control fails whenever somebody is editing, which
+// makes it useless locally, and it would not distinguish "refuses because dirty"
+// from "refuses always" any better. Running the SAME dirty tree with
+// EVIDENCE_ALLOW_DIRTY_TREE set must succeed and must report the dirt, which
+// pins the refusal to the dirt rather than to the invocation.
+func TestTheTreeStateGuardRefusesADirtyTreeEndToEnd(t *testing.T) {
+	if testing.Short() {
+		t.Skip("compiles and runs cmd/tree-state twice; skipped under -short")
+	}
+
+	const probe = ".tree-state-guard-probe"
+	if err := os.WriteFile(probe, []byte("making the tree dirty on purpose\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(probe) })
+
+	// Without this every case below would run against a clean tree and prove
+	// nothing -- the same floor the shell version carried, for the same reason.
+	state, err := catalogparity.MeasureTreeState(".", "the guard-fires probe", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Status != "dirty" {
+		t.Fatal("the probe did not make the tree dirty, so every case below would prove nothing")
+	}
+
+	refusal := exec.Command("go", "run", "./cmd/tree-state", "-what", "the guard-fires probe")
+	refusal.Env = append(os.Environ(), "EVIDENCE_ALLOW_DIRTY_TREE=")
+	out, err := refusal.CombinedOutput()
+	if err == nil {
+		t.Fatalf("cmd/tree-state exited 0 on a dirty tree, so every workflow line that captures "+
+			"its output would proceed with a tree state describing files that are in no commit:\n%s", out)
+	}
+	if !strings.Contains(string(out), "refusing to generate evidence from a dirty tree") {
+		t.Fatalf("it failed for some other reason, which is not the guard firing:\n%s", out)
+	}
+	// NAMING THE FILES IS THE HALF THAT MAKES IT USABLE. A refusal that says
+	// only "dirty" sends the operator to git status; one that lists the paths
+	// answers the question it raised.
+	if !strings.Contains(string(out), probe) {
+		t.Errorf("the refusal does not name %s, so it says a tree is dirty without saying "+
+			"where:\n%s", probe, out)
+	}
+
+	acknowledged := exec.Command("go", "run", "./cmd/tree-state", "-what", "the guard-fires probe")
+	acknowledged.Env = append(os.Environ(), "EVIDENCE_ALLOW_DIRTY_TREE=1")
+	var stdout, stderr bytes.Buffer
+	acknowledged.Stdout, acknowledged.Stderr = &stdout, &stderr
+	if err := acknowledged.Run(); err != nil {
+		t.Fatalf("the acknowledged run failed too, so the refusal above is not evidence that the "+
+			"guard is about the dirt: %v\n%s", err, stderr.String())
+	}
+	var measured catalogparity.TreeState
+	if err := json.Unmarshal(stdout.Bytes(), &measured); err != nil {
+		t.Fatalf("the acknowledged run printed something no caller could embed: %v\n%s",
+			err, stdout.String())
+	}
+	if measured.Status != "dirty" {
+		t.Fatalf("the acknowledged run reported %q; permitting a dirty run and then recording it "+
+			"as clean is worse than refusing, because the receipt then denies the dirt",
+			measured.Status)
+	}
 }
