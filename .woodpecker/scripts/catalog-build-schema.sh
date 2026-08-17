@@ -177,8 +177,11 @@ done
 # the pair above by a second route, so it goes through the same ledger.
 (cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli terraform-baseline -released-canonical "${repository_root}/provider-contracts/schema/terraform-1.15.8.json" -candidate-canonical "${work_root}/candidate.terraform.canonical.json" -tree-state "$(evidence_tree_json)")
 (cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -cli tofu-baseline -released-canonical "${repository_root}/provider-contracts/schema/tofu-1.12.1.json" -candidate-canonical "${work_root}/candidate.tofu.canonical.json" -tree-state "$(evidence_tree_json)")
-cmp "${repository_root}/build/m0/provider-schema-digests.json" \
-    "${work_root}/candidate.terraform.digests.json"
+# The same claim as the four above, one abstraction up. This file is the
+# RELEASED BASELINE -- roughly eighty references pass it as -baseline, and this
+# was the only line reading it as an expected candidate. Counting the consumers
+# settled it, exactly as it settled provider-contracts/schema.
+(cd "${repository_root}" && go run ./cmd/schema-parity -ledger "${repository_root}/provider-codegen/schema-changes/v0.101.2-to-next.json" -released-digests "${repository_root}/build/m0/provider-schema-digests.json" -candidate-digests "${work_root}/candidate.terraform.digests.json" -tree-state "$(evidence_tree_json)")
 
 for build in released candidate; do
     jq --sort-keys 'del(.action_schemas, .list_resource_schemas)' \
