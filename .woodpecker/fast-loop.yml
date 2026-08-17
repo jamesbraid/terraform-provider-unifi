@@ -106,9 +106,10 @@ steps:
       # `git rev-parse HEAD` reads .git and would have printed the right answer
       # through all of it. The digests are of the files that get read.
       #
-      # Every workflow runs this as its first command now, not just this one:
-      # the contaminated run was m3-dns-qualification, so a line only here would
-      # have missed it.
+      # Every workflow runs this as its first command, not just this one. Not
+      # because of where the known incident happened -- that was here, in this
+      # step -- but because nothing about a shared workspace prefers one
+      # workflow, so each should say what it read.
       - go run ./cmd/workspace-provenance
       - apt-get update
       - apt-get install --yes --no-install-recommends jq
