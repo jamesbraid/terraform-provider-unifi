@@ -34,7 +34,15 @@ func migrateZoneBasedFirewallWithClient(
 		return fmt.Errorf("create controller cookie jar: %w", err)
 	}
 	if client == nil {
-		transport := http.DefaultTransport.(*http.Transport).Clone()
+		// Cloning the default transport keeps the fixture's proxy, dial and
+		// timeout behaviour. The assertion is the documented shape of
+		// http.DefaultTransport, but a test that replaces it would otherwise
+		// panic here rather than say so.
+		defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+		if !ok {
+			return fmt.Errorf("http.DefaultTransport is %T, not *http.Transport", http.DefaultTransport)
+		}
+		transport := defaultTransport.Clone()
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // #nosec G402 -- controller fixtures use self-signed certificates.
 		client = &http.Client{Transport: transport}
 	}
