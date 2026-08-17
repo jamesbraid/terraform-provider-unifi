@@ -108,8 +108,26 @@ func TestAZeroRunProducesAnObviouslyBadReceipt(t *testing.T) {
 	if receipt.Gate != "catalog-build-schema" || receipt.FormatVersion != 1 {
 		t.Fatal("the gate identity is not fixed by the constructor")
 	}
-	if receipt.CleanBuilds.Released != 2 || receipt.CleanBuilds.Candidate != 2 {
-		t.Fatalf("clean builds = %+v, want two of each: the determinism claim rests on the repeat",
-			receipt.CleanBuilds)
+	if receipt.CleanBuilds.Released != 0 || receipt.CleanBuilds.Candidate != 0 {
+		t.Fatalf("a zero run claims %+v clean builds. It performed none", receipt.CleanBuilds)
+	}
+}
+
+// TestCleanBuildCountsComeFromTheRun replaces an assertion that enshrined the
+// defect it was meant to catch.
+//
+// The first version of this test required clean_builds to be {2, 2}, because
+// the constructor wrote that pair as a literal. Both were written in the same
+// sitting, by someone who had just finished explaining why the shell's literal
+// projection claims were wrong -- so the test agreed with the code and neither
+// was measuring anything. The determinism assertion is only worth something if
+// a side was built more than once, and a receipt that always says 2 cannot
+// report the run where somebody made it 1.
+func TestCleanBuildCountsComeFromTheRun(t *testing.T) {
+	receipt := BuildSchemaReceipt(SchemaRun{
+		CleanBuilds: catalogparity.BuildCounts{Released: 2, Candidate: 1},
+	})
+	if receipt.CleanBuilds.Released != 2 || receipt.CleanBuilds.Candidate != 1 {
+		t.Fatalf("clean builds = %+v, want the pair the run reported", receipt.CleanBuilds)
 	}
 }

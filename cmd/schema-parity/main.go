@@ -42,6 +42,25 @@ type options struct {
 	wantActions  int
 	wantLists    int
 
+	// baselinePath is build/m0/provider-baseline.json: the toolchain, platform
+	// and CLI identities a promotable build must have been produced with, plus
+	// the commit and published-archive digest the released tag must resolve to.
+	// It is the EXPECTATION side of every promotion check, which is why nothing
+	// derives it from the tree.
+	baselinePath string
+	// inventoryPath is the evidence inventory this run is about. The receipt
+	// records its digest, which is how a later reader can tell whether the
+	// inventory has moved since the schema was measured.
+	inventoryPath string
+	// releasedAuthorityBinary is the PUBLISHED ARCHIVE, when a run has one.
+	//
+	// Without it the released side is a source rebuild, which is a different
+	// authority: rebuilding proves the tag still compiles to the same schema,
+	// and the archive is what users actually ran. A run that only rebuilt
+	// records released_authority: source_rebuild and blocks promotion, rather
+	// than presenting the rebuild as the release.
+	releasedAuthorityBinary string
+
 	// Compare-only inputs. When both are set, main does NO orchestration: no
 	// tag extraction, no provider build, no CLI invocation. It reads two
 	// canonical projections somebody else produced and answers the parity
@@ -88,6 +107,12 @@ func main() {
 	flag.StringVar(&o.cli, "cli", "terraform", "compare-only: which CLI produced the two projections")
 	flag.StringVar(&o.treeStateRaw, "tree-state", "",
 		"JSON from evidence_tree_json describing the working tree; required, no default")
+	flag.StringVar(&o.baselinePath, "baseline-manifest", "build/m0/provider-baseline.json",
+		"promotion expectations, relative to -repo")
+	flag.StringVar(&o.inventoryPath, "inventory", "",
+		"catalog evidence inventory whose digest this run records")
+	flag.StringVar(&o.releasedAuthorityBinary, "released-provider-binary", "",
+		"published release archive; without it the released side is a source rebuild and cannot promote")
 	flag.Parse()
 
 	if err := run(o); err != nil {
@@ -96,29 +121,96 @@ func main() {
 	}
 }
 
-// Receipt is a Go struct rather than a forty-line jq expression.
+// measureEnvironment reports what this run is, so PromotionBlockers can compare
+// it against what the baseline manifest says a promotable run must be.
 //
-// The shape it replaces was assembled by shell, which made it unreviewable and
-// untestable: nothing could construct one in a test, so nothing ever asserted
-// what it contained.
-type Receipt struct {
-	FormatVersion   int                      `json:"format_version"`
-	Gate            string                   `json:"gate"`
-	TreeState       *catalogparity.TreeState `json:"tree_state,omitempty"`
-	Result          string                   `json:"result"`
-	ReleasedTag     string                   `json:"released_tag"`
-	ReleasedCommit  string                   `json:"released_commit"`
-	CandidateCommit string                   `json:"candidate_commit"`
-	Terraform       string                   `json:"terraform_version"`
-	Tofu            string                   `json:"tofu_version"`
-	DeclaredChanges int                      `json:"declared_schema_changes"`
-	Findings        []string                 `json:"findings"`
+// Every value is measured here and none is defaulted. A missing CLI or an
+// unreadable binary is an error rather than an empty string: an empty version
+// compares unequal to its pin and would be reported as a version blocker,
+// naming the wrong cause for a run that never found the tool at all.
+func measureEnvironment(o options, releasedAuthority string) (schemaparity.Environment, error) {
+	var env schemaparity.Environment
+	env.ReleasedAuthority = releasedAuthority
+
+	goos, err := goEnv("GOOS")
+	if err != nil {
+		return env, err
+	}
+	goarch, err := goEnv("GOARCH")
+	if err != nil {
+		return env, err
+	}
+	env.Platform = goos + "/" + goarch
+	if env.GoVersion, err = goEnv("GOVERSION"); err != nil {
+		return env, err
+	}
+
+	for _, cli := range []struct {
+		bin     string
+		version *string
+		digest  *string
+	}{
+		{o.terraformBin, &env.TerraformVersion, &env.TerraformSHA256},
+		{o.tofuBin, &env.TofuVersion, &env.TofuSHA256},
+	} {
+		version, err := cliVersion(cli.bin)
+		if err != nil {
+			return env, err
+		}
+		path, err := exec.LookPath(cli.bin)
+		if err != nil {
+			return env, fmt.Errorf("locate %s: %w", cli.bin, err)
+		}
+		digest, err := fileDigest(path)
+		if err != nil {
+			return env, err
+		}
+		*cli.version, *cli.digest = version, digest
+	}
+	return env, nil
+}
+
+func goEnv(name string) (string, error) {
+	out, err := exec.Command("go", "env", name).Output()
+	if err != nil {
+		return "", fmt.Errorf("go env %s: %w", name, err)
+	}
+	value := strings.TrimSpace(string(out))
+	if value == "" {
+		return "", fmt.Errorf("go env %s is empty", name)
+	}
+	return value, nil
+}
+
+// sharedSurfaceDigest identifies the surface both CLIs report.
+//
+// The shell derived this from a jq-rendered file, so the digest here names the
+// same content under a different renderer and will not equal the frozen one.
+// That is a difference the migration causes and not a defect: nothing compares
+// this value against anything, and the alternative -- reproducing jq's exact
+// spacing to keep a digest nobody reads -- would tie the Go implementation to
+// the formatting of a tool being deleted.
+func sharedSurfaceDigest(canonical any) (string, error) {
+	encoded, err := catalogparity.MarshalReceipt(sharedSurface(canonical))
+	if err != nil {
+		return "", err
+	}
+	return bytesDigest(encoded), nil
 }
 
 type projection struct {
 	canonical any
 	digests   []byte
 	raw       map[string]any
+
+	// rawSHA256 digests the CLI's untouched output and canonicalSHA256 digests
+	// what canonicalisation made of it. Both are recorded because they answer
+	// different questions: the raw digest says which bytes the CLI produced,
+	// the canonical one says what the comparison was actually about. A run
+	// where the raw digests move and the canonical ones do not is a CLI
+	// changing its formatting, which is not a schema change.
+	rawSHA256       string
+	canonicalSHA256 string
 }
 
 func run(o options) error {
@@ -167,30 +259,77 @@ func run(o options) error {
 		return err
 	}
 
-	var findings []schemaparity.Finding
-
-	releasedCommit, err := gitOutput(repo, "rev-parse", o.releasedTag+"^{commit}")
+	baseline, err := schemaparity.LoadBaselineManifest(filepath.Join(repo, o.baselinePath))
 	if err != nil {
 		return err
 	}
+
+	var findings []schemaparity.Finding
+
+	// PROVENANCE. The manifest says which commit the released tag names; this
+	// resolves the tag and requires them to agree. Taking the commit from git
+	// alone -- which this binary did until now -- makes the released side of
+	// every comparison below an unidentified tree, and the receipt would report
+	// whatever it found as though it were the release.
+	resolvedTag, err := gitOutput(repo, "rev-parse", o.releasedTag+"^{commit}")
+	if err != nil {
+		return err
+	}
+	findings = append(findings, schemaparity.CheckProvenance(
+		o.releasedTag, baseline.Provider.ReleasedCommit, resolvedTag)...)
+	releasedCommit := baseline.Provider.ReleasedCommit
 	candidateCommit, err := gitOutput(repo, "rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
 
-	builds := map[string]string{}
+	const cleanBuildsPerSide = 2
+	rebuilt := map[string]string{}
 	for label, src := range map[string]string{"released": releasedSrc, "candidate": repo} {
 		first, second, err := buildTwice(work, label, src)
 		if err != nil {
 			return err
 		}
 		findings = append(findings, schemaparity.CheckDeterminism(label, first, second)...)
-		builds[label] = filepath.Join(work, label+"-one")
+		rebuilt[label] = filepath.Join(work, label+"-one")
+	}
+
+	// WHICH BINARY THE RELEASED SCHEMA COMES FROM is a choice, not a detail.
+	//
+	// With a published archive the released projection is dumped from the
+	// bytes users ran. Without one it comes from a rebuild of the tag, which
+	// answers a different question -- whether the tag still compiles to that
+	// schema -- and is recorded as a different authority so a reader can tell
+	// the two apart. The blocker for source_rebuild lives in PromotionBlockers;
+	// here the run only has to be honest about which it used.
+	releasedAuthority := "source_rebuild"
+	releasedStaged := rebuilt["released"]
+	if o.releasedAuthorityBinary != "" {
+		releasedAuthority = "published_archive"
+		releasedStaged = o.releasedAuthorityBinary
+		injected, err := fileDigest(releasedStaged)
+		if err != nil {
+			return err
+		}
+		findings = append(findings, schemaparity.CheckProvenance(
+			"published-archive", baseline.Provider.ReleaseBinarySHA256, injected)...)
+	}
+	authoritySHA256, err := fileDigest(releasedStaged)
+	if err != nil {
+		return err
+	}
+	releasedRebuildSHA256, err := fileDigest(rebuilt["released"])
+	if err != nil {
+		return err
+	}
+	candidateSHA256, err := fileDigest(rebuilt["candidate"])
+	if err != nil {
+		return err
 	}
 
 	clis := map[string]string{"terraform": o.terraformBin, "tofu": o.tofuBin}
 	proj := map[string]map[string]projection{}
-	for label, binary := range builds {
+	for label, binary := range map[string]string{"released": releasedStaged, "candidate": rebuilt["candidate"]} {
 		if err := stageProvider(work, label, binary); err != nil {
 			return err
 		}
@@ -204,56 +343,119 @@ func run(o options) error {
 		}
 	}
 
+	// EACH GROUP IS KEPT SEPARATE because the receipt records one boolean per
+	// group, and those booleans have to be the outcome of the assertion rather
+	// than a value written beside it. The shell wrote all three as literals in
+	// its jq template, so the receipt asserted them however the run had gone.
+	var parity, cross, inverted []schemaparity.Finding
+
 	// PARITY -- the only assertion that loses byte-identity.
 	for _, cliName := range []string{"terraform", "tofu"} {
-		findings = append(findings, schemaparity.CheckParity(cliName,
+		parity = append(parity, schemaparity.CheckParity(cliName,
 			proj["released"][cliName].canonical, proj["candidate"][cliName].canonical, ledger)...)
 	}
 
 	// CROSS-CLI -- byte-identity on the surface both CLIs report.
 	for _, label := range []string{"released", "candidate"} {
-		findings = append(findings, schemaparity.CheckCrossCLI(label,
+		cross = append(cross, schemaparity.CheckCrossCLI(label,
 			sharedSurface(proj[label]["terraform"].canonical),
 			proj[label]["tofu"].canonical)...)
 	}
 
 	// INVERTED CONTROL -- fails when the two projections MATCH. See its comment.
-	findings = append(findings, schemaparity.CheckProjectionsDiffer(
-		proj["candidate"]["terraform"].canonical, proj["candidate"]["tofu"].canonical)...)
+	inverted = schemaparity.CheckProjectionsDiffer(
+		proj["candidate"]["terraform"].canonical, proj["candidate"]["tofu"].canonical)
 
+	findings = append(findings, parity...)
+	findings = append(findings, cross...)
+	findings = append(findings, inverted...)
 	findings = append(findings, schemaparity.CheckShape(
 		proj["candidate"]["terraform"].raw, proj["candidate"]["tofu"].raw, o.wantActions, o.wantLists)...)
 
-	tfVersion, _ := cliVersion(o.terraformBin)
-	tofuVersion, _ := cliVersion(o.tofuBin)
+	env, err := measureEnvironment(o, releasedAuthority)
+	if err != nil {
+		return err
+	}
+	sharedSHA256, err := sharedSurfaceDigest(proj["candidate"]["terraform"].canonical)
+	if err != nil {
+		return err
+	}
+	// Named rather than left to fail as `open : no such file`. The receipt
+	// records this digest so a later reader can tell whether the inventory
+	// moved since the schema was measured, and an empty path means nobody
+	// decided which inventory this run is about.
+	if o.inventoryPath == "" {
+		return fmt.Errorf("-inventory is required: the receipt records which evidence inventory " +
+			"this run was measured against, and there is no sensible default for that")
+	}
+	inventorySHA256, err := fileDigest(o.inventoryPath)
+	if err != nil {
+		return err
+	}
 
-	receipt := Receipt{
-		FormatVersion: 1, Gate: "schema-parity",
-		TreeState:       treeState,
-		Result:          "pass",
-		ReleasedTag:     o.releasedTag,
-		ReleasedCommit:  releasedCommit,
-		CandidateCommit: candidateCommit,
-		Terraform:       tfVersion, Tofu: tofuVersion,
-		DeclaredChanges: len(ledger.Entries),
-	}
-	for _, f := range findings {
-		receipt.Findings = append(receipt.Findings, f.String())
-	}
-	if len(findings) > 0 {
-		receipt.Result = "fail"
-	}
+	receipt := schemaparity.BuildSchemaReceipt(schemaparity.SchemaRun{
+		SourceCommit:   candidateCommit,
+		ReleasedCommit: releasedCommit,
+		Platform:       env.Platform,
+		GoVersion:      env.GoVersion,
 
-	encoded, err := json.MarshalIndent(receipt, "", "  ")
+		ReleasedSourceRebuildSHA256: releasedRebuildSHA256,
+		ReleasedAuthority:           releasedAuthority,
+		ReleasedAuthoritySHA256:     authoritySHA256,
+		CandidateSHA256:             candidateSHA256,
+
+		Terraform: catalogparity.SchemaCLIReceipt{
+			Version:            env.TerraformVersion,
+			BinarySHA256:       env.TerraformSHA256,
+			ReleasedRawSHA256:  proj["released"]["terraform"].rawSHA256,
+			CandidateRawSHA256: proj["candidate"]["terraform"].rawSHA256,
+			CanonicalSHA256:    proj["candidate"]["terraform"].canonicalSHA256,
+		},
+		Tofu: catalogparity.SchemaCLIReceipt{
+			Version:            env.TofuVersion,
+			BinarySHA256:       env.TofuSHA256,
+			ReleasedRawSHA256:  proj["released"]["tofu"].rawSHA256,
+			CandidateRawSHA256: proj["candidate"]["tofu"].rawSHA256,
+			CanonicalSHA256:    proj["candidate"]["tofu"].canonicalSHA256,
+		},
+
+		SharedSchemaSHA256: sharedSHA256,
+		InventorySHA256:    inventorySHA256,
+
+		ReleaseToCandidateWithinCLI: len(parity) == 0,
+		SharedProjectionEqual:       len(cross) == 0,
+		// CheckProjectionsDiffer reports a finding exactly when the two full
+		// projections MATCH, so its finding IS this claim. Recomputing the
+		// comparison here would put a second copy of the fact beside the
+		// assertion that produced it, free to disagree with it.
+		FullProjectionEqual: len(inverted) > 0,
+
+		CleanBuilds:       catalogparity.BuildCounts{Released: cleanBuildsPerSide, Candidate: cleanBuildsPerSide},
+		TreeState:         treeState,
+		PromotionBlockers: schemaparity.PromotionBlockers(env, baseline),
+	})
+
+	// FINDINGS GO TO STDERR AND THE EXIT CODE, not into the receipt.
+	//
+	// BuildSchemaReceipt is decoded with DisallowUnknownFields by around eighty
+	// consumers, so a findings key would break every one of them. It is also
+	// what the shell did: a failing cmp killed the script and no receipt was
+	// written at all. This is the same contract with a better message.
+	// MarshalReceipt already terminates with a newline, and it is the only
+	// renderer either branch uses, so the file and the log carry the same bytes.
+	encoded, err := catalogparity.MarshalReceipt(receipt)
 	if err != nil {
 		return err
 	}
 	if o.output != "" {
-		if err := os.WriteFile(o.output, append(encoded, '\n'), 0o600); err != nil {
+		if err := os.MkdirAll(filepath.Dir(o.output), 0o750); err != nil {
+			return err
+		}
+		if err := os.WriteFile(o.output, encoded, 0o600); err != nil {
 			return err
 		}
 	} else {
-		fmt.Println(string(encoded))
+		fmt.Print(string(encoded))
 	}
 
 	if len(findings) > 0 {
@@ -382,6 +584,7 @@ provider "unifi" {}
 	// means needs the two files rather than a summary of them. With -work they
 	// outlive the process; without it they go with the temp directory.
 	for name, blob := range map[string][]byte{
+		label + "." + cliName + ".raw.json":       out,
 		label + "." + cliName + ".canonical.json": canonicalRaw,
 		label + "." + cliName + ".digests.json":   digests,
 	} {
@@ -397,7 +600,18 @@ provider "unifi" {}
 		return projection{}, err
 	}
 	doc, _ := rawDoc.(map[string]any)
-	return projection{canonical: canonical, digests: digests, raw: doc}, nil
+	return projection{
+		canonical:       canonical,
+		digests:         digests,
+		raw:             doc,
+		rawSHA256:       bytesDigest(out),
+		canonicalSHA256: bytesDigest(canonicalRaw),
+	}, nil
+}
+
+func bytesDigest(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }
 
 func fileDigest(path string) (string, error) {
@@ -417,12 +631,29 @@ func gitOutput(repo string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// cliVersion reads `version -json`, not the first line of `version`.
+//
+// The bare command prints "Terraform v1.15.8" and the receipt records
+// "1.15.8" -- the string the baseline manifest pins. Taking the human line
+// would put a version in the receipt that never equals its expectation, so
+// PromotionBlockers would name terraform_version on every run and the gate
+// would be one that cannot pass. OpenTofu reports itself under the same
+// terraform_version key, which is why one decode serves both.
 func cliVersion(bin string) (string, error) {
-	out, err := exec.Command(bin, "version").Output()
+	out, err := exec.Command(bin, "version", "-json").Output()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s version -json: %w", bin, err)
 	}
-	return strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0]), nil
+	var reported struct {
+		Version string `json:"terraform_version"`
+	}
+	if err := json.Unmarshal(out, &reported); err != nil {
+		return "", fmt.Errorf("parse %s version -json: %w", bin, err)
+	}
+	if reported.Version == "" {
+		return "", fmt.Errorf("%s reported no terraform_version", bin)
+	}
+	return reported.Version, nil
 }
 
 // compareOnly answers the parity question about two projections that already
