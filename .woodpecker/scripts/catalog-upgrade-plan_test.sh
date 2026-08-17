@@ -53,10 +53,28 @@ mkdir -p "${stub_dir}"
 # The Go stub writes a file where a binary was asked for, unless told to fail
 # for a particular tree. Which tree it is building is decided by the working
 # directory, because that is what the script varies.
+#
+# EVERYTHING THAT IS NOT `build` GOES TO THE REAL TOOLCHAIN. This used to be
+# `exit 0`, and a stub named `go` sits on PATH for every subcommand, not just
+# the one it implements -- so it answered success, with no output, to questions
+# it had never been taught. That is a check that cannot fail wearing a stub's
+# clothes.
+#
+# It cost twelve cases and none of them named the cause.
+# catalog-upgrade-plan.sh takes its tree state from `go run ./cmd/tree-state`,
+# the stub swallowed the run and printed nothing, and `jq --argjson` reported
+# invalid JSON -- naming the consumer, three steps from the stub that caused it.
+#
+# Resolved BEFORE stub_dir goes on PATH, or `command -v go` finds the stub and
+# the stub execs itself.
+STUB_REAL_GO=$(command -v go)
+export STUB_REAL_GO
 cat >"${stub_dir}/go" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-if [ "${1:-}" != "build" ]; then exit 0; fi
+if [ "${1:-}" != "build" ]; then
+    exec "${STUB_REAL_GO:?stub go: STUB_REAL_GO is unset, so a non-build subcommand has nowhere to go}" "$@"
+fi
 destination=""
 while [ "$#" -gt 0 ]; do
     if [ "$1" = "-o" ]; then destination=$2; shift 2; continue; fi
