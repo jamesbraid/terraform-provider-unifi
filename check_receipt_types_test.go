@@ -234,6 +234,53 @@ func TestEveryStrictConsumerIsPaired(t *testing.T) {
 	}
 	sort.Strings(unpaired)
 
+	// THE OTHER DIRECTION, WHICH THIS LEDGER WAS MISSING WHILE ITS SIBLINGS
+	// ENFORCED IT. unguardedGenerators reports "(no such script)";
+	// knownUnreachableChecks reports "something now invokes them". This one
+	// could only ever grow, so an excuse for a consumer that has since been
+	// paired, or stopped decoding strictly, or ceased to exist, would sit here
+	// reading as live.
+	//
+	// I predicted it would fire immediately and it did not, which was worth more
+	// than being right. The population held eleven, the ledger ten, and two were
+	// paired -- so eleven had to be short by one, and I inferred a stale entry.
+	// Printing the three sets instead showed the real shape: one PAIRED package,
+	// releasequalification, is not in the population at all, because the type it
+	// owns is decoded from cmd/catalog-release-ready. Pairs are keyed on the
+	// package owning the TYPE and the population on the package making the CALL.
+	//
+	// So catalog-release-ready is recorded as unpaired while the decode it
+	// performs is in fact paired -- the ledger overstates what is unverified.
+	// Over-listing rather than under-listing, which is the safe direction and
+	// the one deliberately chosen when this walk was written, but the entry is
+	// misleading and this is the concrete instance rather than the general
+	// worry noted beside strictConsumerFiles.
+	//
+	// It is also what makes narrowing the population safe. Any correction that
+	// removes packages -- teaching the scan that a comment is not a call was one
+	// -- turns their entries into fiction, and without this the fix would
+	// quietly create the defect it was fixing.
+	inPopulation := map[string]bool{}
+	for _, file := range strict {
+		inPopulation[file] = true
+	}
+	var resolved []string
+	for file := range unpairedStrictConsumers {
+		switch {
+		case !inPopulation[file]:
+			resolved = append(resolved, file+" (no longer decodes strictly, or is gone)")
+		case paired[file]:
+			resolved = append(resolved, file+" (now paired in receiptPairs)")
+		}
+	}
+	sort.Strings(resolved)
+	if len(resolved) > 0 {
+		t.Errorf("%d recorded unpaired consumer(s) no longer describe anything:\n    %s\n\n"+
+			"    Remove them. An entry that has stopped being true overstates how much is\n"+
+			"    unverified, and the next reader cannot tell a live gap from a resolved one.",
+			len(resolved), strings.Join(resolved, "\n    "))
+	}
+
 	if len(unpaired) > 0 {
 		t.Errorf("%d file(s) decode strictly and are paired with no producer:\n    %s\n\n"+
 			"    Each is a place a receipt is refused for carrying a field. Add the pair to\n"+
