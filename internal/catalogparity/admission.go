@@ -1,5 +1,40 @@
 package catalogparity
 
+// IF YOU ARE ABOUT TO WRITE ONE OF THESE RECEIPTS FROM ANYTHING THAT IS NOT GO,
+// READ THIS FIRST. That includes a shell script, a jq filter, a Python helper,
+// or a workflow step assembling JSON inline.
+//
+// Every receipt below is written by a Go program from the same struct the
+// consumer decodes, and every consumer decodes with DisallowUnknownFields. So
+// the agreement between producer and consumer is held by the compiler: a field
+// that one side adds and the other does not know about cannot be written.
+//
+// THAT WAS NOT ALWAYS TRUE AND IT COST TWICE. While the producers were shell,
+// there was nothing between them and these types -- no import, no path, no name
+// in common, nothing for a compiler to check. Two receipts were produced and
+// then refused by their own consumers:
+//
+//   - catalog-dependency-publishability.sh wrote a `tree` key.
+//     DependencyPublishabilityReceipt has no such field, so catalog-release-ready
+//     could not decode the receipt at all. Latent, because no workflow ran that
+//     consumer.
+//   - catalog-controller-differential.sh added `diagnostic_selection` and
+//     `catalog_test_count` to the plan in its diagnostic mode.
+//     ControllerPlanReceipt had neither, so catalog-admission failed one step
+//     later in the same workflow -- but only in the mode an operator reaches for
+//     when something is already broken.
+//
+// Both were found by accident while porting something else. check_receipt_types_test.go
+// existed to catch the class: it parsed each shell producer for the keys it
+// wrote and compared them against the consumer's json tags, with a ledger of
+// the pairs nobody had established yet. It was deleted when the last shell
+// producer was, because a check over an empty population is a check that cannot
+// fail, and its ledger of unpaired consumers went with it.
+//
+// A NON-GO PRODUCER BRINGS THE CLASS BACK, and nothing here will notice. If you
+// are adding one, restore that check with your producer as its first pair, or
+// accept that your receipt's fit with its consumer is verified by nobody.
+
 import (
 	"encoding/hex"
 	"encoding/json"

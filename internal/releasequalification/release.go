@@ -79,6 +79,14 @@ type HardwareDispositionReceipt struct {
 	ResolvedSignal          string `json:"resolved_signal"`
 }
 
+// DependencyPublishabilityReceipt is written by cmd/catalog-dependency-publishability
+// through internal/dependencypin.BuildReceipt, which returns this exact type, so
+// producer and consumer agree because the compiler makes them.
+//
+// It did not always. A shell producer wrote a `tree` key this struct has no
+// field for, and nothing could decode the receipt -- see the note at the top of
+// internal/catalogparity/admission.go before writing one of these from anything
+// that is not Go.
 type DependencyPublishabilityReceipt struct {
 	FormatVersion    int    `json:"format_version"`
 	Gate             string `json:"gate"`
