@@ -83,7 +83,16 @@ steps:
       # BACKSTOP, AND ONLY replace_present IS MEASURED. See
       # catalog-build-schema.yml for the full reasoning; the other four
       # conjuncts compare a constant, or this line's own argument, to itself.
-      - jq -e '.result == "pass" and .module_path == "github.com/ubiquiti-community/go-unifi" and .replace_present == false and .resolution_runner == "remote_ci" and .network_boundary == "remote_ci_only"' /tmp/catalog-dependency-publishability.json
+      # MOVED INTO Go, and the analysis above is why it was worth doing rather
+      # than deleting. Four of the five conjuncts compare a constant to itself;
+      # replace_present is the one with a measurement behind it. The Go gate
+      # keeps all five, marked as the backstop they are, and adds the facts the
+      # receipt already carries that nothing read: both digests checked for
+      # alphabet as well as length, refused if identical because the archive and
+      # the extracted tree cannot hash alike unless one was copied, the provider
+      # commit, the module version, and the tree state. Fourteen mutations cover
+      # them one clause at a time -- see CheckDependencyPublishabilityReceipt.
+      - go run ./cmd/receipt-gate -gate catalog-dependency-publishability -receipt /tmp/catalog-dependency-publishability.json
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-build-schema -released-provider-binary /tmp/released-provider/terraform-provider-unifi_v0.101.2 -inventory build/release-ready/catalog-evidence-inventory.json -evidence-directory /tmp/catalog-build-evidence -terraform /tmp/terraform -tofu /tmp/tofu -output /tmp/catalog-build-schema.json -tree-state "$(go run ./cmd/tree-state -what 'the released schema baseline and digests')"
       # BACKSTOP -- the schema comparison is in the binary, which writes the
       # receipt before returning non-zero. This decodes it strictly from outside
@@ -123,7 +132,18 @@ steps:
       # The two suite results stay, because they are about this run rather than
       # about the campaign: the released side may pass or carry an accepted
       # limitation, the candidate side may only pass.
-      - jq -e '(.released.result == "pass" or .released.result == "accepted_limitation") and .candidate.result == "pass"' /tmp/catalog-controller-differential.json
+      # THE TWO SUITE RESULTS ARE NOT ASSERTED HERE, and the line that did has
+      # been deleted rather than ported. The followup step below runs Followup(),
+      # which requires the released side to be pass or accepted_limitation and the
+      # candidate side to be pass -- the same two conditions -- and then a dozen
+      # more about accepted failures, unexpected failures, missing tests and the
+      # campaign's declared counts.
+      #
+      # It was strictly weaker than a check thirty-eight lines below it, on the
+      # same receipt, in the same step, with only a gate call and a pretty-print
+      # between them -- so it did not even buy early failure. Porting it into Go
+      # would have produced a second home for a subset of an assertion that
+      # already exists, with mutation tests to make the duplicate look verified.
       # The gap count is a CEILING here, and deliberately absolute rather than
       # relational. The followup step below asserts that the plan and the
       # campaign policy agree; that is blind to both of them growing together,

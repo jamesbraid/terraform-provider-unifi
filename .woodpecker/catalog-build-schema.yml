@@ -48,7 +48,16 @@ steps:
       # where the shell asked the same question and wrote the literal false
       # regardless. Keep the line for that field. Do not count the other four
       # when tallying what this pipeline verifies.
-      - jq -e '.result == "pass" and .module_path == "github.com/ubiquiti-community/go-unifi" and .replace_present == false and .resolution_runner == "remote_ci" and .network_boundary == "remote_ci_only"' /tmp/catalog-dependency-publishability.json
+      # MOVED INTO Go, and the analysis above is why it was worth doing rather
+      # than deleting. Four of the five conjuncts compare a constant to itself;
+      # replace_present is the one with a measurement behind it. The Go gate
+      # keeps all five, marked as the backstop they are, and adds the facts the
+      # receipt already carries that nothing read: both digests checked for
+      # alphabet as well as length, refused if identical because the archive and
+      # the extracted tree cannot hash alike unless one was copied, the provider
+      # commit, the module version, and the tree state. Fourteen mutations cover
+      # them one clause at a time -- see CheckDependencyPublishabilityReceipt.
+      - go run ./cmd/receipt-gate -gate catalog-dependency-publishability -receipt /tmp/catalog-dependency-publishability.json
       # The inventory is committed evidence describing the tree it was generated
       # from, and the receipt below records its digest. Regenerate and compare,
       # so that digest names a file which exists in the commit. The shell
