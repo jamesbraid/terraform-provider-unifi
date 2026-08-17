@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-// ParseTreeState reads the JSON that .woodpecker/scripts/tree-state.sh renders
+// ParseTreeState reads the JSON that cmd/tree-state renders
 // and refuses anything it cannot vouch for.
 //
 // THE MEASUREMENT IS NOT HERE AND MUST NOT MOVE HERE. What counts as dirty, and
@@ -27,7 +27,7 @@ import (
 //
 // The internal-consistency checks are cheap and they are the ones that catch a
 // hand-edited or half-built value: a clean tree cannot carry dirty paths, and a
-// dirty one cannot carry none, because tree-state.sh sets them together.
+// dirty one cannot carry none, because cmd/tree-state sets them together.
 func ParseTreeState(raw string) (*TreeState, error) {
 	if raw == "" {
 		return nil, fmt.Errorf("tree state is required: pass the JSON from evidence_tree_json, " +
@@ -51,7 +51,7 @@ func ParseTreeState(raw string) (*TreeState, error) {
 	switch state.Status {
 	case "clean", "dirty":
 	default:
-		return nil, fmt.Errorf("tree state has status %q; tree-state.sh emits only clean or dirty", state.Status)
+		return nil, fmt.Errorf("tree state has status %q; cmd/tree-state emits only clean or dirty", state.Status)
 	}
 	if state.Commit == "" {
 		return nil, fmt.Errorf("tree state names no commit, so the receipt cannot say which tree it describes")
