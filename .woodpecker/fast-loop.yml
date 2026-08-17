@@ -88,11 +88,13 @@ steps:
       # count of a thing the same file controls should not be written down at
       # all -- say the property, and let anyone who wants the number count it.
       #
-      # The tree-state work does not reach here and structurally cannot. fast-loop
-      # runs checks, not producers; the one guarded generator it reaches --
-      # catalog-evidence-inventory.sh, via its self-test, into a temp dir -- is on
-      # records_exempt precisely because its artifact is committed and
-      # byte-compared and so must NOT carry a tree state.
+      # The tree-state work does not reach here and structurally cannot:
+      # fast-loop runs checks, not producers. It used to reach exactly one
+      # guarded generator, catalog-evidence-inventory.sh, via a shell self-test
+      # into a temp dir -- and that self-test is deleted, so it now reaches none.
+      # The generator's exemption stood because its artifact is committed and
+      # byte-compared and so must NOT carry a tree state; that reasoning is
+      # unchanged and lives with the generator, not here.
       #
       # This is a log line, not a receipt. It does not survive log rotation and
       # nothing consumes it. It is here because the alternative was nothing at
