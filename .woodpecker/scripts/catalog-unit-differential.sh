@@ -7,9 +7,13 @@ readonly repository_root
 # Reads the baseline manifest and the evidence inventory and writes its own
 # receipt, so a dirty run makes it disagree with two artifacts it did not
 # produce -- which reads as their fault rather than its own.
-# shellcheck source=.woodpecker/scripts/tree-state.sh
-source "${repository_root}/.woodpecker/scripts/tree-state.sh"
-evidence_tree_state "the unit differential receipt"
+# The guard runs before anything it protects, and it REFUSES a dirty tree
+# unless EVIDENCE_ALLOW_DIRTY_TREE acknowledges it -- in which case the dirt
+# is recorded in the receipt rather than hidden. cmd/tree-state prints the
+# JSON on stdout and the refusal on stderr, so a failure here stops the run
+# whether or not anybody reads the message.
+evidence_tree_json=$(cd "${repository_root}" && go run ./cmd/tree-state -what "the unit differential receipt") || exit 1
+readonly evidence_tree_json
 readonly output=${CATALOG_UNIT_OUTPUT:?CATALOG_UNIT_OUTPUT is required}
 readonly baseline_manifest=${repository_root}/build/m0/provider-baseline.json
 readonly inventory=${repository_root}/build/release-ready/catalog-evidence-inventory.json
@@ -69,9 +73,24 @@ run_suite() {
         sort_by([.package, .test, .action])) as $normalized |
       {
         exit_code: $exit_code,
+        # A FLOOR ON THE MEASUREMENT, not only on the failures.
+        #
+        # The three conditions below it all hold over an empty run: exit code
+        # zero, no failing events, and every line parsed because there were no
+        # lines. Measured by feeding this filter empty input -- it returns
+        # result "pass" with package_pass_count 0. A `go test ./...` that
+        # produced nothing was therefore indistinguishable from a full green
+        # suite, and this receipt is consumed by catalog admission.
+        #
+        # catalog-unit-differential_test.sh already asserts package_pass_count
+        # is above zero. That file is invoked by no pipeline and no script, so
+        # the one assertion standing between us and a hollow pass lived
+        # somewhere nothing runs. It belongs in the thing that always runs.
         result: (if $exit_code == 0 and
                     ([$normalized[] | select(.action == "fail")] | length) == 0 and
-                    ($lines | length) == ($parsed | length)
+                    ($lines | length) == ($parsed | length) and
+                    ([$normalized[] |
+                      select(.test == null and .action == "pass")] | length) > 0
                  then "pass" else "fail" end),
         unparsed_line_count: (($lines | length) - ($parsed | length)),
         package_pass_count: ([$normalized[] |
@@ -131,7 +150,7 @@ jq --indent 2 --null-input \
     --arg result "${result}" \
     --argjson promotion_blockers "${promotion_blockers_json}" \
     --arg source_commit "$(git -C "${repository_root}" rev-parse HEAD)" \
-    --argjson tree_state "$(evidence_tree_json)" \
+    --argjson tree_state "${evidence_tree_json}" \
     --arg released_commit "${released_commit}" \
     --arg platform "${platform}" \
     --arg go_version "${go_version}" \

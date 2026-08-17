@@ -8,6 +8,20 @@ import (
 	"testing"
 )
 
+// PROVEN TO FAIL, recorded here rather than only in the commit that proved it.
+// A mutation filing data source acceptance under import fails this, naming both
+// maps. It cannot catch a wrong classifyTestSignals, and the hand-pinned literal
+// it replaced could not either. (3c21538e)
+//
+// RETRODICTION: "acceptance" was pinned at 35 by hand. Adding acceptance files
+// for unifi_firewall_policy and unifi_site_to_site_vpn makes it 37, and the only
+// thing in the repository that objected was that line. (7264bd4c)
+//
+// A LIMIT THE PROOF DOES NOT COVER: ReleasedRoot and CandidateRoot are the same
+// directory in this fixture, so every file comparison returns identical and the
+// released-versus-candidate diff -- the reason the inventory exists -- is not
+// exercised here. The shell gate is what runs it against a real released tag.
+
 func TestBuildEvidenceInventoryAccountsForEverySurfaceAndNamesGaps(t *testing.T) {
 	baseline := releasedBaseline(t)
 	contracts, err := BuildSurfaceContracts(

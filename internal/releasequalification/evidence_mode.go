@@ -281,12 +281,85 @@ func modeRefines(refines map[string]string, mode, target string) bool {
 	return false
 }
 
+// sourceIdentity holds when the surface's runtime file is byte-identical to the
+// released provider's, and holding means the released result carries over: this
+// surface needs no new evidence.
+//
+// THAT IS ONLY TRUE WHILE THE RUNTIME FILE CONTAINS THE THING THAT DETERMINES
+// THE SCHEMA, AND FOR 38 OF 41 SURFACES IT NO LONGER DOES.
+//
+// evidencePaths returns one path per surface -- unifi/<base>.go -- and nothing
+// from internal/generated. Since the conversion, 38 of the 41 files in unifi/
+// that assign resp.Schema assign it from a generated package. For dns_record the
+// digested wrapper holds 4 schema-related lines; the generated package holds 120.
+//
+// Reproduced rather than reasoned about. A practitioner-visible change was made
+// in internal/generated/resource_dns_record -- an attribute stopped being
+// Required -- and the file evidencePaths actually hashes was measured before and
+// after:
+//
+//	before  3ffe7e13167de315
+//	after   3ffe7e13167de315
+//
+// Identical. So the surface is stamped source_identity and inherits evidence from
+// a released provider that served a different schema.
+//
+// THE EXPOSURE IS ZERO TODAY AND IT EXPIRES AT THE NEXT RELEASE. Only three
+// surfaces currently reach this verdict -- unifi_account as managed resource and
+// data source, and unifi_setting -- and none of them has a generated package, so
+// nothing is inheriting anything it should not. That is an accident of timing,
+// not a safeguard: the conversion edited all 64 other wrappers, so their runtime
+// is CHANGED and differentialScenario takes them instead.
+//
+// Once this release is the baseline those wrappers stop changing. From then on
+// any schema-only edit -- regenerate a policy, the generated package moves, the
+// wrapper does not -- lands here and reports that no new evidence is needed.
+// That is the most common change this project makes.
+//
+// d74ccb13 did NOT close this. It changed how differentialScenario judges a
+// converted surface; it did not change whether this verdict is consulted. All
+// three modes are evaluated unconditionally above, and differentialScenario
+// explicitly defers to this one when the runtime is unchanged.
+//
+// The fix is to cover each surface's generated package. It is a change to the
+// inventory's SHAPE -- more than one runtime path per surface -- in an artifact
+// strict consumers read, so it goes consumer-first, then producer, then re-pin.
+// Doing it in one step is the break recorded in task 122, with our name on it.
 func (v evidenceView) sourceIdentity(surface catalogparity.SurfaceEvidenceInventory) verdict {
 	if surface.Runtime.Status != catalogparity.FileIdentical {
 		return verdict{mode: EvidenceSourceIdentity, because: fmt.Sprintf(
 			"runtime %s is %s against the released provider", surface.Runtime.Path, surface.Runtime.Status)}
 	}
+	// The generated package is where a delegating surface's schema actually
+	// lives, so an identical wrapper over a changed package is not source
+	// identity. Empty means the surface has no generated package and the runtime
+	// path is the whole story -- see SurfaceEvidenceInventory.Generated.
+	for _, generated := range surface.Generated {
+		if generated.Status != catalogparity.FileIdentical {
+			return verdict{mode: EvidenceSourceIdentity, because: fmt.Sprintf(
+				"generated %s is %s against the released provider", generated.Path, generated.Status)}
+		}
+	}
 	return verdict{mode: EvidenceSourceIdentity, holds: true}
+}
+
+// surfaceChanged reports whether anything that decides what this surface serves
+// differs from the released provider -- its runtime file or any of the generated
+// files it delegates to.
+//
+// The two callers below used to ask only about Runtime. That was right while the
+// runtime file held the schema and wrong the moment surfaces began delegating,
+// and it is the same question sourceIdentity answers in the negative.
+func surfaceChanged(surface catalogparity.SurfaceEvidenceInventory) bool {
+	if surface.Runtime.Status == catalogparity.FileChanged {
+		return true
+	}
+	for _, generated := range surface.Generated {
+		if generated.Status == catalogparity.FileChanged {
+			return true
+		}
+	}
+	return false
 }
 
 func (v evidenceView) differentialScenario(
@@ -294,7 +367,7 @@ func (v evidenceView) differentialScenario(
 	surface catalogparity.SurfaceEvidenceInventory,
 ) verdict {
 	const mode = EvidenceDifferentialScenario
-	if surface.Runtime.Status != catalogparity.FileChanged {
+	if !surfaceChanged(surface) {
 		return verdict{mode: mode, because: "runtime is unchanged, so source_identity covers it"}
 	}
 	planned := v.planned[key]
@@ -398,7 +471,7 @@ func (v evidenceView) pragmaticReference(
 	surface catalogparity.SurfaceEvidenceInventory,
 ) verdict {
 	const mode = EvidencePragmaticReference
-	if surface.Runtime.Status != catalogparity.FileChanged {
+	if !surfaceChanged(surface) {
 		return verdict{mode: mode, because: "runtime is unchanged, so source_identity covers it"}
 	}
 	if surface.Tests.Status != catalogparity.FileIdentical {

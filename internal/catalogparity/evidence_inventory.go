@@ -102,7 +102,26 @@ type SurfaceEvidenceInventory struct {
 	SurfaceKey
 	Wave    int            `json:"wave"`
 	Runtime FileComparison `json:"runtime"`
-	Tests   FileComparison `json:"tests"`
+	// Generated is every file OUTSIDE the runtime path that decides what this
+	// surface serves -- in practice its package under internal/generated.
+	//
+	// Runtime alone stopped being sufficient when surfaces began delegating.
+	// evidencePaths names one file, unifi/<base>.go, and 38 of the 41 files in
+	// unifi/ that assign resp.Schema now assign it from a generated package. So
+	// a schema-only change leaves the runtime digest untouched: measured on
+	// dns_record, an attribute ceasing to be Required left
+	// unifi/dns_record_resource.go at 3ffe7e13167de315 before and after, while
+	// the served schema moved.
+	//
+	// That matters because sourceIdentity holds on an identical runtime and
+	// means the released result carries over. Without this, a changed schema
+	// inherits evidence from a provider that served a different one.
+	//
+	// EMPTY IS MEANINGFUL AND IS NOT THE SAME AS ABSENT. A surface serving a
+	// hand-written schema has no generated package, and for those the runtime
+	// path really is the whole story. Three surfaces are in that position today.
+	Generated []FileComparison `json:"generated,omitempty"`
+	Tests     FileComparison   `json:"tests"`
 	// ScenarioOwners is every file this surface's acceptance evidence lives in,
 	// sorted, and it replaced a single scenario_owner string.
 	//
@@ -237,10 +256,15 @@ func BuildEvidenceInventory(input EvidenceInventoryInput) (EvidenceInventory, er
 		}
 		signals := classifyTestSignals(surface.Kind, functions, fileData)
 		missing := missingTestSignals(surface.Kind, signals)
+		generated, err := compareGeneratedFiles(input.ReleasedRoot, input.CandidateRoot, surface.SurfaceKey)
+		if err != nil {
+			return EvidenceInventory{}, fmt.Errorf("generated package for %s/%s: %w", surface.Kind, surface.Name, err)
+		}
 		entry := SurfaceEvidenceInventory{
 			SurfaceKey:     surface.SurfaceKey,
 			Wave:           contract.Wave,
 			Runtime:        runtime,
+			Generated:      generated,
 			Tests:          tests,
 			ScenarioOwners: owners,
 			TestFunctions:  functions,
@@ -454,6 +478,98 @@ func UnclaimedScenarioFiles(candidateRoot string, keys []SurfaceKey) ([]string, 
 	}
 	sort.Strings(unclaimed)
 	return unclaimed, nil
+}
+
+// generatedPackage returns the internal/generated directory a surface delegates
+// its schema to, or "" if it serves a hand-written one.
+//
+// DERIVED FROM THE TREE RATHER THAN DECLARED. The directory either exists or it
+// does not, and the naming is the generator's own convention; a policy list
+// would be a second copy of a fact the filesystem already holds, which is the
+// failure this project keeps paying for. It also means a surface migrating
+// starts being covered the moment its package appears, with nothing to remember.
+func generatedPackage(key SurfaceKey) string {
+	stem := strings.TrimPrefix(key.Name, "unifi_")
+	if stem == key.Name || stem == "" {
+		return ""
+	}
+	switch key.Kind {
+	case ManagedResource:
+		return "internal/generated/resource_" + stem
+	case DataSource:
+		return "internal/generated/datasource_" + stem
+	case ListResource:
+		return "internal/generated/listresource_" + stem
+	case Action:
+		return "internal/generated/action_" + stem
+	default:
+		return ""
+	}
+}
+
+// compareGeneratedFiles compares every Go file in a surface's generated package.
+//
+// A RELEASED FILE THAT DOES NOT EXIST IS NOT AN ERROR, and that is the common
+// case rather than the edge one: the conversion created these packages, so at
+// v0.101.2 almost none of them are there. Absent on the released side is
+// recorded as changed with an empty released digest, which is the truthful
+// reading -- it certainly is not identical, and inventing a digest for a file
+// that never existed would be worse than leaving the field empty.
+//
+// The candidate side decides which files exist. A file deleted by the candidate
+// therefore disappears from the comparison rather than being reported, which is
+// a real limit: a surface that loses a generated file looks the same as one that
+// never had it. Catching that needs the released listing too, and the released
+// listing is only meaningful once these packages exist on both sides.
+func compareGeneratedFiles(releasedRoot, candidateRoot string, key SurfaceKey) ([]FileComparison, error) {
+	directory := generatedPackage(key)
+	if directory == "" {
+		return nil, nil
+	}
+	entries, err := os.ReadDir(filepath.Join(candidateRoot, filepath.FromSlash(directory)))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read generated package %s: %w", directory, err)
+	}
+	var names []string
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") {
+			names = append(names, entry.Name())
+		}
+	}
+	sort.Strings(names)
+
+	comparisons := make([]FileComparison, 0, len(names))
+	for _, name := range names {
+		relativePath := directory + "/" + name
+		candidateData, err := os.ReadFile(filepath.Join(candidateRoot, filepath.FromSlash(relativePath)))
+		if err != nil {
+			return nil, fmt.Errorf("read candidate %s: %w", relativePath, err)
+		}
+		candidateDigest := sha256.Sum256(candidateData)
+		comparison := FileComparison{
+			Path:            relativePath,
+			Status:          FileChanged,
+			CandidateSHA256: hex.EncodeToString(candidateDigest[:]),
+		}
+		releasedData, err := os.ReadFile(filepath.Join(releasedRoot, filepath.FromSlash(relativePath)))
+		switch {
+		case err == nil:
+			releasedDigest := sha256.Sum256(releasedData)
+			comparison.ReleasedSHA256 = hex.EncodeToString(releasedDigest[:])
+			if releasedDigest == candidateDigest {
+				comparison.Status = FileIdentical
+			}
+		case os.IsNotExist(err):
+			// Left as changed with no released digest.
+		default:
+			return nil, fmt.Errorf("read released %s: %w", relativePath, err)
+		}
+		comparisons = append(comparisons, comparison)
+	}
+	return comparisons, nil
 }
 
 func compareEvidenceFile(releasedRoot, candidateRoot, relativePath string) (FileComparison, error) {

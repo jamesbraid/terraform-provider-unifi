@@ -35,6 +35,23 @@ import (
 // Description method, and a reimplementation would be one more thing to be
 // wrong. What source CAN promise is that it copied the expression out
 // verbatim, and the deriver checks that itself.
+//
+// PROVEN TO FAIL, recorded here rather than only in the commit that proved it.
+// Making resolveComposite fail everywhere -- which marks every surface delegated
+// and sets every fact aside -- fails this test twice over: the floor reports 856
+// behaviours observed and all of them excused, and the delegation check names
+// unifi_device, unifi_port_forward and unifi_setting as excused with no
+// generated package behind them. Before the floor existed that same mutation
+// PASSED, having compared nothing. (b05f9f87)
+//
+// THE LIMIT THE PROOF DOES NOT COVER, and it grows as the migration succeeds.
+// The floor asserts that SOMETHING was compared, never that enough was. Each
+// surface that moves to a generated schema leaves this comparison legitimately,
+// so the compared population shrinks with every migration: measured on the tree
+// that added this note, 112 of 855 behaviour lines across 3 of 29 managed
+// resources. The other 26 are carried by the inventory golden rather than by
+// this oracle. The t.Logf below prints the split on every run, so the shrinkage
+// is visible rather than something a reader has to infer.
 func Test_schemaBehaviourIsDerivable(t *testing.T) {
 	ctx := context.Background()
 	observedLines, _ := schemaBehaviourFacts(ctx, t)
