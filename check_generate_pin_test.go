@@ -9,28 +9,34 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/gounifipin"
 )
 
-// The go-unifi pin is one fact with thirty-nine hand-maintained copies.
+// The go-unifi pin used to have thirty-nine hand-maintained copies in
+// provider-codegen/generate.go -- one per //go:generate line, each repeating the
+// reviewed commit and the module path. A go:generate `-command` alias now
+// declares both once and expands them into every call, so the file holds ONE
+// copy of each.
 //
-// provider-codegen/generate.go carries a //go:generate line per bootstrapped
-// struct, and each repeats the reviewed commit, the module path and the pinned
-// version. go:generate lines are literal text: they cannot read a Go constant,
-// so the duplication is structural rather than careless. That is exactly why it
-// needs a check -- nothing else connects those copies to the package that
-// declares the pin, and a repoint that updates thirty-eight of thirty-nine
-// leaves a tree that builds locally and fails an hour into CI. The header of
-// the retired go-unifi-pin.sh records that happening.
+// One copy is not zero. The alias is still literal text that no compiler
+// relates to internal/gounifipin, and go:generate cannot read a Go constant.
+// This is what relates them.
 //
 // THE AUTHORITY IS internal/gounifipin AND go.mod, NEVER generate.go. Reading
-// the commit out of generate.go and comparing it to generate.go would agree
-// with itself no matter how wrong it was.
+// the commit out of the file under test would agree with itself for any value,
+// which is why the second test below exists.
 //
-// Not asserted here: the ~97 generated artifacts under provider-codegen/
-// bootstrap and provider-codegen/generated that also contain the commit. Those
-// are OUTPUTS that record which pin produced them; regeneration rewrites them,
-// and a stale one is caught by regenerating rather than by reading. Only the
-// hand-written directives can drift silently.
-
-var sdkBootstrapDirective = regexp.MustCompile(`^//go:generate go run \.\./cmd/sdk-bootstrap .*$`)
+// Not asserted: the ~97 generated artifacts under provider-codegen/bootstrap
+// and provider-codegen/generated that also contain the commit. Those are
+// OUTPUTS recording which pin produced them; regeneration rewrites them and a
+// stale one is caught by regenerating. Only hand-written text can rot unseen.
+var (
+	// The alias definition: the single home of the commit and module path.
+	sdkBootstrapAlias = regexp.MustCompile(`^//go:generate -command sdkbootstrap go run \.\./cmd/sdk-bootstrap `)
+	// Each use of the alias. The version still lives once per line, inside
+	// -output, because it names a distinct file per surface.
+	sdkBootstrapCall = regexp.MustCompile(`^//go:generate sdkbootstrap `)
+	// The pre-refactor shape. If it ever comes back, the alias has been undone
+	// and the commit is being copied per line again.
+	sdkBootstrapInline = regexp.MustCompile(`^//go:generate go run \.\./cmd/sdk-bootstrap `)
+)
 
 func TestGenerateDirectivesNameTheDeclaredPin(t *testing.T) {
 	const path = "provider-codegen/generate.go"
@@ -47,59 +53,67 @@ func TestGenerateDirectivesNameTheDeclaredPin(t *testing.T) {
 		t.Fatalf("reading the declared version from go.mod: %v", err)
 	}
 
-	// The floor is derived, not a number that expires. Every line that LOOKS
-	// like an sdk-bootstrap directive must also parse as one; if the field
-	// regexps stop matching, parsed falls below candidates and this fails
-	// instead of quietly checking nothing. A hardcoded count would have to be
-	// edited every time a surface is added, and #161 is what that becomes.
-	candidates, parsed := 0, 0
-
+	aliases, calls := 0, 0
 	for number, line := range lines {
-		if !sdkBootstrapDirective.MatchString(line) {
-			continue
-		}
-		candidates++
+		switch {
+		case sdkBootstrapInline.MatchString(line):
+			t.Errorf("%s:%d: bootstraps go-unifi inline instead of through the sdkbootstrap alias, "+
+				"so this line carries its own copy of the commit:\n\t%s", path, number+1, line)
 
-		commit, okCommit := flagValue(line, "-commit")
-		pkg, okPackage := flagValue(line, "-package")
-		output, okOutput := flagValue(line, "-output")
-		if !okCommit || !okPackage || !okOutput {
-			t.Errorf("%s:%d: directive is missing -commit, -package or -output; "+
-				"if its shape changed on purpose, this parser has to change with it:\n\t%s",
-				path, number+1, line)
-			continue
-		}
-		parsed++
+		case sdkBootstrapAlias.MatchString(line):
+			aliases++
+			commit, okCommit := flagValue(line, "-commit")
+			pkg, okPackage := flagValue(line, "-package")
+			if !okCommit || !okPackage {
+				t.Errorf("%s:%d: the sdkbootstrap alias declares no -commit or -package; every call "+
+					"inherits from it, so an incomplete alias is worse than a missing one:\n\t%s",
+					path, number+1, line)
+				continue
+			}
+			if commit != wantCommit {
+				t.Errorf("%s:%d: the alias names commit %s, but internal/gounifipin declares %s.\n"+
+					"\tAll %d bootstraps inherit this line. Repoint it, or if the pin moved, move it "+
+					"in gounifipin and regenerate.", path, number+1, commit, wantCommit, calls)
+			}
+			if pkg != wantPackage {
+				t.Errorf("%s:%d: the alias names package %s, want %s (gounifipin.ModulePath + \"/unifi\")",
+					path, number+1, pkg, wantPackage)
+			}
 
-		if commit != wantCommit {
-			t.Errorf("%s:%d: names commit %s, but internal/gounifipin declares %s.\n"+
-				"\tThe pin has one authority and this line is a copy of it. Repoint the copy, "+
-				"or if the pin moved, move it in gounifipin and regenerate.",
-				path, number+1, commit, wantCommit)
-		}
-		if pkg != wantPackage {
-			t.Errorf("%s:%d: names package %s, want %s (gounifipin.ModulePath + \"/unifi\")",
-				path, number+1, pkg, wantPackage)
-		}
-		// The version is embedded in the output path, so a repoint that updates
-		// go.mod and the commit but not the filenames writes the new pin's
-		// bootstrap into the old pin's name.
-		if !strings.Contains(output, "go-unifi-"+wantVersion+"-") {
-			t.Errorf("%s:%d: writes to %s, which does not carry the version go.mod declares (%s)",
-				path, number+1, output, wantVersion)
+		case sdkBootstrapCall.MatchString(line):
+			calls++
+			output, ok := flagValue(line, "-output")
+			if !ok {
+				t.Errorf("%s:%d: sdkbootstrap call has no -output:\n\t%s", path, number+1, line)
+				continue
+			}
+			// The version is embedded per line because each names a different
+			// file, so it did not collapse into the alias. A repoint that moves
+			// go.mod and the alias but not these writes the new pin's bootstrap
+			// into the old pin's filename.
+			if !strings.Contains(output, "go-unifi-"+wantVersion+"-") {
+				t.Errorf("%s:%d: writes to %s, which does not carry the version go.mod declares (%s)",
+					path, number+1, output, wantVersion)
+			}
 		}
 	}
 
-	if candidates == 0 {
-		t.Fatalf("no sdk-bootstrap directives found in %s; the check is reading the wrong file "+
-			"or the directive shape changed, and either way it is not checking anything", path)
+	// Floors, both derived rather than counts that expire when a surface is
+	// added. Exactly one alias: a second one would let half the calls inherit a
+	// different commit, which is the defect this replaced, reintroduced with
+	// fewer copies. At least one call: otherwise the alias is checked and
+	// nothing uses it, and this test would pass having verified nothing that
+	// runs.
+	if aliases != 1 {
+		t.Fatalf("found %d sdkbootstrap alias definitions in %s, want exactly 1; more than one "+
+			"means different calls can inherit different pins", aliases, path)
 	}
-	if parsed != candidates {
-		t.Fatalf("%d of %d sdk-bootstrap directive(s) could not be parsed; the ones that failed "+
-			"are unchecked", candidates-parsed, candidates)
+	if calls == 0 {
+		t.Fatalf("found no sdkbootstrap calls in %s; the alias is checked but nothing uses it, so "+
+			"this test verified nothing", path)
 	}
-	t.Logf("%d sdk-bootstrap directive(s) checked against gounifipin (%s) and go.mod (%s)",
-		parsed, wantCommit[:12], wantVersion)
+	t.Logf("1 alias and %d call(s) checked against gounifipin (%s) and go.mod (%s)",
+		calls, wantCommit[:12], wantVersion)
 }
 
 // flagValue returns the value following name in a go:generate line.
@@ -138,7 +152,11 @@ func TestGenerateDirectivePinIsNotSelfDerived(t *testing.T) {
 		checkBody = checkBody[:end]
 	}
 
-	for _, authority := range []string{"gounifipin.ExpectedCommit()", "gounifipin.ModulePath", "gounifipin.DeclaredVersion"} {
+	for _, authority := range []string{
+		"gounifipin.ExpectedCommit()",
+		"gounifipin.ModulePath",
+		"gounifipin.DeclaredVersion",
+	} {
 		if !strings.Contains(checkBody, authority) {
 			t.Errorf("the directive check no longer reads %s; its expected values must come from "+
 				"the pin package, or it compares generate.go to itself", authority)
