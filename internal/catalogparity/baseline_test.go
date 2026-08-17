@@ -115,7 +115,7 @@ func releasedBaselineDocument(t *testing.T) map[string]any {
 }
 
 func schemaDigests(document map[string]any) map[string]any {
-	return document["schema_sha256"].(map[string]any)
+	return jsonObject(document["schema_sha256"])
 }
 
 func baselineFixturePath() string {

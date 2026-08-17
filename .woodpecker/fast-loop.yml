@@ -150,7 +150,7 @@ steps:
       # forgejo branches, so the newest code in the repository is the least
       # linted code in the repository until after it has landed.
       #
-      # SEVEN LINTERS, CHOSEN BY MEASUREMENT RATHER THAN TASTE: each reports zero
+      # EIGHT LINTERS, CHOSEN BY MEASUREMENT RATHER THAN TASTE: each reports zero
       # across the tree today AND was watched firing on a planted violation.
       # That pair matters -- a linter that reports zero because it never runs
       # looks identical to a clean tree. Any hit here is therefore new, and the
@@ -162,6 +162,13 @@ steps:
       # internal/gounifipin's deliberate os.MkdirTemp("/tmp", ...), and that one
       # line was all that kept the rule off every other test.
       #
+      # forcetypeassert joined by being PAID DOWN rather than by arriving clean.
+      # It reported 104, every one in a test file and 94 in
+      # internal/providercompiler/compile_test.go, so it guarded nothing while
+      # the production code it exists to protect had none. The assertions now go
+      # through jsonObject/jsonArray/jsonString/jsonBool, which assert once and
+      # say what they found.
+      #
       # MEASURE WITH THE CAPS OFF OR THE NUMBER IS NOT THE NUMBER. Without
       # --max-issues-per-linter=0 --max-same-issues=0 the defaults are 50 and 3,
       # and forcetypeassert -- whose findings share one message -- reads as 6
@@ -171,13 +178,11 @@ steps:
       # cap cannot hide a zero.
       #
       # The remaining enabled linters, measured on this tree with the caps off:
-      # errcheck 245, staticcheck 18, unparam 4, nilerr 2, predeclared 2,
-      # unused 2 in production, plus forcetypeassert at 104 -- ALL of which are
-      # in test files, 94 in internal/providercompiler/compile_test.go alone, and
-      # NONE in production code. Turning any of them on now would be a gate whose
-      # remedy has nothing to do with the change in front of whoever trips it.
-      # They are paid down separately, and each joins this list when it reaches
-      # zero -- so membership stays a measured fact rather than a preference.
+      # errcheck 245, staticcheck 18, unparam 4, nilerr 2, predeclared 2 and
+      # unused 2. Turning any of them on now would be a gate whose remedy has
+      # nothing to do with the change in front of whoever trips it. They are paid
+      # down separately, and each joins this list when it reaches zero -- so
+      # membership stays a measured fact rather than a preference.
       #
       # --no-config is deliberate. This answers a different question from the
       # GitHub job (four clean linters over the whole tree, versus every linter
@@ -187,7 +192,7 @@ steps:
       # The version is pinned here and nowhere else. If it goes stale the linter
       # merely ages; nothing breaks, which is why there is no guard on it.
       - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
-      - golangci-lint run --no-config --default=none --enable=ineffassign --enable=makezero --enable=misspell --enable=unconvert --enable=copyloopvar --enable=durationcheck --enable=usetesting --timeout 5m ./...
+      - golangci-lint run --no-config --default=none --enable=ineffassign --enable=makezero --enable=misspell --enable=unconvert --enable=copyloopvar --enable=durationcheck --enable=usetesting --enable=forcetypeassert --timeout 5m ./...
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
       - go generate ./...
