@@ -283,6 +283,20 @@ func sortedValue(v any) any {
 // this was got wrong, the line was classified by what the file was called.
 //
 // PROVEN: restoring the original digests cmp makes this fail and name the line.
+//
+// WHAT IT DOES NOT COVER, and the counterexample is real rather than
+// hypothetical. m1-dns-compiler.sh built BOTH the released provider and the
+// candidate into its work root, then compared them -- two ${work_root}
+// operands, and still a released-versus-candidate claim that had never heard of
+// the ledger. Pipeline 228 failed on it with the six declared changes. So "no
+// mixed operands" does not mean "no unledgered released-versus-candidate
+// comparison anywhere": a released schema REBUILT during a run is still the
+// released schema, and provenance of the bytes is not provenance of the claim.
+//
+// This rule is kept narrow deliberately. Stretching one predicate over two
+// distinctions is how the digests comparison came to be classified by the name
+// of its file, and widening this one to chase the m1 case would trade a rule
+// that is exactly right for one that is approximately right about more.
 func TestNoComparisonMixesCommittedAndRunOperands(t *testing.T) {
 	raw, err := os.ReadFile("../../.woodpecker/scripts/catalog-build-schema.sh")
 	if err != nil {

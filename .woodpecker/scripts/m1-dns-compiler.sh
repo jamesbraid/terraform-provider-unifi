@@ -124,8 +124,26 @@ for build in released head; do
     run_schema "${tofu_bin}" tofu "${build}"
 done
 
-cmp "${work_root}/released.terraform.canonical.json" "${work_root}/head.terraform.canonical.json"
-cmp "${work_root}/released.tofu.canonical.json" "${work_root}/head.tofu.canonical.json"
+# THE WHOLE-SCHEMA COMPARISON IS GONE, and its absence is the point.
+#
+# These two lines asserted released-equals-candidate over the entire schema.
+# That is not this lighthouse's claim -- it is the release's, it is owned by
+# catalog-build-schema.sh, and there it consults the schema-change ledger and
+# names the attribute that moved. Here it was a borrowed copy that had never
+# heard of the ledger, so the six declared changes to unifi_network and
+# unifi_wlan broke it: pipeline 228 failed at "differ: char 139633", which is
+# the same offset the replaced gate used to report.
+#
+# The claim below is the one this script exists to make: three unifi_dns_record
+# digests, pinned by name. None of the declared changes touches dns_record, so
+# they are unaffected -- which is what a per-surface assertion buys and a
+# whole-schema comparison gives away.
+#
+# Worth stating because it defeats a rule I wrote: both operands here are under
+# ${work_root}, so the "a committed operand means a released claim" test cannot
+# see this. The released provider is REBUILT during the run, and a released
+# schema rebuilt in the work root is still the released schema. Provenance of
+# the bytes is not provenance of the claim.
 
 test "$(jq -r '.schema_sha256["resource_schemas.unifi_dns_record"]' "${work_root}/head.terraform.digests.json")" = "${resource_digest}"
 test "$(jq -r '.schema_sha256["resource_identity_schemas.unifi_dns_record"]' "${work_root}/head.terraform.digests.json")" = "${identity_digest}"
