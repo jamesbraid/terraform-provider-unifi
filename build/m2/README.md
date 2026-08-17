@@ -11,6 +11,11 @@ and structural-source digest drift.
 The M1 gate remains the executable provider check. Run it with the pinned CLIs
 after regenerating from the catalog:
 
+> The command below no longer runs: `m1-dns-compiler.sh` was deleted once the
+> proof had finished its job -- nothing outside its own workflow read its
+> receipt. The receipt is kept as the record of a run that happened; it is
+> no longer reproducible from this tree.
+
 ```sh
 TERRAFORM_BIN=/path/to/terraform \
 TOFU_BIN=/path/to/tofu \

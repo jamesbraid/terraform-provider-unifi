@@ -131,11 +131,30 @@ func TestEveryCheckIsReachable(t *testing.T) {
 			commands = append(commands, entry.Name())
 		}
 	}
-	// Without this the whole test passes by finding nothing to check, which is
-	// the shape it exists to detect.
-	if len(shellChecks) < 5 || len(producers) < 5 || len(commands) < 5 {
-		t.Fatalf("found %d shell self-test(s), %d producer(s) and %d command(s); the walk is not reaching the tree",
-			len(shellChecks), len(producers), len(commands))
+	// THE FLOOR IS THAT THE WALK WORKED, NOT THAT IT FOUND A LOT.
+	//
+	// This used to require five of each. That was right while the populations
+	// could only shrink by accident, and it is wrong now: two of the three are
+	// being deleted on purpose, and the self-test count was four deletions from
+	// firing. A guard that trips when the work succeeds is a guard aimed at the
+	// wrong event.
+	//
+	// A count cannot tell "found nothing because the walk broke" from "found
+	// nothing because we finished". Both are zero. So the assertion moves to the
+	// thing that stays answerable at zero: the directories resolved and were
+	// read. An unreadable directory is a broken walk; an empty one is a
+	// completed migration, and only the first should stop anybody.
+	//
+	// cmd/ is checked the same way and not exempted for being large today. The
+	// reason this needed changing is that a number which happens to be
+	// comfortable is not a property.
+	for _, directory := range []string{filepath.Join(".woodpecker", "scripts"), "cmd"} {
+		if _, err := os.Stat(directory); err != nil {
+			t.Fatalf("%s cannot be read, so an empty population would mean nothing: %v", directory, err)
+		}
+	}
+	if len(sources) == 0 {
+		t.Fatal("no sources were loaded, so every reachability verdict below would be vacuous")
 	}
 
 	unreachable := map[string]bool{}
@@ -197,14 +216,17 @@ func TestEveryCheckIsReachable(t *testing.T) {
 // down so the set cannot grow without somebody saying so, and so a reader can
 // see what is unguarded without running anything.
 var knownUnreachableChecks = map[string]string{
-	"producer m0-uos-dns-qualification.sh": "builds build/m0/uos-dns-qualification.json and is " +
-		"invoked by no workflow, no Makefile and no other script. Its output variable " +
-		"M0_UOS_RECEIPT_OUTPUT is also never set, so even if something did run it the receipt " +
-		"would go nowhere. This is the ONLY producer in .woodpecker/scripts that nothing runs, " +
-		"and it is not a one-line fix: wiring it needs a UOS qualification step nobody can " +
-		"verify from here. Task 114 P4, escalated to James rather than guessed at.",
 	"command catalog-release-ready": "the terminal release gate. No pipeline invokes it and " +
 		"three of its eight inputs have no producer. Task 106.",
+	"command m3-dns-qualification": "the Go port of m3-dns-qualification.sh, landed BESIDE the " +
+		"shell rather than replacing it, and unwired on purpose until the two are compared. " +
+		"build/migration-baseline froze receipts only for producers being DELETED, on the " +
+		"ground that nothing could reproduce them afterwards; a PORTED gate gets the live " +
+		"side-by-side instead, which needs both implementations present. That comparison is " +
+		"blocked on one completed run of the shell gate, and its step has never finished -- see " +
+		"the m3-dns-qualification.sh exemption in check_tree_state_coverage_test.go. It cannot " +
+		"be run here either: the script requires x86_64. Task 155 holds the cutover steps. " +
+		"Wiring this before the diff is recorded would destroy the only reference the port has.",
 	"command policy-scaffold":  "authoring tool, run by hand when a surface is migrated.",
 	"command schema-behaviour": "authoring tool, run by hand when a surface is migrated.",
 	"command list-policy-scaffold": "authoring tool for list policies, run by hand. Its output " +
