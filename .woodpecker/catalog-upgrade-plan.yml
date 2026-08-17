@@ -37,10 +37,13 @@ steps:
       - go run ./cmd/workspace-provenance
       - apt-get update
       - apt-get install --yes --no-install-recommends ca-certificates curl docker.io git jq unzip
-      # The harness self-test runs FIRST and needs neither controller nor
-      # network. If the harness cannot tell its own failure shapes apart there
-      # is no point spending a controller to find that out.
-      - bash .woodpecker/scripts/catalog-upgrade-plan_test.sh
+      # The harness self-test used to run here, ahead of everything, on the
+      # argument that there is no point spending a controller to find out that
+      # the harness cannot tell its own failure shapes apart. That argument is
+      # right and the check now runs EARLIER and more often: the harness is
+      # internal/upgradeplan, its nine failure shapes are `go test` cases, and
+      # fast-loop exercises them on every push rather than in this manual
+      # pipeline. The script it tested is gone in the same commit.
       - curl --fail --location --silent --show-error --output /tmp/tofu.zip https://github.com/opentofu/opentofu/releases/download/v1.12.1/tofu_1.12.1_linux_amd64.zip
       - echo '1fc9af962e3632b7cd0ba27076cd9f1ced177567defe9e331ac37f5a40468575  /tmp/tofu.zip' | sha256sum --check -
       - unzip -q /tmp/tofu.zip -d /tmp
