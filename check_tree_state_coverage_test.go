@@ -42,10 +42,25 @@ func TestEveryEvidenceGeneratorIsGuarded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Without this the whole test passes by finding nothing to check, which is
-	// the shape it exists to detect.
-	if len(scripts) < 10 {
-		t.Fatalf("found %d shell script(s); the walk is not reaching the tree", len(scripts))
+	// THE FLOOR IS THAT THE WALK WORKED, NOT THAT IT FOUND A LOT.
+	//
+	// It used to be `len(scripts) < 10`, which was right when the population was
+	// shell and could only shrink by accident. It is wrong now: this lane exists
+	// to delete those scripts, so the guard would have fired on the migration
+	// SUCCEEDING -- 20 today, 11 deletions from tripping, and the target is zero.
+	//
+	// Lowering the number moves the same collision a few deletions later. The
+	// defect is that a count cannot tell "found nothing because the walk broke"
+	// from "found nothing because we finished", which is the two-causes-one-zero
+	// shape this repository keeps producing -- the stub's catch-all exit 0, the
+	// jq select that wrote a zero-byte file, and now this.
+	//
+	// So the question becomes one that stays answerable at zero scripts: did I
+	// reach and read the directory. An unreadable or missing directory is a
+	// broken walk; an empty one is a finished migration.
+	if _, err := os.Stat(filepath.Join(".woodpecker", "scripts")); err != nil {
+		t.Fatalf("the scripts directory cannot be read, so an empty population would mean "+
+			"nothing: %v", err)
 	}
 
 	writesEvidence := regexp.MustCompile(`build/[a-z0-9-]+/[a-z0-9-]+\.json|\$\{?[A-Z0-9_]*OUTPUT[A-Z0-9_]*`)
@@ -112,6 +127,116 @@ func TestEveryEvidenceGeneratorIsGuarded(t *testing.T) {
 			len(stale), strings.Join(stale, "\n    "))
 	}
 	t.Logf("%d evidence-writing script(s) examined; %d exempt", population, len(unguardedGenerators))
+}
+
+// TestEveryGeneratorCallSitePassesTheTreeState is the half that survives the
+// shell going away, and without it this file's coverage SHRINKS every time the
+// port succeeds.
+//
+// The test above walks *.sh. Binaries cannot enter that population at all, so a
+// script converted to a binary leaves the check rather than joining it, and the
+// guard stops being verified for that artifact at the moment the port lands.
+// Seven binaries already take -tree-state and nothing checked any of them.
+//
+// A BINARY'S GUARD LIVES AT ITS CALL SITE, not inside it. It is handed the tree
+// state rather than measuring it -- deliberately, so there is one measurement
+// rather than two that can disagree -- which means the thing that can be wrong
+// is a workflow line that invokes the generator and omits the flag. That line
+// is in .woodpecker/*.yml, so it is checkable now and stays checkable when no
+// script is left.
+//
+// DECLARING THE FLAG IS THE POPULATION TEST, and it is the binary saying so
+// itself. A generator whose author never added -tree-state is outside this
+// check by construction, which is a real limit: it catches a forgotten call
+// site, not a forgotten flag. The flags have no defaults and the binaries
+// refuse without them, so a missed call site also fails at run time -- this
+// turns that into a failure at push time, naming the line.
+func TestEveryGeneratorCallSitePassesTheTreeState(t *testing.T) {
+	workflows, err := filepath.Glob(filepath.Join(".woodpecker", "*.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(workflows) == 0 {
+		t.Fatal("no workflows found, so every assertion below would be vacuous")
+	}
+
+	guarded := commandsDeclaringTreeState(t)
+	if len(guarded) == 0 {
+		t.Fatal("no command declares a -tree-state flag; the walk is not reaching cmd/")
+	}
+
+	var missing []string
+	for _, workflow := range workflows {
+		body, err := os.ReadFile(workflow)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, line := range strings.Split(string(body), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			for _, command := range guarded {
+				// The command name must be followed by a boundary, or
+				// cmd/catalog-admission matches cmd/catalog-admission-extra.
+				marker := "./cmd/" + command
+				index := strings.Index(trimmed, marker)
+				if index < 0 {
+					continue
+				}
+				if rest := trimmed[index+len(marker):]; rest != "" &&
+					!strings.HasPrefix(rest, " ") && !strings.HasPrefix(rest, "'") {
+					continue
+				}
+				if strings.Contains(trimmed, "-tree-state") {
+					continue
+				}
+				missing = append(missing, fmt.Sprintf("%s: %s", filepath.Base(workflow), command))
+			}
+		}
+	}
+	sort.Strings(missing)
+
+	if len(missing) > 0 {
+		t.Errorf("%d call site(s) invoke a generator that requires a tree state without passing one:\n    %s\n\n"+
+			"    Add -tree-state \"$(go run ./cmd/tree-state -what '...')\" to the command. The\n"+
+			"    binary refuses without it, so this is a pipeline that fails at the step rather\n"+
+			"    than a receipt that lies -- but it fails after everything above it has run.",
+			len(missing), strings.Join(missing, "\n    "))
+	}
+	t.Logf("%d workflow(s) examined; %d command(s) require a tree state", len(workflows), len(guarded))
+}
+
+// commandsDeclaringTreeState lists the binaries that take the tree state as an
+// argument, which is how a Go generator participates in this rule.
+func commandsDeclaringTreeState(t *testing.T) []string {
+	t.Helper()
+	entries, err := os.ReadDir("cmd")
+	if err != nil {
+		t.Fatalf("reading cmd: %v", err)
+	}
+	var commands []string
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "tree-state" {
+			continue
+		}
+		sources, err := filepath.Glob(filepath.Join("cmd", entry.Name(), "*.go"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, source := range sources {
+			body, err := os.ReadFile(source)
+			if err != nil {
+				continue
+			}
+			if strings.Contains(string(body), `"tree-state"`) {
+				commands = append(commands, entry.Name())
+				break
+			}
+		}
+	}
+	sort.Strings(commands)
+	return commands
 }
 
 // unguardedGenerators is a LEDGER, not a blessing: scripts that write evidence
