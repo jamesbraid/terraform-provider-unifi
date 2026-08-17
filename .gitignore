@@ -88,6 +88,7 @@ build/**/*-ci.json
 /.woodpecker/fixtures/catalog-acceptance/unifi-emu
 /.woodpecker/fixtures/catalog-acceptance/devices.fleet.json
 /upgrade-plan-runner
+/catalog-controller-differential
 /catalog-dependency-publishability
 /catalog-unit-differential
 /schema-parity
