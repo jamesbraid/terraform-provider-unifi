@@ -326,6 +326,33 @@ func validateReleaseReadyInput(input ReleaseReadyInput) error {
 // TestAcceptedReleaseBlockersMatchTheCampaignPolicy rather than by hoping. A
 // pinned decision with a freshness check on its source is the pattern
 // evidence_mode_committed_test.go already uses in this package.
+//
+// WHAT AN ENTRY IS FOR, stated because the prohibition above was read as
+// covering more than it says and the gap was mine. It forbids one mechanism:
+// computing this set at runtime from a field the gate exists to check. It does
+// NOT forbid a human adding an entry -- that is the DESIGNED path, and the
+// freshness check exists precisely to prompt it.
+//
+// AN ENTRY RECORDS A DECISION THAT WE SHIP WITH THAT GAP UNRESOLVED. It is not
+// a note that the policy mentions the gap. The two are indistinguishable in the
+// diff and opposite in meaning:
+//
+//	added because WE HAVE DECIDED TO SHIP WITH THIS GAP     the designed path
+//	added because THE CHECK IS RED AND THIS MAKES IT GREEN  derive-to-fit, one
+//	                                                       entry at a time
+//
+// The second is the same defect as the runtime derivation, arrived at by hand:
+// the freshness check compares this set against the campaign policy, so
+// resolving a red by copying the policy's entry here makes the check compare a
+// copy against its source and verify nothing. Identical diffs, and nothing in
+// the tree distinguishes them -- which is why the reason has to be written down
+// rather than inferred from the fact that someone added it.
+//
+// SO EVERY ENTRY CARRIES WHY WE ARE WILLING TO SHIP THAT GAP, not which policy
+// line it matches. If the honest answer is "because the check was red", the
+// entry is wrong and the gap needs closing, or the policy needs to stop
+// accepting it. The question to answer before adding one is never "does the
+// policy declare this" -- it is "do we ship without this evidence".
 var acceptedReleaseBlockers = []catalogparity.EvidenceGap{{
 	SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"},
 	Signal:     "hardware_claim",
