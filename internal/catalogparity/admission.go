@@ -657,8 +657,11 @@ func validateControllerAdmission(
 	if receipt.FormatVersion != 1 || receipt.Gate != "catalog controller differential" {
 		return fmt.Errorf("controller differential identity is invalid")
 	}
-	if receipt.Result != "blocked_evidence" || !validSHA256(receipt.PlanSHA256) {
-		return fmt.Errorf("controller differential result is %q", receipt.Result)
+	if err := RequireControllerResultAgreesWithGaps(receipt); err != nil {
+		return err
+	}
+	if !validSHA256(receipt.PlanSHA256) {
+		return fmt.Errorf("controller differential records no plan digest")
 	}
 	if receipt.ReleasedCommit != build.ReleasedCommit || receipt.CandidateCommit != build.SourceCommit {
 		return fmt.Errorf("controller source commit lineage does not match build/schema")
