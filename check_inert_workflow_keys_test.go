@@ -55,8 +55,11 @@ var inertWorkflowKeys = map[string]string{
 // grammar here -- would put the rule in two places that can disagree, which is
 // the defect the check exists to prevent.
 //
-// PROVEN TO FAIL: adding `timeout: 8m` back to fast-loop.yml reports
-// `.woodpecker/fast-loop.yml:52 declares "timeout"`.
+// PROVEN TO FAIL, four ways, each with its own message: re-adding `timeout: 8m`
+// under fast-loop's step image reports `.woodpecker/fast-loop.yml:47 declares
+// "timeout"`; breaking the control matcher reports the scanner cannot see key
+// positions; globbing a directory that does not exist reports it read nothing;
+// and the four comments naming a timeout stay clean throughout.
 func TestNoWorkflowDeclaresAnInertKey(t *testing.T) {
 	workflows, err := filepath.Glob(filepath.Join(".woodpecker", "*.yml"))
 	if err != nil {
@@ -84,18 +87,14 @@ func TestNoWorkflowDeclaresAnInertKey(t *testing.T) {
 	control := regexp.MustCompile(`^\s*image:`)
 	found := 0
 	for _, workflow := range workflows {
-		if _, hits := scanKeys(t, workflow, control); len(hits) > 0 {
-			found += len(hits)
-		}
+		found += len(scanKeys(t, workflow, control))
 	}
 	if found == 0 {
 		t.Fatal("control: the scanner found no `image:` key in any workflow, so it cannot see key positions and every case below would pass vacuously")
 	}
 
 	for _, workflow := range workflows {
-		lines, hits := scanKeys(t, workflow, matcher)
-		_ = lines
-		for _, hit := range hits {
+		for _, hit := range scanKeys(t, workflow, matcher) {
 			t.Errorf("%s:%d declares %q, which Woodpecker parses and ignores -- %s",
 				workflow, hit.line, hit.key, inertWorkflowKeys[hit.key])
 		}
@@ -110,15 +109,14 @@ type keyHit struct {
 // scanKeys reports where pattern matches a key position, skipping comment lines
 // so prose that mentions a key by name is not mistaken for declaring it. Four
 // such comments exist today and every one of them should survive this check.
-func scanKeys(t *testing.T, path string, pattern *regexp.Regexp) (int, []keyHit) {
+func scanKeys(t *testing.T, path string, pattern *regexp.Regexp) []keyHit {
 	t.Helper()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
 	}
 	var hits []keyHit
-	lines := strings.Split(string(data), "\n")
-	for index, line := range lines {
+	for index, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "#") {
 			continue
 		}
@@ -130,5 +128,5 @@ func scanKeys(t *testing.T, path string, pattern *regexp.Regexp) (int, []keyHit)
 			hits = append(hits, keyHit{line: index + 1, key: key})
 		}
 	}
-	return len(lines), hits
+	return hits
 }
