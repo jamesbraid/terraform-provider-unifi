@@ -22,11 +22,11 @@ import (
 	"errors"
 	"log"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
 )
 
@@ -43,13 +43,15 @@ func run() int {
 		return 1
 	}
 	composePath := filepath.Join(root, "docker-compose.yaml")
-	script := filepath.Join(root, ".woodpecker", "scripts", "catalog-upgrade-plan.sh")
-	for _, required := range []string{composePath, script} {
-		if _, err := os.Stat(required); err != nil {
-			logger.Printf("%v", err)
-			logger.Printf("run this from the repository root")
-			return 1
-		}
+	if _, err := os.Stat(composePath); err != nil {
+		logger.Printf("%v", err)
+		logger.Printf("run this from the repository root")
+		return 1
+	}
+	settings, err := readSettings(root)
+	if err != nil {
+		logger.Printf("%v", err)
+		return 1
 	}
 
 	// Ctrl-C and CI cancellation must still stop the controller. A cancelled
@@ -89,28 +91,70 @@ func run() int {
 		return 1
 	}
 
-	// The script inherits this process's environment, which controllertest.Start
-	// has already populated with the controller's address and credentials.
-	command := exec.CommandContext(ctx, "bash", script)
-	command.Dir = root
-	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
-	command.Env = os.Environ()
+	// controllertest.Start has already populated this process's environment
+	// with the controller's address and credentials, so the measurement below
+	// sees exactly what the acceptance suite sees. That is why the measuring
+	// lives in this process rather than in a child: a second resolution of the
+	// endpoint would be a second copy of knowledge that drifts the first time
+	// the compose file changes.
+	code, err := measure(ctx, logger, root, settings)
+	if err != nil {
+		logger.Printf("%v", err)
+	}
+	return code
+}
 
-	err = command.Run()
-	if err == nil {
-		return 0
+// settings are the run's inputs, read from the environment because that is what
+// the workflow supplies and what the script read.
+type settings struct {
+	cli              string
+	releasedRef      string
+	releasedBinary   string
+	fixtureDirectory string
+	output           string
+	treeState        *catalogparity.TreeState
+}
+
+func readSettings(root string) (settings, error) {
+	s := settings{
+		cli:              os.Getenv("TERRAFORM_BIN"),
+		releasedRef:      envOr("UPGRADE_RELEASED_REF", "v0.101.2"),
+		releasedBinary:   os.Getenv("UPGRADE_RELEASED_BINARY"),
+		fixtureDirectory: envOr("UPGRADE_FIXTURE", filepath.Join(root, ".woodpecker", "fixtures", "upgrade")),
+		output:           envOr("UPGRADE_OUTPUT", filepath.Join(root, "build", "release-ready", "catalog-upgrade-plan.json")),
 	}
-	// The harness distinguishes "the candidate regressed" from "the fixture is
-	// unusable" by exit code, and that distinction is the whole point of the
-	// control plan. Passing it through unchanged keeps the two apart; collapsing
-	// them to 1 would hand the reader the coin flip the script exists to avoid.
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
-		return exit.ExitCode()
+	if s.cli == "" {
+		return s, errors.New("TERRAFORM_BIN is required (this repository sets it to an OpenTofu binary)")
 	}
-	logger.Printf("could not run %s: %v", script, err)
-	return 1
+	// MEASURED HERE, AS THE FIRST THING THIS PROCESS DOES, rather than handed
+	// in through a flag.
+	//
+	// The rule elsewhere is that Go is handed the answer and never measures --
+	// but that rule exists because the measurer was shell and the consumer was
+	// Go, and it is about WHEN rather than about which language. The point is
+	// that the tree is measured before anything is built, planned or started,
+	// so the receipt cannot claim a commit that does not contain what was
+	// measured. This binary IS the caller: nothing runs between it and the
+	// workflow, so a flag would only move the same measurement one process
+	// outwards and add a way for a stale value to arrive.
+	//
+	// catalogparity.MeasureTreeState is the same function cmd/tree-state wraps,
+	// so there is one implementation and one set of three outcomes: clean,
+	// dirty-and-refused, dirty-and-recorded.
+	treeState, err := catalogparity.MeasureTreeState(root, "the upgrade-plan receipt",
+		os.Getenv("EVIDENCE_ALLOW_DIRTY_TREE") != "")
+	if err != nil {
+		return s, err
+	}
+	s.treeState = treeState
+	return s, nil
+}
+
+func envOr(name, fallback string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+	return fallback
 }
 
 // site returns the controller site the fixtures are applied to. UNIFI_SITE is
