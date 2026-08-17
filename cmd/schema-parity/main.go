@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasedtree"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/schemabaseline"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/schemaparity"
 )
@@ -91,7 +92,8 @@ type options struct {
 func main() {
 	var o options
 	flag.StringVar(&o.repo, "repo", ".", "repository root holding the candidate tree")
-	flag.StringVar(&o.releasedTag, "released-tag", "v0.101.2", "tag whose tree is the released side")
+	flag.StringVar(&o.releasedTag, "released-tag", "",
+		"tag whose tree is the released side (default: the baseline manifest's version)")
 	flag.StringVar(&o.terraformBin, "terraform", "terraform", "terraform binary")
 	flag.StringVar(&o.tofuBin, "tofu", "tofu", "tofu binary")
 	flag.StringVar(&o.ledgerPath, "ledger", "provider-codegen/schema-changes/v0.101.2-to-next.json",
@@ -246,22 +248,21 @@ func run(o options) error {
 		return err
 	}
 
-	// The released side is the tag's tree, rebuilt. The frozen baseline in
-	// provider-contracts/schema is NOT used as the released side here, and that
-	// is deliberate: rebuilding is what proves the frozen file still describes
-	// the tag. Nothing else checks that, and dropping it would let the anchor
-	// drift silently while every comparison against it kept passing.
-	releasedSrc := filepath.Join(work, "released-source")
-	if err := os.MkdirAll(releasedSrc, 0o750); err != nil {
-		return err
-	}
-	if err := extractTag(repo, o.releasedTag, releasedSrc); err != nil {
-		return err
-	}
-
 	baseline, err := schemaparity.LoadBaselineManifest(filepath.Join(repo, o.baselinePath))
 	if err != nil {
 		return err
+	}
+
+	// THE TAG COMES FROM THE MANIFEST unless a caller overrides it. It used to
+	// default to a v0.101.2 literal sitting beside a file that records the
+	// version, so the two could name different releases and nothing compared
+	// them -- the same shape as the provenance check below, one level up.
+	if o.releasedTag == "" {
+		if baseline.Provider.Version == "" {
+			return fmt.Errorf("the baseline manifest names no released version, so there is " +
+				"no tag to compare against; pass -released-tag")
+		}
+		o.releasedTag = "v" + strings.TrimPrefix(baseline.Provider.Version, "v")
 	}
 
 	var findings []schemaparity.Finding
@@ -271,7 +272,7 @@ func run(o options) error {
 	// alone -- which this binary did until now -- makes the released side of
 	// every comparison below an unidentified tree, and the receipt would report
 	// whatever it found as though it were the release.
-	resolvedTag, err := gitOutput(repo, "rev-parse", o.releasedTag+"^{commit}")
+	resolvedTag, err := releasedtree.ResolveCommit(repo, o.releasedTag)
 	if err != nil {
 		return err
 	}
@@ -280,6 +281,19 @@ func run(o options) error {
 	releasedCommit := baseline.Provider.ReleasedCommit
 	candidateCommit, err := gitOutput(repo, "rev-parse", "HEAD")
 	if err != nil {
+		return err
+	}
+
+	// The released side is the tag's tree, REBUILT. The frozen baseline in
+	// provider-contracts/schema is not used as the released side, and that is
+	// deliberate: rebuilding is what proves the frozen file still describes the
+	// tag. Nothing else checks that, and dropping it would let the anchor drift
+	// silently while every comparison against it kept passing.
+	releasedSrc := filepath.Join(work, "released-source")
+	if err := os.MkdirAll(releasedSrc, 0o750); err != nil {
+		return err
+	}
+	if err := releasedtree.Extract(repo, o.releasedTag, releasedSrc); err != nil {
 		return err
 	}
 
@@ -484,23 +498,6 @@ func sharedSurface(canonical any) any {
 		shared[k] = v
 	}
 	return shared
-}
-
-func extractTag(repo, tag, dest string) error {
-	archive := exec.Command("git", "-C", repo, "archive", "--format=tar", tag)
-	untar := exec.Command("tar", "-x", "-C", dest)
-	pipe, err := archive.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	untar.Stdin = pipe
-	if err := untar.Start(); err != nil {
-		return err
-	}
-	if err := archive.Run(); err != nil {
-		return fmt.Errorf("git archive %s: %w", tag, err)
-	}
-	return untar.Wait()
 }
 
 // buildTwice returns both digests so the caller can assert determinism. It does

@@ -88,6 +88,7 @@ build/**/*-ci.json
 /.woodpecker/fixtures/catalog-acceptance/unifi-emu
 /.woodpecker/fixtures/catalog-acceptance/devices.fleet.json
 /upgrade-plan-runner
+/catalog-unit-differential
 /schema-parity
 
 # Executables left at the repository root by `go build ./cmd/<name>`.
