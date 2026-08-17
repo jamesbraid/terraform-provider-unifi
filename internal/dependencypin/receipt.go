@@ -12,15 +12,18 @@ import (
 // checks could fail:
 //
 //	result:            "pass"            the script exited before reaching the template
-//	replace_present:   false             measured on line 55 and then discarded
+//	replace_present:   false             measured, and the answer discarded
 //	resolution_runner: "remote_ci"       nothing measured where the run happened
 //	network_boundary:  "remote_ci_only"  nothing measured the network boundary
 //
 // replace_present is the sharpest, because the measurement existed. `go list -m
-// -json` was already asked whether a Replace key was present, the answer was
-// compared, and then the literal false was written into the receipt anyway.
+// -json` was already asked whether a Replace key was present and the answer was
+// compared -- and then the literal false was written into the receipt anyway.
 // Deleting that comparison would have left the receipt still claiming false and
-// all three consumers still passing.
+// all three consumers still passing. (The comparison is the `expect "replace
+// directive present" false` line; naming it rather than its line number,
+// because a number describing a file this comment does not control goes stale
+// silently.)
 //
 // resolution_runner is the one field here that cannot be measured from inside
 // the process, so it is an input rather than a constant: a run that cannot show
