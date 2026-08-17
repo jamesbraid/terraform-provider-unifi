@@ -1,0 +1,124 @@
+{
+ "format_version": 1,
+ "gate": "final-go-vs-shell-differential",
+ "taken_at_commit": "efec07b874a1de321eba0bdc9de950fff3b94ef6",
+ "tree_state": {
+  "status": "clean"
+ },
+ "what_this_is": "A record of a run that happened, taken immediately before the deployed shell scripts were deleted. The differentials extract each script's own logic and compare the Go against it; they are deliberately not copies, so they cannot keep passing once the original is gone. After the deletion this comparison cannot be recreated by any future commit, which is why it is written down in the past tense rather than left as a test.",
+ "scripts_compared_against": {
+  "catalog-build-schema.sh": "e0e7f79be9083897f5cf731a172bdc83c98e43878efc5f9e55f6ed2427b55f6f",
+  "catalog-controller-diagnostics.sh": "d75f848c8987c49cad8284f6354bd0eccaadd2a997d3776f20280a006946e220",
+  "catalog-controller-differential.sh": "99dd33ac0907fb17b44a702e69963987d14d7fe6ffd38247ad11ba2d1cffbfe2",
+  "catalog-controller-followup.sh": "de97c159877116906cd2ddbc43acbf719701a1325755c84d3303c148e27339fb",
+  "catalog-dependency-publishability.sh": "0d4c857e65ad3197828aceed1dc259b201ebfcf1902f548ea57368e352e40750",
+  "catalog-evidence-inventory.sh": "3e5b608fe4db57d46566d198001bcb69b16870de9f445b1d325dfa0515ca9523",
+  "catalog-unit-differential.sh": "b58c00db5df839c9773c85cf7e8bad86c3e9eb43d5296e3198ed336bc0fae476",
+  "m1-evidence-lib.sh": "90fe1cfee91128e9e6f5446df9bc7cc216b034c786dda6c19fe04ac7d80fcece",
+  "m3-dns-qualification.sh": "32b9b7231a7f8744a0ef179cd10afb4ac514d29ec49f5faaabab55aa284671a7",
+  "m3-evidence-lib.sh": "c4a1a91004818100239c2dda7148b3e7edd0e0f5c7fc408f8923df04f04fa520"
+ },
+ "results": [
+  {
+   "package": "internal/evidencebundle",
+   "verdict": "pass",
+   "scripts_read": [
+    {
+     "path": ".woodpecker/scripts/m1-evidence-lib.sh",
+     "sha256": "90fe1cfee91128e9e6f5446df9bc7cc216b034c786dda6c19fe04ac7d80fcece"
+    }
+   ]
+  },
+  {
+   "package": "internal/unitdifferential",
+   "verdict": "pass",
+   "scripts_read": [
+    {
+     "path": ".woodpecker/scripts/catalog-unit-differential.sh",
+     "sha256": "b58c00db5df839c9773c85cf7e8bad86c3e9eb43d5296e3198ed336bc0fae476"
+    }
+   ]
+  },
+  {
+   "package": "internal/controllerdifferential",
+   "verdict": "pass",
+   "scripts_read": [
+    {
+     "path": ".woodpecker/scripts/catalog-controller-followup.sh",
+     "sha256": "de97c159877116906cd2ddbc43acbf719701a1325755c84d3303c148e27339fb"
+    },
+    {
+     "path": ".woodpecker/scripts/catalog-controller-diagnostics.sh",
+     "sha256": "d75f848c8987c49cad8284f6354bd0eccaadd2a997d3776f20280a006946e220"
+    },
+    {
+     "path": ".woodpecker/scripts/catalog-controller-differential.sh",
+     "sha256": "99dd33ac0907fb17b44a702e69963987d14d7fe6ffd38247ad11ba2d1cffbfe2"
+    }
+   ]
+  },
+  {
+   "package": "internal/schemaparity",
+   "verdict": "pass",
+   "scripts_read": [
+    {
+     "path": ".woodpecker/scripts/catalog-build-schema.sh",
+     "sha256": "e0e7f79be9083897f5cf731a172bdc83c98e43878efc5f9e55f6ed2427b55f6f"
+    }
+   ]
+  },
+  {
+   "package": "internal/catalogparity",
+   "verdict": "pass",
+   "scripts_read": [
+    {
+     "path": ".woodpecker/scripts/catalog-controller-differential.sh",
+     "sha256": "99dd33ac0907fb17b44a702e69963987d14d7fe6ffd38247ad11ba2d1cffbfe2"
+    }
+   ]
+  },
+  {
+   "package": "internal/releasequalification",
+   "verdict": "pass",
+   "scripts_read": [
+    {
+     "path": ".woodpecker/scripts/catalog-controller-differential.sh",
+     "sha256": "99dd33ac0907fb17b44a702e69963987d14d7fe6ffd38247ad11ba2d1cffbfe2"
+    }
+   ]
+  },
+  {
+   "package": ".",
+   "verdict": "pass",
+   "scripts_read": [
+    {
+     "path": ".woodpecker/scripts/catalog-build-schema.sh",
+     "sha256": "e0e7f79be9083897f5cf731a172bdc83c98e43878efc5f9e55f6ed2427b55f6f"
+    },
+    {
+     "path": ".woodpecker/scripts/catalog-controller-differential.sh",
+     "sha256": "99dd33ac0907fb17b44a702e69963987d14d7fe6ffd38247ad11ba2d1cffbfe2"
+    },
+    {
+     "path": ".woodpecker/scripts/catalog-unit-differential.sh",
+     "sha256": "b58c00db5df839c9773c85cf7e8bad86c3e9eb43d5296e3198ed336bc0fae476"
+    }
+   ]
+  }
+ ],
+ "not_comparable_here": [
+  {
+   "comparison": "controller differential, full campaign",
+   "reason": "needs a live UniFi controller and Docker; neither exists on this host. The Go and the shell were compared on the parts that run without one."
+  },
+  {
+   "comparison": "schema-parity, full mode",
+   "reason": "needs the pinned Linux toolchain and the published release binary. Only its offline half was exercised."
+  },
+  {
+   "comparison": "m3 DNS qualification, live path",
+   "reason": "needs a controller and Docker, as above."
+  }
+ ],
+ "read_this_before_trusting_the_verdicts": "Seven packages passed. That is agreement on the inputs these tests construct and on the recorded runs available here -- it is not agreement on every input the shell could ever see. Two halves of the estate were never comparable on this host at all, and they are listed above rather than omitted, because a receipt showing only green reads stronger than the run that produced it."
+}
