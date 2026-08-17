@@ -113,6 +113,7 @@ build/**/*-ci.json
 /catalog-hardware-disposition
 /catalog-management-contract
 /catalog-migration-recovery
+/catalog-migration-verify
 /catalog-parity
 /catalog-pragmatic-evidence
 /catalog-release-ready
@@ -120,6 +121,7 @@ build/**/*-ci.json
 /go-unifi-proxy
 /list-policy-scaffold
 /list-resource-gen
+/m3-dns-qualification
 /nested-custom-type-strip
 /nested-type-dedup
 /policy-scaffold

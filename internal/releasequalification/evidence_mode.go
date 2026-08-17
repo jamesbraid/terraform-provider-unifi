@@ -58,6 +58,38 @@ const (
 	EvidencePragmaticReference = "pragmatic_reference"
 )
 
+// AllEvidenceModes is every mode a receipt may carry. It exists so that a gate
+// can ask "is this a mode?" without restating the answer.
+//
+// The entries are the CONSTANTS, not their values, and that is the whole
+// mechanism: deleting a mode deletes its constant, and this list then fails to
+// compile until it is corrected. A gate reading from here therefore cannot go
+// on asserting a mode that no longer exists.
+//
+// That failure had no way to happen before. The campaign asserted its mode
+// distribution as a literal inside catalog-controller-differential.yml, so when
+// dns_bidirectional_state and dns_list_controller were deleted three lines
+// below this list, nothing connected the two edits -- the assertion was YAML
+// and the enum was Go, with no compiler in between. The gate went on demanding
+// two modes the producer could no longer emit, and could not have passed. It
+// was invisible only because an earlier step in the same job always failed
+// first.
+var AllEvidenceModes = []string{
+	EvidenceSourceIdentity,
+	EvidenceDifferentialScenario,
+	EvidencePragmaticReference,
+}
+
+// IsEvidenceMode reports whether name is a declared mode.
+func IsEvidenceMode(name string) bool {
+	for _, mode := range AllEvidenceModes {
+		if mode == name {
+			return true
+		}
+	}
+	return false
+}
+
 // dns_bidirectional_state and dns_list_controller used to be modes here, one
 // per dns_record surface, and they have been deleted rather than kept.
 //

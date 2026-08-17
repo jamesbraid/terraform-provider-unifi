@@ -49,22 +49,28 @@ type DNSLifecycleChecks struct {
 }
 
 type DNSLifecycleReceipt struct {
-	FormatVersion             int                  `json:"format_version"`
-	Gate                      string               `json:"gate"`
-	Result                    string               `json:"result"`
-	SourceCommit              string               `json:"source_commit"`
-	Platform                  string               `json:"platform"`
-	ProviderVersion           string               `json:"provider_version"`
-	ProviderBinarySHA256      string               `json:"provider_binary_sha256"`
-	LegacyProvider            ToolArtifact         `json:"legacy_provider"`
-	StateUpgradeSource        StateUpgradeArtifact `json:"state_upgrade_source"`
-	Terraform                 ToolArtifact         `json:"terraform"`
-	Tofu                      ToolArtifact         `json:"tofu"`
-	Target                    DNSTargetReceipt     `json:"target"`
-	Lifecycle                 DNSLifecycleChecks   `json:"lifecycle"`
-	NormalizedStateSHA256     string               `json:"normalized_state_sha256"`
-	CLIOutcomesEquivalent     bool                 `json:"cli_outcomes_equivalent"`
-	AdapterOutcomesEquivalent bool                 `json:"adapter_outcomes_equivalent"`
+	FormatVersion int    `json:"format_version"`
+	Gate          string `json:"gate"`
+	// A POINTER, and omitempty, for the reason spelled out on
+	// catalogparity.TreeState: the shell implementation emitted no tree_state
+	// at all, and a zero value re-emitted as {"status":"","commit":""} would
+	// read as a measurement to anyone scanning for the key. Absent stays absent,
+	// so a shell-produced receipt and a Go-produced one both decode.
+	TreeState                 *catalogparity.TreeState `json:"tree_state,omitempty"`
+	Result                    string                   `json:"result"`
+	SourceCommit              string                   `json:"source_commit"`
+	Platform                  string                   `json:"platform"`
+	ProviderVersion           string                   `json:"provider_version"`
+	ProviderBinarySHA256      string                   `json:"provider_binary_sha256"`
+	LegacyProvider            ToolArtifact             `json:"legacy_provider"`
+	StateUpgradeSource        StateUpgradeArtifact     `json:"state_upgrade_source"`
+	Terraform                 ToolArtifact             `json:"terraform"`
+	Tofu                      ToolArtifact             `json:"tofu"`
+	Target                    DNSTargetReceipt         `json:"target"`
+	Lifecycle                 DNSLifecycleChecks       `json:"lifecycle"`
+	NormalizedStateSHA256     string                   `json:"normalized_state_sha256"`
+	CLIOutcomesEquivalent     bool                     `json:"cli_outcomes_equivalent"`
+	AdapterOutcomesEquivalent bool                     `json:"adapter_outcomes_equivalent"`
 }
 
 type MigrationRecoveryInput struct {

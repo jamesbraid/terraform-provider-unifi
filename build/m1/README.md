@@ -6,6 +6,11 @@ the M0 compatibility hashes.
 
 Run the local gate with the pinned CLIs:
 
+> The command below no longer runs: `m1-dns-compiler.sh` was deleted once the
+> proof had finished its job -- nothing outside its own workflow read its
+> receipt. The receipt is kept as the record of a run that happened; it is
+> no longer reproducible from this tree.
+
 ```sh
 TERRAFORM_BIN=/path/to/terraform \
 TOFU_BIN=/path/to/tofu \
