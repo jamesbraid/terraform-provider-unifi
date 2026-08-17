@@ -262,13 +262,7 @@ func commandsDeclaringTreeState(t *testing.T) []string {
 // at all, one lost its workflow, and one runs correctly and is killed. That
 // matters because it decides what would have to change for the exemption to
 // clear, which is the only thing an exemption is for.
-var unguardedGenerators = map[string]string{
-	"m3-dns-qualification.sh": "its pipeline does not fail, it does not finish. Pipeline 232's " +
-		"locked-network-lifecycle log shows create, update, a no-op plan and a correct " +
-		"replacement plan, then stops -- with zero occurrences of error, fatal, failed, cannot " +
-		"or refused across all 258 lines. A kill mid-stride, so there is no completed run to " +
-		"check a guard against.",
-}
+var unguardedGenerators = map[string]string{}
 
 // classifiedTreeIdentity reports which files this check actually read, for the
 // failure message, so a wrong verdict says what it was looking at.

@@ -257,15 +257,6 @@ var knownUnreachableChecks = map[string]string{
 	"command export-gate": "answers what a publication would ship, and is deliberately not wired. Its denied_paths are a FIRST-PASS declaration of the publication boundary and it reports 376 findings on this tree today -- every one a file that genuinely exists and would genuinely ship, not a defect. Wiring it before that boundary is agreed would make every push red for a judgement nobody has made yet, and a gate people learn to ignore is worse than one they have not switched on. Task 130.",
 	"command catalog-release-ready": "the terminal release gate. No pipeline invokes it and " +
 		"three of its eight inputs have no producer. Task 106.",
-	"command m3-dns-qualification": "the Go port of m3-dns-qualification.sh, landed BESIDE the " +
-		"shell rather than replacing it, and unwired on purpose until the two are compared. " +
-		"build/migration-baseline froze receipts only for producers being DELETED, on the " +
-		"ground that nothing could reproduce them afterwards; a PORTED gate gets the live " +
-		"side-by-side instead, which needs both implementations present. That comparison is " +
-		"blocked on one completed run of the shell gate, and its step has never finished -- see " +
-		"the m3-dns-qualification.sh exemption in check_tree_state_coverage_test.go. It cannot " +
-		"be run here either: the script requires x86_64. Task 155 holds the cutover steps. " +
-		"Wiring this before the diff is recorded would destroy the only reference the port has.",
 	"command policy-scaffold":  "authoring tool, run by hand when a surface is migrated.",
 	"command schema-behaviour": "authoring tool, run by hand when a surface is migrated.",
 	"command list-policy-scaffold": "authoring tool for list policies, run by hand. Its output " +

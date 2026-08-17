@@ -46,15 +46,23 @@ steps:
     # parsed and discarded, so this step still has no bound of its own. The
     # hour-in kill recorded above was the per-repository server limit, which is
     # the only one that has ever fired. See check_inert_workflow_keys_test.go.
-    image: docker:27.5.1-cli
+    # golang rather than docker:cli, because the gate is a Go command now and
+    # that image carries no toolchain. catalog-controller-differential.yml
+    # already runs the same combination -- golang plus the docker socket plus
+    # the CLI from apt -- for the same reason.
+    image: golang:1.25.8-bookworm@sha256:4557cf171e3cdf5053a298d5171b1a5f5734d920260c25f22c79e94760eb2084
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
-      - apk add --no-cache bash coreutils curl git jq tar unzip
-      - M3_CANDIDATE_PROVIDER_BINARY=$(pwd)/m3-candidate/terraform-provider-unifi M3_LIFECYCLE_RECEIPT_OUTPUT=build/m3/network-dns-qualification-ci.json bash .woodpecker/scripts/m3-dns-qualification.sh
-      # BACKSTOP, NOT THE CHECK. Both fields are literals in
-      # m3-dns-qualification.sh's receipt, written only after the lifecycle work
-      # above them succeeded under set -e -- including one deliberate must-fail
-      # expectation that captures its own exit code. Retained against that abort
-      # regressing, not counted as verification. See catalog-build-schema.yml.
+      - apt-get update
+      - apt-get install --yes --no-install-recommends ca-certificates curl docker.io git jq tar unzip
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/m3-dns-qualification -run-id "$CI_PIPELINE_NUMBER" -candidate-provider "$(pwd)/m3-candidate/terraform-provider-unifi" -output build/m3/network-dns-qualification-ci.json -tree-state "$(go run ./cmd/tree-state -what 'the DNS lifecycle receipt')"
+        # BACKSTOP, NOT THE CHECK -- and the REASON it is a backstop changed
+        # when the gate stopped being a script. It used to be that both fields
+        # were literals the shell wrote only after everything above them had
+        # survived set -e, so they meant "the script reached its last line".
+        # cmd/m3-dns-qualification sets each from the step whose work
+        # succeeded and refuses to emit a receipt with any still false, naming
+        # them -- so these are now a second opinion on a derived value rather
+        # than a guard against an abort. Retained, not counted as verification.
       - jq -e '.result == "pass" and .lifecycle.bidirectional_adapter_state_round_trip == true' build/m3/network-dns-qualification-ci.json
