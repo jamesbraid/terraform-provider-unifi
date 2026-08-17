@@ -20,21 +20,33 @@ import (
 //
 // THIS PARAGRAPH USED TO CARRY THE EXACT COUNTS AND THEY WENT STALE INSIDE A DAY.
 // It said 142 files, 16 with in-file proof, 11 commit-message-only, 115 silent.
-// Adding this file and its two siblings moved the total to 145, and a later
+// Adding this file and its two siblings took the total past it, and a later
 // measurement put the in-file figure at 27 rather than 16 -- so two of the three
 // components and the total were wrong, while 16+11+115 still summed to 142 and
 // read as reliable for exactly that reason. Nothing checked any of it: the test
 // below is executable and cannot go stale without going red, and the prose beside
 // it drifted within the hour.
 //
-// A COUNT IN A COMMENT IS A CLAIM WITH NO CHECK ON IT. The shape above is stated
-// without numbers deliberately, because the shape is what the reader needs and it
-// does not drift. Anyone wanting the figures should re-derive them rather than
-// trust a frozen copy.
+// A COUNT IN A COMMENT IS A CLAIM WITH NO CHECK ON IT, and the discriminator is
+// TENSE. A figure describing a SUPERSEDED state is history: nothing can move it,
+// so the numbers above are safe and are kept, because deleting them would delete
+// the story. A figure describing the CURRENT tree is a claim with no oracle. The
+// first draft of this very paragraph named what the total had moved TO, which is
+// the second kind, in the sentence explaining why the second kind is dangerous.
+// Never cite a property of the file the comment lives in, for the same reason:
+// the next edit invalidates it, including the edit that improves it.
 //
-// WHY THIS IS A GO TEST AND NOT A SHELL SCRIPT. `go test ./...` is the one
-// thing every push executes. A check about whether other checks run has to live
-// somewhere that itself always runs, or it inherits the defect it looks for.
+// WHY THIS IS A GO TEST AND NOT A SHELL SCRIPT. `go test ./...` is the one thing
+// a push to main executes, and fast-loop is the only workflow in this repository
+// with an automatic trigger at all. A check about whether other checks run has to
+// live somewhere that itself always runs, or it inherits the defect it looks for.
+//
+// That sentence used to say "the one thing every push executes", which is false
+// and was measured so: fast-loop's push trigger is a literal three-branch list --
+// main and two campaign branches, no globs -- and the other five workflows are
+// event: manual only. A push to a work branch runs nothing. The conclusion holds
+// and the claim behind it did not, which is the second stale justification this
+// paragraph has carried.
 //
 // This paragraph used to argue from tree-state-coverage_test.sh instead: that it
 // was invoked by nothing, RED, and falsely claimed by tree-state.sh:46 to be
@@ -180,16 +192,8 @@ func TestEveryCheckIsReachable(t *testing.T) {
 // down so the set cannot grow without somebody saying so, and so a reader can
 // see what is unguarded without running anything.
 var knownUnreachableChecks = map[string]string{
-	"script catalog-build-schema_test.sh": "self-test for the schema gate two pipelines run. " +
-		"Its assertions are all constants the script writes after its own cmp calls, so wiring " +
-		"it up would add little until it is rewritten. Filed as task 103.",
-	"script catalog-unit-differential_test.sh": "its one informative assertion, that " +
-		"package_pass_count is above zero, was moved into the script itself in 8aeef4c7 " +
-		"because the script is what runs.",
 	"script tree-state_test.sh": "the best-constructed failing-input test in the shell layer, " +
 		"guarding tree-state.sh, which five production scripts source. Task 103.",
-	"script tree-state-coverage_test.sh": "RED on the current tree, and tree-state.sh:46 claims " +
-		"it enforces its list. It does not. Task 103.",
 	"producer m0-uos-dns-qualification.sh": "builds build/m0/uos-dns-qualification.json and is " +
 		"invoked by no workflow, no Makefile and no other script. Its output variable " +
 		"M0_UOS_RECEIPT_OUTPUT is also never set, so even if something did run it the receipt " +
