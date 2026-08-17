@@ -54,27 +54,49 @@ mkdir -p "${stub_dir}"
 # for a particular tree. Which tree it is building is decided by the working
 # directory, because that is what the script varies.
 #
-# EVERYTHING THAT IS NOT `build` GOES TO THE REAL TOOLCHAIN. This used to be
-# `exit 0`, and a stub named `go` sits on PATH for every subcommand, not just
-# the one it implements -- so it answered success, with no output, to questions
-# it had never been taught. That is a check that cannot fail wearing a stub's
-# clothes.
+# A STUB THAT SUCCEEDS PRODUCING NOTHING IS A CHECK THAT CANNOT FAIL WEARING A
+# STUB'S CLOTHES. This used to end `if [ "$1" != "build" ]; then exit 0; fi`,
+# and a stub named `go` is on PATH for every subcommand, not just the one it
+# implements -- so it answered success, silently, to questions it had never been
+# taught.
 #
 # It cost twelve cases and none of them named the cause.
 # catalog-upgrade-plan.sh takes its tree state from `go run ./cmd/tree-state`,
 # the stub swallowed the run and printed nothing, and `jq --argjson` reported
-# invalid JSON -- naming the consumer, three steps from the stub that caused it.
+# invalid JSON -- naming the consumer, three steps from the stub that emptied
+# the variable.
 #
-# Resolved BEFORE stub_dir goes on PATH, or `command -v go` finds the stub and
-# the stub execs itself.
-STUB_REAL_GO=$(command -v go)
-export STUB_REAL_GO
+# `run` ANSWERS WITH A FIXED VALUE RATHER THAN THE REAL TOOLCHAIN. This suite
+# tests upgrade-plan's logic, not tree-state's, so a well-formed constant is the
+# right fidelity. The commit is deliberately forty zeros, so nothing downstream
+# can mistake it for a tree that existed.
+#
+# Passing `run` through to the real toolchain also works and also passes; it was
+# tried and replaced. It recompiles cmd/tree-state once per case, which is work
+# this suite has no reason to do. No wall-clock figure is quoted for that,
+# because two runs of THIS file on a shared machine measured 6.4s and 16.8s --
+# the variance is larger than the difference, and an earlier draft of this
+# comment cited a three-fold speedup that the second run refuted.
+#
+# ANY OTHER SUBCOMMAND IS A HARD ERROR, which is the half that stops this
+# recurring. Answering `run` alone would fix the instance and leave the class:
+# the next `go vet`, `go list` or `go mod` added to the script would be
+# swallowed exactly as `run` was.
 cat >"${stub_dir}/go" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-if [ "${1:-}" != "build" ]; then
-    exec "${STUB_REAL_GO:?stub go: STUB_REAL_GO is unset, so a non-build subcommand has nowhere to go}" "$@"
-fi
+case "${1:-}" in
+build) ;;
+run)
+    printf '{"status":"clean","commit":"%s","dirty_paths":[]}\n' 0000000000000000000000000000000000000000
+    exit 0
+    ;;
+*)
+    echo "stub go: no behaviour defined for \`go ${1:-}\`. Teach it one here rather" >&2
+    echo "  than letting it succeed silently -- that is what cost twelve cases." >&2
+    exit 1
+    ;;
+esac
 destination=""
 while [ "$#" -gt 0 ]; do
     if [ "$1" = "-o" ]; then destination=$2; shift 2; continue; fi
