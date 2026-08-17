@@ -241,9 +241,15 @@ func gitInFixture(t *testing.T, root string, args ...string) string {
 // The proxy root is confined to /tmp on purpose, because it is deleted outright,
 // and t.TempDir() sits elsewhere on macOS. Relaxing the guard so the test could
 // use it would weaken the thing being tested.
+//
+// SUPPRESSED HERE SO THE LINTER CAN GUARD EVERY OTHER TEST. usetesting reports
+// exactly this call and nothing else in the tree, so it was the one thing
+// keeping the linter off the fast-loop gate. The divergence is deliberate and
+// explained above; a directive naming this line is a smaller exception than
+// leaving the whole rule unenforced.
 func scratchDirectory(t *testing.T, purpose string) string {
 	t.Helper()
-	directory, err := os.MkdirTemp("/tmp", "gounifipin-"+purpose+".")
+	directory, err := os.MkdirTemp("/tmp", "gounifipin-"+purpose+".") //nolint:usetesting // the proxy root must be under /tmp; see above
 	if err != nil {
 		t.Fatal(err)
 	}
