@@ -33,8 +33,6 @@
 #
 #   m1-dns-compiler.sh           resolves its root at line 145, inside a
 #                                function
-#   m0-uos-dns-qualification.sh  establishes no root variable at all; writes
-#                                only when M0_UOS_RECEIPT_OUTPUT is set
 #   m3-dns-qualification.sh      the same, gated on M3_LIFECYCLE_RECEIPT_OUTPUT
 #
 # What unblocks them is being able to EXECUTE them. The five that are wired were
