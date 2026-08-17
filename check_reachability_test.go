@@ -214,6 +214,11 @@ var knownUnreachableChecks = map[string]string{
 	// They leave this ledger when .woodpecker/*.yml points at them, which is
 	// the YAML lane's cutover. Both declare -tree-state with no default and
 	// refuse without it, so every call site written for them must pass it.
+	"command catalog-controller-differential": "replaces " +
+		"catalog-controller-differential.sh, which still runs. Its plan is reproduced from the " +
+		"two committed inputs, its suite summariser is compared against the script's own jq " +
+		"program, and its two controller-free modes -- -plan-only and -prepare-only -- are run " +
+		"for real by tests. Wires in at the YAML cutover; task 148.",
 	"command catalog-unit-differential": "replaces catalog-unit-differential.sh, which still " +
 		"runs. Its summariser is compared against the script's own jq program on every push. " +
 		"Wires in at the YAML cutover; task 148.",
