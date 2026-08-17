@@ -17,6 +17,12 @@ import (
 type BaselineManifest struct {
 	Provider struct {
 		Platform string `json:"platform"`
+		// Version is the released provider version WITHOUT the leading v, as
+		// the manifest records it. The tag is derived from it rather than
+		// written down again: both scripts this replaces defaulted to a
+		// v0.101.2 literal beside this file, so the two could name different
+		// releases with nothing comparing them.
+		Version string `json:"version"`
 		// ReleasedCommit is the manifest's claim about which commit the
 		// released tag names, and it is the EXPECTATION half of the provenance
 		// check -- the run resolves the tag itself and the two must agree.
