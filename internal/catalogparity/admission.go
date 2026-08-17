@@ -39,7 +39,7 @@ type SchemaDifferentialEvidence struct {
 	TerraformOnlyCategories     []string         `json:"terraform_only_categories"`
 }
 
-// TreeState is what .woodpecker/scripts/tree-state.sh records in a receipt: the
+// TreeState is what cmd/tree-state records in a receipt: the
 // commit the receipt names, and whether the working tree it was generated from
 // actually matched it.
 //

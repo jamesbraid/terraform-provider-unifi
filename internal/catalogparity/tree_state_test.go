@@ -9,7 +9,7 @@ import (
 // TestReceiptsAcceptTheTreeStateTheShellWrites pins a seam that no other test
 // crosses.
 //
-// .woodpecker/scripts/tree-state.sh measures whether the working tree matches
+// cmd/tree-state measures whether the working tree matches
 // the commit a receipt names, and the generators embed its answer as
 // "tree_state". Every consumer of those receipts -- catalog-admission,
 // catalog-management-contract, catalog-migration-recovery,
