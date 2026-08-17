@@ -26,8 +26,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
@@ -173,6 +175,25 @@ func run(argv []string, stdout, stderr io.Writer) error {
 	// finished. Discard everything before creating any of it.
 	q.discardScopedResources()
 	defer q.discardScopedResources()
+
+	// AND THE DEFER ABOVE IS NOT ENOUGH ON ITS OWN, WHICH IS A REGRESSION THE
+	// SHELL DID NOT HAVE.
+	//
+	// The script used `trap 'cleanup $?' EXIT`, and bash runs an EXIT trap when
+	// it is terminated by a signal. Go does NOT run deferred functions on
+	// SIGTERM or SIGINT: the process dies and the defer never fires. So a
+	// cancelled step -- which is how most of tonight's runs ended -- would leave
+	// a controller, a network and twelve volumes behind where the shell removed
+	// them.
+	//
+	// The discard-before-create above is a real mitigation and not a sufficient
+	// one: it depends on there BEING a next run with the same -run-id, and a
+	// cancelled campaign is exactly the case where there is not. Bounded is not
+	// the same as cleaned.
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(signals)
+	go discardOnSignal(signals, stderr, *runID, q.discardScopedResources, os.Exit)
 
 	receipt, err := q.execute()
 	if err != nil {
@@ -865,4 +886,25 @@ func copyTree(source, destination string) error {
 		}
 		return os.WriteFile(target, contents, info.Mode().Perm())
 	})
+}
+
+// discardOnSignal removes this run's Docker resources when the step is
+// cancelled, and is a separate function ONLY so it can be tested.
+//
+// Wiring it inline was the obvious shape and left the behaviour unprovable
+// without a controller, an x86_64 daemon and process control -- which is the
+// same condition that makes the rest of this command unexercised, and a poor
+// reason to add a second unexercised thing. Taking the channel, the cleanup and
+// the exit as parameters means a test can deliver a signal value and assert
+// both happened, in order.
+func discardOnSignal(signals <-chan os.Signal, stderr io.Writer, runID string,
+	discard func(), exit func(int)) {
+	received, ok := <-signals
+	if !ok {
+		return
+	}
+	fmt.Fprintf(stderr, "received %s: discarding the docker resources scoped to run %s before "+
+		"exiting, because nothing else will\n", received, runID)
+	discard()
+	exit(1)
 }

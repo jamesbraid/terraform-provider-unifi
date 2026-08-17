@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasequalification"
@@ -392,5 +394,51 @@ func TestPlanExitCodesAreClassifiedApart(t *testing.T) {
 		if brokenChanges := classifyExpectChanges(code, "replacement"); brokenChanges == nil {
 			t.Fatalf("exit %d was accepted as a planned change", code)
 		}
+	}
+}
+
+// TestDiscardOnSignalCleansUpBeforeExiting covers the regression the shell did
+// not have: bash runs an EXIT trap when signalled, Go does not run defers, so a
+// cancelled step would leave a controller, a network and twelve volumes behind.
+//
+// The order is the assertion. Exiting before discarding would leave exactly the
+// resources this exists to remove, and would still look like a handler.
+func TestDiscardOnSignalCleansUpBeforeExiting(t *testing.T) {
+	signals := make(chan os.Signal, 1)
+	var events []string
+	var code int
+
+	signals <- syscall.SIGTERM
+	close(signals)
+
+	var log bytes.Buffer
+	discardOnSignal(signals, &log, "4242",
+		func() { events = append(events, "discard") },
+		func(c int) { events = append(events, "exit"); code = c })
+
+	if len(events) != 2 || events[0] != "discard" || events[1] != "exit" {
+		t.Fatalf("events = %v, want discard then exit; exiting first leaves the resources behind", events)
+	}
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1: a cancelled run did not succeed", code)
+	}
+	if !strings.Contains(log.String(), "4242") {
+		t.Errorf("the message does not name the run whose resources were removed: %q", log.String())
+	}
+	if !strings.Contains(log.String(), "terminated") && !strings.Contains(log.String(), "SIGTERM") {
+		t.Errorf("the message does not name the signal: %q", log.String())
+	}
+}
+
+// TestDiscardOnSignalDoesNothingWhenTheChannelCloses keeps a normal exit from
+// running the cleanup twice: run() already defers it, and signal.Stop closes
+// nothing, so the goroutine must simply end.
+func TestDiscardOnSignalDoesNothingWhenTheChannelCloses(t *testing.T) {
+	signals := make(chan os.Signal)
+	close(signals)
+	called := false
+	discardOnSignal(signals, io.Discard, "1", func() { called = true }, func(int) { called = true })
+	if called {
+		t.Error("a closed channel triggered cleanup; a normal exit would discard twice")
 	}
 }
