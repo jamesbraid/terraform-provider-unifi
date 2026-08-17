@@ -1,17 +1,21 @@
 // Command workspace-provenance prints what a CI step is about to read, so a run
 // that read the wrong thing says so at the top of its own log.
 //
-// WHY IT EXISTS. Pipeline 255 called a script unguarded and 257 passed the same
-// script with nothing changed between them. Both clone steps show the same SHA.
-// The unguarded state existed in exactly one tree in the repository, and two
-// builds of that other branch bracketed 255: the workspace did not match its
-// commit.
+// WHY IT EXISTS. Pipelines 255 and 257 both reset --hard to 7e0def8d4dc8 and
+// disagreed: 255 failed a script that 257 passed, with coverage counts of 11
+// and 12 of 15. 255 ran a self-test that is absent from the branch whose copy
+// of the classified script it was simultaneously reading. One workspace, two
+// branches' files.
 //
 // It took three attempts to diagnose -- contamination, then an amend and a
-// force-push, then contamination again on SHAs read from the clone steps. Not
-// because anyone was careless, but because the runs recorded verdicts and never
-// recorded what produced them, so every explanation had to be reconstructed
-// afterwards from outside, and each was plausible enough to stop at.
+// force-push, then contamination again once the SHAs were read from the clone
+// steps and the reflog showed no amend. Nobody was careless. The runs recorded
+// verdicts and never recorded what produced them, so every explanation had to
+// be reconstructed from outside, and each was plausible enough to stop at.
+//
+// A REFUTED CAUSE SPENT AN HOUR RECORDED AS THE ESTABLISHED ONE, in a comment,
+// which is the same failure one layer up: a claim with nothing checking it,
+// written down confidently because the person who wrote it had not measured it.
 //
 // THE COMMIT ALONE IS NOT ENOUGH, and that is the whole design. `git rev-parse
 // HEAD` reads .git; the checks read files. A workspace written into after
@@ -28,6 +32,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -37,13 +42,26 @@ import (
 )
 
 func main() {
-	if err := run(os.Stdout); err != nil {
+	// -strict turns the report into a gate: on CI the clone step ends with a
+	// reset --hard, so a workspace that already differs from its commit at the
+	// first command of the first step has been written into by something else.
+	// That is exactly the 255 condition, and it would have been caught before a
+	// single check ran rather than argued about for a day.
+	//
+	// NOT WIRED INTO ANY WORKFLOW, deliberately. Whether every pipeline really
+	// starts clean is a property of the runner, and it cannot be measured from
+	// a laptop -- turning it on blind would trade an intermittent wrong answer
+	// for five pipelines that might refuse to start. Run it once unstrict, read
+	// the tree= field across a few pipelines, then add the flag.
+	strict := flag.Bool("strict", false, "exit non-zero if the workspace does not match its commit")
+	flag.Parse()
+	if err := run(os.Stdout, *strict); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run(out *os.File) error {
+func run(out *os.File, strict bool) error {
 	commit, err := gitOutput("rev-parse", "HEAD")
 	if err != nil {
 		return fmt.Errorf("workspace provenance: HEAD cannot be resolved: %w", err)
@@ -71,6 +89,14 @@ func run(out *os.File) error {
 	// `printf 'x: ...` as a mapping rather than a command.
 	fmt.Fprintf(out, "workspace commit=%s tree=%s scripts=%s workflows=%s\n",
 		commit, state, scripts, workflows)
+
+	if strict && state == "dirty" {
+		return fmt.Errorf("workspace provenance: this workspace does not match %s:\n%s\n\n"+
+			"    The clone step ends with a reset --hard, so nothing here should differ from\n"+
+			"    the commit yet. Something else wrote into this directory, and every verdict\n"+
+			"    below would describe files that are not this commit's.",
+			commit, strings.TrimRight(status, "\n"))
+	}
 	return nil
 }
 
