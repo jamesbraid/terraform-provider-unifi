@@ -1,0 +1,41 @@
+{
+  "candidate": {
+    "exit_code": 0,
+    "failed_test_count": 0,
+    "normalized_summary_sha256": "cf7c91766278459ed84191794131ce99695f91d4258d00775de611a5fd3f0cc2",
+    "package_fail_count": 0,
+    "package_pass_count": 37,
+    "passed_test_count": 1843,
+    "raw_log_sha256": "b3961c1246e2f2def34f3f01921d6a47d8e1890b267fd3bc760cc2d2389db3b2",
+    "result": "pass",
+    "skipped_test_count": 180,
+    "unparsed_line_count": 0
+  },
+  "catalog_evidence_inventory_sha256": "3c993f4605dcc33e668b962e36c200e283450e02ebef3564b169ad47f40f2706",
+  "format_version": 1,
+  "gate": "catalog-unit-http-differential",
+  "go_version": "go1.25.8",
+  "network": "none",
+  "platform": "linux/amd64",
+  "promotion_blockers": [],
+  "released": {
+    "exit_code": 0,
+    "failed_test_count": 0,
+    "normalized_summary_sha256": "c42c4ad172956573c0379c873fc7e2f1b862c02198b5420d46b8be9deffb3a54",
+    "package_fail_count": 0,
+    "package_pass_count": 7,
+    "passed_test_count": 1236,
+    "raw_log_sha256": "1005c0248a964d3fc42d2d7eb6cc5cd9c5a12b01d6710a9e1c1ae605e0693e91",
+    "result": "pass",
+    "skipped_test_count": 162,
+    "unparsed_line_count": 0
+  },
+  "released_commit": "4e677062f23f232be9fda3e559279937a0f3d007",
+  "result": "pass",
+  "source_commit": "b8f5c1cdc34e48bd7e7ac2a793b485f6d02d9aad",
+  "tree_state": {
+    "commit": "b8f5c1cdc34e48bd7e7ac2a793b485f6d02d9aad",
+    "dirty_paths": [],
+    "status": "clean"
+  }
+}

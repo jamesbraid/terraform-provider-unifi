@@ -1,0 +1,51 @@
+{
+  "build_network": "none",
+  "catalog_evidence_inventory_sha256": "3c993f4605dcc33e668b962e36c200e283450e02ebef3564b169ad47f40f2706",
+  "clean_builds": {
+    "candidate": 2,
+    "released": 2
+  },
+  "format_version": 1,
+  "gate": "catalog-build-schema",
+  "go_version": "go1.25.8",
+  "platform": "linux/amd64",
+  "promotion_blockers": [],
+  "provider_binaries": {
+    "candidate_sha256": "0a440d6091c667c5f9b66bfcfd0c61880fb79094ec59c1fd64767e3447aa50d6",
+    "released_authority": "published_archive",
+    "released_authority_sha256": "c580db83441331fb8c194b9c894730e624743cdaf73b02a990c0655b47fc2d48",
+    "released_source_rebuild_sha256": "5a5aef95446d9283c8d04f1ac25fad64d34b8ee17833968550f9413c63c4ef89"
+  },
+  "released_commit": "4e677062f23f232be9fda3e559279937a0f3d007",
+  "result": "pass",
+  "schema_evidence": {
+    "full_cli_projection_equal": false,
+    "release_to_candidate_within_cli": true,
+    "shared_cli_projection_equal": true,
+    "shared_schema_sha256": "22208dccb46e3ab3329f2517b8ea792c7b38a039cdef74f39d202728b3db7987",
+    "terraform": {
+      "binary_sha256": "8b6cb96cd46080ee1287baf646c70078715a99123b9b3a6ce2a7fe3892ec703a",
+      "candidate_raw_sha256": "7b92def019f43bd4ad772971f2a2356c5455ffb4e210e06804589ebd2c2e3997",
+      "canonical_sha256": "57c32f5b3eb1ea2e8dc0606ec923a747ec10398671ab6573b7cb8b2711e2bf2d",
+      "released_raw_sha256": "8c24ee1dcf6ae49ca39f3680936ccbe1a8f674a48f1e0f7f1c5d7c2b6b6a7da9",
+      "version": "1.15.8"
+    },
+    "terraform_only_categories": [
+      "action_schemas",
+      "list_resource_schemas"
+    ],
+    "tofu": {
+      "binary_sha256": "b6cb308bd699c8b53882319986f339eeaa44f925a68f12d5b0a14e6caceedf23",
+      "candidate_raw_sha256": "0eb88de50961406705b4c5bdac613b046aa2bd0e60378b8e0967993dcce25b00",
+      "canonical_sha256": "57b57aa312442fe9b9182aaffc039347b5bc9fef310b438556746fb1da8f8c6b",
+      "released_raw_sha256": "17ce5e4ba4fb0d0ddb7c2a5ce46c9e425caa4878238c70219aaff8b2ad219253",
+      "version": "1.12.1"
+    }
+  },
+  "source_commit": "b8f5c1cdc34e48bd7e7ac2a793b485f6d02d9aad",
+  "tree_state": {
+    "commit": "b8f5c1cdc34e48bd7e7ac2a793b485f6d02d9aad",
+    "dirty_paths": [],
+    "status": "clean"
+  }
+}
