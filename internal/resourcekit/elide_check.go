@@ -238,6 +238,23 @@ func zeroIsRejected(attribute schema.Attribute) bool {
 	if !ok {
 		return false
 	}
+	// A CUSTOM TYPE IS NOT PROBED, because "" is not its zero value.
+	//
+	// port_profile's dot1x_idle_timeout is a timetypes.GoDuration whose
+	// validators are GoDurationBetween(0, 65535s) and GoDurationMultipleOf.
+	// Feeding them "" gets a rejection -- but for being unparseable as a
+	// duration, not for being an illegal value: "0s" is inside the range and
+	// is exactly what the hand-written mapper produces for a pointer to zero.
+	// So the probe answered a different question from the one asked, and the
+	// answer it gave would have nulled a legitimate zero duration.
+	//
+	// Skipping leaves these on KeepZero, which is the answer the rule gave
+	// before the refinement and the one that matches the code being replaced.
+	// Probing a custom type properly would mean asking it for its own zero,
+	// which basetypes.StringTypable does not offer.
+	if stringAttribute.CustomType != nil {
+		return false
+	}
 	ctx := context.Background()
 	for _, v := range stringAttribute.Validators {
 		response := &validator.StringResponse{}

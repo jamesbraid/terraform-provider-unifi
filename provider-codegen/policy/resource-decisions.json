@@ -95,6 +95,19 @@
         ]
       },
       "schema_version": 0
+    },
+    "unifi_port_profile": {
+      "sdk_type": "PortProfile",
+      "duration_units": {
+        "dot1x_idle_timeout": "time.Second"
+      },
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 1
     }
   }
 }

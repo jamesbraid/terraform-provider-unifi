@@ -69,7 +69,6 @@
     "port_forward": [
       "no-mapping"
     ],
-    "port_profile": [],
     "power_supervisor": [
       "SDK-masked-update",
       "nested"
@@ -114,6 +113,9 @@
     "custom-scalar": "StringLikeField[M,S,T basetypes.StringValuable]",
     "model-conditional": "WriteWhen func(*M) bool, gating ToSDK and SetInPlan",
     "preWriteHook": "Prefetch/BeforeSend/AfterReceive, now wired into Read and Update as well as Create",
-    "read-default": "ReadDefault on StringField, substituted in ToModel so the list path gets it too"
+    "read-default": "ReadDefault on StringField, substituted in ToModel so the list path gets it too",
+    "list-hooks": "Prefetch once + AfterReceive per object in the List path",
+    "always-wire": "AlwaysWire, for wire fields a hook derives that no plan names",
+    "nullable-duration": "DurationPtrField, distinguishing nil from a pointer to zero"
   }
 }
