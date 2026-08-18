@@ -103,8 +103,35 @@ func TestEverySurfaceServesItsFrozenTypeName(t *testing.T) {
 			len(orphaned), strings.Join(orphaned, "\n    "))
 	}
 
-	t.Logf("%d surface(s) checked against %d frozen name(s)",
-		len(served), len(metadatacontract.FrozenTypeNames))
+	// THE PROVIDER IS NOT A SURFACE, AND THE COUNT HAS TO SAY SO. accept
+	// reconciled this contract against two other enumerations and found the
+	// total reads as 43 surfaces when it is 42 surfaces plus the provider
+	// itself, which serves "unifi" and satisfies the same shape as a resource.
+	// A surface count that quietly includes the provider is the kind of number
+	// that reconciles wrongly against somebody else's later, so the split is
+	// asserted here rather than explained in a comment.
+	const wantSurfaces = 42
+	providerRows := 0
+	for receiver, name := range metadatacontract.FrozenTypeNames {
+		if name == "unifi" {
+			providerRows++
+			if receiver != "unifiProvider" {
+				t.Errorf("%s serves the bare provider name %q; only the provider should",
+					receiver, name)
+			}
+		}
+	}
+	if providerRows != 1 {
+		t.Errorf("%d receiver(s) serve the bare name \"unifi\", want exactly 1 (the provider)",
+			providerRows)
+	}
+	if surfaces := len(served) - providerRows; surfaces != wantSurfaces {
+		t.Errorf("%d surface(s) plus %d provider row(s), want exactly %d surfaces",
+			surfaces, providerRows, wantSurfaces)
+	}
+
+	t.Logf("%d receiver(s) checked against %d frozen name(s): %d surfaces and the provider",
+		len(served), len(metadatacontract.FrozenTypeNames), len(served)-providerRows)
 }
 
 // servedSurfaces returns the Go type name of every surface the provider
