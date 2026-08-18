@@ -92,8 +92,28 @@ type Spec[M any, S any] struct {
 	// Prefetch runs before the object is built and its result is handed to both
 	// other hooks. BeforeSend may mutate the SDK object; AfterReceive may write
 	// model attributes the field list does not cover.
+	//
+	// BEFORESEND TAKES TWO MODELS AND THEY ANSWER DIFFERENT QUESTIONS.
+	//
+	// config is what the practitioner WROTE, with everything they omitted left
+	// null. A hook that refuses an illegal combination has to read this one:
+	// port_profile rejects tagged_networkconf_ids together with
+	// excluded_networkconf_ids, and judging that against anything else would
+	// reject a configuration nobody wrote.
+	//
+	// effective is the model the SDK object was just built FROM -- the plan on
+	// a create, and the state with the plan applied on an update. A hook that
+	// DERIVES a value reads this one, because it needs what the object will
+	// actually carry, including attributes the plan left alone.
+	//
+	// Update passed the raw plan here until radius_user needed the difference:
+	// it derives an account's VLAN from network_id whenever vlan is not set,
+	// and against the raw plan an unchanged vlan reads as unset, so a VLAN the
+	// practitioner had pinned would be silently re-derived on the next apply
+	// that touched anything else. The hook exists to adjust the object ToSDK
+	// produced, so handing it a different model than ToSDK used was the seam.
 	Prefetch     func(ctx context.Context, site string) (any, diag.Diagnostics)
-	BeforeSend   func(ctx context.Context, config, plan *M, sdk *S, prefetched any) diag.Diagnostics
+	BeforeSend   func(ctx context.Context, config, effective *M, sdk *S, prefetched any) diag.Diagnostics
 	AfterReceive func(ctx context.Context, sdk *S, model *M, prefetched any) diag.Diagnostics
 
 	// AlwaysWire names wire fields that BeforeSend sets, so they join the
@@ -449,7 +469,7 @@ func (r *Resource[M, S]) Update(
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &plan, sdk, prefetched)...)
+		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &state, sdk, prefetched)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}

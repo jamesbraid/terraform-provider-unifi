@@ -434,3 +434,72 @@ func TestWireFieldsCarriesTheFieldsAHookDerives(t *testing.T) {
 		t.Errorf("mask = %v, want the field named once", fields)
 	}
 }
+
+// BeforeSend's two models answer different questions, and on an update they
+// differ: config is what the practitioner wrote, effective is what the SDK
+// object was built from.
+//
+// This is not a stylistic distinction. radius_user derives an account's VLAN
+// from network_id whenever vlan is not set; against the raw plan an unchanged
+// vlan reads as unset, so a VLAN the practitioner had pinned would be silently
+// re-derived on the next apply that touched any other attribute.
+func TestBeforeSendGetsTheModelTheObjectWasBuiltFrom(t *testing.T) {
+	ctx := context.Background()
+
+	var sawConfig, sawEffective string
+	r := kitResource(Backend[kitSDK]{
+		Read: func(context.Context, string, string) (*kitSDK, error) {
+			return &kitSDK{ID: "id-1", Name: "from-state"}, nil
+		},
+		UpdateFields: func(_ context.Context, _ string, in *kitSDK, _ ...string) (*kitSDK, error) {
+			return in, nil
+		},
+	})
+	// The plan sets nothing, so the mask would be empty and Update would fail
+	// before reaching the hook. AlwaysWire keeps the write legal without
+	// putting a value in the plan, which is exactly the case under test.
+	r.Spec.AlwaysWire = []string{"name"}
+	r.Spec.BeforeSend = func(_ context.Context, config, effective *kitModel, sdk *kitSDK, _ any) diag.Diagnostics {
+		sawConfig = config.Name.ValueString()
+		sawEffective = effective.Name.ValueString()
+		return nil
+	}
+
+	// The plan leaves name alone; state carries it. ApplyPlanToState therefore
+	// keeps the state value, and that is what ToSDK sends.
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("from-state"),
+	})
+	plan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringNull(),
+	})
+	identity := kitIdentity(t)
+	resp := &resource.UpdateResponse{
+		State:    tfsdk.State{Schema: kitSchema(ctx)},
+		Identity: &identity,
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		State:  state,
+		Plan:   tfsdk.Plan{Schema: plan.Schema, Raw: plan.Raw},
+		Config: tfsdk.Config{Schema: plan.Schema, Raw: plan.Raw},
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("update failed, so the hook may never have run: %v", resp.Diagnostics)
+	}
+	if sawEffective == "" && sawConfig == "" {
+		t.Fatal("BeforeSend did not run at all; the assertions below would pass for the wrong reason")
+	}
+	if sawEffective != "from-state" {
+		t.Errorf("effective.Name = %q, want %q -- the hook must see what ToSDK sent, "+
+			"or a derived value is recomputed from an attribute the plan left alone",
+			sawEffective, "from-state")
+	}
+	// The control: config still reports the absence, or the two arguments
+	// would be the same thing and the distinction would be untested.
+	if sawConfig != "" {
+		t.Errorf("config.Name = %q, want empty -- config is what the practitioner wrote", sawConfig)
+	}
+}
