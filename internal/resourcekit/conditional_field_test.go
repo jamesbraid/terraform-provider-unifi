@@ -159,3 +159,86 @@ func TestThePredicateWorksOnAPlainStringField(t *testing.T) {
 		t.Error("the suppressed plain field is still in the wire mask")
 	}
 }
+
+type ptrModel struct {
+	Plain types.String        `tfsdk:"plain"`
+	IP    iptypes.IPv4Address `tfsdk:"ip"`
+}
+
+type ptrSDK struct {
+	Plain *string
+	IP    *string
+}
+
+func plainPtrField() StringLikePtrField[ptrModel, ptrSDK, types.String] {
+	return StringLikePtrField[ptrModel, ptrSDK, types.String]{
+		Wire:  "plain",
+		Model: func(m *ptrModel) *types.String { return &m.Plain },
+		SDK:   func(s *ptrSDK) **string { return &s.Plain },
+		New:   func(v basetypes.StringValue) types.String { return v },
+	}
+}
+
+// AN EMPTY STRING MUST NOT REACH THE WIRE. site_to_site_vpn's own comment is
+// the reason: the controller rejects "" for its IP and enum fields, so a
+// pointer to an empty string is a failed request rather than a weaker omission.
+//
+// This is also what made the StringPtrField this replaces wrong rather than
+// merely unused: it used ValueStringPointer, which returns a pointer to "".
+func TestAPointerStringOmitsTheEmptyValue(t *testing.T) {
+	for _, testCase := range []struct {
+		name  string
+		model types.String
+		want  *string
+	}{
+		{"null sends nothing", types.StringNull(), nil},
+		{"unknown sends nothing", types.StringUnknown(), nil},
+		{"empty sends nothing", types.StringValue(""), nil},
+		{"a real value is sent", types.StringValue("ike2"), ptrTo("ike2")},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var sdk ptrSDK
+			model := ptrModel{Plain: testCase.model}
+			if diags := plainPtrField().ToSDK(context.Background(), &model, &sdk); diags.HasError() {
+				t.Fatalf("ToSDK: %v", diags)
+			}
+			switch {
+			case testCase.want == nil && sdk.Plain != nil:
+				t.Fatalf("sent a pointer to %q, want nothing", *sdk.Plain)
+			case testCase.want != nil && sdk.Plain == nil:
+				t.Fatalf("sent nothing, want %q", *testCase.want)
+			case testCase.want != nil && *sdk.Plain != *testCase.want:
+				t.Fatalf("sent %q, want %q", *sdk.Plain, *testCase.want)
+			}
+		})
+	}
+}
+
+func ptrTo(s string) *string { return &s }
+
+// The same kind carries a custom type, which is why there is one kind and not
+// two: types.String and iptypes.IPv4Address are both basetypes.StringValuable.
+func TestAPointerStringCarriesACustomType(t *testing.T) {
+	field := StringLikePtrField[ptrModel, ptrSDK, iptypes.IPv4Address]{
+		Wire:  "ip",
+		Model: func(m *ptrModel) *iptypes.IPv4Address { return &m.IP },
+		SDK:   func(s *ptrSDK) **string { return &s.IP },
+		New:   func(v basetypes.StringValue) iptypes.IPv4Address { return iptypes.IPv4Address{StringValue: v} },
+	}
+	var model ptrModel
+	sdk := ptrSDK{IP: ptrTo("10.0.0.1")}
+	if diags := field.ToModel(context.Background(), &sdk, &model); diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if model.IP.ValueString() != "10.0.0.1" {
+		t.Fatalf("IP = %q, want 10.0.0.1", model.IP.ValueString())
+	}
+	// nil reads back as null rather than as an empty address.
+	sdk.IP = nil
+	if diags := field.ToModel(context.Background(), &sdk, &model); diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if !model.IP.IsNull() {
+		t.Errorf("a nil pointer read back as %q, want null", model.IP.ValueString())
+	}
+}

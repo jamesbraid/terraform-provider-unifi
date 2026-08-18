@@ -93,3 +93,66 @@ func (f StringLikeField[M, S, T]) CopyPlanToState(plan, state *M) {
 		*f.Model(state) = *f.Model(plan)
 	}
 }
+
+// StringLikePtrField maps any string-backed value to a **string, sending
+// nothing for a null, an unknown, OR AN EMPTY STRING.
+//
+// THE EMPTY CASE IS THE POINT AND IT IS NOT TIDINESS. site_to_site_vpn's
+// optStr says why: the controller REJECTS "" for its IP and enum fields, so a
+// pointer to an empty string is not a weaker version of omitting the field, it
+// is a failed request. That is also why the StringPtrField this replaces was
+// wrong rather than merely unused -- it used ValueStringPointer, which hands
+// back a pointer to "" for an empty value, and the first surface to need a
+// pointer string is the one that cannot survive it.
+//
+// One kind covers both the plain and the custom-typed case, because
+// types.String satisfies basetypes.StringValuable just as iptypes.IPv4Address
+// does. site_to_site_vpn needs sixteen of the first and two of the second.
+type StringLikePtrField[M any, S any, T basetypes.StringValuable] struct {
+	Wire  string
+	Model func(*M) *T
+	SDK   func(*S) **string
+	New   func(basetypes.StringValue) T
+}
+
+func (f StringLikePtrField[M, S, T]) WireName() string { return f.Wire }
+
+func (f StringLikePtrField[M, S, T]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
+	value, diags := (*f.Model(model)).ToStringValue(ctx)
+	if diags.HasError() {
+		return diags
+	}
+	if value.IsNull() || value.IsUnknown() || value.ValueString() == "" {
+		return diags
+	}
+	raw := value.ValueString()
+	*f.SDK(sdk) = &raw
+	return diags
+}
+
+// ToModel reads nil back as null. There is no Elide: a pointer that is nil and
+// a pointer to "" both mean absent here, because ToSDK never produces the
+// latter, so there is no third state for a setting to choose between.
+func (f StringLikePtrField[M, S, T]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
+	raw := *f.SDK(sdk)
+	if raw == nil || *raw == "" {
+		*f.Model(model) = f.New(basetypes.NewStringNull())
+		return nil
+	}
+	*f.Model(model) = f.New(basetypes.NewStringValue(*raw))
+	return nil
+}
+
+func (f StringLikePtrField[M, S, T]) SetInPlan(plan *M) bool {
+	value, diags := (*f.Model(plan)).ToStringValue(context.Background())
+	if diags.HasError() {
+		return false
+	}
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f StringLikePtrField[M, S, T]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}

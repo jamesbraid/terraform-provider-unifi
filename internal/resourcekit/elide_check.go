@@ -19,6 +19,10 @@ import (
 var elideExempt = map[string]struct{}{
 	"BoolField":    {}, // a false is a value; see the type's own comment
 	"BoolPtrField": {}, // a pointer bool already distinguishes unset from false
+	// A pointer string that never emits "" has no third state to elide: nil
+	// and a pointer to the empty string both mean absent, and ToSDK produces
+	// only the first.
+	"StringLikePtrField": {},
 }
 
 // ElideProblems reports every descriptor field whose Elide disagrees with the
