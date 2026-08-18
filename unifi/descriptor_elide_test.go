@@ -3,6 +3,8 @@ package unifi
 import (
 	"context"
 	"reflect"
+	"sort"
+	"strings"
 	"testing"
 
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
@@ -54,8 +56,45 @@ func TestEveryDescriptorElideAgreesWithItsSchema(t *testing.T) {
 		},
 	}
 
-	// A table that shrank to nothing would pass this test while checking no
-	// descriptor at all, which is the failure mode the check exists to remove.
+	// THE TABLE MUST COVER EVERY KIT SURFACE, and refusing an empty one was not
+	// enough. A table missing a single entry passes: the surfaces it does name
+	// still check out, the count is still non-zero, and the one nobody added is
+	// simply absent -- which reads exactly like a surface with no problems.
+	//
+	// That is the same shape this check was built to remove, one level up. The
+	// Elide values went unverified because nothing asserted them; the table
+	// asserting them went incomplete because nothing asserted IT. So the set is
+	// compared against the surfaces the provider actually serves from the kit,
+	// derived by the same AST walk the policy check uses rather than from a
+	// second hand-kept list, which would just move the problem.
+	// kitServedSurfaces is keyed by Terraform type name, which is what the
+	// table's own keys are once the provider prefix comes off.
+	want := map[string]bool{}
+	for typeName := range kitServedSurfaces(t) {
+		want[strings.TrimPrefix(typeName, "unifi_")] = true
+	}
+
+	var missing, extra []string
+	for name := range want {
+		if _, ok := checks[name]; !ok {
+			missing = append(missing, name)
+		}
+	}
+	for name := range checks {
+		if !want[name] {
+			extra = append(extra, name)
+		}
+	}
+	sort.Strings(missing)
+	sort.Strings(extra)
+	if len(missing) > 0 {
+		t.Errorf("%v are served from the kit and no case checks their Elide values; "+
+			"the descriptor ships unverified in exactly the dimension this test exists for", missing)
+	}
+	if len(extra) > 0 {
+		t.Errorf("%v are checked here but no longer served from the kit; "+
+			"a case for a surface that is gone reads as coverage and is none", extra)
+	}
 	if len(checks) == 0 {
 		t.Fatal("no descriptors are being checked; this test cannot fail and is worthless")
 	}
