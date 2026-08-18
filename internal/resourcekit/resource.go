@@ -187,6 +187,14 @@ func (s Spec[M, S]) ApplyPlanToState(plan, state *M) {
 	}
 }
 
+// A SURFACE MUST DECLARE AN IDENTITY SCHEMA. Create and Update call
+// resp.Identity.SetAttribute unconditionally, so a resource reaching them
+// without one fails at apply time with "the resource does not indicate support
+// via a resource identity schema" -- a runtime error for a wiring mistake. The
+// kit's own IdentitySchema serves the single "id" attribute every managed
+// surface here uses; override it only if the surface keys on something else,
+// as client does on mac.
+//
 // Resource is the framework implementation every managed surface shares.
 type Resource[M any, S any] struct {
 	Spec        Spec[M, S]
