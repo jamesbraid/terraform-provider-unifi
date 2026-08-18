@@ -187,7 +187,7 @@ func (s Spec[M, S]) ApplyPlanToState(plan, state *M) {
 	}
 }
 
-// A SURFACE MUST DECLARE AN IDENTITY SCHEMA. Create and Update call
+// A SURFACE MUST DECLARE AN IDENTITY SCHEMA. Create, Read and Update all call
 // resp.Identity.SetAttribute unconditionally, so a resource reaching them
 // without one fails at apply time with "the resource does not indicate support
 // via a resource identity schema" -- a runtime error for a wiring mistake. The
@@ -332,7 +332,17 @@ func (r *Resource[M, S]) Read(
 			"Could not read "+r.Spec.Subject+" with ID "+id+": "+err.Error())
 		return
 	}
+	// AfterReceive runs here for the same reason it runs after Create's write:
+	// a surface whose model carries attributes the field list cannot express
+	// would have them populated on create and blank on every refresh, which
+	// reads as the controller having dropped them.
+	prefetched, prefetchDiags := r.prefetch(ctx, site)
+	resp.Diagnostics.Append(prefetchDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, found, &data, site)...)
+	resp.Diagnostics.Append(r.afterReceive(ctx, found, &data, prefetched)...)
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -383,12 +393,42 @@ func (r *Resource[M, S]) Update(
 	}
 	r.Spec.Backend.SetID(sdk, id)
 
+	// THE HOOKS RAN ON CREATE ONLY, AND THAT IS THE DEFECT THIS CLOSES.
+	//
+	// Prefetch, BeforeSend and AfterReceive were declared, documented for
+	// port_profile's tagged-network inversion, and wired into Create alone. A
+	// surface using them would have derived its wire form correctly on the
+	// first apply and silently stopped on every update -- which is worse than
+	// no hook, because the first apply looks right and the second sends a
+	// different object. Nothing has used them yet, which is why nobody hit it.
+	//
+	// The config is re-read for the reason Create gives: a computed attribute
+	// is unknown in the config and resolved in the plan, and an inversion needs
+	// what the practitioner WROTE.
+	prefetched, prefetchDiags := r.prefetch(ctx, site)
+	resp.Diagnostics.Append(prefetchDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if r.Spec.BeforeSend != nil {
+		var config M
+		resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &plan, sdk, prefetched)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	updated, err := r.Spec.Backend.UpdateFields(ctx, site, sdk, fields...)
 	if err != nil {
 		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
 		return
 	}
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, updated, &state, site)...)
+	resp.Diagnostics.Append(r.afterReceive(ctx, updated, &state, prefetched)...)
 	*r.Spec.Timeouts(&state) = *r.Spec.Timeouts(&plan)
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&state)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

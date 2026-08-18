@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -284,5 +285,118 @@ func TestUpdateSendsOnlyTheFieldsThePlanSet(t *testing.T) {
 		if name != "name" {
 			t.Errorf("the mask names %q; only fields the plan set may be sent", name)
 		}
+	}
+}
+
+// THE THREE HOOKS RAN ON CREATE ONLY, AND NOTHING SAID SO.
+//
+// Prefetch, BeforeSend and AfterReceive were declared, documented for
+// port_profile's tagged-network inversion, and wired into Create alone. A
+// surface using them would have derived its wire form correctly on the first
+// apply and silently stopped on every update, and had its model populated on
+// create and blanked on every refresh. That is worse than no hook: the first
+// apply looks right and the second sends a different object.
+//
+// Nothing used them, so nothing failed -- which is why the asymmetry survived.
+// These assert which hooks run where, so removing a call site fails rather than
+// waiting for the first surface that needs one.
+func hookSpy(t *testing.T) (Spec[kitModel, kitSDK], *map[string]int) {
+	t.Helper()
+	seen := map[string]int{}
+	spec := Spec[kitModel, kitSDK]{
+		Prefetch: func(context.Context, string) (any, diag.Diagnostics) {
+			seen["prefetch"]++
+			return "inventory", nil
+		},
+		BeforeSend: func(_ context.Context, _, _ *kitModel, _ *kitSDK, prefetched any) diag.Diagnostics {
+			seen["beforeSend"]++
+			if prefetched != "inventory" {
+				t.Errorf("BeforeSend got prefetched = %v; the hooks are wired but not connected", prefetched)
+			}
+			return nil
+		},
+		AfterReceive: func(_ context.Context, _ *kitSDK, _ *kitModel, prefetched any) diag.Diagnostics {
+			seen["afterReceive"]++
+			if prefetched != "inventory" {
+				t.Errorf("AfterReceive got prefetched = %v", prefetched)
+			}
+			return nil
+		},
+	}
+	return spec, &seen
+}
+
+func withHooks(t *testing.T, backend Backend[kitSDK]) (*Resource[kitModel, kitSDK], *map[string]int) {
+	t.Helper()
+	r := kitResource(backend)
+	hooks, seen := hookSpy(t)
+	r.Spec.Prefetch, r.Spec.BeforeSend, r.Spec.AfterReceive = hooks.Prefetch, hooks.BeforeSend, hooks.AfterReceive
+	return r, seen
+}
+
+func TestUpdateRunsAllThreeHooks(t *testing.T) {
+	ctx := context.Background()
+	r, seen := withHooks(t, Backend[kitSDK]{
+		UpdateFields: func(_ context.Context, _ string, in *kitSDK, _ ...string) (*kitSDK, error) {
+			return in, nil
+		},
+	})
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("before"),
+	})
+	plan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("after"),
+	})
+	resp := &resource.UpdateResponse{
+		State:    state,
+		Identity: func() *tfsdk.ResourceIdentity { id := kitIdentity(t); return &id }(),
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		State:  state,
+		Plan:   tfsdk.Plan{Schema: plan.Schema, Raw: plan.Raw},
+		Config: tfsdk.Config{Schema: plan.Schema, Raw: plan.Raw},
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+	for _, hook := range []string{"prefetch", "beforeSend", "afterReceive"} {
+		if (*seen)[hook] == 0 {
+			t.Errorf("Update never called %s; a surface deriving part of its wire form "+
+				"would create correctly and then silently stop", hook)
+		}
+	}
+}
+
+func TestReadRunsPrefetchAndAfterReceive(t *testing.T) {
+	ctx := context.Background()
+	r, seen := withHooks(t, Backend[kitSDK]{
+		Read: func(context.Context, string, string) (*kitSDK, error) {
+			return &kitSDK{ID: "id-1", Name: "probe"}, nil
+		},
+	})
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("probe"),
+	})
+	resp := &resource.ReadResponse{
+		State:    state,
+		Identity: func() *tfsdk.ResourceIdentity { id := kitIdentity(t); return &id }(),
+	}
+	r.Read(ctx, resource.ReadRequest{State: state}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Read: %v", resp.Diagnostics)
+	}
+	if (*seen)["prefetch"] == 0 || (*seen)["afterReceive"] == 0 {
+		t.Errorf("Read called prefetch=%d afterReceive=%d; a model attribute the field "+
+			"list cannot express would be populated on create and blank on refresh",
+			(*seen)["prefetch"], (*seen)["afterReceive"])
+	}
+	// BeforeSend must NOT run on Read: there is nothing being sent.
+	if (*seen)["beforeSend"] != 0 {
+		t.Error("Read called BeforeSend, which sends nothing")
 	}
 }
