@@ -2,8 +2,10 @@ package unifi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
@@ -363,12 +365,12 @@ func Test_portProfileResource_IdentitySchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *portProfileResource
+		r    *portProfileKitResource
 		args args
 	}{
 		{
 			name: "does not panic",
-			r:    &portProfileResource{},
+			r:    newPortProfileKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwresource.IdentitySchemaRequest{},
@@ -391,13 +393,13 @@ func Test_portProfileResource_Schema(t *testing.T) {
 	}
 	tests := []struct {
 		name           string
-		r              *portProfileResource
+		r              *portProfileKitResource
 		args           args
 		wantAttributes []string
 	}{
 		{
 			name: "schema contains key attributes",
-			r:    &portProfileResource{},
+			r:    newPortProfileKitResource(),
 			args: args{
 				ctx:  context.Background(),
 				req:  fwresource.SchemaRequest{},
@@ -419,7 +421,7 @@ func Test_portProfileResource_Schema(t *testing.T) {
 }
 
 func TestPortProfileResourceSchemaTaggedNetworksAreComputed(t *testing.T) {
-	r := &portProfileResource{}
+	r := newPortProfileKitResource()
 	resp := &fwresource.SchemaResponse{}
 	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -448,12 +450,12 @@ func Test_portProfileResource_UpgradeState(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *portProfileResource
+		r    *portProfileKitResource
 		args args
 	}{
 		{
 			name: "returns non-nil map",
-			r:    &portProfileResource{},
+			r:    newPortProfileKitResource(),
 			args: args{ctx: context.Background()},
 		},
 	}
@@ -461,7 +463,7 @@ func Test_portProfileResource_UpgradeState(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.r.UpgradeState(tt.args.ctx)
 			if got == nil {
-				t.Error("portProfileResource.UpgradeState() returned nil")
+				t.Error("UpgradeState() returned nil")
 			}
 		})
 	}
@@ -470,21 +472,21 @@ func Test_portProfileResource_UpgradeState(t *testing.T) {
 func Test_portProfileResource_modelToAPIPortProfile(t *testing.T) {
 	type args struct {
 		ctx   context.Context
-		model *portProfileResourceModel
+		model *portProfileKitModel
 	}
 	tests := []struct {
 		name  string
-		r     *portProfileResource
+		r     *portProfileKitResource
 		args  args
 		want  *unifi.PortProfile
 		want1 diag.Diagnostics
 	}{
 		{
 			name: "minimal model conversion",
-			r:    &portProfileResource{},
+			r:    newPortProfileKitResource(),
 			args: args{
 				ctx: context.Background(),
-				model: &portProfileResourceModel{
+				model: &portProfileKitModel{
 					ID:                         types.StringNull(),
 					Site:                       types.StringNull(),
 					Name:                       types.StringValue("test"),
@@ -539,20 +541,29 @@ func Test_portProfileResource_modelToAPIPortProfile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.modelToAPIPortProfile(tt.args.ctx, tt.args.model)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"portProfileResource.modelToAPIPortProfile() got = %+v, want %+v",
-					got,
-					tt.want,
-				)
+			got, diags := portProfileKitSpec().ToSDK(tt.args.ctx, tt.args.model)
+			if diags.HasError() != (tt.want1 != nil) {
+				t.Errorf("ToSDK() diagnostics = %v, want error: %v", diags, tt.want1 != nil)
 			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"portProfileResource.modelToAPIPortProfile() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
+			// COMPARED AS THE JSON THE CONTROLLER RECEIVES. The expectations
+			// are unchanged; only the notion of equality is. DeepEqual
+			// separates a nil slice from an empty one, and all three slice
+			// fields here -- excluded_networkconf_ids,
+			// multicast_router_networkconf_ids and port_security_mac_address --
+			// are tagged omitempty, so the two produce identical requests.
+			// Checked against the SDK's tags rather than assumed: FirewallZone
+			// has a collection that is NOT tagged, where the distinction is
+			// real.
+			gotJSON, err := json.Marshal(got)
+			if err != nil {
+				t.Fatalf("marshalling the built object: %v", err)
+			}
+			wantJSON, err := json.Marshal(tt.want)
+			if err != nil {
+				t.Fatalf("marshalling the expectation: %v", err)
+			}
+			if string(gotJSON) != string(wantJSON) {
+				t.Errorf("ToSDK() sends\n  %s\nwant\n  %s", gotJSON, wantJSON)
 			}
 		})
 	}
@@ -562,19 +573,19 @@ func Test_portProfileResource_portProfileToModel(t *testing.T) {
 	type args struct {
 		ctx   context.Context
 		api   *unifi.PortProfile
-		model *portProfileResourceModel
+		model *portProfileKitModel
 		site  string
 	}
 	tests := []struct {
 		name      string
-		r         *portProfileResource
+		r         *portProfileKitResource
 		args      args
 		want      diag.Diagnostics
-		checkFunc func(t *testing.T, model *portProfileResourceModel)
+		checkFunc func(t *testing.T, model *portProfileKitModel)
 	}{
 		{
 			name: "minimal API to model conversion",
-			r:    &portProfileResource{},
+			r:    newPortProfileKitResource(),
 			args: args{
 				ctx: context.Background(),
 				api: &unifi.PortProfile{
@@ -582,11 +593,11 @@ func Test_portProfileResource_portProfileToModel(t *testing.T) {
 					Name:   "test-profile",
 					OpMode: "switch",
 				},
-				model: &portProfileResourceModel{},
+				model: &portProfileKitModel{},
 				site:  "default",
 			},
 			want: nil,
-			checkFunc: func(t *testing.T, model *portProfileResourceModel) {
+			checkFunc: func(t *testing.T, model *portProfileKitModel) {
 				if model.ID.ValueString() != "abc123" {
 					t.Errorf("ID = %q, want %q", model.ID.ValueString(), "abc123")
 				}
@@ -606,7 +617,7 @@ func Test_portProfileResource_portProfileToModel(t *testing.T) {
 		},
 		{
 			name: "custom mode preserves an empty exclusion set",
-			r:    &portProfileResource{},
+			r:    newPortProfileKitResource(),
 			args: args{
 				ctx: context.Background(),
 				api: &unifi.PortProfile{
@@ -615,11 +626,11 @@ func Test_portProfileResource_portProfileToModel(t *testing.T) {
 					OpMode:         "switch",
 					TaggedVLANMgmt: "custom",
 				},
-				model: &portProfileResourceModel{},
+				model: &portProfileKitModel{},
 				site:  "default",
 			},
 			want: nil,
-			checkFunc: func(t *testing.T, model *portProfileResourceModel) {
+			checkFunc: func(t *testing.T, model *portProfileKitModel) {
 				if model.ExcludedNetworkConfIDs.IsNull() {
 					t.Fatal("ExcludedNetworkConfIDs is null, want an empty set")
 				}
@@ -634,9 +645,9 @@ func Test_portProfileResource_portProfileToModel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.r.portProfileToModel(tt.args.ctx, tt.args.api, tt.args.model, tt.args.site)
+			got := portProfileToModelWithHooks(tt.args.ctx, tt.args.api, tt.args.model, tt.args.site)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("portProfileResource.portProfileToModel() = %v, want %v", got, tt.want)
+				t.Errorf("ToModel() = %v, want %v", got, tt.want)
 			}
 			if tt.checkFunc != nil {
 				tt.checkFunc(t, tt.args.model)
@@ -1026,7 +1037,7 @@ func TestSetPortProfileTaggedNetworkState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			model := &portProfileResourceModel{}
+			model := &portProfileKitModel{}
 			diags := setPortProfileTaggedNetworkState(
 				context.Background(),
 				&tt.api,
@@ -1056,12 +1067,12 @@ func Test_portProfileResource_ListResourceConfigSchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *portProfileResource
+		r    *portProfileKitResource
 		args args
 	}{
 		{
 			name: "does not panic",
-			r:    &portProfileResource{},
+			r:    newPortProfileKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwlist.ListResourceSchemaRequest{},
@@ -1107,4 +1118,109 @@ func TestAccPortProfileList_basic(t *testing.T) {
 			},
 		},
 	})
+}
+
+// portProfileToModelWithHooks is what portProfileToModel became: the field
+// mapping plus AfterReceive, which is where the tagged-network reconstruction
+// and the conditional excluded_networkconf_ids now live.
+//
+// The tests below assert both halves, so calling only Spec.ToModel would leave
+// them checking a model the provider never produces.
+func portProfileToModelWithHooks(
+	ctx context.Context,
+	api *unifi.PortProfile,
+	model *portProfileKitModel,
+	site string,
+) diag.Diagnostics {
+	spec := portProfileKitSpec()
+	diags := spec.ToModel(ctx, api, model, site)
+	diags.Append(portProfileAfterReceive(ctx, api, model, []unifi.Network(nil))...)
+	return diags
+}
+
+// THE DERIVED VLAN FIELDS MUST BE IN THE UPDATE MASK, and nothing asserted it
+// until removing AlwaysWire from the descriptor left the whole suite green.
+//
+// The practitioner writes tagged_networkconf_ids, which is not a Field and so
+// cannot put anything in the mask. The three attributes that carry the change
+// are computed by BeforeSend. Without AlwaysWire the mask names none of them
+// and the update is accepted having changed nothing.
+func TestPortProfileWireMaskCarriesTheDerivedVLANFields(t *testing.T) {
+	ctx := context.Background()
+	tagged, diags := types.SetValueFrom(ctx, types.StringType, []string{"net-a"})
+	if diags.HasError() {
+		t.Fatalf("building the tagged set: %v", diags)
+	}
+	plan := &portProfileKitModel{
+		Name:                 types.StringValue("uplink"),
+		TaggedNetworkConfIDs: tagged,
+		// Every attribute that maps to one of the three derived wire fields is
+		// left null, which is the state after an import or a create the
+		// controller answered with empty values.
+		TaggedVLANMgmt:         types.StringNull(),
+		Forward:                types.StringNull(),
+		ExcludedNetworkConfIDs: types.SetNull(types.StringType),
+	}
+
+	fields, err := portProfileKitSpec().WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	for _, wanted := range []string{"tagged_vlan_mgmt", "excluded_networkconf_ids", "forward"} {
+		if !slices.Contains(fields, wanted) {
+			t.Errorf("the mask omits %q, so a tagged-VLAN change would write nothing: %v",
+				wanted, fields)
+		}
+	}
+	// The control: an attribute nobody planned and nobody derives stays out,
+	// or the assertions above would hold for a mask naming every field.
+	if slices.Contains(fields, "poe_mode") {
+		t.Errorf("the mask names poe_mode, which the plan never set: %v", fields)
+	}
+}
+
+// The three read defaults, none of which had a test. Each is a value the
+// hand-written mapper substituted when the controller reported nothing, and
+// removing any of them from the descriptor left the suite green.
+func TestPortProfileReadDefaults(t *testing.T) {
+	ctx := context.Background()
+	for _, testCase := range []struct {
+		attribute string
+		reported  string
+		read      func(*portProfileKitModel) string
+		want      string
+	}{
+		{"dot1x_ctrl", "", func(m *portProfileKitModel) string { return m.Dot1XCtrl.ValueString() }, "force_authorized"},
+		{"forward", "", func(m *portProfileKitModel) string { return m.Forward.ValueString() }, "native"},
+		{"op_mode", "", func(m *portProfileKitModel) string { return m.OpMode.ValueString() }, "switch"},
+	} {
+		t.Run(testCase.attribute+" defaults on an empty read", func(t *testing.T) {
+			var model portProfileKitModel
+			api := &unifi.PortProfile{}
+			if d := portProfileKitSpec().ToModel(ctx, api, &model, "default"); d.HasError() {
+				t.Fatalf("ToModel: %v", d)
+			}
+			if got := testCase.read(&model); got != testCase.want {
+				t.Errorf("%s = %q on an empty read, want %q", testCase.attribute, got, testCase.want)
+			}
+		})
+	}
+
+	// The control: a value the controller DID report is not overwritten by the
+	// default, or the cases above would hold for a descriptor that ignored the
+	// controller entirely.
+	var model portProfileKitModel
+	api := &unifi.PortProfile{Dot1XCtrl: "auto", Forward: "customize", OpMode: "aggregate"}
+	if d := portProfileKitSpec().ToModel(ctx, api, &model, "default"); d.HasError() {
+		t.Fatalf("ToModel: %v", d)
+	}
+	for _, pair := range []struct{ name, got, want string }{
+		{"dot1x_ctrl", model.Dot1XCtrl.ValueString(), "auto"},
+		{"forward", model.Forward.ValueString(), "customize"},
+		{"op_mode", model.OpMode.ValueString(), "aggregate"},
+	} {
+		if pair.got != pair.want {
+			t.Errorf("%s = %q, want the reported %q", pair.name, pair.got, pair.want)
+		}
+	}
 }

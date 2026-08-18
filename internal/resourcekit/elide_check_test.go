@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -319,5 +320,30 @@ func TestZeroIsRejectedAsksTheValidatorsRatherThanGuessing(t *testing.T) {
 				t.Errorf("zeroIsRejected = %v, want %v", got, testCase.want)
 			}
 		})
+	}
+}
+
+// A custom-typed attribute is not probed with "", because "" is not its zero.
+// The first one the check met -- port_profile's dot1x_idle_timeout, a
+// timetypes.GoDuration -- was reported as wanting NullZero because its duration
+// validators reject "" as unparseable, which would have nulled a legitimate
+// zero duration.
+func TestACustomTypedAttributeIsNotProbedWithTheEmptyString(t *testing.T) {
+	custom := schema.StringAttribute{
+		Optional:   true,
+		Computed:   true,
+		CustomType: timetypes.GoDurationType{},
+		Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
+	}
+	if zeroIsRejected(custom) {
+		t.Error("a custom-typed attribute was probed with \"\", so its zero was judged by " +
+			"whether the empty string parses rather than whether zero is legal")
+	}
+	// The control: the identical attribute WITHOUT a custom type is probed and
+	// rejected, so the case above is not passing because the validator is inert.
+	plain := custom
+	plain.CustomType = nil
+	if !zeroIsRejected(plain) {
+		t.Fatal("the validator does not reject \"\" at all, so the assertion above proves nothing")
 	}
 }
