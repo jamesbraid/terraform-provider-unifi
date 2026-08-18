@@ -35,7 +35,7 @@ func run(args []string, stderr io.Writer) int {
 		*hardwarePath == "" ||
 		*dependencyPath == "" || *confidentialityPath == "" || *receiptOutput == "" ||
 		*ledgerOutput == "" || *contractOutput == "" {
-		fmt.Fprintln(stderr, "ledger, management-contract, migration-recovery, contract-parity, fleet-soak, hardware-disposition, dependency-publishability, confidentiality, receipt-output, ledger-output, and contract-output are required")
+		fmt.Fprintln(stderr, "ledger, management-contract, migration-recovery, hardware-disposition, dependency-publishability, confidentiality, receipt-output, ledger-output, and contract-output are required")
 		return 2
 	}
 	if flags.NArg() != 0 {
