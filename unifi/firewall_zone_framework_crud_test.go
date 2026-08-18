@@ -210,11 +210,15 @@ func TestFirewallZoneReadRemovesAnAbsentZone(t *testing.T) {
 // the test above is satisfied by removing the resource on every error.
 func TestFirewallZoneReadKeepsStateOnATransportFailure(t *testing.T) {
 	ctx := context.Background()
-	// 400 RATHER THAN 500, AND THE REASON IS THE FAST LOOP. The SDK wraps its
-	// transport in retryablehttp, which retries a 5xx with backoff -- this test
-	// took FIFTEEN SECONDS on a 500, in a suite that runs on every push. A 400
-	// is a client error, is not retried, and exercises the same distinction: a
-	// failure that is not an absence must leave state alone.
+	// 400 RATHER THAN 500, AND THIS IS A RULE FOR EVERY TEST OF THIS SHAPE.
+	//
+	// The SDK wraps its transport in retryablehttp, which retries a 5xx with
+	// backoff. This test took FIFTEEN SECONDS on a 500, in a suite fast-loop
+	// runs on every push. Twenty-five more resources need this same control, so
+	// reaching for 500 as "the obvious server failure" would add six minutes to
+	// every push and buy nothing: a 400 is not retried and exercises exactly the
+	// same distinction, that a failure which is not an absence must leave state
+	// alone.
 	server := &zoneServer{status: http.StatusBadRequest}
 	r, state, identity := firewallZoneHarness(t, server.start(t))
 	if diags := state.Set(ctx, firewallZoneModelFor(t, "live-1", nil)); diags.HasError() {

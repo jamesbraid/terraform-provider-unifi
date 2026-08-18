@@ -102,10 +102,16 @@ func dnsRecordHarness(t *testing.T, backend dnsRecordBackend) (
 	identityResp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(ctx, fwresource.IdentitySchemaRequest{}, identityResp)
 
-	// THE IDENTITY NEEDS A TYPED NULL, not a zero value. A ResourceIdentity
-	// carrying only a schema has an untyped Raw, and SetAttribute on it fails
-	// with "value missing type" -- which is the framework refusing to guess,
-	// and is what the real serving path avoids by constructing this itself.
+	// THE IDENTITY NEEDS A TYPED NULL, not a zero value.
+	//
+	// A tfsdk.ResourceIdentity carrying only a Schema has an untyped Raw, and
+	// SetAttribute on it fails with:
+	//
+	//	Cannot transform data: invalid transform: value missing type
+	//
+	// which is the framework refusing to guess. The real serving path builds
+	// this itself, so a test has to. The error text is quoted in full because
+	// it is the string somebody will search for, and one line is the whole fix.
 	identity := tfsdk.ResourceIdentity{Schema: identityResp.IdentitySchema}
 	identity.Raw = tftypes.NewValue(identityResp.IdentitySchema.Type().TerraformType(ctx), nil)
 
@@ -206,9 +212,18 @@ func TestDNSRecordReadRemovesAnAbsentRecord(t *testing.T) {
 	}
 }
 
-// TestDNSRecordReadReportsARealFailure is the control for the test above.
-// Without it, "removes an absent record" is satisfied by removing the resource
-// on EVERY error, which would discard state on a network blip.
+// TestDNSRecordReadReportsARealFailure is the control for the test above, and
+// the pair is the point rather than either test.
+//
+// WRITE BOTH OR NEITHER, ON EVERY NOT-FOUND CHECK IN THIS PROVIDER. "Removes an
+// absent record" ALONE IS SATISFIED BY REMOVING THE RESOURCE ON EVERY ERROR --
+// a resource that deletes state whenever the controller is briefly unreachable
+// passes it, and passes it more easily than the correct one. The single test
+// rewards the worse implementation.
+//
+// This is a positive control placed inside a test'"'"'s own semantics rather than
+// around the harness, and it generalises: any check of the form "X is treated
+// as absence" needs a sibling asserting that not-X is not.
 func TestDNSRecordReadReportsARealFailure(t *testing.T) {
 	ctx := context.Background()
 	backend := &fakeDNSRecordBackend{err: errors.New("connection refused")}
