@@ -24,7 +24,7 @@ func run(args []string, stderr io.Writer) int {
 	migrationPath := flags.String("migration-recovery", "", "catalog migration and recovery receipt")
 	hardwarePath := flags.String("hardware-disposition", "", "scoped port-action hardware disposition")
 	dependencyPath := flags.String("dependency-publishability", "", "canonical dependency publishability receipt")
-	confidentialityPath := flags.String("confidentiality", "", "public-export confidentiality receipt")
+	confidentialityPath := flags.String("confidentiality", "", "public-export confidentiality receipt (optional; no producer exists yet)")
 	receiptOutput := flags.String("receipt-output", "", "full-catalog release-ready receipt")
 	ledgerOutput := flags.String("ledger-output", "", "release-ready catalog ledger")
 	contractOutput := flags.String("contract-output", "", "release promotion contract")
@@ -33,9 +33,9 @@ func run(args []string, stderr io.Writer) int {
 	}
 	if *ledgerPath == "" || *managementPath == "" || *migrationPath == "" ||
 		*hardwarePath == "" ||
-		*dependencyPath == "" || *confidentialityPath == "" || *receiptOutput == "" ||
+		*dependencyPath == "" || *receiptOutput == "" ||
 		*ledgerOutput == "" || *contractOutput == "" {
-		fmt.Fprintln(stderr, "ledger, management-contract, migration-recovery, hardware-disposition, dependency-publishability, confidentiality, receipt-output, ledger-output, and contract-output are required")
+		fmt.Fprintln(stderr, "ledger, management-contract, migration-recovery, hardware-disposition, dependency-publishability, receipt-output, ledger-output, and contract-output are required")
 		return 2
 	}
 	if flags.NArg() != 0 {
@@ -74,10 +74,17 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "dependency publishability: %v\n", err)
 		return 1
 	}
-	input.ConfidentialitySHA256, err = cmdio.DecodeStrictFile(*confidentialityPath, &input.Confidentiality)
-	if err != nil {
-		fmt.Fprintf(stderr, "confidentiality: %v\n", err)
-		return 1
+	// Optional, alone among the inputs: no producer writes a confidentiality
+	// receipt yet. Supplied, it is decoded and judged like any other; absent,
+	// the receipt this command writes names confidentiality as unverified
+	// rather than staying quiet about it.
+	if *confidentialityPath != "" {
+		input.ConfidentialitySHA256, err = cmdio.DecodeStrictFile(
+			*confidentialityPath, &input.Confidentiality)
+		if err != nil {
+			fmt.Fprintf(stderr, "confidentiality: %v\n", err)
+			return 1
+		}
 	}
 
 	artifacts, err := releasequalification.BuildReleaseReadyArtifacts(input)

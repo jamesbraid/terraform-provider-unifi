@@ -16,8 +16,16 @@ func TestRunRejectsIncompleteArguments(t *testing.T) {
 	if code := run(nil, &stderr); code != 2 {
 		t.Fatalf("run(nil) = %d, want 2", code)
 	}
-	if !strings.Contains(stderr.String(), "ledger") || !strings.Contains(stderr.String(), "confidentiality") {
+	if !strings.Contains(stderr.String(), "ledger") ||
+		!strings.Contains(stderr.String(), "contract-output") {
 		t.Fatalf("stderr = %q", stderr.String())
+	}
+	// Confidentiality is deliberately absent from this list: nothing produces
+	// that receipt, so requiring it made the gate unsatisfiable. If it returns
+	// to the required set, it should be because a producer exists.
+	if strings.Contains(stderr.String(), "confidentiality") {
+		t.Errorf("confidentiality is listed as required again, but no producer writes one:\n  %s",
+			stderr.String())
 	}
 }
 
@@ -125,8 +133,34 @@ func TestEveryInputIsRequiredAndItsAbsenceIsNamed(t *testing.T) {
 		}
 	})
 
+	// Omitting the flag is not the same as naming a file that is not there. The
+	// first is the only shape this gate can run in today; the second is a broken
+	// invocation and still has to fail.
+	t.Run("omitting the confidentiality flag entirely is permitted", func(t *testing.T) {
+		args, files, _ := build(t)
+		var kept []string
+		for i := 0; i < len(args); i += 2 {
+			if args[i] != "-confidentiality" {
+				kept = append(kept, args[i], args[i+1])
+			}
+		}
+		if err := os.Remove(files["confidentiality"]); err != nil {
+			t.Fatal(err)
+		}
+		var stderr bytes.Buffer
+		code := run(kept, &stderr)
+		if code == 2 {
+			t.Fatalf("run() = 2 without -confidentiality; it is no longer a required flag.\n stderr: %s",
+				stderr.String())
+		}
+		if strings.Contains(stderr.String(), "confidentiality:") {
+			t.Errorf("run() tried to read a confidentiality receipt that was never named.\n stderr: %s",
+				stderr.String())
+		}
+	})
+
 	for _, missing := range inputs {
-		t.Run("without "+missing.flag, func(t *testing.T) {
+		t.Run("naming a missing "+missing.flag, func(t *testing.T) {
 			args, files, outputs := build(t)
 			if err := os.Remove(files[missing.flag]); err != nil {
 				t.Fatal(err)

@@ -1,6 +1,7 @@
 package releasequalification
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -224,4 +225,62 @@ func validReleaseReadyInput(t *testing.T) ReleaseReadyInput {
 			RawStateRetained: false, RawControllerResponseRetained: false,
 		}, ConfidentialitySHA256: digest,
 	}
+}
+
+// TestConfidentialityIsOptionalAndItsAbsenceIsRecorded covers the one input the
+// gate does not require.
+//
+// Nothing produces a confidentiality receipt, so requiring it made the gate
+// unsatisfiable and it was dropped from the required set. The risk in that
+// change is the obvious one: a gate that silently skips a check it used to
+// demand still reports "pass", and a reader counting evidence would have to
+// notice an empty digest to know the check never ran.
+//
+// So the artifact names the gap. This test is the reason that is not merely a
+// comment -- if unverifiedGates is ever reduced to an empty slice while the
+// receipt is still absent, the second case fails.
+func TestConfidentialityIsOptionalAndItsAbsenceIsRecorded(t *testing.T) {
+	t.Run("supplied, judged, and nothing is listed unverified", func(t *testing.T) {
+		artifacts, err := BuildReleaseReadyArtifacts(validReleaseReadyInput(t))
+		if err != nil {
+			t.Fatalf("BuildReleaseReadyArtifacts() error = %v", err)
+		}
+		if len(artifacts.Receipt.UnverifiedGates) != 0 {
+			t.Errorf("unverified_gates = %v on a run with every receipt present",
+				artifacts.Receipt.UnverifiedGates)
+		}
+	})
+
+	t.Run("absent, permitted, and named in the receipt", func(t *testing.T) {
+		input := validReleaseReadyInput(t)
+		input.Confidentiality = ConfidentialityReceipt{}
+		input.ConfidentialitySHA256 = ""
+
+		artifacts, err := BuildReleaseReadyArtifacts(input)
+		if err != nil {
+			t.Fatalf("BuildReleaseReadyArtifacts() refused a run without a confidentiality "+
+				"receipt; no producer writes one, so this is the only shape the gate can "+
+				"actually run in today: %v", err)
+		}
+		if !slices.Contains(artifacts.Receipt.UnverifiedGates, "confidentiality") {
+			t.Errorf("unverified_gates = %v, want it to name confidentiality; otherwise the "+
+				"receipt reports pass without saying which gate never ran",
+				artifacts.Receipt.UnverifiedGates)
+		}
+		if artifacts.Receipt.Evidence.ConfidentialitySHA256 != "" {
+			t.Errorf("confidentiality_sha256 = %q on a run with no confidentiality receipt",
+				artifacts.Receipt.Evidence.ConfidentialitySHA256)
+		}
+	})
+
+	// A receipt without its digest is not the absent case. Nothing would record
+	// which bytes were judged, and the zero receipt is indistinguishable from
+	// one whose every scan boolean is false -- the failing case, read as absence.
+	t.Run("a receipt without its digest is refused", func(t *testing.T) {
+		input := validReleaseReadyInput(t)
+		input.ConfidentialitySHA256 = ""
+		if _, err := BuildReleaseReadyArtifacts(input); err == nil {
+			t.Fatal("BuildReleaseReadyArtifacts() accepted a confidentiality receipt with no digest")
+		}
+	})
 }

@@ -76,6 +76,21 @@ type DependencyPublishabilityReceipt struct {
 	TreeState *catalogparity.TreeState `json:"tree_state,omitempty"`
 }
 
+// ConfidentialityReceipt is the public-export gate's receipt. NOTHING PRODUCES
+// ONE TODAY, and it is not a required input for that reason.
+//
+// The type is kept because the check behind it exists: internal/exportgate is
+// implemented and tested, and exposes Inspect and InspectCommitMessages. That
+// separates it from the contract-parity and fleet-soak receipts, which were
+// removed because nothing implemented them at all.
+//
+// BUILDING THE PRODUCER IS NOT A CODING TASK. Four of these fields --
+// ProvenanceReview, RestrictedEvidenceExternal, RawStateRetained and
+// RawControllerResponseRetained -- are judgements no scanner measures.
+// exportgate can supply FindingCount and the scan booleans; it cannot supply
+// those. A producer that writes them as constants, validated by a gate that
+// then asserts those constants, is a check comparing a constant to itself.
+// Whoever builds it has to decide whether those four are measured or dropped.
 type ConfidentialityReceipt struct {
 	FormatVersion                 int    `json:"format_version"`
 	Gate                          string `json:"gate"`
@@ -136,6 +151,7 @@ type ReleaseReadyReceipt struct {
 	SurfaceCount             int                                           `json:"surface_count"`
 	ReleaseReadySurfaceCount int                                           `json:"release_ready_surface_count"`
 	ResolvedReleaseBlockers  int                                           `json:"resolved_release_blockers"`
+	UnverifiedGates          []string                                      `json:"unverified_gates"`
 	Evidence                 ReleaseReadyEvidenceDigests                   `json:"evidence"`
 	Surfaces                 []ReleaseReadySurface                         `json:"surfaces"`
 }
@@ -236,7 +252,8 @@ func BuildReleaseReadyArtifacts(input ReleaseReadyInput) (ReleaseReadyArtifacts,
 		ProviderBinarySHA256: input.Management.Provider.Binary.SHA256,
 		Downstream:           input.Management.Downstream,
 		SurfaceCount:         len(releaseSurfaces), ReleaseReadySurfaceCount: len(releaseSurfaces),
-		ResolvedReleaseBlockers: 1, Evidence: evidenceDigests, Surfaces: releaseSurfaces,
+		ResolvedReleaseBlockers: 1, UnverifiedGates: unverifiedGates(input),
+		Evidence: evidenceDigests, Surfaces: releaseSurfaces,
 	}
 	return ReleaseReadyArtifacts{Receipt: receipt, Ledger: ledger, Contract: contract, Evidence: evidence}, nil
 }
@@ -246,11 +263,18 @@ func validateReleaseReadyInput(input ReleaseReadyInput) error {
 		"input ledger": input.LedgerSHA256, "management contract": input.ManagementSHA256,
 		"migration/recovery":        input.MigrationSHA256,
 		"hardware disposition":      input.HardwareSHA256,
-		"dependency publishability": input.DependencySHA256, "confidentiality": input.ConfidentialitySHA256,
+		"dependency publishability": input.DependencySHA256,
 	} {
 		if !validHex(digest, 64) {
 			return fmt.Errorf("%s SHA-256 is invalid", label)
 		}
+	}
+	if confidentialitySupplied(input) && !validHex(input.ConfidentialitySHA256, 64) {
+		return fmt.Errorf("confidentiality SHA-256 is invalid")
+	}
+	if !confidentialitySupplied(input) && input.Confidentiality != (ConfidentialityReceipt{}) {
+		return fmt.Errorf(
+			"a confidentiality receipt was supplied without its digest, so nothing records which bytes were judged")
 	}
 	if err := validateReleaseManagement(input); err != nil {
 		return err
@@ -267,7 +291,33 @@ func validateReleaseReadyInput(input ReleaseReadyInput) error {
 	if err := validateDependencyPublishability(input); err != nil {
 		return err
 	}
+	if !confidentialitySupplied(input) {
+		return nil
+	}
 	return validateConfidentiality(input)
+}
+
+// confidentialitySupplied reports whether a confidentiality receipt was given.
+//
+// The digest is the marker rather than the receipt, because a zero receipt is
+// indistinguishable from one whose every boolean is false -- which is exactly
+// the failing case this gate must not read as absence.
+func confidentialitySupplied(input ReleaseReadyInput) bool {
+	return input.ConfidentialitySHA256 != ""
+}
+
+// unverifiedGates names the checks this run did not perform.
+//
+// A receipt that simply omitted a digest would still say "pass", and a reader
+// counting evidence would have to notice an empty string to know a gate never
+// ran. Naming the gap in the artifact is the difference between a decision that
+// was recorded and one that was skipped.
+func unverifiedGates(input ReleaseReadyInput) []string {
+	gates := []string{}
+	if !confidentialitySupplied(input) {
+		gates = append(gates, "confidentiality")
+	}
+	return gates
 }
 
 // acceptedReleaseBlockers is the set of evidence gaps this gate will ship with.
