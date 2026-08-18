@@ -5,10 +5,18 @@ package unifi
 //
 // THE HAND-WRITTEN RESOURCE IGNORED A FILTER IT DID NOT RECOGNISE. Its List
 // read `postFilters["name"]`, `["record_type"]` and `["enabled"]` and looked at
-// nothing else, so `filter { name = "recrod_type" ... }` matched every record on
-// the site and the practitioner got a complete list back. A WRONG ANSWER RATHER
+// nothing else, so a filter naming anything else matched every record on the
+// site and the practitioner got a complete list back. A WRONG ANSWER RATHER
 // THAN A FAILURE, and the wrong answer is the worse of the two: a typo reads as
 // "that value matched everything" instead of as a mistake.
+//
+// THE PROBE NAME IS not_a_field RATHER THAN A PLAUSIBLE TYPO. The first version
+// transposed two letters of record_type -- what a practitioner would actually
+// mistype -- and misspell flagged every occurrence, turning the eight-linter
+// gate red on the commit that asserted this. A DELIBERATE MISSPELLING IS
+// INDISTINGUISHABLE FROM AN ACCIDENTAL ONE TO A SPELL CHECKER, including in the
+// comment explaining that it was deliberate. The probe has to be wrong without
+// being a near-miss of a real word.
 //
 // The kit refuses it. That is a deliberate divergence from the behaviour that
 // shipped, so it is asserted here rather than described in a commit message.
@@ -95,11 +103,11 @@ func TestListRefusesAFilterThatNamesNoField(t *testing.T) {
 
 	stream := &list.ListResultsStream{}
 	r.List(context.Background(), list.ListRequest{
-		Config: listConfigFor(t, r, map[string]string{"recrod_type": "A"}),
+		Config: listConfigFor(t, r, map[string]string{"not_a_field": "A"}),
 	}, stream)
 
 	_, messages := drain(stream)
-	if !strings.Contains(messages, "recrod_type") {
+	if !strings.Contains(messages, "not_a_field") {
 		t.Fatalf("the refusal does not name the offending filter: %q.\n\n"+
 			"A filter naming no field must be refused BY NAME. The hand-written resource "+
 			"ignored it and returned every record, so a typo read as a value that matched "+
