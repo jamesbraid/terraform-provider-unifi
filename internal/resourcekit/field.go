@@ -372,6 +372,8 @@ type StringListField[M any, S any] struct {
 func (f StringListField[M, S]) WireName() string { return f.Wire }
 
 func (f StringListField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
+	// See StringSetField.ToSDK: firewall_zone's network_ids is the field that
+	// needs the seed, and it is a list.
 	*f.SDK(sdk) = []string{}
 	value := f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
@@ -437,6 +439,14 @@ type StringSetField[M any, S any] struct {
 func (f StringSetField[M, S]) WireName() string { return f.Wire }
 
 func (f StringSetField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
+	// THE EMPTY SLICE IS DELIBERATE AND ONE SURFACE DEPENDS ON IT. A nil slice
+	// and an empty one are the same JSON for a field tagged omitempty, and
+	// three of the four collections served here are -- but FirewallZone's
+	// network_ids is not, so nil marshals as null and empty marshals as [].
+	// Its hand-written mapper seeded []string{} for exactly that reason. Moving
+	// this line below the null check would send null where the controller was
+	// being told the zone has no networks, and no test comparing Go structs
+	// would see the difference.
 	*f.SDK(sdk) = []string{}
 	value := f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
