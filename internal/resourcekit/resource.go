@@ -348,7 +348,23 @@ func (r *Resource[M, S]) Delete(
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	// A NOT-FOUND DELETE SUCCEEDS, ON EVERY RESOURCE. James decided this rather
+	// than it being per-resource, and it is a behaviour CHANGE on the ten that
+	// currently report the error -- dns_record, network, radius_user, setting,
+	// site, vpn_client, vpn_server, wan, wireguard_peer and wlan.
+	//
+	// The reasoning is that delete is the one operation whose goal state is
+	// already reached when the object is absent. Reporting an error there leaves
+	// the practitioner with state Terraform will not release and a resource
+	// nobody can remove without editing state by hand, which is the worst
+	// outcome available for an object that is already gone.
+	//
+	// USER-VISIBLE, so it needs a release note when this lands.
 	if err := r.Spec.Backend.Delete(ctx, r.Site(&data), (*r.Spec.ID(&data)).ValueString()); err != nil {
+		var notFound *ui.NotFoundError
+		if errors.As(err, &notFound) {
+			return
+		}
 		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, err.Error())
 		return
 	}
