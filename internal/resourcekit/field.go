@@ -162,11 +162,19 @@ type BoolField[M any, S any] struct {
 	Wire  string
 	Model func(*M) *types.Bool
 	SDK   func(*S) *bool
+
+	// WriteWhen suppresses the write when it returns false; nil means always.
+	// Same contract as StringField's, and it gates the wire mask as well as
+	// the write for the same reason.
+	WriteWhen func(*M) bool
 }
 
 func (f BoolField[M, S]) WireName() string { return f.Wire }
 
 func (f BoolField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
+	if f.WriteWhen != nil && !f.WriteWhen(model) {
+		return nil
+	}
 	value := f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
 		return nil
@@ -181,6 +189,9 @@ func (f BoolField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagn
 }
 
 func (f BoolField[M, S]) SetInPlan(plan *M) bool {
+	if f.WriteWhen != nil && !f.WriteWhen(plan) {
+		return false
+	}
 	value := f.Model(plan)
 	return !value.IsNull() && !value.IsUnknown()
 }
@@ -243,6 +254,10 @@ type Int64PtrField[M any, S any] struct {
 	Model func(*M) *types.Int64
 	SDK   func(*S) **int64
 	Elide ElideZero
+
+	// OmitZero sends nothing rather than a pointer to zero. See ToSDK for why
+	// this is separate from Elide.
+	OmitZero bool
 }
 
 func (f Int64PtrField[M, S]) WireName() string { return f.Wire }
@@ -262,7 +277,19 @@ func (f Int64PtrField[M, S]) WireName() string { return f.Wire }
 // exercised anywhere, which is why the behaviour is reproduced rather than
 // improved.
 func (f Int64PtrField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
-	*f.SDK(sdk) = f.Model(model).ValueInt64Pointer()
+	value := f.Model(model)
+	// OmitZero is a WRITE rule and Elide is a READ one, which is why this
+	// cannot reuse Elide. Elide answers "what does a zero from the API mean";
+	// this answers "may a zero go to the controller at all", and
+	// site_to_site_vpn is where they differ: its optInt64 helper says the
+	// controller REJECTS 0 for the lifetime, DH-group and route-distance
+	// fields, so a pointer to zero is a failed request rather than a smaller
+	// value. Defaulted off, because the seven existing users send zeroes
+	// legitimately.
+	if f.OmitZero && !value.IsNull() && !value.IsUnknown() && value.ValueInt64() == 0 {
+		return nil
+	}
+	*f.SDK(sdk) = value.ValueInt64Pointer()
 	return nil
 }
 
