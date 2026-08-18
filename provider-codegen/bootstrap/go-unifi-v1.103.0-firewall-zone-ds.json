@@ -10,51 +10,64 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "cloud_template",
-        "type": "string"
+        "type": "string",
+        "go_name": "CloudTemplate"
       },
       {
         "name": "default_zone",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "DefaultZone",
+        "pointer": true
       },
       {
         "name": "external_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ExternalID"
       },
       {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "go_name": "Name"
       },
       {
         "name": "network_ids",
-        "type": "array<string>"
+        "type": "array<string>",
+        "go_name": "NetworkIDs"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "zone_key",
-        "type": "string"
+        "type": "string",
+        "go_name": "ZoneKey"
       }
     ]
   }

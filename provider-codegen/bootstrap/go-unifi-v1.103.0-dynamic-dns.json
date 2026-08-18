@@ -10,60 +10,74 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "custom_service",
-        "type": "string"
+        "type": "string",
+        "go_name": "CustomService"
       },
       {
         "name": "host_name",
-        "type": "string"
+        "type": "string",
+        "go_name": "HostName"
       },
       {
         "name": "interface",
-        "type": "string"
+        "type": "string",
+        "go_name": "Interface"
       },
       {
         "name": "login",
-        "type": "string"
+        "type": "string",
+        "go_name": "Login"
       },
       {
         "name": "options",
-        "type": "array<string>"
+        "type": "array<string>",
+        "go_name": "Options"
       },
       {
         "name": "server",
-        "type": "string"
+        "type": "string",
+        "go_name": "Server"
       },
       {
         "name": "service",
-        "type": "string"
+        "type": "string",
+        "go_name": "Service"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "x_password",
         "type": "string",
-        "secret_candidate": true
+        "secret_candidate": true,
+        "go_name": "Password"
       }
     ]
   }

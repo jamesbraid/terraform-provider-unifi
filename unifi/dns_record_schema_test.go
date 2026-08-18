@@ -20,7 +20,7 @@ func TestDNSRecordSchemaUsesCompilerOutput(t *testing.T) {
 	)
 
 	var response resource.SchemaResponse
-	(&dnsRecordFrameworkResource{}).Schema(ctx, resource.SchemaRequest{}, &response)
+	newDNSRecordKitResource().Schema(ctx, resource.SchemaRequest{}, &response)
 	if response.Schema.Version != generated.Version {
 		t.Fatalf("schema version = %d, want %d", response.Schema.Version, generated.Version)
 	}
@@ -40,7 +40,7 @@ func TestDNSRecordSchemaUsesCompilerOutput(t *testing.T) {
 }
 
 func TestDNSRecordCompilerCutoverKeepsStateUpgrade(t *testing.T) {
-	upgraders := (&dnsRecordFrameworkResource{}).UpgradeState(context.Background())
+	upgraders := newDNSRecordKitResource().UpgradeState(context.Background())
 	if _, ok := upgraders[0]; !ok {
 		t.Fatal("DNS v0 state upgrader was removed during compiler cutover")
 	}

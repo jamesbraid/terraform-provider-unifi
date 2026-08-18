@@ -10,103 +10,131 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "blocked",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Blocked",
+        "pointer": true
       },
       {
         "name": "display_name",
-        "type": "string"
+        "type": "string",
+        "go_name": "DisplayName"
       },
       {
         "name": "fixed_ap_enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "FixedApEnabled"
       },
       {
         "name": "fixed_ap_mac",
-        "type": "string"
+        "type": "string",
+        "go_name": "FixedApMAC"
       },
       {
         "name": "fixed_ip",
-        "type": "string"
+        "type": "string",
+        "go_name": "FixedIP"
       },
       {
         "name": "hostname",
-        "type": "string"
+        "type": "string",
+        "go_name": "Hostname"
       },
       {
         "name": "last_ip",
-        "type": "string"
+        "type": "string",
+        "go_name": "LastIP"
       },
       {
         "name": "last_seen",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "LastSeen",
+        "pointer": true
       },
       {
         "name": "local_dns_record",
-        "type": "string"
+        "type": "string",
+        "go_name": "LocalDNSRecord"
       },
       {
         "name": "local_dns_record_enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "LocalDNSRecordEnabled"
       },
       {
         "name": "mac",
-        "type": "string"
+        "type": "string",
+        "go_name": "MAC"
       },
       {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "go_name": "Name"
       },
       {
         "name": "network_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "NetworkID"
       },
       {
         "name": "network_members_group_ids",
-        "type": "array<string>"
+        "type": "array<string>",
+        "go_name": "NetworkMembersGroupIDs"
       },
       {
         "name": "note",
-        "type": "string"
+        "type": "string",
+        "go_name": "Note"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "use_fixedip",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "UseFixedIP"
       },
       {
         "name": "usergroup_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "UserGroupID"
       },
       {
         "name": "virtual_network_override_enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "VirtualNetworkOverrideEnabled",
+        "pointer": true
       },
       {
         "name": "virtual_network_override_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "VirtualNetworkOverrideID"
       }
     ]
   }

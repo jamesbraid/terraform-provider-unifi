@@ -10,59 +10,74 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Enabled"
       },
       {
         "name": "key",
-        "type": "string"
+        "type": "string",
+        "go_name": "Key"
       },
       {
         "name": "port",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "Port",
+        "pointer": true
       },
       {
         "name": "priority",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "Priority"
       },
       {
         "name": "record_type",
-        "type": "string"
+        "type": "string",
+        "go_name": "RecordType"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "ttl",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "Ttl"
       },
       {
         "name": "value",
-        "type": "string"
+        "type": "string",
+        "go_name": "Value"
       },
       {
         "name": "weight",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "Weight"
       }
     ]
   }
