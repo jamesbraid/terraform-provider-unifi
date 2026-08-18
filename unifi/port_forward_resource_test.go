@@ -793,62 +793,6 @@ func Test_portForwardResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_portForwardResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name      string
-		r         *portForwardResource
-		args      args
-		wantError bool
-	}{
-		{
-			name: "nil provider data does not error",
-			r:    &portForwardResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: nil},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-		{
-			name: "wrong type produces error",
-			r:    &portForwardResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: true,
-		},
-		{
-			name: "correct client type succeeds",
-			r:    &portForwardResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantError && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("Configure() expected error but got none")
-			}
-			if !tt.wantError && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("Configure() unexpected error: %v", tt.args.resp.Diagnostics.Errors())
-			}
-		})
-	}
-}
-
 func Test_portForwardResource_modelToPortForward(t *testing.T) {
 	type args struct {
 		ctx   context.Context

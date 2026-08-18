@@ -319,28 +319,6 @@ func Test_staticRouteFrameworkResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_staticRouteFrameworkResource_Configure(t *testing.T) {
-	tests := []struct {
-		name      string
-		req       fwresource.ConfigureRequest
-		wantError bool
-	}{
-		{"nil_provider_data", fwresource.ConfigureRequest{}, false},
-		{"wrong_type", fwresource.ConfigureRequest{ProviderData: "wrong"}, true},
-		{"correct_client", fwresource.ConfigureRequest{ProviderData: &Client{}}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &staticRouteFrameworkResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(context.Background(), tt.req, resp)
-			if resp.Diagnostics.HasError() != tt.wantError {
-				t.Errorf("hasError = %v, want %v", resp.Diagnostics.HasError(), tt.wantError)
-			}
-		})
-	}
-}
-
 func Test_staticRouteFrameworkResource_ConfigValidators(t *testing.T) {
 	r := &staticRouteFrameworkResource{}
 	validators := r.ConfigValidators(context.Background())

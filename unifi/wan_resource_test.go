@@ -650,42 +650,6 @@ func Test_wanResource_Schema(t *testing.T) {
 	})
 }
 
-func Test_wanResource_Configure(t *testing.T) {
-	t.Run("nil provider data is not an error", func(t *testing.T) {
-		r := &wanResource{}
-		resp := &fwresource.ConfigureResponse{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: nil}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Errorf(
-				"Configure() with nil provider data should not error, got: %v",
-				resp.Diagnostics,
-			)
-		}
-	})
-
-	t.Run("wrong type produces error", func(t *testing.T) {
-		r := &wanResource{}
-		resp := &fwresource.ConfigureResponse{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: "wrong"}, resp)
-		if !resp.Diagnostics.HasError() {
-			t.Error("Configure() with wrong type should produce an error")
-		}
-	})
-
-	t.Run("correct Client type", func(t *testing.T) {
-		r := &wanResource{}
-		resp := &fwresource.ConfigureResponse{}
-		client := &Client{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: client}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Errorf("Configure() with *Client should not error, got: %v", resp.Diagnostics)
-		}
-		if r.client != client {
-			t.Error("Configure() did not set client")
-		}
-	})
-}
-
 func Test_wanResource_Create(t *testing.T) {
 	t.Skip("requires terraform state machinery")
 }

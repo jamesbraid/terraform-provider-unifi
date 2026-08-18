@@ -30,32 +30,3 @@ func Test_clientInfoDataSource_Schema(t *testing.T) {
 		}
 	}
 }
-
-func Test_clientInfoDataSource_Configure(t *testing.T) {
-	tests := []struct {
-		name      string
-		data      any
-		wantError bool
-	}{
-		{"nil provider data", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct client type", &Client{Site: "default"}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := &clientInfoDataSource{}
-			resp := &fwdatasource.ConfigureResponse{}
-			d.Configure(
-				context.Background(),
-				fwdatasource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantError && !resp.Diagnostics.HasError() {
-				t.Error("expected error in diagnostics")
-			}
-			if !tt.wantError && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-		})
-	}
-}

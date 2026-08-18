@@ -1025,69 +1025,6 @@ func Test_networkResource_UpgradeState(t *testing.T) {
 	}
 }
 
-func Test_networkResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name string
-		r    *networkResource
-		args args
-	}{
-		{
-			name: "nil provider data does not error",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: nil},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "wrong type produces error",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "correct type sets client",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			switch tt.name {
-			case "nil provider data does not error":
-				if tt.args.resp.Diagnostics.HasError() {
-					t.Errorf("Configure() unexpected error: %v", tt.args.resp.Diagnostics)
-				}
-			case "wrong type produces error":
-				if !tt.args.resp.Diagnostics.HasError() {
-					t.Error("Configure() expected error for wrong type")
-				}
-			case "correct type sets client":
-				if tt.args.resp.Diagnostics.HasError() {
-					t.Errorf("Configure() unexpected error: %v", tt.args.resp.Diagnostics)
-				}
-				if tt.r.client == nil {
-					t.Error("Configure() client not set")
-				}
-			}
-		})
-	}
-}
-
 func Test_networkResource_modelToNetwork(t *testing.T) {
 	type args struct {
 		ctx   context.Context

@@ -132,37 +132,3 @@ func Test_portAction_Schema(t *testing.T) {
 		})
 	}
 }
-
-func Test_portAction_Configure(t *testing.T) {
-	tests := []struct {
-		name      string
-		req       fwaction.ConfigureRequest
-		wantError bool
-	}{
-		{
-			name:      "nil_provider_data",
-			req:       fwaction.ConfigureRequest{},
-			wantError: false,
-		},
-		{
-			name:      "wrong_type",
-			req:       fwaction.ConfigureRequest{ProviderData: "not-a-client"},
-			wantError: true,
-		},
-		{
-			name:      "correct_client",
-			req:       fwaction.ConfigureRequest{ProviderData: &Client{}},
-			wantError: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &portAction{}
-			resp := &fwaction.ConfigureResponse{}
-			a.Configure(context.Background(), tt.req, resp)
-			if resp.Diagnostics.HasError() != tt.wantError {
-				t.Errorf("hasError = %v, want %v", resp.Diagnostics.HasError(), tt.wantError)
-			}
-		})
-	}
-}

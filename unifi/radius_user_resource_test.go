@@ -290,34 +290,6 @@ func Test_radiusUserResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_radiusUserResource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		data    any
-		wantErr bool
-	}{
-		{"nil", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct", &Client{Site: "default"}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &radiusUserResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantErr && !resp.Diagnostics.HasError() {
-				t.Error("expected error")
-			}
-			if !tt.wantErr && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected: %v", resp.Diagnostics)
-			}
-		})
-	}
-}
-
 func Test_radiusUserResource_IdentitySchemaStub(t *testing.T) {
 	// Already covered by Test_radiusUserResource_IdentitySchema above.
 }

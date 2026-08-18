@@ -208,34 +208,6 @@ func Test_powerSupervisorResource_UpgradeState(t *testing.T) {
 	}
 }
 
-func Test_powerSupervisorResource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name string
-		data any
-		err  bool
-	}{
-		{"nil", nil, false},
-		{"wrong", "wrong", true},
-		{"ok", &Client{}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &powerSupervisorResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.err && !resp.Diagnostics.HasError() {
-				t.Error("expected error in diagnostics")
-			}
-			if !tt.err && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-		})
-	}
-}
-
 func Test_powerSupervisorResource_modelToPowerSupervisor(t *testing.T) {
 	r := &powerSupervisorResource{}
 

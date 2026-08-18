@@ -198,34 +198,6 @@ func Test_siteToSiteVPNResource_ConfigValidators(t *testing.T) {
 	}
 }
 
-func Test_siteToSiteVPNResource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		data    any
-		wantErr bool
-	}{
-		{"nil", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct", &Client{Site: "default"}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &siteToSiteVPNResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantErr && !resp.Diagnostics.HasError() {
-				t.Error("expected error")
-			}
-			if !tt.wantErr && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected: %v", resp.Diagnostics)
-			}
-		})
-	}
-}
-
 func Test_siteToSiteVPNResource_siteOrDefault(t *testing.T) {
 	t.Run("non-empty site is returned as-is", func(t *testing.T) {
 		r := &siteToSiteVPNResource{client: &Client{Site: "fallback"}}

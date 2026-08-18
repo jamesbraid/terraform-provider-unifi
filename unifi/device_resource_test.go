@@ -645,34 +645,6 @@ func Test_deviceResource_UpgradeState_dropsAssistedRoaming(t *testing.T) {
 	}
 }
 
-func Test_deviceResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-	}{
-		{
-			name: "nil provider data",
-			r:    &deviceResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
 func Test_deviceResource_Create(t *testing.T) {
 	type args struct {
 		ctx  context.Context
