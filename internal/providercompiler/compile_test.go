@@ -1904,10 +1904,6 @@ const dnsDataSourceBaselineDigest = "e9217234de7678441bcdd4db0fd285d32d6856ddaf9
 
 // dataSourceBaseline mirrors the committed ledger's data_source digest for
 // unifi_dns_record so admission's per-surface digest check lines up.
-func dataSourceBaseline(t *testing.T) []byte {
-	t.Helper()
-	return surfaceKindBaseline(t, catalogparity.DataSource)
-}
 
 // surfaceKindBaseline names the manifest key the compiler reads for this kind,
 // so a fixture cannot pass by declaring a digest under a key the code never
