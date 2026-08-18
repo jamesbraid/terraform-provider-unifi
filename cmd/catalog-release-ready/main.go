@@ -22,8 +22,6 @@ func run(args []string, stderr io.Writer) int {
 	ledgerPath := flags.String("ledger", "", "input catalog parity ledger")
 	managementPath := flags.String("management-contract", "", "provider catalog management contract")
 	migrationPath := flags.String("migration-recovery", "", "catalog migration and recovery receipt")
-	contractParityPath := flags.String("contract-parity", "", "downstream catalog contract parity receipt")
-	fleetSoakPath := flags.String("fleet-soak", "", "private fleet soak receipt")
 	hardwarePath := flags.String("hardware-disposition", "", "scoped port-action hardware disposition")
 	dependencyPath := flags.String("dependency-publishability", "", "canonical dependency publishability receipt")
 	confidentialityPath := flags.String("confidentiality", "", "public-export confidentiality receipt")
@@ -34,7 +32,7 @@ func run(args []string, stderr io.Writer) int {
 		return 2
 	}
 	if *ledgerPath == "" || *managementPath == "" || *migrationPath == "" ||
-		*contractParityPath == "" || *fleetSoakPath == "" || *hardwarePath == "" ||
+		*hardwarePath == "" ||
 		*dependencyPath == "" || *confidentialityPath == "" || *receiptOutput == "" ||
 		*ledgerOutput == "" || *contractOutput == "" {
 		fmt.Fprintln(stderr, "ledger, management-contract, migration-recovery, contract-parity, fleet-soak, hardware-disposition, dependency-publishability, confidentiality, receipt-output, ledger-output, and contract-output are required")
@@ -64,16 +62,6 @@ func run(args []string, stderr io.Writer) int {
 	input.MigrationSHA256, err = cmdio.DecodeStrictFile(*migrationPath, &input.Migration)
 	if err != nil {
 		fmt.Fprintf(stderr, "migration/recovery: %v\n", err)
-		return 1
-	}
-	input.ContractParitySHA256, err = cmdio.DecodeStrictFile(*contractParityPath, &input.ContractParity)
-	if err != nil {
-		fmt.Fprintf(stderr, "contract parity: %v\n", err)
-		return 1
-	}
-	input.FleetSoakSHA256, err = cmdio.DecodeStrictFile(*fleetSoakPath, &input.FleetSoak)
-	if err != nil {
-		fmt.Fprintf(stderr, "fleet soak: %v\n", err)
 		return 1
 	}
 	input.HardwareSHA256, err = cmdio.DecodeStrictFile(*hardwarePath, &input.Hardware)

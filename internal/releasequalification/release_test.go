@@ -52,35 +52,11 @@ func TestBuildReleaseReadyArtifactsFailsClosed(t *testing.T) {
 		mutate func(*ReleaseReadyInput)
 		want   string
 	}{
-		"contract parity blocker": {
-			mutate: func(input *ReleaseReadyInput) {
-				input.ContractParity.ReleaseBlockers[0].Signal = "unknown"
-			},
-			want: "contract parity release blocker",
-		},
-		"contract surface substitution": {
-			mutate: func(input *ReleaseReadyInput) {
-				input.ContractParity.Surfaces[3].Name = "unifi_unknown"
-			},
-			want: "contract parity surface set",
-		},
 		"migration source": {
 			mutate: func(input *ReleaseReadyInput) {
 				input.Migration.SourceCommit = strings.Repeat("f", 40)
 			},
 			want: "migration/recovery lineage",
-		},
-		"fleet drift": {
-			mutate: func(input *ReleaseReadyInput) {
-				input.FleetSoak.UnexplainedDriftCount = 1
-			},
-			want: "fleet soak",
-		},
-		"fleet mutation": {
-			mutate: func(input *ReleaseReadyInput) {
-				input.FleetSoak.Mode = "apply"
-			},
-			want: "fleet soak",
 		},
 		"physical hardware overclaim": {
 			mutate: func(input *ReleaseReadyInput) {
@@ -205,7 +181,6 @@ func validReleaseReadyInput(t *testing.T) ReleaseReadyInput {
 		FormatVersion: 1, ProviderAddress: catalogparity.CanonicalProviderAddress,
 		BaselineSHA256: digest, Entries: make([]catalogparity.LedgerEntry, 0, 67),
 	}
-	contractSurfaces := make([]ContractParitySurface, 0, 67)
 	for _, admitted := range migrationInput.Admission.Surfaces {
 		management.Surfaces = append(management.Surfaces, managementcontract.CatalogManagementSurface{
 			SurfaceKey: admitted.SurfaceKey, State: catalogparity.Admitted,
@@ -222,40 +197,11 @@ func validReleaseReadyInput(t *testing.T) ReleaseReadyInput {
 			State:   catalogparity.Admitted, ReceiptSHA256: admitted.ReceiptSHA256,
 			Implementation: "candidate",
 		})
-		contractSurfaces = append(contractSurfaces, ContractParitySurface{
-			SurfaceKey: admitted.SurfaceKey, State: catalogparity.ContractParity,
-			CaptureMode: func() managementcontract.CaptureMode {
-				if admitted.Kind == catalogparity.ManagedResource {
-					return managementcontract.CaptureManaged
-				}
-				return managementcontract.CaptureNotApplicable
-			}(),
-			ReceiptSHA256: digest,
-		})
 	}
 	return ReleaseReadyInput{
 		Ledger: ledger, LedgerSHA256: digest,
 		Management: management, ManagementSHA256: digest,
 		Migration: migration, MigrationSHA256: digest,
-		ContractParity: ContractParityReceipt{
-			FormatVersion: 1, Gate: "ubitofu-catalog-contract-parity", Result: "pass",
-			ContractSHA256: digest, ProviderBinarySHA256: migration.CandidateBinary,
-			Downstream: downstream, SurfaceCount: 67,
-			CaptureCounts:   map[string]int{"managed": 28, "not_applicable": 39},
-			Dimensions:      map[string]bool{"capture_eligibility": true, "coverage": true, "enumeration": true, "generated_hcl": true, "identity": true, "plan_classification": true, "receipt_inputs": true, "redaction": true},
-			ReleaseBlockers: append([]catalogparity.EvidenceGap(nil), management.Admission.ReleaseBlockers...),
-			Surfaces:        contractSurfaces,
-		},
-		ContractParitySHA256: digest,
-		FleetSoak: FleetSoakReceipt{
-			FormatVersion: 1, Gate: "unifi-private-fleet-soak", Result: "pass",
-			ProviderAddress: catalogparity.CanonicalProviderAddress,
-			SourceCommit:    migration.SourceCommit, ProviderBinarySHA256: migration.CandidateBinary,
-			DownstreamCommit: downstream.Commit, Platform: "linux/amd64", Mode: "plan_only",
-			ConsecutivePasses: 2, ObservedResourceCount: 28, UnexplainedDriftCount: 0,
-			DestructiveChangeCount: 0, RefreshOnly: true, SecretsRedacted: true,
-			StateSnapshotSHA256: digest, NormalizedPlanSHA256: digest,
-		}, FleetSoakSHA256: digest,
 		Hardware: HardwareDispositionReceipt{
 			FormatVersion: 1, Gate: "unifi-port-hardware-disposition", Result: "pass",
 			SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"},

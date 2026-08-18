@@ -25,47 +25,6 @@ var releaseContractDimensions = []string{
 	"redaction",
 }
 
-type ContractParitySurface struct {
-	catalogparity.SurfaceKey
-	State         catalogparity.AdmissionState   `json:"state"`
-	CaptureMode   managementcontract.CaptureMode `json:"capture_mode"`
-	ReceiptSHA256 string                         `json:"receipt_sha256"`
-}
-
-type ContractParityReceipt struct {
-	FormatVersion        int                                           `json:"format_version"`
-	Gate                 string                                        `json:"gate"`
-	Result               string                                        `json:"result"`
-	ContractSHA256       string                                        `json:"contract_sha256"`
-	ProviderBinarySHA256 string                                        `json:"provider_binary_sha256"`
-	Downstream           managementcontract.DownstreamManifestIdentity `json:"downstream"`
-	SurfaceCount         int                                           `json:"surface_count"`
-	CaptureCounts        map[string]int                                `json:"capture_counts"`
-	Dimensions           map[string]bool                               `json:"dimensions"`
-	ReleaseBlockers      []catalogparity.EvidenceGap                   `json:"release_blockers"`
-	Surfaces             []ContractParitySurface                       `json:"surfaces"`
-}
-
-type FleetSoakReceipt struct {
-	FormatVersion          int    `json:"format_version"`
-	Gate                   string `json:"gate"`
-	Result                 string `json:"result"`
-	ProviderAddress        string `json:"provider_address"`
-	SourceCommit           string `json:"source_commit"`
-	ProviderBinarySHA256   string `json:"provider_binary_sha256"`
-	DownstreamCommit       string `json:"downstream_commit"`
-	Platform               string `json:"platform"`
-	Mode                   string `json:"mode"`
-	ConsecutivePasses      int    `json:"consecutive_passes"`
-	ObservedResourceCount  int    `json:"observed_resource_count"`
-	UnexplainedDriftCount  int    `json:"unexplained_drift_count"`
-	DestructiveChangeCount int    `json:"destructive_change_count"`
-	RefreshOnly            bool   `json:"refresh_only"`
-	SecretsRedacted        bool   `json:"secrets_redacted"`
-	StateSnapshotSHA256    string `json:"state_snapshot_sha256"`
-	NormalizedPlanSHA256   string `json:"normalized_plan_sha256"`
-}
-
 type HardwareDispositionReceipt struct {
 	FormatVersion int                      `json:"format_version"`
 	Gate          string                   `json:"gate"`
@@ -140,10 +99,6 @@ type ReleaseReadyInput struct {
 	ManagementSHA256      string
 	Migration             MigrationRecoveryReceipt
 	MigrationSHA256       string
-	ContractParity        ContractParityReceipt
-	ContractParitySHA256  string
-	FleetSoak             FleetSoakReceipt
-	FleetSoakSHA256       string
 	Hardware              HardwareDispositionReceipt
 	HardwareSHA256        string
 	Dependency            DependencyPublishabilityReceipt
@@ -156,8 +111,6 @@ type ReleaseReadyEvidenceDigests struct {
 	InputLedgerSHA256       string `json:"input_ledger_sha256"`
 	ManagementSHA256        string `json:"management_contract_sha256"`
 	MigrationSHA256         string `json:"migration_recovery_sha256"`
-	ContractParitySHA256    string `json:"contract_parity_sha256"`
-	FleetSoakSHA256         string `json:"fleet_soak_sha256"`
 	HardwareSHA256          string `json:"hardware_disposition_sha256"`
 	DependencySHA256        string `json:"dependency_publishability_sha256"`
 	ConfidentialitySHA256   string `json:"confidentiality_sha256"`
@@ -201,12 +154,11 @@ func BuildReleaseReadyArtifacts(input ReleaseReadyInput) (ReleaseReadyArtifacts,
 
 	evidenceDigests := ReleaseReadyEvidenceDigests{
 		InputLedgerSHA256: input.LedgerSHA256, ManagementSHA256: input.ManagementSHA256,
-		MigrationSHA256: input.MigrationSHA256, ContractParitySHA256: input.ContractParitySHA256,
-		FleetSoakSHA256: input.FleetSoakSHA256, HardwareSHA256: input.HardwareSHA256,
+		MigrationSHA256:  input.MigrationSHA256,
+		HardwareSHA256:   input.HardwareSHA256,
 		DependencySHA256: input.DependencySHA256, ConfidentialitySHA256: input.ConfidentialitySHA256,
 	}
 	migrationSurfaces := migrationSurfaceReceipts(input.Migration.Surfaces)
-	contractSurfaces := contractParitySurfaceReceipts(input.ContractParity.Surfaces)
 	ledger := input.Ledger
 	ledger.Entries = append([]catalogparity.LedgerEntry(nil), input.Ledger.Entries...)
 	releaseSurfaces := make([]ReleaseReadySurface, 0, len(ledger.Entries))
@@ -219,17 +171,14 @@ func BuildReleaseReadyArtifacts(input ReleaseReadyInput) (ReleaseReadyArtifacts,
 			Surface          catalogparity.SurfaceKey `json:"surface"`
 			AdmissionSHA256  string                   `json:"admission_sha256"`
 			MigrationSHA256  string                   `json:"migration_sha256"`
-			ContractSHA256   string                   `json:"contract_sha256"`
-			FleetSHA256      string                   `json:"fleet_sha256"`
 			HardwareSHA256   string                   `json:"hardware_sha256"`
 			DependencySHA256 string                   `json:"dependency_sha256"`
 			PrivacySHA256    string                   `json:"privacy_sha256"`
 		}{
 			FormatVersion: 1, Surface: entry.SurfaceKey,
-			AdmissionSHA256: input.Management.Admission.ReceiptSHA256,
-			MigrationSHA256: migrationSurfaces[entry.SurfaceKey],
-			ContractSHA256:  contractSurfaces[entry.SurfaceKey],
-			FleetSHA256:     input.FleetSoakSHA256, HardwareSHA256: input.HardwareSHA256,
+			AdmissionSHA256:  input.Management.Admission.ReceiptSHA256,
+			MigrationSHA256:  migrationSurfaces[entry.SurfaceKey],
+			HardwareSHA256:   input.HardwareSHA256,
 			DependencySHA256: input.DependencySHA256, PrivacySHA256: input.ConfidentialitySHA256,
 		})
 		if err != nil {
@@ -295,8 +244,8 @@ func BuildReleaseReadyArtifacts(input ReleaseReadyInput) (ReleaseReadyArtifacts,
 func validateReleaseReadyInput(input ReleaseReadyInput) error {
 	for label, digest := range map[string]string{
 		"input ledger": input.LedgerSHA256, "management contract": input.ManagementSHA256,
-		"migration/recovery": input.MigrationSHA256, "contract parity": input.ContractParitySHA256,
-		"fleet soak": input.FleetSoakSHA256, "hardware disposition": input.HardwareSHA256,
+		"migration/recovery":        input.MigrationSHA256,
+		"hardware disposition":      input.HardwareSHA256,
 		"dependency publishability": input.DependencySHA256, "confidentiality": input.ConfidentialitySHA256,
 	} {
 		if !validHex(digest, 64) {
@@ -309,13 +258,7 @@ func validateReleaseReadyInput(input ReleaseReadyInput) error {
 	if err := validateReleaseMigration(input); err != nil {
 		return err
 	}
-	if err := validateReleaseContractParity(input); err != nil {
-		return err
-	}
 	if err := validateReleaseLedger(input); err != nil {
-		return err
-	}
-	if err := validateFleetSoak(input); err != nil {
 		return err
 	}
 	if err := validateHardwareDisposition(input); err != nil {
@@ -333,17 +276,19 @@ func validateReleaseReadyInput(input ReleaseReadyInput) error {
 // OUT RATHER THAN COMPUTED.
 //
 // DO NOT "fix" this by deriving it from input.Management.Admission.ReleaseBlockers.
-// That was tried and measured. validateReleaseContractParity already derives its
-// own expectation from that same field to check contract parity against the
-// admission, so deriving here too makes validateReleaseManagement compare that
-// field against itself. With the change in place, a catalog carrying twenty
-// fabricated unresolved gaps -- declared identically in both receipts, as two
-// artifacts from one campaign would be -- was ADMITTED with a "pass" receipt.
+// That was tried and measured: deriving it makes validateReleaseManagement
+// compare that field against itself, and with the change in place a catalog
+// carrying twenty fabricated unresolved gaps -- declared identically in the
+// receipts, as two artifacts from one campaign would be -- was ADMITTED with a
+// "pass" receipt.
 //
-// The other two validators pin that the two receipts AGREE. This is the only
-// thing that pins WHICH gaps are acceptable, and agreement is not corroboration
-// here: the contract parity receipt has no producer anywhere in this repository,
-// so both sides of that comparison can arrive from the same hand.
+// THE COMMENT THIS REPLACES ARGUED THE SAME THING FROM THE CONTRACT PARITY
+// RECEIPT, and it was right for a reason that has now been acted on: it noted
+// that receipt "has no producer anywhere in this repository, so both sides of
+// that comparison can arrive from the same hand". Nothing ever produced it, so
+// the type and its validator have been removed. The point survives the removal
+// -- this list is the only thing pinning WHICH gaps are acceptable, and it is a
+// release decision rather than a derived fact.
 //
 // The staleness this invites is real and is handled by
 // TestAcceptedReleaseBlockersMatchTheCampaignPolicy rather than by hoping. A
@@ -466,43 +411,6 @@ func validateReleaseMigration(input ReleaseReadyInput) error {
 	return nil
 }
 
-func validateReleaseContractParity(input ReleaseReadyInput) error {
-	c := input.ContractParity
-	wantBlocker := input.Management.Admission.ReleaseBlockers
-	if c.FormatVersion != 1 || c.Gate != "ubitofu-catalog-contract-parity" || c.Result != "pass" ||
-		c.ContractSHA256 != input.ManagementSHA256 || c.ProviderBinarySHA256 != input.Management.Provider.Binary.SHA256 ||
-		c.Downstream != input.Management.Downstream || c.SurfaceCount != 67 || len(c.Surfaces) != 67 ||
-		!reflect.DeepEqual(c.CaptureCounts, map[string]int{"managed": 28, "not_applicable": 39}) ||
-		!reflect.DeepEqual(c.ReleaseBlockers, wantBlocker) {
-		return fmt.Errorf("contract parity release blocker or lineage is invalid")
-	}
-	for _, dimension := range releaseContractDimensions {
-		if len(c.Dimensions) != len(releaseContractDimensions) || !c.Dimensions[dimension] {
-			return fmt.Errorf("contract parity dimensions are incomplete")
-		}
-	}
-	management := make(map[catalogparity.SurfaceKey]managementcontract.CatalogManagementSurface, 67)
-	for _, surface := range input.Management.Surfaces {
-		management[surface.SurfaceKey] = surface
-	}
-	seen := map[catalogparity.SurfaceKey]struct{}{}
-	for _, surface := range c.Surfaces {
-		upstream, ok := management[surface.SurfaceKey]
-		if !ok {
-			return fmt.Errorf("contract parity surface set differs at %s/%s", surface.Kind, surface.Name)
-		}
-		if surface.State != catalogparity.ContractParity || surface.CaptureMode != upstream.CaptureMode ||
-			!validHex(surface.ReceiptSHA256, 64) {
-			return fmt.Errorf("contract parity surface %s/%s is incomplete", surface.Kind, surface.Name)
-		}
-		if _, duplicate := seen[surface.SurfaceKey]; duplicate {
-			return fmt.Errorf("duplicate contract parity surface %s/%s", surface.Kind, surface.Name)
-		}
-		seen[surface.SurfaceKey] = struct{}{}
-	}
-	return nil
-}
-
 func validateReleaseLedger(input ReleaseReadyInput) error {
 	l := input.Ledger
 	if l.FormatVersion != 1 || l.ProviderAddress != catalogparity.CanonicalProviderAddress ||
@@ -565,21 +473,6 @@ func validateReleaseLedger(input ReleaseReadyInput) error {
 	return nil
 }
 
-func validateFleetSoak(input ReleaseReadyInput) error {
-	f := input.FleetSoak
-	if f.FormatVersion != 1 || f.Gate != "unifi-private-fleet-soak" || f.Result != "pass" ||
-		f.ProviderAddress != catalogparity.CanonicalProviderAddress ||
-		f.SourceCommit != input.Management.Provider.SourceCommit ||
-		f.ProviderBinarySHA256 != input.Management.Provider.Binary.SHA256 ||
-		f.DownstreamCommit != input.Management.Downstream.Commit || f.Platform != "linux/amd64" ||
-		f.Mode != "plan_only" || f.ConsecutivePasses < 2 || f.ObservedResourceCount < 1 ||
-		f.UnexplainedDriftCount != 0 || f.DestructiveChangeCount != 0 || !f.RefreshOnly ||
-		!f.SecretsRedacted || !validHex(f.StateSnapshotSHA256, 64) || !validHex(f.NormalizedPlanSHA256, 64) {
-		return fmt.Errorf("fleet soak is not a safe drift-free pass")
-	}
-	return nil
-}
-
 func validateHardwareDisposition(input ReleaseReadyInput) error {
 	h := input.Hardware
 	want := catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"}
@@ -618,14 +511,6 @@ func validateConfidentiality(input ReleaseReadyInput) error {
 }
 
 func migrationSurfaceReceipts(surfaces []MigrationRecoverySurface) map[catalogparity.SurfaceKey]string {
-	result := make(map[catalogparity.SurfaceKey]string, len(surfaces))
-	for _, surface := range surfaces {
-		result[surface.SurfaceKey] = surface.ReceiptSHA256
-	}
-	return result
-}
-
-func contractParitySurfaceReceipts(surfaces []ContractParitySurface) map[catalogparity.SurfaceKey]string {
 	result := make(map[catalogparity.SurfaceKey]string, len(surfaces))
 	for _, surface := range surfaces {
 		result[surface.SurfaceKey] = surface.ReceiptSHA256

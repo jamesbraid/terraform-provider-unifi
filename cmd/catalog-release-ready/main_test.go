@@ -32,7 +32,10 @@ func TestDecodeStrictFileRejectsUnknownAndTrailingJSON(t *testing.T) {
 			if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			var receipt releasequalification.FleetSoakReceipt
+			// Any receipt type this command still decodes will do: the assertion is
+			// about DisallowUnknownFields and the trailing-value check, not about
+			// which receipt. FleetSoakReceipt was the original target and was pruned.
+			var receipt releasequalification.MigrationRecoveryReceipt
 			if _, err := cmdio.DecodeStrictFile(path, &receipt); err == nil {
 				t.Fatal("cmdio.DecodeStrictFile() succeeded")
 			}
