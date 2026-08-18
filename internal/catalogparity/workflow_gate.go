@@ -1,7 +1,7 @@
 package catalogparity
 
 import (
-	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/receiptcheck"
 	"strings"
 )
 
@@ -30,28 +30,13 @@ import (
 // than a first error because a receipt that fails three ways should say so
 // once: an operator who fixes the first and re-runs a controller campaign to
 // find the second has paid an hour for information we already had.
-type GateFailure struct {
-	Gate     string
-	Mismatch []string
-}
-
-func (g *GateFailure) Error() string {
-	return fmt.Sprintf("%s: %d assertion(s) failed:\n    %s",
-		g.Gate, len(g.Mismatch), strings.Join(g.Mismatch, "\n    "))
-}
-
-func (g *GateFailure) want(what string, want, got any) {
-	if want != got {
-		g.Mismatch = append(g.Mismatch, fmt.Sprintf("%s is %v, want %v", what, got, want))
-	}
-}
-
-func (g *GateFailure) resolve() error {
-	if len(g.Mismatch) == 0 {
-		return nil
-	}
-	return g
-}
+//
+// IT IS NOW AN ALIAS rather than a second implementation. receiptcheck.Failure
+// carries the same two fields and the same message format, so err.(*GateFailure)
+// still succeeds and .Mismatch still counts -- an alias rather than a rename
+// because the assertion is the contract, and a distinct type would have broken
+// it silently at the one call site that reads the error rather than its text.
+type GateFailure = receiptcheck.Failure
 
 // CheckBuildSchemaReceipt replaces
 //
@@ -61,15 +46,13 @@ func (g *GateFailure) resolve() error {
 // script's own success: it records whether the build reached the network, which
 // the script cannot decide for itself after the fact.
 func CheckBuildSchemaReceipt(receipt BuildSchemaReceipt) error {
-	failure := &GateFailure{Gate: "catalog-build-schema"}
-	failure.want("result", "pass", receipt.Result)
-	failure.want("build_network", "none", receipt.BuildNetwork)
-	if len(receipt.PromotionBlockers) != 0 {
-		failure.Mismatch = append(failure.Mismatch,
-			fmt.Sprintf("promotion_blockers has %d entr(ies): %s",
-				len(receipt.PromotionBlockers), strings.Join(receipt.PromotionBlockers, ", ")))
-	}
-	return failure.resolve()
+	return receiptcheck.Run("catalog-build-schema",
+		receiptcheck.Equals("result", receipt.Result, "pass"),
+		receiptcheck.Equals("build_network", receipt.BuildNetwork, "none"),
+		receiptcheck.Custom(len(receipt.PromotionBlockers) == 0,
+			"promotion_blockers has %d entr(ies): %s",
+			len(receipt.PromotionBlockers), strings.Join(receipt.PromotionBlockers, ", ")),
+	)
 }
 
 // CheckUnitDifferentialReceipt replaces
@@ -81,30 +64,25 @@ func CheckBuildSchemaReceipt(receipt BuildSchemaReceipt) error {
 // result is written by the script after its own checks, while released and
 // candidate come from two separate go test event streams.
 func CheckUnitDifferentialReceipt(receipt UnitDifferentialReceipt) error {
-	failure := &GateFailure{Gate: "catalog-unit-differential"}
-	failure.want("result", "pass", receipt.Result)
-	failure.want("network", "none", receipt.Network)
-	failure.want("released.result", "pass", receipt.Released.Result)
-	failure.want("candidate.result", "pass", receipt.Candidate.Result)
-	if len(receipt.PromotionBlockers) != 0 {
-		failure.Mismatch = append(failure.Mismatch,
-			fmt.Sprintf("promotion_blockers has %d entr(ies): %s",
-				len(receipt.PromotionBlockers), strings.Join(receipt.PromotionBlockers, ", ")))
-	}
+	rules := []receiptcheck.Rule{
+		receiptcheck.Equals("result", receipt.Result, "pass"),
+		receiptcheck.Equals("network", receipt.Network, "none"),
+		receiptcheck.Equals("released.result", receipt.Released.Result, "pass"),
+		receiptcheck.Equals("candidate.result", receipt.Candidate.Result, "pass"),
+		receiptcheck.Custom(len(receipt.PromotionBlockers) == 0,
+			"promotion_blockers has %d entr(ies): %s",
+			len(receipt.PromotionBlockers), strings.Join(receipt.PromotionBlockers, ", ")),
 
-	// NOT IN THE YAML VERSION, AND THE REASON IT IS HERE. A suite that ran
-	// nothing reports result "pass" with zero tests, so the four assertions
-	// above all hold on a run that tested nothing at all. The shell receipt
-	// already carries the counts; nothing was looking at them.
-	if receipt.Released.PassedTestCount == 0 {
-		failure.Mismatch = append(failure.Mismatch,
-			"released.passed_test_count is 0, so the released suite passed by running nothing")
+		// NOT IN THE YAML VERSION, AND THE REASON IT IS HERE. A suite that ran
+		// nothing reports result "pass" with zero tests, so the four assertions
+		// above all hold on a run that tested nothing at all. The shell receipt
+		// already carries the counts; nothing was looking at them.
+		receiptcheck.Custom(receipt.Released.PassedTestCount != 0,
+			"released.passed_test_count is 0, so the released suite passed by running nothing"),
+		receiptcheck.Custom(receipt.Candidate.PassedTestCount != 0,
+			"candidate.passed_test_count is 0, so the candidate suite passed by running nothing"),
 	}
-	if receipt.Candidate.PassedTestCount == 0 {
-		failure.Mismatch = append(failure.Mismatch,
-			"candidate.passed_test_count is 0, so the candidate suite passed by running nothing")
-	}
-	return failure.resolve()
+	return receiptcheck.Run("catalog-unit-differential", rules...)
 }
 
 // ControllerGapCeiling is the most evidence gaps the campaign will admit.
@@ -131,21 +109,26 @@ const ControllerGapCeiling = 6
 // Asked of ControllerResultForGaps rather than written out again here -- that
 // literal had six homes, and a seventh would be the defect rather than the fix.
 func CheckControllerDifferentialReceipt(receipt ControllerDifferentialReceipt) error {
-	failure := &GateFailure{Gate: "catalog-controller-differential"}
-	if err := RequireControllerResultAgreesWithGaps(receipt); err != nil {
-		failure.Mismatch = append(failure.Mismatch, err.Error())
+	agreement := RequireControllerResultAgreesWithGaps(receipt)
+	rules := []receiptcheck.Rule{
+		receiptcheck.Custom(agreement == nil, "%s", errorText(agreement)),
+		receiptcheck.Custom(receipt.Plan.EvidenceGapCount <= ControllerGapCeiling,
+			"plan.evidence_gap_count is %d, want at most %d",
+			receipt.Plan.EvidenceGapCount, ControllerGapCeiling),
+		// An absent count and a genuine zero are the same value in Go. They are
+		// told apart by the surfaces the plan lists: a plan with surfaces and no
+		// gaps is a real state, a receipt with neither has not been filled in.
+		receiptcheck.Custom(receipt.Plan.EvidenceGapCount != 0 || len(receipt.Plan.Surfaces) != 0,
+			"plan.evidence_gap_count is 0 and plan lists no surfaces, so the plan is absent rather than clean"),
 	}
-	if receipt.Plan.EvidenceGapCount > ControllerGapCeiling {
-		failure.Mismatch = append(failure.Mismatch,
-			fmt.Sprintf("plan.evidence_gap_count is %d, want at most %d",
-				receipt.Plan.EvidenceGapCount, ControllerGapCeiling))
+	return receiptcheck.Run("catalog-controller-differential", rules...)
+}
+
+// errorText renders an error for a Custom rule that only fires when it is
+// non-nil. Guarding here rather than at each call site keeps the rule list flat.
+func errorText(err error) string {
+	if err == nil {
+		return ""
 	}
-	// An absent count and a genuine zero are the same value in Go. They are
-	// told apart by the surfaces the plan lists: a plan with surfaces and no
-	// gaps is a real state, a receipt with neither has not been filled in.
-	if receipt.Plan.EvidenceGapCount == 0 && len(receipt.Plan.Surfaces) == 0 {
-		failure.Mismatch = append(failure.Mismatch,
-			"plan.evidence_gap_count is 0 and plan lists no surfaces, so the plan is absent rather than clean")
-	}
-	return failure.resolve()
+	return err.Error()
 }
