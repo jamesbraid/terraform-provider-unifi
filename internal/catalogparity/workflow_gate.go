@@ -110,7 +110,20 @@ const ControllerGapCeiling = 6
 // literal had six homes, and a seventh would be the defect rather than the fix.
 func CheckControllerDifferentialReceipt(receipt ControllerDifferentialReceipt) error {
 	agreement := RequireControllerResultAgreesWithGaps(receipt)
-	rules := []receiptcheck.Rule{
+
+	// THE ENVELOPE RULES COME FIRST AND THEY ARE SHARED. format_version and gate
+	// were never checked by this gate; format_version alone is compared against
+	// the bare literal 1 in 43 places across the tree, agreeing by accident
+	// because nothing defines it. receiptcheck.FormatVersion now does.
+	//
+	// Result is deliberately absent from the expectation: it must FOLLOW from
+	// the gap count rather than equal a literal, which is what
+	// RequireControllerResultAgreesWithGaps decides below.
+	rules := receiptcheck.EnvelopeRules(receipt.EnvelopeView(), receiptcheck.EnvelopeExpectation{
+		Gate: "catalog controller differential",
+	})
+
+	rules = append(rules,
 		receiptcheck.Custom(agreement == nil, "%s", errorText(agreement)),
 		receiptcheck.Custom(receipt.Plan.EvidenceGapCount <= ControllerGapCeiling,
 			"plan.evidence_gap_count is %d, want at most %d",
@@ -120,7 +133,7 @@ func CheckControllerDifferentialReceipt(receipt ControllerDifferentialReceipt) e
 		// gaps is a real state, a receipt with neither has not been filled in.
 		receiptcheck.Custom(receipt.Plan.EvidenceGapCount != 0 || len(receipt.Plan.Surfaces) != 0,
 			"plan.evidence_gap_count is 0 and plan lists no surfaces, so the plan is absent rather than clean"),
-	}
+	)
 	return receiptcheck.Run("catalog-controller-differential", rules...)
 }
 

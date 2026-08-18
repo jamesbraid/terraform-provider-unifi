@@ -90,6 +90,12 @@ func TestCheckUnitDifferentialReceipt(t *testing.T) {
 
 func passingControllerDifferential() ControllerDifferentialReceipt {
 	return ControllerDifferentialReceipt{
+		// FORMAT_VERSION AND GATE ARE SET FOR THE SAME REASON RESULT IS, and this
+		// is the third field to need it. The gate now checks the envelope, so a
+		// fixture that omits what every real producer writes stops standing in
+		// for a real receipt. Zero and "" used to pass here.
+		FormatVersion: 1,
+		Gate:          "catalog controller differential",
 		// The result is set rather than left at the zero value because the gate
 		// now requires it to follow from the gap count. An empty string used to
 		// pass here, which is how a receipt with no result at all would have
