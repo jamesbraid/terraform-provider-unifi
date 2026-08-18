@@ -1,21 +1,28 @@
 package unifi
 
-// PROTOTYPE, NOT GENERATED YET. This file is what cmd/provider-spec-compiler
-// would emit for unifi_dns_record under the shared-implementation shape, hand-
-// written first so the shape could be measured against the 838 lines it
-// replaces before a generator was built to produce it. Every value in it comes
-// from provider-codegen/generated/dns_record.mapping.json except the four noted
-// below, which no artifact carries.
+// The dns_record descriptor. HAND-WRITTEN, AND NOT YET GENERATED: this is what
+// cmd/provider-spec-compiler will emit, written first so the shape could be
+// measured against the 838 lines it replaces before a generator existed to
+// produce it.
+//
+// Every value comes from provider-codegen/generated/dns_record.mapping.json
+// except the four noted below, which no artifact carries.
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_dns_record"
+	resource_dns_record "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // dnsRecordKitModel is the generated model. Identical in shape to the
@@ -111,6 +118,65 @@ func dnsRecordKitSpec() resourcekit.Spec[dnsRecordKitModel, ui.DNSRecord] {
 	}
 }
 
+// dnsRecordKitSchema is the schema half: the generated schema, the version its
+// state migration established, and the upgrader itself.
+func dnsRecordKitSchema() resourcekit.SchemaSpec {
+	return resourcekit.SchemaSpec{
+		Resource: resource_dns_record.DnsRecordResourceSchema,
+		// v1: ttl moved from Int64 seconds to a GoDuration string.
+		Version:  1,
+		Timeouts: timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+		Upgraders: func(_ context.Context, built schema.Schema) map[int64]resource.StateUpgrader {
+			return map[int64]resource.StateUpgrader{
+				0: {StateUpgrader: func(
+					ctx context.Context,
+					req resource.UpgradeStateRequest,
+					resp *resource.UpgradeStateResponse,
+				) {
+					if req.RawState == nil {
+						return
+					}
+					dv, err := util.UpgradeDurationRawState(
+						built.Type().TerraformType(ctx),
+						req.RawState.JSON,
+						func(state map[string]any) {
+							util.SetDurationField(state, "ttl", time.Second)
+						},
+					)
+					if err != nil {
+						resp.Diagnostics.AddError("Failed to upgrade DNS record state", err.Error())
+						return
+					}
+					resp.DynamicValue = dv
+				}},
+			}
+		},
+	}
+}
+
+// dnsRecordKitList is the list surface. Three filters and a display name are
+// the whole of what varies; the streaming, the identity and the model
+// conversion are the kit's.
+func dnsRecordKitList() resourcekit.ListSpec[ui.DNSRecord] {
+	return resourcekit.ListSpec[ui.DNSRecord]{
+		ConfigSchema: listresource_dns_record.DnsRecordListResourceSchema,
+		// PREFER THE KEY, FALL BACK TO THE ID. A record with no key is not a
+		// state the controller should produce, and showing an empty display
+		// name instead of an id would make the result unidentifiable.
+		DisplayName: func(s *ui.DNSRecord) string {
+			if s.Key != "" {
+				return s.Key
+			}
+			return s.ID
+		},
+		Filters: map[string]func(*ui.DNSRecord) string{
+			"name":        func(s *ui.DNSRecord) string { return s.Key },
+			"record_type": func(s *ui.DNSRecord) string { return s.RecordType },
+			"enabled":     func(s *ui.DNSRecord) string { return fmt.Sprintf("%t", s.Enabled) },
+		},
+	}
+}
+
 // dnsRecordKitBackend binds the spec to a client. Separate from the spec so the
 // method set is named in one place and a wrong name does not compile.
 func dnsRecordKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.DNSRecord] {
@@ -126,6 +192,9 @@ func dnsRecordKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.DNSRecord]
 		},
 		Delete: func(ctx context.Context, site, id string) error {
 			return client.DeleteDNSRecord(ctx, site, id)
+		},
+		List: func(ctx context.Context, site string) ([]ui.DNSRecord, error) {
+			return client.ListDNSRecord(ctx, site)
 		},
 		GetID: func(s *ui.DNSRecord) string { return s.ID },
 		SetID: func(s *ui.DNSRecord, id string) { s.ID = id },
