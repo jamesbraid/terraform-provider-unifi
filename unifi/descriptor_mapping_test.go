@@ -29,6 +29,19 @@ import (
 // value, a count that moved between readings. A generator removes the class; a
 // check catches the instance, and only one of those can be had today.
 //
+// IT READS THE SOURCE, NOT THE RUNNING SPEC, AND THAT IS A REAL LIMIT. The
+// field kind and the SDK identifier are not on resourcekit's Field interface --
+// only WireName() is -- so the columns measured here can only be had from the
+// syntax. A descriptor whose Fields slice were appended to outside the literal
+// would be invisible to this reader.
+//
+// The per-surface tests close that half: TestClientQosRateDescriptorCoversEveryManagedField
+// walks clientQosRateKitSpec().Fields at runtime. It hardcodes its expectation
+// where this derives one from the mapping, so neither subsumes the other -- the
+// hardcoded one would keep passing if the mapping gained a managed field, and
+// this one would keep passing if the compiled spec diverged from its own source.
+// Do not delete either on the grounds that the other exists.
+//
 // THE ELIDE VALUES ARE DELIBERATELY NOT CHECKED HERE.
 // TestEveryDescriptorElideAgreesWithItsSchema already compares them against the
 // generated schema, which is the artifact that decides them. Re-checking them
