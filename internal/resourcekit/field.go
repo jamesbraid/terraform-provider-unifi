@@ -428,6 +428,19 @@ func (f StringPtrField[M, S]) CopyPlanToState(plan, state *M) {
 // and cannot confirm it. Treat this as the shape rather than the law until
 // somebody counts across every policy.
 //
+// BUT THREE INDEPENDENT AUTHORITIES ALREADY AGREE ON firewall_zone'"'"'S SET, which
+// is why the shape is worth trusting further than one sample usually would:
+//
+//	the policy          dispositions _id, zone_key and default_zone "computed"
+//	the hand-written    modelToFirewallZone sends exactly the other two
+//	the SDK itself      FirewallZone.MarshalJSON drops those three from a write,
+//	                    shadowing each with a *struct{} -- because the controller
+//	                    REJECTS them on a write
+//
+// Three separately-authored things, none deriving from the others, naming the
+// same set. That is one resource'"'"'s worth of agreement rather than twenty-seven,
+// and it is much stronger than one resource'"'"'s worth of assertion.
+//
 // A DECORATOR RATHER THAN A FLAG ON EACH KIND, so read-only-ness is one
 // implementation instead of seven, and so a kind added later gets it for free.
 func ReadOnly[M any, S any](inner Field[M, S]) Field[M, S] {
