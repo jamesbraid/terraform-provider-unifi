@@ -19,7 +19,7 @@ var FrozenTypeNames = map[string]string{
 	"clientInfoListDataSource":     "unifi_client_info_list",
 	"clientListDataSource":         "unifi_client_list",
 	"clientQosRateDataSource":      "unifi_client_qos_rate",
-	"clientQosRateResource":        "unifi_client_qos_rate",
+	"clientQosRateKitResource":     "unifi_client_qos_rate",
 	"clientResource":               "unifi_client",
 	"deprecatedAccountDataSource":  "unifi_account",
 	"deprecatedAccountResource":    "unifi_account",
