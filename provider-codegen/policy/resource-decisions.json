@@ -1,0 +1,51 @@
+{
+  "_comment": [
+    "HAND-WRITTEN. Every value here is a decision no generated artifact carries.",
+    "Not under provider-codegen/generated/, which is machine output nobody edits.",
+    "",
+    "A key is a Terraform type name as the provider registers it. An entry is",
+    "required for every surface served by internal/resourcekit and forbidden for",
+    "every surface that is not -- both directions, because data cannot fail to",
+    "compile the way a missing closure would. It can only fail to be there, and a",
+    "one-directional check lets a surface drop out of generation while everything",
+    "reports green.",
+    "",
+    "sdk_type is the go-unifi struct. It derives the method names too:",
+    "Create<T>, Get<T>, Update<T>Fields, Delete<T>, List<T>. What it cannot",
+    "derive is WHETHER a masked update exists -- BGPConfig, Site and",
+    "WireGuardPeer have only a whole-object Update, and a surface on those is",
+    "not representable here yet.",
+    "",
+    "duration_units keys a wire field to its unit. 74 conversions in the tree use",
+    "seconds and 3 use minutes, all three on wlan, so a default would be silently",
+    "wrong on exactly one surface."
+  ],
+  "surfaces": {
+    "unifi_dns_record": {
+      "sdk_type": "DNSRecord",
+      "duration_units": {
+        "ttl": "time.Second"
+      },
+      "list": {
+        "display_field": "Key",
+        "filters": [
+          "name",
+          "record_type",
+          "enabled"
+        ]
+      },
+      "schema_version": 1
+    },
+    "unifi_client_qos_rate": {
+      "sdk_type": "ClientGroup",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    }
+  }
+}
