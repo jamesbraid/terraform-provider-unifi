@@ -17,9 +17,8 @@ import (
 // A kind absent from here and lacking an Elide is reported rather than skipped,
 // because "no claim" and "nobody wrote one" look identical from the outside.
 var elideExempt = map[string]struct{}{
-	"BoolField":      {}, // a false is a value; see the type's own comment
-	"BoolPtrField":   {}, // a pointer bool already distinguishes unset from false
-	"StringPtrField": {}, // likewise: a *string separates unset from empty
+	"BoolField":    {}, // a false is a value; see the type's own comment
+	"BoolPtrField": {}, // a pointer bool already distinguishes unset from false
 }
 
 // ElideProblems reports every descriptor field whose Elide disagrees with the
