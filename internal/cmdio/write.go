@@ -115,13 +115,6 @@ func SkipSync() WriteOption {
 	return func(s *writeSettings) { s.sync = false }
 }
 
-// TempPrefix overrides the temporary file's name. The default derives it from
-// the artifact being written, which is what makes an orphaned temporary
-// attributable; this exists for a caller that needs something else.
-func TempPrefix(prefix string) WriteOption {
-	return func(s *writeSettings) { s.prefix = prefix }
-}
-
 // derivePrefix names a temporary after the artifact it will become.
 func derivePrefix(path string) string {
 	return "." + filepath.Base(path) + "-"
