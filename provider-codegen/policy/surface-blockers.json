@@ -21,7 +21,11 @@
     "three describe what a surface IS; the blockers all live in what it DOES.",
     "",
     "Diff any rebuilt measure against this before trusting it. The findings were",
-    "measured; an instrument is inferred; the instrument loses."
+    "measured; an instrument is inferred; the instrument loses.",
+    "",
+    "An EMPTY blocker list means READY TO CUT OVER, not an error. resolved_capabilities",
+    "records which blocker kinds have been answered and by what, so a surface whose",
+    "last blocker was resolved is visibly ready rather than silently unchanged."
   ],
   "blocker_kinds": [
     "nested",
@@ -37,28 +41,80 @@
     "no-mapping"
   ],
   "surfaces": {
-    "ap_group": ["typed-collection"],
-    "bgp": ["SDK-masked-update"],
-    "client": ["SDK-masked-update", "custom-scalar", "derived-value", "undefined-fields", "identity-key"],
-    "device": ["no-mapping"],
-    "dynamic_dns": ["multi-identity"],
-    "firewall_policy": ["nested"],
-    "firewall_rule": ["custom-scalar"],
-    "network": ["nested", "undefined-fields"],
-    "port_forward": ["no-mapping"],
-    "port_profile": ["preWriteHook"],
-    "power_supervisor": ["SDK-masked-update", "custom-scalar", "nested"],
-    "radius_profile": ["nested"],
-    "radius_user": ["preWriteHook"],
-    "setting": ["no-mapping"],
-    "site": ["SDK-masked-update", "derived-value"],
-    "site_to_site_vpn": ["custom-scalar"],
-    "static_route": ["custom-scalar", "model-conditional"],
-    "traffic_route": ["custom-scalar", "nested", "undefined-fields"],
-    "vpn_client": ["nested", "undefined-fields"],
-    "vpn_server": ["derived-value", "model-conditional", "undefined-fields"],
-    "wan": ["nested", "undefined-fields"],
-    "wireguard_peer": ["SDK-masked-update"],
-    "wlan": ["nested", "undefined-fields"]
+    "ap_group": [
+      "typed-collection"
+    ],
+    "bgp": [
+      "SDK-masked-update"
+    ],
+    "client": [
+      "SDK-masked-update",
+      "derived-value",
+      "undefined-fields",
+      "identity-key"
+    ],
+    "device": [
+      "no-mapping"
+    ],
+    "dynamic_dns": [
+      "multi-identity"
+    ],
+    "firewall_policy": [
+      "nested"
+    ],
+    "firewall_rule": [],
+    "network": [
+      "nested",
+      "undefined-fields"
+    ],
+    "port_forward": [
+      "no-mapping"
+    ],
+    "port_profile": [],
+    "power_supervisor": [
+      "SDK-masked-update",
+      "nested"
+    ],
+    "radius_profile": [
+      "nested"
+    ],
+    "radius_user": [],
+    "setting": [
+      "no-mapping"
+    ],
+    "site": [
+      "SDK-masked-update",
+      "derived-value"
+    ],
+    "site_to_site_vpn": [],
+    "static_route": [],
+    "traffic_route": [
+      "nested",
+      "undefined-fields"
+    ],
+    "vpn_client": [
+      "nested",
+      "undefined-fields"
+    ],
+    "vpn_server": [
+      "derived-value",
+      "undefined-fields"
+    ],
+    "wan": [
+      "nested",
+      "undefined-fields"
+    ],
+    "wireguard_peer": [
+      "SDK-masked-update"
+    ],
+    "wlan": [
+      "nested",
+      "undefined-fields"
+    ]
+  },
+  "resolved_capabilities": {
+    "custom-scalar": "StringLikeField[M,S,T basetypes.StringValuable]",
+    "model-conditional": "WriteWhen func(*M) bool, gating ToSDK and SetInPlan",
+    "preWriteHook": "Prefetch/BeforeSend/AfterReceive, now wired into Read and Update as well as Create"
   }
 }
