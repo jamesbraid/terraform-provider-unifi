@@ -74,14 +74,33 @@ func TestAFieldWithNoReadDefaultIsUnchanged(t *testing.T) {
 
 // THE DEFAULT MUST NOT REACH THE WIRE. A value the provider invented on read is
 // not something the practitioner asked for, so an update whose plan does not
-// mention the attribute must not name it in the field mask. This is the
-// write-amplification guard applied to a value that has no author.
-func TestReadDefaultDoesNotMakeAFieldLookPlanned(t *testing.T) {
-	field := defaultField("default")
+// mention the attribute must not name it in the field mask.
+//
+// BOTH FIELDS ARE CHECKED, and that is the correction that makes this test mean
+// anything. Asserting only that the defaulted field reports unset would pass
+// for a SetInPlan that ignores ReadDefault entirely -- which is what it does,
+// and is exactly the claim. Naming a property that holds either way and testing
+// only one side is a name doing an assertion's work.
+func TestAReadDefaultDoesNotChangeWhatThePlanReportsAsSet(t *testing.T) {
 	var absent defaultModel
 	absent.Gateway = types.StringNull()
-	if field.SetInPlan(&absent) {
-		t.Fatal("a null plan value reported as set, so the default would be sent on update")
+	for _, testCase := range []struct {
+		name  string
+		field StringField[defaultModel, defaultSDK]
+	}{
+		{"with a read default", defaultField("default")},
+		{"without one", defaultField("")},
+	} {
+		if testCase.field.SetInPlan(&absent) {
+			t.Errorf("%s: a null plan value reported as set, so the default would be sent on update",
+				testCase.name)
+		}
+	}
+	// The positive half: a value the practitioner DID write is still reported,
+	// or the assertions above would hold for a SetInPlan that always says no.
+	present := defaultModel{Gateway: types.StringValue("wan2")}
+	if !defaultField("default").SetInPlan(&present) {
+		t.Error("a value the practitioner wrote was not reported as set")
 	}
 }
 
