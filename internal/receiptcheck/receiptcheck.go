@@ -99,6 +99,23 @@ func Custom(holds bool, format string, a ...any) Rule {
 	return bad(format, a...)
 }
 
+// Failure lists what a gate wanted and did not get.
+//
+// IT IS A TYPE RATHER THAN A STRING because callers inspect it: the catalog
+// gates' own test asserts err.(*GateFailure) and counts Mismatch, so collapsing
+// this to fmt.Errorf would have removed a capability while every message stayed
+// byte-identical. That is the quietest kind of behaviour change a consolidation
+// can make, and it is only visible if you read the consumer.
+type Failure struct {
+	Gate     string
+	Mismatch []string
+}
+
+func (f *Failure) Error() string {
+	return fmt.Sprintf("%s: %d assertion(s) failed:\n    %s",
+		f.Gate, len(f.Mismatch), strings.Join(f.Mismatch, "\n    "))
+}
+
 // Run reports EVERY failing rule rather than the first.
 //
 // A receipt wrong in four ways, reported one at a time, costs a pipeline per
@@ -108,7 +125,8 @@ func Run(gate string, rules ...Rule) error {
 	if len(rules) == 0 {
 		// A gate with no rules passes everything. That is a check that cannot
 		// fail, so it is an error in its own right.
-		return fmt.Errorf("%s: no rules were supplied, so this gate asserts nothing", gate)
+		return &Failure{Gate: gate, Mismatch: []string{
+			"no rules were supplied, so this gate asserts nothing"}}
 	}
 	var failed []string
 	for _, r := range rules {
@@ -117,10 +135,12 @@ func Run(gate string, rules ...Rule) error {
 		}
 	}
 	if len(failed) == 0 {
+		// A literal nil, never a typed nil pointer: returning (*Failure)(nil)
+		// as an error gives a non-nil interface and every gate would read as
+		// failing.
 		return nil
 	}
-	return fmt.Errorf("%s: %d assertion(s) failed:\n    %s",
-		gate, len(failed), strings.Join(failed, "\n    "))
+	return &Failure{Gate: gate, Mismatch: failed}
 }
 
 func isHex(s string) bool {
