@@ -9,6 +9,8 @@ import (
 	fwaction "github.com/hashicorp/terraform-plugin-framework/action"
 	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/metadatacontract"
 )
 
 // wantConfigurableSurfaces is the number of surfaces that accept provider data.
@@ -47,6 +49,46 @@ func TestEveryConfigurableSurfaceAcceptsProviderData(t *testing.T) {
 			"    A surface that stops accepting provider data leaves every other row\n"+
 			"    passing, so this count is the only thing that reports it.",
 			len(surfaces), wantConfigurableSurfaces)
+	}
+
+	// A COUNT DOES NOT SURVIVE A SUBSTITUTION, so the set is checked too.
+	//
+	// One surface dropping out while another drops in leaves the total at 42 and
+	// every remaining row still passing. That is not hypothetical here: the
+	// per-surface cutovers change how surfaces are constructed, so a surface
+	// that stops matching this enumeration can be replaced by one that starts.
+	//
+	// THE EXPECTED SET IS DERIVED, NOT FROZEN AGAIN. It is the metadata
+	// contract's receivers minus the provider, which is not configurable -- so
+	// there is one frozen list of surfaces in the tree rather than two that can
+	// disagree.
+	expected := map[string]bool{}
+	for receiver, served := range metadatacontract.FrozenTypeNames {
+		if served == "unifi" {
+			continue
+		}
+		expected[receiver] = true
+	}
+	var arrived, departed []string
+	for name := range surfaces {
+		if !expected[name] {
+			arrived = append(arrived, name)
+		}
+	}
+	for name := range expected {
+		if _, still := surfaces[name]; !still {
+			departed = append(departed, name)
+		}
+	}
+	sort.Strings(arrived)
+	sort.Strings(departed)
+	if len(arrived) > 0 || len(departed) > 0 {
+		t.Errorf("the configurable set no longer matches the frozen surface contract.\n"+
+			"    arrived, configurable but not in the contract: %v\n"+
+			"    departed, in the contract but no longer configurable: %v\n\n"+
+			"    Equal numbers of each leave the count at %d and every row passing,\n"+
+			"    which is why the set is compared and not just its size.",
+			arrived, departed, wantConfigurableSurfaces)
 	}
 
 	names := make([]string, 0, len(surfaces))
