@@ -16,18 +16,23 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-// Every descriptor's Elide values must agree with its generated schema.
+// Every descriptor must agree with the two things it was transcribed from: the
+// generated schema, for what a zero from the API means, and the SDK struct, for
+// what each field is called on the wire.
 //
 // This exists because the value was unverified: flipping all seven of
 // dns_record's left the whole package green, so a descriptor generated across
 // every surface could carry the wrong value everywhere and nothing would say
 // so. resourcekit's own tests prove the check goes red on that mutation
 // against a probe; the cases here apply it to the descriptors we ship.
-func TestEveryDescriptorElideAgreesWithItsSchema(t *testing.T) {
+func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 	ctx := context.Background()
 
 	checks := map[string]func(*testing.T){
 		"firewall_zone": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(firewallZoneKitSpec()) {
+				t.Error(problem)
+			}
 			problems := resourcekit.ElideProblems(
 				firewallZoneKitSpec(), resource_firewall_zone.FirewallZoneResourceSchema(ctx))
 			for _, problem := range problems {
@@ -35,6 +40,9 @@ func TestEveryDescriptorElideAgreesWithItsSchema(t *testing.T) {
 			}
 		},
 		"firewall_group": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(firewallGroupKitSpec()) {
+				t.Error(problem)
+			}
 			problems := resourcekit.ElideProblems(
 				firewallGroupKitSpec(), resource_firewall_group.FirewallGroupResourceSchema(ctx))
 			for _, problem := range problems {
@@ -42,6 +50,9 @@ func TestEveryDescriptorElideAgreesWithItsSchema(t *testing.T) {
 			}
 		},
 		"client_qos_rate": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(clientQosRateKitSpec()) {
+				t.Error(problem)
+			}
 			problems := resourcekit.ElideProblems(
 				clientQosRateKitSpec(), resource_client_qos_rate.ClientQosRateResourceSchema(ctx))
 			for _, problem := range problems {
@@ -49,6 +60,9 @@ func TestEveryDescriptorElideAgreesWithItsSchema(t *testing.T) {
 			}
 		},
 		"static_route": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(staticRouteKitSpec()) {
+				t.Error(problem)
+			}
 			problems := resourcekit.ElideProblems(
 				staticRouteKitSpec(), resource_static_route.StaticRouteResourceSchema(ctx))
 			for _, problem := range problems {
@@ -56,6 +70,9 @@ func TestEveryDescriptorElideAgreesWithItsSchema(t *testing.T) {
 			}
 		},
 		"dns_record": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(dnsRecordKitSpec()) {
+				t.Error(problem)
+			}
 			problems := resourcekit.ElideProblems(
 				dnsRecordKitSpec(), resource_dns_record.DnsRecordResourceSchema(ctx))
 			for _, problem := range problems {
