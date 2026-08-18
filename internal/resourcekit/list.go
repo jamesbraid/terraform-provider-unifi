@@ -120,6 +120,30 @@ func (r *Resource[M, S]) List(
 		return
 	}
 
+	// PREFETCH RUNS HERE, ONCE, AND AfterReceive RUNS PER OBJECT BELOW -- the
+	// same order Read uses, because a listed object and a read one must reach
+	// state having been through the same steps.
+	//
+	// This was missing, and it is the third time the same asymmetry has come
+	// up. Create, Read and Update were given the hooks and List was not, so a
+	// surface whose model is not fully determined by its own SDK object read
+	// one way through the resource and another through the list. ReadDefault
+	// dodged it by living on the field, where ToModel is shared -- but that
+	// only works for a transform that needs nothing except the object. A
+	// port profile's tagged networks are computed against the site's whole
+	// network inventory, which no Field accessor can reach, so here the
+	// asymmetry has to be fixed rather than avoided.
+	//
+	// ONCE, NOT PER OBJECT. Prefetch is scoped to the site, and calling it
+	// inside the loop would turn one request into one per result -- the exact
+	// cost the comment above warns about, reintroduced by the fix for
+	// something else.
+	prefetched, prefetchDiags := r.prefetch(ctx, site)
+	if prefetchDiags.HasError() {
+		stream.Results = list.ListResultsStreamDiagnostics(prefetchDiags)
+		return
+	}
+
 	stream.Results = func(push func(list.ListResult) bool) {
 		for i := range objects {
 			object := &objects[i]
@@ -127,12 +151,21 @@ func (r *Resource[M, S]) List(
 				continue
 			}
 			result := req.NewListResult(ctx)
+			// A WARNING FROM Prefetch IS NOT DROPPED. Only an error can end the
+			// stream, so anything short of one would vanish here while Read
+			// reports it -- a new asymmetry inside the fix for one. It rides on
+			// the first result, once, rather than on every result.
+			if len(prefetchDiags) > 0 {
+				result.Diagnostics.Append(prefetchDiags...)
+				prefetchDiags = nil
+			}
 			result.DisplayName = r.ListSurface.DisplayName(object)
 			result.Diagnostics.Append(result.Identity.SetAttribute(
 				ctx, path.Root("id"), types.StringValue(r.Spec.Backend.GetID(object)))...)
 
 			var model M
 			result.Diagnostics.Append(r.Spec.ToModel(ctx, object, &model, site)...)
+			result.Diagnostics.Append(r.afterReceive(ctx, object, &model, prefetched)...)
 			*r.Spec.Timeouts(&model) = nullTimeouts()
 			result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
 
