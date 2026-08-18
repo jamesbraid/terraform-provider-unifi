@@ -12,6 +12,7 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
 	resource_firewall_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_group"
 	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
+	resource_static_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_static_route"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
@@ -43,6 +44,13 @@ func TestEveryDescriptorElideAgreesWithItsSchema(t *testing.T) {
 		"client_qos_rate": func(t *testing.T) {
 			problems := resourcekit.ElideProblems(
 				clientQosRateKitSpec(), resource_client_qos_rate.ClientQosRateResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"static_route": func(t *testing.T) {
+			problems := resourcekit.ElideProblems(
+				staticRouteKitSpec(), resource_static_route.StaticRouteResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

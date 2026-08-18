@@ -87,7 +87,6 @@
       "derived-value"
     ],
     "site_to_site_vpn": [],
-    "static_route": [],
     "traffic_route": [
       "nested",
       "undefined-fields"
@@ -115,6 +114,7 @@
   "resolved_capabilities": {
     "custom-scalar": "StringLikeField[M,S,T basetypes.StringValuable]",
     "model-conditional": "WriteWhen func(*M) bool, gating ToSDK and SetInPlan",
-    "preWriteHook": "Prefetch/BeforeSend/AfterReceive, now wired into Read and Update as well as Create"
+    "preWriteHook": "Prefetch/BeforeSend/AfterReceive, now wired into Read and Update as well as Create",
+    "read-default": "ReadDefault on StringField, substituted in ToModel so the list path gets it too"
   }
 }

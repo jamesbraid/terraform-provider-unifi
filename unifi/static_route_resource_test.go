@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
@@ -300,7 +301,7 @@ func TestNewStaticRouteListResource(t *testing.T) {
 }
 
 func Test_staticRouteFrameworkResource_IdentitySchema(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
+	r := newStaticRouteKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if _, ok := resp.IdentitySchema.Attributes["id"]; !ok {
@@ -309,7 +310,7 @@ func Test_staticRouteFrameworkResource_IdentitySchema(t *testing.T) {
 }
 
 func Test_staticRouteFrameworkResource_ConfigValidators(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
+	r := newStaticRouteKitResource()
 	validators := r.ConfigValidators(context.Background())
 	if len(validators) == 0 {
 		t.Error("expected at least one config validator")
@@ -406,15 +407,29 @@ func Test_validateIPVersionMatch(t *testing.T) {
 	}
 }
 
+// THE THREE MAPPER TESTS SURVIVE THE CUTOVER, POINTED AT THE DESCRIPTOR.
+//
+// applyPlanToState, modelToRouting and routingToModel are gone as methods --
+// Spec.ApplyPlanToState, Spec.ToSDK and Spec.ToModel do the same three jobs for
+// every surface. What each test asserted was never about the method though; it
+// was about static routes, so the assertions are kept and only the call moved.
+//
+// Two of them are extended, because this surface is where the kit's two newest
+// capabilities are first used and the old tests covered neither: the route-type
+// switch only ever ran its nexthop arm, and the gateway_type default was never
+// exercised at all. Both behaviours are the hand-written mapper's, so these are
+// conformance tests against the code being replaced rather than tests written
+// to agree with the code replacing it.
+
 func Test_staticRouteFrameworkResource_applyPlanToState(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
-	plan := &staticRouteFrameworkResourceModel{
+	spec := staticRouteKitSpec()
+	plan := &staticRouteKitModel{
 		Name:    types.StringValue("route1"),
 		Network: types.StringValue("10.0.0.0/8"),
 		Type:    types.StringValue("nexthop-route"),
 	}
-	state := &staticRouteFrameworkResourceModel{}
-	r.applyPlanToState(context.Background(), plan, state)
+	state := &staticRouteKitModel{}
+	spec.ApplyPlanToState(plan, state)
 	if state.Name.ValueString() != "route1" {
 		t.Error("expected Name to be copied from plan")
 	}
@@ -424,37 +439,107 @@ func Test_staticRouteFrameworkResource_applyPlanToState(t *testing.T) {
 }
 
 func Test_staticRouteFrameworkResource_modelToRouting(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
 	dist := int64(1)
-	model := &staticRouteFrameworkResourceModel{
-		Name:          types.StringValue("route1"),
-		Network:       types.StringValue("192.168.0.0/24"),
-		Type:          types.StringValue("nexthop-route"),
-		Distance:      types.Int64Value(1),
-		NextHop:       iptypes.NewIPAddressValue("192.168.1.1"),
-		Interface:     types.StringNull(),
-		Enabled:       types.BoolValue(true),
-		GatewayDevice: types.StringNull(),
-		GatewayType:   types.StringValue("default"),
+	base := func() *staticRouteKitModel {
+		return &staticRouteKitModel{
+			Name:          types.StringValue("route1"),
+			Network:       types.StringValue("192.168.0.0/24"),
+			Distance:      types.Int64Value(1),
+			NextHop:       iptypes.NewIPAddressValue("192.168.1.1"),
+			Interface:     types.StringValue("eth0"),
+			Enabled:       types.BoolValue(true),
+			GatewayDevice: types.StringNull(),
+			GatewayType:   types.StringValue("default"),
+		}
 	}
-	got := r.modelToRouting(context.Background(), model)
-	want := &unifi.Routing{
-		Type:                "static-route",
-		Name:                "route1",
-		StaticRouteNetwork:  "192.168.0.0/24",
-		StaticRouteType:     "nexthop-route",
-		StaticRouteDistance: &dist,
-		StaticRouteNexthop:  "192.168.1.1",
-		Enabled:             true,
-		GatewayType:         "default",
+
+	for _, testCase := range []struct {
+		name      string
+		routeType string
+		want      *unifi.Routing
+	}{
+		{
+			// The original case, unchanged: a next-hop route carries its hop.
+			name:      "nexthop-route sends the hop and not the interface",
+			routeType: "nexthop-route",
+			want: &unifi.Routing{
+				Type: "static-route", Name: "route1",
+				StaticRouteNetwork: "192.168.0.0/24", StaticRouteType: "nexthop-route",
+				StaticRouteDistance: &dist, StaticRouteNexthop: "192.168.1.1",
+				Enabled: true, GatewayType: "default",
+			},
+		},
+		{
+			// The arm nothing tested. A model holding BOTH values must still
+			// send only the one its route type owns, which is the whole reason
+			// the write predicate exists.
+			name:      "interface-route sends the interface and not the hop",
+			routeType: "interface-route",
+			want: &unifi.Routing{
+				Type: "static-route", Name: "route1",
+				StaticRouteNetwork: "192.168.0.0/24", StaticRouteType: "interface-route",
+				StaticRouteDistance: &dist, StaticRouteInterface: "eth0",
+				Enabled: true, GatewayType: "default",
+			},
+		},
+		{
+			name:      "blackhole sends neither",
+			routeType: "blackhole",
+			want: &unifi.Routing{
+				Type: "static-route", Name: "route1",
+				StaticRouteNetwork: "192.168.0.0/24", StaticRouteType: "blackhole",
+				StaticRouteDistance: &dist,
+				Enabled:             true, GatewayType: "default",
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			model := base()
+			model.Type = types.StringValue(testCase.routeType)
+			got, diags := staticRouteKitSpec().ToSDK(context.Background(), model)
+			if diags.HasError() {
+				t.Fatalf("ToSDK: %v", diags)
+			}
+			if !reflect.DeepEqual(got, testCase.want) {
+				t.Errorf("ToSDK() = %+v, want %+v", got, testCase.want)
+			}
+		})
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("modelToRouting() = %+v, want %+v", got, want)
+}
+
+// THE WIRE MASK MUST AGREE WITH THE WRITE. A suppressed field that still named
+// itself in the update mask would put whatever the SDK struct held on the wire,
+// which is worse than not suppressing it at all.
+func Test_staticRouteFrameworkResource_wireMaskFollowsTheRouteType(t *testing.T) {
+	for _, testCase := range []struct {
+		routeType string
+		absent    string
+	}{
+		{"nexthop-route", "static-route_interface"},
+		{"interface-route", "static-route_nexthop"},
+	} {
+		t.Run(testCase.routeType, func(t *testing.T) {
+			plan := &staticRouteKitModel{
+				Name:      types.StringValue("route1"),
+				Network:   types.StringValue("192.168.0.0/24"),
+				Type:      types.StringValue(testCase.routeType),
+				Distance:  types.Int64Value(1),
+				NextHop:   iptypes.NewIPAddressValue("192.168.1.1"),
+				Interface: types.StringValue("eth0"),
+				Enabled:   types.BoolValue(true),
+			}
+			fields, err := staticRouteKitSpec().WireFields(plan)
+			if err != nil {
+				t.Fatalf("WireFields: %v", err)
+			}
+			if slices.Contains(fields, testCase.absent) {
+				t.Errorf("a %s names %q on the wire: %v", testCase.routeType, testCase.absent, fields)
+			}
+		})
 	}
 }
 
 func Test_staticRouteFrameworkResource_routingToModel(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
 	dist := int64(1)
 	routing := &unifi.Routing{
 		ID:                  "abc123",
@@ -466,8 +551,10 @@ func Test_staticRouteFrameworkResource_routingToModel(t *testing.T) {
 		Enabled:             true,
 		GatewayType:         "default",
 	}
-	model := &staticRouteFrameworkResourceModel{}
-	r.routingToModel(context.Background(), routing, model, "default")
+	model := &staticRouteKitModel{}
+	if diags := staticRouteKitSpec().ToModel(context.Background(), routing, model, "default"); diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
 	if model.ID.ValueString() != "abc123" {
 		t.Errorf("ID = %q, want %q", model.ID.ValueString(), "abc123")
 	}
@@ -479,8 +566,28 @@ func Test_staticRouteFrameworkResource_routingToModel(t *testing.T) {
 	}
 }
 
+// The gateway_type substitution, which nothing asserted before. A controller
+// that reports no gateway_type must still leave the model holding "default",
+// or the attribute reads as changed on every refresh.
+func Test_staticRouteFrameworkResource_gatewayTypeDefaultsOnAnEmptyRead(t *testing.T) {
+	for _, testCase := range []struct{ reported, want string }{
+		{"", "default"},
+		{"upstream", "upstream"},
+	} {
+		model := &staticRouteKitModel{}
+		routing := &unifi.Routing{GatewayType: testCase.reported}
+		if diags := staticRouteKitSpec().ToModel(context.Background(), routing, model, "default"); diags.HasError() {
+			t.Fatalf("ToModel: %v", diags)
+		}
+		if got := model.GatewayType.ValueString(); got != testCase.want {
+			t.Errorf("a controller reporting %q left gateway_type %q, want %q",
+				testCase.reported, got, testCase.want)
+		}
+	}
+}
+
 func Test_staticRouteFrameworkResource_ListResourceConfigSchema(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
+	r := newStaticRouteKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if len(resp.Schema.Attributes) == 0 {
