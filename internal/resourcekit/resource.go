@@ -120,6 +120,21 @@ func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
 	return fields, nil
 }
 
+// WireNames lists every SDK attribute this spec maps, in declaration order.
+//
+// It exists for the contract check rather than for the runtime: the mapping
+// artifact says which fields a surface has, the descriptor says which it
+// touches, and until something compares the two a field can be added to the
+// policy and silently never mapped. Asking the spec rather than parsing the
+// generated Go keeps the check on the thing that runs.
+func (s Spec[M, S]) WireNames() []string {
+	names := make([]string, 0, len(s.Fields))
+	for _, field := range s.Fields {
+		names = append(names, field.WireName())
+	}
+	return names
+}
+
 // ToSDK renders a model as the SDK struct the controller is sent.
 //
 // THE DIAGNOSTICS ARE NOT DECORATION. A collection attribute converts through
