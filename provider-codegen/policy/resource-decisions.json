@@ -46,6 +46,18 @@
         ]
       },
       "schema_version": 0
+    },
+    "unifi_firewall_group": {
+      "sdk_type": "FirewallGroup",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "type"
+        ]
+      },
+      "schema_version": 0
     }
   }
 }
