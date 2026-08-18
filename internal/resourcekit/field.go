@@ -325,6 +325,13 @@ type StringListField[M any, S any] struct {
 	Wire  string
 	Model func(*M) *types.List
 	SDK   func(*S) *[]string
+	// Elide answers whether an empty collection from the API is an absence.
+	// It was missing from both collection types until a surface needed one,
+	// and ElideProblems skipped fields without it -- so the omission hid
+	// itself. Only an Optional-and-not-Computed attribute may null an empty:
+	// an Optional+Computed one may have been set to an explicit empty by the
+	// practitioner, and nulling that makes state disagree with config.
+	Elide ElideZero
 }
 
 func (f StringListField[M, S]) WireName() string { return f.Wire }
@@ -339,6 +346,10 @@ func (f StringListField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag
 }
 
 func (f StringListField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
+	if len(*f.SDK(sdk)) == 0 && bool(f.Elide) {
+		*f.Model(model) = types.ListNull(types.StringType)
+		return nil
+	}
 	list, diags := types.ListValueFrom(ctx, types.StringType, *f.SDK(sdk))
 	*f.Model(model) = list
 	return diags
@@ -379,6 +390,13 @@ type StringSetField[M any, S any] struct {
 	Wire  string
 	Model func(*M) *types.Set
 	SDK   func(*S) *[]string
+	// Elide answers whether an empty collection from the API is an absence.
+	// It was missing from both collection types until a surface needed one,
+	// and ElideProblems skipped fields without it -- so the omission hid
+	// itself. Only an Optional-and-not-Computed attribute may null an empty:
+	// an Optional+Computed one may have been set to an explicit empty by the
+	// practitioner, and nulling that makes state disagree with config.
+	Elide ElideZero
 }
 
 func (f StringSetField[M, S]) WireName() string { return f.Wire }
@@ -393,6 +411,10 @@ func (f StringSetField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag.
 }
 
 func (f StringSetField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
+	if len(*f.SDK(sdk)) == 0 && bool(f.Elide) {
+		*f.Model(model) = types.SetNull(types.StringType)
+		return nil
+	}
 	set, diags := types.SetValueFrom(ctx, types.StringType, *f.SDK(sdk))
 	*f.Model(model) = set
 	return diags

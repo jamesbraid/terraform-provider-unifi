@@ -37,9 +37,12 @@ type clientQosRateKitModel struct {
 
 // clientQosRateKitSpec is the whole of what varies.
 //
-// Elide is DERIVED, not chosen: name is Required in the generated schema so a
-// zero must survive the round trip, and the two rate fields are Optional so a
-// zero is an absence. ElideProblems enforces exactly that and fails if this
+// Elide is DERIVED, not chosen. name is Required, so its zero must survive.
+// THE TWO RATE FIELDS ARE Optional+Computed AND THEREFORE ALSO KeepZero, which
+// is not what I first wrote: a practitioner may set an explicit zero, and
+// nulling it makes state disagree with config. The check passed the wrong
+// values because the rule it encoded had never met an Optional+Computed field
+// carrying an Elide -- dns_record, the surface it was built on, has none. ElideProblems enforces exactly that and fails if this
 // drifts -- which is the check dns_record did not have when its record_type
 // was wrong.
 //
@@ -66,13 +69,13 @@ func clientQosRateKitSpec() resourcekit.Spec[clientQosRateKitModel, ui.ClientGro
 				Wire:  "qos_rate_max_down",
 				Model: func(m *clientQosRateKitModel) *types.Int64 { return &m.QOSRateMaxDown },
 				SDK:   func(s *ui.ClientGroup) **int64 { return &s.QOSRateMaxDown },
-				Elide: resourcekit.NullZero,
+				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.Int64PtrField[clientQosRateKitModel, ui.ClientGroup]{
 				Wire:  "qos_rate_max_up",
 				Model: func(m *clientQosRateKitModel) *types.Int64 { return &m.QOSRateMaxUp },
 				SDK:   func(s *ui.ClientGroup) **int64 { return &s.QOSRateMaxUp },
-				Elide: resourcekit.NullZero,
+				Elide: resourcekit.KeepZero,
 			},
 		},
 		Backend: resourcekit.Backend[ui.ClientGroup]{

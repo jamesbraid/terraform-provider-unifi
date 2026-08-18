@@ -105,3 +105,67 @@ func TestAnAttributeMissingFromTheSchemaIsReported(t *testing.T) {
 		t.Errorf("the message does not say the schema lacks the attribute: %v", problems)
 	}
 }
+
+// TestOptionalComputedKeepsItsZero pins the case the rule originally got wrong
+// and the surface it was validated on could not contain.
+//
+// dns_record has two Optional+Computed attributes and NEITHER reaches this
+// check: enabled is a BoolField, which elides nothing, and site is served by
+// Spec.Site rather than by a Field. So the rule shipped sending every
+// Optional+Computed field to NullZero and the check agreed with it, because the
+// specimen had no instance of the majority case. 277 of 528 attributes in the
+// generated schemas are Optional+Computed.
+//
+// The behaviour is settled by the tree rather than by argument: ap_group's
+// acceptance config sets `device_macs = []` explicitly, five steps use it, and
+// the schema description says "May be empty -- the controller accepts a group
+// with no members. Omit it to leave the membership as the controller has it."
+// An explicit empty that the provider nulls makes state disagree with config.
+func TestOptionalComputedKeepsItsZero(t *testing.T) {
+	optionalComputed := schema.Schema{Attributes: map[string]schema.Attribute{
+		"req": schema.StringAttribute{Required: true},
+		"opt": schema.StringAttribute{Optional: true},
+		"cmp": schema.StringAttribute{Optional: true, Computed: true},
+	}}
+
+	// cmp is Optional+Computed, so KeepZero is correct and NullZero is not.
+	if problems := ElideProblems(probeSpec(KeepZero, NullZero, KeepZero), optionalComputed); len(problems) != 0 {
+		t.Fatalf("Optional+Computed with KeepZero was reported wrong: %v", problems)
+	}
+	problems := ElideProblems(probeSpec(KeepZero, NullZero, NullZero), optionalComputed)
+	if len(problems) != 1 {
+		t.Fatalf("Optional+Computed with NullZero produced %d problem(s), want 1: %v", len(problems), problems)
+	}
+	if !strings.Contains(problems[0], "Optional+Computed") {
+		t.Errorf("the message collapses the combination that is at issue: %q", problems[0])
+	}
+}
+
+// TestAFieldKindWithNoElideIsReportedUnlessExempt closes the hole that hid the
+// collection types: skipping every field without an Elide made "makes no claim"
+// and "nobody wrote one" indistinguishable.
+func TestAFieldKindWithNoElideIsReportedUnlessExempt(t *testing.T) {
+	spec := Spec[flagModel, flagSDK]{
+		TypeName: "probe",
+		Fields: []Field[flagModel, flagSDK]{
+			// BoolField is exempt by design and must stay silent.
+			BoolField[flagModel, flagSDK]{Wire: "req",
+				Model: func(m *flagModel) *types.Bool { return &m.Flag },
+				SDK:   func(s *flagSDK) *bool { return &s.Flag }},
+		},
+	}
+	bare := schema.Schema{Attributes: map[string]schema.Attribute{
+		"req": schema.BoolAttribute{Required: true},
+	}}
+	if problems := ElideProblems(spec, bare); len(problems) != 0 {
+		t.Errorf("an exempt field kind was reported: %v", problems)
+	}
+}
+
+type flagModel struct {
+	Flag types.Bool `tfsdk:"req"`
+}
+
+type flagSDK struct {
+	Flag bool
+}

@@ -4,9 +4,19 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
+
+// elideExempt names the field kinds that deliberately make no elision claim.
+// A kind absent from here and lacking an Elide is reported rather than skipped,
+// because "no claim" and "nobody wrote one" look identical from the outside.
+var elideExempt = map[string]struct{}{
+	"BoolField":      {}, // a false is a value; see the type's own comment
+	"BoolPtrField":   {}, // a pointer bool already distinguishes unset from false
+	"StringPtrField": {}, // likewise: a *string separates unset from empty
+}
 
 // ElideProblems reports every descriptor field whose Elide disagrees with the
 // generated schema.
@@ -41,7 +51,24 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 		value := reflect.ValueOf(field)
 		elide := value.FieldByName("Elide")
 		if !elide.IsValid() {
-			continue // BoolField and friends elide nothing; there is no claim to check.
+			// A field kind with no Elide makes no claim, so there is nothing to
+			// check -- but the exemption has to name what it means. BoolField
+			// is deliberate and documented: a false is a value, and nulling it
+			// would turn "the controller did not say" into "the practitioner
+			// said false". Anything else reaching here is an omission wearing
+			// the same shape, which is how the collection types went unchecked
+			// until a surface needed one.
+			kind := value.Type().Name()
+			if i := strings.IndexByte(kind, '['); i > 0 {
+				kind = kind[:i] // strip the generic instantiation
+			}
+			if _, deliberate := elideExempt[kind]; !deliberate {
+				problems = append(problems, fmt.Sprintf(
+					"%s: field %q is a %s, which carries no Elide; either it should, or "+
+						"add it to elideExempt with the reason",
+					spec.TypeName, field.WireName(), kind))
+			}
+			continue
 		}
 		name, ok := terraformName(&model, value, offsets)
 		if !ok {
@@ -57,9 +84,23 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 				spec.TypeName, field.WireName(), name))
 			continue
 		}
-		want := NullZero
-		if attribute.IsRequired() || (attribute.IsComputed() && !attribute.IsOptional()) {
-			want = KeepZero
+		// NULLZERO IS THE NARROW CASE, NOT THE BROAD ONE. Only an attribute that
+		// is Optional and NOT Computed may treat a zero as an absence: there,
+		// a zero from the API against a config that never mentioned the
+		// attribute is genuinely "unset", and writing it as a value produces a
+		// permanent diff.
+		//
+		// EVERYTHING ELSE KEEPS ITS ZERO, and Optional+Computed is the case
+		// that forced this. The practitioner may set an explicit empty value
+		// there -- ap_group's acceptance config says `device_macs = []` and
+		// the schema description spells the distinction out: "May be empty --
+		// the controller accepts a group with no members. Omit it to leave the
+		// membership as the controller has it." Nulling an explicit empty
+		// makes state disagree with config, which is the inconsistent-result
+		// failure this rule exists to prevent, arriving from the other side.
+		want := KeepZero
+		if attribute.IsOptional() && !attribute.IsComputed() && !attribute.IsRequired() {
+			want = NullZero
 		}
 		if got := ElideZero(elide.Bool()); got != want {
 			problems = append(problems, fmt.Sprintf(
@@ -108,14 +149,20 @@ func elideName(e ElideZero) string {
 	return "NullZero"
 }
 
+// requiredness names the exact flag combination, because "Optional" alone read
+// as the whole story once already: Optional+Computed is the majority case in
+// this provider and the one the rule originally got wrong, so a message that
+// collapses it into "Optional" hides the very distinction being asserted.
 func requiredness(a schema.Attribute) string {
 	switch {
 	case a.IsRequired():
 		return "Required"
-	case a.IsComputed() && !a.IsOptional():
+	case a.IsOptional() && a.IsComputed():
+		return "Optional+Computed"
+	case a.IsComputed():
 		return "Computed-only"
 	case a.IsOptional():
-		return "Optional"
+		return "Optional-only"
 	}
 	return "neither required nor optional"
 }
