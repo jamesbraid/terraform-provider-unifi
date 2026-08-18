@@ -56,6 +56,28 @@ type Spec[M any, S any] struct {
 	// exclude the SDK's own types.
 	New func() *S
 
+	// THE THREE HOOKS, AND THEY EXIST BECAUSE port_profile FORCED THEM.
+	//
+	// A resource whose wire form is a pure function of its own attributes needs
+	// none of these, which is every simple surface. port_profile is not one: the
+	// practitioner declares which networks ARE tagged and the controller accepts
+	// only which are EXCLUDED, so the complement has to be computed against the
+	// site's whole network inventory -- an object this resource does not own and
+	// has to fetch. 340 of its 1,321 lines are that inversion.
+	//
+	// NONE OF IT IS GENERATED AND NONE OF IT SHOULD BE. It is semantics, not
+	// mapping: a set complement against a separately-fetched inventory is a
+	// decision about what the provider means, and a generator that emitted it
+	// would be encoding a policy nobody wrote down. What the kit provides is the
+	// place to call it from, so the 693 lines of CRUD around it still collapse.
+	//
+	// Prefetch runs before the object is built and its result is handed to both
+	// other hooks. BeforeSend may mutate the SDK object; AfterReceive may write
+	// model attributes the field list does not cover.
+	Prefetch     func(ctx context.Context, site string) (any, diag.Diagnostics)
+	BeforeSend   func(ctx context.Context, config, plan *M, sdk *S, prefetched any) diag.Diagnostics
+	AfterReceive func(ctx context.Context, sdk *S, model *M, prefetched any) diag.Diagnostics
+
 	// ID, Site and Timeouts reach the three attributes every managed surface
 	// has and no policy declares as a field -- they are provider_owned in the
 	// mapping, which is why they are here rather than in Fields.
@@ -174,10 +196,29 @@ func (r *Resource[M, S]) Create(
 	defer cancel()
 
 	site := r.Site(&data)
+	prefetched, prefetchDiags := r.prefetch(ctx, site)
+	resp.Diagnostics.Append(prefetchDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	sdk, diags := r.Spec.ToSDK(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+	if r.Spec.BeforeSend != nil {
+		// THE CONFIG, NOT ONLY THE PLAN. A computed attribute is unknown in the
+		// config and resolved in the plan, and port_profile's inversion needs
+		// what the practitioner WROTE rather than what Terraform derived.
+		var config M
+		resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &data, sdk, prefetched)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 	created, err := r.Spec.Backend.Create(ctx, site, sdk)
 	if err != nil {
@@ -185,6 +226,10 @@ func (r *Resource[M, S]) Create(
 		return
 	}
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, created, &data, site)...)
+	resp.Diagnostics.Append(r.afterReceive(ctx, created, &data, prefetched)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -330,4 +375,19 @@ func (r *Resource[M, S]) ImportState(
 		resp.Diagnostics.AddError("Invalid Import ID",
 			"Import ID must be in format 'site:id' or 'id'")
 	}
+}
+
+// prefetch reads whatever the resource needs beyond its own object, or nothing.
+func (r *Resource[M, S]) prefetch(ctx context.Context, site string) (any, diag.Diagnostics) {
+	if r.Spec.Prefetch == nil {
+		return nil, nil
+	}
+	return r.Spec.Prefetch(ctx, site)
+}
+
+func (r *Resource[M, S]) afterReceive(ctx context.Context, sdk *S, model *M, prefetched any) diag.Diagnostics {
+	if r.Spec.AfterReceive == nil {
+		return nil
+	}
+	return r.Spec.AfterReceive(ctx, sdk, model, prefetched)
 }
