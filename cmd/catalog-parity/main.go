@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 var manifestedOutputNames = []string{

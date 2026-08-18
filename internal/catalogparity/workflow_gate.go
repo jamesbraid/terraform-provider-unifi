@@ -1,8 +1,9 @@
 package catalogparity
 
 import (
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/receiptcheck"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/receiptcheck"
 )
 
 // Workflow gates are the assertions that used to live as `jq -e` one-liners in

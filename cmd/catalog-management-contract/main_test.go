@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/managementcontract"
 )
 

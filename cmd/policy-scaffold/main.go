@@ -20,11 +20,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 type bootstrapDocument struct {

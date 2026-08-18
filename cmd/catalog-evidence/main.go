@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasedtree"
 )
 

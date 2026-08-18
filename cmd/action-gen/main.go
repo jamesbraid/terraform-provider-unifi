@@ -24,13 +24,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"go/format"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 type specification struct {
@@ -216,8 +217,11 @@ func scalarOf(surface string, entry attribute) (string, *scalar, error) {
 		name string
 		body *scalar
 	}{
-		{"Bool", entry.Bool}, {"Float64", entry.Float64}, {"Int64", entry.Int64},
-		{"Number", entry.Number}, {"String", entry.String},
+		{"Bool", entry.Bool},
+		{"Float64", entry.Float64},
+		{"Int64", entry.Int64},
+		{"Number", entry.Number},
+		{"String", entry.String},
 	}
 	var found []string
 	var chosen struct {

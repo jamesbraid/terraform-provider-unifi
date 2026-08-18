@@ -39,11 +39,12 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 func main() {

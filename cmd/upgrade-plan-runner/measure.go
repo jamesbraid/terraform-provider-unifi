@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"log"
 	"os"
 	"os/exec"
@@ -12,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasedtree"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/upgradeplan"
 )

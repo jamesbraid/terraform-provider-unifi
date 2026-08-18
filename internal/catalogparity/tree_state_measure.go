@@ -3,9 +3,10 @@ package catalogparity
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 // MeasureTreeState answers one question -- does this evidence describe a commit

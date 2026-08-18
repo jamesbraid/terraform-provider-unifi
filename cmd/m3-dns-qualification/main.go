@@ -22,7 +22,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"hash"
 	"io"
 	"net/http"
@@ -34,6 +33,7 @@ import (
 	"time"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasequalification"
 )
 
@@ -899,7 +899,8 @@ func copyTree(source, destination string) error {
 // the exit as parameters means a test can deliver a signal value and assert
 // both happened, in order.
 func discardOnSignal(signals <-chan os.Signal, stderr io.Writer, runID string,
-	discard func(), exit func(int)) {
+	discard func(), exit func(int),
+) {
 	received, ok := <-signals
 	if !ok {
 		return

@@ -11,7 +11,6 @@ import (
 	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	fwprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
-
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/metadatacontract"
 )
 
