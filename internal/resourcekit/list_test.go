@@ -229,10 +229,13 @@ func TestListCarriesANonFatalPrefetchWarning(t *testing.T) {
 	}
 }
 
-// A surface with no hooks must list exactly as before. Without this, every
-// assertion above would be satisfied by a List that always ran the hook
-// machinery, including for the surfaces that declare none.
-func TestListWithNoHooksIsUnchanged(t *testing.T) {
+// A surface declaring no hooks must still list its objects. Without this, every
+// assertion above would be satisfied by a List that only worked when the hook
+// machinery was present -- which is all but one of the surfaces served today.
+//
+// Named for what it checks rather than "is unchanged", which would promise a
+// comparison against a pre-change baseline that this does not make.
+func TestListWithNoHooksYieldsTheObjectItWasGiven(t *testing.T) {
 	r := kitListResource([]kitSDK{{ID: "1", Name: "a"}})
 	results := drain(t, r)
 	if len(results) != 1 {
