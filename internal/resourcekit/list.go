@@ -143,9 +143,28 @@ func (r *Resource[M, S]) List(
 	}
 }
 
+// matches is SAFE ON ITS OWN, and that is a correction rather than caution.
+//
+// The first version indexed Filters and called the result. Removing the
+// unknown-filter refusal above -- as a mutation, to prove the refusal was
+// tested -- made this PANIC on a nil function rather than fail: a missing key
+// in a map of funcs yields nil, and calling it segfaults the provider.
+//
+// So the refusal was load-bearing against a crash, which is a fragile pairing:
+// two things a hundred lines apart, one silently holding the other up. The
+// refusal is now the message a practitioner gets and this is the reason a typo
+// cannot take the provider down, and each stands without the other.
 func (r *Resource[M, S]) matches(object *S, wanted map[string]string) bool {
 	for name, value := range wanted {
-		if r.ListSurface.Filters[name](object) != value {
+		render, known := r.ListSurface.Filters[name]
+		if !known {
+			// Unreachable while the refusal above stands. Not matching is the
+			// safe direction if it ever does not: an unfilterable name that
+			// matched everything is the wrong answer this surface exists to
+			// avoid.
+			return false
+		}
+		if render(object) != value {
 			return false
 		}
 	}
