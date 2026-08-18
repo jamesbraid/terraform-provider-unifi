@@ -342,17 +342,6 @@ func classifyExpectNoChanges(code int, fixture, cliConfig string) error {
 	}
 }
 
-func gitOutput(args ...string) (string, error) {
-	var stdout, stderr bytes.Buffer
-	command := exec.Command("git", args...)
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, stderr.String())
-	}
-	return strings.TrimSpace(stdout.String()), nil
-}
-
 func gitQuiet(args ...string) error {
 	return exec.Command("git", args...).Run()
 }

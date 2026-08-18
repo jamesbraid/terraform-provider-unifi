@@ -14,6 +14,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -85,7 +86,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	candidateCommit, err := gitOutput(repo, "rev-parse", "HEAD")
+	candidateCommit, err := cmdio.GitOutput(repo, "rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
@@ -240,14 +241,6 @@ func goEnvPair() (string, error) {
 		return "", err
 	}
 	return goos + "/" + goarch, nil
-}
-
-func gitOutput(repo string, args ...string) (string, error) {
-	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).Output()
-	if err != nil {
-		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
-	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 func fileDigest(path string) (string, error) {

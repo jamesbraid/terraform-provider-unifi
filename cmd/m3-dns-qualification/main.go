@@ -22,6 +22,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"hash"
 	"io"
 	"net/http"
@@ -132,7 +133,7 @@ func run(argv []string, stdout, stderr io.Writer) error {
 
 	resolvedCommit := *sourceCommit
 	if resolvedCommit == "" {
-		resolvedCommit, err = gitOutput("rev-parse", "HEAD")
+		resolvedCommit, err = cmdio.GitOutput("", "rev-parse", "HEAD")
 		if err != nil {
 			return err
 		}

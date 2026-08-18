@@ -3,7 +3,7 @@ package catalogparity
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"sort"
 	"strings"
 )
@@ -45,11 +45,11 @@ func MeasureTreeState(dir, what string, allowDirty bool) (*TreeState, error) {
 		return nil, fmt.Errorf("tree state needs the name of the artifact it is guarding")
 	}
 
-	root, err := gitOutput(dir, "rev-parse", "--show-toplevel")
+	root, err := cmdio.GitLines(dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return nil, fmt.Errorf("%s: not a git repository, so the tree state cannot be recorded", what)
 	}
-	commit, err := gitOutput(root, "rev-parse", "HEAD")
+	commit, err := cmdio.GitLines(root, "rev-parse", "HEAD")
 	if err != nil {
 		return nil, fmt.Errorf("%s: HEAD cannot be resolved, so the evidence cannot name its commit", what)
 	}
@@ -57,7 +57,7 @@ func MeasureTreeState(dir, what string, allowDirty bool) (*TreeState, error) {
 	// UNTRACKED FILES COUNT. The inventory failure was untracked evidence files
 	// being digested before they were added, so excluding them would leave the
 	// exact hole this exists to close.
-	porcelain, err := gitOutput(root, "status", "--porcelain")
+	porcelain, err := cmdio.GitLines(root, "status", "--porcelain")
 	if err != nil {
 		return nil, fmt.Errorf("%s: the working tree state cannot be read: %w", what, err)
 	}
@@ -96,15 +96,6 @@ func dirtyPaths(porcelain string) []string {
 	}
 	sort.Strings(paths)
 	return paths
-}
-
-func gitOutput(dir string, args ...string) (string, error) {
-	command := exec.Command("git", append([]string{"-C", dir}, args...)...)
-	out, err := command.Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimRight(string(out), "\n"), nil
 }
 
 // JSON renders the state for embedding in a receipt, replacing the shell's
