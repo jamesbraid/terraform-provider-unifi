@@ -48,6 +48,12 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 
 	var problems []string
 	for _, field := range spec.Fields {
+		// A read-only field forwards ToModel, so its Elide still governs how an
+		// API zero reaches the model. Reach through the wrapper rather than
+		// exempting it, or every computed field goes unchecked.
+		if wrapper, ok := field.(interface{ Unwrap() Field[M, S] }); ok {
+			field = wrapper.Unwrap()
+		}
 		value := reflect.ValueOf(field)
 		elide := value.FieldByName("Elide")
 		if !elide.IsValid() {

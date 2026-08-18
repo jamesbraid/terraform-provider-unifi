@@ -169,3 +169,36 @@ type flagModel struct {
 type flagSDK struct {
 	Flag bool
 }
+
+// TestTheCheckReachesThroughReadOnly is the control for the unwrap.
+//
+// A read-only field forwards ToModel, so its Elide still decides whether an API
+// zero becomes null in state. Before Unwrap existed the check reported it as
+// "carries no Elide", which was false; the risk in fixing that was silencing
+// the field instead of checking it, and zero problems looks identical either
+// way. So this asserts the check goes RED through the wrapper.
+func TestTheCheckReachesThroughReadOnly(t *testing.T) {
+	optional := schema.Schema{Attributes: map[string]schema.Attribute{
+		"req": schema.StringAttribute{Required: true},
+		"opt": schema.StringAttribute{Optional: true},
+		"cmp": schema.StringAttribute{Optional: true},
+	}}
+	// cmp is Optional-only, so NullZero is correct and KeepZero is not --
+	// wrapped in ReadOnly, which previously hid the claim entirely.
+	spec := probeSpec(KeepZero, NullZero, NullZero)
+	spec.Fields[2] = ReadOnly(spec.Fields[2])
+	if problems := ElideProblems(spec, optional); len(problems) != 0 {
+		t.Fatalf("a correct read-only field was reported: %v", problems)
+	}
+
+	wrong := probeSpec(KeepZero, NullZero, KeepZero)
+	wrong.Fields[2] = ReadOnly(wrong.Fields[2])
+	problems := ElideProblems(wrong, optional)
+	if len(problems) != 1 {
+		t.Fatalf("a wrong Elide inside ReadOnly produced %d problem(s), want 1: %v",
+			len(problems), problems)
+	}
+	if !strings.Contains(problems[0], "probe.cmp") {
+		t.Errorf("the wrapped field was not the one named: %v", problems)
+	}
+}

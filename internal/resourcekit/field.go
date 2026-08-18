@@ -532,6 +532,15 @@ type readOnlyField[M any, S any] struct{ inner Field[M, S] }
 
 func (f readOnlyField[M, S]) WireName() string { return f.inner.WireName() }
 
+// Unwrap exposes the wrapped field so a check can reach its Elide.
+//
+// WITHOUT IT THE WRAPPER HIDES THE CLAIM. ElideProblems reflects on a field's
+// own type, so a read-only field reported as "carries no Elide" -- which is
+// false: the inner field has one, and it still governs how an API zero reaches
+// the model, because ToModel is forwarded even though ToSDK is not. Exempting
+// the wrapper would have silenced the check on every computed field instead.
+func (f readOnlyField[M, S]) Unwrap() Field[M, S] { return f.inner }
+
 // ToSDK does nothing. The field never reaches the controller.
 func (f readOnlyField[M, S]) ToSDK(context.Context, *M, *S) diag.Diagnostics { return nil }
 

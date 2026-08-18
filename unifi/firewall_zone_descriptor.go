@@ -1,7 +1,14 @@
 package unifi
 
-// PROTOTYPE, NOT GENERATED YET, and the SECOND descriptor rather than a repeat
-// of the first.
+// The firewall_zone descriptor.
+//
+// WAS A PROTOTYPE UNTIL THIS COMMIT. It was written to find the kit's gaps
+// rather than to serve traffic, and it did: read-only fields, a pointer bool
+// and a string list all arrived because this surface needed them. The spec
+// below is unchanged from the prototype; what is added is the schema, list and
+// backend halves that turn it into a live descriptor.
+//
+// It was the SECOND descriptor rather than a repeat of the first.
 //
 // firewall_zone was chosen over another simple surface for three reasons, each
 // a thing dns_record cannot exercise: it is BOOTSTRAP-compiled, so go_name and
@@ -11,9 +18,13 @@ package unifi
 // descriptor that has anything to mark read-only.
 
 import (
+	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_firewall_zone"
+	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
@@ -82,5 +93,58 @@ func firewallZoneKitSpec() resourcekit.Spec[firewallZoneKitModel, ui.FirewallZon
 			GetID: func(s *ui.FirewallZone) string { return s.ID },
 			SetID: func(s *ui.FirewallZone, id string) { s.ID = id },
 		},
+	}
+}
+
+// firewallZoneKitSchema is the schema half. No version and no upgraders: this
+// surface has never migrated its state shape.
+func firewallZoneKitSchema() resourcekit.SchemaSpec {
+	return resourcekit.SchemaSpec{
+		Resource: resource_firewall_zone.FirewallZoneResourceSchema,
+		Timeouts: timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	}
+}
+
+func firewallZoneKitList() resourcekit.ListSpec[ui.FirewallZone] {
+	return resourcekit.ListSpec[ui.FirewallZone]{
+		ConfigSchema: listresource_firewall_zone.FirewallZoneListResourceSchema,
+		DisplayName: func(s *ui.FirewallZone) string {
+			if s.Name != "" {
+				return s.Name
+			}
+			return s.ID
+		},
+		Filters: map[string]func(*ui.FirewallZone) string{
+			"name": func(s *ui.FirewallZone) string { return s.Name },
+		},
+	}
+}
+
+// firewallZoneKitBackend binds the spec to a client.
+//
+// THE HAND-WRITTEN RESOURCE USED THE WHOLE-OBJECT UpdateFirewallZone; this uses
+// the masked UpdateFirewallZoneFields. That is not a translation but a
+// narrowing: the kit sends only the fields the plan set, so the three computed
+// attributes this surface has -- _id, zone_key, default_zone -- are never
+// offered back to the controller that authored them.
+func firewallZoneKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.FirewallZone] {
+	return resourcekit.Backend[ui.FirewallZone]{
+		Create: func(ctx context.Context, site string, in *ui.FirewallZone) (*ui.FirewallZone, error) {
+			return client.CreateFirewallZone(ctx, site, in)
+		},
+		Read: func(ctx context.Context, site, id string) (*ui.FirewallZone, error) {
+			return client.GetFirewallZone(ctx, site, id)
+		},
+		UpdateFields: func(ctx context.Context, site string, in *ui.FirewallZone, fields ...string) (*ui.FirewallZone, error) {
+			return client.UpdateFirewallZoneFields(ctx, site, in, fields...)
+		},
+		Delete: func(ctx context.Context, site, id string) error {
+			return client.DeleteFirewallZone(ctx, site, id)
+		},
+		List: func(ctx context.Context, site string) ([]ui.FirewallZone, error) {
+			return client.ListFirewallZone(ctx, site)
+		},
+		GetID: func(s *ui.FirewallZone) string { return s.ID },
+		SetID: func(s *ui.FirewallZone, id string) { s.ID = id },
 	}
 }

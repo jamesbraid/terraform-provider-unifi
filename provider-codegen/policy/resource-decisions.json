@@ -58,6 +58,17 @@
         ]
       },
       "schema_version": 0
+    },
+    "unifi_firewall_zone": {
+      "sdk_type": "FirewallZone",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
     }
   }
 }

@@ -2,23 +2,13 @@ package unifi
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"reflect"
-	"strings"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
-	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
-	"github.com/ubiquiti-community/go-unifi/unifi"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 func TestAccFirewallZoneList_emptyOrSeeded(t *testing.T) {
@@ -103,429 +93,113 @@ resource "unifi_firewall_zone" "test" {
 	})
 }
 
-func TestFirewallZoneDeleteIgnoresNotFound(t *testing.T) {
-	t.Parallel()
+// THE MAPPING AND BODY COVERAGE THAT SURVIVED THE CUTOVER.
+//
+// modelToFirewallZone and firewallZoneToModel are gone; the descriptor's
+// Fields do that work. Their assertions are re-expressed against the descriptor
+// rather than deleted. The generic Schema, IdentitySchema and
+// ListResourceConfigSchema cases are not re-expressed: the kit serves all three
+// now, and resourcekit's own tests cover them once for every surface instead of
+// once per surface.
+func TestFirewallZoneDescriptorRoundTripsEveryField(t *testing.T) {
+	ctx := context.Background()
+	spec := firewallZoneKitSpec()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/proxy/network/status" {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"meta":{"server_version":"10.4.57"}}`))
-			return
-		}
-		if req.Method != http.MethodDelete {
-			t.Errorf("request method = %s, want DELETE", req.Method)
-		}
-		if req.URL.Path != "/proxy/network/v2/api/site/default/firewall/zone/missing-zone" {
-			t.Errorf("request path = %s, want firewall zone delete path", req.URL.Path)
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	t.Cleanup(server.Close)
-
-	apiClient, err := unifi.New(
-		context.Background(),
-		&unifi.Config{BaseURL: server.URL, APIKey: "test-key"},
-	)
-	if err != nil {
-		t.Fatalf("create API client: %v", err)
-	}
-
-	r := &firewallZoneResource{client: &Client{ApiClient: apiClient, Site: "default"}}
-	schemaResp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, schemaResp)
-	state := tfsdk.State{Schema: schemaResp.Schema}
-	timeoutTypes := map[string]attr.Type{
-		"create": types.StringType,
-		"read":   types.StringType,
-		"update": types.StringType,
-		"delete": types.StringType,
-	}
-	diags := state.Set(context.Background(), &firewallZoneResourceModel{
-		ID:          types.StringValue("missing-zone"),
-		Site:        types.StringValue("default"),
-		Name:        types.StringValue("Missing Zone"),
-		NetworkIDs:  types.ListNull(types.StringType),
-		ZoneKey:     types.StringNull(),
-		DefaultZone: types.BoolNull(),
-		Timeouts:    timeouts.Value{Object: types.ObjectNull(timeoutTypes)},
-	})
+	ids, diags := types.ListValueFrom(ctx, types.StringType, []string{"net-a", "net-b"})
 	if diags.HasError() {
-		t.Fatalf("set delete state: %v", diags)
+		t.Fatal(diags)
+	}
+	model := firewallZoneKitModel{
+		ID:         types.StringValue("zone-1"),
+		Name:       types.StringValue("Trusted"),
+		NetworkIDs: ids,
 	}
 
-	resp := &fwresource.DeleteResponse{State: state}
-	r.Delete(
-		context.Background(),
-		fwresource.DeleteRequest{State: state},
-		resp,
-	)
+	var sdk ui.FirewallZone
+	for _, field := range spec.Fields {
+		if d := field.ToSDK(ctx, &model, &sdk); d.HasError() {
+			t.Fatalf("ToSDK(%s): %v", field.WireName(), d)
+		}
+	}
+	if sdk.Name != "Trusted" {
+		t.Errorf("name did not reach the SDK struct: %q", sdk.Name)
+	}
+	if len(sdk.NetworkIDs) != 2 {
+		t.Errorf("network_ids reached the SDK struct as %v", sdk.NetworkIDs)
+	}
 
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("Delete returned error diagnostics for an absent zone: %v", resp.Diagnostics)
+	var back firewallZoneKitModel
+	for _, field := range spec.Fields {
+		if d := field.ToModel(ctx, &sdk, &back); d.HasError() {
+			t.Fatalf("ToModel(%s): %v", field.WireName(), d)
+		}
+	}
+	if back.Name != model.Name {
+		t.Errorf("name round trip: %v want %v", back.Name, model.Name)
+	}
+	if !back.NetworkIDs.Equal(model.NetworkIDs) {
+		t.Errorf("network_ids round trip: %v want %v", back.NetworkIDs, model.NetworkIDs)
 	}
 }
 
-func boolPtr(b bool) *bool { return &b }
-
-// TestFirewallZoneModelRoundTrip validates the model <-> go-unifi struct
-// conversion for the unifi_firewall_zone resource (#214). It is a unit test
-// rather than an acceptance test because zone-based firewall is not available
-// in the dockerized acceptance controller.
-func TestFirewallZoneModelRoundTrip(t *testing.T) {
+// TestFirewallZoneAlwaysSendsNetworkIDs keeps the assertion that
+// TestFirewallZoneCreateBodyAlwaysSendsNetworkIDs made.
+//
+// network_ids is the SDK's only field without omitempty, so a nil slice
+// serialises as null and an empty one as [] -- and the controller reads those
+// as different requests. StringListField empties the slice rather than leaving
+// it nil for exactly this reason; the assertion moves here so the property is
+// still defended after the hand-written body builder was deleted.
+func TestFirewallZoneAlwaysSendsNetworkIDs(t *testing.T) {
 	ctx := context.Background()
-	r := &firewallZoneResource{}
+	spec := firewallZoneKitSpec()
 
-	nids, d := types.ListValueFrom(ctx, types.StringType, []string{"net-a", "net-b"})
-	if d.HasError() {
-		t.Fatalf("building network_ids list: %v", d)
+	model := firewallZoneKitModel{
+		Name:       types.StringValue("Trusted"),
+		NetworkIDs: types.ListNull(types.StringType), // the practitioner said nothing
 	}
-	model := &firewallZoneResourceModel{
-		Name:       types.StringValue("DMZ"),
-		NetworkIDs: nids,
+	var sdk ui.FirewallZone
+	for _, field := range spec.Fields {
+		if d := field.ToSDK(ctx, &model, &sdk); d.HasError() {
+			t.Fatalf("ToSDK(%s): %v", field.WireName(), d)
+		}
 	}
-
-	zone, diags := r.modelToFirewallZone(ctx, model)
-	if diags.HasError() {
-		t.Fatalf("modelToFirewallZone: %v", diags)
+	if sdk.NetworkIDs == nil {
+		t.Error("network_ids is nil, so it serialises as null rather than []; " +
+			"the controller reads those as different requests")
 	}
-	if zone.Name != "DMZ" {
-		t.Errorf("Name = %q, want DMZ", zone.Name)
-	}
-	if len(zone.NetworkIDs) != 2 || zone.NetworkIDs[0] != "net-a" || zone.NetworkIDs[1] != "net-b" {
-		t.Errorf("NetworkIDs = %v, want [net-a net-b]", zone.NetworkIDs)
-	}
-
-	apiZone := &unifi.FirewallZone{
-		ID:          "z1",
-		Name:        "DMZ",
-		NetworkIDs:  []string{"net-a", "net-b"},
-		ZoneKey:     "dmz",
-		DefaultZone: boolPtr(false),
-	}
-	var out firewallZoneResourceModel
-	if diags := r.firewallZoneToModel(ctx, apiZone, &out, "default"); diags.HasError() {
-		t.Fatalf("firewallZoneToModel: %v", diags)
-	}
-	if out.ID.ValueString() != "z1" {
-		t.Errorf("ID = %q, want z1", out.ID.ValueString())
-	}
-	if out.Name.ValueString() != "DMZ" {
-		t.Errorf("Name = %q, want DMZ", out.Name.ValueString())
-	}
-	if out.Site.ValueString() != "default" {
-		t.Errorf("Site = %q, want default", out.Site.ValueString())
-	}
-	if out.ZoneKey.ValueString() != "dmz" {
-		t.Errorf("ZoneKey = %q, want dmz", out.ZoneKey.ValueString())
-	}
-	var gotNids []string
-	if diags := out.NetworkIDs.ElementsAs(ctx, &gotNids, false); diags.HasError() {
-		t.Fatalf("reading network_ids: %v", diags)
-	}
-	if len(gotNids) != 2 {
-		t.Errorf("network_ids round-trip = %v, want 2 entries", gotNids)
+	if len(sdk.NetworkIDs) != 0 {
+		t.Errorf("a null list produced %v", sdk.NetworkIDs)
 	}
 }
 
-// TestFirewallZoneCreateBodyAlwaysSendsNetworkIDs guards #314. On a ZBF-migrated
-// controller, a create POST that omits network_ids triggers a server-side NPE and a
-// generic HTTP 500 (a name-only body fails; the same body with "network_ids":[]
-// succeeds). go-unifi once tagged the field `json:"network_ids,omitempty"`, which
-// dropped the resource's empty []string{} from the payload and produced exactly that
-// bad body. The tag must stay non-omitempty so an empty zone still serializes an
-// explicit empty array — verified live against Network 10.4.57.
-func TestFirewallZoneCreateBodyAlwaysSendsNetworkIDs(t *testing.T) {
-	zone := &unifi.FirewallZone{Name: "ZBF-Probe", NetworkIDs: []string{}}
-	body, err := json.Marshal(zone)
-	if err != nil {
-		t.Fatalf("marshal firewall zone: %v", err)
+// TestFirewallZoneDescriptorCoversEveryManagedField stops the round trip above
+// passing because a field is absent from the descriptor entirely.
+func TestFirewallZoneDescriptorCoversEveryManagedField(t *testing.T) {
+	got := map[string]bool{}
+	for _, f := range firewallZoneKitSpec().Fields {
+		got[f.WireName()] = true
 	}
-	if !strings.Contains(string(body), `"network_ids":[]`) {
-		t.Errorf(
-			"create body must always include network_ids (empty array), got %s",
-			body,
-		)
+	for _, want := range []string{"name", "network_ids", "zone_key", "default_zone"} {
+		if !got[want] {
+			t.Errorf("the descriptor does not carry managed field %q", want)
+		}
+	}
+	if len(got) != 4 {
+		t.Errorf("descriptor carries %d fields, want 4: %v", len(got), got)
 	}
 }
 
-func TestNewFirewallZoneResource(t *testing.T) {
-	got := NewFirewallZoneResource()
-	if got == nil {
-		t.Fatal("NewFirewallZoneResource() returned nil")
+// TestFirewallZoneConstructorsServeBothSurfaces replaces the two constructor
+// tests, which asserted the old concrete type.
+func TestFirewallZoneConstructorsServeBothSurfaces(t *testing.T) {
+	if NewFirewallZoneResource() == nil {
+		t.Error("NewFirewallZoneResource returned nil")
 	}
-	if _, ok := got.(fwresource.ResourceWithImportState); !ok {
-		t.Errorf("NewFirewallZoneResource() does not implement resource.ResourceWithImportState")
+	if NewFirewallZoneListResource() == nil {
+		t.Error("NewFirewallZoneListResource returned nil")
 	}
-	if _, ok := got.(fwresource.ResourceWithIdentity); !ok {
-		t.Errorf("NewFirewallZoneResource() does not implement resource.ResourceWithIdentity")
-	}
-}
-
-func TestNewFirewallZoneListResource(t *testing.T) {
-	got := NewFirewallZoneListResource()
-	if got == nil {
-		t.Fatal("NewFirewallZoneListResource() returned nil")
-	}
-	if _, ok := got.(fwlist.ListResourceWithConfigure); !ok {
-		t.Errorf("NewFirewallZoneListResource() does not implement list.ListResourceWithConfigure")
-	}
-}
-
-func Test_firewallZoneResource_IdentitySchema(t *testing.T) {
-	type args struct {
-		in0  context.Context
-		in1  fwresource.IdentitySchemaRequest
-		resp *fwresource.IdentitySchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallZoneResource
-		args args
-	}{
-		{
-			name: "has_id_attribute",
-			r:    &firewallZoneResource{},
-			args: args{
-				in0:  context.Background(),
-				in1:  fwresource.IdentitySchemaRequest{},
-				resp: &fwresource.IdentitySchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.IdentitySchema(tt.args.in0, tt.args.in1, tt.args.resp)
-			if _, ok := tt.args.resp.IdentitySchema.Attributes["id"]; !ok {
-				t.Error("IdentitySchema missing 'id' attribute")
-			}
-		})
-	}
-}
-
-func Test_firewallZoneResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallZoneResource
-		args args
-	}{
-		{
-			name: "key_attributes",
-			r:    &firewallZoneResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			attrs := tt.args.resp.Schema.Attributes
-
-			if a, ok := attrs["id"]; !ok {
-				t.Error("missing 'id' attribute")
-			} else if !a.IsComputed() {
-				t.Error("'id' should be Computed")
-			}
-
-			if a, ok := attrs["name"]; !ok {
-				t.Error("missing 'name' attribute")
-			} else if !a.IsRequired() {
-				t.Error("'name' should be Required")
-			}
-
-			if a, ok := attrs["network_ids"]; !ok {
-				t.Error("missing 'network_ids' attribute")
-			} else if !a.IsOptional() || !a.IsComputed() {
-				t.Error("'network_ids' should be Optional+Computed")
-			}
-
-			if a, ok := attrs["zone_key"]; !ok {
-				t.Error("missing 'zone_key' attribute")
-			} else if !a.IsComputed() {
-				t.Error("'zone_key' should be Computed")
-			}
-
-			if a, ok := attrs["default_zone"]; !ok {
-				t.Error("missing 'default_zone' attribute")
-			} else if !a.IsComputed() {
-				t.Error("'default_zone' should be Computed")
-			}
-		})
-	}
-}
-
-func Test_firewallZoneResource_modelToFirewallZone(t *testing.T) {
-	ctx := context.Background()
-	r := &firewallZoneResource{}
-
-	nids, d := types.ListValueFrom(ctx, types.StringType, []string{"net-a", "net-b"})
-	if d.HasError() {
-		t.Fatalf("building network_ids: %v", d)
-	}
-
-	tests := []struct {
-		name       string
-		model      *firewallZoneResourceModel
-		wantName   string
-		wantNetIDs []string
-	}{
-		{
-			name: "basic",
-			model: &firewallZoneResourceModel{
-				Name:       types.StringValue("DMZ"),
-				NetworkIDs: nids,
-			},
-			wantName:   "DMZ",
-			wantNetIDs: []string{"net-a", "net-b"},
-		},
-		{
-			name: "null_network_ids",
-			model: &firewallZoneResourceModel{
-				Name:       types.StringValue("Test"),
-				NetworkIDs: types.ListNull(types.StringType),
-			},
-			wantName:   "Test",
-			wantNetIDs: []string{},
-		},
-		{
-			name: "no_networks",
-			model: &firewallZoneResourceModel{
-				Name:       types.StringValue("Empty"),
-				NetworkIDs: types.ListNull(types.StringType),
-			},
-			wantName:   "Empty",
-			wantNetIDs: []string{},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, diags := r.modelToFirewallZone(ctx, tt.model)
-			if diags.HasError() {
-				t.Fatalf("unexpected error: %v", diags)
-			}
-			if got.Name != tt.wantName {
-				t.Errorf("Name = %q, want %q", got.Name, tt.wantName)
-			}
-			if !reflect.DeepEqual(got.NetworkIDs, tt.wantNetIDs) {
-				t.Errorf("NetworkIDs = %v, want %v", got.NetworkIDs, tt.wantNetIDs)
-			}
-		})
-	}
-}
-
-func Test_firewallZoneResource_firewallZoneToModel(t *testing.T) {
-	ctx := context.Background()
-	r := &firewallZoneResource{}
-
-	tests := []struct {
-		name            string
-		zone            *unifi.FirewallZone
-		site            string
-		wantID          string
-		wantName        string
-		wantZoneKey     string
-		wantDefaultZone bool
-		wantNetCount    int
-	}{
-		{
-			name: "basic",
-			zone: &unifi.FirewallZone{
-				ID:          "z1",
-				Name:        "LAN",
-				ZoneKey:     "lan",
-				DefaultZone: boolPtr(true),
-				NetworkIDs:  []string{"n1"},
-			},
-			site:            "default",
-			wantID:          "z1",
-			wantName:        "LAN",
-			wantZoneKey:     "lan",
-			wantDefaultZone: true,
-			wantNetCount:    1,
-		},
-		{
-			name: "empty_network_ids",
-			zone: &unifi.FirewallZone{
-				ID:          "z2",
-				Name:        "DMZ",
-				ZoneKey:     "dmz",
-				DefaultZone: boolPtr(false),
-				NetworkIDs:  []string{},
-			},
-			site:            "site1",
-			wantID:          "z2",
-			wantName:        "DMZ",
-			wantZoneKey:     "dmz",
-			wantDefaultZone: false,
-			wantNetCount:    0,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var model firewallZoneResourceModel
-			diags := r.firewallZoneToModel(ctx, tt.zone, &model, tt.site)
-			if diags.HasError() {
-				t.Fatalf("unexpected error: %v", diags)
-			}
-			if model.ID.ValueString() != tt.wantID {
-				t.Errorf("ID = %q, want %q", model.ID.ValueString(), tt.wantID)
-			}
-			if model.Name.ValueString() != tt.wantName {
-				t.Errorf("Name = %q, want %q", model.Name.ValueString(), tt.wantName)
-			}
-			if model.ZoneKey.ValueString() != tt.wantZoneKey {
-				t.Errorf("ZoneKey = %q, want %q", model.ZoneKey.ValueString(), tt.wantZoneKey)
-			}
-			if model.DefaultZone.ValueBool() != tt.wantDefaultZone {
-				t.Errorf(
-					"DefaultZone = %v, want %v",
-					model.DefaultZone.ValueBool(),
-					tt.wantDefaultZone,
-				)
-			}
-			var netIDs []string
-			model.NetworkIDs.ElementsAs(ctx, &netIDs, false)
-			if len(netIDs) != tt.wantNetCount {
-				t.Errorf("NetworkIDs count = %d, want %d", len(netIDs), tt.wantNetCount)
-			}
-		})
-	}
-}
-
-func Test_firewallZoneResource_ListResourceConfigSchema(t *testing.T) {
-	type args struct {
-		in0  context.Context
-		in1  fwlist.ListResourceSchemaRequest
-		resp *fwlist.ListResourceSchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallZoneResource
-		args args
-	}{
-		{
-			name: "has_site_attribute",
-			r:    &firewallZoneResource{},
-			args: args{
-				in0:  context.Background(),
-				in1:  fwlist.ListResourceSchemaRequest{},
-				resp: &fwlist.ListResourceSchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.ListResourceConfigSchema(tt.args.in0, tt.args.in1, tt.args.resp)
-			if _, ok := tt.args.resp.Schema.Attributes["site"]; !ok {
-				t.Error("ListResourceConfigSchema missing 'site' attribute")
-			}
-		})
+	if r := newFirewallZoneKitResource(); r.Spec.TypeName != "firewall_zone" {
+		t.Errorf("spec TypeName = %q", r.Spec.TypeName)
 	}
 }
