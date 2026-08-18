@@ -84,11 +84,20 @@ type StringField[M any, S any] struct {
 	Model func(*M) *types.String
 	SDK   func(*S) *string
 	Elide ElideZero
+
+	// WriteWhen suppresses the write when it returns false; nil means always.
+	// See conditional_field.go for why this cannot be expressed by the SDK
+	// accessor: that one takes *S and can decide, this one returns a pointer
+	// and cannot.
+	WriteWhen func(*M) bool
 }
 
 func (f StringField[M, S]) WireName() string { return f.Wire }
 
 func (f StringField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
+	if f.WriteWhen != nil && !f.WriteWhen(model) {
+		return nil
+	}
 	value := f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
 		return nil
@@ -108,6 +117,12 @@ func (f StringField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Dia
 }
 
 func (f StringField[M, S]) SetInPlan(plan *M) bool {
+	// The predicate gates the WIRE MASK as well as the write. A suppressed
+	// field that still reported true would be named on the wire carrying
+	// whatever the SDK struct held, which is worse than not suppressing.
+	if f.WriteWhen != nil && !f.WriteWhen(plan) {
+		return false
+	}
 	value := f.Model(plan)
 	return !value.IsNull() && !value.IsUnknown()
 }
