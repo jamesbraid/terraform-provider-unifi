@@ -4,6 +4,9 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -172,5 +175,78 @@ func TestADefaultedFieldIsNotAlsoJudgedOnItsElide(t *testing.T) {
 	if problems := ElideProblems(spec, defaultSchema(true, true)); len(problems) != 1 {
 		t.Fatalf("the elide rule does not fire on this shape at all, so the exemption above "+
 			"proved nothing: %v", problems)
+	}
+}
+
+type durationModel struct {
+	Idle timetypes.GoDuration `tfsdk:"idle"`
+}
+
+type durationSDK struct {
+	Idle *int64
+}
+
+func durationPtrField() DurationPtrField[durationModel, durationSDK] {
+	return DurationPtrField[durationModel, durationSDK]{
+		Wire:  "idle",
+		Model: func(m *durationModel) *timetypes.GoDuration { return &m.Idle },
+		SDK:   func(s *durationSDK) **int64 { return &s.Idle },
+		Units: time.Second,
+		Elide: KeepZero,
+	}
+}
+
+// A NIL POINTER AND A POINTER TO ZERO ARE DIFFERENT, which is the only reason
+// this field kind exists separately from DurationField. Reading a nil as a
+// zero duration would put "0s" in state for an attribute the controller never
+// reported.
+func TestDurationPtrDistinguishesNilFromZero(t *testing.T) {
+	zero := int64(0)
+	ninety := int64(90)
+	for _, testCase := range []struct {
+		name     string
+		sdk      *int64
+		wantNull bool
+		want     string
+	}{
+		{"nil is null", nil, true, ""},
+		{"a pointer to zero is a value under KeepZero", &zero, false, "0s"},
+		{"a real value round-trips", &ninety, false, "1m30s"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var model durationModel
+			sdk := durationSDK{Idle: testCase.sdk}
+			if diags := durationPtrField().ToModel(context.Background(), &sdk, &model); diags.HasError() {
+				t.Fatalf("ToModel: %v", diags)
+			}
+			if model.Idle.IsNull() != testCase.wantNull {
+				t.Fatalf("IsNull = %v, want %v", model.Idle.IsNull(), testCase.wantNull)
+			}
+			if !testCase.wantNull && model.Idle.ValueString() != testCase.want {
+				t.Errorf("value = %q, want %q", model.Idle.ValueString(), testCase.want)
+			}
+		})
+	}
+}
+
+// The write side leaves the pointer alone for a null, rather than pointing it
+// at a zero -- which the controller would read as an explicit zero timeout.
+func TestDurationPtrLeavesTheSDKNilForANullPlan(t *testing.T) {
+	var sdk durationSDK
+	model := durationModel{Idle: timetypes.NewGoDurationNull()}
+	if diags := durationPtrField().ToSDK(context.Background(), &model, &sdk); diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+	if sdk.Idle != nil {
+		t.Fatalf("a null plan set the pointer to %d", *sdk.Idle)
+	}
+	// The control: a real value does reach it, or the assertion above would
+	// hold for a ToSDK that never writes anything.
+	model.Idle = timetypes.NewGoDurationValueFromStringMust("2m")
+	if diags := durationPtrField().ToSDK(context.Background(), &model, &sdk); diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+	if sdk.Idle == nil || *sdk.Idle != 120 {
+		t.Fatalf("a real duration did not reach the SDK as 120 seconds: %v", sdk.Idle)
 	}
 }

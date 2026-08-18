@@ -601,3 +601,59 @@ func (f readOnlyField[M, S]) SetInPlan(*M) bool { return false }
 // CopyPlanToState does nothing: there is no plan value to carry, and the state
 // already holds what the controller last reported.
 func (f readOnlyField[M, S]) CopyPlanToState(*M, *M) {}
+
+// DurationPtrField maps a timetypes.GoDuration to a *int64 of some unit.
+//
+// SEPARATE FROM DurationField BECAUSE THE POINTER IS THE DISTINCTION THAT
+// MATTERS. dns_record's ttl is an int64 where zero means unset, and its Elide
+// says so. port_profile's dot1x_idle_timeout is a *int64, where nil and a
+// pointer to zero are different things the controller distinguishes -- so this
+// one leaves the pointer nil rather than writing a zero through it, and reads
+// nil back as null without consulting Elide at all.
+type DurationPtrField[M any, S any] struct {
+	Wire  string
+	Model func(*M) *timetypes.GoDuration
+	SDK   func(*S) **int64
+	Units time.Duration
+
+	// Elide governs only a pointer to the zero value. A nil pointer is always
+	// null, because there is nothing else it could mean.
+	Elide ElideZero
+}
+
+func (f DurationPtrField[M, S]) WireName() string { return f.Wire }
+
+func (f DurationPtrField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
+	value := f.Model(model)
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	seconds := util.DurationUnits(*value, f.Units)
+	*f.SDK(sdk) = &seconds
+	return nil
+}
+
+func (f DurationPtrField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
+	raw := *f.SDK(sdk)
+	if raw == nil {
+		*f.Model(model) = timetypes.NewGoDurationNull()
+		return nil
+	}
+	if *raw == 0 && bool(f.Elide) {
+		*f.Model(model) = timetypes.NewGoDurationNull()
+		return nil
+	}
+	*f.Model(model) = util.DurationValue(*raw, f.Units)
+	return nil
+}
+
+func (f DurationPtrField[M, S]) SetInPlan(plan *M) bool {
+	value := f.Model(plan)
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f DurationPtrField[M, S]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}
