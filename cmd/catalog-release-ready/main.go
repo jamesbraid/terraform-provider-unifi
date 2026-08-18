@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"os"
 	"path/filepath"
@@ -114,7 +115,7 @@ func run(args []string, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "encode %s: %v\n", output.label, err)
 			return 1
 		}
-		if err := writeAtomic(output.path, append(data, '\n')); err != nil {
+		if err := cmdio.WriteAtomic(output.path, append(data, '\n')); err != nil {
 			fmt.Fprintf(stderr, "write %s: %v\n", output.label, err)
 			return 1
 		}
@@ -141,34 +142,6 @@ func decodeStrictFile(path string, value any) (string, error) {
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil
-}
-
-func writeAtomic(path string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".catalog-release-ready-*")
-	if err != nil {
-		return err
-	}
-	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
-	if _, err := temporary.Write(data); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Sync(); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Chmod(0o600); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Close(); err != nil {
-		return err
-	}
-	return os.Rename(temporaryPath, path)
 }
 
 func duplicateOutput(paths ...string) bool {

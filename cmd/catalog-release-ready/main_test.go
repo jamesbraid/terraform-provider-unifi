@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,9 +40,14 @@ func TestDecodeStrictFileRejectsUnknownAndTrailingJSON(t *testing.T) {
 	}
 }
 
+// TestWriteAtomicUsesPrivatePermissions now exercises the shared writer through
+// the exact call this command makes -- the bare form, no options. It asserts
+// what it always asserted: the parent directory is created and the artifact is
+// readable only by its owner. Pointed at cmdio rather than deleted, so the
+// assertion still runs for THIS command's chosen behaviour.
 func TestWriteAtomicUsesPrivatePermissions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nested", "receipt.json")
-	if err := writeAtomic(path, []byte("{}\n")); err != nil {
+	if err := cmdio.WriteAtomic(path, []byte("{}\n")); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(path)

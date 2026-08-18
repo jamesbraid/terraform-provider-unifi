@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"os"
 	"path/filepath"
@@ -99,46 +100,10 @@ func run(args []string, stderr io.Writer) int {
 		{*artifactPrefix + ".mapping.json", result.MappingReport},
 	}
 	for _, artifact := range artifacts {
-		if err := writeAtomic(filepath.Join(*outputDir, artifact.name), artifact.data); err != nil {
+		if err := cmdio.WriteAtomic(filepath.Join(*outputDir, artifact.name), artifact.data, cmdio.NoParentDir(), cmdio.Mode(0o644)); err != nil {
 			fmt.Fprintf(stderr, "write %s: %v\n", artifact.name, err)
 			return 1
 		}
 	}
 	return 0
-}
-
-func writeAtomic(path string, data []byte) error {
-	directory := filepath.Dir(path)
-	temporary, err := os.CreateTemp(directory, ".provider-spec-compiler-*")
-	if err != nil {
-		return err
-	}
-	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
-
-	if _, err := temporary.Write(data); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Sync(); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Chmod(0o644); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(temporaryPath, path); err != nil {
-		return err
-	}
-
-	dir, err := os.Open(directory)
-	if err != nil {
-		return err
-	}
-	defer dir.Close()
-	return dir.Sync()
 }
