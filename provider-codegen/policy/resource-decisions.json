@@ -81,6 +81,20 @@
         ]
       },
       "schema_version": 0
+    },
+    "unifi_firewall_rule": {
+      "sdk_type": "FirewallRule",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "ruleset",
+          "action",
+          "enabled"
+        ]
+      },
+      "schema_version": 0
     }
   }
 }

@@ -62,7 +62,6 @@
     "firewall_policy": [
       "nested"
     ],
-    "firewall_rule": [],
     "network": [
       "nested",
       "undefined-fields"
