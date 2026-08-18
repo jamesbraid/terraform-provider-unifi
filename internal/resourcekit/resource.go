@@ -8,9 +8,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 )
@@ -35,6 +38,9 @@ type Backend[S any] struct {
 	Read         func(ctx context.Context, site, id string) (*S, error)
 	UpdateFields func(ctx context.Context, site string, in *S, fields ...string) (*S, error)
 	Delete       func(ctx context.Context, site, id string) error
+	// List is only needed by a surface that registers a list resource, which
+	// is 25 of the 27. Nil on the rest.
+	List func(ctx context.Context, site string) ([]S, error)
 
 	// ID reads and writes the SDK struct's identity. Separate accessors rather
 	// than a field name, for the same reason as everything else here: a wrong
@@ -185,6 +191,29 @@ func (s Spec[M, S]) ApplyPlanToState(plan, state *M) {
 type Resource[M any, S any] struct {
 	Spec        Spec[M, S]
 	DefaultSite string
+	// ListSurface is the list surface, when the resource has one. See list.go.
+	//
+	// NAMED ListSurface RATHER THAN List so the METHOD can be called List:
+	// list.ListResource requires a method of that name, and a field would
+	// shadow it on any type embedding this one.
+	ListSurface ListSpec[S]
+	// SchemaSpec is the schema, its version, and any state upgraders.
+	SchemaSpec SchemaSpec
+}
+
+// nullTimeouts is the value a listed object carries for an attribute that only
+// a configuration can supply.
+//
+// A LIST RESULT IS NOT A MANAGED RESOURCE and has no timeouts block, so leaving
+// the field at its zero value would put an untyped null into a typed object and
+// the framework would refuse the whole result.
+func nullTimeouts() timeouts.Value {
+	return timeouts.Value{Object: types.ObjectNull(map[string]attr.Type{
+		"create": types.StringType,
+		"read":   types.StringType,
+		"update": types.StringType,
+		"delete": types.StringType,
+	})}
 }
 
 func (r *Resource[M, S]) Metadata(
@@ -433,4 +462,66 @@ func (r *Resource[M, S]) afterReceive(ctx context.Context, sdk *S, model *M, pre
 		return nil
 	}
 	return r.Spec.AfterReceive(ctx, sdk, model, prefetched)
+}
+
+// SchemaSpec is the schema half of a resource, all of it generated or declared.
+type SchemaSpec struct {
+	// Resource is the tfplugingen-framework output for this surface. Passed
+	// rather than derived: the generated function is named per package and the
+	// kit cannot reach it generically.
+	Resource func(context.Context) schema.Schema
+
+	// Version is the schema version this resource serves.
+	//
+	// DECLARED RATHER THAN DEFAULTED TO ZERO. A resource that has ever migrated
+	// its state carries a non-zero version forever, and getting it wrong does
+	// not error -- Terraform simply does not run the upgrader, and the
+	// practitioner's state stays in the old shape while the provider reads it
+	// as the new one. dns_record is at 1 because its ttl moved from seconds to
+	// a duration string.
+	Version int64
+
+	// Timeouts says which operations accept a timeout. Every managed surface in
+	// this provider accepts all four.
+	Timeouts timeouts.Opts
+
+	// Upgraders migrate prior state, keyed by the version being upgraded FROM.
+	// Genuinely per-resource: what changed between two versions of one schema
+	// is not derivable from either.
+	Upgraders func(context.Context, schema.Schema) map[int64]resource.StateUpgrader
+}
+
+func (r *Resource[M, S]) Schema(
+	ctx context.Context,
+	_ resource.SchemaRequest,
+	resp *resource.SchemaResponse,
+) {
+	resp.Schema = r.SchemaSpec.Resource(ctx)
+	resp.Schema.Version = r.SchemaSpec.Version
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx, r.SchemaSpec.Timeouts)
+}
+
+// IdentitySchema is one attribute on every managed surface in this provider:
+// the controller's opaque id, required for import.
+func (r *Resource[M, S]) IdentitySchema(
+	_ context.Context,
+	_ resource.IdentitySchemaRequest,
+	resp *resource.IdentitySchemaResponse,
+) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"id": identityschema.StringAttribute{RequiredForImport: true},
+		},
+	}
+}
+
+// UpgradeState hands the upgraders the schema they are migrating TO, which is
+// the one thing they all need and none of them can build.
+func (r *Resource[M, S]) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	if r.SchemaSpec.Upgraders == nil {
+		return nil
+	}
+	var built resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &built)
+	return r.SchemaSpec.Upgraders(ctx, built.Schema)
 }

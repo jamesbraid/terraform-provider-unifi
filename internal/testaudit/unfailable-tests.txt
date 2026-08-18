@@ -70,7 +70,6 @@ unifi/device_resource_test.go	Test_deviceResource_setResourceData	no-assertion
 unifi/device_resource_test.go	Test_deviceResource_updateDevice	empty-table
 unifi/device_resource_test.go	Test_deviceResource_waitForDeviceState	empty-table
 unifi/device_resource_test.go	Test_dropAssistedRoaming_nonRadioState	no-assertion
-unifi/dns_record_backend_test.go	TestDNSRecordBackendDependency	no-assertion
 unifi/logger_test.go	TestUnifiLogger_log	no-assertion
 unifi/models/client_info_list_test.go	TestClientInfoListType_ApplyTerraform5AttributePathStep	empty-table
 unifi/models/client_info_list_test.go	TestClientInfoListType_Equal	empty-table

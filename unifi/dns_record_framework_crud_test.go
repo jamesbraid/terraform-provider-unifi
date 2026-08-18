@@ -16,11 +16,18 @@ package unifi
 // in a schema and none of it is reachable from the pure functions the other
 // tests cover.
 //
-// THE FAKE IS THE BACKEND, NOT THE HTTP LAYER. dnsRecordBackend is already an
-// interface, so the seam exists; the one precedent in this repository
-// (firewall_zone) stands up an httptest server instead, which tests the SDK's
-// URL construction as well and is slower. Both are worth having. This one is
-// about the resource.
+// THE FAKE IS THE BACKEND, NOT THE HTTP LAYER, and after the cutover that seam
+// is the kit's Backend closures rather than a hand-written interface. It is the
+// only such seam in the provider today -- measured, 1 of 27 -- and every
+// resource that cuts over gets one, because the kit's backend IS a set of
+// closures a test can supply.
+//
+// THESE TESTS WERE WRITTEN AGAINST THE HAND-WRITTEN RESOURCE AND INHERITED BY
+// THE KIT, and that provenance is the reason to trust them. They passed against
+// the implementation that shipped, unchanged, before the descriptor existed;
+// four differentials then showed the two agreed and were deleted with their
+// subject. Written after the cutover they would only prove the kit agrees with
+// itself.
 
 import (
 	"context"
@@ -35,47 +42,51 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // fakeDNSRecordBackend records what it was asked to do and returns what it was
 // told to. Every field is inspected by at least one test below.
 type fakeDNSRecordBackend struct {
-	created   dnsRecordIntent
-	patched   dnsRecordPatch
+	created   *ui.DNSRecord
+	updated   *ui.DNSRecord
+	fields    []string
 	deletedID string
 	readID    string
-	result    dnsRecordModel
+	result    *ui.DNSRecord
 	err       error
-	calls     []string
 }
 
-func (f *fakeDNSRecordBackend) Create(_ context.Context, _ string, in dnsRecordIntent) (dnsRecordModel, error) {
-	f.calls = append(f.calls, "create")
-	f.created = in
-	return f.result, f.err
-}
-
-func (f *fakeDNSRecordBackend) Read(_ context.Context, _ string, id string) (dnsRecordModel, error) {
-	f.calls = append(f.calls, "read")
-	f.readID = id
-	return f.result, f.err
-}
-
-func (f *fakeDNSRecordBackend) Update(_ context.Context, _ string, p dnsRecordPatch) (dnsRecordModel, error) {
-	f.calls = append(f.calls, "update")
-	f.patched = p
-	return f.result, f.err
-}
-
-func (f *fakeDNSRecordBackend) Delete(_ context.Context, _ string, id string) error {
-	f.calls = append(f.calls, "delete")
-	f.deletedID = id
-	return f.err
-}
-
-func (f *fakeDNSRecordBackend) List(_ context.Context, _ string) ([]dnsRecordModel, error) {
-	f.calls = append(f.calls, "list")
-	return []dnsRecordModel{f.result}, f.err
+// backend renders the fake as the closures the kit takes. GetID and SetID are
+// the real ones: an identity accessor that lied would make every assertion
+// below about the fake rather than about the resource.
+func (f *fakeDNSRecordBackend) backend() resourcekit.Backend[ui.DNSRecord] {
+	return resourcekit.Backend[ui.DNSRecord]{
+		Create: func(_ context.Context, _ string, in *ui.DNSRecord) (*ui.DNSRecord, error) {
+			f.created = in
+			return f.result, f.err
+		},
+		Read: func(_ context.Context, _, id string) (*ui.DNSRecord, error) {
+			f.readID = id
+			return f.result, f.err
+		},
+		UpdateFields: func(_ context.Context, _ string, in *ui.DNSRecord, fields ...string) (*ui.DNSRecord, error) {
+			f.updated, f.fields = in, fields
+			return f.result, f.err
+		},
+		Delete: func(_ context.Context, _, id string) error {
+			f.deletedID = id
+			return f.err
+		},
+		List: func(_ context.Context, _ string) ([]ui.DNSRecord, error) {
+			if f.result == nil {
+				return nil, f.err
+			}
+			return []ui.DNSRecord{*f.result}, f.err
+		},
+		GetID: func(s *ui.DNSRecord) string { return s.ID },
+		SetID: func(s *ui.DNSRecord, id string) { s.ID = id },
+	}
 }
 
 var dnsRecordTimeoutTypes = map[string]attr.Type{
@@ -87,12 +98,14 @@ var dnsRecordTimeoutTypes = map[string]attr.Type{
 
 // dnsRecordHarness builds the resource, its schemas, and a model the framework
 // will accept. Everything the framework needs and a caller should not repeat.
-func dnsRecordHarness(t *testing.T, backend dnsRecordBackend) (
-	*dnsRecordFrameworkResource, tfsdk.State, tfsdk.ResourceIdentity,
+func dnsRecordHarness(t *testing.T, fake *fakeDNSRecordBackend) (
+	*dnsRecordKitResource, tfsdk.State, tfsdk.ResourceIdentity,
 ) {
 	t.Helper()
 	ctx := context.Background()
-	r := &dnsRecordFrameworkResource{backend: backend, defaultSite: "default"}
+	r := newDNSRecordKitResource()
+	r.Spec.Backend = fake.backend()
+	r.DefaultSite = "default"
 
 	schemaResp := &fwresource.SchemaResponse{}
 	r.Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
@@ -118,8 +131,8 @@ func dnsRecordHarness(t *testing.T, backend dnsRecordBackend) (
 	return r, tfsdk.State{Schema: schemaResp.Schema}, identity
 }
 
-func dnsRecordModelFor(id string) dnsRecordFrameworkResourceModel {
-	return dnsRecordFrameworkResourceModel{
+func dnsRecordModelFor(id string) dnsRecordKitModel {
+	return dnsRecordKitModel{
 		ID:         types.StringValue(id),
 		Site:       types.StringValue("default"),
 		Name:       types.StringValue("host.example"),
@@ -138,8 +151,8 @@ func dnsRecordModelFor(id string) dnsRecordFrameworkResourceModel {
 // plan in, backend called, state and identity out.
 func TestDNSRecordCreateWritesStateAndIdentity(t *testing.T) {
 	ctx := context.Background()
-	backend := &fakeDNSRecordBackend{result: dnsRecordModel{
-		ID: "created-1", Enabled: true, Name: "host.example",
+	backend := &fakeDNSRecordBackend{result: &ui.DNSRecord{
+		ID: "created-1", Enabled: true, Key: "host.example",
 		RecordType: "A", Value: "10.0.0.1",
 	}}
 	r, state, identity := dnsRecordHarness(t, backend)
@@ -157,11 +170,12 @@ func TestDNSRecordCreateWritesStateAndIdentity(t *testing.T) {
 
 	// THE BACKEND SAW THE PLAN. Without this the test passes on a Create that
 	// sends an empty object, which is the failure a schema cannot see.
-	if backend.created.Name != "host.example" || backend.created.Value != "10.0.0.1" {
+	if backend.created == nil || backend.created.Key != "host.example" ||
+		backend.created.Value != "10.0.0.1" {
 		t.Errorf("the backend was sent %+v, which is not the planned record", backend.created)
 	}
 
-	var got dnsRecordFrameworkResourceModel
+	var got dnsRecordKitModel
 	if diags := resp.State.Get(ctx, &got); diags.HasError() {
 		t.Fatalf("read back the state: %v", diags)
 	}
@@ -248,8 +262,8 @@ func TestDNSRecordReadReportsARealFailure(t *testing.T) {
 // backend, which is the whole point of a masked write.
 func TestDNSRecordUpdateMasksOnlyThePlannedFields(t *testing.T) {
 	ctx := context.Background()
-	backend := &fakeDNSRecordBackend{result: dnsRecordModel{
-		ID: "rec-1", Enabled: true, Name: "host.example", RecordType: "A", Value: "10.0.0.2",
+	backend := &fakeDNSRecordBackend{result: &ui.DNSRecord{
+		ID: "rec-1", Enabled: true, Key: "host.example", RecordType: "A", Value: "10.0.0.2",
 	}}
 	r, state, identity := dnsRecordHarness(t, backend)
 
@@ -270,13 +284,10 @@ func TestDNSRecordUpdateMasksOnlyThePlannedFields(t *testing.T) {
 		t.Fatalf("Update: %v", resp.Diagnostics)
 	}
 
-	if backend.patched.ID != "rec-1" {
-		t.Errorf("the patch carried id %q, want the id in state", backend.patched.ID)
+	if backend.updated == nil || backend.updated.ID != "rec-1" {
+		t.Fatalf("the update carried the wrong object: %+v", backend.updated)
 	}
-	wire, err := backend.patched.wireFields()
-	if err != nil {
-		t.Fatalf("the patch the resource built is not sendable: %v", err)
-	}
+	wire := backend.fields
 	if len(wire) == 0 {
 		t.Fatal("the update sent an empty field mask, which is a whole-object write by another route")
 	}

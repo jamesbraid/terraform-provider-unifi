@@ -3,7 +3,7 @@ package unifi
 // Framework-level CRUD for the HAND-WRITTEN firewall_zone resource.
 //
 // THE SECOND SHAPE, AND IT IS NOT THE SAME AS dns_record's. That resource has a
-// dnsRecordBackend interface, so its fake is thirty lines and the test is about
+// backend seam through the kit, so its fake is thirty lines and the test is about
 // the resource alone. firewall_zone talks to the SDK client directly, so the
 // only seam is HTTP -- which means these tests also cover the SDK's URL
 // construction and its response decoding, and are slower for it.
