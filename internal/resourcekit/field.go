@@ -64,8 +64,13 @@ type Field[M any, S any] interface {
 // never mentioned the attribute. A required attribute has no such case, and
 // nulling it on zero would erase a legitimately empty value.
 //
-// The mapping already carries the distinction as computed_optional_required, so
-// the generator sets this rather than the author choosing it.
+// THE GENERATED SCHEMA carries the distinction, and the generator reads it from
+// there rather than the author choosing it. Not the mapping: the string
+// computed_optional_required appears in none of the 62 mapping files, only in
+// the codegen scaffold tools, and this comment named the wrong source until a
+// generated descriptor disagreed with a hand-written one and the disagreement
+// had to be adjudicated. ElideProblems enforces the rule; nothing did before,
+// and flipping every value in a descriptor left the provider suite green.
 type ElideZero bool
 
 const (
