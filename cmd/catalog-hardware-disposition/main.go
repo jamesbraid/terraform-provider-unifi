@@ -1,9 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -48,7 +45,7 @@ func run(args []string, stderr io.Writer) int {
 	}
 
 	var controller catalogparity.ControllerDifferentialReceipt
-	controllerSHA256, err := decodeStrictFile(*controllerPath, &controller)
+	controllerSHA256, err := cmdio.DecodeStrictFile(*controllerPath, &controller)
 	if err != nil {
 		fmt.Fprintf(stderr, "controller: %v\n", err)
 		return 1
@@ -69,25 +66,4 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-func decodeStrictFile(path string, value any) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return "", err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return "", fmt.Errorf("multiple JSON values")
-		}
-		return "", err
-	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
 }

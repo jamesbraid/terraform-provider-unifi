@@ -1,9 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -50,19 +47,19 @@ func run(args []string, stderr io.Writer) int {
 	}
 
 	var admission catalogparity.AdmissionReceipt
-	admissionSHA256, err := decodeStrictFile(*admissionPath, &admission)
+	admissionSHA256, err := cmdio.DecodeStrictFile(*admissionPath, &admission)
 	if err != nil {
 		fmt.Fprintf(stderr, "admission: %v\n", err)
 		return 1
 	}
 	var build catalogparity.BuildSchemaReceipt
-	buildSHA256, err := decodeStrictFile(*buildSchemaPath, &build)
+	buildSHA256, err := cmdio.DecodeStrictFile(*buildSchemaPath, &build)
 	if err != nil {
 		fmt.Fprintf(stderr, "build/schema: %v\n", err)
 		return 1
 	}
 	var policy managementcontract.CatalogManagementPolicy
-	policySHA256, err := decodeStrictFile(*policyPath, &policy)
+	policySHA256, err := cmdio.DecodeStrictFile(*policyPath, &policy)
 	if err != nil {
 		fmt.Fprintf(stderr, "policy: %v\n", err)
 		return 1
@@ -91,25 +88,4 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-func decodeStrictFile(path string, value any) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return "", err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return "", fmt.Errorf("multiple JSON values")
-		}
-		return "", err
-	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
 }

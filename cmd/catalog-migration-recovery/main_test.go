@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,8 +28,8 @@ func TestDecodeStrictFileAcceptsM3StateUpgradeSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	var receipt releasequalification.DNSLifecycleReceipt
-	if _, err := decodeStrictFile(path, &receipt); err != nil {
-		t.Fatalf("decodeStrictFile() error = %v", err)
+	if _, err := cmdio.DecodeStrictFile(path, &receipt); err != nil {
+		t.Fatalf("cmdio.DecodeStrictFile() error = %v", err)
 	}
 }
 
@@ -44,8 +45,8 @@ func TestDecodeStrictFileRejectsUnknownAndTrailingJSON(t *testing.T) {
 				t.Fatal(err)
 			}
 			var receipt releasequalification.DNSLifecycleReceipt
-			if _, err := decodeStrictFile(path, &receipt); err == nil {
-				t.Fatal("decodeStrictFile() succeeded")
+			if _, err := cmdio.DecodeStrictFile(path, &receipt); err == nil {
+				t.Fatal("cmdio.DecodeStrictFile() succeeded")
 			}
 		})
 	}

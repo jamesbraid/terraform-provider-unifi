@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -53,7 +52,7 @@ func run(args []string, stderr io.Writer) int {
 	}
 
 	var policy catalogparity.CampaignPolicy
-	if _, err := decodeStrictFile(*policyPath, &policy); err != nil {
+	if _, err := cmdio.DecodeStrictFile(*policyPath, &policy); err != nil {
 		fmt.Fprintf(stderr, "campaign policy: %v\n", err)
 		return 1
 	}
@@ -62,19 +61,19 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	var inventory catalogparity.EvidenceInventory
-	inventoryDigest, err := decodeStrictFile(*inventoryPath, &inventory)
+	inventoryDigest, err := cmdio.DecodeStrictFile(*inventoryPath, &inventory)
 	if err != nil {
 		fmt.Fprintf(stderr, "inventory: %v\n", err)
 		return 1
 	}
 	var fleetSummary catalogparity.FleetReferenceSummary
-	fleetSummaryDigest, err := decodeStrictFile(*fleetSummaryPath, &fleetSummary)
+	fleetSummaryDigest, err := cmdio.DecodeStrictFile(*fleetSummaryPath, &fleetSummary)
 	if err != nil {
 		fmt.Fprintf(stderr, "fleet summary: %v\n", err)
 		return 1
 	}
 	var references catalogparity.PragmaticReferenceSet
-	if _, err := decodeStrictFile(*referencesPath, &references); err != nil {
+	if _, err := cmdio.DecodeStrictFile(*referencesPath, &references); err != nil {
 		fmt.Fprintf(stderr, "references: %v\n", err)
 		return 1
 	}
@@ -203,27 +202,6 @@ func validateControllerReceipt(path string, policy catalogparity.CampaignPolicy)
 		len(receipt.Candidate.Missing) == 0
 	if !releasedAccepted || !candidatePassed {
 		return "", fmt.Errorf("released limitation or candidate result is invalid")
-	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
-}
-
-func decodeStrictFile(path string, value any) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return "", err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return "", fmt.Errorf("multiple JSON values")
-		}
-		return "", err
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil

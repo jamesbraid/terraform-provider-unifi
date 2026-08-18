@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,8 +27,8 @@ func TestDecodeStrictFileRejectsUnknownJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	var receipt catalogparity.ControllerDifferentialReceipt
-	if _, err := decodeStrictFile(path, &receipt); err == nil {
-		t.Fatal("decodeStrictFile() succeeded")
+	if _, err := cmdio.DecodeStrictFile(path, &receipt); err == nil {
+		t.Fatal("cmdio.DecodeStrictFile() succeeded")
 	}
 }
 

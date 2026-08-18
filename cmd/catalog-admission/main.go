@@ -1,9 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -54,31 +51,31 @@ func run(args []string, stderr io.Writer) int {
 
 	var input catalogparity.AdmissionInput
 	var err error
-	if _, err := decodeStrictFile(*policyPath, &input.Policy); err != nil {
+	if _, err := cmdio.DecodeStrictFile(*policyPath, &input.Policy); err != nil {
 		fmt.Fprintf(stderr, "campaign policy: %v\n", err)
 		return 1
 	}
-	input.InventorySHA256, err = decodeStrictFile(*inventoryPath, &input.Inventory)
+	input.InventorySHA256, err = cmdio.DecodeStrictFile(*inventoryPath, &input.Inventory)
 	if err != nil {
 		fmt.Fprintf(stderr, "inventory: %v\n", err)
 		return 1
 	}
-	input.BuildSchemaSHA256, err = decodeStrictFile(*buildSchemaPath, &input.BuildSchema)
+	input.BuildSchemaSHA256, err = cmdio.DecodeStrictFile(*buildSchemaPath, &input.BuildSchema)
 	if err != nil {
 		fmt.Fprintf(stderr, "build/schema receipt: %v\n", err)
 		return 1
 	}
-	input.UnitSHA256, err = decodeStrictFile(*unitPath, &input.Unit)
+	input.UnitSHA256, err = cmdio.DecodeStrictFile(*unitPath, &input.Unit)
 	if err != nil {
 		fmt.Fprintf(stderr, "unit receipt: %v\n", err)
 		return 1
 	}
-	input.ControllerSHA256, err = decodeStrictFile(*controllerPath, &input.Controller)
+	input.ControllerSHA256, err = cmdio.DecodeStrictFile(*controllerPath, &input.Controller)
 	if err != nil {
 		fmt.Fprintf(stderr, "controller receipt: %v\n", err)
 		return 1
 	}
-	input.PragmaticSHA256, err = decodeStrictFile(*pragmaticPath, &input.Pragmatic)
+	input.PragmaticSHA256, err = cmdio.DecodeStrictFile(*pragmaticPath, &input.Pragmatic)
 	if err != nil {
 		fmt.Fprintf(stderr, "pragmatic resolution: %v\n", err)
 		return 1
@@ -100,25 +97,4 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-func decodeStrictFile(path string, value any) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return "", err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return "", fmt.Errorf("multiple JSON values")
-		}
-		return "", err
-	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
 }
