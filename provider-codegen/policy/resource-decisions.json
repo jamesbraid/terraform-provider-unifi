@@ -69,6 +69,18 @@
         ]
       },
       "schema_version": 0
+    },
+    "unifi_static_route": {
+      "sdk_type": "Routing",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "type"
+        ]
+      },
+      "schema_version": 0
     }
   }
 }
