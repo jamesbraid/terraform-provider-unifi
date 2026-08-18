@@ -111,7 +111,25 @@ func Test_unifiProvider_Schema(t *testing.T) {
 	if resp.Diagnostics.HasError() {
 		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
 	}
-	for _, attr := range []string{"api_key", "username", "password", "api_url", "site", "allow_insecure"} {
+	// ALL EIGHT THE BASELINE RECORDS, not the six this asserted.
+	//
+	// provider-contracts/schema/terraform-1.15.8.json records eight attributes
+	// on the provider block. The four baseline tests walk resource_schemas,
+	// data_source_schemas, action_schemas and list_resource_schemas and never
+	// the provider block, so this test is the only thing that checks any of
+	// them -- and cloud_connector and hardware_id were checked by nothing at
+	// all. Adding them here closes that today.
+	//
+	// IT IS NOT THE BASELINE'S PROPERTY AND DOES NOT PRETEND TO BE. This still
+	// cannot see an attribute that APPEARS on the provider block, which is the
+	// half the baseline comparison gives every other surface. Recorded as its
+	// own item rather than solved here: comparing the provider block properly
+	// means a fifth parallel baseline file, because frameworkAttrFacts is typed
+	// to the resource schema.
+	for _, attr := range []string{
+		"allow_insecure", "api_key", "api_url", "cloud_connector",
+		"hardware_id", "password", "site", "username",
+	} {
 		if _, ok := resp.Schema.Attributes[attr]; !ok {
 			t.Errorf("missing attribute %q", attr)
 		}
