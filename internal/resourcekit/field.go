@@ -18,9 +18,11 @@
 package resourcekit
 
 import (
+	"context"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
@@ -39,10 +41,10 @@ type Field[M any, S any] interface {
 	WireName() string
 
 	// ToSDK writes the model's value onto the SDK struct.
-	ToSDK(model *M, sdk *S)
+	ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics
 
 	// ToModel writes the SDK's value onto the model.
-	ToModel(sdk *S, model *M)
+	ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics
 
 	// SetInPlan reports whether the plan carries a value for this attribute.
 	// Null and unknown both mean absent.
@@ -81,21 +83,23 @@ type StringField[M any, S any] struct {
 
 func (f StringField[M, S]) WireName() string { return f.Wire }
 
-func (f StringField[M, S]) ToSDK(model *M, sdk *S) {
+func (f StringField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
 	value := f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
-		return
+		return nil
 	}
 	*f.SDK(sdk) = value.ValueString()
+	return nil
 }
 
-func (f StringField[M, S]) ToModel(sdk *S, model *M) {
+func (f StringField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
 	raw := *f.SDK(sdk)
 	if raw == "" && bool(f.Elide) {
 		*f.Model(model) = types.StringNull()
-		return
+		return nil
 	}
 	*f.Model(model) = types.StringValue(raw)
+	return nil
 }
 
 func (f StringField[M, S]) SetInPlan(plan *M) bool {
@@ -122,16 +126,18 @@ type BoolField[M any, S any] struct {
 
 func (f BoolField[M, S]) WireName() string { return f.Wire }
 
-func (f BoolField[M, S]) ToSDK(model *M, sdk *S) {
+func (f BoolField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
 	value := f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
-		return
+		return nil
 	}
 	*f.SDK(sdk) = value.ValueBool()
+	return nil
 }
 
-func (f BoolField[M, S]) ToModel(sdk *S, model *M) {
+func (f BoolField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
 	*f.Model(model) = types.BoolValue(*f.SDK(sdk))
+	return nil
 }
 
 func (f BoolField[M, S]) SetInPlan(plan *M) bool {
@@ -155,21 +161,23 @@ type Int64Field[M any, S any] struct {
 
 func (f Int64Field[M, S]) WireName() string { return f.Wire }
 
-func (f Int64Field[M, S]) ToSDK(model *M, sdk *S) {
+func (f Int64Field[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
 	value := f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
-		return
+		return nil
 	}
 	*f.SDK(sdk) = value.ValueInt64()
+	return nil
 }
 
-func (f Int64Field[M, S]) ToModel(sdk *S, model *M) {
+func (f Int64Field[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
 	raw := *f.SDK(sdk)
 	if raw == 0 && bool(f.Elide) {
 		*f.Model(model) = types.Int64Null()
-		return
+		return nil
 	}
 	*f.Model(model) = types.Int64Value(raw)
+	return nil
 }
 
 func (f Int64Field[M, S]) SetInPlan(plan *M) bool {
@@ -213,21 +221,23 @@ func (f Int64PtrField[M, S]) WireName() string { return f.Wire }
 // and never to unknown. That belief is not a measurement and the case is not
 // exercised anywhere, which is why the behaviour is reproduced rather than
 // improved.
-func (f Int64PtrField[M, S]) ToSDK(model *M, sdk *S) {
+func (f Int64PtrField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
 	*f.SDK(sdk) = f.Model(model).ValueInt64Pointer()
+	return nil
 }
 
-func (f Int64PtrField[M, S]) ToModel(sdk *S, model *M) {
+func (f Int64PtrField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
 	raw := *f.SDK(sdk)
 	if raw == nil || (*raw == 0 && bool(f.Elide)) {
 		*f.Model(model) = types.Int64Null()
-		return
+		return nil
 	}
 	// COPIED, not aliased. The SDK struct outlives this call in the caller's
 	// hands, and handing Terraform state a pointer into it would let a later
 	// mutation of the response change what state says was read.
 	copied := *raw
 	*f.Model(model) = types.Int64PointerValue(&copied)
+	return nil
 }
 
 func (f Int64PtrField[M, S]) SetInPlan(plan *M) bool {
@@ -262,21 +272,23 @@ type DurationField[M any, S any] struct {
 
 func (f DurationField[M, S]) WireName() string { return f.Wire }
 
-func (f DurationField[M, S]) ToSDK(model *M, sdk *S) {
+func (f DurationField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
 	value := f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
-		return
+		return nil
 	}
 	*f.SDK(sdk) = util.DurationUnits(*value, f.Units)
+	return nil
 }
 
-func (f DurationField[M, S]) ToModel(sdk *S, model *M) {
+func (f DurationField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
 	raw := *f.SDK(sdk)
 	if raw == 0 && bool(f.Elide) {
 		*f.Model(model) = timetypes.NewGoDurationNull()
-		return
+		return nil
 	}
 	*f.Model(model) = util.DurationValue(raw, f.Units)
+	return nil
 }
 
 func (f DurationField[M, S]) SetInPlan(plan *M) bool {
@@ -285,6 +297,118 @@ func (f DurationField[M, S]) SetInPlan(plan *M) bool {
 }
 
 func (f DurationField[M, S]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}
+
+// StringListField maps a types.List of strings to a []string.
+//
+// FOUND BY MEASURING THE SECOND RESOURCE, WHICH IS WHY THE INTERFACE HAS A
+// CONTEXT AND DIAGNOSTICS AT ALL. dns_record is entirely scalar and gave no
+// reason for either; firewall_zone's network_ids converts through the
+// framework's ElementsAs, which needs a context and reports a type mismatch
+// rather than panicking. A design settled on one resource had the wrong
+// signature and would have had to change after two lanes built against it.
+//
+// THE SDK SLICE IS EMPTIED, NOT LEFT NIL, when the model has no value. The
+// hand-written resource initialises NetworkIDs to []string{} before deciding
+// whether to fill it, because a nil slice and an empty one serialise
+// differently -- absent versus present-and-empty -- and the controller reads
+// those as different requests.
+type StringListField[M any, S any] struct {
+	Wire  string
+	Model func(*M) *types.List
+	SDK   func(*S) *[]string
+}
+
+func (f StringListField[M, S]) WireName() string { return f.Wire }
+
+func (f StringListField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
+	*f.SDK(sdk) = []string{}
+	value := f.Model(model)
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	return value.ElementsAs(ctx, f.SDK(sdk), false)
+}
+
+func (f StringListField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
+	list, diags := types.ListValueFrom(ctx, types.StringType, *f.SDK(sdk))
+	*f.Model(model) = list
+	return diags
+}
+
+func (f StringListField[M, S]) SetInPlan(plan *M) bool {
+	value := f.Model(plan)
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f StringListField[M, S]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}
+
+// BoolPtrField maps a types.Bool to a *bool.
+//
+// A pointer bool has the three states a bool cannot: unset, false, true.
+// firewall_zone's default_zone is one, and reading it through BoolField would
+// turn "the controller did not say" into "the controller said false".
+type BoolPtrField[M any, S any] struct {
+	Wire  string
+	Model func(*M) *types.Bool
+	SDK   func(*S) **bool
+}
+
+func (f BoolPtrField[M, S]) WireName() string { return f.Wire }
+
+func (f BoolPtrField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
+	*f.SDK(sdk) = f.Model(model).ValueBoolPointer()
+	return nil
+}
+
+func (f BoolPtrField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
+	*f.Model(model) = types.BoolPointerValue(*f.SDK(sdk))
+	return nil
+}
+
+func (f BoolPtrField[M, S]) SetInPlan(plan *M) bool {
+	value := f.Model(plan)
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f BoolPtrField[M, S]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}
+
+// StringPtrField maps a types.String to a *string.
+type StringPtrField[M any, S any] struct {
+	Wire  string
+	Model func(*M) *types.String
+	SDK   func(*S) **string
+}
+
+func (f StringPtrField[M, S]) WireName() string { return f.Wire }
+
+func (f StringPtrField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
+	*f.SDK(sdk) = f.Model(model).ValueStringPointer()
+	return nil
+}
+
+func (f StringPtrField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
+	*f.Model(model) = types.StringPointerValue(*f.SDK(sdk))
+	return nil
+}
+
+func (f StringPtrField[M, S]) SetInPlan(plan *M) bool {
+	value := f.Model(plan)
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f StringPtrField[M, S]) CopyPlanToState(plan, state *M) {
 	if f.SetInPlan(plan) {
 		*f.Model(state) = *f.Model(plan)
 	}
