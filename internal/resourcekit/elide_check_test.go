@@ -4,7 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -200,5 +202,122 @@ func TestTheCheckReachesThroughReadOnly(t *testing.T) {
 	}
 	if !strings.Contains(problems[0], "probe.cmp") {
 		t.Errorf("the wrapped field was not the one named: %v", problems)
+	}
+}
+
+// The Optional+Computed split, which is the part of the rule that took three
+// attempts to get right.
+//
+// The first version made every Optional+Computed KeepZero. That was written
+// against ap_group's device_macs, where `device_macs = []` is a real
+// configuration and nulling it would fight the config -- but applied to
+// firewall_rule's setting_preference it demands the opposite of what the
+// hand-written mapper does, and putting "" in state for an attribute whose own
+// schema says OneOf("auto","manual") is a value the provider would reject if a
+// practitioner wrote it.
+//
+// The second attempt split on whether the attribute declares a schema Default.
+// That is refuted by the rule's own worked example: device_macs has no default
+// either, so the test would have flipped the case it was built from.
+//
+// What separates them is whether the zero is a legal value, and the schema
+// already knows because its validators are what would reject it.
+
+type splitModel struct {
+	Enum types.String `tfsdk:"enum"`
+	Free types.String `tfsdk:"free"`
+}
+
+type splitSDK struct {
+	Enum string
+	Free string
+}
+
+func splitSpec(enum, free ElideZero) Spec[splitModel, splitSDK] {
+	return Spec[splitModel, splitSDK]{
+		TypeName: "split",
+		Fields: []Field[splitModel, splitSDK]{
+			StringField[splitModel, splitSDK]{Wire: "enum",
+				Model: func(m *splitModel) *types.String { return &m.Enum },
+				SDK:   func(s *splitSDK) *string { return &s.Enum }, Elide: enum},
+			StringField[splitModel, splitSDK]{Wire: "free",
+				Model: func(m *splitModel) *types.String { return &m.Free },
+				SDK:   func(s *splitSDK) *string { return &s.Free }, Elide: free},
+		},
+	}
+}
+
+func splitSchema(required bool) schema.Schema {
+	enum := schema.StringAttribute{
+		Optional:   !required,
+		Computed:   !required,
+		Required:   required,
+		Validators: []validator.String{stringvalidator.OneOf("auto", "manual")},
+	}
+	return schema.Schema{Attributes: map[string]schema.Attribute{
+		"enum": enum,
+		// Same flags, no validator: a free-text attribute whose empty value is
+		// something the practitioner could legitimately have written.
+		"free": schema.StringAttribute{Optional: !required, Computed: !required, Required: required},
+	}}
+}
+
+func TestOptionalComputedSplitsOnWhetherTheZeroIsLegal(t *testing.T) {
+	// Correct: the enum nulls its illegal zero, the free-text one keeps its
+	// legal one. Nothing reported.
+	if problems := ElideProblems(splitSpec(NullZero, KeepZero), splitSchema(false)); len(problems) != 0 {
+		t.Fatalf("the correct pair was reported, so the must-fail cases below prove nothing: %v", problems)
+	}
+
+	// Swapped: BOTH must be reported, and each names its own attribute. One
+	// problem would mean only half the rule is doing work.
+	problems := ElideProblems(splitSpec(KeepZero, NullZero), splitSchema(false))
+	if len(problems) != 2 {
+		t.Fatalf("swapping both values produced %d problem(s), want 2: %v", len(problems), problems)
+	}
+	joined := strings.Join(problems, "\n")
+	if !strings.Contains(joined, "split.enum") || !strings.Contains(joined, "split.free") {
+		t.Errorf("the report does not name both attributes: %v", problems)
+	}
+}
+
+// REQUIRED IS EXEMPT FROM THE SPLIT, and this is not hypothetical: three
+// Required attributes across the shipped descriptors carry a OneOf that
+// excludes the empty string, so a rule applying the split to Required would
+// have demanded NullZero on all three and broken them.
+func TestARequiredAttributeKeepsItsZeroEvenWithARejectingValidator(t *testing.T) {
+	if problems := ElideProblems(splitSpec(KeepZero, KeepZero), splitSchema(true)); len(problems) != 0 {
+		t.Fatalf("a Required attribute was made subject to the zero-is-legal split: %v", problems)
+	}
+	if problems := ElideProblems(splitSpec(NullZero, NullZero), splitSchema(true)); len(problems) != 2 {
+		t.Fatalf("the Required case reports %d problem(s) for two wrong values, so the "+
+			"assertion above passes for a rule that never fires: %v", len(problems), problems)
+	}
+}
+
+// zeroIsRejected is the load-bearing half, so it is measured on its own rather
+// than only through the rule. A validator set that silently answered "no" to
+// everything would leave every Optional+Computed on KeepZero and look exactly
+// like the unrefined rule.
+func TestZeroIsRejectedAsksTheValidatorsRatherThanGuessing(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		attribute schema.Attribute
+		want      bool
+	}{
+		{"OneOf excluding the empty string", schema.StringAttribute{
+			Validators: []validator.String{stringvalidator.OneOf("auto", "manual")}}, true},
+		{"OneOf including the empty string", schema.StringAttribute{
+			Validators: []validator.String{stringvalidator.OneOf("", "auto")}}, false},
+		{"no validators at all", schema.StringAttribute{}, false},
+		{"a length floor, which is not a OneOf", schema.StringAttribute{
+			Validators: []validator.String{stringvalidator.LengthAtLeast(1)}}, true},
+		{"a non-string attribute", schema.SetAttribute{ElementType: types.StringType}, false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := zeroIsRejected(testCase.attribute); got != testCase.want {
+				t.Errorf("zeroIsRejected = %v, want %v", got, testCase.want)
+			}
+		})
 	}
 }

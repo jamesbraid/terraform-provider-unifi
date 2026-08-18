@@ -1,12 +1,16 @@
 package resourcekit
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // elideExempt names the field kinds that deliberately make no elision claim.
@@ -112,22 +116,45 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 			}
 			continue
 		}
-		// NULLZERO IS THE NARROW CASE, NOT THE BROAD ONE. Only an attribute that
-		// is Optional and NOT Computed may treat a zero as an absence: there,
-		// a zero from the API against a config that never mentioned the
-		// attribute is genuinely "unset", and writing it as a value produces a
-		// permanent diff.
+		// THE RULE, IN FOUR CASES.
 		//
-		// EVERYTHING ELSE KEEPS ITS ZERO, and Optional+Computed is the case
-		// that forced this. The practitioner may set an explicit empty value
-		// there -- ap_group's acceptance config says `device_macs = []` and
-		// the schema description spells the distinction out: "May be empty --
-		// the controller accepts a group with no members. Omit it to leave the
-		// membership as the controller has it." Nulling an explicit empty
-		// makes state disagree with config, which is the inconsistent-result
-		// failure this rule exists to prevent, arriving from the other side.
+		// Required keeps its zero. The config always supplies the attribute, so
+		// state must hold whatever came back; nulling it makes state disagree
+		// with config, which is an inconsistent-result-after-apply.
+		//
+		// Optional and not Computed nulls its zero. A zero from the API against
+		// a config that never mentioned the attribute is genuinely unset, and
+		// writing it as a value produces a permanent diff.
+		//
+		// Optional AND Computed splits on whether the zero is a legal value,
+		// and getting that split right took three attempts. Treating them all
+		// as KeepZero was written against ap_group's device_macs, where
+		// `device_macs = []` is a real configuration meaning a group with no
+		// members -- but the same answer for firewall_rule's setting_preference
+		// puts "" in state for an attribute whose own schema says
+		// OneOf("auto","manual"), a value the provider would reject if a
+		// practitioner wrote it. Splitting on whether the attribute declares a
+		// schema Default is refuted by the example the rule came from: neither
+		// device_macs nor setting_preference has one. What separates them is
+		// whether an empty is something the practitioner could have written,
+		// and the schema already knows because its validators are what would
+		// reject it.
+		//
+		// Computed-only follows Required: the practitioner supplied nothing and
+		// the value must round-trip as given.
+		//
+		// THE SPLIT DOES NOT REACH REQUIRED, deliberately. Three Required
+		// attributes across the shipped descriptors carry a OneOf excluding the
+		// empty string -- dns_record's record_type, firewall_group's type and
+		// static_route's type -- and applying the split to them would demand
+		// NullZero on all three.
 		want := KeepZero
-		if attribute.IsOptional() && !attribute.IsComputed() && !attribute.IsRequired() {
+		switch {
+		case attribute.IsRequired():
+			want = KeepZero
+		case attribute.IsOptional() && !attribute.IsComputed():
+			want = NullZero
+		case attribute.IsOptional() && attribute.IsComputed() && zeroIsRejected(attribute):
 			want = NullZero
 		}
 		if got := ElideZero(elide.Bool()); got != want {
@@ -193,4 +220,34 @@ func requiredness(a schema.Attribute) string {
 		return "Optional-only"
 	}
 	return "neither required nor optional"
+}
+
+// zeroIsRejected asks the attribute's own validators whether an empty string is
+// a legal value for it.
+//
+// IT RUNS THEM RATHER THAN INSPECTING THEM. stringvalidator.OneOf returns an
+// unexported type holding an unexported slice, so reading its permitted set
+// means reflection into another module's internals or parsing the English of
+// its Description. Both break when that module changes something it never
+// promised to keep. Calling ValidateString with "" uses the only part of a
+// validator that IS promised, and it answers the question directly instead of
+// by proxy -- which also means it catches LengthAtLeast and a regex that
+// excludes the empty string, not only OneOf.
+func zeroIsRejected(attribute schema.Attribute) bool {
+	stringAttribute, ok := attribute.(schema.StringAttribute)
+	if !ok {
+		return false
+	}
+	ctx := context.Background()
+	for _, v := range stringAttribute.Validators {
+		response := &validator.StringResponse{}
+		v.ValidateString(ctx, validator.StringRequest{
+			Path:        path.Root("probe"),
+			ConfigValue: types.StringValue(""),
+		}, response)
+		if response.Diagnostics.HasError() {
+			return true
+		}
+	}
+	return false
 }
