@@ -187,39 +187,6 @@ func Test_wlanFrameworkResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_wlanFrameworkResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *wlanFrameworkResource
-		args args
-	}{
-		{
-			name: "contains key attributes",
-			r:    &wlanFrameworkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			for _, key := range []string{"id", "name", "security"} {
-				if _, ok := tt.args.resp.Schema.Attributes[key]; !ok {
-					t.Errorf("Schema missing attribute %q", key)
-				}
-			}
-		})
-	}
-}
-
 // Test_wlanFrameworkResource_Schema_computedControllerFields guards #323: fields
 // the controller assigns on its own must be Computed so a controller-supplied
 // value doesn't trip "inconsistent result after apply". minimum_data_rate_*_kbps

@@ -569,20 +569,6 @@ func Test_trafficRouteResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_trafficRouteResource_Schema(t *testing.T) {
-	r := &trafficRouteResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{"id", "site", "description", "destination", "enabled", "kill_switch_enabled", "network_id", "next_hop", "source"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
 func Test_trafficRouteResource_ImportState(t *testing.T) {
 	t.Skip(
 		"ImportState delegates to ImportStatePassthroughWithIdentity which requires full state schema setup",

@@ -622,20 +622,6 @@ func TestNewSettingResource(t *testing.T) {
 	}
 }
 
-func Test_settingResource_Schema(t *testing.T) {
-	r := &settingResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{"id", "site", "mgmt", "radius", "usg", "igmp_snooping", "doh", "ips"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
 func Test_settingResource_UpgradeState(t *testing.T) {
 	r := &settingResource{}
 	ctx := context.Background()

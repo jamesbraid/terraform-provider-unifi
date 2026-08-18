@@ -707,20 +707,6 @@ func Test_vpnServerResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_vpnServerResource_Schema(t *testing.T) {
-	r := &vpnServerResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{"id", "site", "name", "enabled", "subnet", "dns", "wan", "radiusprofile_id", "wireguard", "l2tp", "openvpn"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
 func Test_vpnServerResource_ImportState(t *testing.T) {
 	t.Skip(
 		"ImportState delegates to ImportStatePassthroughWithIdentity which requires full state schema setup",

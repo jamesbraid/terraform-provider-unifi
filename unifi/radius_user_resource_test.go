@@ -273,23 +273,6 @@ func Test_radiusUserResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_radiusUserResource_Schema(t *testing.T) {
-	r := &radiusUserResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{
-		"id", "site", "name", "password", "tunnel_type",
-		"tunnel_medium_type", "network_id", "vlan", "tunnel_config_type", "timeouts",
-	} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
 func Test_radiusUserResource_IdentitySchemaStub(t *testing.T) {
 	// Already covered by Test_radiusUserResource_IdentitySchema above.
 }

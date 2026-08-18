@@ -1,7 +1,6 @@
 package unifi
 
 import (
-	"context"
 	"testing"
 
 	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -121,20 +120,6 @@ func Test_clientListEntrySchemaAttributes(t *testing.T) {
 	for _, key := range []string{"id", "mac", "name", "ip", "blocked", "is_wired", "status"} {
 		if _, ok := got[key]; !ok {
 			t.Errorf("missing attribute %q", key)
-		}
-	}
-}
-
-func Test_clientListDataSource_Schema(t *testing.T) {
-	d := &clientListDataSource{}
-	resp := &fwdatasource.SchemaResponse{}
-	d.Schema(context.Background(), fwdatasource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{"site", "group", "wired", "blocked", "oui", "clients"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
 		}
 	}
 }

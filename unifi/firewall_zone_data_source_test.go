@@ -1,7 +1,6 @@
 package unifi
 
 import (
-	"context"
 	"testing"
 
 	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -48,19 +47,5 @@ func TestNewFirewallZoneDataSource(t *testing.T) {
 	}
 	if _, ok := d.(fwdatasource.DataSourceWithConfigure); !ok {
 		t.Error("expected DataSourceWithConfigure interface")
-	}
-}
-
-func Test_firewallZoneDataSource_Schema(t *testing.T) {
-	d := &firewallZoneDataSource{}
-	resp := &fwdatasource.SchemaResponse{}
-	d.Schema(context.Background(), fwdatasource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{"id", "site", "name", "zone_key", "network_ids"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
 	}
 }

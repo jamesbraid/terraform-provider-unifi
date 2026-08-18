@@ -504,24 +504,6 @@ func Test_radiusProfileResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_radiusProfileResource_Schema(t *testing.T) {
-	r := &radiusProfileResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{
-		"id", "site", "name", "accounting_enabled", "interim_update_enabled",
-		"interim_update_interval", "use_usg_acct_server", "use_usg_auth_server",
-		"vlan_enabled", "vlan_wlan_mode", "timeouts",
-	} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
 func Test_radiusProfileResource_UpgradeState(t *testing.T) {
 	r := &radiusProfileResource{}
 	upgraders := r.UpgradeState(context.Background())

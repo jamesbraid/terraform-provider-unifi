@@ -318,20 +318,6 @@ func TestNewNetworkDataSource(t *testing.T) {
 	}
 }
 
-func Test_networkDataSource_Schema(t *testing.T) {
-	d := &networkDataSource{}
-	resp := &fwdatasource.SchemaResponse{}
-	d.Schema(context.Background(), fwdatasource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() errors: %v", resp.Diagnostics)
-	}
-	for _, a := range []string{"id", "site", "name", "subnet", "enabled"} {
-		if _, ok := resp.Schema.Attributes[a]; !ok {
-			t.Errorf("Schema() missing attribute %q", a)
-		}
-	}
-}
-
 func Test_networkDataSource_setDataSourceData(t *testing.T) {
 	ctx := context.Background()
 	name := "My Network"

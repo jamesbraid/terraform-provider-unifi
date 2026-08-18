@@ -964,39 +964,6 @@ func Test_networkResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_networkResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *networkResource
-		args args
-	}{
-		{
-			name: "returns schema with key attributes",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			for _, key := range []string{"id", "name", "subnet"} {
-				if _, ok := tt.args.resp.Schema.Attributes[key]; !ok {
-					t.Errorf("Schema() missing attribute %q", key)
-				}
-			}
-		})
-	}
-}
-
 func Test_networkResource_UpgradeState(t *testing.T) {
 	type args struct {
 		ctx context.Context

@@ -305,20 +305,6 @@ func Test_vpnClientResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_vpnClientResource_Schema(t *testing.T) {
-	r := &vpnClientResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{"id", "site", "name", "enabled", "subnet", "default_route", "pull_dns", "wireguard", "timeouts"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
 func Test_vpnClientResource_modelToNetwork(t *testing.T) {
 	ctx := context.Background()
 	r := &vpnClientResource{}

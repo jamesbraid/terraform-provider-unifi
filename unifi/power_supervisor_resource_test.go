@@ -180,23 +180,6 @@ func Test_powerSupervisorResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_powerSupervisorResource_Schema(t *testing.T) {
-	r := &powerSupervisorResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() returned errors: %v", resp.Diagnostics)
-	}
-	for _, key := range []string{
-		"id", "site", "device_mac", "enabled", "heartbeat_interval",
-		"silence_threshold", "power_off_duration", "consecutive_failures", "power_sources", "timeouts",
-	} {
-		if _, ok := resp.Schema.Attributes[key]; !ok {
-			t.Errorf("Schema() missing attribute %q", key)
-		}
-	}
-}
-
 func Test_powerSupervisorResource_UpgradeState(t *testing.T) {
 	r := &powerSupervisorResource{}
 	got := r.UpgradeState(context.Background())

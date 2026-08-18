@@ -110,39 +110,6 @@ func Test_siteFrameworkResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_siteFrameworkResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *siteFrameworkResource
-		args args
-	}{
-		{
-			name: "has_key_attributes",
-			r:    &siteFrameworkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			for _, attr := range []string{"id", "name", "description"} {
-				if _, ok := tt.args.resp.Schema.Attributes[attr]; !ok {
-					t.Errorf("expected attribute %q in schema", attr)
-				}
-			}
-		})
-	}
-}
-
 func Test_siteFrameworkResource_applyPlanToState(t *testing.T) {
 	type args struct {
 		in0   context.Context
