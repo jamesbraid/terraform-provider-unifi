@@ -9,6 +9,7 @@ import (
 	resource_client_qos_rate "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client_qos_rate"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
 	resource_firewall_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_group"
+	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
@@ -23,6 +24,13 @@ func TestEveryDescriptorElideAgreesWithItsSchema(t *testing.T) {
 	ctx := context.Background()
 
 	checks := map[string]func(*testing.T){
+		"firewall_zone": func(t *testing.T) {
+			problems := resourcekit.ElideProblems(
+				firewallZoneKitSpec(), resource_firewall_zone.FirewallZoneResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
 		"firewall_group": func(t *testing.T) {
 			problems := resourcekit.ElideProblems(
 				firewallGroupKitSpec(), resource_firewall_group.FirewallGroupResourceSchema(ctx))

@@ -31,7 +31,7 @@ var FrozenTypeNames = map[string]string{
 	"firewallPolicyResource":       "unifi_firewall_policy",
 	"firewallRuleResource":         "unifi_firewall_rule",
 	"firewallZoneDataSource":       "unifi_firewall_zone",
-	"firewallZoneResource":         "unifi_firewall_zone",
+	"firewallZoneKitResource":      "unifi_firewall_zone",
 	"networkDataSource":            "unifi_network",
 	"networkResource":              "unifi_network",
 	"portAction":                   "unifi_port",

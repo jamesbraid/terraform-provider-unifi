@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -103,12 +104,25 @@ func (z *zoneServer) start(t *testing.T) *Client {
 	return &Client{ApiClient: api, Site: "default"}
 }
 
+// firewallZoneHarness builds the KIT-SERVED resource against a fake controller.
+//
+// The surface moved onto internal/resourcekit and these tests came with it
+// unchanged in substance: they drive Create, Read and Delete against an
+// httptest server and assert what goes on the wire and what comes back, which
+// is exactly the behaviour a cutover can silently alter. Configure is called
+// rather than a client being assigned, because the backend closures are built
+// there.
 func firewallZoneHarness(t *testing.T, client *Client) (
-	*firewallZoneResource, tfsdk.State, tfsdk.ResourceIdentity,
+	*firewallZoneKitResource, tfsdk.State, tfsdk.ResourceIdentity,
 ) {
 	t.Helper()
 	ctx := context.Background()
-	r := &firewallZoneResource{client: client}
+	r := newFirewallZoneKitResource()
+	configureResp := &fwresource.ConfigureResponse{}
+	r.Configure(ctx, fwresource.ConfigureRequest{ProviderData: client}, configureResp)
+	if configureResp.Diagnostics.HasError() {
+		t.Fatalf("configure: %v", configureResp.Diagnostics)
+	}
 
 	schemaResp := &fwresource.SchemaResponse{}
 	r.Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
@@ -123,7 +137,7 @@ func firewallZoneHarness(t *testing.T, client *Client) (
 	return r, tfsdk.State{Schema: schemaResp.Schema}, identity
 }
 
-func firewallZoneModelFor(t *testing.T, id string, networks []string) firewallZoneResourceModel {
+func firewallZoneModelFor(t *testing.T, id string, networks []string) firewallZoneKitModel {
 	t.Helper()
 	list := types.ListNull(types.StringType)
 	if networks != nil {
@@ -133,7 +147,7 @@ func firewallZoneModelFor(t *testing.T, id string, networks []string) firewallZo
 		}
 		list = built
 	}
-	return firewallZoneResourceModel{
+	return firewallZoneKitModel{
 		ID:          types.StringValue(id),
 		Site:        types.StringValue("default"),
 		Name:        types.StringValue("Trusted"),
@@ -175,7 +189,7 @@ func TestFirewallZoneCreateSendsTheZoneAndKeepsWhatComesBack(t *testing.T) {
 			len(server.posted.NetworkIDs))
 	}
 
-	var got firewallZoneResourceModel
+	var got firewallZoneKitModel
 	if diags := resp.State.Get(ctx, &got); diags.HasError() {
 		t.Fatalf("read back the state: %v", diags)
 	}
@@ -258,7 +272,7 @@ func TestFirewallZoneReadPopulatesTheControllerOwnedFields(t *testing.T) {
 		t.Fatalf("Read: %v", resp.Diagnostics)
 	}
 
-	var got firewallZoneResourceModel
+	var got firewallZoneKitModel
 	if diags := resp.State.Get(ctx, &got); diags.HasError() {
 		t.Fatalf("read back the state: %v", diags)
 	}
@@ -286,5 +300,145 @@ func TestFirewallZoneDeleteAsksForTheZoneInState(t *testing.T) {
 	}
 	if server.deleted != "/proxy/network/v2/api/site/default/firewall/zone/doomed-1" {
 		t.Errorf("deleted %q, want the path carrying the id in state", server.deleted)
+	}
+}
+
+// TestFirewallZoneReadOnlyFieldsNeverReachTheController REPLACES THE COVERAGE
+// THE DIFFERENTIAL TOOK WITH IT.
+//
+// firewall_zone_kit_differential_test.go carried its own instruction to be
+// deleted in the commit that deletes the hand-written resource, and it has
+// been. But it also said why it existed: the contract check compares field
+// NAMES between the mapping and the descriptor, so dropping the ReadOnly
+// wrapper from zone_key leaves every name identical and silently changes what
+// the provider sends. Only a comparison against the hand-written path caught
+// that -- and there is no hand-written path any more.
+//
+// So the property is asserted directly instead: a read-only field must write
+// nothing to the SDK struct, and must still read back from it. That needs no
+// second implementation to compare against, which is why it outlives the one
+// that did.
+func TestFirewallZoneReadOnlyFieldsNeverReachTheController(t *testing.T) {
+	ctx := context.Background()
+	spec := firewallZoneKitSpec()
+
+	model := firewallZoneKitModel{
+		Name:        types.StringValue("Trusted"),
+		NetworkIDs:  types.ListNull(types.StringType),
+		ZoneKey:     types.StringValue("controller-assigned"),
+		DefaultZone: types.BoolValue(true),
+	}
+
+	var sdk ui.FirewallZone
+	for _, field := range spec.Fields {
+		if d := field.ToSDK(ctx, &model, &sdk); d.HasError() {
+			t.Fatalf("ToSDK(%s): %v", field.WireName(), d)
+		}
+	}
+	if sdk.ZoneKey != "" {
+		t.Errorf("zone_key reached the SDK struct as %q; it is controller-owned "+
+			"and the descriptor must not offer it back", sdk.ZoneKey)
+	}
+	if sdk.DefaultZone != nil {
+		t.Errorf("default_zone reached the SDK struct as %v; it is controller-owned", *sdk.DefaultZone)
+	}
+	if sdk.Name != "Trusted" {
+		t.Errorf("the writable field did not reach the SDK struct: %q -- if this fails the "+
+			"assertions above prove nothing, because nothing is being written at all", sdk.Name)
+	}
+
+	// And the read direction still populates them, which is the half a
+	// send-only check would miss.
+	back := firewallZoneKitModel{}
+	fromAPI := ui.FirewallZone{Name: "Trusted", ZoneKey: "trusted", DefaultZone: boolPtrForTest(true)}
+	for _, field := range spec.Fields {
+		if d := field.ToModel(ctx, &fromAPI, &back); d.HasError() {
+			t.Fatalf("ToModel(%s): %v", field.WireName(), d)
+		}
+	}
+	if back.ZoneKey.ValueString() != "trusted" {
+		t.Errorf("zone_key did not read back: %v", back.ZoneKey)
+	}
+	if back.DefaultZone.IsNull() || !back.DefaultZone.ValueBool() {
+		t.Errorf("default_zone did not read back: %v", back.DefaultZone)
+	}
+}
+
+func boolPtrForTest(b bool) *bool { return &b }
+
+// TestFirewallZoneDeleteIgnoresNotFound SURVIVES THE CUTOVER, ADAPTED.
+//
+// It was this surface's own test of a behaviour that has since moved into the
+// kit -- and NOTHING IN THE KIT ASSERTS IT. Deleting it with the hand-written
+// Delete would have removed the only check of a live behaviour at the moment
+// the behaviour became shared. It drives the kit's Delete through a real state
+// against a controller answering 404, and it still asserts the request path,
+// which is the part a descriptor could silently get wrong.
+func TestFirewallZoneDeleteIgnoresNotFound(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/proxy/network/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"meta":{"server_version":"10.4.57"}}`))
+			return
+		}
+		if req.Method != http.MethodDelete {
+			t.Errorf("request method = %s, want DELETE", req.Method)
+		}
+		if req.URL.Path != "/proxy/network/v2/api/site/default/firewall/zone/missing-zone" {
+			t.Errorf("request path = %s, want firewall zone delete path", req.URL.Path)
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	apiClient, err := ui.New(
+		context.Background(),
+		&ui.Config{BaseURL: server.URL, APIKey: "test-key"},
+	)
+	if err != nil {
+		t.Fatalf("create API client: %v", err)
+	}
+
+	r := newFirewallZoneKitResource()
+	configureResp := &fwresource.ConfigureResponse{}
+	r.Configure(context.Background(),
+		fwresource.ConfigureRequest{ProviderData: &Client{ApiClient: apiClient, Site: "default"}},
+		configureResp)
+	if configureResp.Diagnostics.HasError() {
+		t.Fatalf("configure: %v", configureResp.Diagnostics)
+	}
+	schemaResp := &fwresource.SchemaResponse{}
+	r.Schema(context.Background(), fwresource.SchemaRequest{}, schemaResp)
+	state := tfsdk.State{Schema: schemaResp.Schema}
+	timeoutTypes := map[string]attr.Type{
+		"create": types.StringType,
+		"read":   types.StringType,
+		"update": types.StringType,
+		"delete": types.StringType,
+	}
+	diags := state.Set(context.Background(), &firewallZoneKitModel{
+		ID:          types.StringValue("missing-zone"),
+		Site:        types.StringValue("default"),
+		Name:        types.StringValue("Missing Zone"),
+		NetworkIDs:  types.ListNull(types.StringType),
+		ZoneKey:     types.StringNull(),
+		DefaultZone: types.BoolNull(),
+		Timeouts:    timeouts.Value{Object: types.ObjectNull(timeoutTypes)},
+	})
+	if diags.HasError() {
+		t.Fatalf("set delete state: %v", diags)
+	}
+
+	resp := &fwresource.DeleteResponse{State: state}
+	r.Delete(
+		context.Background(),
+		fwresource.DeleteRequest{State: state},
+		resp,
+	)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Delete returned error diagnostics for an absent zone: %v", resp.Diagnostics)
 	}
 }
