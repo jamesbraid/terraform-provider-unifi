@@ -10,27 +10,33 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "description",
-        "type": "string"
+        "type": "string",
+        "go_name": "Description"
       },
       {
         "name": "domains",
@@ -38,7 +44,8 @@
         "fields": [
           {
             "name": "domain",
-            "type": "string"
+            "type": "string",
+            "go_name": "Domain"
           },
           {
             "name": "port_ranges",
@@ -46,23 +53,31 @@
             "fields": [
               {
                 "name": "port_start",
-                "type": "int64"
+                "type": "int64",
+                "go_name": "Start",
+                "pointer": true
               },
               {
                 "name": "port_stop",
-                "type": "int64"
+                "type": "int64",
+                "go_name": "Stop",
+                "pointer": true
               }
-            ]
+            ],
+            "go_name": "PortRanges"
           },
           {
             "name": "ports",
-            "type": "array<int64>"
+            "type": "array<int64>",
+            "go_name": "Ports"
           }
-        ]
+        ],
+        "go_name": "Domains"
       },
       {
         "name": "enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Enabled"
       },
       {
         "name": "ip_addresses",
@@ -70,11 +85,13 @@
         "fields": [
           {
             "name": "ip_or_subnet",
-            "type": "string"
+            "type": "string",
+            "go_name": "Address"
           },
           {
             "name": "ip_version",
-            "type": "string"
+            "type": "string",
+            "go_name": "Version"
           },
           {
             "name": "port_ranges",
@@ -82,19 +99,26 @@
             "fields": [
               {
                 "name": "port_start",
-                "type": "int64"
+                "type": "int64",
+                "go_name": "Start",
+                "pointer": true
               },
               {
                 "name": "port_stop",
-                "type": "int64"
+                "type": "int64",
+                "go_name": "Stop",
+                "pointer": true
               }
-            ]
+            ],
+            "go_name": "PortRanges"
           },
           {
             "name": "ports",
-            "type": "array<int64>"
+            "type": "array<int64>",
+            "go_name": "Ports"
           }
-        ]
+        ],
+        "go_name": "IPAddresses"
       },
       {
         "name": "ip_ranges",
@@ -102,41 +126,51 @@
         "fields": [
           {
             "name": "ip_start",
-            "type": "string"
+            "type": "string",
+            "go_name": "Start"
           },
           {
             "name": "ip_stop",
-            "type": "string"
+            "type": "string",
+            "go_name": "Stop"
           },
           {
             "name": "ip_version",
-            "type": "string"
+            "type": "string",
+            "go_name": "Version"
           }
-        ]
+        ],
+        "go_name": "IPRanges"
       },
       {
         "name": "kill_switch_enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "KillSwitchEnabled"
       },
       {
         "name": "matching_target",
-        "type": "string"
+        "type": "string",
+        "go_name": "MatchingTarget"
       },
       {
         "name": "network_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "NetworkID"
       },
       {
         "name": "next_hop",
-        "type": "string"
+        "type": "string",
+        "go_name": "NextHop"
       },
       {
         "name": "regions",
-        "type": "array<string>"
+        "type": "array<string>",
+        "go_name": "Regions"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "target_devices",
@@ -144,17 +178,21 @@
         "fields": [
           {
             "name": "client_mac",
-            "type": "string"
+            "type": "string",
+            "go_name": "ClientMAC"
           },
           {
             "name": "network_id",
-            "type": "string"
+            "type": "string",
+            "go_name": "NetworkID"
           },
           {
             "name": "type",
-            "type": "string"
+            "type": "string",
+            "go_name": "Type"
           }
-        ]
+        ],
+        "go_name": "TargetDevices"
       }
     ]
   }

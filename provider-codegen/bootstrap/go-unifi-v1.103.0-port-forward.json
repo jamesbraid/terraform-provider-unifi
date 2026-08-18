@@ -10,27 +10,33 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "destination_ip",
-        "type": "string"
+        "type": "string",
+        "go_name": "DestinationIP"
       },
       {
         "name": "destination_ips",
@@ -38,65 +44,81 @@
         "fields": [
           {
             "name": "destination_ip",
-            "type": "string"
+            "type": "string",
+            "go_name": "DestinationIP"
           },
           {
             "name": "interface",
-            "type": "string"
+            "type": "string",
+            "go_name": "Interface"
           }
-        ]
+        ],
+        "go_name": "DestinationIPs"
       },
       {
         "name": "dst_port",
-        "type": "string"
+        "type": "string",
+        "go_name": "DstPort"
       },
       {
         "name": "enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Enabled"
       },
       {
         "name": "fwd",
-        "type": "string"
+        "type": "string",
+        "go_name": "Fwd"
       },
       {
         "name": "fwd_port",
-        "type": "string"
+        "type": "string",
+        "go_name": "FwdPort"
       },
       {
         "name": "log",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Log"
       },
       {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "go_name": "Name"
       },
       {
         "name": "pfwd_interface",
-        "type": "string"
+        "type": "string",
+        "go_name": "PfwdInterface"
       },
       {
         "name": "proto",
-        "type": "string"
+        "type": "string",
+        "go_name": "Proto"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "src",
-        "type": "string"
+        "type": "string",
+        "go_name": "Src"
       },
       {
         "name": "src_firewall_group_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SrcFirewallGroupID"
       },
       {
         "name": "src_limiting_enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "SrcLimitingEnabled"
       },
       {
         "name": "src_limiting_type",
-        "type": "string"
+        "type": "string",
+        "go_name": "SrcLimitingType"
       }
     ]
   }

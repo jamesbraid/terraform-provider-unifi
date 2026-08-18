@@ -10,15 +10,18 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "desc",
-        "type": "string"
+        "type": "string",
+        "go_name": "Description"
       },
       {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "go_name": "Name"
       }
     ]
   }

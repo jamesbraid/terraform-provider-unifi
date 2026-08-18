@@ -10,67 +10,84 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Enabled"
       },
       {
         "name": "gateway_device",
-        "type": "string"
+        "type": "string",
+        "go_name": "GatewayDevice"
       },
       {
         "name": "gateway_type",
-        "type": "string"
+        "type": "string",
+        "go_name": "GatewayType"
       },
       {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "go_name": "Name"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "static-route_distance",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "StaticRouteDistance",
+        "pointer": true
       },
       {
         "name": "static-route_interface",
-        "type": "string"
+        "type": "string",
+        "go_name": "StaticRouteInterface"
       },
       {
         "name": "static-route_network",
-        "type": "string"
+        "type": "string",
+        "go_name": "StaticRouteNetwork"
       },
       {
         "name": "static-route_nexthop",
-        "type": "string"
+        "type": "string",
+        "go_name": "StaticRouteNexthop"
       },
       {
         "name": "static-route_type",
-        "type": "string"
+        "type": "string",
+        "go_name": "StaticRouteType"
       },
       {
         "name": "type",
-        "type": "string"
+        "type": "string",
+        "go_name": "Type"
       }
     ]
   }

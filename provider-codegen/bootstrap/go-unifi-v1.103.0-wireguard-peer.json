@@ -10,27 +10,33 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "allowed_ips",
-        "type": "array<string>"
+        "type": "array<string>",
+        "go_name": "AllowedIPs"
       },
       {
         "name": "interface_ip",
-        "type": "string"
+        "type": "string",
+        "go_name": "InterfaceIP"
       },
       {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "go_name": "Name"
       },
       {
         "name": "network_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "NetworkID"
       },
       {
         "name": "public_key",
-        "type": "string"
+        "type": "string",
+        "go_name": "PublicKey"
       }
     ]
   }

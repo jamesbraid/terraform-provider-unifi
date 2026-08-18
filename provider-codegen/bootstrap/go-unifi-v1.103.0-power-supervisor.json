@@ -10,19 +10,23 @@
     "fields": [
       {
         "name": "client_mac",
-        "type": "string"
+        "type": "string",
+        "go_name": "ClientMAC"
       },
       {
         "name": "consecutive_failures",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "ConsecutiveFailures"
       },
       {
         "name": "enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Enabled"
       },
       {
         "name": "id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "power_sources",
@@ -30,21 +34,26 @@
         "fields": [
           {
             "name": "client_psu_index",
-            "type": "int64"
+            "type": "int64",
+            "go_name": "ClientPsuIndex"
           },
           {
             "name": "power_source_index",
-            "type": "int64"
+            "type": "int64",
+            "go_name": "PowerSourceIndex"
           },
           {
             "name": "power_source_mac",
-            "type": "string"
+            "type": "string",
+            "go_name": "PowerSourceMAC"
           },
           {
             "name": "power_source_type",
-            "type": "string"
+            "type": "string",
+            "go_name": "PowerSourceType"
           }
-        ]
+        ],
+        "go_name": "PowerSources"
       },
       {
         "name": "settings",
@@ -52,21 +61,26 @@
         "fields": [
           {
             "name": "heartbeat_interval",
-            "type": "int64"
+            "type": "int64",
+            "go_name": "HeartbeatInterval"
           },
           {
             "name": "power_off_duration",
-            "type": "int64"
+            "type": "int64",
+            "go_name": "PowerOffDuration"
           },
           {
             "name": "silence_threshold",
-            "type": "int64"
+            "type": "int64",
+            "go_name": "SilenceThreshold"
           }
-        ]
+        ],
+        "go_name": "Settings"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       }
     ]
   }

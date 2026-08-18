@@ -10,147 +10,184 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "action",
-        "type": "string"
+        "type": "string",
+        "go_name": "Action"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "dst_address",
-        "type": "string"
+        "type": "string",
+        "go_name": "DstAddress"
       },
       {
         "name": "dst_address_ipv6",
-        "type": "string"
+        "type": "string",
+        "go_name": "DstAddressIPV6"
       },
       {
         "name": "dst_firewallgroup_ids",
-        "type": "array<string>"
+        "type": "array<string>",
+        "go_name": "DstFirewallGroupIDs"
       },
       {
         "name": "dst_networkconf_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "DstNetworkID"
       },
       {
         "name": "dst_networkconf_type",
-        "type": "string"
+        "type": "string",
+        "go_name": "DstNetworkType"
       },
       {
         "name": "dst_port",
-        "type": "string"
+        "type": "string",
+        "go_name": "DstPort"
       },
       {
         "name": "enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Enabled"
       },
       {
         "name": "icmp_typename",
-        "type": "string"
+        "type": "string",
+        "go_name": "ICMPTypename"
       },
       {
         "name": "icmpv6_typename",
-        "type": "string"
+        "type": "string",
+        "go_name": "ICMPv6Typename"
       },
       {
         "name": "ipsec",
-        "type": "string"
+        "type": "string",
+        "go_name": "IPSec"
       },
       {
         "name": "logging",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Logging"
       },
       {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "go_name": "Name"
       },
       {
         "name": "protocol",
-        "type": "string"
+        "type": "string",
+        "go_name": "Protocol"
       },
       {
         "name": "protocol_match_excepted",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "ProtocolMatchExcepted"
       },
       {
         "name": "protocol_v6",
-        "type": "string"
+        "type": "string",
+        "go_name": "ProtocolV6"
       },
       {
         "name": "rule_index",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "RuleIndex",
+        "pointer": true
       },
       {
         "name": "ruleset",
-        "type": "string"
+        "type": "string",
+        "go_name": "Ruleset"
       },
       {
         "name": "setting_preference",
-        "type": "string"
+        "type": "string",
+        "go_name": "SettingPreference"
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "src_address",
-        "type": "string"
+        "type": "string",
+        "go_name": "SrcAddress"
       },
       {
         "name": "src_address_ipv6",
-        "type": "string"
+        "type": "string",
+        "go_name": "SrcAddressIPV6"
       },
       {
         "name": "src_firewallgroup_ids",
-        "type": "array<string>"
+        "type": "array<string>",
+        "go_name": "SrcFirewallGroupIDs"
       },
       {
         "name": "src_mac_address",
-        "type": "string"
+        "type": "string",
+        "go_name": "SrcMACAddress"
       },
       {
         "name": "src_networkconf_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SrcNetworkID"
       },
       {
         "name": "src_networkconf_type",
-        "type": "string"
+        "type": "string",
+        "go_name": "SrcNetworkType"
       },
       {
         "name": "src_port",
-        "type": "string"
+        "type": "string",
+        "go_name": "SrcPort"
       },
       {
         "name": "state_established",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "StateEstablished"
       },
       {
         "name": "state_invalid",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "StateInvalid"
       },
       {
         "name": "state_new",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "StateNew"
       },
       {
         "name": "state_related",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "StateRelated"
       }
     ]
   }
