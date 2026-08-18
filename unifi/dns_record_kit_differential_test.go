@@ -109,7 +109,10 @@ func TestKitSendsWhatTheHandWrittenPathSends(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			byHand := dnsRecordFromIntent(hand.modelToDNSRecordIntent(context.Background(), &model))
 			kitModel := toKitModel(model)
-			byKit := spec.ToSDK(&kitModel)
+			byKit, diags := spec.ToSDK(context.Background(), &kitModel)
+			if diags.HasError() {
+				t.Fatalf("the generated path reported: %v", diags)
+			}
 			// Port is a *int64, so the structs compare by pointer identity and
 			// would differ on every case. Compare what they point at.
 			if !samePort(byHand.Port, byKit.Port) {
@@ -149,7 +152,9 @@ func TestKitReadsWhatTheHandWrittenPathReads(t *testing.T) {
 			hand.dnsRecordToModel(context.Background(), dnsRecordFromAPI(record), &handModel, "default")
 
 			var kitModel dnsRecordKitModel
-			spec.ToModel(record, &kitModel, "default")
+			if diags := spec.ToModel(context.Background(), record, &kitModel, "default"); diags.HasError() {
+				t.Fatalf("the generated path reported: %v", diags)
+			}
 
 			if got, want := comparableOf(toKitModel(handModel)), comparableOf(kitModel); got != want {
 				t.Fatalf("the two paths write different state:\n  hand %+v\n  kit  %+v", got, want)

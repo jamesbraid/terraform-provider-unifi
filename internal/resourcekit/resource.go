@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -98,21 +99,30 @@ func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
 }
 
 // ToSDK renders a model as the SDK struct the controller is sent.
-func (s Spec[M, S]) ToSDK(model *M) *S {
+//
+// THE DIAGNOSTICS ARE NOT DECORATION. A collection attribute converts through
+// the framework's ElementsAs, which reports a type mismatch rather than
+// panicking, and dropping that report would send a half-built object to the
+// controller with nothing said. The scalar fields never produce one; the
+// signature exists for the fields that can.
+func (s Spec[M, S]) ToSDK(ctx context.Context, model *M) (*S, diag.Diagnostics) {
+	var diags diag.Diagnostics
 	sdk := s.New()
 	for _, field := range s.Fields {
-		field.ToSDK(model, sdk)
+		diags.Append(field.ToSDK(ctx, model, sdk)...)
 	}
-	return sdk
+	return sdk, diags
 }
 
 // ToModel writes what the controller returned back onto the model.
-func (s Spec[M, S]) ToModel(sdk *S, model *M, site string) {
+func (s Spec[M, S]) ToModel(ctx context.Context, sdk *S, model *M, site string) diag.Diagnostics {
+	var diags diag.Diagnostics
 	for _, field := range s.Fields {
-		field.ToModel(sdk, model)
+		diags.Append(field.ToModel(ctx, sdk, model)...)
 	}
 	*s.ID(model) = types.StringValue(s.Backend.GetID(sdk))
 	*s.Site(model) = types.StringValue(site)
+	return diags
 }
 
 // ApplyPlanToState moves the plan's set values onto the state, leaving the rest.
@@ -164,12 +174,17 @@ func (r *Resource[M, S]) Create(
 	defer cancel()
 
 	site := r.Site(&data)
-	created, err := r.Spec.Backend.Create(ctx, site, r.Spec.ToSDK(&data))
+	sdk, diags := r.Spec.ToSDK(ctx, &data)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	created, err := r.Spec.Backend.Create(ctx, site, sdk)
 	if err != nil {
 		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, err.Error())
 		return
 	}
-	r.Spec.ToModel(created, &data, site)
+	resp.Diagnostics.Append(r.Spec.ToModel(ctx, created, &data, site)...)
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -208,7 +223,7 @@ func (r *Resource[M, S]) Read(
 			"Could not read "+r.Spec.Subject+" with ID "+id+": "+err.Error())
 		return
 	}
-	r.Spec.ToModel(found, &data, site)
+	resp.Diagnostics.Append(r.Spec.ToModel(ctx, found, &data, site)...)
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -246,7 +261,11 @@ func (r *Resource[M, S]) Update(
 		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
 		return
 	}
-	sdk := r.Spec.ToSDK(&state)
+	sdk, sdkDiags := r.Spec.ToSDK(ctx, &state)
+	resp.Diagnostics.Append(sdkDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	id := (*r.Spec.ID(&state)).ValueString()
 	if id == "" {
 		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject,
@@ -260,7 +279,7 @@ func (r *Resource[M, S]) Update(
 		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
 		return
 	}
-	r.Spec.ToModel(updated, &state, site)
+	resp.Diagnostics.Append(r.Spec.ToModel(ctx, updated, &state, site)...)
 	*r.Spec.Timeouts(&state) = *r.Spec.Timeouts(&plan)
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&state)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
