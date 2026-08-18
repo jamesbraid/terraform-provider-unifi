@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -269,7 +270,7 @@ func run(o options) error {
 	findings = append(findings, schemaparity.CheckProvenance(
 		o.releasedTag, baseline.Provider.ReleasedCommit, resolvedTag)...)
 	releasedCommit := baseline.Provider.ReleasedCommit
-	candidateCommit, err := gitOutput(repo, "rev-parse", "HEAD")
+	candidateCommit, err := cmdio.GitOutput(repo, "rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
@@ -651,14 +652,6 @@ func fileDigest(path string) (string, error) {
 	}
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:]), nil
-}
-
-func gitOutput(repo string, args ...string) (string, error) {
-	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).Output()
-	if err != nil {
-		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
-	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 // cliVersion reads `version -json`, not the first line of `version`.
