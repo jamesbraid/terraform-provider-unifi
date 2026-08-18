@@ -14,6 +14,7 @@ import (
 	resource_firewall_rule "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
 	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	resource_port_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_profile"
+	resource_radius_user "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_radius_user"
 	resource_static_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_static_route"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
@@ -77,6 +78,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				portProfileKitSpec(), resource_port_profile.PortProfileResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"radius_user": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(radiusUserKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				radiusUserKitSpec(), resource_radius_user.RadiusUserResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

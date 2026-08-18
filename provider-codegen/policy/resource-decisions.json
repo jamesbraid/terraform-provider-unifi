@@ -108,6 +108,17 @@
         ]
       },
       "schema_version": 1
+    },
+    "unifi_radius_user": {
+      "sdk_type": "Account",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
     }
   }
 }
