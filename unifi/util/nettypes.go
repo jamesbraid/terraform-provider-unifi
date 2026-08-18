@@ -40,11 +40,3 @@ func IPValueOrNull(val string) iptypes.IPAddress {
 
 // Pointer variants for APIs that expose *string fields. A nil or empty-string
 // pointer maps to the corresponding null value.
-
-// IPv4PtrValueOrNull returns an iptypes.IPv4Address from a *string.
-func IPv4PtrValueOrNull(val *string) iptypes.IPv4Address {
-	if val == nil {
-		return iptypes.NewIPv4AddressNull()
-	}
-	return IPv4ValueOrNull(*val)
-}
