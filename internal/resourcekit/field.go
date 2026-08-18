@@ -413,3 +413,43 @@ func (f StringPtrField[M, S]) CopyPlanToState(plan, state *M) {
 		*f.Model(state) = *f.Model(plan)
 	}
 }
+
+// ReadOnly wraps a field the controller owns: read from the API, never sent.
+//
+// DERIVED FROM THE POLICY RATHER THAN CHOSEN. A field whose
+// computed_optional_required is "computed" is one the practitioner cannot set,
+// so sending it would overwrite a controller-assigned value with whatever the
+// model happened to hold. firewall_zone has three -- _id, default_zone and
+// zone_key -- and its hand-written modelToFirewallZone sends exactly the other
+// two, name and network_ids, which are required and computed_optional.
+//
+// MEASURED ON TWO RESOURCES, WHICH IS NOT MANY. dns_record has no computed
+// field at all and sends all eight of its own, so it is consistent with the rule
+// and cannot confirm it. Treat this as the shape rather than the law until
+// somebody counts across every policy.
+//
+// A DECORATOR RATHER THAN A FLAG ON EACH KIND, so read-only-ness is one
+// implementation instead of seven, and so a kind added later gets it for free.
+func ReadOnly[M any, S any](inner Field[M, S]) Field[M, S] {
+	return readOnlyField[M, S]{inner: inner}
+}
+
+type readOnlyField[M any, S any] struct{ inner Field[M, S] }
+
+func (f readOnlyField[M, S]) WireName() string { return f.inner.WireName() }
+
+// ToSDK does nothing. The field never reaches the controller.
+func (f readOnlyField[M, S]) ToSDK(context.Context, *M, *S) diag.Diagnostics { return nil }
+
+func (f readOnlyField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
+	return f.inner.ToModel(ctx, sdk, model)
+}
+
+// SetInPlan is always false, which keeps the field out of the update's wire
+// mask. A computed attribute appearing in a mask would ask the controller to
+// accept a value it is the author of.
+func (f readOnlyField[M, S]) SetInPlan(*M) bool { return false }
+
+// CopyPlanToState does nothing: there is no plan value to carry, and the state
+// already holds what the controller last reported.
+func (f readOnlyField[M, S]) CopyPlanToState(*M, *M) {}

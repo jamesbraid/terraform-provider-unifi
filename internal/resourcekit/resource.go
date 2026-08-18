@@ -51,6 +51,18 @@ type Spec[M any, S any] struct {
 	Subject string
 	Fields  []Field[M, S]
 	Backend Backend[S]
+	// IDWire is the SDK's own name for the identity field, when the mapping
+	// carries it as a managed field rather than as provider_owned.
+	//
+	// IT EXISTS FOR THE CONTRACT CHECK AND FOR NOTHING ELSE. dns_record's
+	// mapping puts id under provider_owned; firewall_zone's puts _id in the
+	// managed field list. The identity is reached through Backend.GetID either
+	// way, so a descriptor never maps it as a field -- and a check comparing the
+	// managed set against the descriptor would report it permanently absent on
+	// the resources of the second kind. Declaring it excludes exactly one name
+	// rather than hardcoding an exemption.
+	IDWire string
+
 	// New builds a zero SDK struct. A generated one-liner, because Go cannot
 	// instantiate S from a type parameter without a constraint that would
 	// exclude the SDK's own types.
