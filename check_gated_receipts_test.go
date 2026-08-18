@@ -43,7 +43,11 @@ func TestEveryGatedReceiptIsProducedFirst(t *testing.T) {
 	// Both spellings a producer uses today. A path written by neither is not a
 	// producer; a path written by both is fine.
 	produces := regexp.MustCompile(`(?:-output|[A-Z][A-Z0-9_]*_OUTPUT=)\s?(/tmp/[a-z0-9.-]+\.json)`)
-	consumes := regexp.MustCompile(`-receipt\s+(/tmp/[a-z0-9.-]+\.json)`)
+	// ANY flag taking a /tmp receipt, not just -receipt. The release gate reads
+	// five of them under five different flag names, and a check that only knew
+	// -receipt would have declared it wired while seeing none of its inputs.
+	// Output flags are excluded because those are the paths a step writes.
+	consumes := regexp.MustCompile(`-([a-z][a-z0-9-]*)\s+(/tmp/[a-z0-9.-]+\.json)`)
 
 	gated := 0
 	var orphaned []string
@@ -73,8 +77,11 @@ func TestEveryGatedReceiptIsProducedFirst(t *testing.T) {
 				continue
 			}
 			for _, match := range consumes.FindAllStringSubmatch(line, -1) {
+				if strings.HasSuffix(match[1], "output") {
+					continue
+				}
 				gated++
-				path := match[1]
+				path := match[2]
 				at, produced := producedAt[path]
 				switch {
 				case !produced:
