@@ -355,6 +355,60 @@ func (f StringListField[M, S]) CopyPlanToState(plan, state *M) {
 	}
 }
 
+// StringSetField maps a types.Set of strings to a []string.
+//
+// WRITTEN BY THE DESCRIPTOR LANE, NOT BY sweep. Only one lane touches this
+// package, and that is deliberate: the last time two lanes each built the
+// permanent version of one thing, both shipped and the duplication was the
+// defect. If you are about to add a field kind, check whether this one already
+// covers it.
+//
+// A SET IS NOT A LIST WITH A DIFFERENT NAME, and the mapping distinguishes them
+// for a reason a generator cannot infer: the framework compares set membership
+// without order, so a controller that returns group members in a different
+// sequence than the practitioner wrote produces no diff. Rendering the same
+// data as a list makes that reordering a permanent change the practitioner
+// cannot suppress. Seven field sites across four surfaces are declared set --
+// device_macs, group_members, the two firewallgroup_ids and
+// excluded_networkconf_ids -- and every one of them is a membership question.
+//
+// THE SDK SLICE IS EMPTIED, NOT LEFT NIL, for the reason StringListField gives:
+// a nil slice and an empty one serialise as absent versus present-and-empty,
+// and the controller reads those as different requests.
+type StringSetField[M any, S any] struct {
+	Wire  string
+	Model func(*M) *types.Set
+	SDK   func(*S) *[]string
+}
+
+func (f StringSetField[M, S]) WireName() string { return f.Wire }
+
+func (f StringSetField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
+	*f.SDK(sdk) = []string{}
+	value := f.Model(model)
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	return value.ElementsAs(ctx, f.SDK(sdk), false)
+}
+
+func (f StringSetField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
+	set, diags := types.SetValueFrom(ctx, types.StringType, *f.SDK(sdk))
+	*f.Model(model) = set
+	return diags
+}
+
+func (f StringSetField[M, S]) SetInPlan(plan *M) bool {
+	value := f.Model(plan)
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f StringSetField[M, S]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}
+
 // BoolPtrField maps a types.Bool to a *bool.
 //
 // A pointer bool has the three states a bool cannot: unset, false, true.
