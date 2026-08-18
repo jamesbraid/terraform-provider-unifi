@@ -10,43 +10,53 @@
     "fields": [
       {
         "name": "_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "ID"
       },
       {
         "name": "action",
-        "type": "string"
+        "type": "string",
+        "go_name": "Action"
       },
       {
         "name": "attr_hidden",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Hidden"
       },
       {
         "name": "attr_hidden_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "HiddenID"
       },
       {
         "name": "attr_no_delete",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoDelete"
       },
       {
         "name": "attr_no_edit",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "NoEdit"
       },
       {
         "name": "connection_state_type",
-        "type": "string"
+        "type": "string",
+        "go_name": "ConnectionStateType"
       },
       {
         "name": "connection_states",
-        "type": "array<string>"
+        "type": "array<string>",
+        "go_name": "ConnectionStates"
       },
       {
         "name": "create_allow_respond",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "CreateAllowRespond"
       },
       {
         "name": "description",
-        "type": "string"
+        "type": "string",
+        "go_name": "Description"
       },
       {
         "name": "destination",
@@ -54,109 +64,138 @@
         "fields": [
           {
             "name": "client_macs",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "ClientMACs"
           },
           {
             "name": "ip_group_id",
-            "type": "string"
+            "type": "string",
+            "go_name": "IPGroupID"
           },
           {
             "name": "ips",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "IPs"
           },
           {
             "name": "match_mac",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "MatchMAC"
           },
           {
             "name": "match_opposite_ips",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "MatchOppositeIPs"
           },
           {
             "name": "match_opposite_networks",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "MatchOppositeNetworks"
           },
           {
             "name": "match_opposite_ports",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "MatchOppositePorts"
           },
           {
             "name": "matching_target",
-            "type": "string"
+            "type": "string",
+            "go_name": "MatchingTarget"
           },
           {
             "name": "matching_target_type",
-            "type": "string"
+            "type": "string",
+            "go_name": "MatchingTargetType"
           },
           {
             "name": "network_ids",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "NetworkIDs"
           },
           {
             "name": "port",
-            "type": "string"
+            "type": "string",
+            "go_name": "Port"
           },
           {
             "name": "port_group_id",
-            "type": "string"
+            "type": "string",
+            "go_name": "PortGroupID"
           },
           {
             "name": "port_matching_type",
-            "type": "string"
+            "type": "string",
+            "go_name": "PortMatchingType"
           },
           {
             "name": "web_domains",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "WebDomains"
           },
           {
             "name": "zone_id",
-            "type": "string"
+            "type": "string",
+            "go_name": "ZoneID"
           }
-        ]
+        ],
+        "go_name": "Destination",
+        "pointer": true
       },
       {
         "name": "enabled",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Enabled"
       },
       {
         "name": "icmp_typename",
-        "type": "string"
+        "type": "string",
+        "go_name": "ICMPTypename"
       },
       {
         "name": "icmp_v6_typename",
-        "type": "string"
+        "type": "string",
+        "go_name": "ICMPV6Typename"
       },
       {
         "name": "index",
-        "type": "int64"
+        "type": "int64",
+        "go_name": "Index",
+        "pointer": true
       },
       {
         "name": "ip_version",
-        "type": "string"
+        "type": "string",
+        "go_name": "Version"
       },
       {
         "name": "logging",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Logging"
       },
       {
         "name": "match_ip_sec",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "MatchIPSec"
       },
       {
         "name": "match_opposite_protocol",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "MatchOppositeProtocol"
       },
       {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "go_name": "Name"
       },
       {
         "name": "predefined",
-        "type": "bool"
+        "type": "bool",
+        "go_name": "Predefined"
       },
       {
         "name": "protocol",
-        "type": "string"
+        "type": "string",
+        "go_name": "Protocol"
       },
       {
         "name": "schedule",
@@ -164,41 +203,53 @@
         "fields": [
           {
             "name": "date",
-            "type": "string"
+            "type": "string",
+            "go_name": "Date"
           },
           {
             "name": "date_end",
-            "type": "string"
+            "type": "string",
+            "go_name": "DateEnd"
           },
           {
             "name": "date_start",
-            "type": "string"
+            "type": "string",
+            "go_name": "DateStart"
           },
           {
             "name": "mode",
-            "type": "string"
+            "type": "string",
+            "go_name": "Mode"
           },
           {
             "name": "repeat_on_days",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "RepeatOnDays"
           },
           {
             "name": "time_all_day",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "TimeAllDay",
+            "pointer": true
           },
           {
             "name": "time_range_end",
-            "type": "string"
+            "type": "string",
+            "go_name": "TimeRangeEnd"
           },
           {
             "name": "time_range_start",
-            "type": "string"
+            "type": "string",
+            "go_name": "TimeRangeStart"
           }
-        ]
+        ],
+        "go_name": "Schedule",
+        "pointer": true
       },
       {
         "name": "site_id",
-        "type": "string"
+        "type": "string",
+        "go_name": "SiteID"
       },
       {
         "name": "source",
@@ -206,65 +257,82 @@
         "fields": [
           {
             "name": "client_macs",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "ClientMACs"
           },
           {
             "name": "ip_group_id",
-            "type": "string"
+            "type": "string",
+            "go_name": "IPGroupID"
           },
           {
             "name": "ips",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "IPs"
           },
           {
             "name": "match_mac",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "MatchMAC"
           },
           {
             "name": "match_opposite_ips",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "MatchOppositeIPs"
           },
           {
             "name": "match_opposite_networks",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "MatchOppositeNetworks"
           },
           {
             "name": "match_opposite_ports",
-            "type": "bool"
+            "type": "bool",
+            "go_name": "MatchOppositePorts"
           },
           {
             "name": "matching_target",
-            "type": "string"
+            "type": "string",
+            "go_name": "MatchingTarget"
           },
           {
             "name": "matching_target_type",
-            "type": "string"
+            "type": "string",
+            "go_name": "MatchingTargetType"
           },
           {
             "name": "network_ids",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "NetworkIDs"
           },
           {
             "name": "port",
-            "type": "string"
+            "type": "string",
+            "go_name": "Port"
           },
           {
             "name": "port_group_id",
-            "type": "string"
+            "type": "string",
+            "go_name": "PortGroupID"
           },
           {
             "name": "port_matching_type",
-            "type": "string"
+            "type": "string",
+            "go_name": "PortMatchingType"
           },
           {
             "name": "web_domains",
-            "type": "array<string>"
+            "type": "array<string>",
+            "go_name": "WebDomains"
           },
           {
             "name": "zone_id",
-            "type": "string"
+            "type": "string",
+            "go_name": "ZoneID"
           }
-        ]
+        ],
+        "go_name": "Source",
+        "pointer": true
       }
     ]
   }

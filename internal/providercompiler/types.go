@@ -62,6 +62,13 @@ type bootstrapField struct {
 	Fields []bootstrapField `json:"fields,omitempty"`
 	// SecretCandidate is set by cmd/sdk-bootstrap for x_-prefixed SDK fields.
 	SecretCandidate bool `json:"secret_candidate,omitempty"`
+	// GoName and Pointer are carried through from the bootstrap so a generator
+	// can write code that touches the field. Neither is derivable from the wire
+	// name or the shape; see cmd/sdk-bootstrap for the measurements. The
+	// compiler itself makes no decision from either -- it decodes strictly, so
+	// they have to be declared here to be allowed to exist.
+	GoName  string `json:"go_name,omitempty"`
+	Pointer bool   `json:"pointer,omitempty"`
 }
 
 type observedCatalog struct {
