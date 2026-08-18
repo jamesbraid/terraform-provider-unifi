@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"os"
 	"path/filepath"
@@ -144,7 +145,7 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	for _, name := range manifestedOutputNames {
-		if err := writeAtomic(filepath.Join(*outputDir, name), encoded[name]); err != nil {
+		if err := cmdio.WriteAtomic(filepath.Join(*outputDir, name), encoded[name], cmdio.NoParentDir(), cmdio.Mode(0o644)); err != nil {
 			fmt.Fprintf(stderr, "write %s: %v\n", name, err)
 			return 1
 		}
@@ -186,40 +187,4 @@ func marshalCanonical(value any) ([]byte, error) {
 		return nil, err
 	}
 	return append(data, '\n'), nil
-}
-
-func writeAtomic(path string, data []byte) error {
-	directory := filepath.Dir(path)
-	temporary, err := os.CreateTemp(directory, ".catalog-parity-*")
-	if err != nil {
-		return err
-	}
-	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
-
-	if _, err := temporary.Write(data); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Sync(); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Chmod(0o644); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(temporaryPath, path); err != nil {
-		return err
-	}
-
-	directoryHandle, err := os.Open(directory)
-	if err != nil {
-		return err
-	}
-	defer directoryHandle.Close()
-	return directoryHandle.Sync()
 }

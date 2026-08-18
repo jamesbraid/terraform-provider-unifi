@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
@@ -104,7 +104,13 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "encode resolution: %v\n", err)
 		return 1
 	}
-	if err := writeAtomic(*outputPath, append(data, '\n')); err != nil {
+	// SkipSync PRESERVES AN EXISTING DIVERGENCE AND IS NOT A CHOICE MADE HERE.
+	// This was the only one of nine writers with no Sync() before the rename, and
+	// nothing in the original recorded why. It is kept exactly rather than
+	// silently corrected, because "the other eight fsync" is not a decision about
+	// release evidence durability. Filed as #174 for James; if the answer is that
+	// a copy lost a line, this option comes off in a commit that says so.
+	if err := cmdio.WriteAtomic(*outputPath, append(data, '\n'), cmdio.NoParentDir(), cmdio.SkipSync()); err != nil {
 		fmt.Fprintf(stderr, "write resolution: %v\n", err)
 		return 1
 	}
@@ -221,25 +227,4 @@ func decodeStrictFile(path string, value any) (string, error) {
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil
-}
-
-func writeAtomic(path string, data []byte) error {
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".catalog-pragmatic-evidence-*")
-	if err != nil {
-		return err
-	}
-	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
-	if _, err := temporary.Write(data); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Chmod(0o600); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Close(); err != nil {
-		return err
-	}
-	return os.Rename(temporaryPath, path)
 }
