@@ -2,6 +2,7 @@ package releasequalification
 
 import (
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"sort"
 	"strings"
 )
@@ -51,7 +52,7 @@ func VerifyMigrationRecoveryReceipt(receipt MigrationRecoveryReceipt) error {
 	// deleted and something still emits it, or a new one was added and this list
 	// was not told. Asking AllEvidenceModes rather than restating its contents
 	// is what makes the question survive the next deletion.
-	for _, mode := range sortedKeys(receipt.EvidenceModes) {
+	for _, mode := range cmdio.SortedKeys(receipt.EvidenceModes) {
 		if !IsEvidenceMode(mode) {
 			note("evidence_modes names %q, which is not a declared evidence mode (declared: %s)",
 				mode, strings.Join(AllEvidenceModes, ", "))
@@ -109,15 +110,6 @@ func sumCounts(counts map[string]int) int {
 		total += count
 	}
 	return total
-}
-
-func sortedKeys(counts map[string]int) []string {
-	keys := make([]string, 0, len(counts))
-	for key := range counts {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 func compareCounts(label string, declared, recounted map[string]int) []string {
