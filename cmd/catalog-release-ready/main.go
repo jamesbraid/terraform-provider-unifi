@@ -1,9 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -54,42 +51,42 @@ func run(args []string, stderr io.Writer) int {
 
 	var input releasequalification.ReleaseReadyInput
 	var err error
-	input.LedgerSHA256, err = decodeStrictFile(*ledgerPath, &input.Ledger)
+	input.LedgerSHA256, err = cmdio.DecodeStrictFile(*ledgerPath, &input.Ledger)
 	if err != nil {
 		fmt.Fprintf(stderr, "ledger: %v\n", err)
 		return 1
 	}
-	input.ManagementSHA256, err = decodeStrictFile(*managementPath, &input.Management)
+	input.ManagementSHA256, err = cmdio.DecodeStrictFile(*managementPath, &input.Management)
 	if err != nil {
 		fmt.Fprintf(stderr, "management contract: %v\n", err)
 		return 1
 	}
-	input.MigrationSHA256, err = decodeStrictFile(*migrationPath, &input.Migration)
+	input.MigrationSHA256, err = cmdio.DecodeStrictFile(*migrationPath, &input.Migration)
 	if err != nil {
 		fmt.Fprintf(stderr, "migration/recovery: %v\n", err)
 		return 1
 	}
-	input.ContractParitySHA256, err = decodeStrictFile(*contractParityPath, &input.ContractParity)
+	input.ContractParitySHA256, err = cmdio.DecodeStrictFile(*contractParityPath, &input.ContractParity)
 	if err != nil {
 		fmt.Fprintf(stderr, "contract parity: %v\n", err)
 		return 1
 	}
-	input.FleetSoakSHA256, err = decodeStrictFile(*fleetSoakPath, &input.FleetSoak)
+	input.FleetSoakSHA256, err = cmdio.DecodeStrictFile(*fleetSoakPath, &input.FleetSoak)
 	if err != nil {
 		fmt.Fprintf(stderr, "fleet soak: %v\n", err)
 		return 1
 	}
-	input.HardwareSHA256, err = decodeStrictFile(*hardwarePath, &input.Hardware)
+	input.HardwareSHA256, err = cmdio.DecodeStrictFile(*hardwarePath, &input.Hardware)
 	if err != nil {
 		fmt.Fprintf(stderr, "hardware disposition: %v\n", err)
 		return 1
 	}
-	input.DependencySHA256, err = decodeStrictFile(*dependencyPath, &input.Dependency)
+	input.DependencySHA256, err = cmdio.DecodeStrictFile(*dependencyPath, &input.Dependency)
 	if err != nil {
 		fmt.Fprintf(stderr, "dependency publishability: %v\n", err)
 		return 1
 	}
-	input.ConfidentialitySHA256, err = decodeStrictFile(*confidentialityPath, &input.Confidentiality)
+	input.ConfidentialitySHA256, err = cmdio.DecodeStrictFile(*confidentialityPath, &input.Confidentiality)
 	if err != nil {
 		fmt.Fprintf(stderr, "confidentiality: %v\n", err)
 		return 1
@@ -121,27 +118,6 @@ func run(args []string, stderr io.Writer) int {
 		}
 	}
 	return 0
-}
-
-func decodeStrictFile(path string, value any) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return "", err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return "", fmt.Errorf("multiple JSON values")
-		}
-		return "", err
-	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
 }
 
 func duplicateOutput(paths ...string) bool {

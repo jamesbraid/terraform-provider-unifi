@@ -33,8 +33,8 @@ func TestDecodeStrictFileRejectsUnknownAndTrailingJSON(t *testing.T) {
 				t.Fatal(err)
 			}
 			var receipt releasequalification.FleetSoakReceipt
-			if _, err := decodeStrictFile(path, &receipt); err == nil {
-				t.Fatal("decodeStrictFile() succeeded")
+			if _, err := cmdio.DecodeStrictFile(path, &receipt); err == nil {
+				t.Fatal("cmdio.DecodeStrictFile() succeeded")
 			}
 		})
 	}

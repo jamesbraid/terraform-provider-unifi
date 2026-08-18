@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -70,12 +69,12 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	var contracts catalogparity.SurfaceContractCorpus
-	if err := decodeStrictFile(*contractsPath, &contracts); err != nil {
+	if err := discardDigest(cmdio.DecodeStrictFile(*contractsPath, &contracts)); err != nil {
 		fmt.Fprintf(stderr, "contracts: %v\n", err)
 		return 1
 	}
 	var policy evidencePolicy
-	if err := decodeStrictFile(*policyPath, &policy); err != nil {
+	if err := discardDigest(cmdio.DecodeStrictFile(*policyPath, &policy)); err != nil {
 		fmt.Fprintf(stderr, "policy: %v\n", err)
 		return 1
 	}
@@ -148,26 +147,6 @@ func run(args []string, stderr io.Writer) int {
 	return 0
 }
 
-func decodeStrictFile(path string, value any) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return fmt.Errorf("multiple JSON values")
-		}
-		return err
-	}
-	return nil
-}
-
 // goModuleCache asks the toolchain rather than guessing at $HOME/go/pkg/mod.
 // A run with GOMODCACHE set elsewhere -- which every CI step here does -- would
 // otherwise have its archives checked in a directory it never populated, and
@@ -183,3 +162,10 @@ func goModuleCache() (string, error) {
 	}
 	return cache, nil
 }
+
+// discardDigest drops the artifact digest cmdio.DecodeStrictFile returns.
+//
+// This command is the only one of the seven that never used it -- its local copy
+// returned just an error. Making the discard explicit keeps that visible rather
+// than hiding it behind a blank identifier at each call site.
+func discardDigest(_ string, err error) error { return err }
