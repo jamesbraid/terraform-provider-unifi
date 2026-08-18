@@ -510,36 +510,6 @@ func (f BoolPtrField[M, S]) CopyPlanToState(plan, state *M) {
 	}
 }
 
-// StringPtrField maps a types.String to a *string.
-type StringPtrField[M any, S any] struct {
-	Wire  string
-	Model func(*M) *types.String
-	SDK   func(*S) **string
-}
-
-func (f StringPtrField[M, S]) WireName() string { return f.Wire }
-
-func (f StringPtrField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
-	*f.SDK(sdk) = f.Model(model).ValueStringPointer()
-	return nil
-}
-
-func (f StringPtrField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
-	*f.Model(model) = types.StringPointerValue(*f.SDK(sdk))
-	return nil
-}
-
-func (f StringPtrField[M, S]) SetInPlan(plan *M) bool {
-	value := f.Model(plan)
-	return !value.IsNull() && !value.IsUnknown()
-}
-
-func (f StringPtrField[M, S]) CopyPlanToState(plan, state *M) {
-	if f.SetInPlan(plan) {
-		*f.Model(state) = *f.Model(plan)
-	}
-}
-
 // ReadOnly wraps a field the controller owns: read from the API, never sent.
 //
 // DERIVED FROM THE POLICY RATHER THAN CHOSEN. A field whose
