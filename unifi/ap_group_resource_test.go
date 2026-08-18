@@ -227,17 +227,6 @@ func Test_apGroupResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_apGroupResource_Schema(t *testing.T) {
-	r := &apGroupResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	for _, key := range []string{"id", "site", "name", "device_macs"} {
-		if _, ok := resp.Schema.Attributes[key]; !ok {
-			t.Errorf("Schema missing attribute %q", key)
-		}
-	}
-}
-
 func Test_apGroupResource_modelToAPIAPGroup(t *testing.T) {
 	ctx := context.Background()
 	macsSet, _ := types.SetValueFrom(

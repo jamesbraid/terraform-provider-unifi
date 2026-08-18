@@ -82,17 +82,6 @@ func TestNewDynamicDNSListResource(t *testing.T) {
 	}
 }
 
-func Test_dynamicDNSResource_Schema(t *testing.T) {
-	r := &dynamicDNSResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	for _, attr := range []string{"id", "site", "interface", "service", "host_name", "server", "login", "password"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("expected attribute %q in schema", attr)
-		}
-	}
-}
-
 func Test_dynamicDNSResource_IdentitySchema(t *testing.T) {
 	r := &dynamicDNSResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

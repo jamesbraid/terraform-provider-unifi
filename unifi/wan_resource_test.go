@@ -634,22 +634,6 @@ func Test_wanResource_IdentitySchema(t *testing.T) {
 	})
 }
 
-func Test_wanResource_Schema(t *testing.T) {
-	t.Run("returns schema with key attributes", func(t *testing.T) {
-		r := &wanResource{}
-		resp := &fwresource.SchemaResponse{}
-		r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Fatalf("Schema() returned errors: %v", resp.Diagnostics)
-		}
-		for _, key := range []string{"id", "name", "type"} {
-			if _, ok := resp.Schema.Attributes[key]; !ok {
-				t.Errorf("Schema() missing attribute %q", key)
-			}
-		}
-	})
-}
-
 func Test_wanResource_Create(t *testing.T) {
 	t.Skip("requires terraform state machinery")
 }

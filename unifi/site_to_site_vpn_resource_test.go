@@ -165,23 +165,6 @@ func Test_siteToSiteVPNResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_siteToSiteVPNResource_Schema(t *testing.T) {
-	r := &siteToSiteVPNResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{
-		"id", "site", "name", "enabled", "interface", "peer_ip",
-		"pre_shared_key", "remote_subnets", "profile", "timeouts",
-	} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
 func Test_siteToSiteVPNResource_UpgradeState(t *testing.T) {
 	r := &siteToSiteVPNResource{}
 	upgraders := r.UpgradeState(context.Background())

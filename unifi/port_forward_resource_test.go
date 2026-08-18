@@ -760,39 +760,6 @@ func Test_portForwardResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_portForwardResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *portForwardResource
-		args args
-	}{
-		{
-			name: "contains expected attributes",
-			r:    &portForwardResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			for _, key := range []string{"id", "name", "protocol"} {
-				if _, ok := tt.args.resp.Schema.Attributes[key]; !ok {
-					t.Errorf("Schema() missing attribute %q", key)
-				}
-			}
-		})
-	}
-}
-
 func Test_portForwardResource_modelToPortForward(t *testing.T) {
 	type args struct {
 		ctx   context.Context

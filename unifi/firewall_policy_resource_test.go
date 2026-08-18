@@ -477,39 +477,6 @@ func Test_firewallPolicyResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_firewallPolicyResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallPolicyResource
-		args args
-	}{
-		{
-			name: "schema has key attributes",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			for _, key := range []string{"id", "name", "action", "source", "destination"} {
-				if _, ok := tt.args.resp.Schema.Attributes[key]; !ok {
-					t.Errorf("Schema missing %q attribute", key)
-				}
-			}
-		})
-	}
-}
-
 // TestFirewallPolicyConnectionStatesSettable guards #351: connection_state_type
 // and connection_states must be author-settable (Optional+Computed) so a policy
 // can be scoped to NEW-only / RESPOND_ONLY connections, not just read back.

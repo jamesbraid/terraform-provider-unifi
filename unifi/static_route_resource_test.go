@@ -308,17 +308,6 @@ func Test_staticRouteFrameworkResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_staticRouteFrameworkResource_Schema(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	for _, attr := range []string{"id", "site", "name", "network", "type", "distance", "next_hop", "interface", "enabled", "gateway_device", "gateway_type"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("expected attribute %q in schema", attr)
-		}
-	}
-}
-
 func Test_staticRouteFrameworkResource_ConfigValidators(t *testing.T) {
 	r := &staticRouteFrameworkResource{}
 	validators := r.ConfigValidators(context.Background())

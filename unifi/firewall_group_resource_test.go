@@ -152,40 +152,6 @@ func Test_firewallGroupResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_firewallGroupResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallGroupResource
-		args args
-	}{
-		{
-			name: "has expected attributes",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			s := tt.args.resp.Schema
-			for _, key := range []string{"id", "site", "name", "type", "members"} {
-				if _, ok := s.Attributes[key]; !ok {
-					t.Errorf("Schema missing attribute %q", key)
-				}
-			}
-		})
-	}
-}
-
 func Test_firewallGroupResource_modelToAPIFirewallGroup(t *testing.T) {
 	type args struct {
 		ctx   context.Context

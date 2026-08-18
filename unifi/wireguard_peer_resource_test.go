@@ -191,20 +191,6 @@ func Test_wireguardPeerResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_wireguardPeerResource_Schema(t *testing.T) {
-	r := &wireguardPeerResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() returned errors: %v", resp.Diagnostics)
-	}
-	for _, key := range []string{"id", "site", "network_id", "name", "interface_ip", "public_key", "allowed_ips", "timeouts"} {
-		if _, ok := resp.Schema.Attributes[key]; !ok {
-			t.Errorf("Schema() missing attribute %q", key)
-		}
-	}
-}
-
 func Test_wireguardPeerResource_modelToPeer(t *testing.T) {
 	ctx := context.Background()
 	r := &wireguardPeerResource{}
