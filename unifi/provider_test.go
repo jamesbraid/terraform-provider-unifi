@@ -104,15 +104,6 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func Test_unifiProvider_Metadata(t *testing.T) {
-	p := &unifiProvider{}
-	resp := &fwprovider.MetadataResponse{}
-	p.Metadata(context.Background(), fwprovider.MetadataRequest{}, resp)
-	if resp.TypeName != "unifi" {
-		t.Errorf("TypeName = %q, want %q", resp.TypeName, "unifi")
-	}
-}
-
 func Test_unifiProvider_Schema(t *testing.T) {
 	p := &unifiProvider{}
 	resp := &fwprovider.SchemaResponse{}

@@ -557,29 +557,6 @@ func Test_destinationModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_trafficRouteResource_Metadata(t *testing.T) {
-	tests := []struct {
-		providerTypeName, wantTypeName string
-	}{
-		{"unifi", "unifi_traffic_route"},
-		{"test", "test_traffic_route"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.providerTypeName, func(t *testing.T) {
-			r := &trafficRouteResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.providerTypeName},
-				resp,
-			)
-			if resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_trafficRouteResource_IdentitySchema(t *testing.T) {
 	r := &trafficRouteResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

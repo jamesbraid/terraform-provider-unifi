@@ -51,30 +51,6 @@ func TestNewFirewallZoneDataSource(t *testing.T) {
 	}
 }
 
-func Test_firewallZoneDataSource_Metadata(t *testing.T) {
-	tests := []struct {
-		providerTypeName string
-		wantTypeName     string
-	}{
-		{"unifi", "unifi_firewall_zone"},
-		{"test", "test_firewall_zone"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.providerTypeName, func(t *testing.T) {
-			d := &firewallZoneDataSource{}
-			resp := &fwdatasource.MetadataResponse{}
-			d.Metadata(
-				context.Background(),
-				fwdatasource.MetadataRequest{ProviderTypeName: tt.providerTypeName},
-				resp,
-			)
-			if resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_firewallZoneDataSource_Schema(t *testing.T) {
 	d := &firewallZoneDataSource{}
 	resp := &fwdatasource.SchemaResponse{}

@@ -153,26 +153,6 @@ func TestNewSiteToSiteVPNListResource(t *testing.T) {
 	}
 }
 
-func Test_siteToSiteVPNResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ provider, want string }{
-		{"unifi", "unifi_site_to_site_vpn"},
-		{"test", "test_site_to_site_vpn"},
-	} {
-		t.Run(tt.provider, func(t *testing.T) {
-			r := &siteToSiteVPNResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.provider},
-				resp,
-			)
-			if resp.TypeName != tt.want {
-				t.Errorf("got %q, want %q", resp.TypeName, tt.want)
-			}
-		})
-	}
-}
-
 func Test_siteToSiteVPNResource_IdentitySchema(t *testing.T) {
 	r := &siteToSiteVPNResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

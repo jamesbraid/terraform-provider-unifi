@@ -622,29 +622,6 @@ func TestNewSettingResource(t *testing.T) {
 	}
 }
 
-func Test_settingResource_Metadata(t *testing.T) {
-	tests := []struct {
-		providerTypeName, wantTypeName string
-	}{
-		{"unifi", "unifi_setting"},
-		{"test", "test_setting"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.providerTypeName, func(t *testing.T) {
-			r := &settingResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.providerTypeName},
-				resp,
-			)
-			if resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_settingResource_Schema(t *testing.T) {
 	r := &settingResource{}
 	resp := &fwresource.SchemaResponse{}

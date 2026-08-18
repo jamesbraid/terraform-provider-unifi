@@ -355,53 +355,6 @@ func TestNewPortProfileListResource(t *testing.T) {
 	}
 }
 
-func Test_portProfileResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name         string
-		r            *portProfileResource
-		args         args
-		wantTypeName string
-	}{
-		{
-			name: "type name with provider prefix",
-			r:    &portProfileResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-			wantTypeName: "unifi_port_profile",
-		},
-		{
-			name: "type name with empty provider prefix",
-			r:    &portProfileResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: ""},
-				resp: &fwresource.MetadataResponse{},
-			},
-			wantTypeName: "_port_profile",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != tt.wantTypeName {
-				t.Errorf(
-					"Metadata() TypeName = %q, want %q",
-					tt.args.resp.TypeName,
-					tt.wantTypeName,
-				)
-			}
-		})
-	}
-}
-
 func Test_portProfileResource_IdentitySchema(t *testing.T) {
 	type args struct {
 		in0  context.Context

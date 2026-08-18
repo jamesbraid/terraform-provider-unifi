@@ -1,16 +1,11 @@
 package unifi
 
 import (
-	"context"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 	"testing"
-
-	fwaction "github.com/hashicorp/terraform-plugin-framework/action"
-	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
-	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
 // TestEveryGeneratedSurfaceIsServedUnderItsDeclaredName closes a gap between
@@ -121,36 +116,15 @@ var surfacesWithoutDirectives = map[string]bool{
 // provider offers what it calls itself.
 func servedTypeNames(t *testing.T) map[string]bool {
 	t.Helper()
-	ctx := context.Background()
-	provider := &unifiProvider{}
+	// DERIVED FROM servedSurfaces RATHER THAN WALKING THE PROVIDER AGAIN. This
+	// function used to do its own walk of Resources, DataSources, Actions and
+	// ListResources; the contract driver needed the same walk keyed by receiver,
+	// and two walks of one truth is exactly how the pin package came to exist
+	// twice. The comment about actions and list resources counting too now lives
+	// on the single walk in metadata_contract_test.go.
 	names := map[string]bool{}
-
-	for _, newResource := range provider.Resources(ctx) {
-		response := &fwresource.MetadataResponse{}
-		newResource().Metadata(ctx, fwresource.MetadataRequest{ProviderTypeName: "unifi"}, response)
-		names[response.TypeName] = true
-	}
-	for _, newDataSource := range provider.DataSources(ctx) {
-		response := &fwdatasource.MetadataResponse{}
-		newDataSource().Metadata(ctx, fwdatasource.MetadataRequest{ProviderTypeName: "unifi"}, response)
-		names[response.TypeName] = true
-	}
-	// ACTIONS AND LIST RESOURCES COUNT TOO, and leaving them out produced this
-	// check's first result: it named unifi_port as generated-but-unserved, which
-	// was true of the three surface kinds I had asked and false of the provider.
-	// A directive does not say which kind of surface it declares, so the
-	// comparison has to ask every kind the provider offers.
-	for _, newAction := range provider.Actions(ctx) {
-		response := &fwaction.MetadataResponse{}
-		newAction().Metadata(ctx, fwaction.MetadataRequest{ProviderTypeName: "unifi"}, response)
-		names[response.TypeName] = true
-	}
-	for _, newList := range provider.ListResources(ctx) {
-		// List resources reuse the resource metadata types rather than
-		// declaring their own.
-		response := &fwresource.MetadataResponse{}
-		newList().Metadata(ctx, fwresource.MetadataRequest{ProviderTypeName: "unifi"}, response)
-		names[response.TypeName] = true
+	for _, name := range servedSurfaces(t) {
+		names[name] = true
 	}
 	return names
 }

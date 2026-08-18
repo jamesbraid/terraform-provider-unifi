@@ -82,15 +82,6 @@ func TestNewDynamicDNSListResource(t *testing.T) {
 	}
 }
 
-func Test_dynamicDNSResource_Metadata(t *testing.T) {
-	r := &dynamicDNSResource{}
-	resp := &fwresource.MetadataResponse{}
-	r.Metadata(context.Background(), fwresource.MetadataRequest{ProviderTypeName: "unifi"}, resp)
-	if resp.TypeName != "unifi_dynamic_dns" {
-		t.Errorf("TypeName = %q, want %q", resp.TypeName, "unifi_dynamic_dns")
-	}
-}
-
 func Test_dynamicDNSResource_Schema(t *testing.T) {
 	r := &dynamicDNSResource{}
 	resp := &fwresource.SchemaResponse{}

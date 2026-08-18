@@ -107,49 +107,6 @@ func Test_bgpPeerModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_bgpResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name         string
-		r            *bgpResource
-		args         args
-		wantTypeName string
-	}{
-		{
-			name: "sets correct type name",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-			wantTypeName: "unifi_bgp",
-		},
-		{
-			name: "uses provider type name prefix",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "test"},
-				resp: &fwresource.MetadataResponse{},
-			},
-			wantTypeName: "test_bgp",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", tt.args.resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_bgpResource_Schema(t *testing.T) {
 	type args struct {
 		ctx  context.Context

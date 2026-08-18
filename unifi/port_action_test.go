@@ -109,34 +109,6 @@ func TestNewPortAction(t *testing.T) {
 	}
 }
 
-func Test_portAction_Metadata(t *testing.T) {
-	tests := []struct {
-		name         string
-		providerType string
-		wantTypeName string
-	}{
-		{
-			name:         "sets_type_name",
-			providerType: "unifi",
-			wantTypeName: "unifi_port",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &portAction{}
-			resp := &fwaction.MetadataResponse{}
-			a.Metadata(
-				context.Background(),
-				fwaction.MetadataRequest{ProviderTypeName: tt.providerType},
-				resp,
-			)
-			if resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_portAction_Schema(t *testing.T) {
 	tests := []struct {
 		name      string
