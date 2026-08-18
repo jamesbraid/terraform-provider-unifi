@@ -192,8 +192,19 @@ var knownUnreachableChecks = map[string]string{
 	// being true reads as a live excuse.
 
 	"command export-gate": "answers what a publication would ship, and is deliberately not wired. Its denied_paths are a FIRST-PASS declaration of the publication boundary and it reports 376 findings on this tree today -- every one a file that genuinely exists and would genuinely ship, not a defect. Wiring it before that boundary is agreed would make every push red for a judgement nobody has made yet, and a gate people learn to ignore is worse than one they have not switched on. Task 130.",
-	"command catalog-release-ready": "the terminal release gate. No pipeline invokes it and " +
-		"three of its eight inputs have no producer. Task 106.",
+	// A FOURTH ENTRY LEFT ON THE SAME TERMS, and its reason had been sitting in
+	// this ledger accurately for weeks: catalog-release-ready read "three of its
+	// eight inputs have no producer. Task 106." That was measured again and was
+	// exactly right. Two of the three -- contract parity and fleet soak -- named
+	// receipts nothing implemented, and were removed with their validators. The
+	// third, confidentiality, has an implemented check and no producer, so it was
+	// dropped from the required set instead and the gate now names it in
+	// unverified_gates. Five inputs remain, all produced by the controller
+	// differential workflow, which now invokes the gate at the end of it.
+	//
+	// Worth saying plainly: nothing here was discovered. The entry stated the
+	// blocker correctly the whole time, and what was missing was acting on it.
+	// A ledger that records a defect faithfully still lets it sit.
 	// NAMED BY THIS TEST AT THE CUTOVER, WHICH IS THE FINDING RATHER THAN A
 	// REHEARSAL OF ONE. catalog-build-schema.sh built and ran it over five lines,
 	// and was its only caller; deleting the script left it with none. The
