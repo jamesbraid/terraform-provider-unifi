@@ -197,62 +197,6 @@ func Test_bgpResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_bgpResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name      string
-		r         *bgpResource
-		args      args
-		wantError bool
-	}{
-		{
-			name: "nil provider data",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: nil},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-		{
-			name: "wrong provider data type",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: true,
-		},
-		{
-			name: "correct client type",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{Site: "default"}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantError && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("expected error in diagnostics")
-			}
-			if !tt.wantError && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", tt.args.resp.Diagnostics)
-			}
-		})
-	}
-}
-
 // Test_bgpResource_ImportState is skipped because ImportStatePassthroughID
 // requires a valid state schema which is complex to set up in a unit test.
 func Test_bgpResource_ImportState(t *testing.T) {

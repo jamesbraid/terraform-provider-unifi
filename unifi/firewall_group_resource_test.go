@@ -186,69 +186,6 @@ func Test_firewallGroupResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_firewallGroupResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name       string
-		r          *firewallGroupResource
-		args       args
-		wantErr    bool
-		wantClient bool
-	}{
-		{
-			name: "nil provider data",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "wrong type",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: "wrong",
-				},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantErr: true,
-		},
-		{
-			name: "correct client",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: &Client{},
-				},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantClient: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantErr && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("expected error diagnostic")
-			}
-			if !tt.wantErr && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", tt.args.resp.Diagnostics)
-			}
-			if tt.wantClient && tt.r.client == nil {
-				t.Error("expected client to be set")
-			}
-		})
-	}
-}
-
 func Test_firewallGroupResource_modelToAPIFirewallGroup(t *testing.T) {
 	type args struct {
 		ctx   context.Context

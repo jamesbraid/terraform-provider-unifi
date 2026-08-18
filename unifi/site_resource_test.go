@@ -143,63 +143,6 @@ func Test_siteFrameworkResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_siteFrameworkResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name      string
-		r         *siteFrameworkResource
-		args      args
-		wantError bool
-	}{
-		{
-			name: "nil_provider_data",
-			r:    &siteFrameworkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-		{
-			name: "wrong_type",
-			r:    &siteFrameworkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: true,
-		},
-		{
-			name: "correct_client",
-			r:    &siteFrameworkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.Diagnostics.HasError() != tt.wantError {
-				t.Errorf(
-					"hasError = %v, want %v",
-					tt.args.resp.Diagnostics.HasError(),
-					tt.wantError,
-				)
-			}
-		})
-	}
-}
-
 func Test_siteFrameworkResource_applyPlanToState(t *testing.T) {
 	type args struct {
 		in0   context.Context

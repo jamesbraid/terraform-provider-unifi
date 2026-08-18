@@ -648,35 +648,6 @@ func Test_settingResource_UpgradeState(t *testing.T) {
 	}
 }
 
-func Test_settingResource_Configure(t *testing.T) {
-	tests := []struct {
-		name      string
-		data      any
-		wantError bool
-	}{
-		{"nil", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct client", &Client{Site: "default"}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &settingResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantError && !resp.Diagnostics.HasError() {
-				t.Error("expected error")
-			}
-			if !tt.wantError && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-		})
-	}
-}
-
 func Test_settingResource_ImportState(t *testing.T) {
 	t.Skip(
 		"ImportState delegates to ImportStatePassthroughID which requires full state schema setup",

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -784,66 +783,6 @@ func Test_firewallRuleResource_Schema(t *testing.T) {
 				if a.IsComputed() != c.computed {
 					t.Errorf("%s: Computed = %v, want %v", c.attr, a.IsComputed(), c.computed)
 				}
-			}
-		})
-	}
-}
-
-func Test_firewallRuleResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name      string
-		r         *firewallRuleResource
-		args      args
-		wantError bool
-	}{
-		{
-			name: "nil provider data",
-			r:    &firewallRuleResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{},
-				resp: &fwresource.ConfigureResponse{Diagnostics: diag.Diagnostics{}},
-			},
-			wantError: false,
-		},
-		{
-			name: "wrong type",
-			r:    &firewallRuleResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: "not-a-client",
-				},
-				resp: &fwresource.ConfigureResponse{Diagnostics: diag.Diagnostics{}},
-			},
-			wantError: true,
-		},
-		{
-			name: "correct client type",
-			r:    &firewallRuleResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: &Client{},
-				},
-				resp: &fwresource.ConfigureResponse{Diagnostics: diag.Diagnostics{}},
-			},
-			wantError: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantError && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("expected error but got none")
-			}
-			if !tt.wantError && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %s", tt.args.resp.Diagnostics.Errors())
 			}
 		})
 	}

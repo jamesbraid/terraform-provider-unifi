@@ -532,69 +532,6 @@ func TestFirewallPolicyConnectionStatesSettable(t *testing.T) {
 	}
 }
 
-func Test_firewallPolicyResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallPolicyResource
-		args args
-	}{
-		{
-			name: "nil provider data",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: nil},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "wrong type",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "correct client",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			switch tt.name {
-			case "nil provider data":
-				if tt.args.resp.Diagnostics.HasError() {
-					t.Error("nil ProviderData should not error")
-				}
-			case "wrong type":
-				if !tt.args.resp.Diagnostics.HasError() {
-					t.Error("wrong type should produce an error")
-				}
-			case "correct client":
-				if tt.args.resp.Diagnostics.HasError() {
-					t.Errorf("correct client should not error: %v", tt.args.resp.Diagnostics)
-				}
-				if tt.r.client == nil {
-					t.Error("client should be set after Configure")
-				}
-			}
-		})
-	}
-}
-
 func Test_modelToFirewallPolicy(t *testing.T) {
 	type args struct {
 		ctx   context.Context

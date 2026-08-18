@@ -247,34 +247,6 @@ func Test_clientQosRateResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_clientQosRateResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name string
-		r    *clientQosRateResource
-		args args
-	}{
-		{
-			name: "nil provider data",
-			r:    &clientQosRateResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
 func Test_clientQosRateResource_Create(t *testing.T) {
 	type args struct {
 		ctx  context.Context

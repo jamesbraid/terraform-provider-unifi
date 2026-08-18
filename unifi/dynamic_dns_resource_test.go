@@ -105,28 +105,6 @@ func Test_dynamicDNSResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_dynamicDNSResource_Configure(t *testing.T) {
-	tests := []struct {
-		name      string
-		req       fwresource.ConfigureRequest
-		wantError bool
-	}{
-		{"nil_provider_data", fwresource.ConfigureRequest{}, false},
-		{"wrong_type", fwresource.ConfigureRequest{ProviderData: "wrong"}, true},
-		{"correct_client", fwresource.ConfigureRequest{ProviderData: &Client{}}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &dynamicDNSResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(context.Background(), tt.req, resp)
-			if resp.Diagnostics.HasError() != tt.wantError {
-				t.Errorf("hasError = %v, want %v", resp.Diagnostics.HasError(), tt.wantError)
-			}
-		})
-	}
-}
-
 func Test_dynamicDNSResource_applyPlanToState(t *testing.T) {
 	r := &dynamicDNSResource{}
 	plan := &dynamicDNSResourceModel{

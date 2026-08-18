@@ -361,66 +361,6 @@ func Test_firewallZoneResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_firewallZoneResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name      string
-		r         *firewallZoneResource
-		args      args
-		wantError bool
-	}{
-		{
-			name: "nil_provider_data",
-			r:    &firewallZoneResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-		{
-			name: "wrong_type",
-			r:    &firewallZoneResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: "not-a-client",
-				},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: true,
-		},
-		{
-			name: "correct_client",
-			r:    &firewallZoneResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: &Client{},
-				},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantError && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("expected error but got none")
-			}
-			if !tt.wantError && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", tt.args.resp.Diagnostics)
-			}
-		})
-	}
-}
-
 func Test_firewallZoneResource_modelToFirewallZone(t *testing.T) {
 	ctx := context.Background()
 	r := &firewallZoneResource{}

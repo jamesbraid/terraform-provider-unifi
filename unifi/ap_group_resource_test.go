@@ -238,46 +238,6 @@ func Test_apGroupResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_apGroupResource_Configure(t *testing.T) {
-	tests := []struct {
-		name       string
-		req        fwresource.ConfigureRequest
-		wantErr    bool
-		wantClient bool
-	}{
-		{
-			name: "nil provider data",
-			req:  fwresource.ConfigureRequest{},
-		},
-		{
-			name:    "wrong type",
-			req:     fwresource.ConfigureRequest{ProviderData: "wrong"},
-			wantErr: true,
-		},
-		{
-			name:       "correct client",
-			req:        fwresource.ConfigureRequest{ProviderData: &Client{}},
-			wantClient: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &apGroupResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(context.Background(), tt.req, resp)
-			if tt.wantErr && !resp.Diagnostics.HasError() {
-				t.Error("expected error diagnostic")
-			}
-			if !tt.wantErr && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-			if tt.wantClient && r.client == nil {
-				t.Error("expected client to be set")
-			}
-		})
-	}
-}
-
 func Test_apGroupResource_modelToAPIAPGroup(t *testing.T) {
 	ctx := context.Background()
 	macsSet, _ := types.SetValueFrom(

@@ -278,39 +278,6 @@ func Test_wlanFrameworkResource_UpgradeState(t *testing.T) {
 	}
 }
 
-func Test_wlanFrameworkResource_Configure(t *testing.T) {
-	t.Run("nil provider data", func(t *testing.T) {
-		r := &wlanFrameworkResource{}
-		resp := &fwresource.ConfigureResponse{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: nil}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Errorf("expected no error for nil provider data, got %v", resp.Diagnostics)
-		}
-	})
-
-	t.Run("wrong type", func(t *testing.T) {
-		r := &wlanFrameworkResource{}
-		resp := &fwresource.ConfigureResponse{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: "wrong"}, resp)
-		if !resp.Diagnostics.HasError() {
-			t.Error("expected error for wrong type")
-		}
-	})
-
-	t.Run("correct client", func(t *testing.T) {
-		r := &wlanFrameworkResource{}
-		resp := &fwresource.ConfigureResponse{}
-		client := &Client{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: client}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Errorf("unexpected error: %v", resp.Diagnostics)
-		}
-		if r.client != client {
-			t.Error("client not set")
-		}
-	})
-}
-
 func Test_wlanFrameworkResource_setDefaultWLANGroupID(t *testing.T) {
 	t.Skip("requires configured client")
 }

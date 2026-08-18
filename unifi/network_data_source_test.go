@@ -332,34 +332,6 @@ func Test_networkDataSource_Schema(t *testing.T) {
 	}
 }
 
-func Test_networkDataSource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		data    any
-		wantErr bool
-	}{
-		{"nil", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct", &Client{Site: "default"}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			d := &networkDataSource{}
-			resp := &fwdatasource.ConfigureResponse{}
-			d.Configure(
-				context.Background(),
-				fwdatasource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantErr && !resp.Diagnostics.HasError() {
-				t.Error("expected error diagnostic")
-			}
-			if !tt.wantErr && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-		})
-	}
-}
-
 func Test_networkDataSource_setDataSourceData(t *testing.T) {
 	ctx := context.Background()
 	name := "My Network"

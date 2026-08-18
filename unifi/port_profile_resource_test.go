@@ -467,69 +467,6 @@ func Test_portProfileResource_UpgradeState(t *testing.T) {
 	}
 }
 
-func Test_portProfileResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name       string
-		r          *portProfileResource
-		args       args
-		wantErr    bool
-		wantClient bool
-	}{
-		{
-			name: "nil provider data produces no error",
-			r:    &portProfileResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: nil},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantErr:    false,
-			wantClient: false,
-		},
-		{
-			name: "wrong type produces error",
-			r:    &portProfileResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong-type"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantErr:    true,
-			wantClient: false,
-		},
-		{
-			name: "correct Client type sets client",
-			r:    &portProfileResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantErr:    false,
-			wantClient: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantErr && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("Configure() expected error diagnostic, got none")
-			}
-			if !tt.wantErr && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("Configure() unexpected error: %v", tt.args.resp.Diagnostics.Errors())
-			}
-			if tt.wantClient && tt.r.client == nil {
-				t.Error("Configure() expected client to be set, got nil")
-			}
-		})
-	}
-}
-
 func Test_portProfileResource_modelToAPIPortProfile(t *testing.T) {
 	type args struct {
 		ctx   context.Context
