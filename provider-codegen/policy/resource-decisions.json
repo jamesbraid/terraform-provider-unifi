@@ -119,6 +119,20 @@
         ]
       },
       "schema_version": 0
+    },
+    "unifi_site_to_site_vpn": {
+      "sdk_type": "Network",
+      "duration_units": {
+        "ipsec_ike_lifetime": "time.Second",
+        "ipsec_esp_lifetime": "time.Second"
+      },
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 1
     }
   }
 }

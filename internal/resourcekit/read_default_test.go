@@ -250,3 +250,54 @@ func TestDurationPtrLeavesTheSDKNilForANullPlan(t *testing.T) {
 		t.Fatalf("a real duration did not reach the SDK as 120 seconds: %v", sdk.Idle)
 	}
 }
+
+type intModel struct {
+	Group types.Int64 `tfsdk:"group"`
+}
+
+type intSDK struct {
+	Group *int64
+}
+
+func intPtrField(omitZero bool) Int64PtrField[intModel, intSDK] {
+	return Int64PtrField[intModel, intSDK]{
+		Wire:     "group",
+		Model:    func(m *intModel) *types.Int64 { return &m.Group },
+		SDK:      func(s *intSDK) **int64 { return &s.Group },
+		Elide:    NullZero,
+		OmitZero: omitZero,
+	}
+}
+
+// A ZERO IS A FAILED REQUEST ON SOME FIELDS, not a smaller value.
+// site_to_site_vpn's optInt64 says the controller rejects 0 for its lifetime,
+// DH-group and route-distance fields, and ValueInt64Pointer hands back a
+// pointer to zero rather than nil.
+func TestInt64PtrOmitsZeroOnlyWhenAsked(t *testing.T) {
+	for _, testCase := range []struct {
+		name     string
+		omitZero bool
+		value    types.Int64
+		wantNil  bool
+	}{
+		{"zero is sent by default", false, types.Int64Value(0), false},
+		{"zero is omitted when asked", true, types.Int64Value(0), true},
+		{"a real value is always sent", true, types.Int64Value(14), false},
+		{"null is never sent", false, types.Int64Null(), true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var sdk intSDK
+			model := intModel{Group: testCase.value}
+			if diags := intPtrField(testCase.omitZero).ToSDK(context.Background(), &model, &sdk); diags.HasError() {
+				t.Fatalf("ToSDK: %v", diags)
+			}
+			if (sdk.Group == nil) != testCase.wantNil {
+				got := "nil"
+				if sdk.Group != nil {
+					got = "a pointer to " + types.Int64PointerValue(sdk.Group).String()
+				}
+				t.Fatalf("sent %s, wantNil=%v", got, testCase.wantNil)
+			}
+		})
+	}
+}

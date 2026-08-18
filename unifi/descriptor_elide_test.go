@@ -15,6 +15,7 @@ import (
 	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	resource_port_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_profile"
 	resource_radius_user "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_radius_user"
+	resource_site_to_site_vpn "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site_to_site_vpn"
 	resource_static_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_static_route"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
@@ -88,6 +89,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				radiusUserKitSpec(), resource_radius_user.RadiusUserResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"site_to_site_vpn": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(siteToSiteVPNKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				siteToSiteVPNKitSpec(), resource_site_to_site_vpn.SiteToSiteVpnResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}
