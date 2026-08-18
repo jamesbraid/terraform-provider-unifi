@@ -3,13 +3,14 @@ package gounifipin
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 // SourceURL is the repository the pinned tag is cloned from.

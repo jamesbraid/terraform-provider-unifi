@@ -2,9 +2,10 @@ package releasequalification
 
 import (
 	"fmt"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 // VerifyMigrationRecoveryReceipt checks a migration/recovery receipt for the

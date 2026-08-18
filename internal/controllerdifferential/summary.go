@@ -3,9 +3,9 @@ package controllerdifferential
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 // maxPreTestDiagnostics caps the lines kept when a suite produced no test
