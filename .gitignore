@@ -137,3 +137,4 @@ build/**/*-ci.json
 /tree-state
 /upgrade-plan-runner
 /workspace-provenance
+/metadata-contract-gen

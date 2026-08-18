@@ -165,26 +165,6 @@ func Test_powerSourceAttrTypes(t *testing.T) {
 	}
 }
 
-func Test_powerSupervisorResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ p, w string }{
-		{"unifi", "unifi_power_supervisor"},
-		{"test", "test_power_supervisor"},
-	} {
-		t.Run(tt.p, func(t *testing.T) {
-			r := &powerSupervisorResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.p},
-				resp,
-			)
-			if resp.TypeName != tt.w {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.w)
-			}
-		})
-	}
-}
-
 func Test_powerSupervisorResource_IdentitySchema(t *testing.T) {
 	r := &powerSupervisorResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

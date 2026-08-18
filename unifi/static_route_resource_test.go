@@ -299,15 +299,6 @@ func TestNewStaticRouteListResource(t *testing.T) {
 	}
 }
 
-func Test_staticRouteFrameworkResource_Metadata(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
-	resp := &fwresource.MetadataResponse{}
-	r.Metadata(context.Background(), fwresource.MetadataRequest{ProviderTypeName: "unifi"}, resp)
-	if resp.TypeName != "unifi_static_route" {
-		t.Errorf("TypeName = %q, want %q", resp.TypeName, "unifi_static_route")
-	}
-}
-
 func Test_staticRouteFrameworkResource_IdentitySchema(t *testing.T) {
 	r := &staticRouteFrameworkResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

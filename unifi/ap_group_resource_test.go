@@ -218,19 +218,6 @@ func TestNewAPGroupListResource(t *testing.T) {
 	_ = got
 }
 
-func Test_apGroupResource_Metadata(t *testing.T) {
-	r := &apGroupResource{}
-	resp := &fwresource.MetadataResponse{}
-	r.Metadata(
-		context.Background(),
-		fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-		resp,
-	)
-	if resp.TypeName != "unifi_ap_group" {
-		t.Errorf("TypeName = %q, want %q", resp.TypeName, "unifi_ap_group")
-	}
-}
-
 func Test_apGroupResource_IdentitySchema(t *testing.T) {
 	r := &apGroupResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

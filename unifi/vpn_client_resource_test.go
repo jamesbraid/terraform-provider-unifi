@@ -293,26 +293,6 @@ func Test_wireguardModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_vpnClientResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ provider, want string }{
-		{"unifi", "unifi_vpn_client"},
-		{"test", "test_vpn_client"},
-	} {
-		t.Run(tt.provider, func(t *testing.T) {
-			r := &vpnClientResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.provider},
-				resp,
-			)
-			if resp.TypeName != tt.want {
-				t.Errorf("got %q, want %q", resp.TypeName, tt.want)
-			}
-		})
-	}
-}
-
 func Test_vpnClientResource_IdentitySchema(t *testing.T) {
 	r := &vpnClientResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

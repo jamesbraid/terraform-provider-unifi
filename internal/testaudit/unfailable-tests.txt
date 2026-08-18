@@ -23,7 +23,6 @@ unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_IdentitySchema
 unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_ImportState	empty-table
 unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_List	empty-table
 unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_ListResourceConfigSchema	no-assertion
-unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_Metadata	no-assertion
 unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_Read	empty-table
 unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_Schema	no-assertion
 unifi/client_qos_rate_resource_test.go	Test_clientQosRateResource_Update	empty-table
@@ -34,7 +33,6 @@ unifi/client_resource_test.go	Test_clientResource_IdentitySchema	no-assertion
 unifi/client_resource_test.go	Test_clientResource_ImportState	empty-table
 unifi/client_resource_test.go	Test_clientResource_List	empty-table
 unifi/client_resource_test.go	Test_clientResource_ListResourceConfigSchema	no-assertion
-unifi/client_resource_test.go	Test_clientResource_Metadata	no-assertion
 unifi/client_resource_test.go	Test_clientResource_Read	empty-table
 unifi/client_resource_test.go	Test_clientResource_Schema	no-assertion
 unifi/client_resource_test.go	Test_clientResource_Update	empty-table
@@ -51,7 +49,6 @@ unifi/device_resource_test.go	Test_deviceResource_IdentitySchema	no-assertion
 unifi/device_resource_test.go	Test_deviceResource_ImportState	empty-table
 unifi/device_resource_test.go	Test_deviceResource_List	empty-table
 unifi/device_resource_test.go	Test_deviceResource_ListResourceConfigSchema	no-assertion
-unifi/device_resource_test.go	Test_deviceResource_Metadata	no-assertion
 unifi/device_resource_test.go	Test_deviceResource_Read	empty-table
 unifi/device_resource_test.go	Test_deviceResource_Schema	no-assertion
 unifi/device_resource_test.go	Test_deviceResource_Update	empty-table

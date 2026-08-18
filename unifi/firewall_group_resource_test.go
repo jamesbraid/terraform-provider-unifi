@@ -121,37 +121,6 @@ func TestNewFirewallGroupListResource(t *testing.T) {
 	_ = got
 }
 
-func Test_firewallGroupResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallGroupResource
-		args args
-	}{
-		{
-			name: "returns correct type name",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != "unifi_firewall_group" {
-				t.Errorf("TypeName = %q, want %q", tt.args.resp.TypeName, "unifi_firewall_group")
-			}
-		})
-	}
-}
-
 func Test_firewallGroupResource_IdentitySchema(t *testing.T) {
 	type args struct {
 		in0  context.Context

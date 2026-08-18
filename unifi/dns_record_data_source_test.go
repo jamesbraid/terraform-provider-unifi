@@ -47,30 +47,6 @@ func TestNewDNSRecordDataSource(t *testing.T) {
 	}
 }
 
-func Test_dnsRecordDataSource_Metadata(t *testing.T) {
-	tests := []struct {
-		providerTypeName string
-		wantTypeName     string
-	}{
-		{"unifi", "unifi_dns_record"},
-		{"test", "test_dns_record"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.providerTypeName, func(t *testing.T) {
-			d := &dnsRecordDataSource{}
-			resp := &fwdatasource.MetadataResponse{}
-			d.Metadata(
-				context.Background(),
-				fwdatasource.MetadataRequest{ProviderTypeName: tt.providerTypeName},
-				resp,
-			)
-			if resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_dnsRecordDataSource_Schema(t *testing.T) {
 	d := &dnsRecordDataSource{}
 	resp := &fwdatasource.SchemaResponse{}

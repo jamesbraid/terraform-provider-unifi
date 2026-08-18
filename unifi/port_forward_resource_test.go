@@ -732,41 +732,6 @@ func Test_portForwardDestinationIPModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_portForwardResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name string
-		r    *portForwardResource
-		args args
-	}{
-		{
-			name: "sets correct type name",
-			r:    &portForwardResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != "unifi_port_forward" {
-				t.Errorf(
-					"Metadata() TypeName = %v, want %v",
-					tt.args.resp.TypeName,
-					"unifi_port_forward",
-				)
-			}
-		})
-	}
-}
-
 func Test_portForwardResource_IdentitySchema(t *testing.T) {
 	type args struct {
 		in0  context.Context

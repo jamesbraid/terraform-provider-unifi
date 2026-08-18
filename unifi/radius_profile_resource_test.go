@@ -492,26 +492,6 @@ func TestNewRadiusProfileListResource(t *testing.T) {
 	}
 }
 
-func Test_radiusProfileResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ provider, want string }{
-		{"unifi", "unifi_radius_profile"},
-		{"test", "test_radius_profile"},
-	} {
-		t.Run(tt.provider, func(t *testing.T) {
-			r := &radiusProfileResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.provider},
-				resp,
-			)
-			if resp.TypeName != tt.want {
-				t.Errorf("got %q, want %q", resp.TypeName, tt.want)
-			}
-		})
-	}
-}
-
 func Test_radiusProfileResource_IdentitySchema(t *testing.T) {
 	r := &radiusProfileResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

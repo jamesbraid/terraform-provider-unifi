@@ -176,26 +176,6 @@ func TestNewWireguardPeerListResource(t *testing.T) {
 	}
 }
 
-func Test_wireguardPeerResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ p, w string }{
-		{"unifi", "unifi_wireguard_peer"},
-		{"test", "test_wireguard_peer"},
-	} {
-		t.Run(tt.p, func(t *testing.T) {
-			r := &wireguardPeerResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.p},
-				resp,
-			)
-			if resp.TypeName != tt.w {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.w)
-			}
-		})
-	}
-}
-
 func Test_wireguardPeerResource_IdentitySchema(t *testing.T) {
 	r := &wireguardPeerResource{}
 	resp := &fwresource.IdentitySchemaResponse{}

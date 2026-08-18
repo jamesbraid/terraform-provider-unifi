@@ -620,34 +620,6 @@ func Test_dhcpWanModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_wanResource_Metadata(t *testing.T) {
-	tests := []struct {
-		name             string
-		providerTypeName string
-		wantTypeName     string
-	}{
-		{
-			name:             "type name includes provider prefix",
-			providerTypeName: "unifi",
-			wantTypeName:     "unifi_wan",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &wanResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.providerTypeName},
-				resp,
-			)
-			if resp.TypeName != tt.wantTypeName {
-				t.Errorf("Metadata() TypeName = %v, want %v", resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_wanResource_IdentitySchema(t *testing.T) {
 	t.Run("does not panic and returns identity attributes", func(t *testing.T) {
 		r := &wanResource{}
