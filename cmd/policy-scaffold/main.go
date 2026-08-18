@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"io"
 	"os"
 	"sort"
@@ -152,7 +153,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	placed := map[string]bool{}
 	unplaced := []string{}
 
-	for _, name := range sortedKeys(attributes) {
+	for _, name := range cmdio.SortedKeys(attributes) {
 		attribute := object(attributes[name])
 		field, matched := observed[name]
 		if !matched {
@@ -176,7 +177,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		placed[name] = true
 	}
 
-	for _, name := range sortedKeys(blockTypes) {
+	for _, name := range cmdio.SortedKeys(blockTypes) {
 		unplaced = append(unplaced, name+" (block)")
 	}
 
@@ -262,7 +263,7 @@ func nestedMembers(members map[string]any, field bootstrapField) []map[string]an
 		observed[inner.Name] = true
 	}
 	out := []map[string]any{}
-	for _, name := range sortedKeys(members) {
+	for _, name := range cmdio.SortedKeys(members) {
 		if !observed[name] {
 			continue
 		}
@@ -366,15 +367,6 @@ func baselineString(value any) string {
 func structuralName(field map[string]any) string {
 	name, _ := field["structural_name"].(string)
 	return name
-}
-
-func sortedKeys(m map[string]any) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func sortedNames[T any](m map[string]T) []string {

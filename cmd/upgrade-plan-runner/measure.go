@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
@@ -73,11 +71,11 @@ func measure(ctx context.Context, logger *log.Logger, root string, settings sett
 		return 1, err
 	}
 
-	oldSHA256, err := fileDigest(filepath.Join(oldPlugins, upgradeplan.ProviderBinaryName))
+	oldSHA256, err := cmdio.FileDigest(filepath.Join(oldPlugins, upgradeplan.ProviderBinaryName))
 	if err != nil {
 		return 1, err
 	}
-	newSHA256, err := fileDigest(filepath.Join(newPlugins, upgradeplan.ProviderBinaryName))
+	newSHA256, err := cmdio.FileDigest(filepath.Join(newPlugins, upgradeplan.ProviderBinaryName))
 	if err != nil {
 		return 1, err
 	}
@@ -291,15 +289,6 @@ func isExecutable(path string) bool {
 	}
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
-}
-
-func fileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:]), nil
 }
 
 func indent(logger *log.Logger, text string) {

@@ -158,7 +158,7 @@ func measureEnvironment(o options, releasedAuthority string) (schemaparity.Envir
 		if err != nil {
 			return env, fmt.Errorf("locate %s: %w", cli.bin, err)
 		}
-		digest, err := fileDigest(path)
+		digest, err := cmdio.FileDigest(path)
 		if err != nil {
 			return env, err
 		}
@@ -312,22 +312,22 @@ func run(o options) error {
 	if o.releasedAuthorityBinary != "" {
 		releasedAuthority = "published_archive"
 		releasedStaged = o.releasedAuthorityBinary
-		injected, err := fileDigest(releasedStaged)
+		injected, err := cmdio.FileDigest(releasedStaged)
 		if err != nil {
 			return err
 		}
 		findings = append(findings, schemaparity.CheckProvenance(
 			"published-archive", baseline.Provider.ReleaseBinarySHA256, injected)...)
 	}
-	authoritySHA256, err := fileDigest(releasedStaged)
+	authoritySHA256, err := cmdio.FileDigest(releasedStaged)
 	if err != nil {
 		return err
 	}
-	releasedRebuildSHA256, err := fileDigest(rebuilt["released"])
+	releasedRebuildSHA256, err := cmdio.FileDigest(rebuilt["released"])
 	if err != nil {
 		return err
 	}
-	candidateSHA256, err := fileDigest(rebuilt["candidate"])
+	candidateSHA256, err := cmdio.FileDigest(rebuilt["candidate"])
 	if err != nil {
 		return err
 	}
@@ -430,7 +430,7 @@ func run(o options) error {
 		return fmt.Errorf("-inventory is required: the receipt records which evidence inventory " +
 			"this run was measured against, and there is no sensible default for that")
 	}
-	inventorySHA256, err := fileDigest(o.inventoryPath)
+	inventorySHA256, err := cmdio.FileDigest(o.inventoryPath)
 	if err != nil {
 		return err
 	}
@@ -547,7 +547,7 @@ func buildTwice(work, label, src string) (string, string, error) {
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return "", "", fmt.Errorf("build %s (%s): %w\n%s", label, suffix, err, out)
 		}
-		sum, err := fileDigest(target)
+		sum, err := cmdio.FileDigest(target)
 		if err != nil {
 			return "", "", err
 		}
@@ -643,15 +643,6 @@ provider "unifi" {}
 func bytesDigest(raw []byte) string {
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
-}
-
-func fileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:]), nil
 }
 
 // cliVersion reads `version -json`, not the first line of `version`.

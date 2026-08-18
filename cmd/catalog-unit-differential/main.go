@@ -124,7 +124,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	inventorySHA256, err := fileDigest(filepath.Join(repo, *inventoryPath))
+	inventorySHA256, err := cmdio.FileDigest(filepath.Join(repo, *inventoryPath))
 	if err != nil {
 		return err
 	}
@@ -241,12 +241,4 @@ func goEnvPair() (string, error) {
 		return "", err
 	}
 	return goos + "/" + goarch, nil
-}
-
-func fileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	return unitdifferential.Digest(raw), nil
 }

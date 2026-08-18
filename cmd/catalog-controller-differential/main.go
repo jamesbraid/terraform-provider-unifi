@@ -319,10 +319,10 @@ func measureMachine(o options) (controllerdifferential.Environment, []string, er
 		RyukImage:         o.ryukImage,
 		RyukImageID:       imageID(o.ryukImage),
 	}
-	if environment.HerderSHA256, err = fileDigest(o.herderBin); err != nil {
+	if environment.HerderSHA256, err = cmdio.FileDigest(o.herderBin); err != nil {
 		return environment, nil, err
 	}
-	if environment.TerraformBinarySHA256, err = fileDigest(o.terraformBin); err != nil {
+	if environment.TerraformBinarySHA256, err = cmdio.FileDigest(o.terraformBin); err != nil {
 		return environment, nil, err
 	}
 	return environment, nil, nil
@@ -406,15 +406,6 @@ func imageID(reference string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
-}
-
-func fileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:]), nil
 }
 
 func digestOf(value any) (string, error) {

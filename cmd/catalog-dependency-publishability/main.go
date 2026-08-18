@@ -175,7 +175,7 @@ func resolve(repo, modulePath, declaredVersion string) (dependencypin.Resolved, 
 	archive := filepath.Join(versionRoot, declaredVersion+".zip")
 	info := filepath.Join(versionRoot, declaredVersion+".info")
 
-	if resolved.ArchiveSHA256, err = dependencypin.FileDigest(archive); err != nil {
+	if resolved.ArchiveSHA256, err = cmdio.FileDigest(archive); err != nil {
 		return resolved, fmt.Errorf("module archive: %w", err)
 	}
 	if resolved.TreeSHA256, err = dependencypin.TreeDigest(resolved.Dir); err != nil {
