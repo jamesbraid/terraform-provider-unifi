@@ -67,6 +67,21 @@ func WireNameProblems[M any, S any](spec Spec[M, S]) []string {
 				spec.TypeName, field.WireName(), tag))
 		}
 	}
+	// The names a hook contributes are checked the same way. A typo here is
+	// invisible: the mask simply lacks the field and the write does nothing.
+	known := map[string]struct{}{}
+	for _, tag := range tags {
+		known[tag] = struct{}{}
+	}
+	for _, name := range spec.AlwaysWire {
+		if _, ok := known[name]; !ok {
+			problems = append(problems, fmt.Sprintf(
+				"%s: AlwaysWire names %q, which is not a json field of the SDK struct; "+
+					"the mask would silently omit it",
+				spec.TypeName, name))
+		}
+	}
+
 	sort.Strings(problems)
 	return problems
 }

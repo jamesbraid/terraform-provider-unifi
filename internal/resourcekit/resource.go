@@ -96,6 +96,16 @@ type Spec[M any, S any] struct {
 	BeforeSend   func(ctx context.Context, config, plan *M, sdk *S, prefetched any) diag.Diagnostics
 	AfterReceive func(ctx context.Context, sdk *S, model *M, prefetched any) diag.Diagnostics
 
+	// AlwaysWire names wire fields that BeforeSend sets, so they join the
+	// update mask whether or not the plan mentions them. Only for values a
+	// hook derives: a field the practitioner sets belongs in Fields, where
+	// SetInPlan decides and an unchanged attribute is left alone.
+	//
+	// WireNameProblems checks every name against the SDK's json tags, because
+	// a typo here would drop the field from the mask -- the same silent
+	// write-drop, reached through the fix for it.
+	AlwaysWire []string
+
 	// ID, Site and Timeouts reach the three attributes every managed surface
 	// has and no policy declares as a field -- they are provider_owned in the
 	// mapping, which is why they are here rather than in Fields.
@@ -128,6 +138,29 @@ func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
 		name := field.WireName()
 		if _, duplicate := seen[name]; duplicate {
 			return nil, fmt.Errorf("%s patch names %q twice", s.TypeName, name)
+		}
+		seen[name] = struct{}{}
+		fields = append(fields, name)
+	}
+	// FIELDS A HOOK DERIVES JOIN THE MASK UNCONDITIONALLY, because nothing in
+	// the plan can put them there.
+	//
+	// port_profile is the case. Its BeforeSend computes tagged_vlan_mgmt,
+	// excluded_networkconf_ids and forward from tagged_networkconf_ids, which
+	// is not a Field at all -- it has no SDK counterpart and is reconstructed
+	// on read. So the practitioner changes an attribute that is in the plan,
+	// and the three attributes that actually carry the change are not.
+	//
+	// They usually would be: all three are Optional+Computed, so a plan whose
+	// config omits them inherits the prior state value. But the read mapper
+	// nulls each one when the controller reports it empty, so after an import
+	// or a create that came back empty the state holds null, the plan holds
+	// null, and the derived value is computed and then not sent. An update
+	// that silently writes nothing is exactly what the mask exists to prevent,
+	// so this does not depend on inferring what the framework puts in a plan.
+	for _, name := range s.AlwaysWire {
+		if _, duplicate := seen[name]; duplicate {
+			continue
 		}
 		seen[name] = struct{}{}
 		fields = append(fields, name)

@@ -400,3 +400,37 @@ func TestReadRunsPrefetchAndAfterReceive(t *testing.T) {
 		t.Error("Read called BeforeSend, which sends nothing")
 	}
 }
+
+// AlwaysWire is what carries a hook-derived value onto the wire. Without it a
+// practitioner changes an attribute that IS in the plan while the attributes
+// carrying the change are not, and the update writes nothing.
+func TestWireFieldsCarriesTheFieldsAHookDerives(t *testing.T) {
+	spec := kitResource(Backend[kitSDK]{}).Spec
+	planWithNothingSet := &kitModel{Name: types.StringNull()}
+
+	// The control: with nothing planned and nothing declared, there is no mask
+	// at all -- so the case below cannot pass by the field being there anyway.
+	if _, err := spec.WireFields(planWithNothingSet); err == nil {
+		t.Fatal("an empty plan produced a mask, so the assertion below proves nothing")
+	}
+
+	spec.AlwaysWire = []string{"name"}
+	fields, err := spec.WireFields(planWithNothingSet)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	if len(fields) != 1 || fields[0] != "name" {
+		t.Fatalf("mask = %v, want [name] from AlwaysWire alone", fields)
+	}
+
+	// And it must not duplicate a field the plan already set, because
+	// WireFields refuses a mask naming anything twice.
+	planWithNameSet := &kitModel{Name: types.StringValue("x")}
+	fields, err = spec.WireFields(planWithNameSet)
+	if err != nil {
+		t.Fatalf("a field both planned and declared produced an error: %v", err)
+	}
+	if len(fields) != 1 {
+		t.Errorf("mask = %v, want the field named once", fields)
+	}
+}
