@@ -90,6 +90,28 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 				spec.TypeName, field.WireName(), name))
 			continue
 		}
+		// A READ DEFAULT REPLACES THE ELISION RATHER THAN JOINING IT, so the
+		// rule below would be checking a value that cannot be reached. What
+		// has to hold instead is the pair of flags that make the substitution
+		// legal at all.
+		//
+		// COMPUTED, because the value is one the provider invents: the config
+		// never mentioned the attribute, so a state carrying "default" against
+		// a null config is an inconsistent result after apply unless Terraform
+		// has been told the provider may supply it.
+		//
+		// OPTIONAL, because a Required attribute is always in the config, so
+		// the empty read the default exists to catch cannot happen -- a
+		// default there is dead code claiming to be a behaviour.
+		if def := value.FieldByName("ReadDefault"); def.IsValid() && def.Kind() == reflect.String && def.String() != "" {
+			if !attribute.IsOptional() || !attribute.IsComputed() {
+				problems = append(problems, fmt.Sprintf(
+					"%s.%s substitutes %q on an empty read but the schema declares it %s; "+
+						"a provider-supplied value needs Optional+Computed",
+					spec.TypeName, name, def.String(), requiredness(attribute)))
+			}
+			continue
+		}
 		// NULLZERO IS THE NARROW CASE, NOT THE BROAD ONE. Only an attribute that
 		// is Optional and NOT Computed may treat a zero as an absence: there,
 		// a zero from the API against a config that never mentioned the

@@ -90,6 +90,20 @@ type StringField[M any, S any] struct {
 	// accessor: that one takes *S and can decide, this one returns a pointer
 	// and cannot.
 	WriteWhen func(*M) bool
+
+	// ReadDefault is the value the model takes when the controller reports the
+	// attribute as empty. Empty means the field has none, which is unambiguous
+	// because an empty default is exactly KeepZero.
+	//
+	// IT BELONGS TO THE FIELD RATHER THAN TO A HOOK, and that is the whole
+	// reason it exists as a capability. AfterReceive would have served the
+	// resource path, but List builds its models from ToModel WITHOUT running
+	// any hook -- so the same object would have read one way through the
+	// resource and another way through the list, which is the hook-symmetry
+	// defect this kit already had once. ToModel is the single place both paths
+	// share, so putting the substitution here makes it true everywhere by
+	// construction rather than by remembering to wire it up.
+	ReadDefault string
 }
 
 func (f StringField[M, S]) WireName() string { return f.Wire }
@@ -108,6 +122,12 @@ func (f StringField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagn
 
 func (f StringField[M, S]) ToModel(_ context.Context, sdk *S, model *M) diag.Diagnostics {
 	raw := *f.SDK(sdk)
+	if raw == "" && f.ReadDefault != "" {
+		// Ahead of the elision, because a field carrying a default has no
+		// absence to represent: the substitute IS what an empty read means.
+		*f.Model(model) = types.StringValue(f.ReadDefault)
+		return nil
+	}
 	if raw == "" && bool(f.Elide) {
 		*f.Model(model) = types.StringNull()
 		return nil
