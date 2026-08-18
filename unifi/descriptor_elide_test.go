@@ -11,6 +11,7 @@ import (
 	resource_client_qos_rate "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client_qos_rate"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
 	resource_firewall_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_group"
+	resource_firewall_rule "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_rule"
 	resource_firewall_zone "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_zone"
 	resource_static_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_static_route"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -55,6 +56,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				clientQosRateKitSpec(), resource_client_qos_rate.ClientQosRateResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"firewall_rule": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(firewallRuleKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				firewallRuleKitSpec(), resource_firewall_rule.FirewallRuleResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}
