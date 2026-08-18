@@ -89,7 +89,7 @@ func dnsRecordKitSpec() resourcekit.Spec[dnsRecordKitModel, ui.DNSRecord] {
 				Wire:  "record_type",
 				Model: func(m *dnsRecordKitModel) *types.String { return &m.RecordType },
 				SDK:   func(s *ui.DNSRecord) *string { return &s.RecordType },
-				Elide: resourcekit.NullZero,
+				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.DurationField[dnsRecordKitModel, ui.DNSRecord]{
 				Wire:  "ttl",
