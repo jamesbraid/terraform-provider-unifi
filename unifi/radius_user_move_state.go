@@ -9,7 +9,7 @@ import (
 
 // Ensure unifi_radius_user advertises move support so practitioners can migrate
 // a deprecated unifi_account resource with a `moved` block.
-var _ resource.ResourceWithMoveState = &radiusUserResource{}
+var _ resource.ResourceWithMoveState = &radiusUserKitResource{}
 
 // MoveState lets practitioners migrate the deprecated `unifi_account` resource to
 // `unifi_radius_user` in place (via a `moved` block) instead of destroy/recreate.
@@ -23,7 +23,7 @@ var _ resource.ResourceWithMoveState = &radiusUserResource{}
 // this resource (see account_deprecated.go), so the source state can be copied
 // across verbatim. We declare the source schema so the framework decodes it into
 // MoveStateRequest.SourceState for us.
-func (r *radiusUserResource) MoveState(ctx context.Context) []resource.StateMover {
+func (r *radiusUserKitResource) MoveState(ctx context.Context) []resource.StateMover {
 	schemaResp := &resource.SchemaResponse{}
 	r.Schema(ctx, resource.SchemaRequest{}, schemaResp)
 
@@ -39,7 +39,7 @@ func (r *radiusUserResource) MoveState(ctx context.Context) []resource.StateMove
 // It is deliberately conservative: if the source provider, type or schema version
 // is anything else, it returns without state so the framework treats this mover
 // as skipped (and reports "implementation not found" rather than a bad move).
-func (r *radiusUserResource) moveFromAccount(
+func (r *radiusUserKitResource) moveFromAccount(
 	ctx context.Context,
 	req resource.MoveStateRequest,
 	resp *resource.MoveStateResponse,
@@ -67,7 +67,7 @@ func (r *radiusUserResource) moveFromAccount(
 		return
 	}
 
-	var data radiusUserResourceModel
+	var data radiusUserKitModel
 	resp.Diagnostics.Append(req.SourceState.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return

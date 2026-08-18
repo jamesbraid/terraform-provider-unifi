@@ -42,7 +42,7 @@ var FrozenTypeNames = map[string]string{
 	"radiusProfileDataSource":     "unifi_radius_profile",
 	"radiusProfileResource":       "unifi_radius_profile",
 	"radiusUserDataSource":        "unifi_radius_user",
-	"radiusUserResource":          "unifi_radius_user",
+	"radiusUserKitResource":       "unifi_radius_user",
 	"settingResource":             "unifi_setting",
 	"siteFrameworkResource":       "unifi_site",
 	"siteToSiteVPNResource":       "unifi_site_to_site_vpn",

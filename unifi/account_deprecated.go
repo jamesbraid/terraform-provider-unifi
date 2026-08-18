@@ -11,11 +11,17 @@ import (
 // "unifi_account" resource type name as a deprecated alias. This avoids a
 // breaking change for users who already have unifi_account in their state.
 type deprecatedAccountResource struct {
-	radiusUserResource
+	radiusUserKitResource
 }
 
+// THE EMBEDDED RESOURCE MUST BE BUILT, NOT ZERO-VALUED. The old
+// radiusUserResource was a single client pointer, so &deprecatedAccountResource{}
+// was a working object. The kit resource carries a Spec, a SchemaSpec and a
+// ListSurface, and a zero one has no fields, no backend and no type name --
+// every call would either panic or quietly do nothing, on a resource that
+// exists precisely to keep old configurations working.
 func NewDeprecatedAccountResource() resource.Resource {
-	return &deprecatedAccountResource{}
+	return &deprecatedAccountResource{radiusUserKitResource: *newRadiusUserKitResource()}
 }
 
 func (r *deprecatedAccountResource) Metadata(
@@ -32,7 +38,7 @@ func (r *deprecatedAccountResource) Schema(
 	resp *resource.SchemaResponse,
 ) {
 	// Get the base schema from the real resource
-	r.radiusUserResource.Schema(ctx, req, resp)
+	r.radiusUserKitResource.Schema(ctx, req, resp)
 
 	// Add deprecation message
 	resp.Schema.DeprecationMessage = "Use unifi_radius_user instead. This resource will be removed in a future version."
