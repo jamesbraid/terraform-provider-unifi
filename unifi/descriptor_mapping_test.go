@@ -8,11 +8,23 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/sdkshape"
 )
+
+const goUnifiPackage = "github.com/ubiquiti-community/go-unifi/unifi"
+
+// loadSDK resolves the go-unifi package once. It is the slowest thing here by
+// an order of magnitude and both tests need it.
+var loadSDK = sync.OnceValues(func() (*sdkshape.Package, error) {
+	return sdkshape.Load(goUnifiPackage)
+})
 
 // The descriptors and the mapping artifacts must agree on which fields exist
 // and what kind each one is.
@@ -28,6 +40,16 @@ import (
 // far have all been transcription rather than logic -- a wire name, an elide
 // value, a count that moved between readings. A generator removes the class; a
 // check catches the instance, and only one of those can be had today.
+//
+// EVERY COLUMN IS RESOLVED, NONE IS INFERRED, AND THAT REPLACED A WORSE
+// INSTRUMENT. The first version scored the Go identifiers against a naming
+// convention with an initialism table and reported 17 of 18 with one recorded
+// exception. The table was written after reading the descriptors it scored, so
+// it partly measured a rule fitted to its own data -- and the "exception" was
+// not one. dns_record's ttl is TTL on the model and Ttl on the SDK because those
+// are the identifiers those two structs declare. Model names now come from the
+// descriptor's own tfsdk tags and SDK names from internal/sdkshape, which
+// resolves real types rather than matching text.
 //
 // IT READS THE SOURCE, NOT THE RUNNING SPEC, AND THAT IS A REAL LIMIT. The
 // field kind and the SDK identifier are not on resourcekit's Field interface --
@@ -57,6 +79,14 @@ type descriptorField struct {
 	Wrapper string // ReadOnly, or empty
 }
 
+// descriptor is one parsed *_descriptor.go.
+type descriptor struct {
+	TypeName  string
+	SDKType   string            // the Spec's second type argument, e.g. ClientGroup
+	ModelTags map[string]string // model Go field -> tfsdk tag
+	Fields    []descriptorField
+}
+
 // mappingField is one entry of a *.mapping.json.
 type mappingField struct {
 	StructuralName string `json:"structural_name"`
@@ -66,22 +96,32 @@ type mappingField struct {
 	Disposition    string `json:"disposition"`
 }
 
-// TestEveryDescriptorAgreesWithItsMapping is the assertion half.
+// TestEveryDescriptorAgreesWithItsSources is the assertion half.
 //
 // Two directions, for the reason descriptor_policy_test.go gives for its own
 // pair: a descriptor naming a wire the mapping does not have is a typo that
 // compiles, and a mapping field with no descriptor entry is an attribute that
 // silently stops round-tripping. Neither direction can see the other's failure.
-func TestEveryDescriptorAgreesWithItsMapping(t *testing.T) {
+func TestEveryDescriptorAgreesWithItsSources(t *testing.T) {
 	descriptors := loadDescriptors(t)
 	if len(descriptors) == 0 {
 		t.Fatal("no descriptors were parsed, so every verdict below would be vacuous")
 	}
 
+	sdk, err := loadSDK()
+	if err != nil {
+		t.Fatalf("resolving %s: %v", goUnifiPackage, err)
+	}
+
 	for _, name := range sortedDescriptorNames(descriptors) {
-		fields := descriptors[name]
+		desc := descriptors[name]
 		t.Run(name, func(t *testing.T) {
 			mapping := loadMapping(t, name)
+			sdkMembers, ok := sdk.Members(desc.SDKType)
+			if !ok {
+				t.Fatalf("the SDK has no struct %s, which this descriptor declares as its type "+
+					"argument; every SDK comparison below would be vacuous", desc.SDKType)
+			}
 
 			// _id and site are the Spec's own ID and Site closures rather than
 			// Fields entries, so they are not expected in the slice.
@@ -97,7 +137,7 @@ func TestEveryDescriptorAgreesWithItsMapping(t *testing.T) {
 			}
 
 			got := map[string]descriptorField{}
-			for _, f := range fields {
+			for _, f := range desc.Fields {
 				got[f.Wire] = f
 			}
 
@@ -137,36 +177,32 @@ func TestEveryDescriptorAgreesWithItsMapping(t *testing.T) {
 				// mutation to src_mac_address keep fifty-one packages green.
 				// Requiring the SDK identifier to be the conventional rendering of
 				// the wire name ties each entry to its own field.
-				if wantIdent, ok := sdkIdentException[name+"."+wire]; ok {
-					if f.SDK != wantIdent {
-						t.Errorf("%s: SDK identifier is %s; this field is a recorded exception "+
-							"and should be %s. If the SDK renamed it, update the exception "+
-							"and say why", wire, f.SDK, wantIdent)
-					}
+				member, ok := sdkMembers[wire]
+				if !ok {
+					t.Errorf("%s: the SDK struct %s has no JSON member of this name, so this "+
+						"entry names a field the controller never reads", wire, desc.SDKType)
 					continue
 				}
-				if conventional := goIdent(wire); f.SDK != conventional {
-					t.Errorf("%s: SDK identifier is %s, and the conventional rendering of the "+
-						"wire name is %s. Either this entry names another field's SDK member -- "+
-						"which no other check here can see -- or the SDK spells it unusually "+
-						"and it belongs in sdkIdentException with a reason", wire, f.SDK, conventional)
+				if f.SDK != member.GoName {
+					t.Errorf("%s: the entry names SDK field %s, and %s's member %q is carried "+
+						"by %s. Either this entry is paired with another field, or the SDK "+
+						"renamed it", wire, f.SDK, desc.SDKType, wire, member.GoName)
+				}
+				if member.Pointer != strings.Contains(f.Kind, "Ptr") {
+					t.Errorf("%s: the SDK field is pointer=%v and the descriptor uses %s; a "+
+						"pointer distinguishes absent from zero and the two must agree",
+						wire, member.Pointer, f.Kind)
+				}
+				if tag, ok := desc.ModelTags[f.Model]; !ok {
+					t.Errorf("%s: the entry names model field %s, which the model struct does "+
+						"not declare", wire, f.Model)
+				} else if tag != want.TerraformName {
+					t.Errorf("%s: the entry's model field %s is tfsdk:%q and the mapping's "+
+						"terraform name is %q", wire, f.Model, tag, want.TerraformName)
 				}
 			}
 		})
 	}
-}
-
-// sdkIdentException records the SDK members whose names the naming convention
-// cannot produce. Each one is a fact about the go-unifi struct, not a choice
-// made here.
-//
-// THERE IS EXACTLY ONE TODAY, and it is the sharpest evidence that the Go
-// identifier is not derivable from the artifacts. dns_record's ttl is TTL on the
-// model and Ttl on the SDK -- the same field, two spellings, so no single
-// function of the wire name can produce both sides. A generator needs the SDK
-// struct for this column; it cannot be inferred.
-var sdkIdentException = map[string]string{
-	"dns_record.ttl": "Ttl",
 }
 
 // derivableKind is the field kind the mapping alone implies, or "" where the
@@ -213,16 +249,22 @@ func TestDescriptorDerivabilityIsReported(t *testing.T) {
 		t.Fatal("no descriptors were parsed, so the report below would describe nothing")
 	}
 
-	var total, wireOK, kindOK, modelConventional, sdkConventional int
-	var exceptions []string
+	sdk, err := loadSDK()
+	if err != nil {
+		t.Fatalf("resolving %s: %v", goUnifiPackage, err)
+	}
+
+	var total, wireOK, kindOK, pointerNeedsSDK, identNeedsSDK int
+	var needsSDK []string
 
 	for _, name := range sortedDescriptorNames(descriptors) {
-		mapping := loadMapping(t, name)
+		desc := descriptors[name]
 		byWire := map[string]mappingField{}
-		for _, f := range mapping {
+		for _, f := range loadMapping(t, name) {
 			byWire[f.StructuralName] = f
 		}
-		for _, f := range descriptors[name] {
+		members, _ := sdk.Members(desc.SDKType)
+		for _, f := range desc.Fields {
 			total++
 			want, ok := byWire[f.Wire]
 			if !ok {
@@ -232,59 +274,38 @@ func TestDescriptorDerivabilityIsReported(t *testing.T) {
 			if k := derivableKind(want); k != "" && kindAgrees(f.Kind, k) {
 				kindOK++
 			}
-			if goIdent(want.TerraformName) == f.Model {
-				modelConventional++
-			} else {
-				exceptions = append(exceptions, fmt.Sprintf(
-					"%s.%s model is %s, convention gives %s", name, f.Wire, f.Model,
-					goIdent(want.TerraformName)))
+			member, ok := members[f.Wire]
+			if !ok {
+				continue
 			}
-			if goIdent(want.StructuralName) == f.SDK {
-				sdkConventional++
-			} else {
-				exceptions = append(exceptions, fmt.Sprintf(
-					"%s.%s SDK is %s, convention gives %s", name, f.Wire, f.SDK,
-					goIdent(want.StructuralName)))
+			if member.Pointer {
+				pointerNeedsSDK++
+				needsSDK = append(needsSDK, fmt.Sprintf(
+					"%s.%s is *T in the SDK and %s in the mapping", name, f.Wire, want.StructuralType))
+			}
+			// The Go identifier is a fact about the struct, not a rendering of
+			// the wire name. Count where the two differ by more than case and
+			// underscores, because that is what no generator can infer.
+			if !strings.EqualFold(strings.ReplaceAll(f.Wire, "_", ""), member.GoName) {
+				identNeedsSDK++
+				needsSDK = append(needsSDK, fmt.Sprintf(
+					"%s.%s is %s in the SDK", name, f.Wire, member.GoName))
 			}
 		}
 	}
 
-	sort.Strings(exceptions)
+	sort.Strings(needsSDK)
 	t.Logf("%d descriptor(s), %d field(s)", len(descriptors), total)
-	t.Logf("  wire name from structural_name   %d/%d", wireOK, total)
-	t.Logf("  field kind from the type pair    %d/%d  (pointer-ness excluded; not in the mapping)",
-		kindOK, total)
-	t.Logf("  model identifier by convention   %d/%d", modelConventional, total)
-	t.Logf("  SDK identifier by convention     %d/%d", sdkConventional, total)
-	if len(exceptions) > 0 {
-		t.Logf("  identifiers convention cannot produce:\n    %s", strings.Join(exceptions, "\n    "))
+	t.Logf("  wire name from structural_name       %d/%d", wireOK, total)
+	t.Logf("  field kind from the type pair        %d/%d  (pointer-ness excluded)", kindOK, total)
+	t.Logf("  pointer-ness the mapping cannot say  %d/%d", pointerNeedsSDK, total)
+	t.Logf("  Go identifier not a case-fold of the wire  %d/%d", identNeedsSDK, total)
+	if len(needsSDK) > 0 {
+		t.Logf("  facts only the SDK struct carries:\n    %s", strings.Join(needsSDK, "\n    "))
 	}
 }
 
-// goIdent renders a snake_case artifact name the way Go names are written here,
-// including the initialisms this tree actually uses. It is the convention a
-// generator would apply, written down so the exceptions can be counted rather
-// than guessed at.
-func goIdent(snake string) string {
-	initialisms := map[string]string{
-		"id": "ID", "ids": "IDs", "ttl": "TTL", "qos": "QOS",
-		"sdk": "SDK", "api": "API", "ip": "IP", "url": "URL", "vpn": "VPN",
-	}
-	parts := strings.Split(snake, "_")
-	for i, part := range parts {
-		if up, ok := initialisms[part]; ok {
-			parts[i] = up
-			continue
-		}
-		if part == "" {
-			continue
-		}
-		parts[i] = strings.ToUpper(part[:1]) + part[1:]
-	}
-	return strings.Join(parts, "")
-}
-
-func sortedDescriptorNames(m map[string][]descriptorField) []string {
+func sortedDescriptorNames(m map[string]descriptor) []string {
 	names := make([]string, 0, len(m))
 	for name := range m {
 		names = append(names, name)
@@ -320,19 +341,20 @@ func loadMapping(t *testing.T, surface string) []mappingField {
 // two managed fields: they were wrapped in resourcekit.ReadOnly, the extractor
 // saw a CallExpr where it wanted a composite literal, and the under-count read
 // as a defect in the descriptor rather than in the reader.
-func loadDescriptors(t *testing.T) map[string][]descriptorField {
+func loadDescriptors(t *testing.T) map[string]descriptor {
 	t.Helper()
 	paths, err := filepath.Glob("*_descriptor.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := map[string][]descriptorField{}
+	out := map[string]descriptor{}
 	for _, path := range paths {
 		fset := token.NewFileSet()
 		file, err := parser.ParseFile(fset, path, nil, 0)
 		if err != nil {
 			t.Fatalf("parsing %s: %v", path, err)
 		}
+		modelTags := modelTagsIn(file)
 		ast.Inspect(file, func(n ast.Node) bool {
 			lit, ok := n.(*ast.CompositeLit)
 			if !ok {
@@ -341,8 +363,11 @@ func loadDescriptors(t *testing.T) map[string][]descriptorField {
 			if exprName(lit.Type) != "Spec" {
 				return true
 			}
-			var typeName string
-			var fields []descriptorField
+			desc := descriptor{ModelTags: map[string]string{}}
+			if args, ok := lit.Type.(*ast.IndexListExpr); ok && len(args.Indices) == 2 {
+				desc.SDKType = exprName(args.Indices[1])
+				desc.ModelTags = modelTags[exprName(args.Indices[0])]
+			}
 			for _, el := range lit.Elts {
 				kv, ok := el.(*ast.KeyValueExpr)
 				if !ok {
@@ -355,7 +380,7 @@ func loadDescriptors(t *testing.T) map[string][]descriptorField {
 				switch key.Name {
 				case "TypeName":
 					if bl, ok := kv.Value.(*ast.BasicLit); ok {
-						typeName, _ = strconv.Unquote(bl.Value)
+						desc.TypeName, _ = strconv.Unquote(bl.Value)
 					}
 				case "Fields":
 					slice, ok := kv.Value.(*ast.CompositeLit)
@@ -363,16 +388,52 @@ func loadDescriptors(t *testing.T) map[string][]descriptorField {
 						t.Fatalf("%s: Fields is %T, not a composite literal", path, kv.Value)
 					}
 					for _, item := range slice.Elts {
-						fields = append(fields, parseField(t, path, item))
+						desc.Fields = append(desc.Fields, parseField(t, path, item))
 					}
 				}
 			}
-			if typeName != "" {
-				out[typeName] = fields
+			if desc.TypeName != "" {
+				if desc.SDKType == "" {
+					t.Fatalf("%s: could not read the Spec's SDK type argument", path)
+				}
+				out[desc.TypeName] = desc
 			}
 			return true
 		})
 	}
+	return out
+}
+
+// modelTagsIn maps each struct type in the file to its Go field -> tfsdk tag.
+// The model identifiers are read here rather than inferred, which is what
+// removes the fitted naming convention this check used to score against.
+func modelTagsIn(file *ast.File) map[string]map[string]string {
+	out := map[string]map[string]string{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		spec, ok := n.(*ast.TypeSpec)
+		if !ok {
+			return true
+		}
+		st, ok := spec.Type.(*ast.StructType)
+		if !ok || st.Fields == nil {
+			return true
+		}
+		tags := map[string]string{}
+		for _, f := range st.Fields.List {
+			if f.Tag == nil || len(f.Names) == 0 {
+				continue
+			}
+			raw, err := strconv.Unquote(f.Tag.Value)
+			if err != nil {
+				continue
+			}
+			if tag := reflect.StructTag(raw).Get("tfsdk"); tag != "" {
+				tags[f.Names[0].Name] = tag
+			}
+		}
+		out[spec.Name.Name] = tags
+		return true
+	})
 	return out
 }
 
@@ -452,6 +513,8 @@ func exprName(e ast.Expr) string {
 		return t.Sel.Name
 	case *ast.Ident:
 		return t.Name
+	case *ast.StarExpr:
+		return exprName(t.X)
 	}
 	return ""
 }
