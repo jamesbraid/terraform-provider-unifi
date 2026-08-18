@@ -89,3 +89,22 @@ func TestAFieldWithNoJSONTagIsReported(t *testing.T) {
 		t.Fatalf("an untagged SDK field was not reported: %v", problems)
 	}
 }
+
+// AlwaysWire carries the fields a hook derives into the mask. Its own names are
+// checked, because a typo produces the exact failure the mask exists to prevent.
+func TestAlwaysWireNamesAreCheckedAgainstTheSDK(t *testing.T) {
+	spec := wireSpec("key", "note")
+	spec.AlwaysWire = []string{"key"}
+	if problems := WireNameProblems(spec); len(problems) != 0 {
+		t.Fatalf("a real json field named in AlwaysWire was reported: %v", problems)
+	}
+
+	spec.AlwaysWire = []string{"no_such_field"}
+	problems := WireNameProblems(spec)
+	if len(problems) != 1 {
+		t.Fatalf("want exactly 1 problem, got %d: %v", len(problems), problems)
+	}
+	if !strings.Contains(problems[0], "no_such_field") || !strings.Contains(problems[0], "AlwaysWire") {
+		t.Errorf("the report must name the bad entry and where it came from: %q", problems[0])
+	}
+}
