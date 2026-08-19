@@ -32,8 +32,10 @@
   ],
   "regression_tests": [
     "TestAnUnrelatedApplyDestroysControllerSideIPAliases",
+    "TestAnUnrelatedApplyDestroysDHCPGuardingServers",
     "TestAnUnrelatedApplyInvertsAFirewallRule",
     "TestAnUnrelatedApplyResetsAFirewallPolicySchedule",
+    "TestAnUnrelatedApplyResetsDHCPRelayAndV6",
     "TestCanAFirewallPolicyBeCreatedWithoutASchedule",
     "TestDoesTheControllerHoldAFirewallPolicySchedule",
     "TestDoesTheControllerHoldEachSourceMatchFlag",
