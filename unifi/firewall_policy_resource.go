@@ -332,6 +332,25 @@ func (r *firewallPolicyResource) Update(
 	plannedSrcMTT := endpointMatchingTargetType(ctx, plan.Source, &resp.Diagnostics)
 	plannedDstMTT := endpointMatchingTargetType(ctx, plan.Destination, &resp.Diagnostics)
 
+	// CARRY THE CONTROLLER'S SCHEDULE FORWARD (#200).
+	//
+	// modelToFirewallPolicy supplies a literal ALWAYS because the model has no
+	// schedule to read, and the controller demands the field on every write.
+	// Left alone, that literal resets a policy the practitioner scheduled in
+	// the UI -- measured on 10.4.57, an apply that changed only the description
+	// turned 09:00-17:00 into always-on.
+	//
+	// A read is the only way to preserve it. There is no state to preserve it
+	// through: state holds nothing for a field with no schema attribute, which
+	// is what separates this from the fields fixed by Computed +
+	// UseStateForUnknown. If the read fails the literal stands, which is the
+	// behaviour before this change rather than a new failure mode.
+	if current, err := r.client.GetFirewallPolicy(ctx, site, state.ID.ValueString()); err == nil {
+		if current.Schedule != nil {
+			fp.Schedule = current.Schedule
+		}
+	}
+
 	// MASKED. The fetch before this write was laundered through the
 	// Terraform model, so it protected nothing; see the wire-field list.
 	updated, err := r.client.UpdateFirewallPolicyFields(ctx, site, fp, firewallPolicyManagedWireFields()...)
@@ -579,6 +598,22 @@ func modelToFirewallPolicy(
 		ICMPTypename:        model.ICMPTypename.ValueString(),
 		ICMPV6Typename:      model.ICMPV6Typename.ValueString(),
 		ConnectionStates:    []string{},
+		// The CREATE default, and the update overwrites it from the controller
+		// (#200). Nothing here models a schedule -- no tfsdk tag, no schema
+		// attribute -- and the controller refuses a policy whose schedule is
+		// null, so a value has to come from somewhere.
+		//
+		// SENDING IT ON EVERY UPDATE IS THE DEFECT. Measured on 10.4.57: a
+		// description-only apply turned a rule running 09:00-17:00 into one
+		// running permanently, and terraform showed no diff for it because the
+		// field is not in the schema.
+		//
+		// THE MASK CANNOT FIX IT, which was measured too. Dropping "schedule"
+		// from firewallPolicyManagedWireFields makes the key absent from the
+		// PUT body, and the controller rejects that exactly as it rejects an
+		// explicit null: `on field 'schedule': rejected value [null] ... must
+		// not be null` (400). The field must be present on every write, so the
+		// only fix is to send the value the controller already holds.
 		Schedule: &unifi.FirewallPolicySchedule{
 			Mode: "ALWAYS",
 		},
