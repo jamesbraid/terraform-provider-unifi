@@ -222,8 +222,7 @@ var knownUnreachableChecks = map[string]string{
 		"committed M0 baseline, by hand, per build/m0/README.md. Its only automated caller was " +
 		"catalog-build-schema.sh, and the binary that replaced that script uses the library " +
 		"rather than the command.",
-	"command policy-scaffold":  "authoring tool, run by hand when a surface is migrated.",
-	"command schema-behaviour": "authoring tool, run by hand when a surface is migrated.",
+	"command policy-scaffold": "authoring tool, run by hand when a surface is migrated.",
 	"command list-policy-scaffold": "authoring tool for list policies, run by hand. Its output " +
 		"is checked by the compiler and by rename_binding_test.go.",
 }
