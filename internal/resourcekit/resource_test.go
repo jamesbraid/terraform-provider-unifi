@@ -33,6 +33,10 @@ type kitModel struct {
 	Site     types.String   `tfsdk:"site"`
 	Name     types.String   `tfsdk:"name"`
 	Timeouts timeouts.Value `tfsdk:"timeouts"`
+	// Nested is not in kitSchema: the object field's tests drive it directly
+	// rather than through framework state, and adding it to the schema would
+	// change every other test's state fixture.
+	Nested types.Object `tfsdk:"-"`
 }
 
 type kitSDK struct {
@@ -42,6 +46,9 @@ type kitSDK struct {
 	// controller-owned value the provider does not model, which is what a
 	// whole-object write built from the model resets.
 	Unmanaged string
+	// Nested carries a real SDK nested type, so the object field's tests run
+	// against the same struct firewall_policy sends rather than a stand-in.
+	Nested *ui.FirewallPolicySource
 }
 
 func kitSchema(ctx context.Context) schema.Schema {
