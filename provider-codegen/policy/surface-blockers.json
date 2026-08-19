@@ -41,11 +41,8 @@
     "no-mapping"
   ],
   "surfaces": {
-    "bgp": [
-      "SDK-masked-update"
-    ],
+    "bgp": [],
     "client": [
-      "SDK-masked-update",
       "derived-value",
       "undefined-fields",
       "identity-key"
@@ -67,7 +64,6 @@
       "no-mapping"
     ],
     "power_supervisor": [
-      "SDK-masked-update",
       "nested"
     ],
     "radius_profile": [
@@ -77,7 +73,6 @@
       "no-mapping"
     ],
     "site": [
-      "SDK-masked-update",
       "derived-value"
     ],
     "traffic_route": [
@@ -96,15 +91,14 @@
       "nested",
       "undefined-fields"
     ],
-    "wireguard_peer": [
-      "SDK-masked-update"
-    ],
+    "wireguard_peer": [],
     "wlan": [
       "nested",
       "undefined-fields"
     ]
   },
   "resolved_capabilities": {
+    "SDK-masked-update": "Backend.Update plus buildUpdateBody: for an SDK with no Update<T>Fields the kit fetches the current object and applies only the masked fields onto it, so the object sent is the one that came back from Get. client's entry was ALSO stale -- UpdateClientFields exists.",
     "always-wire": "AlwaysWire, for wire fields a hook derives that no plan names",
     "custom-scalar": "StringLikeField[M,S,T basetypes.StringValuable]",
     "list-hooks": "Prefetch once + AfterReceive per object in the List path",
