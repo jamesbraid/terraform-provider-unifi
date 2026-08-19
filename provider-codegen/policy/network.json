@@ -1836,7 +1836,19 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Specifies whether this network uses a third-party gateway. When enabled, the network purpose is set to `vlan-only` and only VLAN ID, DHCP guarding, and basic network settings are configured."
+        "description": "Specifies whether this network uses a third-party gateway. When enabled, the network purpose is set to `vlan-only` and only VLAN ID, DHCP guarding, and basic network settings are configured.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       },
       "disposition": "managed",
       "terraform_name": "third_party_gateway",

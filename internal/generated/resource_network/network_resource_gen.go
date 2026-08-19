@@ -627,6 +627,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies whether this network uses a third-party gateway. When enabled, the network purpose is set to `vlan-only` and only VLAN ID, DHCP guarding, and basic network settings are configured.",
 				MarkdownDescription: "Specifies whether this network uses a third-party gateway. When enabled, the network purpose is set to `vlan-only` and only VLAN ID, DHCP guarding, and basic network settings are configured.",
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"vlan": schema.Int64Attribute{
 				Optional:            true,
