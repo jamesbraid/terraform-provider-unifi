@@ -147,6 +147,81 @@
           "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
         }
       ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "ip_aliases",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets ip_aliases is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve. On the released provider the read path sets ip_aliases to null unconditionally, and ip_aliases is in the wire mask, so the write sends the zero the mapper pre-seeds and the controller -- which treats the field as authoritative -- discards whatever it held. Omitting the attribute today destroys the value on every apply, including applies that change something unrelated. The one semantic difference Optional+Computed introduces, that removing a previously set attribute retains the value rather than planning a change to null, replaces a behaviour that was already destructive and never expressible: on v0.101.2 there is no way to say \"leave this alone\", because null and \"clear it\" are the same request.",
+      "evidence": [
+        {
+          "claim": "On the released provider, an apply that changes only an unrelated attribute sends ip_aliases as its zero and the controller clears the value it held.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: the encoded request body was captured and each link checked separately -- the field is present in the masked update, it encodes as its zero when unset, and the controller clears a field on receiving one."
+        },
+        {
+          "claim": "The released schema declares ip_aliases optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_network.block.attributes.ip_aliases"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "nat_outbound_ip_addresses",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets nat_outbound_ip_addresses is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve. On the released provider the read path sets nat_outbound_ip_addresses to null unconditionally, and nat_outbound_ip_addresses is in the wire mask, so the write sends the zero the mapper pre-seeds and the controller -- which treats the field as authoritative -- discards whatever it held. Omitting the attribute today destroys the value on every apply, including applies that change something unrelated. The one semantic difference Optional+Computed introduces, that removing a previously set attribute retains the value rather than planning a change to null, replaces a behaviour that was already destructive and never expressible: on v0.101.2 there is no way to say \"leave this alone\", because null and \"clear it\" are the same request.",
+      "evidence": [
+        {
+          "claim": "On the released provider, an apply that changes only an unrelated attribute sends nat_outbound_ip_addresses as its zero and the controller clears the value it held.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: the encoded request body was captured and each link checked separately -- the field is present in the masked update, it encodes as its zero when unset, and the controller clears a field on receiving one."
+        },
+        {
+          "claim": "The released schema declares nat_outbound_ip_addresses optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_network.block.attributes.nat_outbound_ip_addresses"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "ipv6_pd_prefixid",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that sets ipv6_pd_prefixid is unaffected: the configured value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve. On the released provider the read path sets ipv6_pd_prefixid to null unconditionally, and ipv6_pd_prefixid is in the wire mask, so the write sends the zero the mapper pre-seeds and the controller -- which treats the field as authoritative -- discards whatever it held. Omitting the attribute today destroys the value on every apply, including applies that change something unrelated. The one semantic difference Optional+Computed introduces, that removing a previously set attribute retains the value rather than planning a change to null, replaces a behaviour that was already destructive and never expressible: on v0.101.2 there is no way to say \"leave this alone\", because null and \"clear it\" are the same request.",
+      "evidence": [
+        {
+          "claim": "On the released provider, an apply that changes only an unrelated attribute sends ipv6_pd_prefixid as its zero and the controller clears the value it held.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: the encoded request body was captured and each link checked separately -- the field is present in the masked update, it encodes as its zero when unset, and the controller clears a field on receiving one."
+        },
+        {
+          "claim": "The released schema declares ipv6_pd_prefixid optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_network.block.attributes.ipv6_pd_prefixid"
+        },
+        {
+          "claim": "Under Optional+Computed a configured value remains authoritative, so configurations that set the attribute see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        }
+      ]
     }
   ]
 }

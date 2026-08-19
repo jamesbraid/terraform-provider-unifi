@@ -16,6 +16,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -146,6 +150,54 @@ type natOutboundIPAddressesModel struct {
 
 func (d natOutboundIPAddressesModel) AttributeTypes() map[string]attr.Type {
 	return natOutboundIPAddresses()
+}
+
+// stringsToList converts a controller string slice to a list value, mapping an
+// absent collection to an EMPTY list rather than a null one. See the note in
+// networkToModel: for an Optional+Computed attribute, null and [] are different
+// values and only one of them round-trips.
+func stringsToList(ctx context.Context, values []string, diags *diag.Diagnostics) types.List {
+	if values == nil {
+		values = []string{}
+	}
+	list, d := types.ListValueFrom(ctx, types.StringType, values)
+	diags.Append(d...)
+	return list
+}
+
+// natOutboundToList converts the controller's NAT outbound entries to a list of
+// objects.
+//
+// ip_address_pool is carried through even though modelToNetwork does not write
+// it. Reading a field the write drops is not symmetrical, and it is the right
+// way round: state shows what the controller holds instead of claiming the pool
+// is empty. The write-side gap is real and separate.
+func natOutboundToList(
+	ctx context.Context,
+	entries []unifi.NetworkNATOutboundIPAddresses,
+	diags *diag.Diagnostics,
+) types.List {
+	objectType := types.ObjectType{AttrTypes: natOutboundIPAddresses()}
+	elements := make([]attr.Value, 0, len(entries))
+	for _, entry := range entries {
+		pool := types.ListNull(types.StringType)
+		if entry.IPAddressPool != nil {
+			value, d := types.ListValueFrom(ctx, types.StringType, entry.IPAddressPool)
+			diags.Append(d...)
+			pool = value
+		}
+		object, d := types.ObjectValue(natOutboundIPAddresses(), map[string]attr.Value{
+			"ip_address":        types.StringValue(entry.IPAddress),
+			"ip_address_pool":   pool,
+			"mode":              types.StringPointerValue(entry.Mode),
+			"wan_network_group": types.StringPointerValue(entry.WANNetworkGroup),
+		})
+		diags.Append(d...)
+		elements = append(elements, object)
+	}
+	list, d := types.ListValue(objectType, elements)
+	diags.Append(d...)
+	return list
 }
 
 func natOutboundIPAddresses() map[string]attr.Type {
@@ -285,6 +337,51 @@ func (r *networkResource) Schema(
 		ctx,
 		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
 	)
+	graftPreservedCollections(resp.Schema.Attributes)
+}
+
+// graftPreservedCollections makes three attributes Optional+Computed with
+// UseStateForUnknown, which is the half of #193 the read path cannot do alone.
+//
+// ip_aliases, nat_outbound_ip_addresses and ipv6_pd_prefixid are in the wire
+// mask, so they are sent on every update. Reading them back (see networkToModel)
+// puts the controller's value in STATE -- but a plain Optional attribute takes
+// its plan value from the CONFIG, so omitting it still plans null, and null is
+// what clears the field. Computed is what makes an omitted attribute resolve to
+// unknown, and UseStateForUnknown is what fills that unknown from the value
+// just read.
+//
+// IT IS GRAFTED HERE RATHER THAN GENERATED, and that is a deliberate stopgap
+// with a measured reason. The declarations are in provider-codegen/policy/
+// network.json where they belong, and the compiled specification carries them.
+// What cannot be regenerated is the Go schema: running the PINNED generator
+// (tfplugingen-framework v0.4.1) over unifi_network emits CustomType bindings
+// for dhcp_guarding, dhcp_relay, dhcp_server, dhcp_server.boot,
+// dhcp_server.wins, dhcp_v6_server and nat_outbound_ip_addresses that nothing
+// in the provider produces -- TestServedSchemaAgreesWithItsRuntimeModel fails
+// with "every apply touching this attribute fails". That reproduces on a clean
+// checkout with NO policy change at all, so the checked-in artifact cannot be
+// rebuilt by the generator the repository pins.
+//
+// Blocking a live destroy defect behind that is the wrong trade. When the
+// regenerate is clean (#163), delete this function -- the policy already says
+// the same thing, and the compiled spec already agrees.
+func graftPreservedCollections(attributes map[string]schema.Attribute) {
+	if attribute, ok := attributes["ip_aliases"].(schema.ListAttribute); ok {
+		attribute.Computed = true
+		attribute.PlanModifiers = []planmodifier.List{listplanmodifier.UseStateForUnknown()}
+		attributes["ip_aliases"] = attribute
+	}
+	if attribute, ok := attributes["nat_outbound_ip_addresses"].(schema.ListNestedAttribute); ok {
+		attribute.Computed = true
+		attribute.PlanModifiers = []planmodifier.List{listplanmodifier.UseStateForUnknown()}
+		attributes["nat_outbound_ip_addresses"] = attribute
+	}
+	if attribute, ok := attributes["ipv6_pd_prefixid"].(schema.StringAttribute); ok {
+		attribute.Computed = true
+		attribute.PlanModifiers = []planmodifier.String{stringplanmodifier.UseStateForUnknown()}
+		attributes["ipv6_pd_prefixid"] = attribute
+	}
 }
 
 // UpgradeState migrates v0 state to v1: leasetime (nested in dhcp_server),
@@ -1055,7 +1152,22 @@ func (r *networkResource) networkToModel(
 			model.IPv6StaticSubnet = previousModel.IPv6StaticSubnet
 		}
 		model.IPv6PDInterface = previousModel.IPv6PDInterface
-		model.IPv6PDPrefixID = previousModel.IPv6PDPrefixID
+		// ipv6_pd_prefixid gained Computed and UseStateForUnknown, so the plan
+		// carries unknown whenever the config omits it. Copying that through
+		// leaves the attribute unknown after apply, which Terraform rejects --
+		// the same trap setting_preference documents a few lines up, and the
+		// reason a schema change here is not free. Resolve it from the API
+		// instead, mapping the controller's empty string to null exactly as the
+		// non-vlan-only branch does.
+		if previousModel.IPv6PDPrefixID.IsUnknown() {
+			if network.IPV6PDPrefixid == "" {
+				model.IPv6PDPrefixID = types.StringNull()
+			} else {
+				model.IPv6PDPrefixID = types.StringValue(network.IPV6PDPrefixid)
+			}
+		} else {
+			model.IPv6PDPrefixID = previousModel.IPv6PDPrefixID
+		}
 		// lte_lan uses UseStateForUnknown, so it may be unknown during Create.
 		// Resolve it from the API value: the controller assigns this flag
 		// itself, which is why it must not carry a static default.
@@ -1207,11 +1319,28 @@ func (r *networkResource) networkToModel(
 
 	model.Vlan = networkVLANFromNetwork(network)
 
-	// Handle lists - for now set to null
-	model.NatOutboundIPAddresses = types.ListNull(
-		types.ObjectType{AttrTypes: natOutboundIPAddresses()},
-	)
-	model.IPAliases = types.ListNull(types.StringType)
+	// READ THESE BACK. They used to be nulled unconditionally, with the comment
+	// "for now set to null", and both are in the wire mask -- so the write sent
+	// the empty slice modelToNetwork pre-seeds and the controller, which treats
+	// the array as authoritative, dropped whatever it held. An apply that
+	// touched only the vlan cleared aliases configured through the UI, every
+	// time.
+	//
+	// Nulling a value the resource SENDS is the trap: mask membership answers
+	// "does this resource manage the field", not "does the value it sends mean
+	// anything". Ownership was right and the value was empty.
+	//
+	// EMPTY BECOMES AN EMPTY LIST, NOT NULL. Both attributes are now Optional
+	// AND Computed, so an empty collection is a value the practitioner may have
+	// asked for -- `ip_aliases = []` against a null state is a diff no apply
+	// settles, because the config keeps producing []. Same nil-versus-empty
+	// distinction the resource kit's KeepZero carries, one layer up.
+	model.IPAliases = stringsToList(ctx, network.IPAliases, &diags)
+	model.NatOutboundIPAddresses = natOutboundToList(ctx, network.NATOutboundIPAddresses, &diags)
+
+	// ipv6_aliases stays null: it is NOT in the wire mask and the SDK has no
+	// field for it (see the commented-out branch in modelToNetwork), so nothing
+	// is sent and there is nothing to read back.
 	model.IPv6Aliases = types.ListNull(types.StringType)
 
 	// Only populate dhcp_server if:

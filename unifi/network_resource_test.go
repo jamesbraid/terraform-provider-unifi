@@ -1430,3 +1430,133 @@ resource "unifi_network" "test_purpose_conflict" {
 }
 `
 }
+
+// Test_networkToModel_readsBackTheMaskedCollections is #193.
+//
+// ip_aliases and nat_outbound_ip_addresses are in the wire mask, so they are
+// SENT on every update. networkToModel used to null them both unconditionally
+// -- the comment read "Handle lists - for now set to null" -- so the plan
+// carried null, modelToNetwork's guard fell through, and the empty slice it
+// pre-seeds went to the controller, which treats the array as authoritative.
+// An apply that changed only the vlan cleared aliases configured in the UI.
+//
+// Mask membership was CORRECT: the resource does manage these fields. What it
+// does not answer is whether the value being sent means anything. Ownership is
+// necessary and not sufficient.
+func Test_networkToModel_readsBackTheMaskedCollections(t *testing.T) {
+	ctx := context.Background()
+	r := &networkResource{}
+
+	mode := "all"
+	network := &unifi.Network{
+		ID:        "net-1",
+		Name:      strPtr("IoT"),
+		Purpose:   unifi.PurposeCorporate,
+		Enabled:   true,
+		IPSubnet:  strPtr("10.0.2.1/24"),
+		IPAliases: []string{"10.0.2.9/24", "10.0.2.10/24"},
+		NATOutboundIPAddresses: []unifi.NetworkNATOutboundIPAddresses{
+			{IPAddress: "203.0.113.5", Mode: &mode},
+		},
+	}
+
+	var model networkResourceModel
+	if d := r.networkToModel(ctx, network, &model, "default", &networkResourceModel{}); d.HasError() {
+		t.Fatalf("networkToModel: %v", d)
+	}
+
+	if model.IPAliases.IsNull() {
+		t.Fatal("ip_aliases came back null; the next write sends the empty slice " +
+			"modelToNetwork pre-seeds and the controller drops what it holds")
+	}
+	var aliases []string
+	if d := model.IPAliases.ElementsAs(ctx, &aliases, false); d.HasError() {
+		t.Fatalf("reading ip_aliases back: %v", d)
+	}
+	if !reflect.DeepEqual(aliases, []string{"10.0.2.9/24", "10.0.2.10/24"}) {
+		t.Errorf("ip_aliases = %v, want the controller's two", aliases)
+	}
+
+	if model.NatOutboundIPAddresses.IsNull() {
+		t.Fatal("nat_outbound_ip_addresses came back null; same defect, same mask")
+	}
+	if n := len(model.NatOutboundIPAddresses.Elements()); n != 1 {
+		t.Errorf("nat_outbound_ip_addresses has %d entries, want 1", n)
+	}
+}
+
+// Test_networkToModel_emptyCollectionsAreEmptyNotNull is the half that is easy
+// to get wrong in the other direction.
+//
+// Both attributes are now Optional AND Computed, so an empty collection is a
+// value the practitioner may have configured. Returning null for "the
+// controller holds none" makes `ip_aliases = []` a permanent diff: the config
+// keeps producing [], state keeps saying null, and no apply settles it. It is
+// the same nil-versus-empty distinction the resource kit's KeepZero carries,
+// one layer up.
+func Test_networkToModel_emptyCollectionsAreEmptyNotNull(t *testing.T) {
+	ctx := context.Background()
+	r := &networkResource{}
+
+	for _, testCase := range []struct {
+		name    string
+		aliases []string
+	}{
+		{"nil from the controller", nil},
+		{"empty from the controller", []string{}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			network := &unifi.Network{
+				ID: "net-1", Name: strPtr("IoT"), Purpose: unifi.PurposeCorporate,
+				Enabled: true, IPSubnet: strPtr("10.0.2.1/24"),
+				IPAliases: testCase.aliases,
+			}
+			var model networkResourceModel
+			if d := r.networkToModel(ctx, network, &model, "default",
+				&networkResourceModel{}); d.HasError() {
+				t.Fatalf("networkToModel: %v", d)
+			}
+			if model.IPAliases.IsNull() {
+				t.Fatal("ip_aliases is null for an empty membership; a config saying " +
+					"ip_aliases = [] would then never stop planning a change")
+			}
+			if n := len(model.IPAliases.Elements()); n != 0 {
+				t.Errorf("ip_aliases has %d elements, want 0", n)
+			}
+		})
+	}
+}
+
+// Test_networkToModel_vlanOnlyResolvesUnknownPrefixID guards the cost of the
+// schema half.
+//
+// ipv6_pd_prefixid gained Computed, so the plan carries UNKNOWN whenever the
+// config omits it. The vlan-only branch copies plan values wholesale to avoid
+// inconsistent-result errors on fields the controller does not return -- and
+// copying an unknown through leaves the attribute unknown after apply, which
+// Terraform rejects. setting_preference documents the same trap a few lines
+// above. Making an attribute Computed is not free; it obliges every place that
+// copies it to resolve the unknown.
+func Test_networkToModel_vlanOnlyResolvesUnknownPrefixID(t *testing.T) {
+	ctx := context.Background()
+	r := &networkResource{}
+
+	network := &unifi.Network{
+		ID: "net-1", Name: strPtr("VLAN"), Purpose: unifi.PurposeVLANOnly, Enabled: true,
+		IPV6PDPrefixid: "1a",
+	}
+	prev := &networkResourceModel{IPv6PDPrefixID: types.StringUnknown()}
+
+	var model networkResourceModel
+	if d := r.networkToModel(ctx, network, &model, "default", prev); d.HasError() {
+		t.Fatalf("networkToModel: %v", d)
+	}
+	if model.IPv6PDPrefixID.IsUnknown() {
+		t.Fatal("ipv6_pd_prefixid is still unknown after apply; Terraform rejects that " +
+			"with \"Provider produced inconsistent result after apply\"")
+	}
+	if model.IPv6PDPrefixID.ValueString() != "1a" {
+		t.Errorf("ipv6_pd_prefixid = %q, want the controller's 1a",
+			model.IPv6PDPrefixID.ValueString())
+	}
+}
