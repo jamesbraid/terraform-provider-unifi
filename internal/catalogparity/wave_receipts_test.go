@@ -212,8 +212,15 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 		seen++
 		want := PolicyComplete
 		switch contract.Name {
+		// The surface whose shadow artifact SURVIVED. It rested at shadow_only
+		// -- the only managed resource that did -- and provider-codegen/shadow/
+		// port_forward.schema-shadow.json still records what that meant: the
+		// 0.101.2 nested shape under terraform 1.15.8. So unlike dns_record's
+		// list surface, which moved off shadow_only with its record already
+		// lost, this one was checked against it attribute by attribute before
+		// moving. The digest below is the same one that artifact pins.
 		case "unifi_port_forward":
-			want = ShadowOnly
+			want = GeneratedShadow
 			if contract.BaselineSchemaSHA256 != "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6" {
 				t.Fatalf("port-forward schema digest = %q", contract.BaselineSchemaSHA256)
 			}
@@ -395,10 +402,11 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 			}
 		}
 	}
+	// ShadowOnly is gone from the estate: port_forward was the last surface in
+	// it, and no other managed resource ever was.
 	want := map[AdmissionState]int{
 		PolicyComplete:  2,
-		GeneratedShadow: 63,
-		ShadowOnly:      1,
+		GeneratedShadow: 64,
 		Admitted:        1,
 	}
 	if !reflect.DeepEqual(counts, want) {
