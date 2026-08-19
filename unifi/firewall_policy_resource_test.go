@@ -434,6 +434,13 @@ func Test_firewallPolicyEndpointModel_AttributeTypes(t *testing.T) {
 				"ip_group_id":          types.StringType,
 				"port_matching_type":   types.StringType,
 				"matching_target_type": types.StringType,
+
+				// The four inversion and match flags, declared so a reset
+				// cannot silently reverse a rule (#198).
+				"match_mac":               types.BoolType,
+				"match_opposite_ips":      types.BoolType,
+				"match_opposite_networks": types.BoolType,
+				"match_opposite_ports":    types.BoolType,
 			},
 		},
 	}
@@ -1102,6 +1109,15 @@ func Test_apiSourceToEndpointModel(t *testing.T) {
 					PortGroupID:        types.StringValue(""),
 					IPGroupID:          types.StringValue(""),
 					PortMatchingType:   types.StringValue("SPECIFIC"),
+
+					// Read back from the controller rather than left null: the
+					// SDK emits these four unconditionally, so the model has to
+					// carry what the controller reported or the next write
+					// rebuilds them as false (#198).
+					MatchMAC:              types.BoolValue(false),
+					MatchOppositeIPs:      types.BoolValue(false),
+					MatchOppositeNetworks: types.BoolValue(false),
+					MatchOppositePorts:    types.BoolValue(false),
 				}
 			}(),
 		},
@@ -1164,6 +1180,15 @@ func Test_apiDestinationToEndpointModel(t *testing.T) {
 					PortGroupID:        types.StringValue(""),
 					IPGroupID:          types.StringValue(""),
 					PortMatchingType:   types.StringValue("SPECIFIC"),
+
+					// Read back from the controller rather than left null: the
+					// SDK emits these four unconditionally, so the model has to
+					// carry what the controller reported or the next write
+					// rebuilds them as false (#198).
+					MatchMAC:              types.BoolValue(false),
+					MatchOppositeIPs:      types.BoolValue(false),
+					MatchOppositeNetworks: types.BoolValue(false),
+					MatchOppositePorts:    types.BoolValue(false),
 				}
 			}(),
 		},

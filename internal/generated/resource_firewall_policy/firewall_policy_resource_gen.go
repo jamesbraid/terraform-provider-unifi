@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -102,6 +103,42 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.",
 						PlanModifiers: []planmodifier.List{
 							listplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"match_mac": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.",
+						MarkdownDescription: "Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"match_opposite_ips": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.",
+						MarkdownDescription: "INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"match_opposite_networks": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.",
+						MarkdownDescription: "INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"match_opposite_ports": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.",
+						MarkdownDescription: "INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
 						},
 					},
 					"matching_target": schema.StringAttribute{
@@ -288,6 +325,42 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 							listplanmodifier.UseStateForUnknown(),
 						},
 					},
+					"match_mac": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.",
+						MarkdownDescription: "Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"match_opposite_ips": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.",
+						MarkdownDescription: "INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"match_opposite_networks": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.",
+						MarkdownDescription: "INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"match_opposite_ports": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.",
+						MarkdownDescription: "INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
 					"matching_target": schema.StringAttribute{
 						Required:            true,
 						Description:         "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
@@ -467,6 +540,78 @@ func (t DestinationType) ValueFromObject(ctx context.Context, in basetypes.Objec
 			fmt.Sprintf(`ips expected to be basetypes.ListValue, was: %T`, ipsAttribute))
 	}
 
+	matchMacAttribute, ok := attributes["match_mac"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_mac is missing from object`)
+
+		return nil, diags
+	}
+
+	matchMacVal, ok := matchMacAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_mac expected to be basetypes.BoolValue, was: %T`, matchMacAttribute))
+	}
+
+	matchOppositeIpsAttribute, ok := attributes["match_opposite_ips"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_ips is missing from object`)
+
+		return nil, diags
+	}
+
+	matchOppositeIpsVal, ok := matchOppositeIpsAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_ips expected to be basetypes.BoolValue, was: %T`, matchOppositeIpsAttribute))
+	}
+
+	matchOppositeNetworksAttribute, ok := attributes["match_opposite_networks"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_networks is missing from object`)
+
+		return nil, diags
+	}
+
+	matchOppositeNetworksVal, ok := matchOppositeNetworksAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_networks expected to be basetypes.BoolValue, was: %T`, matchOppositeNetworksAttribute))
+	}
+
+	matchOppositePortsAttribute, ok := attributes["match_opposite_ports"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_ports is missing from object`)
+
+		return nil, diags
+	}
+
+	matchOppositePortsVal, ok := matchOppositePortsAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_ports expected to be basetypes.BoolValue, was: %T`, matchOppositePortsAttribute))
+	}
+
 	matchingTargetAttribute, ok := attributes["matching_target"]
 
 	if !ok {
@@ -616,18 +761,22 @@ func (t DestinationType) ValueFromObject(ctx context.Context, in basetypes.Objec
 	}
 
 	return DestinationValue{
-		ClientMacs:         clientMacsVal,
-		IpGroupId:          ipGroupIdVal,
-		Ips:                ipsVal,
-		MatchingTarget:     matchingTargetVal,
-		MatchingTargetType: matchingTargetTypeVal,
-		NetworkIds:         networkIdsVal,
-		Port:               portVal,
-		PortGroupId:        portGroupIdVal,
-		PortMatchingType:   portMatchingTypeVal,
-		WebDomains:         webDomainsVal,
-		ZoneId:             zoneIdVal,
-		state:              attr.ValueStateKnown,
+		ClientMacs:            clientMacsVal,
+		IpGroupId:             ipGroupIdVal,
+		Ips:                   ipsVal,
+		MatchMac:              matchMacVal,
+		MatchOppositeIps:      matchOppositeIpsVal,
+		MatchOppositeNetworks: matchOppositeNetworksVal,
+		MatchOppositePorts:    matchOppositePortsVal,
+		MatchingTarget:        matchingTargetVal,
+		MatchingTargetType:    matchingTargetTypeVal,
+		NetworkIds:            networkIdsVal,
+		Port:                  portVal,
+		PortGroupId:           portGroupIdVal,
+		PortMatchingType:      portMatchingTypeVal,
+		WebDomains:            webDomainsVal,
+		ZoneId:                zoneIdVal,
+		state:                 attr.ValueStateKnown,
 	}, diags
 }
 
@@ -748,6 +897,78 @@ func NewDestinationValue(attributeTypes map[string]attr.Type, attributes map[str
 			fmt.Sprintf(`ips expected to be basetypes.ListValue, was: %T`, ipsAttribute))
 	}
 
+	matchMacAttribute, ok := attributes["match_mac"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_mac is missing from object`)
+
+		return NewDestinationValueUnknown(), diags
+	}
+
+	matchMacVal, ok := matchMacAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_mac expected to be basetypes.BoolValue, was: %T`, matchMacAttribute))
+	}
+
+	matchOppositeIpsAttribute, ok := attributes["match_opposite_ips"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_ips is missing from object`)
+
+		return NewDestinationValueUnknown(), diags
+	}
+
+	matchOppositeIpsVal, ok := matchOppositeIpsAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_ips expected to be basetypes.BoolValue, was: %T`, matchOppositeIpsAttribute))
+	}
+
+	matchOppositeNetworksAttribute, ok := attributes["match_opposite_networks"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_networks is missing from object`)
+
+		return NewDestinationValueUnknown(), diags
+	}
+
+	matchOppositeNetworksVal, ok := matchOppositeNetworksAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_networks expected to be basetypes.BoolValue, was: %T`, matchOppositeNetworksAttribute))
+	}
+
+	matchOppositePortsAttribute, ok := attributes["match_opposite_ports"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_ports is missing from object`)
+
+		return NewDestinationValueUnknown(), diags
+	}
+
+	matchOppositePortsVal, ok := matchOppositePortsAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_ports expected to be basetypes.BoolValue, was: %T`, matchOppositePortsAttribute))
+	}
+
 	matchingTargetAttribute, ok := attributes["matching_target"]
 
 	if !ok {
@@ -897,18 +1118,22 @@ func NewDestinationValue(attributeTypes map[string]attr.Type, attributes map[str
 	}
 
 	return DestinationValue{
-		ClientMacs:         clientMacsVal,
-		IpGroupId:          ipGroupIdVal,
-		Ips:                ipsVal,
-		MatchingTarget:     matchingTargetVal,
-		MatchingTargetType: matchingTargetTypeVal,
-		NetworkIds:         networkIdsVal,
-		Port:               portVal,
-		PortGroupId:        portGroupIdVal,
-		PortMatchingType:   portMatchingTypeVal,
-		WebDomains:         webDomainsVal,
-		ZoneId:             zoneIdVal,
-		state:              attr.ValueStateKnown,
+		ClientMacs:            clientMacsVal,
+		IpGroupId:             ipGroupIdVal,
+		Ips:                   ipsVal,
+		MatchMac:              matchMacVal,
+		MatchOppositeIps:      matchOppositeIpsVal,
+		MatchOppositeNetworks: matchOppositeNetworksVal,
+		MatchOppositePorts:    matchOppositePortsVal,
+		MatchingTarget:        matchingTargetVal,
+		MatchingTargetType:    matchingTargetTypeVal,
+		NetworkIds:            networkIdsVal,
+		Port:                  portVal,
+		PortGroupId:           portGroupIdVal,
+		PortMatchingType:      portMatchingTypeVal,
+		WebDomains:            webDomainsVal,
+		ZoneId:                zoneIdVal,
+		state:                 attr.ValueStateKnown,
 	}, diags
 }
 
@@ -980,22 +1205,26 @@ func (t DestinationType) ValueType(ctx context.Context) attr.Value {
 var _ basetypes.ObjectValuable = DestinationValue{}
 
 type DestinationValue struct {
-	ClientMacs         basetypes.ListValue   `tfsdk:"client_macs"`
-	IpGroupId          basetypes.StringValue `tfsdk:"ip_group_id"`
-	Ips                basetypes.ListValue   `tfsdk:"ips"`
-	MatchingTarget     basetypes.StringValue `tfsdk:"matching_target"`
-	MatchingTargetType basetypes.StringValue `tfsdk:"matching_target_type"`
-	NetworkIds         basetypes.ListValue   `tfsdk:"network_ids"`
-	Port               basetypes.StringValue `tfsdk:"port"`
-	PortGroupId        basetypes.StringValue `tfsdk:"port_group_id"`
-	PortMatchingType   basetypes.StringValue `tfsdk:"port_matching_type"`
-	WebDomains         basetypes.ListValue   `tfsdk:"web_domains"`
-	ZoneId             basetypes.StringValue `tfsdk:"zone_id"`
-	state              attr.ValueState
+	ClientMacs            basetypes.ListValue   `tfsdk:"client_macs"`
+	IpGroupId             basetypes.StringValue `tfsdk:"ip_group_id"`
+	Ips                   basetypes.ListValue   `tfsdk:"ips"`
+	MatchMac              basetypes.BoolValue   `tfsdk:"match_mac"`
+	MatchOppositeIps      basetypes.BoolValue   `tfsdk:"match_opposite_ips"`
+	MatchOppositeNetworks basetypes.BoolValue   `tfsdk:"match_opposite_networks"`
+	MatchOppositePorts    basetypes.BoolValue   `tfsdk:"match_opposite_ports"`
+	MatchingTarget        basetypes.StringValue `tfsdk:"matching_target"`
+	MatchingTargetType    basetypes.StringValue `tfsdk:"matching_target_type"`
+	NetworkIds            basetypes.ListValue   `tfsdk:"network_ids"`
+	Port                  basetypes.StringValue `tfsdk:"port"`
+	PortGroupId           basetypes.StringValue `tfsdk:"port_group_id"`
+	PortMatchingType      basetypes.StringValue `tfsdk:"port_matching_type"`
+	WebDomains            basetypes.ListValue   `tfsdk:"web_domains"`
+	ZoneId                basetypes.StringValue `tfsdk:"zone_id"`
+	state                 attr.ValueState
 }
 
 func (v DestinationValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	attrTypes := make(map[string]tftypes.Type, 11)
+	attrTypes := make(map[string]tftypes.Type, 15)
 
 	var val tftypes.Value
 	var err error
@@ -1007,6 +1236,10 @@ func (v DestinationValue) ToTerraformValue(ctx context.Context) (tftypes.Value, 
 	attrTypes["ips"] = basetypes.ListType{
 		ElemType: types.StringType,
 	}.TerraformType(ctx)
+	attrTypes["match_mac"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["match_opposite_ips"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["match_opposite_networks"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["match_opposite_ports"] = basetypes.BoolType{}.TerraformType(ctx)
 	attrTypes["matching_target"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["matching_target_type"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["network_ids"] = basetypes.ListType{
@@ -1024,7 +1257,7 @@ func (v DestinationValue) ToTerraformValue(ctx context.Context) (tftypes.Value, 
 
 	switch v.state {
 	case attr.ValueStateKnown:
-		vals := make(map[string]tftypes.Value, 11)
+		vals := make(map[string]tftypes.Value, 15)
 
 		val, err = v.ClientMacs.ToTerraformValue(ctx)
 
@@ -1049,6 +1282,38 @@ func (v DestinationValue) ToTerraformValue(ctx context.Context) (tftypes.Value, 
 		}
 
 		vals["ips"] = val
+
+		val, err = v.MatchMac.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["match_mac"] = val
+
+		val, err = v.MatchOppositeIps.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["match_opposite_ips"] = val
+
+		val, err = v.MatchOppositeNetworks.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["match_opposite_networks"] = val
+
+		val, err = v.MatchOppositePorts.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["match_opposite_ports"] = val
 
 		val, err = v.MatchingTarget.ToTerraformValue(ctx)
 
@@ -1164,8 +1429,12 @@ func (v DestinationValue) ToObjectValue(ctx context.Context) (basetypes.ObjectVa
 			"ips": basetypes.ListType{
 				ElemType: types.StringType,
 			},
-			"matching_target":      basetypes.StringType{},
-			"matching_target_type": basetypes.StringType{},
+			"match_mac":               basetypes.BoolType{},
+			"match_opposite_ips":      basetypes.BoolType{},
+			"match_opposite_networks": basetypes.BoolType{},
+			"match_opposite_ports":    basetypes.BoolType{},
+			"matching_target":         basetypes.StringType{},
+			"matching_target_type":    basetypes.StringType{},
 			"network_ids": basetypes.ListType{
 				ElemType: types.StringType,
 			},
@@ -1200,8 +1469,12 @@ func (v DestinationValue) ToObjectValue(ctx context.Context) (basetypes.ObjectVa
 			"ips": basetypes.ListType{
 				ElemType: types.StringType,
 			},
-			"matching_target":      basetypes.StringType{},
-			"matching_target_type": basetypes.StringType{},
+			"match_mac":               basetypes.BoolType{},
+			"match_opposite_ips":      basetypes.BoolType{},
+			"match_opposite_networks": basetypes.BoolType{},
+			"match_opposite_ports":    basetypes.BoolType{},
+			"matching_target":         basetypes.StringType{},
+			"matching_target_type":    basetypes.StringType{},
 			"network_ids": basetypes.ListType{
 				ElemType: types.StringType,
 			},
@@ -1236,8 +1509,12 @@ func (v DestinationValue) ToObjectValue(ctx context.Context) (basetypes.ObjectVa
 			"ips": basetypes.ListType{
 				ElemType: types.StringType,
 			},
-			"matching_target":      basetypes.StringType{},
-			"matching_target_type": basetypes.StringType{},
+			"match_mac":               basetypes.BoolType{},
+			"match_opposite_ips":      basetypes.BoolType{},
+			"match_opposite_networks": basetypes.BoolType{},
+			"match_opposite_ports":    basetypes.BoolType{},
+			"matching_target":         basetypes.StringType{},
+			"matching_target_type":    basetypes.StringType{},
 			"network_ids": basetypes.ListType{
 				ElemType: types.StringType,
 			},
@@ -1272,8 +1549,12 @@ func (v DestinationValue) ToObjectValue(ctx context.Context) (basetypes.ObjectVa
 			"ips": basetypes.ListType{
 				ElemType: types.StringType,
 			},
-			"matching_target":      basetypes.StringType{},
-			"matching_target_type": basetypes.StringType{},
+			"match_mac":               basetypes.BoolType{},
+			"match_opposite_ips":      basetypes.BoolType{},
+			"match_opposite_networks": basetypes.BoolType{},
+			"match_opposite_ports":    basetypes.BoolType{},
+			"matching_target":         basetypes.StringType{},
+			"matching_target_type":    basetypes.StringType{},
 			"network_ids": basetypes.ListType{
 				ElemType: types.StringType,
 			},
@@ -1295,8 +1576,12 @@ func (v DestinationValue) ToObjectValue(ctx context.Context) (basetypes.ObjectVa
 		"ips": basetypes.ListType{
 			ElemType: types.StringType,
 		},
-		"matching_target":      basetypes.StringType{},
-		"matching_target_type": basetypes.StringType{},
+		"match_mac":               basetypes.BoolType{},
+		"match_opposite_ips":      basetypes.BoolType{},
+		"match_opposite_networks": basetypes.BoolType{},
+		"match_opposite_ports":    basetypes.BoolType{},
+		"matching_target":         basetypes.StringType{},
+		"matching_target_type":    basetypes.StringType{},
 		"network_ids": basetypes.ListType{
 			ElemType: types.StringType,
 		},
@@ -1320,17 +1605,21 @@ func (v DestinationValue) ToObjectValue(ctx context.Context) (basetypes.ObjectVa
 	objVal, diags := types.ObjectValue(
 		attributeTypes,
 		map[string]attr.Value{
-			"client_macs":          clientMacsVal,
-			"ip_group_id":          v.IpGroupId,
-			"ips":                  ipsVal,
-			"matching_target":      v.MatchingTarget,
-			"matching_target_type": v.MatchingTargetType,
-			"network_ids":          networkIdsVal,
-			"port":                 v.Port,
-			"port_group_id":        v.PortGroupId,
-			"port_matching_type":   v.PortMatchingType,
-			"web_domains":          webDomainsVal,
-			"zone_id":              v.ZoneId,
+			"client_macs":             clientMacsVal,
+			"ip_group_id":             v.IpGroupId,
+			"ips":                     ipsVal,
+			"match_mac":               v.MatchMac,
+			"match_opposite_ips":      v.MatchOppositeIps,
+			"match_opposite_networks": v.MatchOppositeNetworks,
+			"match_opposite_ports":    v.MatchOppositePorts,
+			"matching_target":         v.MatchingTarget,
+			"matching_target_type":    v.MatchingTargetType,
+			"network_ids":             networkIdsVal,
+			"port":                    v.Port,
+			"port_group_id":           v.PortGroupId,
+			"port_matching_type":      v.PortMatchingType,
+			"web_domains":             webDomainsVal,
+			"zone_id":                 v.ZoneId,
 		})
 
 	return objVal, diags
@@ -1360,6 +1649,22 @@ func (v DestinationValue) Equal(o attr.Value) bool {
 	}
 
 	if !v.Ips.Equal(other.Ips) {
+		return false
+	}
+
+	if !v.MatchMac.Equal(other.MatchMac) {
+		return false
+	}
+
+	if !v.MatchOppositeIps.Equal(other.MatchOppositeIps) {
+		return false
+	}
+
+	if !v.MatchOppositeNetworks.Equal(other.MatchOppositeNetworks) {
+		return false
+	}
+
+	if !v.MatchOppositePorts.Equal(other.MatchOppositePorts) {
 		return false
 	}
 
@@ -1415,8 +1720,12 @@ func (v DestinationValue) AttributeTypes(ctx context.Context) map[string]attr.Ty
 		"ips": basetypes.ListType{
 			ElemType: types.StringType,
 		},
-		"matching_target":      basetypes.StringType{},
-		"matching_target_type": basetypes.StringType{},
+		"match_mac":               basetypes.BoolType{},
+		"match_opposite_ips":      basetypes.BoolType{},
+		"match_opposite_networks": basetypes.BoolType{},
+		"match_opposite_ports":    basetypes.BoolType{},
+		"matching_target":         basetypes.StringType{},
+		"matching_target_type":    basetypes.StringType{},
 		"network_ids": basetypes.ListType{
 			ElemType: types.StringType,
 		},
@@ -1507,6 +1816,78 @@ func (t SourceType) ValueFromObject(ctx context.Context, in basetypes.ObjectValu
 		diags.AddError(
 			"Attribute Wrong Type",
 			fmt.Sprintf(`ips expected to be basetypes.ListValue, was: %T`, ipsAttribute))
+	}
+
+	matchMacAttribute, ok := attributes["match_mac"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_mac is missing from object`)
+
+		return nil, diags
+	}
+
+	matchMacVal, ok := matchMacAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_mac expected to be basetypes.BoolValue, was: %T`, matchMacAttribute))
+	}
+
+	matchOppositeIpsAttribute, ok := attributes["match_opposite_ips"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_ips is missing from object`)
+
+		return nil, diags
+	}
+
+	matchOppositeIpsVal, ok := matchOppositeIpsAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_ips expected to be basetypes.BoolValue, was: %T`, matchOppositeIpsAttribute))
+	}
+
+	matchOppositeNetworksAttribute, ok := attributes["match_opposite_networks"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_networks is missing from object`)
+
+		return nil, diags
+	}
+
+	matchOppositeNetworksVal, ok := matchOppositeNetworksAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_networks expected to be basetypes.BoolValue, was: %T`, matchOppositeNetworksAttribute))
+	}
+
+	matchOppositePortsAttribute, ok := attributes["match_opposite_ports"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_ports is missing from object`)
+
+		return nil, diags
+	}
+
+	matchOppositePortsVal, ok := matchOppositePortsAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_ports expected to be basetypes.BoolValue, was: %T`, matchOppositePortsAttribute))
 	}
 
 	matchingTargetAttribute, ok := attributes["matching_target"]
@@ -1658,18 +2039,22 @@ func (t SourceType) ValueFromObject(ctx context.Context, in basetypes.ObjectValu
 	}
 
 	return SourceValue{
-		ClientMacs:         clientMacsVal,
-		IpGroupId:          ipGroupIdVal,
-		Ips:                ipsVal,
-		MatchingTarget:     matchingTargetVal,
-		MatchingTargetType: matchingTargetTypeVal,
-		NetworkIds:         networkIdsVal,
-		Port:               portVal,
-		PortGroupId:        portGroupIdVal,
-		PortMatchingType:   portMatchingTypeVal,
-		WebDomains:         webDomainsVal,
-		ZoneId:             zoneIdVal,
-		state:              attr.ValueStateKnown,
+		ClientMacs:            clientMacsVal,
+		IpGroupId:             ipGroupIdVal,
+		Ips:                   ipsVal,
+		MatchMac:              matchMacVal,
+		MatchOppositeIps:      matchOppositeIpsVal,
+		MatchOppositeNetworks: matchOppositeNetworksVal,
+		MatchOppositePorts:    matchOppositePortsVal,
+		MatchingTarget:        matchingTargetVal,
+		MatchingTargetType:    matchingTargetTypeVal,
+		NetworkIds:            networkIdsVal,
+		Port:                  portVal,
+		PortGroupId:           portGroupIdVal,
+		PortMatchingType:      portMatchingTypeVal,
+		WebDomains:            webDomainsVal,
+		ZoneId:                zoneIdVal,
+		state:                 attr.ValueStateKnown,
 	}, diags
 }
 
@@ -1790,6 +2175,78 @@ func NewSourceValue(attributeTypes map[string]attr.Type, attributes map[string]a
 			fmt.Sprintf(`ips expected to be basetypes.ListValue, was: %T`, ipsAttribute))
 	}
 
+	matchMacAttribute, ok := attributes["match_mac"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_mac is missing from object`)
+
+		return NewSourceValueUnknown(), diags
+	}
+
+	matchMacVal, ok := matchMacAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_mac expected to be basetypes.BoolValue, was: %T`, matchMacAttribute))
+	}
+
+	matchOppositeIpsAttribute, ok := attributes["match_opposite_ips"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_ips is missing from object`)
+
+		return NewSourceValueUnknown(), diags
+	}
+
+	matchOppositeIpsVal, ok := matchOppositeIpsAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_ips expected to be basetypes.BoolValue, was: %T`, matchOppositeIpsAttribute))
+	}
+
+	matchOppositeNetworksAttribute, ok := attributes["match_opposite_networks"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_networks is missing from object`)
+
+		return NewSourceValueUnknown(), diags
+	}
+
+	matchOppositeNetworksVal, ok := matchOppositeNetworksAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_networks expected to be basetypes.BoolValue, was: %T`, matchOppositeNetworksAttribute))
+	}
+
+	matchOppositePortsAttribute, ok := attributes["match_opposite_ports"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`match_opposite_ports is missing from object`)
+
+		return NewSourceValueUnknown(), diags
+	}
+
+	matchOppositePortsVal, ok := matchOppositePortsAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`match_opposite_ports expected to be basetypes.BoolValue, was: %T`, matchOppositePortsAttribute))
+	}
+
 	matchingTargetAttribute, ok := attributes["matching_target"]
 
 	if !ok {
@@ -1939,18 +2396,22 @@ func NewSourceValue(attributeTypes map[string]attr.Type, attributes map[string]a
 	}
 
 	return SourceValue{
-		ClientMacs:         clientMacsVal,
-		IpGroupId:          ipGroupIdVal,
-		Ips:                ipsVal,
-		MatchingTarget:     matchingTargetVal,
-		MatchingTargetType: matchingTargetTypeVal,
-		NetworkIds:         networkIdsVal,
-		Port:               portVal,
-		PortGroupId:        portGroupIdVal,
-		PortMatchingType:   portMatchingTypeVal,
-		WebDomains:         webDomainsVal,
-		ZoneId:             zoneIdVal,
-		state:              attr.ValueStateKnown,
+		ClientMacs:            clientMacsVal,
+		IpGroupId:             ipGroupIdVal,
+		Ips:                   ipsVal,
+		MatchMac:              matchMacVal,
+		MatchOppositeIps:      matchOppositeIpsVal,
+		MatchOppositeNetworks: matchOppositeNetworksVal,
+		MatchOppositePorts:    matchOppositePortsVal,
+		MatchingTarget:        matchingTargetVal,
+		MatchingTargetType:    matchingTargetTypeVal,
+		NetworkIds:            networkIdsVal,
+		Port:                  portVal,
+		PortGroupId:           portGroupIdVal,
+		PortMatchingType:      portMatchingTypeVal,
+		WebDomains:            webDomainsVal,
+		ZoneId:                zoneIdVal,
+		state:                 attr.ValueStateKnown,
 	}, diags
 }
 
@@ -2022,22 +2483,26 @@ func (t SourceType) ValueType(ctx context.Context) attr.Value {
 var _ basetypes.ObjectValuable = SourceValue{}
 
 type SourceValue struct {
-	ClientMacs         basetypes.ListValue   `tfsdk:"client_macs"`
-	IpGroupId          basetypes.StringValue `tfsdk:"ip_group_id"`
-	Ips                basetypes.ListValue   `tfsdk:"ips"`
-	MatchingTarget     basetypes.StringValue `tfsdk:"matching_target"`
-	MatchingTargetType basetypes.StringValue `tfsdk:"matching_target_type"`
-	NetworkIds         basetypes.ListValue   `tfsdk:"network_ids"`
-	Port               basetypes.StringValue `tfsdk:"port"`
-	PortGroupId        basetypes.StringValue `tfsdk:"port_group_id"`
-	PortMatchingType   basetypes.StringValue `tfsdk:"port_matching_type"`
-	WebDomains         basetypes.ListValue   `tfsdk:"web_domains"`
-	ZoneId             basetypes.StringValue `tfsdk:"zone_id"`
-	state              attr.ValueState
+	ClientMacs            basetypes.ListValue   `tfsdk:"client_macs"`
+	IpGroupId             basetypes.StringValue `tfsdk:"ip_group_id"`
+	Ips                   basetypes.ListValue   `tfsdk:"ips"`
+	MatchMac              basetypes.BoolValue   `tfsdk:"match_mac"`
+	MatchOppositeIps      basetypes.BoolValue   `tfsdk:"match_opposite_ips"`
+	MatchOppositeNetworks basetypes.BoolValue   `tfsdk:"match_opposite_networks"`
+	MatchOppositePorts    basetypes.BoolValue   `tfsdk:"match_opposite_ports"`
+	MatchingTarget        basetypes.StringValue `tfsdk:"matching_target"`
+	MatchingTargetType    basetypes.StringValue `tfsdk:"matching_target_type"`
+	NetworkIds            basetypes.ListValue   `tfsdk:"network_ids"`
+	Port                  basetypes.StringValue `tfsdk:"port"`
+	PortGroupId           basetypes.StringValue `tfsdk:"port_group_id"`
+	PortMatchingType      basetypes.StringValue `tfsdk:"port_matching_type"`
+	WebDomains            basetypes.ListValue   `tfsdk:"web_domains"`
+	ZoneId                basetypes.StringValue `tfsdk:"zone_id"`
+	state                 attr.ValueState
 }
 
 func (v SourceValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	attrTypes := make(map[string]tftypes.Type, 11)
+	attrTypes := make(map[string]tftypes.Type, 15)
 
 	var val tftypes.Value
 	var err error
@@ -2049,6 +2514,10 @@ func (v SourceValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error
 	attrTypes["ips"] = basetypes.ListType{
 		ElemType: types.StringType,
 	}.TerraformType(ctx)
+	attrTypes["match_mac"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["match_opposite_ips"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["match_opposite_networks"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["match_opposite_ports"] = basetypes.BoolType{}.TerraformType(ctx)
 	attrTypes["matching_target"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["matching_target_type"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["network_ids"] = basetypes.ListType{
@@ -2066,7 +2535,7 @@ func (v SourceValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error
 
 	switch v.state {
 	case attr.ValueStateKnown:
-		vals := make(map[string]tftypes.Value, 11)
+		vals := make(map[string]tftypes.Value, 15)
 
 		val, err = v.ClientMacs.ToTerraformValue(ctx)
 
@@ -2091,6 +2560,38 @@ func (v SourceValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error
 		}
 
 		vals["ips"] = val
+
+		val, err = v.MatchMac.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["match_mac"] = val
+
+		val, err = v.MatchOppositeIps.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["match_opposite_ips"] = val
+
+		val, err = v.MatchOppositeNetworks.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["match_opposite_networks"] = val
+
+		val, err = v.MatchOppositePorts.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["match_opposite_ports"] = val
 
 		val, err = v.MatchingTarget.ToTerraformValue(ctx)
 
@@ -2206,8 +2707,12 @@ func (v SourceValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, 
 			"ips": basetypes.ListType{
 				ElemType: types.StringType,
 			},
-			"matching_target":      basetypes.StringType{},
-			"matching_target_type": basetypes.StringType{},
+			"match_mac":               basetypes.BoolType{},
+			"match_opposite_ips":      basetypes.BoolType{},
+			"match_opposite_networks": basetypes.BoolType{},
+			"match_opposite_ports":    basetypes.BoolType{},
+			"matching_target":         basetypes.StringType{},
+			"matching_target_type":    basetypes.StringType{},
 			"network_ids": basetypes.ListType{
 				ElemType: types.StringType,
 			},
@@ -2242,8 +2747,12 @@ func (v SourceValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, 
 			"ips": basetypes.ListType{
 				ElemType: types.StringType,
 			},
-			"matching_target":      basetypes.StringType{},
-			"matching_target_type": basetypes.StringType{},
+			"match_mac":               basetypes.BoolType{},
+			"match_opposite_ips":      basetypes.BoolType{},
+			"match_opposite_networks": basetypes.BoolType{},
+			"match_opposite_ports":    basetypes.BoolType{},
+			"matching_target":         basetypes.StringType{},
+			"matching_target_type":    basetypes.StringType{},
 			"network_ids": basetypes.ListType{
 				ElemType: types.StringType,
 			},
@@ -2278,8 +2787,12 @@ func (v SourceValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, 
 			"ips": basetypes.ListType{
 				ElemType: types.StringType,
 			},
-			"matching_target":      basetypes.StringType{},
-			"matching_target_type": basetypes.StringType{},
+			"match_mac":               basetypes.BoolType{},
+			"match_opposite_ips":      basetypes.BoolType{},
+			"match_opposite_networks": basetypes.BoolType{},
+			"match_opposite_ports":    basetypes.BoolType{},
+			"matching_target":         basetypes.StringType{},
+			"matching_target_type":    basetypes.StringType{},
 			"network_ids": basetypes.ListType{
 				ElemType: types.StringType,
 			},
@@ -2314,8 +2827,12 @@ func (v SourceValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, 
 			"ips": basetypes.ListType{
 				ElemType: types.StringType,
 			},
-			"matching_target":      basetypes.StringType{},
-			"matching_target_type": basetypes.StringType{},
+			"match_mac":               basetypes.BoolType{},
+			"match_opposite_ips":      basetypes.BoolType{},
+			"match_opposite_networks": basetypes.BoolType{},
+			"match_opposite_ports":    basetypes.BoolType{},
+			"matching_target":         basetypes.StringType{},
+			"matching_target_type":    basetypes.StringType{},
 			"network_ids": basetypes.ListType{
 				ElemType: types.StringType,
 			},
@@ -2337,8 +2854,12 @@ func (v SourceValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, 
 		"ips": basetypes.ListType{
 			ElemType: types.StringType,
 		},
-		"matching_target":      basetypes.StringType{},
-		"matching_target_type": basetypes.StringType{},
+		"match_mac":               basetypes.BoolType{},
+		"match_opposite_ips":      basetypes.BoolType{},
+		"match_opposite_networks": basetypes.BoolType{},
+		"match_opposite_ports":    basetypes.BoolType{},
+		"matching_target":         basetypes.StringType{},
+		"matching_target_type":    basetypes.StringType{},
 		"network_ids": basetypes.ListType{
 			ElemType: types.StringType,
 		},
@@ -2362,17 +2883,21 @@ func (v SourceValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, 
 	objVal, diags := types.ObjectValue(
 		attributeTypes,
 		map[string]attr.Value{
-			"client_macs":          clientMacsVal,
-			"ip_group_id":          v.IpGroupId,
-			"ips":                  ipsVal,
-			"matching_target":      v.MatchingTarget,
-			"matching_target_type": v.MatchingTargetType,
-			"network_ids":          networkIdsVal,
-			"port":                 v.Port,
-			"port_group_id":        v.PortGroupId,
-			"port_matching_type":   v.PortMatchingType,
-			"web_domains":          webDomainsVal,
-			"zone_id":              v.ZoneId,
+			"client_macs":             clientMacsVal,
+			"ip_group_id":             v.IpGroupId,
+			"ips":                     ipsVal,
+			"match_mac":               v.MatchMac,
+			"match_opposite_ips":      v.MatchOppositeIps,
+			"match_opposite_networks": v.MatchOppositeNetworks,
+			"match_opposite_ports":    v.MatchOppositePorts,
+			"matching_target":         v.MatchingTarget,
+			"matching_target_type":    v.MatchingTargetType,
+			"network_ids":             networkIdsVal,
+			"port":                    v.Port,
+			"port_group_id":           v.PortGroupId,
+			"port_matching_type":      v.PortMatchingType,
+			"web_domains":             webDomainsVal,
+			"zone_id":                 v.ZoneId,
 		})
 
 	return objVal, diags
@@ -2402,6 +2927,22 @@ func (v SourceValue) Equal(o attr.Value) bool {
 	}
 
 	if !v.Ips.Equal(other.Ips) {
+		return false
+	}
+
+	if !v.MatchMac.Equal(other.MatchMac) {
+		return false
+	}
+
+	if !v.MatchOppositeIps.Equal(other.MatchOppositeIps) {
+		return false
+	}
+
+	if !v.MatchOppositeNetworks.Equal(other.MatchOppositeNetworks) {
+		return false
+	}
+
+	if !v.MatchOppositePorts.Equal(other.MatchOppositePorts) {
 		return false
 	}
 
@@ -2457,8 +2998,12 @@ func (v SourceValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 		"ips": basetypes.ListType{
 			ElemType: types.StringType,
 		},
-		"matching_target":      basetypes.StringType{},
-		"matching_target_type": basetypes.StringType{},
+		"match_mac":               basetypes.BoolType{},
+		"match_opposite_ips":      basetypes.BoolType{},
+		"match_opposite_networks": basetypes.BoolType{},
+		"match_opposite_ports":    basetypes.BoolType{},
+		"matching_target":         basetypes.StringType{},
+		"matching_target_type":    basetypes.StringType{},
 		"network_ids": basetypes.ListType{
 			ElemType: types.StringType,
 		},

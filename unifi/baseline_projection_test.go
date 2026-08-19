@@ -437,9 +437,44 @@ func compareBaselineFacts(t *testing.T, surface string, want, have map[string]at
 	// entry has to argue.
 	declared := loadSchemaChangeLedger(t)
 
+	// AN ADDED ATTRIBUTE IS LICENSABLE, AND UNTIL THIS COMMIT IT WAS NOT.
+	//
+	// The ledger licensed one named transition on an EXISTING attribute --
+	// (surface, attribute, field, old, new) -- so an attribute that was not in
+	// the baseline at all had no field that changed and no way to be declared.
+	// The gate therefore asserted that this provider can never add an attribute
+	// to a released surface, which is broken by construction: eight inversion
+	// flags on unifi_firewall_policy could not be exposed, and their absence is
+	// what let an apply reverse a firewall rule.
+	//
+	// This adds an EXPRESSION, not an exemption. Presence is declared the same
+	// way every other change is, with the same argument attached, and an
+	// UNDECLARED addition still fails exactly as before.
+	//
+	// A REQUIRED ADDITION IS STILL UNCONDITIONAL, because the argument that
+	// licenses the others does not reach it. An added Optional or
+	// Optional+Computed attribute cannot invalidate an existing configuration --
+	// a config that does not mention it is exactly what worked before. An added
+	// Required attribute breaks every existing configuration on the next plan. A
+	// licence broader than its justification is how a gate stops meaning
+	// anything, so the two cases are separated here rather than in the ledger.
 	for _, path := range sortedFactPaths(have) {
-		if _, ok := want[path]; !ok {
-			t.Errorf("%s: attribute %q present in built schema, absent from baseline", surface, path)
+		if _, ok := want[path]; ok {
+			continue
+		}
+		switch {
+		case have[path].Required:
+			t.Errorf("%s: attribute %q is new AND Required; every existing configuration "+
+				"fails its next plan without it, which no ledger entry can license",
+				surface, path)
+		case schemaChangeDeclared(declared, surface, path, "presence", "absent", "present"):
+			t.Logf("%s: attribute %q added by declaration in %s",
+				surface, path, schemaChangeLedgerPath)
+		default:
+			t.Errorf("%s: attribute %q present in built schema, absent from baseline. "+
+				"If the addition is intended, declare it in %s with field \"presence\", "+
+				"old \"absent\", new \"present\", and argue why it cannot break an "+
+				"existing configuration.", surface, path, schemaChangeLedgerPath)
 		}
 	}
 	for _, path := range sortedFactPaths(want) {

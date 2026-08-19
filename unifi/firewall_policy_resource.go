@@ -99,6 +99,17 @@ type firewallPolicyEndpointModel struct {
 	// Firmware-managed; round-tripped so updates keep it (a PUT that omits
 	// source/destination matching_target_type is rejected with HTTP 400).
 	MatchingTargetType types.String `tfsdk:"matching_target_type"`
+	// THE FOUR INVERSION AND MATCH FLAGS, declared because omitting them
+	// reversed rules rather than losing settings. The SDK emits all four
+	// without omitempty, so a struct built from a model that did not carry them
+	// sent false on every apply -- and match_opposite_ips true with a specific
+	// IP list means "match everything EXCEPT this list", so the reset turned
+	// "block everything but these" into "block only these" while the policy
+	// stayed visibly present and enforcing.
+	MatchMAC              types.Bool `tfsdk:"match_mac"`
+	MatchOppositeIPs      types.Bool `tfsdk:"match_opposite_ips"`
+	MatchOppositeNetworks types.Bool `tfsdk:"match_opposite_networks"`
+	MatchOppositePorts    types.Bool `tfsdk:"match_opposite_ports"`
 }
 
 func (m firewallPolicyEndpointModel) AttributeTypes() map[string]attr.Type {
@@ -114,6 +125,11 @@ func (m firewallPolicyEndpointModel) AttributeTypes() map[string]attr.Type {
 		"ip_group_id":          types.StringType,
 		"port_matching_type":   types.StringType,
 		"matching_target_type": types.StringType,
+
+		"match_mac":               types.BoolType,
+		"match_opposite_ips":      types.BoolType,
+		"match_opposite_networks": types.BoolType,
+		"match_opposite_ports":    types.BoolType,
 	}
 }
 
@@ -622,8 +638,14 @@ func endpointModelToSource(
 	diags *diag.Diagnostics,
 ) *unifi.FirewallPolicySource {
 	ep := &unifi.FirewallPolicySource{
-		ZoneID:         m.ZoneID.ValueString(),
-		MatchingTarget: m.MatchingTarget.ValueString(),
+		// The four the model now carries: sending the model's value rather
+		// than a Go zero is the whole of the fix.
+		MatchMAC:              m.MatchMAC.ValueBool(),
+		MatchOppositeIPs:      m.MatchOppositeIPs.ValueBool(),
+		MatchOppositeNetworks: m.MatchOppositeNetworks.ValueBool(),
+		MatchOppositePorts:    m.MatchOppositePorts.ValueBool(),
+		ZoneID:                m.ZoneID.ValueString(),
+		MatchingTarget:        m.MatchingTarget.ValueString(),
 		MatchingTargetType: firewallPolicyMatchingTargetType(
 			m.MatchingTarget.ValueString(), m.MatchingTargetType.ValueString(),
 			m.IPGroupID.ValueString(),
@@ -654,8 +676,14 @@ func endpointModelToDestination(
 	diags *diag.Diagnostics,
 ) *unifi.FirewallPolicyDestination {
 	ep := &unifi.FirewallPolicyDestination{
-		ZoneID:         m.ZoneID.ValueString(),
-		MatchingTarget: m.MatchingTarget.ValueString(),
+		// The four the model now carries: sending the model's value rather
+		// than a Go zero is the whole of the fix.
+		MatchMAC:              m.MatchMAC.ValueBool(),
+		MatchOppositeIPs:      m.MatchOppositeIPs.ValueBool(),
+		MatchOppositeNetworks: m.MatchOppositeNetworks.ValueBool(),
+		MatchOppositePorts:    m.MatchOppositePorts.ValueBool(),
+		ZoneID:                m.ZoneID.ValueString(),
+		MatchingTarget:        m.MatchingTarget.ValueString(),
 		MatchingTargetType: firewallPolicyMatchingTargetType(
 			m.MatchingTarget.ValueString(), m.MatchingTargetType.ValueString(),
 			m.IPGroupID.ValueString(),
@@ -800,6 +828,10 @@ func apiSourceToEndpointModel(
 	diags.Append(wd...)
 	m.WebDomains = webDomains
 
+	m.MatchMAC = types.BoolValue(src.MatchMAC)
+	m.MatchOppositeIPs = types.BoolValue(src.MatchOppositeIPs)
+	m.MatchOppositeNetworks = types.BoolValue(src.MatchOppositeNetworks)
+	m.MatchOppositePorts = types.BoolValue(src.MatchOppositePorts)
 	return m
 }
 
@@ -833,6 +865,10 @@ func apiDestinationToEndpointModel(
 	diags.Append(wd...)
 	m.WebDomains = webDomains
 
+	m.MatchMAC = types.BoolValue(dst.MatchMAC)
+	m.MatchOppositeIPs = types.BoolValue(dst.MatchOppositeIPs)
+	m.MatchOppositeNetworks = types.BoolValue(dst.MatchOppositeNetworks)
+	m.MatchOppositePorts = types.BoolValue(dst.MatchOppositePorts)
 	return m
 }
 

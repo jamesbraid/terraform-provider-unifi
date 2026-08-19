@@ -4,7 +4,7 @@
   "resource": "unifi_firewall_policy",
   "generator_name": "firewall_policy",
   "source_specification_sha256": "1cb710f191516240f339f94e66e5b250ee80585bbe795c982cdedcc52d7ed722",
-  "description": "Manages a UniFi zone-based firewall policy (UniFi Network 8.x+). Zone-based firewall policies replace the legacy firewall rules and are displayed under Settings → Security → Firewall Policies in the UniFi UI.",
+  "description": "Manages a UniFi zone-based firewall policy (UniFi Network 8.x+). Zone-based firewall policies replace the legacy firewall rules and are displayed under Settings \u2192 Security \u2192 Firewall Policies in the UniFi UI.",
   "fields": [
     {
       "structural_name": "_id",
@@ -224,22 +224,90 @@
         {
           "structural_name": "match_mac",
           "terraform_name": "match_mac",
-          "disposition": "omitted"
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
         },
         {
           "structural_name": "match_opposite_ips",
           "terraform_name": "match_opposite_ips",
-          "disposition": "omitted"
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
         },
         {
           "structural_name": "match_opposite_networks",
           "terraform_name": "match_opposite_networks",
-          "disposition": "omitted"
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
         },
         {
           "structural_name": "match_opposite_ports",
           "terraform_name": "match_opposite_ports",
-          "disposition": "omitted"
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
         },
         {
           "structural_name": "matching_target",
@@ -557,7 +625,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
+        "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) \u2014 keep it `false` and add an explicit reverse policy if you need the reply.",
         "validators": [
           {
             "custom": {
@@ -660,22 +728,90 @@
         {
           "structural_name": "match_mac",
           "terraform_name": "match_mac",
-          "disposition": "omitted"
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
         },
         {
           "structural_name": "match_opposite_ips",
           "terraform_name": "match_opposite_ips",
-          "disposition": "omitted"
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
         },
         {
           "structural_name": "match_opposite_networks",
           "terraform_name": "match_opposite_networks",
-          "disposition": "omitted"
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
         },
         {
           "structural_name": "match_opposite_ports",
           "terraform_name": "match_opposite_ports",
-          "disposition": "omitted"
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
         },
         {
           "structural_name": "matching_target",
