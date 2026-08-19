@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
-	fwp "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
 )
 
 // THE CHECK IS ITS OWN REPRODUCTION, and that is the point of building it
@@ -34,7 +33,7 @@ func TestNestedProblemsNamesTheUnmodelledForceEmittedMembers(t *testing.T) {
 		"web_domains":          types.ListType{ElemType: types.StringType},
 		"zone_id":              types.StringType,
 	}
-	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource, types.Object]{
+	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource]{
 		Wire:      "source",
 		AttrTypes: declared,
 	}
@@ -74,7 +73,7 @@ func TestNestedProblemsNamesTheUnmodelledForceEmittedMembers(t *testing.T) {
 // TestUnmodelledSilencesOnlyWhatItNames is the property that makes the
 // exemption a record rather than an off switch.
 func TestUnmodelledSilencesOnlyWhatItNames(t *testing.T) {
-	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource, types.Object]{
+	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource]{
 		Wire:      "source",
 		AttrTypes: map[string]attr.Type{},
 		Unmodelled: []string{
@@ -110,7 +109,7 @@ func TestUnmodelledSilencesOnlyWhatItNames(t *testing.T) {
 // not report a member the wire simply drops, or every nested type in the SDK
 // becomes a wall of false positives and the real four get lost in it.
 func TestNestedProblemsIgnoresOmitemptyMembers(t *testing.T) {
-	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource, types.Object]{
+	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource]{
 		Wire:      "source",
 		AttrTypes: map[string]attr.Type{},
 		Unmodelled: []string{
@@ -133,7 +132,7 @@ func TestNestedProblemsIgnoresOmitemptyMembers(t *testing.T) {
 func TestObjectFieldRoundTripsThroughTheDescriptorsConverters(t *testing.T) {
 	ctx := context.Background()
 	attrTypes := map[string]attr.Type{"zone_id": types.StringType}
-	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource, types.Object]{
+	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource]{
 		Wire:      "source",
 		AttrTypes: attrTypes,
 		Model:     func(m *kitModel) *types.Object { return &m.Nested },
@@ -206,7 +205,7 @@ func TestObjectFieldRoundTripsThroughTheDescriptorsConverters(t *testing.T) {
 // stops the field being WRITTEN from the model, but the SDK struct is still
 // sent whole when its key is masked, so its force-emitted members still go.
 func TestNestedProblemsReachesFieldsThroughTheSpecAndThroughReadOnly(t *testing.T) {
-	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource, types.Object]{
+	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource]{
 		Wire:      "source",
 		AttrTypes: map[string]attr.Type{},
 	}
@@ -234,107 +233,4 @@ func TestNestedProblemsReachesFieldsThroughTheSpecAndThroughReadOnly(t *testing.
 			t.Fatalf("a spec of scalar fields reported %d problem(s): %v", len(got), got)
 		}
 	})
-}
-
-// TestObjectFieldCarriesAGeneratedValueType is the typed checkpoint, run
-// against firewall_policy's REAL generated SourceValue rather than a stand-in.
-//
-// The decision in #195 is that the nested capability produces values of the
-// generated CustomTypes, because plain objects leave eleven surfaces
-// permanently unable to regenerate -- which would make the self-delete
-// tripwire on graftPreservedCollections a guard that can never fire.
-//
-// What this proves is narrow and worth stating exactly: the kind can carry a
-// generated value type, because SourceValue satisfies basetypes.ObjectValuable
-// and the constraint is written against that interface rather than against
-// types.Object. types.Object satisfies it too, so a descriptor that does not
-// need a typed object is not forced into one.
-//
-// It does NOT prove the regenerate goes clean. That needs the schema binding
-// and the model field changed together, and both are currently forbidden by
-// TestServedSchemaAgreesWithItsRuntimeModel, which asserts the plain-object
-// invariant in two directions.
-func TestObjectFieldCarriesAGeneratedValueType(t *testing.T) {
-	ctx := context.Background()
-
-	field := ObjectField[typedModel, kitSDK, ui.FirewallPolicySource, fwp.SourceValue]{
-		Wire:      "source",
-		AttrTypes: fwp.SourceValue{}.AttributeTypes(ctx),
-		Model:     func(m *typedModel) *fwp.SourceValue { return &m.Source },
-		SDK:       func(s *kitSDK) **ui.FirewallPolicySource { return &s.Nested },
-		Null:      fwp.NewSourceValueNull,
-		Encode: func(_ context.Context, v fwp.SourceValue) (*ui.FirewallPolicySource, diag.Diagnostics) {
-			return &ui.FirewallPolicySource{ZoneID: v.ZoneId.ValueString()}, nil
-		},
-		Decode: func(c context.Context, s *ui.FirewallPolicySource) (fwp.SourceValue, diag.Diagnostics) {
-			return fwp.NewSourceValue(fwp.SourceValue{}.AttributeTypes(c), map[string]attr.Value{
-				"client_macs":          types.ListNull(types.StringType),
-				"ip_group_id":          types.StringNull(),
-				"ips":                  types.ListNull(types.StringType),
-				"matching_target":      types.StringNull(),
-				"matching_target_type": types.StringNull(),
-				"network_ids":          types.ListNull(types.StringType),
-				"port":                 types.StringNull(),
-				"port_group_id":        types.StringNull(),
-				"port_matching_type":   types.StringNull(),
-				"web_domains":          types.ListNull(types.StringType),
-				"zone_id":              types.StringValue(s.ZoneID),
-			})
-		},
-		// The four this type force-emits and the schema does not declare.
-		Unmodelled: []string{
-			"match_mac", "match_opposite_ips", "match_opposite_networks",
-			"match_opposite_ports",
-		},
-	}
-
-	t.Run("the controller's object becomes a typed value", func(t *testing.T) {
-		var model typedModel
-		sdk := kitSDK{Nested: &ui.FirewallPolicySource{ZoneID: "zone-9"}}
-		if diags := field.ToModel(ctx, &sdk, &model); diags.HasError() {
-			t.Fatalf("ToModel: %v", diags)
-		}
-		if model.Source.ZoneId.ValueString() != "zone-9" {
-			t.Errorf("ZoneId = %q, want zone-9", model.Source.ZoneId.ValueString())
-		}
-		// The value is the generated type, not a plain object -- which is the
-		// whole point of the decision.
-		if _, ok := any(model.Source).(fwp.SourceValue); !ok {
-			t.Error("the model does not carry a SourceValue")
-		}
-	})
-
-	t.Run("an absent object becomes the typed null", func(t *testing.T) {
-		model := typedModel{Source: fwp.NewSourceValueMust(
-			fwp.SourceValue{}.AttributeTypes(ctx), map[string]attr.Value{
-				"client_macs": types.ListNull(types.StringType), "ip_group_id": types.StringNull(),
-				"ips": types.ListNull(types.StringType), "matching_target": types.StringNull(),
-				"matching_target_type": types.StringNull(),
-				"network_ids":          types.ListNull(types.StringType), "port": types.StringNull(),
-				"port_group_id": types.StringNull(), "port_matching_type": types.StringNull(),
-				"web_domains": types.ListNull(types.StringType), "zone_id": types.StringValue("stale"),
-			})}
-		var sdk kitSDK
-		if diags := field.ToModel(ctx, &sdk, &model); diags.HasError() {
-			t.Fatalf("ToModel: %v", diags)
-		}
-		if !model.Source.IsNull() {
-			t.Errorf("Source = %v, want the typed null; the kind cannot build one "+
-				"itself because V is an interface constraint and its zero value is "+
-				"not its null value", model.Source)
-		}
-	})
-
-	t.Run("the exemption still holds for a typed field", func(t *testing.T) {
-		if problems := field.nestedProblems(); len(problems) != 0 {
-			t.Fatalf("typed field reported %d problem(s): %s",
-				len(problems), strings.Join(problems, "\n"))
-		}
-	})
-}
-
-// typedModel stands for a descriptor model whose nested field is the generated
-// value type rather than a plain object.
-type typedModel struct {
-	Source fwp.SourceValue `tfsdk:"source"`
 }
