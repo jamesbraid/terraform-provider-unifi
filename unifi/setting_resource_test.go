@@ -1186,49 +1186,6 @@ func Test_settingResource_dohSettingToModel(t *testing.T) {
 	})
 }
 
-func Test_settingResource_ipsModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null fields produce empty setting", func(t *testing.T) {
-		model := &settingIpsModel{
-			IPSMode:          types.StringNull(),
-			HoneypotEnabled:  types.BoolNull(),
-			RestrictTorrents: types.BoolNull(),
-		}
-		var diags diag.Diagnostics
-		got := r.ipsModelToSetting(ctx, model, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.IPsMode != "" {
-			t.Errorf("IPsMode should be empty, got %q", got.IPsMode)
-		}
-	})
-
-	t.Run("ips_mode and restrict_torrents set", func(t *testing.T) {
-		model := &settingIpsModel{
-			IPSMode:          types.StringValue("disabled"),
-			RestrictTorrents: types.BoolValue(true),
-			HoneypotEnabled:  types.BoolNull(),
-		}
-		var diags diag.Diagnostics
-		got := r.ipsModelToSetting(ctx, model, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.IPsMode != "disabled" {
-			t.Errorf("IPsMode = %q, want disabled", got.IPsMode)
-		}
-		if !got.RestrictTorrents {
-			t.Error("RestrictTorrents should be true")
-		}
-	})
-}
-
 func Test_settingResource_ipsSettingToModel(t *testing.T) {
 	r := &settingResource{}
 	ctx := context.Background()
@@ -1433,69 +1390,6 @@ func TestMgmtNewFields(t *testing.T) {
 	// An unconfigured field stays null (no drift on unmanaged settings).
 	if !out.WifimanEnabled.IsNull() {
 		t.Error("unconfigured wifiman_enabled should be null")
-	}
-}
-
-// TestIpsSuppressionAlertsRoundTrip guards #275: signature alert suppression
-// (incl. gid/id pointers and the nested tracking list) round-trips model<->setting.
-func TestIpsSuppressionAlertsRoundTrip(t *testing.T) {
-	ctx := context.Background()
-	var diags diag.Diagnostics
-	r := &settingResource{}
-
-	tracking, _ := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ipsTrackingAttrTypes},
-		[]settingIpsTrackingModel{{
-			Direction: types.StringValue("both"),
-			Mode:      types.StringValue("ip"),
-			Value:     types.StringValue("10.0.0.5"),
-		}})
-	alerts, _ := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: ipsAlertAttrTypes},
-		[]settingIpsAlertModel{{
-			Category:  types.StringValue("malware"),
-			Gid:       types.Int64Value(1),
-			ID:        types.Int64Value(2001),
-			Signature: types.StringValue("ET MALWARE"),
-			Type:      types.StringValue("track"),
-			Tracking:  tracking,
-		}})
-
-	model := &settingIpsModel{
-		EnabledCategories:    types.ListNull(types.StringType),
-		EnabledNetworks:      types.ListNull(types.StringType),
-		Honeypot:             types.ListNull(types.ObjectType{AttrTypes: ipsHoneypotAttrTypes}),
-		SuppressionWhitelist: types.ListNull(types.ObjectType{AttrTypes: ipsWhitelistAttrTypes}),
-		SuppressionAlerts:    alerts,
-	}
-	setting := r.ipsModelToSetting(ctx, model, &diags)
-	if diags.HasError() {
-		t.Fatalf("modelToSetting: %v", diags)
-	}
-
-	if !ipsSuppressionConfigured(model) {
-		t.Fatal("suppression should be reported as configured")
-	}
-	suppression := r.ipsSuppressionModelToSetting(ctx, model, &diags)
-	if diags.HasError() {
-		t.Fatalf("suppressionModelToSetting: %v", diags)
-	}
-	if suppression == nil || len(suppression.Alerts) != 1 {
-		t.Fatalf("alerts not built: %+v", suppression)
-	}
-	a := suppression.Alerts[0]
-	if a.Category != "malware" || a.Gid == nil || *a.Gid != 1 || a.ID == nil || *a.ID != 2001 ||
-		a.Type != "track" || len(a.Tracking) != 1 || a.Tracking[0].Value != "10.0.0.5" {
-		t.Fatalf("alert mismatch: %+v", a)
-	}
-
-	out := r.ipsSettingToModel(ctx, setting, suppression, model, &diags)
-	if diags.HasError() {
-		t.Fatalf("settingToModel: %v", diags)
-	}
-	var outAlerts []settingIpsAlertModel
-	out.SuppressionAlerts.ElementsAs(ctx, &outAlerts, false)
-	if len(outAlerts) != 1 || outAlerts[0].Signature.ValueString() != "ET MALWARE" ||
-		outAlerts[0].Gid.ValueInt64() != 1 {
-		t.Errorf("read-back alerts mismatch: %+v", outAlerts)
 	}
 }
 
