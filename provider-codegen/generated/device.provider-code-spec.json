@@ -1,0 +1,1189 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "device",
+      "schema": {
+        "attributes": [
+          {
+            "bool": {
+              "computed_optional_required": "computed",
+              "description": "Whether the device is adopted."
+            },
+            "name": "adopted"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Specifies whether this resource should tell the controller to adopt the device on create.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "allow_adoption"
+          },
+          {
+            "name": "bandsteering_mode",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Band steering mode; valid values are `off`, `equal`, and `prefer_5g`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"off\", \"equal\", \"prefer_5g\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "config_network",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable network bonding."
+                  },
+                  "name": "bonding_enabled"
+                },
+                {
+                  "name": "dns1",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Primary DNS server."
+                  }
+                },
+                {
+                  "name": "dns2",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Secondary DNS server."
+                  }
+                },
+                {
+                  "name": "dnssuffix",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "DNS suffix."
+                  }
+                },
+                {
+                  "name": "gateway",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Gateway address (for static configuration)."
+                  }
+                },
+                {
+                  "name": "ip",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "IP address (for static configuration)."
+                  }
+                },
+                {
+                  "name": "netmask",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Network mask (for static configuration)."
+                  }
+                },
+                {
+                  "name": "type",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Network configuration type (dhcp or static).",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"dhcp\", \"static\")"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Network configuration for the device."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Specifies whether this device should be disabled."
+            },
+            "name": "disabled"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Enable flow control."
+            },
+            "name": "flowctrl_enabled"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "default": {
+                "static": true
+              },
+              "description": "Specifies whether this resource should tell the controller to forget the device on destroy.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "forget_on_destroy"
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the device.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Enable jumbo frames."
+            },
+            "name": "jumboframe_enabled"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "description": "LCM brightness (1-100)."
+            },
+            "name": "lcm_brightness"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Override LCM brightness."
+            },
+            "name": "lcm_brightness_override"
+          },
+          {
+            "name": "lcm_idle_timeout",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                },
+                "type": "timetypes.GoDurationType{}",
+                "value_type": "timetypes.GoDuration"
+              },
+              "description": "LCM idle timeout, as a Go duration string (e.g. `10m`, `600s`).",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationBetween(10*time.Second, 3600*time.Second)"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                      },
+                      {
+                        "path": "time"
+                      }
+                    ],
+                    "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Override LCM idle timeout."
+            },
+            "name": "lcm_idle_timeout_override"
+          },
+          {
+            "name": "lcm_night_mode_begins",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "LCM night mode begin time (HH:MM format)."
+            }
+          },
+          {
+            "name": "lcm_night_mode_ends",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "LCM night mode end time (HH:MM format)."
+            }
+          },
+          {
+            "name": "led_override",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "LED override setting; valid values are `default`, `on`, and `off`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"default\", \"on\", \"off\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "led_override_color",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "LED color override (hex color code).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "description": "LED brightness (0-100).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                      }
+                    ],
+                    "schema_definition": "int64planmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "led_override_color_brightness"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Specifies whether the device is locked."
+            },
+            "name": "locked"
+          },
+          {
+            "name": "mac",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "custom_type": {
+                "import": {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+                },
+                "type": "hwtypes.MACAddressType{}",
+                "value_type": "hwtypes.MACAddress"
+              },
+              "description": "The MAC address of the device. This can be specified so that the provider can take control of a device (since devices are created through adoption).",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Enable the mesh station VAP (the UI \"Mesh Connect\" toggle), letting this AP uplink wirelessly to a mesh parent.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "mesh_sta_vap_enabled"
+          },
+          {
+            "name": "mgmt_network_id",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink (a port_override tagged_networkconf_ids entry) first, then set mgmt_network_id. Leave unset to manage on the uplink's native (untagged) network."
+            }
+          },
+          {
+            "name": "model",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "Device model."
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the device."
+            }
+          },
+          {
+            "name": "outdoor_mode_override",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Outdoor mode override; valid values are `default`, `on`, and `off`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"default\", \"on\", \"off\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Enable outlet control."
+            },
+            "name": "outlet_enabled"
+          },
+          {
+            "list_nested": {
+              "computed_optional_required": "computed_optional",
+              "description": "Outlet configuration overrides.",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable power cycle."
+                    },
+                    "name": "cycle_enabled"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "required",
+                      "description": "Outlet index."
+                    },
+                    "name": "index"
+                  },
+                  {
+                    "name": "name",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Outlet name."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Relay state (on/off)."
+                    },
+                    "name": "relay_state"
+                  }
+                ]
+              },
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "outlet_overrides"
+          },
+          {
+            "name": "poe_mode",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "PoE mode; valid values are `auto`, `pasv24`, `passthrough`, and `off`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"auto\", \"pasv24\", \"passthrough\", \"off\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "list_nested": {
+              "computed_optional_required": "computed_optional",
+              "description": "Radio configuration table.",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Antenna gain."
+                    },
+                    "name": "antenna_gain"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Antenna ID."
+                    },
+                    "name": "antenna_id"
+                  },
+                  {
+                    "name": "channel",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Channel number or 'auto'."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable DFS (Dynamic Frequency Selection)."
+                    },
+                    "name": "dfs"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable hard noise floor."
+                    },
+                    "name": "hard_noise_floor_enabled"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Channel width (20, 40, 80, 160)."
+                    },
+                    "name": "ht"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable load balancing."
+                    },
+                    "name": "loadbalance_enabled"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Maximum number of stations."
+                    },
+                    "name": "maxsta"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Minimum RSSI value."
+                    },
+                    "name": "min_rssi"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable minimum RSSI."
+                    },
+                    "name": "min_rssi_enabled"
+                  },
+                  {
+                    "name": "name",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Radio name."
+                    }
+                  },
+                  {
+                    "name": "radio",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Radio band (ng, na, ad, 6e)."
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Sensitivity level."
+                    },
+                    "name": "sens_level"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable sensitivity level."
+                    },
+                    "name": "sens_level_enabled"
+                  },
+                  {
+                    "name": "tx_power",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Transmit power or 'auto'."
+                    }
+                  },
+                  {
+                    "name": "tx_power_mode",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Transmit power mode (auto, medium, high, low, custom)."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable virtual wire."
+                    },
+                    "name": "vwire_enabled"
+                  }
+                ]
+              },
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "radio_table"
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the device with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed",
+              "description": "Device state."
+            },
+            "name": "state"
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "description": "STP priority.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                      }
+                    ],
+                    "schema_definition": "int64validator.OneOf(0, 4096, 8192, 12288, 16384, 20480, 24576, 28672, 32768, 36864, 40960, 45056, 49152, 53248, 57344, 61440)"
+                  }
+                }
+              ]
+            },
+            "name": "stp_priority"
+          },
+          {
+            "name": "stp_version",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "STP version; valid values are `stp`, `rstp`, and `disabled`.",
+              "validators": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                      }
+                    ],
+                    "schema_definition": "stringvalidator.OneOf(\"stp\", \"rstp\", \"disabled\")"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Enable VLAN support on the switch.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            },
+            "name": "switch_vlan_enabled"
+          },
+          {
+            "name": "type",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "Device type."
+            }
+          },
+          {
+            "int64": {
+              "computed_optional_required": "computed_optional",
+              "description": "Volume level (0-100)."
+            },
+            "name": "volume"
+          },
+          {
+            "name": "x_baresip_password",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "Baresip password.",
+              "sensitive": true
+            }
+          }
+        ],
+        "blocks": [
+          {
+            "name": "port_override",
+            "set_nested": {
+              "description": "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration \u2014 the provider merges your declared ports (by `index`) into the device's current overrides rather than replacing the whole set. Removing a block stops managing that port but does not reset it; clear a port by overriding it back to the defaults instead.",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "list": {
+                      "computed_optional_required": "optional",
+                      "description": "Port indices that make up this link-aggregation (LAG) group. Only takes effect when `op_mode` is `aggregate` on this port.",
+                      "element_type": {
+                        "int64": {}
+                      }
+                    },
+                    "name": "aggregate_members"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable auto-negotiation for port speed."
+                    },
+                    "name": "autoneg"
+                  },
+                  {
+                    "name": "dot1x_ctrl",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "802.1X control mode."
+                    }
+                  },
+                  {
+                    "name": "dot1x_idle_timeout",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "custom_type": {
+                        "import": {
+                          "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                        },
+                        "type": "timetypes.GoDurationType{}",
+                        "value_type": "timetypes.GoDuration"
+                      },
+                      "description": "802.1X idle timeout, as a Go duration string (e.g. `5m`, `300s`).",
+                      "validators": [
+                        {
+                          "custom": {
+                            "imports": [
+                              {
+                                "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                              },
+                              {
+                                "path": "time"
+                              }
+                            ],
+                            "schema_definition": "validators.GoDurationBetween(0, 65535*time.Second)"
+                          }
+                        },
+                        {
+                          "custom": {
+                            "imports": [
+                              {
+                                "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                              },
+                              {
+                                "path": "time"
+                              }
+                            ],
+                            "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Egress rate limit in kbps."
+                    },
+                    "name": "egress_rate_limit_kbps"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable egress rate limiting."
+                    },
+                    "name": "egress_rate_limit_kbps_enabled"
+                  },
+                  {
+                    "list": {
+                      "computed_optional_required": "optional",
+                      "description": "List of network IDs to exclude from this port.",
+                      "element_type": {
+                        "string": {}
+                      }
+                    },
+                    "name": "excluded_networkconf_ids"
+                  },
+                  {
+                    "name": "fec_mode",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "Forward Error Correction mode."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable flow control."
+                    },
+                    "name": "flow_control_enabled"
+                  },
+                  {
+                    "name": "forward",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "Forwarding mode."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable full duplex mode."
+                    },
+                    "name": "full_duplex"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "required",
+                      "description": "Switch port index."
+                    },
+                    "name": "index"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable port isolation."
+                    },
+                    "name": "isolation"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable LLDP-MED."
+                    },
+                    "name": "lldpmed_enabled"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable LLDP-MED notifications."
+                    },
+                    "name": "lldpmed_notify_enabled"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Mirror port index."
+                    },
+                    "name": "mirror_port_idx"
+                  },
+                  {
+                    "list": {
+                      "computed_optional_required": "optional",
+                      "description": "List of network IDs for multicast router.",
+                      "element_type": {
+                        "string": {}
+                      }
+                    },
+                    "name": "multicast_router_networkconf_ids"
+                  },
+                  {
+                    "name": "name",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "Human-readable name of the port."
+                    }
+                  },
+                  {
+                    "name": "native_networkconf_id",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "Native network ID (VLAN)."
+                    }
+                  },
+                  {
+                    "name": "op_mode",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "default": {
+                        "static": "switch"
+                      },
+                      "description": "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.",
+                      "validators": [
+                        {
+                          "custom": {
+                            "imports": [
+                              {
+                                "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                              }
+                            ],
+                            "schema_definition": "stringvalidator.OneOf(\"switch\", \"mirror\", \"aggregate\")"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "poe_mode",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "PoE mode of the port; valid values are `auto`, `pasv24`, `passthrough`, and `off`.",
+                      "validators": [
+                        {
+                          "custom": {
+                            "imports": [
+                              {
+                                "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                              }
+                            ],
+                            "schema_definition": "stringvalidator.OneOf(\"auto\", \"pasv24\", \"passthrough\", \"off\")"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable port keepalive."
+                    },
+                    "name": "port_keepalive_enabled"
+                  },
+                  {
+                    "name": "port_profile_id",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "ID of the Port Profile used on this port."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable port security."
+                    },
+                    "name": "port_security_enabled"
+                  },
+                  {
+                    "list": {
+                      "computed_optional_required": "optional",
+                      "description": "List of MAC addresses allowed when port security is enabled.",
+                      "element_type": {
+                        "string": {}
+                      }
+                    },
+                    "name": "port_security_mac_address"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Priority queue 1 level."
+                    },
+                    "name": "priority_queue1_level"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Priority queue 2 level."
+                    },
+                    "name": "priority_queue2_level"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Priority queue 3 level."
+                    },
+                    "name": "priority_queue3_level"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Priority queue 4 level."
+                    },
+                    "name": "priority_queue4_level"
+                  },
+                  {
+                    "name": "setting_preference",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "Setting preference."
+                    }
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Port speed in Mbps."
+                    },
+                    "name": "speed"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable broadcast storm control."
+                    },
+                    "name": "stormctrl_bcast_enabled"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Broadcast storm control level."
+                    },
+                    "name": "stormctrl_bcast_level"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Broadcast storm control rate."
+                    },
+                    "name": "stormctrl_bcast_rate"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable multicast storm control."
+                    },
+                    "name": "stormctrl_mcast_enabled"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Multicast storm control level."
+                    },
+                    "name": "stormctrl_mcast_level"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Multicast storm control rate."
+                    },
+                    "name": "stormctrl_mcast_rate"
+                  },
+                  {
+                    "name": "stormctrl_type",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "Storm control type."
+                    }
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "Enable unicast storm control."
+                    },
+                    "name": "stormctrl_ucast_enabled"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Unicast storm control level."
+                    },
+                    "name": "stormctrl_ucast_level"
+                  },
+                  {
+                    "int64": {
+                      "computed_optional_required": "optional",
+                      "description": "Unicast storm control rate."
+                    },
+                    "name": "stormctrl_ucast_rate"
+                  },
+                  {
+                    "bool": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "STP port mode."
+                    },
+                    "name": "stp_port_mode"
+                  },
+                  {
+                    "list": {
+                      "computed_optional_required": "optional",
+                      "description": "List of network IDs to tag on this port.",
+                      "element_type": {
+                        "string": {}
+                      }
+                    },
+                    "name": "tagged_networkconf_ids"
+                  },
+                  {
+                    "name": "tagged_vlan_mgmt",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "Tagged VLAN management."
+                    }
+                  },
+                  {
+                    "name": "voice_networkconf_id",
+                    "string": {
+                      "computed_optional_required": "optional",
+                      "description": "Voice network ID."
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "markdown_description": "Manages a UniFi device: adoption, per-port overrides, radios and outlets."
+      }
+    }
+  ]
+}

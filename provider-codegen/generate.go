@@ -123,6 +123,9 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-port-forward.json -policy policy/port_forward.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix port_forward -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/port_forward.provider-code-spec.json --output ../internal/generated/resource_port_forward --package resource_port_forward
 //go:generate gofmt -w ../internal/generated/resource_port_forward/port_forward_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-device.json -policy policy/device.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix device -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/device.provider-code-spec.json --output ../internal/generated/resource_device --package resource_device
+//go:generate gofmt -w ../internal/generated/resource_device/device_resource_gen.go
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-ap-group.json -policy policy/ap_group_list.json -baseline ../build/m0/provider-schema-digests.json -ledger generated/catalog-parity-ledger.json -artifact-prefix ap_group_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/ap_group_list.provider-code-spec.json --output ../internal/generated/listresource_ap_group --package listresource_ap_group
 //go:generate sdkbootstrap -struct Client -resource unifi_client -output bootstrap/go-unifi-v1.103.0-client-list.json

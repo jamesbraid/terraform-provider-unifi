@@ -229,6 +229,15 @@ func TestWave3FleetDependentReceipt(t *testing.T) {
 		// resource against the hand-written one it replaces.
 		case "unifi_firewall_policy":
 			want = GeneratedShadow
+		// The surface with NO shadow artifact, moved on what could be checked
+		// instead: every field of the SDK struct dispositioned, the same 112
+		// attribute paths each direction against the hand-written schema, and
+		// every described path equal to the released contract. It is also the
+		// first managed surface to need a block -- port_override stays a
+		// set_nested_block, because the same data under "attributes" is a
+		// silently different configuration syntax.
+		case "unifi_device":
+			want = GeneratedShadow
 		// The widest surface in the estate, and the one that needed blocks and
 		// an invented member to be expressible at all.
 		case "unifi_wlan":
@@ -405,8 +414,8 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 	// ShadowOnly is gone from the estate: port_forward was the last surface in
 	// it, and no other managed resource ever was.
 	want := map[AdmissionState]int{
-		PolicyComplete:  2,
-		GeneratedShadow: 64,
+		PolicyComplete:  1,
+		GeneratedShadow: 65,
 		Admitted:        1,
 	}
 	if !reflect.DeepEqual(counts, want) {
