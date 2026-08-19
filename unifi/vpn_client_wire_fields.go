@@ -14,7 +14,7 @@ package unifi
 // so it is never named, so it is never sent.
 //
 // THE LIST IS DECLARED AND THEN CHECKED, which is the only way a hand-kept
-// enumeration is safe. TestVPNClientWireFieldsMatchTheMapper derives the same
+// enumeration is safe. TestWireFieldMasksMatchTheirMappers derives the same
 // set from the source -- the fields modelToNetwork assigns, intersected with
 // what the vpn-client encoder emits -- and fails if the two disagree. Adding a
 // field to the mapper without adding it here would otherwise mean the new
