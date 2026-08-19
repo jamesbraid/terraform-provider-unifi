@@ -41,11 +41,14 @@
     "no-mapping"
   ],
   "surfaces": {
-    "bgp": [],
+    "bgp": [
+      "nested"
+    ],
     "client": [
       "derived-value",
-      "undefined-fields",
-      "identity-key"
+      "identity-key",
+      "nested",
+      "undefined-fields"
     ],
     "device": [
       "no-mapping"
@@ -85,6 +88,7 @@
     ],
     "vpn_server": [
       "derived-value",
+      "nested",
       "undefined-fields"
     ],
     "wan": [
