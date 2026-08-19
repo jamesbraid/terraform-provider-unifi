@@ -105,14 +105,15 @@
     ]
   },
   "resolved_capabilities": {
+    "always-wire": "AlwaysWire, for wire fields a hook derives that no plan names",
     "custom-scalar": "StringLikeField[M,S,T basetypes.StringValuable]",
+    "list-hooks": "Prefetch once + AfterReceive per object in the List path",
     "model-conditional": "WriteWhen func(*M) bool, gating ToSDK and SetInPlan",
+    "nullable-duration": "DurationPtrField, distinguishing nil from a pointer to zero",
+    "omit-zero-int": "Int64PtrField.OmitZero, a write rule distinct from Elide's read rule",
+    "pointer-string": "StringLikePtrField, omitting the empty string the controller rejects",
     "preWriteHook": "Prefetch/BeforeSend/AfterReceive, now wired into Read and Update as well as Create",
     "read-default": "ReadDefault on StringField, substituted in ToModel so the list path gets it too",
-    "list-hooks": "Prefetch once + AfterReceive per object in the List path",
-    "always-wire": "AlwaysWire, for wire fields a hook derives that no plan names",
-    "nullable-duration": "DurationPtrField, distinguishing nil from a pointer to zero",
-    "pointer-string": "StringLikePtrField, omitting the empty string the controller rejects",
-    "omit-zero-int": "Int64PtrField.OmitZero, a write rule distinct from Elide's read rule"
+    "typed-collection": "StringSetField.ElementType for the state element type, plus KeepPrior for the spelling already in state -- a Set identifies members by string value, so the element type's semantic equality never reaches the set"
   }
 }
