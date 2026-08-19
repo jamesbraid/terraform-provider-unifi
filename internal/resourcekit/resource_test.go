@@ -38,6 +38,10 @@ type kitModel struct {
 type kitSDK struct {
 	ID   string
 	Name string
+	// Unmanaged is deliberately NOT a Field in the spec: it stands for every
+	// controller-owned value the provider does not model, which is what a
+	// whole-object write built from the model resets.
+	Unmanaged string
 }
 
 func kitSchema(ctx context.Context) schema.Schema {
@@ -512,5 +516,86 @@ func TestBeforeSendGetsTheModelTheObjectWasBuiltFrom(t *testing.T) {
 	// would be the same thing and the distinction would be untested.
 	if sawConfig != "" {
 		t.Errorf("config.Name = %q, want empty -- config is what the practitioner wrote", sawConfig)
+	}
+}
+
+// TestWholeObjectUpdateStartsFromTheFetchedObject covers the path for the five
+// SDK types with no Update<T>Fields -- BGPConfig, PowerSupervisor, Setting, Site
+// and WireGuardPeer.
+//
+// The naive version of that adapter sends the struct ToSDK produced, which
+// carries a Go zero for every field the schema does not declare. This asserts
+// the object sent is the one that came back from Get, with only the masked
+// fields applied onto it. That is the same question that has classified every
+// surface correctly tonight: is the object passed to Update the one that came
+// back from Get?
+func TestWholeObjectUpdateStartsFromTheFetchedObject(t *testing.T) {
+	var sent *kitSDK
+	r := kitResource(Backend[kitSDK]{
+		Read: func(_ context.Context, _, id string) (*kitSDK, error) {
+			// What the controller holds: a value the provider never models.
+			return &kitSDK{ID: id, Name: "before", Unmanaged: "controller-owned"}, nil
+		},
+		Update: func(_ context.Context, _ string, in *kitSDK) (*kitSDK, error) {
+			sent = in
+			return in, nil
+		},
+	})
+
+	ctx := context.Background()
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("before"),
+	})
+	plan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("after"),
+	})
+	resp := &resource.UpdateResponse{
+		State:    state,
+		Identity: func() *tfsdk.ResourceIdentity { id := kitIdentity(t); return &id }(),
+	}
+	r.Update(ctx, resource.UpdateRequest{State: state, Plan: tfsdk.Plan(plan)}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+	if sent == nil {
+		t.Fatal("the whole-object Update was never called, so this asserts nothing")
+	}
+	if sent.Unmanaged != "controller-owned" {
+		t.Errorf("Unmanaged = %q, want the controller's value; a whole-object write "+
+			"built from the model resets every field the schema does not declare",
+			sent.Unmanaged)
+	}
+	// The control: the masked field IS applied, or the test above would pass for
+	// an adapter that sent the fetched object untouched and wrote nothing at all.
+	if sent.Name != "after" {
+		t.Errorf("Name = %q, want the planned value; the mask is not being applied "+
+			"and the update writes nothing", sent.Name)
+	}
+}
+
+// TestUpdateRefusesABackendThatCannotWrite turns a nil-pointer panic into a
+// diagnostic that names the descriptor rather than the kit.
+func TestUpdateRefusesABackendThatCannotWrite(t *testing.T) {
+	r := kitResource(Backend[kitSDK]{})
+	ctx := context.Background()
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("before"),
+	})
+	plan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("after"),
+	})
+	resp := &resource.UpdateResponse{
+		State:    state,
+		Identity: func() *tfsdk.ResourceIdentity { id := kitIdentity(t); return &id }(),
+	}
+	r.Update(ctx, resource.UpdateRequest{State: state, Plan: tfsdk.Plan(plan)}, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a backend with neither UpdateFields nor Update was accepted")
 	}
 }

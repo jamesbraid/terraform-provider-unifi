@@ -37,7 +37,17 @@ type Backend[S any] struct {
 	Create       func(ctx context.Context, site string, in *S) (*S, error)
 	Read         func(ctx context.Context, site, id string) (*S, error)
 	UpdateFields func(ctx context.Context, site string, in *S, fields ...string) (*S, error)
-	Delete       func(ctx context.Context, site, id string) error
+	// Update is the whole-object write, for the five SDK types that have no
+	// Update<T>Fields: BGPConfig, PowerSupervisor, Setting, Site and
+	// WireGuardPeer. Exactly one of Update and UpdateFields must be set.
+	//
+	// It is NOT a way to send everything. When it is used the kit fetches the
+	// current object and applies only the masked fields onto it, so the object
+	// that goes back is the one that came from Get -- which is the difference
+	// between a whole-object write that preserves unmanaged fields and one that
+	// resets them. See buildUpdateBody.
+	Update func(ctx context.Context, site string, in *S) (*S, error)
+	Delete func(ctx context.Context, site, id string) error
 	// List is only needed by a surface that registers a list resource, which
 	// is 25 of the 27. Nil on the rest.
 	List func(ctx context.Context, site string) ([]S, error)
@@ -465,19 +475,34 @@ func (r *Resource[M, S]) Update(
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// The body is built BEFORE BeforeSend, because on the whole-object path the
+	// object that gets sent is the one fetched from the controller rather than
+	// the one ToSDK produced -- and a hook that derived its wire form on the
+	// wrong object would be silently discarded.
+	body, bodyDiags := r.buildUpdateBody(ctx, site, id, sdk, fields, &state)
+	resp.Diagnostics.Append(bodyDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	if r.Spec.BeforeSend != nil {
 		var config M
 		resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &state, sdk, prefetched)...)
+		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &state, body, prefetched)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
-	updated, err := r.Spec.Backend.UpdateFields(ctx, site, sdk, fields...)
+	var updated *S
+	if r.Spec.Backend.UpdateFields != nil {
+		updated, err = r.Spec.Backend.UpdateFields(ctx, site, body, fields...)
+	} else {
+		updated, err = r.Spec.Backend.Update(ctx, site, body)
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
 		return
@@ -488,6 +513,65 @@ func (r *Resource[M, S]) Update(
 	resp.Diagnostics.Append(
 		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&state)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// buildUpdateBody returns the object to send.
+//
+// With a masked update it is what ToSDK produced: go-unifi's maskedBody keeps
+// only the named keys, so everything else in the struct is discarded before the
+// wire and unmanaged fields are never at risk.
+//
+// WITHOUT ONE the whole struct goes, and a struct built from the model carries a
+// Go zero for every field the schema does not declare. So the object is fetched
+// and the masked fields are applied ONTO IT -- the object passed to Update is
+// then the one that came back from Get, which is the only property that
+// distinguishes a safe whole-object write from a destructive one. The provider
+// already does this by hand in four places: setting_resource.go's mgmt, radius,
+// igmpSnooping and usg mappers all open with `setting := base`.
+//
+// The mask is still honoured rather than ignored: only fields the plan set are
+// copied across. A field the practitioner did not mention keeps the controller's
+// value instead of the model's zero.
+func (r *Resource[M, S]) buildUpdateBody(
+	ctx context.Context,
+	site, id string,
+	fromModel *S,
+	fields []string,
+	model *M,
+) (*S, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if r.Spec.Backend.UpdateFields != nil {
+		return fromModel, diags
+	}
+	// A descriptor with neither would nil-panic at the send, which is a stack
+	// trace rather than a diagnostic and points at the kit rather than at the
+	// descriptor that is actually wrong.
+	if r.Spec.Backend.Update == nil {
+		diags.AddError("Error Updating "+r.Spec.Subject,
+			r.Spec.TypeName+" declares neither Backend.UpdateFields nor Backend.Update, "+
+				"so there is no way to write it")
+		return nil, diags
+	}
+
+	current, err := r.Spec.Backend.Read(ctx, site, id)
+	if err != nil {
+		diags.AddError("Error Updating "+r.Spec.Subject,
+			"could not read the current "+r.Spec.Subject+" to build a whole-object "+
+				"update: "+err.Error())
+		return nil, diags
+	}
+
+	masked := make(map[string]struct{}, len(fields))
+	for _, name := range fields {
+		masked[name] = struct{}{}
+	}
+	for _, field := range r.Spec.Fields {
+		if _, ok := masked[field.WireName()]; ok {
+			diags.Append(field.ToSDK(ctx, model, current)...)
+		}
+	}
+	r.Spec.Backend.SetID(current, id)
+	return current, diags
 }
 
 func (r *Resource[M, S]) Delete(
