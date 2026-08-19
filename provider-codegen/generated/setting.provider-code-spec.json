@@ -1,0 +1,1634 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "setting",
+      "schema": {
+        "attributes": [
+          {
+            "name": "auto_speedtest",
+            "single_nested": {
+              "attributes": [
+                {
+                  "name": "cron_expr",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Cron expression controlling when the speed test runs (e.g. `0 * * * *`)."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether periodic automated speed tests are enabled."
+                  },
+                  "name": "enabled"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Periodic automated internet speed test settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "country",
+            "single_nested": {
+              "attributes": [
+                {
+                  "int64": {
+                    "computed_optional_required": "required",
+                    "description": "Regulatory country code (ISO 3166-1 numeric)."
+                  },
+                  "name": "code"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Regulatory country settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "doh",
+            "single_nested": {
+              "attributes": [
+                {
+                  "list_nested": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Custom DNS servers specified via DNS stamp.",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "bool": {
+                            "computed_optional_required": "computed_optional",
+                            "default": {
+                              "static": true
+                            },
+                            "description": "Enable this custom server. Defaults to true."
+                          },
+                          "name": "enabled"
+                        },
+                        {
+                          "name": "sdns_stamp",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "DNS stamp (sdns://) for the custom resolver."
+                          }
+                        },
+                        {
+                          "name": "server_name",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "Human-readable name for this custom server."
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "custom_servers"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Predefined DNS provider names (e.g. \"cloudflare\", \"google\").",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "server_names"
+                },
+                {
+                  "name": "state",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Encrypted DNS state: off, auto, manual, or custom.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"off\", \"auto\", \"manual\", \"custom\")"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Encrypted DNS (DNS-over-HTTPS) settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "dpi",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether DPI is enabled."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether device fingerprinting is enabled."
+                  },
+                  "name": "fingerprinting_enabled"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Deep Packet Inspection (DPI) settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed",
+              "description": "The ID of the settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "igmp_snooping",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Whether IGMP snooping is enabled for the site."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "IDs of the networks IGMP snooping applies to.",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "network_ids"
+                }
+              ],
+              "computed_optional_required": "optional",
+              "description": "Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates."
+            }
+          },
+          {
+            "name": "ips",
+            "single_nested": {
+              "attributes": [
+                {
+                  "name": "advanced_filtering_preference",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Advanced filtering mode: manual or disabled.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"manual\", \"disabled\")"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Show a blocking page when content filtering blocks a request."
+                  },
+                  "name": "content_filtering_blocking_page_enabled"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Emerging Threats ruleset categories to enable (e.g. \"emerging-malware\", \"tor\", \"phishing\").",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "enabled_categories"
+                },
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Network IDs to apply IPS inspection to.",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "enabled_networks"
+                },
+                {
+                  "list_nested": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Honeypot IP addresses per network.",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "name": "ip_address",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "IP address to use as a honeypot."
+                          }
+                        },
+                        {
+                          "name": "network_id",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "Network ID this honeypot IP belongs to."
+                          }
+                        },
+                        {
+                          "name": "version",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "IP version: v4 or v6.",
+                            "validators": [
+                              {
+                                "custom": {
+                                  "imports": [
+                                    {
+                                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                                    }
+                                  ],
+                                  "schema_definition": "stringvalidator.OneOf(\"v4\", \"v6\")"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "honeypot"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable honeypot to detect internal port scans."
+                  },
+                  "name": "honeypot_enabled"
+                },
+                {
+                  "name": "ips_mode",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "IPS operating mode: ids (detect only), ips (detect and block), ipsInline, or disabled.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"ids\", \"ips\", \"ipsInline\", \"disabled\")"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Use memory-optimized IPS ruleset (reduced rule set for low-memory devices)."
+                  },
+                  "name": "memory_optimized"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Block BitTorrent traffic."
+                  },
+                  "name": "restrict_torrents"
+                },
+                {
+                  "list_nested": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "IPS signature alert suppression entries \u2014 silence specific signatures or categories.",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "name": "category",
+                          "string": {
+                            "computed_optional_required": "computed_optional",
+                            "description": "Alert suppression signature category."
+                          }
+                        },
+                        {
+                          "int64": {
+                            "computed_optional_required": "computed_optional",
+                            "description": "Signature Generator ID (GID)."
+                          },
+                          "name": "gid"
+                        },
+                        {
+                          "int64": {
+                            "computed_optional_required": "computed_optional",
+                            "description": "Signature ID."
+                          },
+                          "name": "id"
+                        },
+                        {
+                          "name": "signature",
+                          "string": {
+                            "computed_optional_required": "computed_optional",
+                            "description": "Suppression signature name."
+                          }
+                        },
+                        {
+                          "list_nested": {
+                            "computed_optional_required": "computed_optional",
+                            "description": "Tracking specifications (used when `type` is `track`).",
+                            "nested_object": {
+                              "attributes": [
+                                {
+                                  "name": "direction",
+                                  "string": {
+                                    "computed_optional_required": "required",
+                                    "description": "Match direction: both, src, or dest.",
+                                    "validators": [
+                                      {
+                                        "custom": {
+                                          "imports": [
+                                            {
+                                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                                            }
+                                          ],
+                                          "schema_definition": "stringvalidator.OneOf(\"both\", \"src\", \"dest\")"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "mode",
+                                  "string": {
+                                    "computed_optional_required": "required",
+                                    "description": "Match mode: ip, subnet, or network.",
+                                    "validators": [
+                                      {
+                                        "custom": {
+                                          "imports": [
+                                            {
+                                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                                            }
+                                          ],
+                                          "schema_definition": "stringvalidator.OneOf(\"ip\", \"subnet\", \"network\")"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "value",
+                                  "string": {
+                                    "computed_optional_required": "required",
+                                    "description": "IP address, CIDR subnet, or network ID to match."
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          "name": "tracking"
+                        },
+                        {
+                          "name": "type",
+                          "string": {
+                            "computed_optional_required": "computed_optional",
+                            "description": "Suppression type: `all` (everywhere) or `track` (only the tracked sources/destinations).",
+                            "validators": [
+                              {
+                                "custom": {
+                                  "imports": [
+                                    {
+                                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                                    }
+                                  ],
+                                  "schema_definition": "stringvalidator.OneOf(\"all\", \"track\")"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "suppression_alerts"
+                },
+                {
+                  "list_nested": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "IPS suppression whitelist entries \u2014 sources/destinations to exclude from inspection.",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "name": "direction",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "Match direction: both, src, or dest.",
+                            "validators": [
+                              {
+                                "custom": {
+                                  "imports": [
+                                    {
+                                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                                    }
+                                  ],
+                                  "schema_definition": "stringvalidator.OneOf(\"both\", \"src\", \"dest\")"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "mode",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "Match mode: ip, subnet, or network.",
+                            "validators": [
+                              {
+                                "custom": {
+                                  "imports": [
+                                    {
+                                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                                    }
+                                  ],
+                                  "schema_definition": "stringvalidator.OneOf(\"ip\", \"subnet\", \"network\")"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "value",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "IP address, CIDR subnet, or network ID to whitelist."
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "suppression_whitelist"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "lcm",
+            "single_nested": {
+              "attributes": [
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Display brightness (1-100).",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(1, 100)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "brightness"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": true
+                    },
+                    "description": "Whether the device display is enabled."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Seconds of inactivity before the display turns off (10-3600).",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(10, 3600)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "idle_timeout"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Sync display settings across devices."
+                  },
+                  "name": "sync"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": true
+                    },
+                    "description": "Whether touch events on the display are enabled."
+                  },
+                  "name": "touch_event"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "LCD/display (LCM) settings for devices with a screen.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "mgmt",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable advanced features."
+                  },
+                  "name": "advanced_feature_enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Automatically upgrade device firmware."
+                  },
+                  "name": "auto_upgrade"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Hour of day (0-23) for automatic firmware upgrades.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(0, 23)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "auto_upgrade_hour"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable debug tools."
+                  },
+                  "name": "debug_tools_enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable Direct Connect (remote access)."
+                  },
+                  "name": "direct_connect_enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Allow SSH password authentication (in addition to keys)."
+                  },
+                  "name": "ssh_auth_password_enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable SSH authentication."
+                  },
+                  "name": "ssh_enabled"
+                },
+                {
+                  "list_nested": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "SSH keys.",
+                    "nested_object": {
+                      "attributes": [
+                        {
+                          "name": "comment",
+                          "string": {
+                            "computed_optional_required": "computed_optional",
+                            "description": "Comment."
+                          }
+                        },
+                        {
+                          "name": "key",
+                          "string": {
+                            "computed_optional_required": "computed_optional",
+                            "description": "Public SSH key."
+                          }
+                        },
+                        {
+                          "name": "name",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "Name of SSH key."
+                          }
+                        },
+                        {
+                          "name": "type",
+                          "string": {
+                            "computed_optional_required": "required",
+                            "description": "Type of SSH key, e.g. ssh-rsa."
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "name": "ssh_keys"
+                },
+                {
+                  "name": "ssh_password",
+                  "string": {
+                    "computed_optional_required": "optional",
+                    "description": "SSH password for device access. Sensitive \u2014 the controller stores only a hash, so this value is kept from configuration and not read back.",
+                    "sensitive": true
+                  }
+                },
+                {
+                  "name": "ssh_username",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "SSH username for device access."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable the UniFi Identity Provider."
+                  },
+                  "name": "unifi_idp_enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable WiFiman."
+                  },
+                  "name": "wifiman_enabled"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Management settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "network_optimization",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether automated network optimization is enabled."
+                  },
+                  "name": "enabled"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Automated network optimization settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "ntp",
+            "single_nested": {
+              "attributes": [
+                {
+                  "name": "ntp_server_1",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Primary NTP server."
+                  }
+                },
+                {
+                  "name": "ntp_server_2",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Second NTP server."
+                  }
+                },
+                {
+                  "name": "ntp_server_3",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Third NTP server."
+                  }
+                },
+                {
+                  "name": "ntp_server_4",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Fourth NTP server."
+                  }
+                },
+                {
+                  "name": "setting_preference",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Configuration mode: `auto` or `manual`.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "NTP (time server) settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "radius",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable RADIUS accounting."
+                  },
+                  "name": "accounting_enabled"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "RADIUS accounting port.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(1, 65535)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "acct_port"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "RADIUS authentication port.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(1, 65535)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "auth_port"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable the site's RADIUS server. A VPN server that authenticates against RADIUS (`unifi_vpn_server` with `openvpn` or `l2tp`) is rejected with `api.err.RadiusServerNotEnabled` while this is off."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "name": "interim_update_interval",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "Interim update interval, as a Go duration string (e.g. `1h`, `3600s`)."
+                  }
+                },
+                {
+                  "name": "secret",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "RADIUS shared secret.",
+                    "sensitive": true,
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.LengthBetween(1, 48)"
+                        }
+                      },
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            },
+                            {
+                              "path": "regexp"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^[^\\\\\\ \"']+$`), \"must not contain backslashes, spaces, single quotes, or double quotes\")"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "RADIUS settings."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The name of the site to associate the settings with.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.RequiresReplace()"
+                  }
+                },
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "syslog",
+            "single_nested": {
+              "attributes": [
+                {
+                  "list": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Logged facilities (e.g. `device`, `client`, `firewall_default_policy`, `triggers`, `updates`, `admin_activity`, `critical`, `security_detections`, `vpn`).",
+                    "element_type": {
+                      "string": {}
+                    },
+                    "plan_modifiers": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                            }
+                          ],
+                          "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "contents"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Enable debug logging."
+                  },
+                  "name": "debug"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether remote syslog is enabled."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "name": "ip",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Remote syslog server IP address."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Log all available facilities."
+                  },
+                  "name": "log_all_contents"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Whether netconsole logging is enabled."
+                  },
+                  "name": "netconsole_enabled"
+                },
+                {
+                  "name": "netconsole_host",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Netconsole host."
+                  }
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Netconsole port (1-65535).",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(1, 65535)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "netconsole_port"
+                },
+                {
+                  "int64": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Remote syslog server port (1-65535).",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                            }
+                          ],
+                          "schema_definition": "int64validator.Between(1, 65535)"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "port"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Also log this controller's events."
+                  },
+                  "name": "this_controller"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "default": {
+                      "static": false
+                    },
+                    "description": "Only send this controller's logs over an encrypted channel."
+                  },
+                  "name": "this_controller_encrypted_only"
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Remote syslog (rsyslogd) settings.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "usg",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable broadcast ping."
+                  },
+                  "name": "broadcast_ping"
+                },
+                {
+                  "name": "dns_verification",
+                  "single_nested": {
+                    "attributes": [
+                      {
+                        "name": "domain",
+                        "string": {
+                          "computed_optional_required": "computed_optional",
+                          "description": "Domain for DNS verification."
+                        }
+                      },
+                      {
+                        "name": "primary_dns_server",
+                        "string": {
+                          "computed_optional_required": "computed_optional",
+                          "description": "Primary DNS server."
+                        }
+                      },
+                      {
+                        "name": "secondary_dns_server",
+                        "string": {
+                          "computed_optional_required": "computed_optional",
+                          "description": "Secondary DNS server."
+                        }
+                      },
+                      {
+                        "name": "setting_preference",
+                        "string": {
+                          "computed_optional_required": "computed_optional",
+                          "description": "Setting preference: auto or manual."
+                        }
+                      }
+                    ],
+                    "computed_optional_required": "computed_optional",
+                    "description": "DNS verification settings."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable FTP module."
+                  },
+                  "name": "ftp_module"
+                },
+                {
+                  "name": "geo_ip_filtering_block",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Geo IP filtering action: block or allow."
+                  }
+                },
+                {
+                  "name": "geo_ip_filtering_countries",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Comma-separated list of country codes for geo IP filtering."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable geo IP filtering."
+                  },
+                  "name": "geo_ip_filtering_enabled"
+                },
+                {
+                  "name": "geo_ip_filtering_traffic_direction",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Geo IP filtering traffic direction: both, ingress, or egress."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable GRE module."
+                  },
+                  "name": "gre_module"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable H.323 module."
+                  },
+                  "name": "h323_module"
+                },
+                {
+                  "name": "icmp_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "ICMP connection timeout, as a Go duration string (e.g. `30s`, `1m`)."
+                  }
+                },
+                {
+                  "name": "mss_clamp",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "MSS clamping mode: auto, custom, or disabled."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable hardware offload for accounting."
+                  },
+                  "name": "offload_accounting"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable hardware offload for L2 blocking."
+                  },
+                  "name": "offload_l2_blocking"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable hardware offload for scheduling."
+                  },
+                  "name": "offload_sch"
+                },
+                {
+                  "name": "other_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "Other connections timeout, as a Go duration string (e.g. `600s`, `10m`)."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable PPTP module."
+                  },
+                  "name": "pptp_module"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Accept ICMP redirects."
+                  },
+                  "name": "receive_redirects"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Send ICMP redirects."
+                  },
+                  "name": "send_redirects"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable SIP module."
+                  },
+                  "name": "sip_module"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable SYN cookies."
+                  },
+                  "name": "syn_cookies"
+                },
+                {
+                  "name": "tcp_close_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "TCP close timeout, as a Go duration string (e.g. `10s`)."
+                  }
+                },
+                {
+                  "name": "tcp_close_wait_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "TCP close wait timeout, as a Go duration string (e.g. `60s`, `1m`)."
+                  }
+                },
+                {
+                  "name": "tcp_established_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "TCP established connection timeout, as a Go duration string (e.g. `7440s`, `2h4m`)."
+                  }
+                },
+                {
+                  "name": "tcp_fin_wait_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "TCP fin wait timeout, as a Go duration string (e.g. `120s`, `2m`)."
+                  }
+                },
+                {
+                  "name": "tcp_last_ack_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "TCP last ACK timeout, as a Go duration string (e.g. `30s`)."
+                  }
+                },
+                {
+                  "name": "tcp_syn_recv_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "TCP SYN received timeout, as a Go duration string (e.g. `60s`, `1m`)."
+                  }
+                },
+                {
+                  "name": "tcp_syn_sent_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "TCP SYN sent timeout, as a Go duration string (e.g. `120s`, `2m`)."
+                  }
+                },
+                {
+                  "name": "tcp_time_wait_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "TCP time wait timeout, as a Go duration string (e.g. `120s`, `2m`)."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable TFTP module."
+                  },
+                  "name": "tftp_module"
+                },
+                {
+                  "name": "timeout_setting_preference",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Timeout setting preference: auto or manual."
+                  }
+                },
+                {
+                  "name": "udp_other_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "UDP other timeout, as a Go duration string (e.g. `30s`)."
+                  }
+                },
+                {
+                  "name": "udp_stream_timeout",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "custom_type": {
+                      "import": {
+                        "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+                      },
+                      "type": "timetypes.GoDurationType{}",
+                      "value_type": "timetypes.GoDuration"
+                    },
+                    "description": "UDP stream timeout, as a Go duration string (e.g. `180s`, `3m`)."
+                  }
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Unbind WAN monitors."
+                  },
+                  "name": "unbind_wan_monitors"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable UPnP."
+                  },
+                  "name": "upnp_enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable UPnP NAT-PMP."
+                  },
+                  "name": "upnp_nat_pmp_enabled"
+                },
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Enable UPnP secure mode."
+                  },
+                  "name": "upnp_secure_mode"
+                },
+                {
+                  "name": "upnp_wan_interface",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "UPnP WAN interface (e.g., WAN, WAN2)."
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "USG settings."
+            }
+          }
+        ],
+        "markdown_description": "Manages settings for a UniFi site. Configure only the settings you need by providing the corresponding nested object."
+      }
+    }
+  ]
+}
