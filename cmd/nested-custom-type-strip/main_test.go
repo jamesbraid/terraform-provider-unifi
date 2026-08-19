@@ -121,7 +121,17 @@ func TestRefusesWhatItCannotClassify(t *testing.T) {
 // noticed here rather than in a controller run.
 func TestGeneratedTreeKeepsEveryImportedScalarCustomType(t *testing.T) {
 	const root = "../../internal/generated"
-	const want = 35
+
+	// 38 = 35 before unifi_device plus its three: hwtypes.MACAddressType on
+	// mac, and timetypes.GoDurationType on lcm_idle_timeout and on
+	// port_override.dot1x_idle_timeout. Both durations are int64 seconds in the
+	// SDK and strings in the schema, so the custom type IS the conversion and
+	// dropping it would silently accept "3600" where "1h" is meant.
+	//
+	// The behaviour golden records four custom types for the surface; the
+	// fourth is timeouts, which the hand-written wrapper grafts rather than the
+	// generator emitting, so it is not counted here.
+	const want = 38
 
 	qualified := regexp.MustCompile(`CustomType:\s+[a-z][A-Za-z0-9_]*\.[A-Za-z0-9]+\{`)
 	unqualified := regexp.MustCompile(`CustomType:\s+[A-Z][A-Za-z0-9]*Type\{`)

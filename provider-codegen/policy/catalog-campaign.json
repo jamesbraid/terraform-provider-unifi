@@ -275,7 +275,7 @@
     {
       "kind": "managed_resource",
       "name": "unifi_device",
-      "reason": "companion_conversion"
+      "reason": "converted"
     },
     {
       "kind": "managed_resource",

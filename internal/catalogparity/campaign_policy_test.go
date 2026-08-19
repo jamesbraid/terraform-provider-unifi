@@ -172,12 +172,18 @@ func TestRuntimeChangeReasonsRejectAContradictedClaim(t *testing.T) {
 		change RuntimeChange
 		want   string
 	}{
+		// unifi_setting, because it is one of exactly two managed surfaces with
+		// no generated package -- the other is unifi_account, whose package is
+		// deliberately absent because it inherits radius_user's schema. This
+		// case named unifi_device until device was converted, at which point the
+		// fixture stopped describing anything: the case still passed a name the
+		// checker recognised, and only the tree underneath it had changed.
 		"converted without a generated package": {
 			change: RuntimeChange{
-				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_device"},
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_setting"},
 				Reason:     ReasonConverted,
 			},
-			want: "no generated package resource_device",
+			want: "no generated package resource_setting",
 		},
 		"hand edit on a converted surface": {
 			change: RuntimeChange{
@@ -215,7 +221,7 @@ func TestRuntimeChangeReasonsRejectAContradictedClaim(t *testing.T) {
 	// not because the checker rejects everything.
 	policy := CampaignPolicy{RuntimeChangeSet: []RuntimeChange{{
 		SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_device"},
-		Reason:     ReasonHandEdit,
+		Reason:     ReasonConverted,
 	}}}
 	if problems := policy.RuntimeChangeReasonsMatchTree("../generated"); len(problems) != 0 {
 		t.Fatalf("the committed reason for managed_resource/unifi_device was rejected: %v", problems)
