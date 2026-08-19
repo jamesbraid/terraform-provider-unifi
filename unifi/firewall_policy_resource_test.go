@@ -1584,6 +1584,9 @@ func Test_firewallPolicyKit_neverWritesTheExposedThree(t *testing.T) {
 		"ip_version": true, "connection_state_type": true, "connection_states": true,
 		"icmp_typename": true, "icmp_v6_typename": true, "index": true,
 		"source": true, "destination": true,
+		// schedule is a Field now, not only an AlwaysWire name: the
+		// practitioner can set it, so the descriptor maps it.
+		"schedule": true,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("WireNames() = %v, want %v", got, want)
@@ -1606,6 +1609,11 @@ func Test_firewallPolicyKit_neverWritesTheExposedThree(t *testing.T) {
 	if masked["index"] {
 		t.Error("index reached the mask; it is controller-assigned and ReadOnly for that reason")
 	}
+	// schedule must reach the mask even when the MODEL CARRIES NOTHING, which is
+	// the state on a create and on the first update after the attribute landed.
+	// It is both a Field and an AlwaysWire name for that reason: SetInPlan is
+	// false for a null model value, and the controller refuses a policy whose
+	// schedule is null.
 	if !masked["schedule"] {
 		t.Error("schedule did not reach the mask, so the PUT would omit the key and the " +
 			"controller would refuse the whole update")

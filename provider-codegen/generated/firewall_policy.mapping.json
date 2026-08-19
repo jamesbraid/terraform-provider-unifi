@@ -162,8 +162,8 @@
       "structural_name": "schedule",
       "terraform_name": "schedule",
       "structural_type": "object",
-      "terraform_type": "",
-      "disposition": "omitted"
+      "terraform_type": "single_nested",
+      "disposition": "managed"
     },
     {
       "structural_name": "site_id",

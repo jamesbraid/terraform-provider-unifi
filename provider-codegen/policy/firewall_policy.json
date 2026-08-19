@@ -646,7 +646,210 @@
     {
       "structural_name": "schedule",
       "terraform_name": "schedule",
-      "disposition": "omitted"
+      "terraform_type": "single_nested",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "When the policy is in force. Omit it to leave the controller's schedule alone; a policy created without one is always in force.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "fields": [
+        {
+          "structural_name": "mode",
+          "terraform_name": "mode",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "How the schedule repeats. `ALWAYS` is always in force. `CUSTOM` appears in the SDK's own enumeration and is not measured against a controller.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ],
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"ALWAYS\", \"EVERY_DAY\", \"EVERY_WEEK\", \"ONE_TIME_ONLY\", \"CUSTOM\")"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "date",
+          "terraform_name": "date",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The single date a `ONE_TIME_ONLY` schedule runs on.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "date_start",
+          "terraform_name": "date_start",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "First date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "date_end",
+          "terraform_name": "date_end",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Last date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "repeat_on_days",
+          "terraform_name": "repeat_on_days",
+          "disposition": "managed",
+          "terraform_type": "list",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Days an `EVERY_WEEK` schedule runs on, as `mon` through `sun`.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "time_all_day",
+          "terraform_name": "time_all_day",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Whether the schedule covers the whole day rather than a time range.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "time_range_start",
+          "terraform_name": "time_range_start",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Start of the daily time range, as `HH:MM`.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "time_range_end",
+          "terraform_name": "time_range_end",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "End of the daily time range, as `HH:MM`.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        }
+      ]
     },
     {
       "structural_name": "site_id",
