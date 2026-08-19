@@ -387,7 +387,15 @@ func (r *vpnServerResource) Update(
 	// MASKED, NOT WHOLE-OBJECT. See vpnServerWireFields: the object is built
 	// from the plan alone, so a whole-object write sent every unmodelled field
 	// as its Go zero.
-	updatedNetwork, err := r.client.UpdateNetworkFields(ctx, site, network, vpnServerWireFields()...)
+	//
+	// AND NARROWED TO WHAT THIS OBJECT ENCODES, which vpn_server needs and was
+	// documented as not needing. go-unifi refuses a mask naming a field the
+	// purpose encoder drops, and a VPN server encodes only its own protocol's
+	// fields -- so a wireguard server named twelve openvpn and l2tp keys it
+	// never emits and every update failed with a 400 from the SDK before the
+	// request was built.
+	updatedNetwork, err := r.client.UpdateNetworkFields(
+		ctx, site, network, networkMaskFor(vpnServerWireFields(), network)...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating VPN Server",

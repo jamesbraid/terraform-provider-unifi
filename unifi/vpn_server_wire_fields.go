@@ -9,11 +9,16 @@ package unifi
 // vpn_client_configuration_remote_ip_override_enabled, both sent as false
 // whatever the controller held.
 //
-// The encoder emits 48 fields for this purpose and the mask names 21, so 27 are
-// no longer sent at all. As with vpn_client the intersection with the encoder's
-// emitted set is inert here -- none of the 21 is dropped by marshalUserVPN --
-// so the filter is carried for uniformity rather than because it does work on
-// this surface.
+// THE INTERSECTION IS LOAD-BEARING HERE, and this comment said the opposite.
+// It claimed none of the 21 is dropped by the encoder and that the filter was
+// carried for uniformity. Both were wrong: the filter was not applied at the
+// call site at all, and a live 10.4.57 controller drops twelve of the 21 --
+// openvpn_encryption_cipher, openvpn_mode, radiusprofile_id and the nine x_*
+// keys -- because a VPN server encodes only the fields its own protocol
+// carries. Every update failed, on all three protocols.
+//
+// The claim was made 294 seconds before networkMaskFor was written for
+// unifi_network, in that commit's comment, about a surface it did not re-check.
 //
 // Declared and then checked: TestWireFieldMasksMatchTheirMappers derives the
 // same set from the source and fails if the two disagree.
