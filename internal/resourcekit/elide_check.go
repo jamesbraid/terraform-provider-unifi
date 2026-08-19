@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -168,6 +169,23 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 		// and the schema already knows because its validators are what would
 		// reject it.
 		//
+		// A DEFAULT OF THE ZERO OUTRANKS A VALIDATOR THAT REJECTS IT, and this
+		// clause is here because its absence shipped a bug. radius_profile's
+		// vlan_wlan_mode carries OneOf("disabled","optional","required") AND
+		// Default: StaticString(""). The validator rejects the empty string, so
+		// the rule above said NullZero; the default puts the empty string in
+		// the plan on every apply that omits the attribute, so the read nulled
+		// a value the plan held and Terraform stopped with "produced an
+		// unexpected new value: .vlan_wlan_mode: was cty.StringVal(\"\"), but
+		// now null". Validators run against the CONFIG and defaults land in the
+		// PLAN, so the two never meet and a schema can assert both.
+		//
+		// When they disagree the default wins, because it is the one that
+		// decides what the read has to return. The earlier note below is right
+		// that a default does not SEPARATE device_macs from setting_preference
+		// -- neither has one -- but that is an argument against a default being
+		// the whole rule, not against it being a veto on this branch.
+		//
 		// Computed-only follows Required: the practitioner supplied nothing and
 		// the value must round-trip as given.
 		//
@@ -182,7 +200,8 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 			want = KeepZero
 		case attribute.IsOptional() && !attribute.IsComputed():
 			want = NullZero
-		case attribute.IsOptional() && attribute.IsComputed() && zeroIsRejected(attribute):
+		case attribute.IsOptional() && attribute.IsComputed() && zeroIsRejected(attribute) &&
+			!zeroIsTheDefault(attribute):
 			want = NullZero
 		}
 		if got := ElideZero(elide.Bool()); got != want {
@@ -295,4 +314,24 @@ func zeroIsRejected(attribute schema.Attribute) bool {
 		}
 	}
 	return false
+}
+
+// zeroIsTheDefault reports whether the attribute's schema default IS the zero
+// value, which makes the zero a value the plan will carry and the read must
+// therefore return.
+//
+// It asks the default for its value rather than inspecting its type, for the
+// same reason zeroIsRejected runs validators instead of reading them: the
+// static-default types are another module's unexported structs, and calling
+// the interface method is the only part promised to keep working.
+func zeroIsTheDefault(attribute schema.Attribute) bool {
+	stringAttribute, ok := attribute.(schema.StringAttribute)
+	if !ok || stringAttribute.Default == nil {
+		return false
+	}
+	response := &defaults.StringResponse{}
+	stringAttribute.Default.DefaultString(
+		context.Background(), defaults.StringRequest{Path: path.Root("probe")}, response)
+	return !response.PlanValue.IsNull() && !response.PlanValue.IsUnknown() &&
+		response.PlanValue.ValueString() == ""
 }
