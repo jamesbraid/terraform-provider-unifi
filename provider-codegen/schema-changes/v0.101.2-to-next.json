@@ -222,6 +222,206 @@
           "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
         }
       ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "source.match_mac",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "An added Optional+Computed attribute cannot invalidate an existing configuration, because a configuration that does not mention it is exactly what worked before: it plans unknown, UseStateForUnknown resolves it from the value just read, and nothing the practitioner wrote changes meaning. It is not Required, so no existing configuration becomes incomplete. WHAT IT REPLACES IS THE BREAKING BEHAVIOUR. match_mac is emitted by go-unifi without omitempty and the provider did not model it, so endpointModelToSource built a fresh struct with the Go zero and the masked update sent the whole nested object -- a field mask names top-level keys, so masking `source` sends everything inside it. match_opposite_ips true against a specific IP list means the policy matches every address EXCEPT that list, so resetting it to false turned \"block everything but these\" into \"block only these\" while the policy stayed visibly present and enforcing. TRANSITIONAL. The baseline tracks the last release and rebases when one ships. This entry licenses the attribute as a delta against v0.101.2; once the baseline moves to the release containing it the delta is zero and this entry is redundant and should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds match_mac true on a policy whose matching_target is IP with a specific address list, and an apply that changed only the description reset it, inverting the rule.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57; layers 1-3 measured separately and the composition confirmed end to end through the provider."
+        },
+        {
+          "claim": "unifi.FirewallPolicySource and FirewallPolicyDestination declare match_mac with no omitempty, so it is emitted whatever its value.",
+          "kind": "measured",
+          "source": "go-unifi v1.103.0 firewall_policy.generated.go, struct tag."
+        },
+        {
+          "claim": "Under matching_target ANY the controller reports these flags false, because an inversion flag with nothing to invert has no meaning. The attribute is therefore meaningful only under specific matching targets; a ConfigValidator rejecting the combination is a separate decision, noted and not encoded.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, first measurement of the same field."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "source.match_opposite_networks",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "An added Optional+Computed attribute cannot invalidate an existing configuration, because a configuration that does not mention it is exactly what worked before: it plans unknown, UseStateForUnknown resolves it from the value just read, and nothing the practitioner wrote changes meaning. It is not Required, so no existing configuration becomes incomplete. WHAT IT REPLACES IS THE BREAKING BEHAVIOUR. match_opposite_networks is emitted by go-unifi without omitempty and the provider did not model it, so endpointModelToSource built a fresh struct with the Go zero and the masked update sent the whole nested object -- a field mask names top-level keys, so masking `source` sends everything inside it. match_opposite_ips true against a specific IP list means the policy matches every address EXCEPT that list, so resetting it to false turned \"block everything but these\" into \"block only these\" while the policy stayed visibly present and enforcing. TRANSITIONAL. The baseline tracks the last release and rebases when one ships. This entry licenses the attribute as a delta against v0.101.2; once the baseline moves to the release containing it the delta is zero and this entry is redundant and should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds match_opposite_networks true on a policy whose matching_target is IP with a specific address list, and an apply that changed only the description reset it, inverting the rule.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57; layers 1-3 measured separately and the composition confirmed end to end through the provider."
+        },
+        {
+          "claim": "unifi.FirewallPolicySource and FirewallPolicyDestination declare match_opposite_networks with no omitempty, so it is emitted whatever its value.",
+          "kind": "measured",
+          "source": "go-unifi v1.103.0 firewall_policy.generated.go, struct tag."
+        },
+        {
+          "claim": "Under matching_target ANY the controller reports these flags false, because an inversion flag with nothing to invert has no meaning. The attribute is therefore meaningful only under specific matching targets; a ConfigValidator rejecting the combination is a separate decision, noted and not encoded.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, first measurement of the same field."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "source.match_opposite_ports",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "An added Optional+Computed attribute cannot invalidate an existing configuration, because a configuration that does not mention it is exactly what worked before: it plans unknown, UseStateForUnknown resolves it from the value just read, and nothing the practitioner wrote changes meaning. It is not Required, so no existing configuration becomes incomplete. WHAT IT REPLACES IS THE BREAKING BEHAVIOUR. match_opposite_ports is emitted by go-unifi without omitempty and the provider did not model it, so endpointModelToSource built a fresh struct with the Go zero and the masked update sent the whole nested object -- a field mask names top-level keys, so masking `source` sends everything inside it. match_opposite_ips true against a specific IP list means the policy matches every address EXCEPT that list, so resetting it to false turned \"block everything but these\" into \"block only these\" while the policy stayed visibly present and enforcing. TRANSITIONAL. The baseline tracks the last release and rebases when one ships. This entry licenses the attribute as a delta against v0.101.2; once the baseline moves to the release containing it the delta is zero and this entry is redundant and should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds match_opposite_ports true on a policy whose matching_target is IP with a specific address list, and an apply that changed only the description reset it, inverting the rule.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57; layers 1-3 measured separately and the composition confirmed end to end through the provider."
+        },
+        {
+          "claim": "unifi.FirewallPolicySource and FirewallPolicyDestination declare match_opposite_ports with no omitempty, so it is emitted whatever its value.",
+          "kind": "measured",
+          "source": "go-unifi v1.103.0 firewall_policy.generated.go, struct tag."
+        },
+        {
+          "claim": "Under matching_target ANY the controller reports these flags false, because an inversion flag with nothing to invert has no meaning. The attribute is therefore meaningful only under specific matching targets; a ConfigValidator rejecting the combination is a separate decision, noted and not encoded.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, first measurement of the same field."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "destination.match_mac",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "An added Optional+Computed attribute cannot invalidate an existing configuration, because a configuration that does not mention it is exactly what worked before: it plans unknown, UseStateForUnknown resolves it from the value just read, and nothing the practitioner wrote changes meaning. It is not Required, so no existing configuration becomes incomplete. WHAT IT REPLACES IS THE BREAKING BEHAVIOUR. match_mac is emitted by go-unifi without omitempty and the provider did not model it, so endpointModelToDestination built a fresh struct with the Go zero and the masked update sent the whole nested object -- a field mask names top-level keys, so masking `destination` sends everything inside it. match_opposite_ips true against a specific IP list means the policy matches every address EXCEPT that list, so resetting it to false turned \"block everything but these\" into \"block only these\" while the policy stayed visibly present and enforcing. TRANSITIONAL. The baseline tracks the last release and rebases when one ships. This entry licenses the attribute as a delta against v0.101.2; once the baseline moves to the release containing it the delta is zero and this entry is redundant and should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds match_mac true on a policy whose matching_target is IP with a specific address list, and an apply that changed only the description reset it, inverting the rule.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57; layers 1-3 measured separately and the composition confirmed end to end through the provider."
+        },
+        {
+          "claim": "unifi.FirewallPolicySource and FirewallPolicyDestination declare match_mac with no omitempty, so it is emitted whatever its value.",
+          "kind": "measured",
+          "source": "go-unifi v1.103.0 firewall_policy.generated.go, struct tag."
+        },
+        {
+          "claim": "Under matching_target ANY the controller reports these flags false, because an inversion flag with nothing to invert has no meaning. The attribute is therefore meaningful only under specific matching targets; a ConfigValidator rejecting the combination is a separate decision, noted and not encoded.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, first measurement of the same field."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "destination.match_opposite_ips",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "An added Optional+Computed attribute cannot invalidate an existing configuration, because a configuration that does not mention it is exactly what worked before: it plans unknown, UseStateForUnknown resolves it from the value just read, and nothing the practitioner wrote changes meaning. It is not Required, so no existing configuration becomes incomplete. WHAT IT REPLACES IS THE BREAKING BEHAVIOUR. match_opposite_ips is emitted by go-unifi without omitempty and the provider did not model it, so endpointModelToDestination built a fresh struct with the Go zero and the masked update sent the whole nested object -- a field mask names top-level keys, so masking `destination` sends everything inside it. match_opposite_ips true against a specific IP list means the policy matches every address EXCEPT that list, so resetting it to false turned \"block everything but these\" into \"block only these\" while the policy stayed visibly present and enforcing. TRANSITIONAL. The baseline tracks the last release and rebases when one ships. This entry licenses the attribute as a delta against v0.101.2; once the baseline moves to the release containing it the delta is zero and this entry is redundant and should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds match_opposite_ips true on a policy whose matching_target is IP with a specific address list, and an apply that changed only the description reset it, inverting the rule.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57; layers 1-3 measured separately and the composition confirmed end to end through the provider."
+        },
+        {
+          "claim": "unifi.FirewallPolicySource and FirewallPolicyDestination declare match_opposite_ips with no omitempty, so it is emitted whatever its value.",
+          "kind": "measured",
+          "source": "go-unifi v1.103.0 firewall_policy.generated.go, struct tag."
+        },
+        {
+          "claim": "Under matching_target ANY the controller reports these flags false, because an inversion flag with nothing to invert has no meaning. The attribute is therefore meaningful only under specific matching targets; a ConfigValidator rejecting the combination is a separate decision, noted and not encoded.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, first measurement of the same field."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "destination.match_opposite_networks",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "An added Optional+Computed attribute cannot invalidate an existing configuration, because a configuration that does not mention it is exactly what worked before: it plans unknown, UseStateForUnknown resolves it from the value just read, and nothing the practitioner wrote changes meaning. It is not Required, so no existing configuration becomes incomplete. WHAT IT REPLACES IS THE BREAKING BEHAVIOUR. match_opposite_networks is emitted by go-unifi without omitempty and the provider did not model it, so endpointModelToDestination built a fresh struct with the Go zero and the masked update sent the whole nested object -- a field mask names top-level keys, so masking `destination` sends everything inside it. match_opposite_ips true against a specific IP list means the policy matches every address EXCEPT that list, so resetting it to false turned \"block everything but these\" into \"block only these\" while the policy stayed visibly present and enforcing. TRANSITIONAL. The baseline tracks the last release and rebases when one ships. This entry licenses the attribute as a delta against v0.101.2; once the baseline moves to the release containing it the delta is zero and this entry is redundant and should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds match_opposite_networks true on a policy whose matching_target is IP with a specific address list, and an apply that changed only the description reset it, inverting the rule.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57; layers 1-3 measured separately and the composition confirmed end to end through the provider."
+        },
+        {
+          "claim": "unifi.FirewallPolicySource and FirewallPolicyDestination declare match_opposite_networks with no omitempty, so it is emitted whatever its value.",
+          "kind": "measured",
+          "source": "go-unifi v1.103.0 firewall_policy.generated.go, struct tag."
+        },
+        {
+          "claim": "Under matching_target ANY the controller reports these flags false, because an inversion flag with nothing to invert has no meaning. The attribute is therefore meaningful only under specific matching targets; a ConfigValidator rejecting the combination is a separate decision, noted and not encoded.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, first measurement of the same field."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "destination.match_opposite_ports",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "An added Optional+Computed attribute cannot invalidate an existing configuration, because a configuration that does not mention it is exactly what worked before: it plans unknown, UseStateForUnknown resolves it from the value just read, and nothing the practitioner wrote changes meaning. It is not Required, so no existing configuration becomes incomplete. WHAT IT REPLACES IS THE BREAKING BEHAVIOUR. match_opposite_ports is emitted by go-unifi without omitempty and the provider did not model it, so endpointModelToDestination built a fresh struct with the Go zero and the masked update sent the whole nested object -- a field mask names top-level keys, so masking `destination` sends everything inside it. match_opposite_ips true against a specific IP list means the policy matches every address EXCEPT that list, so resetting it to false turned \"block everything but these\" into \"block only these\" while the policy stayed visibly present and enforcing. TRANSITIONAL. The baseline tracks the last release and rebases when one ships. This entry licenses the attribute as a delta against v0.101.2; once the baseline moves to the release containing it the delta is zero and this entry is redundant and should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds match_opposite_ports true on a policy whose matching_target is IP with a specific address list, and an apply that changed only the description reset it, inverting the rule.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57; layers 1-3 measured separately and the composition confirmed end to end through the provider."
+        },
+        {
+          "claim": "unifi.FirewallPolicySource and FirewallPolicyDestination declare match_opposite_ports with no omitempty, so it is emitted whatever its value.",
+          "kind": "measured",
+          "source": "go-unifi v1.103.0 firewall_policy.generated.go, struct tag."
+        },
+        {
+          "claim": "Under matching_target ANY the controller reports these flags false, because an inversion flag with nothing to invert has no meaning. The attribute is therefore meaningful only under specific matching targets; a ConfigValidator rejecting the combination is a separate decision, noted and not encoded.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, first measurement of the same field."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "source.match_opposite_ips",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "An added Optional+Computed attribute cannot invalidate an existing configuration, because a configuration that does not mention it is exactly what worked before: it plans unknown, UseStateForUnknown resolves it from the value just read, and nothing the practitioner wrote changes meaning. It is not Required, so no existing configuration becomes incomplete. WHAT IT REPLACES IS THE BREAKING BEHAVIOUR. match_opposite_ips is emitted by go-unifi without omitempty and the provider did not model it, so endpointModelToSource built a fresh struct with the Go zero and the masked update sent the whole nested object -- a field mask names top-level keys, so masking `source` sends everything inside it. match_opposite_ips true against a specific IP list means the policy matches every address EXCEPT that list, so resetting it to false turned \"block everything but these\" into \"block only these\" while the policy stayed visibly present and enforcing. TRANSITIONAL. The baseline tracks the last release and rebases when one ships. This entry licenses the attribute as a delta against v0.101.2; once the baseline moves to the release containing it the delta is zero and this entry is redundant and should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds match_opposite_ips true on a policy whose matching_target is IP with a specific address list, and an apply that changed only the description reset it, inverting the rule.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57; layers 1-3 measured separately and the composition confirmed end to end through the provider."
+        },
+        {
+          "claim": "unifi.FirewallPolicySource and FirewallPolicyDestination declare match_opposite_ips with no omitempty, so it is emitted whatever its value.",
+          "kind": "measured",
+          "source": "go-unifi v1.103.0 firewall_policy.generated.go, struct tag."
+        },
+        {
+          "claim": "Under matching_target ANY the controller reports these flags false, because an inversion flag with nothing to invert has no meaning. The attribute is therefore meaningful only under specific matching targets; a ConfigValidator rejecting the combination is a separate decision, noted and not encoded.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, first measurement of the same field."
+        }
+      ]
     }
   ]
 }
