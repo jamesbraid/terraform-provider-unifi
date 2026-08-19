@@ -158,10 +158,19 @@
             "name": "vlan_wlan_mode",
             "string": {
               "computed_optional_required": "computed_optional",
-              "default": {
-                "static": ""
-              },
               "description": "Specifies whether to use vlan on wireless connections. Must be one of `disabled`, `optional`, or `required`.",
+              "plan_modifiers": [
+                {
+                  "custom": {
+                    "imports": [
+                      {
+                        "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                      }
+                    ],
+                    "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                  }
+                }
+              ],
               "validators": [
                 {
                   "custom": {

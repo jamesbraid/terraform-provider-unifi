@@ -137,10 +137,11 @@ func radiusProfileKitSpec() resourcekit.Spec[radiusProfileKitModel, ui.RADIUSPro
 				Wire:  "vlan_wlan_mode",
 				Model: func(m *radiusProfileKitModel) *types.String { return &m.VlanWlanMode },
 				SDK:   func(s *ui.RADIUSProfile) *string { return &s.VLANWLANMode },
-				// KeepZero DESPITE the OneOf rejecting "": the attribute also
-				// declares Default: StaticString(""), so every apply that omits
-				// it plans "" and the read has to give "" back.
-				Elide: resourcekit.KeepZero,
+				// NullZero, and the empty-string default is gone with it. The
+				// two were a contradiction: OneOf forbids "" and the default
+				// supplied it, so every apply that omitted the attribute planned
+				// "" and the masked update sent a value the controller refuses.
+				Elide: resourcekit.NullZero,
 			},
 			// THE WIRE NAMES ARE PLURAL AND THE TERRAFORM NAMES ARE NOT.
 			// acct_server is the block; acct_servers is what the controller

@@ -106,10 +106,12 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies whether to use vlan on wireless connections. Must be one of `disabled`, `optional`, or `required`.",
 				MarkdownDescription: "Specifies whether to use vlan on wireless connections. Must be one of `disabled`, `optional`, or `required`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("disabled", "optional", "required"),
 				},
-				Default: stringdefault.StaticString(""),
 			},
 		},
 		Blocks: map[string]schema.Block{

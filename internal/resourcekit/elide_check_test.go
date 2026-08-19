@@ -1,6 +1,7 @@
 package resourcekit
 
 import (
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"strings"
 	"testing"
 
@@ -400,5 +401,78 @@ func TestACustomTypedAttributeIsNotProbedWithTheEmptyString(t *testing.T) {
 	plain.CustomType = nil
 	if !zeroIsRejected(plain) {
 		t.Fatal("the validator does not reject \"\" at all, so the assertion above proves nothing")
+	}
+}
+
+// TestAZeroDefaultOutranksAValidatorThatRejectsIt covers the branch whose only
+// real instance has just been removed from the tree.
+//
+// radius_profile's vlan_wlan_mode was Optional+Computed with
+// OneOf("disabled","optional","required") AND Default: StaticString("") -- a
+// schema asserting two things that cannot both hold, which is possible because
+// validators run against the config and defaults land in the plan, so the two
+// never meet. The rule saw the rejection, chose NullZero, and the read nulled a
+// value the plan held. Removing the default was the fix, and it left this
+// branch with no member anywhere in the generated schemas: a sweep of all six
+// zero-valued string defaults that remain finds none with a validator that
+// rejects the empty string.
+//
+// A rule with no live instance and no test of its own is a rule that rots, and
+// this one guards a shape a policy author can reintroduce in one line. So the
+// instance lives here instead, synthetic and permanent.
+func TestAZeroDefaultOutranksAValidatorThatRejectsIt(t *testing.T) {
+	rejectsEmpty := []validator.String{stringvalidator.OneOf("disabled", "optional", "required")}
+
+	// Without the default the validator decides: the zero is not a legal value,
+	// so an empty from the controller is an absence.
+	noDefault := schema.Schema{Attributes: map[string]schema.Attribute{
+		"req": schema.StringAttribute{Required: true},
+		"opt": schema.StringAttribute{Optional: true},
+		"cmp": schema.StringAttribute{
+			Optional: true, Computed: true, Validators: rejectsEmpty,
+		},
+	}}
+	if problems := ElideProblems(probeSpec(KeepZero, NullZero, NullZero), noDefault); len(problems) != 0 {
+		t.Fatalf("a rejecting validator with no default should want NullZero: %v", problems)
+	}
+	if problems := ElideProblems(probeSpec(KeepZero, NullZero, KeepZero), noDefault); len(problems) != 1 {
+		t.Fatalf("KeepZero against a rejecting validator produced %d problem(s), want 1: %v",
+			len(problems), problems)
+	}
+
+	// WITH a zero default the answer flips, because the default is what decides
+	// the plan and the read has to give back what the plan holds.
+	zeroDefault := schema.Schema{Attributes: map[string]schema.Attribute{
+		"req": schema.StringAttribute{Required: true},
+		"opt": schema.StringAttribute{Optional: true},
+		"cmp": schema.StringAttribute{
+			Optional: true, Computed: true,
+			Validators: rejectsEmpty,
+			Default:    stringdefault.StaticString(""),
+		},
+	}}
+	if problems := ElideProblems(probeSpec(KeepZero, NullZero, KeepZero), zeroDefault); len(problems) != 0 {
+		t.Fatalf("a zero default should make KeepZero correct despite the validator: %v", problems)
+	}
+	problems := ElideProblems(probeSpec(KeepZero, NullZero, NullZero), zeroDefault)
+	if len(problems) != 1 {
+		t.Fatalf("NullZero against a zero default produced %d problem(s), want 1: %v",
+			len(problems), problems)
+	}
+
+	// A NON-ZERO default must NOT trigger the veto, or the branch would swallow
+	// protocol and ip_version on firewall_policy, whose defaults are "all" and
+	// "IPV4" and whose zeros the controller does reject.
+	realDefault := schema.Schema{Attributes: map[string]schema.Attribute{
+		"req": schema.StringAttribute{Required: true},
+		"opt": schema.StringAttribute{Optional: true},
+		"cmp": schema.StringAttribute{
+			Optional: true, Computed: true,
+			Validators: rejectsEmpty,
+			Default:    stringdefault.StaticString("disabled"),
+		},
+	}}
+	if problems := ElideProblems(probeSpec(KeepZero, NullZero, NullZero), realDefault); len(problems) != 0 {
+		t.Fatalf("a non-zero default should leave the validator deciding: %v", problems)
 	}
 }
