@@ -142,6 +142,19 @@
           "name"
         ]
       }
+    },
+    "unifi_radius_profile": {
+      "sdk_type": "RADIUSProfile",
+      "duration_units": {
+        "interim_update_interval": "time.Second"
+      },
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 1
     }
   }
 }

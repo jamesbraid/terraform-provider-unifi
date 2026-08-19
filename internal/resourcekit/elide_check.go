@@ -94,8 +94,28 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 		}
 		attribute, ok := built.Attributes[name]
 		if !ok {
+			// A BLOCK IS NOT AN ATTRIBUTE, and this check could not see one
+			// until radius_profile became the first kit surface with a nested
+			// block. Same shape as the collection types going unchecked until a
+			// surface needed one -- a lookup that finds nothing reported the
+			// descriptor as wrong rather than reporting itself as unable.
+			//
+			// A block is implicitly optional and can never be Computed: the
+			// framework has no field for it. So the rule that applies is the
+			// Optional-and-not-Computed one, and NullZero is what it wants --
+			// an absent block is an absence, not a configured empty.
+			if _, isBlock := built.Blocks[name]; isBlock {
+				if elide.Kind() == reflect.Bool && elide.Bool() != bool(NullZero) {
+					problems = append(problems, fmt.Sprintf(
+						"%s.%s is KeepZero but it is a block, which is optional and never "+
+							"computed, so an absent one is an absence and wants NullZero",
+						spec.TypeName, name))
+				}
+				continue
+			}
 			problems = append(problems, fmt.Sprintf(
-				"%s: field %q maps to attribute %q, which the schema does not declare",
+				"%s: field %q maps to attribute %q, which the schema does not declare, "+
+					"as either an attribute or a block",
 				spec.TypeName, field.WireName(), name))
 			continue
 		}

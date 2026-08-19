@@ -50,6 +50,10 @@ type plainMaskedSurface struct {
 	managed string
 }
 
+// radius_profile HAS ALSO LEFT THIS TABLE, served from the kit since its mask
+// became derivable from Spec.Fields. Its tls_enabled property is asserted the
+// same way ap_group's for_wlanconf is: against the derivation, in
+// Test_radiusProfileKit_neverWritesTLSEnabled.
 // ap_group WAS HERE and is now served by the resource kit, so its mask is
 // derived from Spec.Fields rather than hand-written. The property this table
 // asserted for it -- that for_wlanconf is never on the wire -- did not move to
@@ -57,15 +61,6 @@ type plainMaskedSurface struct {
 // the derivation itself.
 func plainMaskedSurfaces() []plainMaskedSurface {
 	return []plainMaskedSurface{
-		{
-			name: "radius_profile", file: "unifi/radius_profile_resource.go",
-			object: unifi.RADIUSProfile{}, literal: "RADIUSProfile", objectVar: "radiusProfile",
-			declared:        radiusProfileManagedWireFields,
-			maskedCall:      "UpdateRADIUSProfileFields(ctx, site, radiusProfile,",
-			wholeObjectCall: "UpdateRADIUSProfile(ctx",
-			exposed:         []string{"tls_enabled"},
-			managed:         "auth_servers",
-		},
 		{
 			name: "firewall_policy", file: "unifi/firewall_policy_resource.go",
 			object: unifi.FirewallPolicy{}, literal: "FirewallPolicy", objectVar: "fp",
