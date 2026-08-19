@@ -67,11 +67,18 @@ type Field[M any, S any] interface {
 //
 // THE GENERATED SCHEMA carries the distinction, and the generator reads it from
 // there rather than the author choosing it. Not the mapping: the string
-// computed_optional_required appears in none of the 62 mapping files, only in
-// the codegen scaffold tools, and this comment named the wrong source until a
+// computed_optional_required appears in NONE of the mapping files, only in the
+// codegen scaffold tools, and this comment named the wrong source until a
 // generated descriptor disagreed with a hand-written one and the disagreement
 // had to be adjudicated. ElideProblems enforces the rule; nothing did before,
 // and flipping every value in a descriptor left the provider suite green.
+//
+// The count is deliberately absent. This sentence said "none of the 62 mapping
+// files" and there are now 65 -- port_forward, device and setting were migrated
+// after it was written, so the number went stale while the claim it supported
+// stayed true. A denominator that grows every time someone does the work this
+// package exists for is a fact with an expiry date attached to a fact without
+// one. "None" is what the reader needs; anyone wanting the total can count.
 type ElideZero bool
 
 const (
