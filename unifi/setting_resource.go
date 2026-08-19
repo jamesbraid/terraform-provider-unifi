@@ -1494,7 +1494,19 @@ func (r *settingResource) Create(
 			return
 		}
 
-		setting := r.ipsModelToSetting(ctx, &ips, &resp.Diagnostics)
+		// Read the current remote setting as the base so the force-emitted
+		// bools this block does not name keep their remote values.
+		_, currentIps, err := ui.GetSetting[*settings.Ips](r.client.ApiClient, ctx, site)
+		if err != nil {
+			var notFound *ui.NotFoundError
+			if !errors.As(err, &notFound) {
+				resp.Diagnostics.AddError("Error Reading IPS Setting", err.Error())
+				return
+			}
+			currentIps = &settings.Ips{}
+		}
+
+		setting := r.ipsModelToSetting(ctx, &ips, currentIps, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -1806,7 +1818,19 @@ func (r *settingResource) Update(
 			return
 		}
 
-		setting := r.ipsModelToSetting(ctx, &ips, &resp.Diagnostics)
+		// Read the current remote setting as the base so the force-emitted
+		// bools this block does not name keep their remote values.
+		_, currentIps, err := ui.GetSetting[*settings.Ips](r.client.ApiClient, ctx, site)
+		if err != nil {
+			var notFound *ui.NotFoundError
+			if !errors.As(err, &notFound) {
+				resp.Diagnostics.AddError("Error Reading IPS Setting", err.Error())
+				return
+			}
+			currentIps = &settings.Ips{}
+		}
+
+		setting := r.ipsModelToSetting(ctx, &ips, currentIps, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -3368,12 +3392,28 @@ func (r *settingResource) dohSettingToModel(
 }
 
 // IPS conversion functions.
+// ipsModelToSetting overlays the user-set fields onto the CURRENT remote
+// setting, as mgmt, radius, usg and igmp_snooping already do.
+//
+// It built a fresh settings.Ips before, and four of the fields it sets --
+// honeypot_enabled, restrict_torrents, content_filtering_blocking_page_enabled
+// and memory_optimized -- carry no omitempty. Each is assigned only when the
+// plan value is neither null nor unknown, so a config naming some of the block
+// and not the rest left those four at their Go zero and force-emitted false
+// over whatever the controller held.
+//
+// THE ASSIGNMENT IS WHY NO MASK CATCHES IT. A mask asks whether the resource
+// assigns a field, and this one does; what it does not do is assign it on every
+// path. Taking the remote object as the base fixes the class rather than the
+// four, because a force-emitted field added to settings.Ips later arrives from
+// the controller and goes back unchanged.
 func (r *settingResource) ipsModelToSetting(
 	ctx context.Context,
 	model *settingIpsModel,
+	base *settings.Ips,
 	diags *diag.Diagnostics,
 ) *settings.Ips {
-	setting := &settings.Ips{}
+	setting := base
 
 	if !model.IPSMode.IsNull() && !model.IPSMode.IsUnknown() {
 		setting.IPsMode = model.IPSMode.ValueString()
@@ -3413,6 +3453,10 @@ func (r *settingResource) ipsModelToSetting(
 		if diags.HasError() {
 			return setting
 		}
+		// Replace rather than extend. The loop appends, and the base now
+		// arrives carrying the controller's list, so without this a configured
+		// honeypot list would be added to the remote one on every apply.
+		setting.Honeypot = nil
 		for _, h := range honeypots {
 			setting.Honeypot = append(setting.Honeypot, settings.SettingIpsHoneypot{
 				IPAddress: h.IPAddress.ValueString(),
