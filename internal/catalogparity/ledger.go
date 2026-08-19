@@ -10,8 +10,26 @@ import (
 type AdmissionState string
 
 const (
-	BaselineState       AdmissionState = "baseline"
-	Cataloged           AdmissionState = "cataloged"
+	BaselineState AdmissionState = "baseline"
+	Cataloged     AdmissionState = "cataloged"
+
+	// PolicyComplete DOES NOT MEAN A POLICY EXISTS. Its only consumer outside
+	// tests is validAdmissionState, which checks the string is a member of this
+	// enum. Nothing reads provider-codegen/policy/ to award the state or to
+	// verify it later, so it records an intent somebody held rather than a file
+	// somebody wrote.
+	//
+	// Measured on 2026-08-19: both surfaces carrying it, unifi_device and
+	// unifi_setting, have no policy file at all. 2 of 2. Of the 25 managed
+	// surfaces at generated_shadow, 24 do have one and the exception is
+	// unifi_account, which is account_deprecated.go.
+	//
+	// The cost is not bookkeeping. Advancing a surface out of generated_shadow
+	// is a state edit; advancing one out of policy_complete is steps 1 through 7
+	// of docs/architecture/surface-migration-recipe.md from nothing, including
+	// the behaviour transcription that step 4 exists for. Reading the name as
+	// "the policy is done, only the wiring remains" inverts which of the two is
+	// the larger job, and it has already done that to a reader.
 	PolicyComplete      AdmissionState = "policy_complete"
 	GeneratedShadow     AdmissionState = "generated_shadow"
 	AdapterParity       AdmissionState = "adapter_parity"
