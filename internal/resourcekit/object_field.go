@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // ObjectField carries a nested object: a types.Object on the model, a *E on the
@@ -29,9 +29,27 @@ import (
 // every nested capability inherits that. So a nested type with force-emitted
 // members the model does not carry sends them as Go zeros on every apply, and
 // the descriptor author cannot see it from the schema.
-type ObjectField[M any, S any, E any, V basetypes.ObjectValuable] struct {
+//
+// TYPED OBJECTS WERE CONSIDERED AND CANNOT WORK IN THIS PIPELINE, which is
+// worth recording because the door looks open: the generated tree declares an
+// <X>Value for every nested object, they implement basetypes.ObjectValuable,
+// and a constraint on that interface would carry them.
+//
+// It would not survive generation. cmd/nested-custom-type-strip removes the
+// CustomType binding from every nested attribute after tfplugingen-framework
+// emits it -- 52 across the estate, none of them backed -- because every nested
+// emitter in the framework calls NewCustomNestedObjectType unconditionally and
+// no flag controls it. So no served schema ever binds <X>Type, and a descriptor
+// carrying <X>Value would fail TestServedSchemaAgreesWithItsRuntimeModel's
+// identity check from the other side: a model declares the value type and
+// nothing asks for it.
+//
+// A descriptor author trying it would get an error from a check in another
+// package with no way to connect the two, which is why the constraint is
+// types.Object and this comment exists.
+type ObjectField[M any, S any, E any] struct {
 	Wire  string
-	Model func(*M) *V
+	Model func(*M) *types.Object
 	SDK   func(*S) **E
 
 	// AttrTypes types the object in state. It must match the schema's nested
@@ -41,13 +59,9 @@ type ObjectField[M any, S any, E any, V basetypes.ObjectValuable] struct {
 	// Encode builds the SDK object from the model's object value. Returning nil
 	// means "the practitioner did not configure this", and the SDK pointer is
 	// left nil so an omitempty key drops out.
-	Encode func(ctx context.Context, object V) (*E, diag.Diagnostics)
+	Encode func(ctx context.Context, object types.Object) (*E, diag.Diagnostics)
 	// Decode builds the model's object value from what the controller returned.
-	Decode func(ctx context.Context, sdk *E) (V, diag.Diagnostics)
-	// Null is the typed null, e.g. resource_x.NewSourceValueNull. The kind
-	// cannot construct one: V is an interface constraint, and its zero value is
-	// not the same thing as its null value.
-	Null func() V
+	Decode func(ctx context.Context, sdk *E) (types.Object, diag.Diagnostics)
 
 	// Unmodelled enumerates the wire names of members this descriptor knowingly
 	// leaves to the controller.
@@ -65,9 +79,9 @@ type ObjectField[M any, S any, E any, V basetypes.ObjectValuable] struct {
 	Elide ElideZero
 }
 
-func (f ObjectField[M, S, E, V]) WireName() string { return f.Wire }
+func (f ObjectField[M, S, E]) WireName() string { return f.Wire }
 
-func (f ObjectField[M, S, E, V]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
+func (f ObjectField[M, S, E]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
 	value := *f.Model(model)
 	if value.IsNull() || value.IsUnknown() {
 		*f.SDK(sdk) = nil
@@ -78,7 +92,7 @@ func (f ObjectField[M, S, E, V]) ToSDK(ctx context.Context, model *M, sdk *S) di
 	return diags
 }
 
-func (f ObjectField[M, S, E, V]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
+func (f ObjectField[M, S, E]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
 	nested := *f.SDK(sdk)
 	if nested == nil {
 		// An absent nested object is a null object either way, so Elide has
@@ -87,7 +101,7 @@ func (f ObjectField[M, S, E, V]) ToModel(ctx context.Context, sdk *S, model *M) 
 		// ElideProblems reflects on every field and reports one that carries no
 		// Elide, and because a nested object CAN gain that distinction if a
 		// controller starts returning an empty object rather than none.
-		*f.Model(model) = f.Null()
+		*f.Model(model) = types.ObjectNull(f.AttrTypes)
 		return nil
 	}
 	object, diags := f.Decode(ctx, nested)
@@ -95,12 +109,12 @@ func (f ObjectField[M, S, E, V]) ToModel(ctx context.Context, sdk *S, model *M) 
 	return diags
 }
 
-func (f ObjectField[M, S, E, V]) SetInPlan(plan *M) bool {
+func (f ObjectField[M, S, E]) SetInPlan(plan *M) bool {
 	value := *f.Model(plan)
 	return !value.IsNull() && !value.IsUnknown()
 }
 
-func (f ObjectField[M, S, E, V]) CopyPlanToState(plan, state *M) {
+func (f ObjectField[M, S, E]) CopyPlanToState(plan, state *M) {
 	if f.SetInPlan(plan) {
 		*f.Model(state) = *f.Model(plan)
 	}
@@ -112,7 +126,7 @@ type nestedMemberChecker interface {
 	nestedProblems() []string
 }
 
-func (f ObjectField[M, S, E, V]) nestedProblems() []string {
+func (f ObjectField[M, S, E]) nestedProblems() []string {
 	var element E
 	return nestedTypeProblems(f.Wire, reflect.TypeOf(element), f.AttrTypes, f.Unmodelled)
 }

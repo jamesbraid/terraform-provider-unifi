@@ -138,6 +138,18 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 	// So a header is not coverage, and this file is now its own worked example
 	// of the difference. Read the code -- including this comment's own claims.
 	//
+	// AND IT IS THE BACKSTOP FOR cmd/nested-custom-type-strip, which is a better
+	// justification than the one it was written under.
+	//
+	// tfplugingen-framework binds a generated type to every nested object; the
+	// strip removes all 52 immediately after generation, so in normal operation
+	// nothing ever binds one and this check has nothing to compare. That is not
+	// a check guarding an unreachable case -- it is what makes REMOVING THE
+	// STRIP LOUD. Drop that go:generate line, reorder it, or let it fail
+	// silently, and 52 bindings reappear against plain models; the framework
+	// then refuses the mismatch at apply time, on every affected attribute, in
+	// front of a practitioner. This fails first, in the suite, naming them.
+	//
 	// WHAT IT COMPARES. A schema binding CustomType X requires some model to
 	// declare that attribute as XValue, and a model field declared XValue
 	// requires some served attribute of that name to bind X.
