@@ -656,7 +656,12 @@ func (r *networkResource) Update(
 	network.ID = data.ID.ValueString()
 
 	// Update the network
-	updatedNetwork, err := r.client.UpdateNetwork(ctx, site, network)
+	// MASKED, NOT WHOLE-OBJECT, and the mask is narrowed to this purpose. See
+	// networkWireFields: the object is built from the plan alone, so a
+	// whole-object write sent every unmodelled field as its Go zero -- nine of
+	// them on a corporate or guest network, three on vlan-only.
+	updatedNetwork, err := r.client.UpdateNetworkFields(
+		ctx, site, network, networkWireFields(network)...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating network",
