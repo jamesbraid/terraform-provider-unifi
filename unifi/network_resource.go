@@ -16,10 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -337,51 +333,6 @@ func (r *networkResource) Schema(
 		ctx,
 		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
 	)
-	graftPreservedCollections(resp.Schema.Attributes)
-}
-
-// graftPreservedCollections makes three attributes Optional+Computed with
-// UseStateForUnknown, which is the half of #193 the read path cannot do alone.
-//
-// ip_aliases, nat_outbound_ip_addresses and ipv6_pd_prefixid are in the wire
-// mask, so they are sent on every update. Reading them back (see networkToModel)
-// puts the controller's value in STATE -- but a plain Optional attribute takes
-// its plan value from the CONFIG, so omitting it still plans null, and null is
-// what clears the field. Computed is what makes an omitted attribute resolve to
-// unknown, and UseStateForUnknown is what fills that unknown from the value
-// just read.
-//
-// IT IS GRAFTED HERE RATHER THAN GENERATED, and that is a deliberate stopgap
-// with a measured reason. The declarations are in provider-codegen/policy/
-// network.json where they belong, and the compiled specification carries them.
-// What cannot be regenerated is the Go schema: running the PINNED generator
-// (tfplugingen-framework v0.4.1) over unifi_network emits CustomType bindings
-// for dhcp_guarding, dhcp_relay, dhcp_server, dhcp_server.boot,
-// dhcp_server.wins, dhcp_v6_server and nat_outbound_ip_addresses that nothing
-// in the provider produces -- TestServedSchemaAgreesWithItsRuntimeModel fails
-// with "every apply touching this attribute fails". That reproduces on a clean
-// checkout with NO policy change at all, so the checked-in artifact cannot be
-// rebuilt by the generator the repository pins.
-//
-// Blocking a live destroy defect behind that is the wrong trade. When the
-// regenerate is clean (#163), delete this function -- the policy already says
-// the same thing, and the compiled spec already agrees.
-func graftPreservedCollections(attributes map[string]schema.Attribute) {
-	if attribute, ok := attributes["ip_aliases"].(schema.ListAttribute); ok {
-		attribute.Computed = true
-		attribute.PlanModifiers = []planmodifier.List{listplanmodifier.UseStateForUnknown()}
-		attributes["ip_aliases"] = attribute
-	}
-	if attribute, ok := attributes["nat_outbound_ip_addresses"].(schema.ListNestedAttribute); ok {
-		attribute.Computed = true
-		attribute.PlanModifiers = []planmodifier.List{listplanmodifier.UseStateForUnknown()}
-		attributes["nat_outbound_ip_addresses"] = attribute
-	}
-	if attribute, ok := attributes["ipv6_pd_prefixid"].(schema.StringAttribute); ok {
-		attribute.Computed = true
-		attribute.PlanModifiers = []planmodifier.String{stringplanmodifier.UseStateForUnknown()}
-		attributes["ipv6_pd_prefixid"] = attribute
-	}
 }
 
 // UpgradeState migrates v0 state to v1: leasetime (nested in dhcp_server),

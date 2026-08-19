@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -365,8 +366,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 			"ip_aliases": schema.ListAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
+				Computed:            true,
 				Description:         "List of IP aliases for the network.",
 				MarkdownDescription: "List of IP aliases for the network.",
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"ipv6_aliases": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -414,8 +419,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"ipv6_pd_prefixid": schema.StringAttribute{
 				Optional:            true,
+				Computed:            true,
 				Description:         "The IPv6 Prefix Delegation prefix ID (hex string, e.g., `0`, `1a`).",
 				MarkdownDescription: "The IPv6 Prefix Delegation prefix ID (hex string, e.g., `0`, `1a`).",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"ipv6_pd_start": schema.StringAttribute{
 				Optional:            true,
@@ -543,8 +552,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 				Optional:            true,
+				Computed:            true,
 				Description:         "List of NAT outbound IP addresses.",
 				MarkdownDescription: "List of NAT outbound IP addresses.",
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"network_isolation": schema.BoolAttribute{
 				Optional:            true,
