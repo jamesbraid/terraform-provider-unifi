@@ -384,7 +384,10 @@ func (r *vpnServerResource) Update(
 
 	network.ID = data.ID.ValueString()
 
-	updatedNetwork, err := r.client.UpdateNetwork(ctx, site, network)
+	// MASKED, NOT WHOLE-OBJECT. See vpnServerWireFields: the object is built
+	// from the plan alone, so a whole-object write sent every unmodelled field
+	// as its Go zero.
+	updatedNetwork, err := r.client.UpdateNetworkFields(ctx, site, network, vpnServerWireFields()...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating VPN Server",
