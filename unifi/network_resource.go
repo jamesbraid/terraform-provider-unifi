@@ -1235,38 +1235,37 @@ func (r *networkResource) networkToModel(
 		model.DomainName = types.StringPointerValue(network.DomainName)
 	}
 
-	// Determine if this is an import. On import only the ID/identity is seeded into
-	// state, so the computed network_isolation field is still null; in every other
-	// flow (create/read/update) networkToModel always assigns it above. We can no
-	// longer use Subnet for this since it is now optional (e.g. vlan_only networks).
-	isImport := previousModel != nil && previousModel.NetworkIsolation.IsNull()
+	// The four DHCP blocks below are read back UNCONDITIONALLY. Each used to be
+	// populated only when the previous model already held it -- or, on import,
+	// when the corresponding enable flag was set -- and nulled otherwise. A
+	// practitioner who never wrote the block therefore kept a null in state, the
+	// controller's values were never read in, and the next apply sent the zeros
+	// modelToNetwork pre-seeds: dhcp_guarding lost its server IPs, dhcp_server
+	// lost DNS advertisement, time offset and WINS while dhcpd_enabled stayed
+	// true, dhcp_relay lost both fields, and dhcp_v6_server lost dns_auto.
+	//
+	// The read alone does not fix that. Reading the block into the MODEL is only
+	// half of it, because the write reads the PLAN: each block is Computed with
+	// UseStateForUnknown in the generated schema, which is what carries state
+	// into the plan when the configuration says nothing. Change either half
+	// alone and the zeros still go out.
+	//
+	// isImport went with the guards. It had exactly these four consumers.
 
 	// Build dhcp_guarding from API fields
-	shouldPopulateDhcpGuarding := false
-	if previousModel != nil {
-		shouldPopulateDhcpGuarding = !previousModel.DhcpGuarding.IsNull() ||
-			(isImport && network.DHCPguardEnabled)
-	} else {
-		shouldPopulateDhcpGuarding = network.DHCPguardEnabled
-	}
+	serversList := networkDHCPGuardingServersFromNetwork(ctx, &diags, network)
 
-	if shouldPopulateDhcpGuarding {
-		serversList := networkDHCPGuardingServersFromNetwork(ctx, &diags, network)
-
-		dhcpGuardingValue := dhcpGuardingModel{
-			Enabled: types.BoolValue(network.DHCPguardEnabled),
-			Servers: serversList,
-		}
-		dhcpGuardingObj, d := types.ObjectValueFrom(
-			ctx,
-			dhcpGuardingValue.AttributeTypes(),
-			dhcpGuardingValue,
-		)
-		diags.Append(d...)
-		model.DhcpGuarding = dhcpGuardingObj
-	} else {
-		model.DhcpGuarding = types.ObjectNull(dhcpGuardingModel{}.AttributeTypes())
+	dhcpGuardingValue := dhcpGuardingModel{
+		Enabled: types.BoolValue(network.DHCPguardEnabled),
+		Servers: serversList,
 	}
+	dhcpGuardingObj, d := types.ObjectValueFrom(
+		ctx,
+		dhcpGuardingValue.AttributeTypes(),
+		dhcpGuardingValue,
+	)
+	diags.Append(d...)
+	model.DhcpGuarding = dhcpGuardingObj
 
 	model.Vlan = networkVLANFromNetwork(network)
 
@@ -1297,128 +1296,96 @@ func (r *networkResource) networkToModel(
 	// Only populate dhcp_server if:
 	// 1. It was configured in the previous state (not null), OR
 	// 2. This is an import and DHCP is enabled (populate everything during import)
-	shouldPopulateDhcp := false
-	if previousModel != nil {
-		shouldPopulateDhcp = !previousModel.DhcpServer.IsNull() ||
-			(isImport && network.DHCPDEnabled)
+	// Helper function to convert empty strings to null
+	strPtrToType := func(ptr *string) types.String {
+		if ptr == nil || *ptr == "" {
+			return types.StringNull()
+		}
+		return types.StringValue(*ptr)
 	}
 
-	if shouldPopulateDhcp {
-		// Helper function to convert empty strings to null
-		strPtrToType := func(ptr *string) types.String {
-			if ptr == nil || *ptr == "" {
-				return types.StringNull()
-			}
-			return types.StringValue(*ptr)
-		}
+	dhcpBootObj := networkBootFromNetwork(ctx, &diags, network)
 
-		dhcpBootObj := networkBootFromNetwork(ctx, &diags, network)
+	// Build DNS servers list from DHCPDDNS1-4
+	dnsServersList := networkDHCPServerDNSFromNetwork(ctx, &diags, network)
 
-		// Build DNS servers list from DHCPDDNS1-4
-		dnsServersList := networkDHCPServerDNSFromNetwork(ctx, &diags, network)
+	// Build WINS from the enable flag and DHCPDWins1-2
+	winsObj := networkWINSFromNetwork(ctx, &diags, network)
 
-		// Build WINS from the enable flag and DHCPDWins1-2
-		winsObj := networkWINSFromNetwork(ctx, &diags, network)
-
-		dhcpServerValue := dhcpServerModel{
-			Boot:              dhcpBootObj,
-			Enabled:           types.BoolValue(network.DHCPDEnabled),
-			GatewayEnabled:    types.BoolValue(network.DHCPDGatewayEnabled),
-			ConflictChecking:  types.BoolValue(network.DHCPDConflictChecking),
-			NtpEnabled:        types.BoolValue(network.DHCPDNtpEnabled),
-			TimeOffsetEnabled: types.BoolValue(network.DHCPDTimeOffsetEnabled),
-			DnsEnabled:        types.BoolValue(network.DHCPDDNSEnabled),
-			Leasetime:         util.DurationPtrValue(network.DHCPDLeaseTime, time.Second),
-			Wins:              winsObj,
-			WpadUrl:           strPtrToType(network.DHCPDWPAdUrl),
-			Start:             types.StringPointerValue(network.DHCPDStart),
-			Stop:              types.StringPointerValue(network.DHCPDStop),
-			TftpServer:        strPtrToType(network.DHCPDTFTPServer),
-			UnifiController:   strPtrToType(network.DHCPDUnifiController),
-			DnsServers:        dnsServersList,
-		}
-
-		dhcpServerObj, d := types.ObjectValueFrom(
-			ctx,
-			dhcpServerValue.AttributeTypes(),
-			dhcpServerValue,
-		)
-		diags.Append(d...)
-		model.DhcpServer = dhcpServerObj
-	} else {
-		// Keep dhcp_server null if it wasn't in the plan/state
-		model.DhcpServer = types.ObjectNull(dhcpServerModel{}.AttributeTypes())
+	dhcpServerValue := dhcpServerModel{
+		Boot:              dhcpBootObj,
+		Enabled:           types.BoolValue(network.DHCPDEnabled),
+		GatewayEnabled:    types.BoolValue(network.DHCPDGatewayEnabled),
+		ConflictChecking:  types.BoolValue(network.DHCPDConflictChecking),
+		NtpEnabled:        types.BoolValue(network.DHCPDNtpEnabled),
+		TimeOffsetEnabled: types.BoolValue(network.DHCPDTimeOffsetEnabled),
+		DnsEnabled:        types.BoolValue(network.DHCPDDNSEnabled),
+		Leasetime:         util.DurationPtrValue(network.DHCPDLeaseTime, time.Second),
+		Wins:              winsObj,
+		WpadUrl:           strPtrToType(network.DHCPDWPAdUrl),
+		Start:             types.StringPointerValue(network.DHCPDStart),
+		Stop:              types.StringPointerValue(network.DHCPDStop),
+		TftpServer:        strPtrToType(network.DHCPDTFTPServer),
+		UnifiController:   strPtrToType(network.DHCPDUnifiController),
+		DnsServers:        dnsServersList,
 	}
+
+	dhcpServerObj, d := types.ObjectValueFrom(
+		ctx,
+		dhcpServerValue.AttributeTypes(),
+		dhcpServerValue,
+	)
+	diags.Append(d...)
+	model.DhcpServer = dhcpServerObj
 
 	// Only populate dhcp_v6_server if:
 	// 1. It was configured in the previous state (not null), OR
 	// 2. This is an import and DHCPv6 is enabled
-	shouldPopulateDhcpV6 := false
-	if previousModel != nil {
-		shouldPopulateDhcpV6 = !previousModel.DhcpV6Server.IsNull() ||
-			(isImport && network.DHCPDV6Enabled)
-	}
+	dhcpv6DNSList := networkDHCPV6ServerDNSFromNetwork(ctx, &diags, network)
 
-	if shouldPopulateDhcpV6 {
-		dhcpv6DNSList := networkDHCPV6ServerDNSFromNetwork(ctx, &diags, network)
-
-		dhcpV6ServerValue := dhcpV6ServerModel{
-			Enabled:    types.BoolValue(network.DHCPDV6Enabled),
-			DNSAuto:    types.BoolValue(network.DHCPDV6DNSAuto),
-			DNSServers: dhcpv6DNSList,
-			Lease:      types.Int64PointerValue(network.DHCPDV6LeaseTime),
-			Start:      types.StringPointerValue(network.DHCPDV6Start),
-			Stop:       types.StringPointerValue(network.DHCPDV6Stop),
-		}
-		dhcpV6ServerObj, d := types.ObjectValueFrom(
-			ctx,
-			dhcpV6ServerValue.AttributeTypes(),
-			dhcpV6ServerValue,
-		)
-		diags.Append(d...)
-		model.DhcpV6Server = dhcpV6ServerObj
-	} else {
-		model.DhcpV6Server = types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes())
+	dhcpV6ServerValue := dhcpV6ServerModel{
+		Enabled:    types.BoolValue(network.DHCPDV6Enabled),
+		DNSAuto:    types.BoolValue(network.DHCPDV6DNSAuto),
+		DNSServers: dhcpv6DNSList,
+		Lease:      types.Int64PointerValue(network.DHCPDV6LeaseTime),
+		Start:      types.StringPointerValue(network.DHCPDV6Start),
+		Stop:       types.StringPointerValue(network.DHCPDV6Stop),
 	}
+	dhcpV6ServerObj, d := types.ObjectValueFrom(
+		ctx,
+		dhcpV6ServerValue.AttributeTypes(),
+		dhcpV6ServerValue,
+	)
+	diags.Append(d...)
+	model.DhcpV6Server = dhcpV6ServerObj
 
 	// Only populate dhcp_relay if:
 	// 1. It was configured in the previous state (not null), OR
 	// 2. This is an import and DHCP relay is enabled (populate everything during import)
-	shouldPopulateRelay := false
-	if previousModel != nil {
-		shouldPopulateRelay = !previousModel.DhcpRelay.IsNull() ||
-			(isImport && network.DHCPRelayEnabled)
-	}
-
-	if shouldPopulateRelay {
-		var relayServersVal types.List
-		if len(network.DHCPRelayServers) > 0 {
-			var d diag.Diagnostics
-			relayServersVal, d = types.ListValueFrom(
-				ctx,
-				types.StringType,
-				network.DHCPRelayServers,
-			)
-			diags.Append(d...)
-		} else {
-			relayServersVal = types.ListNull(types.StringType)
-		}
-		dhcpRelayValue := dhcpRelayModel{
-			Enabled: types.BoolValue(network.DHCPRelayEnabled),
-			Servers: relayServersVal,
-		}
-
-		dhcpRelayObj, d := types.ObjectValueFrom(
+	var relayServersVal types.List
+	if len(network.DHCPRelayServers) > 0 {
+		var d diag.Diagnostics
+		relayServersVal, d = types.ListValueFrom(
 			ctx,
-			dhcpRelayValue.AttributeTypes(),
-			dhcpRelayValue,
+			types.StringType,
+			network.DHCPRelayServers,
 		)
 		diags.Append(d...)
-		model.DhcpRelay = dhcpRelayObj
 	} else {
-		// Keep dhcp_relay null if it wasn't in the plan/state
-		model.DhcpRelay = types.ObjectNull(dhcpRelayModel{}.AttributeTypes())
+		relayServersVal = types.ListNull(types.StringType)
 	}
+	dhcpRelayValue := dhcpRelayModel{
+		Enabled: types.BoolValue(network.DHCPRelayEnabled),
+		Servers: relayServersVal,
+	}
+
+	dhcpRelayObj, d := types.ObjectValueFrom(
+		ctx,
+		dhcpRelayValue.AttributeTypes(),
+		dhcpRelayValue,
+	)
+	diags.Append(d...)
+	model.DhcpRelay = dhcpRelayObj
 
 	return diags
 }

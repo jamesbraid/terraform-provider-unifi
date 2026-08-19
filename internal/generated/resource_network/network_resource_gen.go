@@ -62,8 +62,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 				Optional:            true,
+				Computed:            true,
 				Description:         "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network.",
 				MarkdownDescription: "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"dhcp_relay": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -85,8 +89,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 				Optional:            true,
+				Computed:            true,
 				Description:         "DHCP relay configuration.",
 				MarkdownDescription: "DHCP relay configuration.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"dhcp_server": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -254,8 +262,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 				Optional:            true,
+				Computed:            true,
 				Description:         "DHCP server configuration.",
 				MarkdownDescription: "DHCP server configuration.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"dhcp_v6_server": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -309,8 +321,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 				Optional:            true,
+				Computed:            true,
 				Description:         "DHCPv6 server configuration.",
 				MarkdownDescription: "DHCPv6 server configuration.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"domain_name": schema.StringAttribute{
 				Optional:            true,

@@ -422,6 +422,126 @@
           "source": "controller run against 10.4.57, first measurement of the same field."
         }
       ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "dhcp_guarding",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that declares dhcp_guarding is unaffected: the declared value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve. On the released provider the read path populates dhcp_guarding only when the previous model already held it, or on import when the corresponding enable flag is set, and nulls it otherwise -- so a practitioner who never wrote the block keeps a null in state and the controller's values are never read in. Its members are in the wire mask, so the write sends the zeros modelToNetwork pre-seeds: the write path has no else branch, so nothing is assigned and dhcpd_ip_1..3 encode empty. The one semantic difference Optional+Computed introduces, that removing a previously declared block retains its values rather than planning a change to null, replaces a behaviour that was already destructive and was never expressible: on v0.101.2 omitting the block and clearing it are the same request, so there is no way to say \"leave this alone\".",
+      "evidence": [
+        {
+          "claim": "On the released provider, an apply that changes something unrelated destroys the controller's dhcp_guarding values when the configuration never declared the block.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, end to end through a real apply. An apply through the released provider against 10.4.57 cleared dhcpd_ip_1 from \"10.76.76.9\" to \"\" on a network whose configuration never declared dhcp_guarding."
+        },
+        {
+          "claim": "The released schema declares dhcp_guarding optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_network.block.attributes.dhcp_guarding"
+        },
+        {
+          "claim": "Under Optional+Computed a declared value remains authoritative, so configurations that write the block see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        },
+        {
+          "claim": "The read half alone would not fix it: with an Optional-only attribute and a null configuration the plan carries null rather than unknown, so the model holds null whatever state holds and the write still emits the zeros. Computed plus UseStateForUnknown is what carries state into the plan.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework plan semantics. Reasoning, not observation -- and it is why this entry exists at all rather than the fix being a read-path change with no schema change."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "dhcp_relay",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that declares dhcp_relay is unaffected: the declared value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve. On the released provider the read path populates dhcp_relay only when the previous model already held it, or on import when the corresponding enable flag is set, and nulls it otherwise -- so a practitioner who never wrote the block keeps a null in state and the controller's values are never read in. Its members are in the wire mask, so the write sends dhcp_relay_enabled=false, assigned explicitly by the else branch, together with an empty dhcp_relay_servers that is never assigned at all and encodes as []. The one semantic difference Optional+Computed introduces, that removing a previously declared block retains its values rather than planning a change to null, replaces a behaviour that was already destructive and was never expressible: on v0.101.2 omitting the block and clearing it are the same request, so there is no way to say \"leave this alone\".",
+      "evidence": [
+        {
+          "claim": "On the released provider, an apply that changes something unrelated destroys the controller's dhcp_relay values when the configuration never declared the block.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, end to end through a real apply. An apply through the released provider against 10.4.57 destroyed BOTH dhcp_relay fields on a network whose configuration never declared dhcp_relay. The two reach the controller by different routes -- enabled is written explicitly, servers is left nil and encoded as an empty list -- and the outcome is identical, so the distinction changes only whether there is an author to ask."
+        },
+        {
+          "claim": "The released schema declares dhcp_relay optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_network.block.attributes.dhcp_relay"
+        },
+        {
+          "claim": "Under Optional+Computed a declared value remains authoritative, so configurations that write the block see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        },
+        {
+          "claim": "The read half alone would not fix it: with an Optional-only attribute and a null configuration the plan carries null rather than unknown, so the model holds null whatever state holds and the write still emits the zeros. Computed plus UseStateForUnknown is what carries state into the plan.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework plan semantics. Reasoning, not observation -- and it is why this entry exists at all rather than the fix being a read-path change with no schema change."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "dhcp_server",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that declares dhcp_server is unaffected: the declared value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve. On the released provider the read path populates dhcp_server only when the previous model already held it, or on import when the corresponding enable flag is set, and nulls it otherwise -- so a practitioner who never wrote the block keeps a null in state and the controller's values are never read in. Its members are in the wire mask, so the write sends the else branch's opinionated defaults, not the mapper's zeros: dhcpd_enabled=true with dhcpd_dns_enabled, dhcpd_time_offset_enabled, dhcpd_wins_enabled and the boot fields all false. The one semantic difference Optional+Computed introduces, that removing a previously declared block retains its values rather than planning a change to null, replaces a behaviour that was already destructive and was never expressible: on v0.101.2 omitting the block and clearing it are the same request, so there is no way to say \"leave this alone\".",
+      "evidence": [
+        {
+          "claim": "On the released provider, an apply that changes something unrelated destroys the controller's dhcp_server values when the configuration never declared the block.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, end to end through a real apply. An apply through the released provider against 10.4.57 lost 3 of 5 established booleans on a network whose configuration never declared dhcp_server. dhcpd_enabled SURVIVES, because the else branch assigns it true -- so DHCP still reads as enabled in the UI while DNS advertisement, time offset and WINS go quietly off. This is a floor, not a total: prerequisites in the mapper (GatewayIpNotInSubnet, BootFilenameInvalid, NtpAddressInvalid) block some flags from being measured, so boot and ntp may also be lost, and dhcpd_gateway_enabled was not tested."
+        },
+        {
+          "claim": "The released schema declares dhcp_server optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_network.block.attributes.dhcp_server"
+        },
+        {
+          "claim": "Under Optional+Computed a declared value remains authoritative, so configurations that write the block see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        },
+        {
+          "claim": "The read half alone would not fix it: with an Optional-only attribute and a null configuration the plan carries null rather than unknown, so the model holds null whatever state holds and the write still emits the zeros. Computed plus UseStateForUnknown is what carries state into the plan.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework plan semantics. Reasoning, not observation -- and it is why this entry exists at all rather than the fix being a read-path change with no schema change."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_network",
+      "attribute": "dhcp_v6_server",
+      "field": "computed",
+      "old": "false",
+      "new": "true",
+      "why_not_breaking": "The attribute stays Optional and gains Computed, so a configuration that declares dhcp_v6_server is unaffected: the declared value still wins at plan and at apply. A configuration that omits it has no working behaviour to preserve. On the released provider the read path populates dhcp_v6_server only when the previous model already held it, or on import when the corresponding enable flag is set, and nulls it otherwise -- so a practitioner who never wrote the block keeps a null in state and the controller's values are never read in. Its members are in the wire mask, so the write sends the zeros modelToNetwork pre-seeds: the write path has no else branch, so nothing is assigned. The one semantic difference Optional+Computed introduces, that removing a previously declared block retains its values rather than planning a change to null, replaces a behaviour that was already destructive and was never expressible: on v0.101.2 omitting the block and clearing it are the same request, so there is no way to say \"leave this alone\".",
+      "evidence": [
+        {
+          "claim": "On the released provider, an apply that changes something unrelated destroys the controller's dhcp_v6_server values when the configuration never declared the block.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57, end to end through a real apply. An apply through the released provider against 10.4.57 flipped dhcpdv6_dns_auto from true to false on a network whose configuration never declared dhcp_v6_server."
+        },
+        {
+          "claim": "The released schema declares dhcp_v6_server optional=true, computed=false.",
+          "kind": "measured",
+          "source": "provider-contracts/schema/terraform-1.15.8.json, resource_schemas.unifi_network.block.attributes.dhcp_v6_server"
+        },
+        {
+          "claim": "Under Optional+Computed a declared value remains authoritative, so configurations that write the block see no change in plan or apply.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework semantics for Optional+Computed. Reasoning, not observation."
+        },
+        {
+          "claim": "The read half alone would not fix it: with an Optional-only attribute and a null configuration the plan carries null rather than unknown, so the model holds null whatever state holds and the write still emits the zeros. Computed plus UseStateForUnknown is what carries state into the plan.",
+          "kind": "inferred",
+          "source": "Terraform plugin framework plan semantics. Reasoning, not observation -- and it is why this entry exists at all rather than the fix being a read-path change with no schema change."
+        }
+      ]
     }
   ]
 }
