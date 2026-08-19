@@ -562,3 +562,80 @@ func TestWANMaskNamesOnlyWhatThePurposeEncodes(t *testing.T) {
 		}
 	}
 }
+
+// THE UNCONDITIONAL EMPTY SLICES, and why the mask is the right place to stop
+// them.
+//
+// Several purpose encoders strip the omitempty the base Network struct carries,
+// so those keys are emitted as [] whatever the object holds -- and for a list,
+// [] is not silence, it is "make this empty". go-unifi does that deliberately;
+// network_encode_test.go asserts the empty array for ip_aliases.
+//
+// The mask stops it because maskedBody marshals FIRST and then copies only the
+// named keys out of the encoding: a key the encoder produced but the mask does
+// not name never reaches the body. That ordering is the whole reason a mask can
+// fix this, so it is asserted here rather than assumed.
+//
+// A managed list stays in the mask, and that is correct: if a practitioner
+// clears ip_aliases, [] is exactly what should be sent.
+func TestUnconditionalEmptySlicesAreMaskedOnlyWhereManaged(t *testing.T) {
+	name := "probe"
+	for _, testCase := range []struct {
+		purpose  string
+		mask     func(*ui.Network) []string
+		managed  []string // emitted as [] AND assigned by the resource: stay
+		excluded []string // emitted as [] and NOT assigned: must not be masked
+	}{
+		{
+			purpose: ui.PurposeCorporate, mask: networkWireFields,
+			managed:  []string{"ip_aliases", "nat_outbound_ip_addresses", "dhcp_relay_servers"},
+			excluded: []string{"ipv6_aliases"},
+		},
+		{
+			purpose: ui.PurposeWAN, mask: wanWireFields,
+			managed:  []string{"wan_ip_aliases"},
+			excluded: nil,
+		},
+	} {
+		t.Run(testCase.purpose, func(t *testing.T) {
+			network := &ui.Network{Purpose: testCase.purpose, Name: &name}
+			raw, err := json.Marshal(network)
+			if err != nil {
+				t.Fatalf("encoding: %v", err)
+			}
+			var encoded map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &encoded); err != nil {
+				t.Fatalf("reading back: %v", err)
+			}
+			mask := testCase.mask(network)
+
+			for _, field := range append(append([]string{}, testCase.managed...), testCase.excluded...) {
+				// The control for every case below: the encoder really does
+				// emit this key from an object whose slice is nil.
+				value, emitted := encoded[field]
+				if !emitted {
+					t.Errorf("%s is not emitted for %s at all, so this case proves nothing",
+						field, testCase.purpose)
+					continue
+				}
+				if string(value) != "[]" {
+					t.Errorf("%s is emitted as %s, not []; the premise of this test is wrong",
+						field, value)
+				}
+			}
+			for _, field := range testCase.managed {
+				if !slices.Contains(mask, field) {
+					t.Errorf("%s is assigned by the resource but missing from the mask, so "+
+						"clearing it would never be written", field)
+				}
+			}
+			for _, field := range testCase.excluded {
+				if slices.Contains(mask, field) {
+					t.Errorf("%s is in the mask but the resource never assigns it; the "+
+						"encoder's unconditional [] would then reach the controller and "+
+						"empty a list the practitioner never mentioned", field)
+				}
+			}
+		})
+	}
+}
