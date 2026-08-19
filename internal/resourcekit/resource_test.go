@@ -599,3 +599,68 @@ func TestUpdateRefusesABackendThatCannotWrite(t *testing.T) {
 		t.Fatal("a backend with neither UpdateFields nor Update was accepted")
 	}
 }
+
+// TestBeforeSendRunsOnTheObjectThatIsActuallySent guards an ordering constraint
+// that was discovered by accident while wiring the whole-object path, and an
+// accident is not a guard.
+//
+// BeforeSend must run AFTER the body is built. On the whole-object path the
+// object sent is the one fetched from the controller, not the one ToSDK
+// produced -- so a hook running on the latter derives its wire form onto an
+// object that is then discarded. Nothing else in the suite notices: with the
+// hook moved back before buildUpdateBody, every other test in this package and
+// in unifi/ still passes, because they all take the masked path where the two
+// objects are the same object.
+//
+// port_profile is the surface that would break: it derives tagged_vlan_mgmt,
+// excluded_networkconf_ids and forward in BeforeSend, and those are AlwaysWire
+// precisely because no plan names them.
+func TestBeforeSendRunsOnTheObjectThatIsActuallySent(t *testing.T) {
+	var sent *kitSDK
+	r := kitResource(Backend[kitSDK]{
+		Read: func(_ context.Context, _, id string) (*kitSDK, error) {
+			return &kitSDK{ID: id, Name: "before", Unmanaged: "controller-owned"}, nil
+		},
+		Update: func(_ context.Context, _ string, in *kitSDK) (*kitSDK, error) {
+			sent = in
+			return in, nil
+		},
+	})
+	// A hook that derives a value no plan carries, which is what BeforeSend is
+	// for. If it runs on the wrong object the derivation is silently dropped.
+	r.Spec.BeforeSend = func(
+		_ context.Context, _, _ *kitModel, sdk *kitSDK, _ any,
+	) diag.Diagnostics {
+		sdk.Unmanaged = "derived-by-hook"
+		return nil
+	}
+
+	ctx := context.Background()
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("before"),
+	})
+	plan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("after"),
+	})
+	resp := &resource.UpdateResponse{
+		State:    state,
+		Identity: func() *tfsdk.ResourceIdentity { id := kitIdentity(t); return &id }(),
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		State: state, Plan: tfsdk.Plan(plan), Config: tfsdk.Config(plan),
+	}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+	if sent == nil {
+		t.Fatal("the whole-object Update was never called, so this asserts nothing")
+	}
+	if sent.Unmanaged != "derived-by-hook" {
+		t.Errorf("Unmanaged = %q, want the hook's value. BeforeSend ran on the object "+
+			"ToSDK produced rather than the one being sent, so everything it derived "+
+			"was discarded -- move it after buildUpdateBody.", sent.Unmanaged)
+	}
+}
