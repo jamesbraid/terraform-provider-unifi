@@ -1,233 +1,382 @@
 {
   "baseline_digests": {
-    "resource": "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6",
     "identity": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
-    "list_resource": "1a62efc7f26708ffc9c085a1a7f86566f28d803cc5fd6dceaf2434e28245c503"
+    "list_resource": "1a62efc7f26708ffc9c085a1a7f86566f28d803cc5fd6dceaf2434e28245c503",
+    "resource": "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6"
   },
   "description": "Forward a port or port range from a WAN interface to a host on the network.",
   "fields": [
     {
+      "disposition": "omitted",
       "structural_name": "_id",
-      "terraform_name": "_id",
-      "disposition": "omitted"
+      "terraform_name": "_id"
     },
     {
+      "disposition": "omitted",
       "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden",
-      "disposition": "omitted"
+      "terraform_name": "attr_hidden"
     },
     {
+      "disposition": "omitted",
       "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id",
-      "disposition": "omitted"
+      "terraform_name": "attr_hidden_id"
     },
     {
+      "disposition": "omitted",
       "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete",
-      "disposition": "omitted"
+      "terraform_name": "attr_no_delete"
     },
     {
+      "disposition": "omitted",
       "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit",
-      "disposition": "omitted"
+      "terraform_name": "attr_no_edit"
     },
     {
+      "disposition": "omitted",
       "structural_name": "site_id",
-      "terraform_name": "site_id",
-      "disposition": "omitted"
+      "terraform_name": "site_id"
     },
     {
-      "structural_name": "name",
-      "terraform_name": "name",
-      "disposition": "managed",
       "attribute": {
         "computed_optional_required": "required",
-        "description": "A name for the port forwarding rule."
-      }
-    },
-    {
-      "structural_name": "proto",
-      "terraform_name": "protocol",
-      "disposition": "managed",
-      "attribute": {
-        "computed_optional_required": "computed_optional",
-        "description": "The protocol to forward. Must be one of `tcp_udp`, `tcp` or `udp`."
-      }
-    },
-    {
-      "structural_name": "log",
-      "terraform_name": "logging",
-      "disposition": "managed",
-      "attribute": {
-        "computed_optional_required": "computed_optional",
-        "description": "Whether to log matched traffic."
-      }
-    },
-    {
-      "structural_name": "enabled",
-      "terraform_name": "enabled",
-      "disposition": "managed",
-      "attribute": {
-        "computed_optional_required": "computed_optional",
-        "description": "Whether the rule is enabled."
-      }
-    },
-    {
-      "structural_name": "destination_ips",
-      "terraform_name": "destination_ips",
-      "terraform_type": "list_nested",
-      "disposition": "managed",
-      "attribute": {
-        "computed_optional_required": "computed_optional",
-        "description": "Additional destination addresses this rule matches, one per WAN interface."
+        "description": "The name of the port forwarding rule."
       },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "tcp_udp"
+        },
+        "description": "The protocol for the port forwarding rule. Can be `tcp`, `udp`, or `tcp_udp`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"tcp_udp\", \"tcp\", \"udp\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "proto",
+      "terraform_name": "protocol"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether to enable syslog logging for forwarded traffic."
+      },
+      "disposition": "managed",
+      "structural_name": "log",
+      "terraform_name": "logging"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "deprecation_message": "This attribute will be removed in a future release. Instead of disabling a port forwarding rule you can remove it from your configuration.",
+        "description": "Specifies whether the port forwarding rule is enabled or not."
+      },
+      "disposition": "managed",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Additional destination IP/interface pairs for the port forwarding rule, used for multi-WAN setups."
+      },
+      "disposition": "managed",
       "fields": [
         {
-          "structural_name": "destination_ip",
-          "terraform_name": "destination_ip",
-          "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "The destination address."
-          }
+            "description": "The destination IPv4 address. Use `any` for all addresses.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    }
+                  ],
+                  "schema_definition": "validators.IPv4OrAnyValidator()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "destination_ip",
+          "terraform_name": "destination_ip"
         },
         {
-          "structural_name": "interface",
-          "terraform_name": "interface",
-          "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "The WAN interface the address belongs to."
-          }
+            "description": "The WAN interface for this destination (e.g. `wan`, `wan2`).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"wan\", \"wan2\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "interface",
+          "terraform_name": "interface"
         }
-      ]
+      ],
+      "structural_name": "destination_ips",
+      "terraform_name": "destination_ips",
+      "terraform_type": "list_nested"
     }
   ],
   "format_version": 1,
   "generator_name": "port_forward",
   "groupings": [
     {
-      "terraform_name": "wan",
-      "terraform_type": "single_nested",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Where the rule listens: the WAN interface, address and port."
+        "description": "WAN configuration for the port forwarding rule."
       },
       "members": [
         {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The WAN interface. Can be `wan`, `wan2`, or `both`.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"wan\", \"wan2\", \"both\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
           "structural_name": "pfwd_interface",
-          "terraform_name": "interface",
-          "disposition": "managed",
-          "attribute": {
-            "computed_optional_required": "computed_optional",
-            "description": "The WAN interface. One of `wan`, `wan2`..`wan9`, `both` or `all`."
-          }
+          "terraform_name": "interface"
         },
         {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    }
+                  ],
+                  "schema_definition": "validators.IPv4OrAnyValidator()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
           "structural_name": "destination_ip",
-          "terraform_name": "ip_address",
-          "disposition": "managed",
-          "attribute": {
-            "computed_optional_required": "computed_optional",
-            "description": "The address the rule listens on, or `any`."
-          }
+          "terraform_name": "ip_address"
         },
         {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The WAN port or port range (e.g. `1-10,11,12`)."
+          },
+          "disposition": "managed",
           "structural_name": "dst_port",
-          "terraform_name": "port",
-          "disposition": "managed",
-          "attribute": {
-            "computed_optional_required": "computed_optional",
-            "description": "The port or port range the rule listens on."
-          }
+          "terraform_name": "port"
         }
-      ]
+      ],
+      "terraform_name": "wan",
+      "terraform_type": "single_nested"
     },
     {
-      "terraform_name": "forward",
-      "terraform_type": "single_nested",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Where matched traffic is sent."
+        "description": "Forward destination configuration."
       },
       "members": [
         {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The forward IPv4 address to send traffic to.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    }
+                  ],
+                  "schema_definition": "validators.IPv4Validator()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
           "structural_name": "fwd",
-          "terraform_name": "ip",
-          "disposition": "managed",
-          "attribute": {
-            "computed_optional_required": "computed_optional",
-            "description": "The address traffic is forwarded to."
-          }
+          "terraform_name": "ip"
         },
         {
-          "structural_name": "fwd_port",
-          "terraform_name": "port",
-          "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "The port or port range traffic is forwarded to."
-          }
+            "description": "The forward port or port range (e.g. `1-10,11,12`)."
+          },
+          "disposition": "managed",
+          "structural_name": "fwd_port",
+          "terraform_name": "port"
         }
-      ]
+      ],
+      "terraform_name": "forward",
+      "terraform_type": "single_nested"
     },
     {
-      "terraform_name": "source_limiting",
-      "terraform_type": "single_nested",
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Which sources the rule accepts traffic from."
+        "description": "Source limiting configuration for the port forwarding rule."
       },
       "members": [
         {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": "any"
+            },
+            "description": "The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`."
+          },
+          "disposition": "managed",
           "structural_name": "src",
-          "terraform_name": "ip",
-          "disposition": "managed",
-          "attribute": {
-            "computed_optional_required": "computed_optional",
-            "description": "The source address, range or CIDR the rule accepts, or `any`."
-          }
+          "terraform_name": "ip"
         },
         {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The ID of the firewall group to use for source limiting."
+          },
+          "disposition": "managed",
           "structural_name": "src_firewall_group_id",
-          "terraform_name": "firewall_group_id",
-          "disposition": "managed",
-          "attribute": {
-            "computed_optional_required": "computed_optional",
-            "description": "A `unifi_firewall_group` whose addresses the rule accepts."
-          }
+          "terraform_name": "firewall_group_id"
         },
         {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Specifies whether source limiting is enabled."
+          },
+          "disposition": "managed",
           "structural_name": "src_limiting_enabled",
-          "terraform_name": "enabled",
-          "disposition": "managed",
-          "attribute": {
-            "computed_optional_required": "computed_optional",
-            "description": "Whether source limiting applies at all."
-          }
+          "terraform_name": "enabled"
         },
         {
-          "structural_name": "src_limiting_type",
-          "terraform_name": "type",
-          "disposition": "managed",
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "How the source is expressed. One of `ip` or `firewall_group`."
-          }
+            "description": "The source limiting type. Can be `ip` or `firewall_group`. Inferred automatically when only one of `ip` or `firewall_group_id` is set.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"ip\", \"firewall_group\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "src_limiting_type",
+          "terraform_name": "type"
         }
-      ]
+      ],
+      "terraform_name": "source_limiting",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
     {
       "attribute": {
-        "computed_optional_required": "optional",
-        "description": "The site the rule belongs to."
+        "computed_optional_required": "computed",
+        "description": "The ID of the port forwarding rule.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "computed",
+      "generated": true,
+      "terraform_name": "id",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the port forwarding rule with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       },
       "disposition": "managed",
       "generated": true,
       "terraform_name": "site",
       "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
     }
   ],
   "resource": "unifi_port_forward",

@@ -14,8 +14,8 @@
     "list_resource": "1a62efc7f26708ffc9c085a1a7f86566f28d803cc5fd6dceaf2434e28245c503"
   },
   "structural_fields": 20,
-  "generated_attributes": 9,
-  "provider_owned_seams": 1,
+  "generated_attributes": 10,
+  "provider_owned_seams": 3,
   "unresolved_fields": [],
   "stale_policy_fields": []
 }

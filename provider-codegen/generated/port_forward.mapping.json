@@ -147,10 +147,21 @@
   ],
   "provider_owned": [
     {
+      "terraform_name": "id",
+      "terraform_type": "string",
+      "disposition": "computed",
+      "generated": true
+    },
+    {
       "terraform_name": "site",
       "terraform_type": "string",
       "disposition": "managed",
       "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
     }
   ]
 }
