@@ -367,3 +367,56 @@ func TestObjectListFieldChecksItsElementType(t *testing.T) {
 			len(problems), strings.Join(problems, "\n"))
 	}
 }
+
+// TestObjectFieldKeepsAComputedMemberOutOfState is firewall_policy's shape.
+//
+// Its source is Required, so the plan always sets the object -- but
+// matching_target_type inside it is Computed, so on create the plan holds
+// unknown there. A wholesale copy writes that unknown into state and Terraform
+// rejects it after apply. One member of fifteen taking the whole object with it
+// is why the merge is per member.
+func TestObjectFieldKeepsAComputedMemberOutOfState(t *testing.T) {
+	attrTypes := map[string]attr.Type{
+		"zone_id":              types.StringType,
+		"matching_target_type": types.StringType,
+	}
+	field := ObjectField[kitModel, kitSDK, ui.FirewallPolicySource]{
+		Wire:      "source",
+		AttrTypes: attrTypes,
+		Model:     func(m *kitModel) *types.Object { return &m.Nested },
+	}
+
+	planned, d := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"zone_id":              types.StringValue("zone-new"),
+		"matching_target_type": types.StringUnknown(),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	current, d := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"zone_id":              types.StringValue("zone-old"),
+		"matching_target_type": types.StringValue("SPECIFIC"),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+
+	plan := kitModel{Nested: planned}
+	state := kitModel{Nested: current}
+	field.CopyPlanToState(&plan, &state)
+
+	got := state.Nested.Attributes()
+	if value, _ := got["matching_target_type"].(types.String); value.IsUnknown() {
+		t.Error("matching_target_type is unknown in state; Terraform rejects an unknown " +
+			"after apply, and a wholesale object copy is how it got there")
+	} else if value.ValueString() != "SPECIFIC" {
+		t.Errorf("matching_target_type = %q, want the value the read produced", value.ValueString())
+	}
+	// The control: a member the plan DOES set must win, or the merge would be
+	// preserving everything and the assertion above would pass for a copy that
+	// did nothing at all.
+	if value, _ := got["zone_id"].(types.String); value.ValueString() != "zone-new" {
+		t.Errorf("zone_id = %q, want the plan's; a set member must win",
+			value.ValueString())
+	}
+}

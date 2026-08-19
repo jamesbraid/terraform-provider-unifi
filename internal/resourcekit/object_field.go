@@ -114,10 +114,45 @@ func (f ObjectField[M, S, E]) SetInPlan(plan *M) bool {
 	return !value.IsNull() && !value.IsUnknown()
 }
 
+// CopyPlanToState merges MEMBER BY MEMBER rather than replacing the object.
+//
+// A wholesale copy is wrong for any nested object carrying a Computed member.
+// firewall_policy's source is Required, so the plan always sets it -- but its
+// matching_target_type is Computed, so on create the plan holds UNKNOWN there.
+// Replacing the state object with the plan object writes that unknown into
+// state, and Terraform rejects an unknown after apply. One member of fifteen,
+// and it takes the whole object with it.
+//
+// So a member whose plan value is unknown keeps what the read produced, which
+// is the same rule the top-level fields follow -- "a set plan value wins, an
+// unset one preserves what the controller assigned" -- applied at the depth the
+// values actually live.
 func (f ObjectField[M, S, E]) CopyPlanToState(plan, state *M) {
-	if f.SetInPlan(plan) {
-		*f.Model(state) = *f.Model(plan)
+	planned, current := *f.Model(plan), *f.Model(state)
+	if planned.IsNull() || planned.IsUnknown() {
+		return
 	}
+	if current.IsNull() || current.IsUnknown() {
+		*f.Model(state) = planned
+		return
+	}
+	merged := make(map[string]attr.Value, len(f.AttrTypes))
+	for name, value := range current.Attributes() {
+		merged[name] = value
+	}
+	for name, value := range planned.Attributes() {
+		if value.IsUnknown() {
+			continue
+		}
+		merged[name] = value
+	}
+	object, diags := types.ObjectValue(f.AttrTypes, merged)
+	if diags.HasError() {
+		// A merge that cannot be typed leaves state alone rather than writing a
+		// half-built object; the diagnostics surface at the write instead.
+		return
+	}
+	*f.Model(state) = object
 }
 
 // nestedMemberChecker is what NestedProblems needs from a field without knowing
@@ -279,6 +314,15 @@ func (f ObjectListField[M, S, E]) SetInPlan(plan *M) bool {
 	return !value.IsNull() && !value.IsUnknown()
 }
 
+// CopyPlanToState replaces the list wholesale, and does NOT merge per element
+// the way ObjectField merges per member.
+//
+// Merging needs identity, and list elements have none: nothing says the plan's
+// second server is the state's second server rather than a new one in that
+// position. A positional merge would silently graft a computed value from one
+// element onto a different element the practitioner had just inserted above it.
+// Wholesale is the honest behaviour, and a surface whose elements carry
+// Computed members needs a real key before that can change.
 func (f ObjectListField[M, S, E]) CopyPlanToState(plan, state *M) {
 	if f.SetInPlan(plan) {
 		*f.Model(state) = *f.Model(plan)
