@@ -172,18 +172,21 @@ func TestRuntimeChangeReasonsRejectAContradictedClaim(t *testing.T) {
 		change RuntimeChange
 		want   string
 	}{
-		// unifi_setting, because it is one of exactly two managed surfaces with
-		// no generated package -- the other is unifi_account, whose package is
-		// deliberately absent because it inherits radius_user's schema. This
-		// case named unifi_device until device was converted, at which point the
-		// fixture stopped describing anything: the case still passed a name the
-		// checker recognised, and only the tree underneath it had changed.
+		// unifi_account, and the choice is the point. This case named
+		// unifi_device until device was converted, then unifi_setting until
+		// setting was -- each time the fixture stopped describing anything while
+		// still passing a name the checker recognised, because only the tree
+		// underneath it had changed. account is the one managed surface whose
+		// package is deliberately absent and will stay so: it inherits
+		// radius_user's schema through embedding, and giving it a package would
+		// mean two policies over one SDK struct. A fixture wants the member that
+		// cannot migrate, not the one that has not migrated yet.
 		"converted without a generated package": {
 			change: RuntimeChange{
-				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_setting"},
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_account"},
 				Reason:     ReasonConverted,
 			},
-			want: "no generated package resource_setting",
+			want: "no generated package resource_account",
 		},
 		"hand edit on a converted surface": {
 			change: RuntimeChange{
@@ -201,10 +204,10 @@ func TestRuntimeChangeReasonsRejectAContradictedClaim(t *testing.T) {
 		},
 		"companion conversion with no converted companion": {
 			change: RuntimeChange{
-				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_setting"},
+				SurfaceKey: SurfaceKey{Kind: ManagedResource, Name: "unifi_account"},
 				Reason:     ReasonCompanionConversion,
 			},
-			want: "no companion package listresource_setting exists",
+			want: "no companion package listresource_account exists",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

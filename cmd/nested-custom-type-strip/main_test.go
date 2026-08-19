@@ -131,7 +131,12 @@ func TestGeneratedTreeKeepsEveryImportedScalarCustomType(t *testing.T) {
 	// The behaviour golden records four custom types for the surface; the
 	// fourth is timeouts, which the hand-written wrapper grafts rather than the
 	// generator emitting, so it is not counted here.
-	const want = 38
+	// 51 = 38 before unifi_setting plus its thirteen, every one a
+	// timetypes.GoDurationType: usg's twelve conntrack timeouts and
+	// radius.interim_update_interval. All thirteen are int64 seconds in the SDK
+	// and duration strings in the schema, so as with device the custom type IS
+	// the conversion and losing one would accept 3600 where 1h is meant.
+	const want = 51
 
 	qualified := regexp.MustCompile(`CustomType:\s+[a-z][A-Za-z0-9_]*\.[A-Za-z0-9]+\{`)
 	unqualified := regexp.MustCompile(`CustomType:\s+[A-Z][A-Za-z0-9]*Type\{`)

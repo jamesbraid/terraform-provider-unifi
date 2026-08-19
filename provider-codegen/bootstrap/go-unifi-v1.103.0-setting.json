@@ -1,0 +1,1444 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "2852da3cd988db70403be8a7539e9b26bfbf65a0f5171cacbd9f4fbdb46ce93e"
+  },
+  "resource": {
+    "name": "unifi_setting",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "arp_cache_base_reachable",
+        "type": "int64",
+        "go_name": "ArpCacheBaseReachable",
+        "pointer": true
+      },
+      {
+        "name": "arp_cache_timeout",
+        "type": "string",
+        "go_name": "ArpCacheTimeout"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool",
+        "go_name": "Hidden"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string",
+        "go_name": "HiddenID"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool",
+        "go_name": "NoDelete"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool",
+        "go_name": "NoEdit"
+      },
+      {
+        "name": "broadcast_ping",
+        "type": "bool",
+        "go_name": "BroadcastPing"
+      },
+      {
+        "name": "dhcp_relay_agents_packets",
+        "type": "string",
+        "go_name": "DHCPRelayAgentsPackets"
+      },
+      {
+        "name": "dhcp_relay_hop_count",
+        "type": "int64",
+        "go_name": "DHCPRelayHopCount",
+        "pointer": true
+      },
+      {
+        "name": "dhcp_relay_max_size",
+        "type": "int64",
+        "go_name": "DHCPRelayMaxSize",
+        "pointer": true
+      },
+      {
+        "name": "dhcp_relay_port",
+        "type": "int64",
+        "go_name": "DHCPRelayPort",
+        "pointer": true
+      },
+      {
+        "name": "dhcpd_hostfile_update",
+        "type": "bool",
+        "go_name": "DHCPDHostfileUpdate"
+      },
+      {
+        "name": "dhcpd_use_dnsmasq",
+        "type": "bool",
+        "go_name": "DHCPDUseDNSmasq"
+      },
+      {
+        "name": "dns_verification",
+        "type": "object",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "string",
+            "go_name": "Domain"
+          },
+          {
+            "name": "primary_dns_server",
+            "type": "string",
+            "go_name": "PrimaryDNSServer"
+          },
+          {
+            "name": "secondary_dns_server",
+            "type": "string",
+            "go_name": "SecondaryDNSServer"
+          },
+          {
+            "name": "setting_preference",
+            "type": "string",
+            "go_name": "SettingPreference"
+          }
+        ],
+        "go_name": "DNSVerification",
+        "pointer": true
+      },
+      {
+        "name": "dnsmasq_all_servers",
+        "type": "bool",
+        "go_name": "DNSmasqAllServers"
+      },
+      {
+        "name": "echo_server",
+        "type": "string",
+        "go_name": "EchoServer"
+      },
+      {
+        "name": "ftp_module",
+        "type": "bool",
+        "go_name": "FtpModule"
+      },
+      {
+        "name": "gre_module",
+        "type": "bool",
+        "go_name": "GreModule"
+      },
+      {
+        "name": "h323_module",
+        "type": "bool",
+        "go_name": "H323Module"
+      },
+      {
+        "name": "icmp_timeout",
+        "type": "int64",
+        "go_name": "ICMPTimeout"
+      },
+      {
+        "name": "key",
+        "type": "string",
+        "go_name": "Key"
+      },
+      {
+        "name": "lldp_enable_all",
+        "type": "bool",
+        "go_name": "LldpEnableAll"
+      },
+      {
+        "name": "mdns_enabled",
+        "type": "bool",
+        "go_name": "MdnsEnabled"
+      },
+      {
+        "name": "mss_clamp",
+        "type": "string",
+        "go_name": "MssClamp"
+      },
+      {
+        "name": "mss_clamp_mss",
+        "type": "int64",
+        "go_name": "MssClampMss",
+        "pointer": true
+      },
+      {
+        "name": "offload_accounting",
+        "type": "bool",
+        "go_name": "OffloadAccounting"
+      },
+      {
+        "name": "offload_l2_blocking",
+        "type": "bool",
+        "go_name": "OffloadL2Blocking"
+      },
+      {
+        "name": "offload_sch",
+        "type": "bool",
+        "go_name": "OffloadSch"
+      },
+      {
+        "name": "other_timeout",
+        "type": "int64",
+        "go_name": "OtherTimeout"
+      },
+      {
+        "name": "pptp_module",
+        "type": "bool",
+        "go_name": "PptpModule"
+      },
+      {
+        "name": "receive_redirects",
+        "type": "bool",
+        "go_name": "ReceiveRedirects"
+      },
+      {
+        "name": "send_redirects",
+        "type": "bool",
+        "go_name": "SendRedirects"
+      },
+      {
+        "name": "sip_module",
+        "type": "bool",
+        "go_name": "SipModule"
+      },
+      {
+        "name": "site_id",
+        "type": "string",
+        "go_name": "SiteID"
+      },
+      {
+        "name": "syn_cookies",
+        "type": "bool",
+        "go_name": "SynCookies"
+      },
+      {
+        "name": "tcp_close_timeout",
+        "type": "int64",
+        "go_name": "TCPCloseTimeout"
+      },
+      {
+        "name": "tcp_close_wait_timeout",
+        "type": "int64",
+        "go_name": "TCPCloseWaitTimeout"
+      },
+      {
+        "name": "tcp_established_timeout",
+        "type": "int64",
+        "go_name": "TCPEstablishedTimeout"
+      },
+      {
+        "name": "tcp_fin_wait_timeout",
+        "type": "int64",
+        "go_name": "TCPFinWaitTimeout"
+      },
+      {
+        "name": "tcp_last_ack_timeout",
+        "type": "int64",
+        "go_name": "TCPLastAckTimeout"
+      },
+      {
+        "name": "tcp_syn_recv_timeout",
+        "type": "int64",
+        "go_name": "TCPSynRecvTimeout"
+      },
+      {
+        "name": "tcp_syn_sent_timeout",
+        "type": "int64",
+        "go_name": "TCPSynSentTimeout"
+      },
+      {
+        "name": "tcp_time_wait_timeout",
+        "type": "int64",
+        "go_name": "TCPTimeWaitTimeout"
+      },
+      {
+        "name": "tftp_module",
+        "type": "bool",
+        "go_name": "TFTPModule"
+      },
+      {
+        "name": "timeout_setting_preference",
+        "type": "string",
+        "go_name": "TimeoutSettingPreference"
+      },
+      {
+        "name": "udp_other_timeout",
+        "type": "int64",
+        "go_name": "UDPOtherTimeout"
+      },
+      {
+        "name": "udp_stream_timeout",
+        "type": "int64",
+        "go_name": "UDPStreamTimeout"
+      },
+      {
+        "name": "unbind_wan_monitors",
+        "type": "bool",
+        "go_name": "UnbindWANMonitors"
+      },
+      {
+        "name": "upnp_enabled",
+        "type": "bool",
+        "go_name": "UPnPEnabled"
+      },
+      {
+        "name": "upnp_nat_pmp_enabled",
+        "type": "bool",
+        "go_name": "UPnPNATPmpEnabled"
+      },
+      {
+        "name": "upnp_secure_mode",
+        "type": "bool",
+        "go_name": "UPnPSecureMode"
+      },
+      {
+        "name": "upnp_wan_interface",
+        "type": "string",
+        "go_name": "UPnPWANInterface"
+      }
+    ]
+  },
+  "companions": [
+    {
+      "struct": "Rsyslogd",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "contents",
+          "type": "array<string>",
+          "go_name": "Contents"
+        },
+        {
+          "name": "debug",
+          "type": "bool",
+          "go_name": "Debug"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "go_name": "Enabled"
+        },
+        {
+          "name": "ip",
+          "type": "string",
+          "go_name": "IP"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "log_all_contents",
+          "type": "bool",
+          "go_name": "LogAllContents"
+        },
+        {
+          "name": "netconsole_enabled",
+          "type": "bool",
+          "go_name": "NetconsoleEnabled"
+        },
+        {
+          "name": "netconsole_host",
+          "type": "string",
+          "go_name": "NetconsoleHost"
+        },
+        {
+          "name": "netconsole_port",
+          "type": "int64",
+          "go_name": "NetconsolePort",
+          "pointer": true
+        },
+        {
+          "name": "port",
+          "type": "int64",
+          "go_name": "Port",
+          "pointer": true
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        },
+        {
+          "name": "this_controller",
+          "type": "bool",
+          "go_name": "ThisController"
+        },
+        {
+          "name": "this_controller_encrypted_only",
+          "type": "bool",
+          "go_name": "ThisControllerEncryptedOnly"
+        }
+      ]
+    },
+    {
+      "struct": "Ips",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "advanced_filtering_preference",
+          "type": "string",
+          "go_name": "AdvancedFilteringPreference"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "content_filtering_blocking_page_enabled",
+          "type": "bool",
+          "go_name": "ContentFilteringBlockingPageEnabled"
+        },
+        {
+          "name": "enabled_categories",
+          "type": "array<string>",
+          "go_name": "EnabledCategories"
+        },
+        {
+          "name": "enabled_networks",
+          "type": "array<string>",
+          "go_name": "EnabledNetworks"
+        },
+        {
+          "name": "honeypot",
+          "type": "array<object>",
+          "fields": [
+            {
+              "name": "ip_address",
+              "type": "string",
+              "go_name": "IPAddress"
+            },
+            {
+              "name": "network_id",
+              "type": "string",
+              "go_name": "NetworkID"
+            },
+            {
+              "name": "version",
+              "type": "string",
+              "go_name": "Version"
+            }
+          ],
+          "go_name": "Honeypot"
+        },
+        {
+          "name": "honeypot_enabled",
+          "type": "bool",
+          "go_name": "HoneypotEnabled"
+        },
+        {
+          "name": "ips_mode",
+          "type": "string",
+          "go_name": "IPsMode"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "memory_optimized",
+          "type": "bool",
+          "go_name": "MemoryOptimized"
+        },
+        {
+          "name": "restrict_torrents",
+          "type": "bool",
+          "go_name": "RestrictTorrents"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        }
+      ]
+    },
+    {
+      "struct": "Lcm",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "brightness",
+          "type": "int64",
+          "go_name": "Brightness",
+          "pointer": true
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "go_name": "Enabled"
+        },
+        {
+          "name": "idle_timeout",
+          "type": "int64",
+          "go_name": "IDleTimeout",
+          "pointer": true
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        },
+        {
+          "name": "sync",
+          "type": "bool",
+          "go_name": "Sync"
+        },
+        {
+          "name": "touch_event",
+          "type": "bool",
+          "go_name": "TouchEvent"
+        }
+      ]
+    },
+    {
+      "struct": "Radius",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "accounting_enabled",
+          "type": "bool",
+          "go_name": "AccountingEnabled"
+        },
+        {
+          "name": "acct_port",
+          "type": "int64",
+          "go_name": "AcctPort",
+          "pointer": true
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "auth_port",
+          "type": "int64",
+          "go_name": "AuthPort",
+          "pointer": true
+        },
+        {
+          "name": "configure_whole_network",
+          "type": "bool",
+          "go_name": "ConfigureWholeNetwork"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "go_name": "Enabled"
+        },
+        {
+          "name": "interim_update_interval",
+          "type": "int64",
+          "go_name": "InterimUpdateInterval",
+          "pointer": true
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        },
+        {
+          "name": "tunneled_reply",
+          "type": "bool",
+          "go_name": "TunneledReply"
+        },
+        {
+          "name": "x_secret",
+          "type": "string",
+          "secret_candidate": true,
+          "go_name": "Secret"
+        }
+      ]
+    },
+    {
+      "struct": "Doh",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "custom_servers",
+          "type": "array<object>",
+          "fields": [
+            {
+              "name": "enabled",
+              "type": "bool",
+              "go_name": "Enabled"
+            },
+            {
+              "name": "sdns_stamp",
+              "type": "string",
+              "go_name": "SdnsStamp"
+            },
+            {
+              "name": "server_name",
+              "type": "string",
+              "go_name": "ServerName"
+            }
+          ],
+          "go_name": "CustomServers"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "server_names",
+          "type": "array<string>",
+          "go_name": "ServerNames"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        },
+        {
+          "name": "state",
+          "type": "string",
+          "go_name": "State"
+        }
+      ]
+    },
+    {
+      "struct": "Dpi",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "go_name": "Enabled"
+        },
+        {
+          "name": "fingerprintingEnabled",
+          "type": "bool",
+          "go_name": "FingerprintingEnabled"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        }
+      ]
+    },
+    {
+      "struct": "Mgmt",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "advanced_feature_enabled",
+          "type": "bool",
+          "go_name": "AdvancedFeatureEnabled"
+        },
+        {
+          "name": "alert_enabled",
+          "type": "bool",
+          "go_name": "AlertEnabled"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "auto_upgrade",
+          "type": "bool",
+          "go_name": "AutoUpgrade"
+        },
+        {
+          "name": "auto_upgrade_hour",
+          "type": "int64",
+          "go_name": "AutoUpgradeHour",
+          "pointer": true
+        },
+        {
+          "name": "boot_sound",
+          "type": "bool",
+          "go_name": "BootSound"
+        },
+        {
+          "name": "debug_tools_enabled",
+          "type": "bool",
+          "go_name": "DebugToolsEnabled"
+        },
+        {
+          "name": "direct_connect_enabled",
+          "type": "bool",
+          "go_name": "DirectConnectEnabled"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "led_enabled",
+          "type": "bool",
+          "go_name": "LedEnabled"
+        },
+        {
+          "name": "outdoor_mode_enabled",
+          "type": "bool",
+          "go_name": "OutdoorModeEnabled"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        },
+        {
+          "name": "unifi_idp_enabled",
+          "type": "bool",
+          "go_name": "UniFiIdentityProviderEnabled"
+        },
+        {
+          "name": "wifiman_enabled",
+          "type": "bool",
+          "go_name": "WifimanEnabled"
+        },
+        {
+          "name": "x_mgmt_key",
+          "type": "string",
+          "secret_candidate": true,
+          "go_name": "MgmtKey"
+        },
+        {
+          "name": "x_ssh_auth_password_enabled",
+          "type": "bool",
+          "secret_candidate": true,
+          "go_name": "SSHAuthPasswordEnabled"
+        },
+        {
+          "name": "x_ssh_bind_wildcard",
+          "type": "bool",
+          "secret_candidate": true,
+          "go_name": "SSHBindWildcard"
+        },
+        {
+          "name": "x_ssh_enabled",
+          "type": "bool",
+          "secret_candidate": true,
+          "go_name": "SSHEnabled"
+        },
+        {
+          "name": "x_ssh_keys",
+          "type": "array<object>",
+          "fields": [
+            {
+              "name": "comment",
+              "type": "string",
+              "go_name": "Comment"
+            },
+            {
+              "name": "date",
+              "type": "string",
+              "go_name": "Date"
+            },
+            {
+              "name": "fingerprint",
+              "type": "string",
+              "go_name": "Fingerprint"
+            },
+            {
+              "name": "key",
+              "type": "string",
+              "go_name": "Key"
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "go_name": "Name"
+            },
+            {
+              "name": "type",
+              "type": "string",
+              "go_name": "KeyType"
+            }
+          ],
+          "secret_candidate": true,
+          "go_name": "SSHKeys"
+        },
+        {
+          "name": "x_ssh_md5passwd",
+          "type": "string",
+          "secret_candidate": true,
+          "go_name": "SSHMd5Passwd"
+        },
+        {
+          "name": "x_ssh_password",
+          "type": "string",
+          "secret_candidate": true,
+          "go_name": "SSHPassword"
+        },
+        {
+          "name": "x_ssh_sha512passwd",
+          "type": "string",
+          "secret_candidate": true,
+          "go_name": "SSHSha512Passwd"
+        },
+        {
+          "name": "x_ssh_username",
+          "type": "string",
+          "secret_candidate": true,
+          "go_name": "SSHUsername"
+        }
+      ]
+    },
+    {
+      "struct": "Ntp",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "ntp_server_1",
+          "type": "string",
+          "go_name": "NtpServer1"
+        },
+        {
+          "name": "ntp_server_2",
+          "type": "string",
+          "go_name": "NtpServer2"
+        },
+        {
+          "name": "ntp_server_3",
+          "type": "string",
+          "go_name": "NtpServer3"
+        },
+        {
+          "name": "ntp_server_4",
+          "type": "string",
+          "go_name": "NtpServer4"
+        },
+        {
+          "name": "setting_preference",
+          "type": "string",
+          "go_name": "SettingPreference"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        }
+      ]
+    },
+    {
+      "struct": "Country",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "code",
+          "type": "int64",
+          "go_name": "Code",
+          "pointer": true
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        }
+      ]
+    },
+    {
+      "struct": "AutoSpeedtest",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "cron_expr",
+          "type": "string",
+          "go_name": "CronExpr"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "go_name": "Enabled"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        }
+      ]
+    },
+    {
+      "struct": "IgmpSnooping",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "go_name": "Enabled"
+        },
+        {
+          "name": "failover_querier",
+          "type": "string",
+          "go_name": "FailoverQuerier"
+        },
+        {
+          "name": "fastleave_for_network_ids",
+          "type": "array<string>",
+          "go_name": "FastleaveForNetworkIDs"
+        },
+        {
+          "name": "flood_known_protocols",
+          "type": "bool",
+          "go_name": "FloodKnownProtocols"
+        },
+        {
+          "name": "flood_unknown_multicast_for_network_ids",
+          "type": "array<string>",
+          "go_name": "FloodUnknownMulticastForNetworkIDs"
+        },
+        {
+          "name": "forward_unknown_mcast_router_ports",
+          "type": "bool",
+          "go_name": "ForwardUnknownMcastRouterPorts"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "network_ids",
+          "type": "array<string>",
+          "go_name": "NetworkIDs"
+        },
+        {
+          "name": "primary_querier",
+          "type": "string",
+          "go_name": "PrimaryQuerier"
+        },
+        {
+          "name": "querier_addresses",
+          "type": "array<object>",
+          "fields": [
+            {
+              "name": "mac",
+              "type": "string",
+              "go_name": "MAC"
+            },
+            {
+              "name": "network_id",
+              "type": "string",
+              "go_name": "NetworkID"
+            },
+            {
+              "name": "querier_address",
+              "type": "string",
+              "go_name": "QuerierAddress"
+            },
+            {
+              "name": "query_interval",
+              "type": "int64",
+              "go_name": "QueryInterval",
+              "pointer": true
+            }
+          ],
+          "go_name": "QuerierAddresses"
+        },
+        {
+          "name": "querier_mode",
+          "type": "string",
+          "go_name": "QuerierMode"
+        },
+        {
+          "name": "querier_subscription_mode",
+          "type": "string",
+          "go_name": "QuerierSubscriptionMode"
+        },
+        {
+          "name": "querier_switches",
+          "type": "array<string>",
+          "go_name": "QuerierSwitches"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        },
+        {
+          "name": "subscription_mode",
+          "type": "string",
+          "go_name": "SubscriptionMode"
+        },
+        {
+          "name": "switches",
+          "type": "array<string>",
+          "go_name": "Switches"
+        }
+      ]
+    },
+    {
+      "struct": "NetworkOptimization",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "go_name": "Enabled"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        }
+      ]
+    },
+    {
+      "struct": "IpsSuppression",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "string",
+          "go_name": "ID"
+        },
+        {
+          "name": "alerts",
+          "type": "array<object>",
+          "fields": [
+            {
+              "name": "category",
+              "type": "string",
+              "go_name": "Category"
+            },
+            {
+              "name": "gid",
+              "type": "int64",
+              "go_name": "Gid",
+              "pointer": true
+            },
+            {
+              "name": "id",
+              "type": "int64",
+              "go_name": "ID",
+              "pointer": true
+            },
+            {
+              "name": "signature",
+              "type": "string",
+              "go_name": "Signature"
+            },
+            {
+              "name": "tracking",
+              "type": "array<object>",
+              "fields": [
+                {
+                  "name": "direction",
+                  "type": "string",
+                  "go_name": "Direction"
+                },
+                {
+                  "name": "mode",
+                  "type": "string",
+                  "go_name": "Mode"
+                },
+                {
+                  "name": "value",
+                  "type": "string",
+                  "go_name": "Value"
+                }
+              ],
+              "go_name": "Tracking"
+            },
+            {
+              "name": "type",
+              "type": "string",
+              "go_name": "Type"
+            }
+          ],
+          "go_name": "Alerts"
+        },
+        {
+          "name": "attr_hidden",
+          "type": "bool",
+          "go_name": "Hidden"
+        },
+        {
+          "name": "attr_hidden_id",
+          "type": "string",
+          "go_name": "HiddenID"
+        },
+        {
+          "name": "attr_no_delete",
+          "type": "bool",
+          "go_name": "NoDelete"
+        },
+        {
+          "name": "attr_no_edit",
+          "type": "bool",
+          "go_name": "NoEdit"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "go_name": "Key"
+        },
+        {
+          "name": "site_id",
+          "type": "string",
+          "go_name": "SiteID"
+        },
+        {
+          "name": "whitelist",
+          "type": "array<object>",
+          "fields": [
+            {
+              "name": "direction",
+              "type": "string",
+              "go_name": "Direction"
+            },
+            {
+              "name": "mode",
+              "type": "string",
+              "go_name": "Mode"
+            },
+            {
+              "name": "value",
+              "type": "string",
+              "go_name": "Value"
+            }
+          ],
+          "go_name": "Whitelist"
+        }
+      ]
+    },
+    {
+      "struct": "SettingUsgGeoIPFiltering",
+      "fields": [
+        {
+          "name": "action",
+          "type": "string",
+          "go_name": "Action"
+        },
+        {
+          "name": "countries",
+          "type": "string",
+          "go_name": "Countries"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "go_name": "Enabled"
+        },
+        {
+          "name": "traffic_direction",
+          "type": "string",
+          "go_name": "TrafficDirection"
+        }
+      ]
+    }
+  ]
+}

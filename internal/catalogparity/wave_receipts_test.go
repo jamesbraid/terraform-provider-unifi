@@ -135,6 +135,15 @@ func TestWave2FleetFoundationReceipt(t *testing.T) {
 		seen++
 		want := PolicyComplete
 		switch contract.Name {
+		// The largest hand-written file in the tree, and the surface #172 called
+		// fifteen surfaces wearing one name. It is one resource with thirteen
+		// setting blocks, compiled from a bootstrap over fifteen SDK structs:
+		// settings.Usg leads and twelve companions supply the rest, addressed by
+		// structural_source exactly as unifi_client addresses ClientGroup. Ten of
+		// the thirteen blocks carry a block-level UseStateForUnknown, which a
+		// shape comparison cannot see and the deriver put in the policy.
+		case "unifi_setting":
+			want = GeneratedShadow
 		case "unifi_dns_record":
 			want = Admitted
 		// Nine of its twelve SDK fields are controller bookkeeping the released
@@ -414,8 +423,7 @@ func TestWave4CheckpointAccountsForEveryCatalogState(t *testing.T) {
 	// ShadowOnly is gone from the estate: port_forward was the last surface in
 	// it, and no other managed resource ever was.
 	want := map[AdmissionState]int{
-		PolicyComplete:  1,
-		GeneratedShadow: 65,
+		GeneratedShadow: 66,
 		Admitted:        1,
 	}
 	if !reflect.DeepEqual(counts, want) {

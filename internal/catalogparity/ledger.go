@@ -19,10 +19,12 @@ const (
 	// verify it later, so it records an intent somebody held rather than a file
 	// somebody wrote.
 	//
-	// Measured on 2026-08-19: both surfaces carrying it, unifi_device and
-	// unifi_setting, have no policy file at all. 2 of 2. Of the 25 managed
-	// surfaces at generated_shadow, 24 do have one and the exception is
-	// unifi_account, which is account_deprecated.go.
+	// NO MANAGED SURFACE CARRIES IT. When this was written both members,
+	// unifi_device and unifi_setting, had no policy file at all -- 2 of 2, which
+	// is what the paragraph below is about. Both have since been migrated and
+	// the state is empty, so the claim is recorded rather than observable.
+	// A state with no members cannot be checked against anything, which is the
+	// reason to write down what it meant while someone still knew.
 	//
 	// The cost is not bookkeeping. Advancing a surface out of generated_shadow
 	// is a state edit; advancing one out of policy_complete is steps 1 through 7

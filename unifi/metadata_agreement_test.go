@@ -109,7 +109,6 @@ func TestEveryGeneratedSurfaceIsServedUnderItsDeclaredName(t *testing.T) {
 // declares, because they are hand-written rather than generated.
 var surfacesWithoutDirectives = map[string]bool{
 	"unifi_account": true,
-	"unifi_setting": true,
 }
 
 // servedTypeNames asks every resource, data source and list resource the

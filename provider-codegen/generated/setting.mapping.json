@@ -1,0 +1,1644 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_setting",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "AutoSpeedtest._id",
+      "terraform_name": "autospeedtest__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "AutoSpeedtest.attr_hidden",
+      "terraform_name": "autospeedtest_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "AutoSpeedtest.attr_hidden_id",
+      "terraform_name": "autospeedtest_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "AutoSpeedtest.attr_no_delete",
+      "terraform_name": "autospeedtest_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "AutoSpeedtest.attr_no_edit",
+      "terraform_name": "autospeedtest_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "AutoSpeedtest.key",
+      "terraform_name": "autospeedtest_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "AutoSpeedtest.site_id",
+      "terraform_name": "autospeedtest_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Country._id",
+      "terraform_name": "country__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Country.attr_hidden",
+      "terraform_name": "country_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Country.attr_hidden_id",
+      "terraform_name": "country_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Country.attr_no_delete",
+      "terraform_name": "country_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Country.attr_no_edit",
+      "terraform_name": "country_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Country.key",
+      "terraform_name": "country_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Country.site_id",
+      "terraform_name": "country_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Doh._id",
+      "terraform_name": "doh__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Doh.attr_hidden",
+      "terraform_name": "doh_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Doh.attr_hidden_id",
+      "terraform_name": "doh_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Doh.attr_no_delete",
+      "terraform_name": "doh_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Doh.attr_no_edit",
+      "terraform_name": "doh_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Doh.key",
+      "terraform_name": "doh_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Doh.site_id",
+      "terraform_name": "doh_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Dpi._id",
+      "terraform_name": "dpi__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Dpi.attr_hidden",
+      "terraform_name": "dpi_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Dpi.attr_hidden_id",
+      "terraform_name": "dpi_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Dpi.attr_no_delete",
+      "terraform_name": "dpi_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Dpi.attr_no_edit",
+      "terraform_name": "dpi_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Dpi.key",
+      "terraform_name": "dpi_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Dpi.site_id",
+      "terraform_name": "dpi_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping._id",
+      "terraform_name": "igmpsnooping__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.attr_hidden",
+      "terraform_name": "igmpsnooping_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.attr_hidden_id",
+      "terraform_name": "igmpsnooping_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.attr_no_delete",
+      "terraform_name": "igmpsnooping_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.attr_no_edit",
+      "terraform_name": "igmpsnooping_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.failover_querier",
+      "terraform_name": "igmpsnooping_failover_querier",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.fastleave_for_network_ids",
+      "terraform_name": "igmpsnooping_fastleave_for_network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.flood_known_protocols",
+      "terraform_name": "igmpsnooping_flood_known_protocols",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.flood_unknown_multicast_for_network_ids",
+      "terraform_name": "igmpsnooping_flood_unknown_multicast_for_network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.forward_unknown_mcast_router_ports",
+      "terraform_name": "igmpsnooping_forward_unknown_mcast_router_ports",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.key",
+      "terraform_name": "igmpsnooping_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.primary_querier",
+      "terraform_name": "igmpsnooping_primary_querier",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.querier_addresses",
+      "terraform_name": "igmpsnooping_querier_addresses",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.querier_mode",
+      "terraform_name": "igmpsnooping_querier_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.querier_subscription_mode",
+      "terraform_name": "igmpsnooping_querier_subscription_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.querier_switches",
+      "terraform_name": "igmpsnooping_querier_switches",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.site_id",
+      "terraform_name": "igmpsnooping_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.subscription_mode",
+      "terraform_name": "igmpsnooping_subscription_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IgmpSnooping.switches",
+      "terraform_name": "igmpsnooping_switches",
+      "structural_type": "array<string>",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ips._id",
+      "terraform_name": "ips__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ips.attr_hidden",
+      "terraform_name": "ips_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ips.attr_hidden_id",
+      "terraform_name": "ips_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ips.attr_no_delete",
+      "terraform_name": "ips_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ips.attr_no_edit",
+      "terraform_name": "ips_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ips.key",
+      "terraform_name": "ips_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ips.site_id",
+      "terraform_name": "ips_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IpsSuppression._id",
+      "terraform_name": "ipssuppression__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IpsSuppression.attr_hidden",
+      "terraform_name": "ipssuppression_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IpsSuppression.attr_hidden_id",
+      "terraform_name": "ipssuppression_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IpsSuppression.attr_no_delete",
+      "terraform_name": "ipssuppression_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IpsSuppression.attr_no_edit",
+      "terraform_name": "ipssuppression_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IpsSuppression.key",
+      "terraform_name": "ipssuppression_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "IpsSuppression.site_id",
+      "terraform_name": "ipssuppression_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Lcm._id",
+      "terraform_name": "lcm__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Lcm.attr_hidden",
+      "terraform_name": "lcm_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Lcm.attr_hidden_id",
+      "terraform_name": "lcm_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Lcm.attr_no_delete",
+      "terraform_name": "lcm_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Lcm.attr_no_edit",
+      "terraform_name": "lcm_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Lcm.key",
+      "terraform_name": "lcm_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Lcm.site_id",
+      "terraform_name": "lcm_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt._id",
+      "terraform_name": "mgmt__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.alert_enabled",
+      "terraform_name": "mgmt_alert_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.attr_hidden",
+      "terraform_name": "mgmt_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.attr_hidden_id",
+      "terraform_name": "mgmt_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.attr_no_delete",
+      "terraform_name": "mgmt_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.attr_no_edit",
+      "terraform_name": "mgmt_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.boot_sound",
+      "terraform_name": "mgmt_boot_sound",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.key",
+      "terraform_name": "mgmt_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.led_enabled",
+      "terraform_name": "mgmt_led_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.outdoor_mode_enabled",
+      "terraform_name": "mgmt_outdoor_mode_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.site_id",
+      "terraform_name": "mgmt_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.x_mgmt_key",
+      "terraform_name": "mgmt_x_mgmt_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_bind_wildcard",
+      "terraform_name": "mgmt_x_ssh_bind_wildcard",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_md5passwd",
+      "terraform_name": "mgmt_x_ssh_md5passwd",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_sha512passwd",
+      "terraform_name": "mgmt_x_ssh_sha512passwd",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "NetworkOptimization._id",
+      "terraform_name": "networkoptimization__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "NetworkOptimization.attr_hidden",
+      "terraform_name": "networkoptimization_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "NetworkOptimization.attr_hidden_id",
+      "terraform_name": "networkoptimization_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "NetworkOptimization.attr_no_delete",
+      "terraform_name": "networkoptimization_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "NetworkOptimization.attr_no_edit",
+      "terraform_name": "networkoptimization_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "NetworkOptimization.key",
+      "terraform_name": "networkoptimization_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "NetworkOptimization.site_id",
+      "terraform_name": "networkoptimization_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ntp._id",
+      "terraform_name": "ntp__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ntp.attr_hidden",
+      "terraform_name": "ntp_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ntp.attr_hidden_id",
+      "terraform_name": "ntp_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ntp.attr_no_delete",
+      "terraform_name": "ntp_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ntp.attr_no_edit",
+      "terraform_name": "ntp_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ntp.key",
+      "terraform_name": "ntp_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Ntp.site_id",
+      "terraform_name": "ntp_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius._id",
+      "terraform_name": "radius__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius.attr_hidden",
+      "terraform_name": "radius_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius.attr_hidden_id",
+      "terraform_name": "radius_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius.attr_no_delete",
+      "terraform_name": "radius_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius.attr_no_edit",
+      "terraform_name": "radius_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius.configure_whole_network",
+      "terraform_name": "radius_configure_whole_network",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius.key",
+      "terraform_name": "radius_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius.site_id",
+      "terraform_name": "radius_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Radius.tunneled_reply",
+      "terraform_name": "radius_tunneled_reply",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Rsyslogd._id",
+      "terraform_name": "rsyslogd__id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Rsyslogd.attr_hidden",
+      "terraform_name": "rsyslogd_attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Rsyslogd.attr_hidden_id",
+      "terraform_name": "rsyslogd_attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Rsyslogd.attr_no_delete",
+      "terraform_name": "rsyslogd_attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Rsyslogd.attr_no_edit",
+      "terraform_name": "rsyslogd_attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Rsyslogd.key",
+      "terraform_name": "rsyslogd_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "Rsyslogd.site_id",
+      "terraform_name": "rsyslogd_site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "arp_cache_base_reachable",
+      "terraform_name": "arp_cache_base_reachable",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "arp_cache_timeout",
+      "terraform_name": "arp_cache_timeout",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcp_relay_agents_packets",
+      "terraform_name": "dhcp_relay_agents_packets",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcp_relay_hop_count",
+      "terraform_name": "dhcp_relay_hop_count",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcp_relay_max_size",
+      "terraform_name": "dhcp_relay_max_size",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcp_relay_port",
+      "terraform_name": "dhcp_relay_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_hostfile_update",
+      "terraform_name": "dhcpd_hostfile_update",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dhcpd_use_dnsmasq",
+      "terraform_name": "dhcpd_use_dnsmasq",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "dnsmasq_all_servers",
+      "terraform_name": "dnsmasq_all_servers",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "echo_server",
+      "terraform_name": "echo_server",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "key",
+      "terraform_name": "key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "lldp_enable_all",
+      "terraform_name": "lldp_enable_all",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mdns_enabled",
+      "terraform_name": "mdns_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "mss_clamp_mss",
+      "terraform_name": "mss_clamp_mss",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "AutoSpeedtest.cron_expr",
+      "terraform_name": "auto_speedtest.cron_expr",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "AutoSpeedtest.enabled",
+      "terraform_name": "auto_speedtest.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Country.code",
+      "terraform_name": "country.code",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Doh.custom_servers",
+      "terraform_name": "doh.custom_servers",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Doh.server_names",
+      "terraform_name": "doh.server_names",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Doh.state",
+      "terraform_name": "doh.state",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Dpi.enabled",
+      "terraform_name": "dpi.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Dpi.fingerprintingEnabled",
+      "terraform_name": "dpi.fingerprinting_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "IgmpSnooping.enabled",
+      "terraform_name": "igmp_snooping.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "IgmpSnooping.network_ids",
+      "terraform_name": "igmp_snooping.network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.advanced_filtering_preference",
+      "terraform_name": "ips.advanced_filtering_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.content_filtering_blocking_page_enabled",
+      "terraform_name": "ips.content_filtering_blocking_page_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.enabled_categories",
+      "terraform_name": "ips.enabled_categories",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.enabled_networks",
+      "terraform_name": "ips.enabled_networks",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.honeypot",
+      "terraform_name": "ips.honeypot",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.honeypot_enabled",
+      "terraform_name": "ips.honeypot_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.ips_mode",
+      "terraform_name": "ips.ips_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.memory_optimized",
+      "terraform_name": "ips.memory_optimized",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.restrict_torrents",
+      "terraform_name": "ips.restrict_torrents",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "IpsSuppression.alerts",
+      "terraform_name": "ips.suppression_alerts",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "IpsSuppression.whitelist",
+      "terraform_name": "ips.suppression_whitelist",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.brightness",
+      "terraform_name": "lcm.brightness",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.enabled",
+      "terraform_name": "lcm.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.idle_timeout",
+      "terraform_name": "lcm.idle_timeout",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.sync",
+      "terraform_name": "lcm.sync",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.touch_event",
+      "terraform_name": "lcm.touch_event",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.advanced_feature_enabled",
+      "terraform_name": "mgmt.advanced_feature_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.auto_upgrade",
+      "terraform_name": "mgmt.auto_upgrade",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.auto_upgrade_hour",
+      "terraform_name": "mgmt.auto_upgrade_hour",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.debug_tools_enabled",
+      "terraform_name": "mgmt.debug_tools_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.direct_connect_enabled",
+      "terraform_name": "mgmt.direct_connect_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_auth_password_enabled",
+      "terraform_name": "mgmt.ssh_auth_password_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_enabled",
+      "terraform_name": "mgmt.ssh_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_keys",
+      "terraform_name": "mgmt.ssh_keys",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_password",
+      "terraform_name": "mgmt.ssh_password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_username",
+      "terraform_name": "mgmt.ssh_username",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.unifi_idp_enabled",
+      "terraform_name": "mgmt.unifi_idp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.wifiman_enabled",
+      "terraform_name": "mgmt.wifiman_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "NetworkOptimization.enabled",
+      "terraform_name": "network_optimization.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.ntp_server_1",
+      "terraform_name": "ntp.ntp_server_1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.ntp_server_2",
+      "terraform_name": "ntp.ntp_server_2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.ntp_server_3",
+      "terraform_name": "ntp.ntp_server_3",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.ntp_server_4",
+      "terraform_name": "ntp.ntp_server_4",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.setting_preference",
+      "terraform_name": "ntp.setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.accounting_enabled",
+      "terraform_name": "radius.accounting_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.acct_port",
+      "terraform_name": "radius.acct_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.auth_port",
+      "terraform_name": "radius.auth_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.enabled",
+      "terraform_name": "radius.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.interim_update_interval",
+      "terraform_name": "radius.interim_update_interval",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.x_secret",
+      "terraform_name": "radius.secret",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.contents",
+      "terraform_name": "syslog.contents",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.debug",
+      "terraform_name": "syslog.debug",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.enabled",
+      "terraform_name": "syslog.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.ip",
+      "terraform_name": "syslog.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.log_all_contents",
+      "terraform_name": "syslog.log_all_contents",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.netconsole_enabled",
+      "terraform_name": "syslog.netconsole_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.netconsole_host",
+      "terraform_name": "syslog.netconsole_host",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.netconsole_port",
+      "terraform_name": "syslog.netconsole_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.port",
+      "terraform_name": "syslog.port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.this_controller",
+      "terraform_name": "syslog.this_controller",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.this_controller_encrypted_only",
+      "terraform_name": "syslog.this_controller_encrypted_only",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "broadcast_ping",
+      "terraform_name": "usg.broadcast_ping",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dns_verification",
+      "terraform_name": "usg.dns_verification",
+      "structural_type": "object",
+      "terraform_type": "single_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ftp_module",
+      "terraform_name": "usg.ftp_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "SettingUsgGeoIPFiltering.action",
+      "terraform_name": "usg.geo_ip_filtering_block",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "SettingUsgGeoIPFiltering.countries",
+      "terraform_name": "usg.geo_ip_filtering_countries",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "SettingUsgGeoIPFiltering.enabled",
+      "terraform_name": "usg.geo_ip_filtering_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "SettingUsgGeoIPFiltering.traffic_direction",
+      "terraform_name": "usg.geo_ip_filtering_traffic_direction",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "gre_module",
+      "terraform_name": "usg.gre_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "h323_module",
+      "terraform_name": "usg.h323_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "icmp_timeout",
+      "terraform_name": "usg.icmp_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mss_clamp",
+      "terraform_name": "usg.mss_clamp",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_accounting",
+      "terraform_name": "usg.offload_accounting",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_l2_blocking",
+      "terraform_name": "usg.offload_l2_blocking",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_sch",
+      "terraform_name": "usg.offload_sch",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "other_timeout",
+      "terraform_name": "usg.other_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "pptp_module",
+      "terraform_name": "usg.pptp_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "receive_redirects",
+      "terraform_name": "usg.receive_redirects",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "send_redirects",
+      "terraform_name": "usg.send_redirects",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "sip_module",
+      "terraform_name": "usg.sip_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "syn_cookies",
+      "terraform_name": "usg.syn_cookies",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_close_timeout",
+      "terraform_name": "usg.tcp_close_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_close_wait_timeout",
+      "terraform_name": "usg.tcp_close_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_established_timeout",
+      "terraform_name": "usg.tcp_established_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_fin_wait_timeout",
+      "terraform_name": "usg.tcp_fin_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_last_ack_timeout",
+      "terraform_name": "usg.tcp_last_ack_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_syn_recv_timeout",
+      "terraform_name": "usg.tcp_syn_recv_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_syn_sent_timeout",
+      "terraform_name": "usg.tcp_syn_sent_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_time_wait_timeout",
+      "terraform_name": "usg.tcp_time_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tftp_module",
+      "terraform_name": "usg.tftp_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "timeout_setting_preference",
+      "terraform_name": "usg.timeout_setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "udp_other_timeout",
+      "terraform_name": "usg.udp_other_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "udp_stream_timeout",
+      "terraform_name": "usg.udp_stream_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "unbind_wan_monitors",
+      "terraform_name": "usg.unbind_wan_monitors",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_enabled",
+      "terraform_name": "usg.upnp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_nat_pmp_enabled",
+      "terraform_name": "usg.upnp_nat_pmp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_secure_mode",
+      "terraform_name": "usg.upnp_secure_mode",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_wan_interface",
+      "terraform_name": "usg.upnp_wan_interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "id",
+      "terraform_type": "string",
+      "disposition": "computed",
+      "generated": true
+    },
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}
