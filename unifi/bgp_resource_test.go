@@ -15,6 +15,30 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
+// TestAccBGPConfig_basic and TestAccBGPConfig_structured record that this
+// controller cannot create a unifi_bgp at all, and name the reason.
+//
+// Both were written with ExpectError set to ".*", from the commit that first
+// added the surface. A pattern matching every possible message means the step
+// passes on any failure whatsoever and fails only if the apply succeeds, so
+// neither test could distinguish an unsupported endpoint from a broken
+// provider, a bad credential, or a controller that was not running.
+//
+// Re-running them against a live 10.4.57 controller with a pattern that could
+// not match printed what was underneath:
+//
+//	Error: Error Creating BGP Configuration
+//	not found: type=*unifi.BGPConfig
+//
+// The controller serves no BGP endpoint. The pattern below says so, which keeps
+// the assertion honest in both directions: the day a controller grows the
+// endpoint, the apply stops failing and these go red, which is the signal
+// wanted rather than a silent pass.
+//
+// THE SECOND TEST PROVES NOTHING THE FIRST DOES NOT. Both configs die in the
+// same place, before any BGP-specific encoding runs, so the structured peer
+// list below is never exercised. It is kept because the config is the one
+// documented shape and will be needed when the surface works.
 func TestAccBGPConfig_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -22,7 +46,7 @@ func TestAccBGPConfig_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccBGPConfigConfig,
-				ExpectError: regexp.MustCompile(".*"),
+				ExpectError: regexp.MustCompile(`not found: type=\*unifi\.BGPConfig`),
 			},
 		},
 	})
@@ -43,7 +67,7 @@ func TestAccBGPConfig_structured(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccBGPConfigStructured,
-				ExpectError: regexp.MustCompile(".*"),
+				ExpectError: regexp.MustCompile(`not found: type=\*unifi\.BGPConfig`),
 			},
 		},
 	})
