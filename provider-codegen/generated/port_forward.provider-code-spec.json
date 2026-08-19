@@ -1,0 +1,166 @@
+{
+  "version": "0.1",
+  "provider": {
+    "name": "unifi"
+  },
+  "resources": [
+    {
+      "name": "port_forward",
+      "schema": {
+        "attributes": [
+          {
+            "list_nested": {
+              "computed_optional_required": "computed_optional",
+              "description": "Additional destination addresses this rule matches, one per WAN interface.",
+              "nested_object": {
+                "attributes": [
+                  {
+                    "name": "destination_ip",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "The destination address."
+                    }
+                  },
+                  {
+                    "name": "interface",
+                    "string": {
+                      "computed_optional_required": "computed_optional",
+                      "description": "The WAN interface the address belongs to."
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "destination_ips"
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether the rule is enabled."
+            },
+            "name": "enabled"
+          },
+          {
+            "name": "forward",
+            "single_nested": {
+              "attributes": [
+                {
+                  "name": "ip",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "The address traffic is forwarded to."
+                  }
+                },
+                {
+                  "name": "port",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "The port or port range traffic is forwarded to."
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Where matched traffic is sent."
+            }
+          },
+          {
+            "bool": {
+              "computed_optional_required": "computed_optional",
+              "description": "Whether to log matched traffic."
+            },
+            "name": "logging"
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "required",
+              "description": "A name for the port forwarding rule."
+            }
+          },
+          {
+            "name": "protocol",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "The protocol to forward. Must be one of `tcp_udp`, `tcp` or `udp`."
+            }
+          },
+          {
+            "name": "site",
+            "string": {
+              "computed_optional_required": "optional",
+              "description": "The site the rule belongs to."
+            }
+          },
+          {
+            "name": "source_limiting",
+            "single_nested": {
+              "attributes": [
+                {
+                  "bool": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "Whether source limiting applies at all."
+                  },
+                  "name": "enabled"
+                },
+                {
+                  "name": "firewall_group_id",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "A `unifi_firewall_group` whose addresses the rule accepts."
+                  }
+                },
+                {
+                  "name": "ip",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "The source address, range or CIDR the rule accepts, or `any`."
+                  }
+                },
+                {
+                  "name": "type",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "How the source is expressed. One of `ip` or `firewall_group`."
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Which sources the rule accepts traffic from."
+            }
+          },
+          {
+            "name": "wan",
+            "single_nested": {
+              "attributes": [
+                {
+                  "name": "interface",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "The WAN interface. One of `wan`, `wan2`..`wan9`, `both` or `all`."
+                  }
+                },
+                {
+                  "name": "ip_address",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "The address the rule listens on, or `any`."
+                  }
+                },
+                {
+                  "name": "port",
+                  "string": {
+                    "computed_optional_required": "computed_optional",
+                    "description": "The port or port range the rule listens on."
+                  }
+                }
+              ],
+              "computed_optional_required": "computed_optional",
+              "description": "Where the rule listens: the WAN interface, address and port."
+            }
+          }
+        ],
+        "markdown_description": "Forward a port or port range from a WAN interface to a host on the network."
+      }
+    }
+  ]
+}

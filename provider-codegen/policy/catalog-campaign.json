@@ -315,7 +315,7 @@
     {
       "kind": "managed_resource",
       "name": "unifi_port_forward",
-      "reason": "companion_conversion"
+      "reason": "converted"
     },
     {
       "kind": "managed_resource",
