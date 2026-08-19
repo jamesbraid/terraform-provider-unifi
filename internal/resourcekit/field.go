@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
@@ -410,11 +411,16 @@ func (f StringListField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag
 }
 
 func (f StringListField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
-	if len(*f.SDK(sdk)) == 0 && bool(f.Elide) {
+	values := *f.SDK(sdk)
+	if len(values) == 0 && bool(f.Elide) {
 		*f.Model(model) = types.ListNull(types.StringType)
 		return nil
 	}
-	list, diags := types.ListValueFrom(ctx, types.StringType, *f.SDK(sdk))
+	// Same nil-is-not-empty trap as StringSetField; see the note there.
+	if values == nil {
+		values = []string{}
+	}
+	list, diags := types.ListValueFrom(ctx, types.StringType, values)
 	*f.Model(model) = list
 	return diags
 }
@@ -461,6 +467,26 @@ type StringSetField[M any, S any] struct {
 	// an Optional+Computed one may have been set to an explicit empty by the
 	// practitioner, and nulling that makes state disagree with config.
 	Elide ElideZero
+	// ElementType is the set's element type, defaulting to types.StringType.
+	//
+	// The wire is always []string; this only types the elements in state. It
+	// matters when the type carries semantic equality -- ap_group's device_macs
+	// uses hwtypes.MACAddressType so "AA-BB-.." and "aa:bb:.." are one address.
+	// Getting it wrong is not subtle: the value fails to fit the schema and the
+	// apply errors.
+	ElementType attr.Type
+	// KeepPrior answers whether the value already in state should survive a
+	// read, given what the controller returned.
+	//
+	// It exists because SEMANTIC EQUALITY ON THE ELEMENT TYPE DOES NOT REACH THE
+	// SET. A Set identifies its members by their string value, so a custom
+	// element type's Equal is never consulted for membership. Overwriting the
+	// practitioner's spelling with the controller's then leaves a diff no apply
+	// can settle, because the config keeps producing the original form.
+	//
+	// Nil means take what the controller returned, which is right for any set
+	// whose elements have no equivalent spellings.
+	KeepPrior func(ctx context.Context, prior types.Set, incoming []string) bool
 }
 
 func (f StringSetField[M, S]) WireName() string { return f.Wire }
@@ -483,13 +509,40 @@ func (f StringSetField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag.
 }
 
 func (f StringSetField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
-	if len(*f.SDK(sdk)) == 0 && bool(f.Elide) {
-		*f.Model(model) = types.SetNull(types.StringType)
+	elementType := f.elementType()
+	// KeepPrior is consulted BEFORE the elide branch and before the overwrite,
+	// while the model still holds what was read from state. Both later steps
+	// destroy the value it needs.
+	if f.KeepPrior != nil && f.KeepPrior(ctx, *f.Model(model), *f.SDK(sdk)) {
 		return nil
 	}
-	set, diags := types.SetValueFrom(ctx, types.StringType, *f.SDK(sdk))
+	values := *f.SDK(sdk)
+	if len(values) == 0 && bool(f.Elide) {
+		*f.Model(model) = types.SetNull(elementType)
+		return nil
+	}
+	// A NIL SLICE IS NOT AN EMPTY COLLECTION to SetValueFrom/ListValueFrom:
+	// nil produces a NULL value, an allocated empty one produces an empty
+	// value. KeepZero exists to say an empty collection is a value rather than
+	// an absence, so handing it nil returns exactly the null it was chosen to
+	// avoid -- and a null where the config says [] is a state/config
+	// disagreement the practitioner cannot resolve. ap_group's hand-written
+	// mapper normalised this and the kit did not, which is how it was found.
+	if values == nil {
+		values = []string{}
+	}
+	set, diags := types.SetValueFrom(ctx, elementType, values)
 	*f.Model(model) = set
 	return diags
+}
+
+// elementType defaults to types.StringType so every descriptor written before
+// the field was configurable keeps the behaviour it had.
+func (f StringSetField[M, S]) elementType() attr.Type {
+	if f.ElementType == nil {
+		return types.StringType
+	}
+	return f.ElementType
 }
 
 func (f StringSetField[M, S]) SetInPlan(plan *M) bool {

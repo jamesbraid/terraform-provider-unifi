@@ -12,7 +12,7 @@ package metadatacontract
 // FrozenTypeNames maps a receiver's Go type name to the type name it serves.
 var FrozenTypeNames = map[string]string{
 	"apGroupDataSource":           "unifi_ap_group",
-	"apGroupResource":             "unifi_ap_group",
+	"apGroupKitResource":          "unifi_ap_group",
 	"bgpResource":                 "unifi_bgp",
 	"clientDataSource":            "unifi_client",
 	"clientInfoDataSource":        "unifi_client_info",

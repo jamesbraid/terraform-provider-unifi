@@ -133,6 +133,15 @@
         ]
       },
       "schema_version": 1
+    },
+    "unifi_ap_group": {
+      "sdk_type": "APGroup",
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      }
     }
   }
 }
