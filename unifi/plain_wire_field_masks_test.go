@@ -50,17 +50,13 @@ type plainMaskedSurface struct {
 	managed string
 }
 
+// ap_group WAS HERE and is now served by the resource kit, so its mask is
+// derived from Spec.Fields rather than hand-written. The property this table
+// asserted for it -- that for_wlanconf is never on the wire -- did not move to
+// a comment; it is asserted in Test_apGroupKit_neverWritesForWLANConf against
+// the derivation itself.
 func plainMaskedSurfaces() []plainMaskedSurface {
 	return []plainMaskedSurface{
-		{
-			name: "ap_group", file: "unifi/ap_group_resource.go",
-			object: unifi.APGroup{}, literal: "APGroup", objectVar: "apGroup",
-			declared:        apGroupManagedWireFields,
-			maskedCall:      "UpdateAPGroupFields(ctx, site, apGroup,",
-			wholeObjectCall: "UpdateAPGroup(ctx",
-			exposed:         []string{"for_wlanconf"},
-			managed:         "device_macs",
-		},
 		{
 			name: "radius_profile", file: "unifi/radius_profile_resource.go",
 			object: unifi.RADIUSProfile{}, literal: "RADIUSProfile", objectVar: "radiusProfile",

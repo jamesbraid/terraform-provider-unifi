@@ -41,9 +41,6 @@
     "no-mapping"
   ],
   "surfaces": {
-    "ap_group": [
-      "typed-collection"
-    ],
     "bgp": [
       "SDK-masked-update"
     ],
