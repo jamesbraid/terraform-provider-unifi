@@ -81,10 +81,14 @@ type descriptorField struct {
 
 // descriptor is one parsed *_descriptor.go.
 type descriptor struct {
-	TypeName  string
-	SDKType   string            // the Spec's second type argument, e.g. ClientGroup
-	ModelTags map[string]string // model Go field -> tfsdk tag
-	Fields    []descriptorField
+	TypeName string
+	// AlwaysWire is the Spec's list of wires sent on every request. A managed
+	// field can round-trip through it instead of through a Fields entry, which
+	// is how a write-only secret and a translated set are carried.
+	AlwaysWire map[string]bool
+	SDKType    string            // the Spec's second type argument, e.g. ClientGroup
+	ModelTags  map[string]string // model Go field -> tfsdk tag
+	Fields     []descriptorField
 }
 
 // mappingField is one entry of a *.mapping.json.
@@ -148,12 +152,27 @@ func TestEveryDescriptorAgreesWithItsSources(t *testing.T) {
 						"controller and silently ignored", wire, name)
 				}
 			}
+			// A MANAGED FIELD CAN BE CARRIED BY EITHER MECHANISM, and requiring
+			// a Fields entry was wrong. site_to_site_vpn's x_ipsec_pre_shared_key
+			// is a write-only secret set by a BeforeSend hook and deliberately
+			// never read back; port_profile's excluded_networkconf_ids is derived
+			// from tagged_networkconf_ids because the provider translates one to
+			// the other. Both are declared in AlwaysWire, both say so in their own
+			// comments, and both would have been reported here as attributes that
+			// do not round-trip.
+			//
+			// What is still caught is a field carried by neither, which is the
+			// case that actually stops round-tripping.
 			for wire, want := range expected {
-				if _, ok := got[wire]; !ok {
-					t.Errorf("%s.mapping.json declares %q managed (terraform name %q) and no "+
-						"descriptor field carries it, so that attribute does not round-trip",
-						name, wire, want.TerraformName)
+				if _, ok := got[wire]; ok {
+					continue
 				}
+				if desc.AlwaysWire[wire] {
+					continue
+				}
+				t.Errorf("%s.mapping.json declares %q managed (terraform name %q) and no "+
+					"descriptor field carries it, nor is it in AlwaysWire, so that attribute "+
+					"does not round-trip", name, wire, want.TerraformName)
 			}
 
 			for wire, f := range got {
@@ -230,8 +249,21 @@ func derivableKind(f mappingField) string {
 	return ""
 }
 
+// kindAgrees compares the kinds the mapping can actually distinguish.
+//
+// TWO DISTINCTIONS ARE DROPPED, AND BOTH ARE THE MAPPING'S LIMIT RATHER THAN A
+// SOFTENED CHECK. Pointer-ness is not in the mapping at all, and is compared
+// against the resolved SDK field a few lines above instead, so nothing is lost
+// by ignoring it here. StringLikeField maps a string-backed custom type to a
+// plain SDK string, which the mapping records as string -> string exactly as it
+// records a plain types.String; the artifact carries no way to tell them apart,
+// so asserting on it would be asserting on a fact no input supplies.
+//
+// Nine descriptors use nine kinds, three of which the first four had no instance
+// of, so this strips decorations rather than enumerating the pairs it has seen.
 func kindAgrees(got, want string) bool {
-	return got == want || got == strings.Replace(want, "Field", "PtrField", 1)
+	base := strings.Replace(strings.Replace(got, "Like", "", 1), "Ptr", "", 1)
+	return base == want
 }
 
 // TestDescriptorDerivabilityIsReported is the measurement half, and it asserts
@@ -286,7 +318,12 @@ func TestDescriptorDerivabilityIsReported(t *testing.T) {
 			// The Go identifier is a fact about the struct, not a rendering of
 			// the wire name. Count where the two differ by more than case and
 			// underscores, because that is what no generator can infer.
-			if !strings.EqualFold(strings.ReplaceAll(f.Wire, "_", ""), member.GoName) {
+			// Strip both separators. The wire names use underscores and, for
+			// static_route, hyphens -- "static-route_distance" is StaticRouteDistance
+			// in Go, which is a case-fold once both are gone. Counting it as a
+			// divergence overstated this by five of seventeen on the first run.
+			flattened := strings.NewReplacer("_", "", "-", "").Replace(f.Wire)
+			if !strings.EqualFold(flattened, member.GoName) {
 				identNeedsSDK++
 				needsSDK = append(needsSDK, fmt.Sprintf(
 					"%s.%s is %s in the SDK", name, f.Wire, member.GoName))
@@ -355,6 +392,8 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 			t.Fatalf("parsing %s: %v", path, err)
 		}
 		modelTags := modelTagsIn(file)
+		helpers := helpersIn(file)
+		aliases := aliasesIn(file)
 		ast.Inspect(file, func(n ast.Node) bool {
 			lit, ok := n.(*ast.CompositeLit)
 			if !ok {
@@ -363,10 +402,10 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 			if exprName(lit.Type) != "Spec" {
 				return true
 			}
-			desc := descriptor{ModelTags: map[string]string{}}
+			desc := descriptor{ModelTags: map[string]string{}, AlwaysWire: map[string]bool{}}
 			if args, ok := lit.Type.(*ast.IndexListExpr); ok && len(args.Indices) == 2 {
-				desc.SDKType = exprName(args.Indices[1])
-				desc.ModelTags = modelTags[exprName(args.Indices[0])]
+				desc.SDKType = resolveAlias(aliases, exprName(args.Indices[1]))
+				desc.ModelTags = modelTags[resolveAlias(aliases, exprName(args.Indices[0]))]
 			}
 			for _, el := range lit.Elts {
 				kv, ok := el.(*ast.KeyValueExpr)
@@ -382,13 +421,28 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 					if bl, ok := kv.Value.(*ast.BasicLit); ok {
 						desc.TypeName, _ = strconv.Unquote(bl.Value)
 					}
+				case "AlwaysWire":
+					lit, ok := kv.Value.(*ast.CompositeLit)
+					if !ok {
+						t.Fatalf("%s: AlwaysWire is %T, not a composite literal", path, kv.Value)
+					}
+					for _, item := range lit.Elts {
+						bl, ok := item.(*ast.BasicLit)
+						if !ok {
+							t.Fatalf("%s: an AlwaysWire entry is %T, not a string literal; "+
+								"skipping it would let a dropped field look accounted for",
+								path, item)
+						}
+						wire, _ := strconv.Unquote(bl.Value)
+						desc.AlwaysWire[wire] = true
+					}
 				case "Fields":
 					slice, ok := kv.Value.(*ast.CompositeLit)
 					if !ok {
 						t.Fatalf("%s: Fields is %T, not a composite literal", path, kv.Value)
 					}
 					for _, item := range slice.Elts {
-						desc.Fields = append(desc.Fields, parseField(t, path, item))
+						desc.Fields = append(desc.Fields, parseField(t, path, item, helpers))
 					}
 				}
 			}
@@ -437,7 +491,131 @@ func modelTagsIn(file *ast.File) map[string]map[string]string {
 	return out
 }
 
-func parseField(t *testing.T, path string, el ast.Expr) descriptorField {
+// helperSpec is a per-file constructor such as
+//
+//	str := func(wire string, model func(*M) *types.String,
+//		sdk func(*S) *string, elide resourcekit.ElideZero,
+//	) resourcekit.StringField[M, S] {
+//		return resourcekit.StringField[M, S]{Wire: wire, Model: model, SDK: sdk, Elide: elide}
+//	}
+//
+// THE ARGUMENT POSITIONS ARE READ OFF THE HELPER, NOT ASSUMED. Nine descriptors
+// now use seven of these across sixty-seven call sites, with three arities, and
+// a reader that hardcoded "wire is argument one" would be guessing -- which is
+// the thing this reader refuses to do. Each helper's own body says which
+// parameter becomes which field, so the mapping is derived per helper and a
+// constructor that does anything more interesting than forward its parameters
+// is not recognised, and fails.
+type helperSpec struct {
+	Kind  string
+	Wire  int
+	Model int
+	SDK   int
+}
+
+// helpersIn finds the field constructors declared in a file, whether they are
+// package-level functions or closures assigned inside the spec function.
+func helpersIn(file *ast.File) map[string]helperSpec {
+	out := map[string]helperSpec{}
+	consider := func(name string, params *ast.FieldList, body *ast.BlockStmt) {
+		if params == nil || body == nil || len(body.List) != 1 {
+			return
+		}
+		ret, ok := body.List[0].(*ast.ReturnStmt)
+		if !ok || len(ret.Results) != 1 {
+			return
+		}
+		lit, ok := ret.Results[0].(*ast.CompositeLit)
+		if !ok {
+			return
+		}
+		kind := exprName(lit.Type)
+		if !strings.HasSuffix(kind, "Field") {
+			return
+		}
+		index := map[string]int{}
+		position := 0
+		for _, group := range params.List {
+			for _, ident := range group.Names {
+				index[ident.Name] = position
+				position++
+			}
+		}
+		spec := helperSpec{Kind: kind, Wire: -1, Model: -1, SDK: -1}
+		for _, el := range lit.Elts {
+			kv, ok := el.(*ast.KeyValueExpr)
+			if !ok {
+				continue
+			}
+			key, _ := kv.Key.(*ast.Ident)
+			value, _ := kv.Value.(*ast.Ident)
+			if key == nil || value == nil {
+				continue
+			}
+			at, ok := index[value.Name]
+			if !ok {
+				continue
+			}
+			switch key.Name {
+			case "Wire":
+				spec.Wire = at
+			case "Model":
+				spec.Model = at
+			case "SDK":
+				spec.SDK = at
+			}
+		}
+		if spec.Wire >= 0 && spec.Model >= 0 && spec.SDK >= 0 {
+			out[name] = spec
+		}
+	}
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch decl := n.(type) {
+		case *ast.FuncDecl:
+			consider(decl.Name.Name, decl.Type.Params, decl.Body)
+		case *ast.AssignStmt:
+			if len(decl.Lhs) != 1 || len(decl.Rhs) != 1 {
+				return true
+			}
+			name, ok := decl.Lhs[0].(*ast.Ident)
+			if !ok {
+				return true
+			}
+			if fn, ok := decl.Rhs[0].(*ast.FuncLit); ok {
+				consider(name.Name, fn.Type.Params, fn.Body)
+			}
+		}
+		return true
+	})
+	return out
+}
+
+// aliasesIn resolves `type ppSDK = ui.PortProfile`, which two descriptors use to
+// keep their generic instantiations readable.
+func aliasesIn(file *ast.File) map[string]string {
+	out := map[string]string{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		spec, ok := n.(*ast.TypeSpec)
+		if ok && spec.Assign.IsValid() {
+			out[spec.Name.Name] = exprName(spec.Type)
+		}
+		return true
+	})
+	return out
+}
+
+func resolveAlias(aliases map[string]string, name string) string {
+	for range 8 {
+		next, ok := aliases[name]
+		if !ok {
+			return name
+		}
+		name = next
+	}
+	return name
+}
+
+func parseField(t *testing.T, path string, el ast.Expr, helpers map[string]helperSpec) descriptorField {
 	t.Helper()
 	wrapper := ""
 	for {
@@ -445,11 +623,17 @@ func parseField(t *testing.T, path string, el ast.Expr) descriptorField {
 		if !ok {
 			break
 		}
-		if len(call.Args) != 1 {
-			t.Fatalf("%s: %s(...) takes %d arguments; this reader assumes wrappers take one, "+
-				"and guessing would under-count fields", path, exprName(call.Fun), len(call.Args))
+		name := exprName(call.Fun)
+		if spec, ok := helpers[name]; ok {
+			return fieldFromHelper(t, path, name, spec, call, wrapper)
 		}
-		wrapper = exprName(call.Fun)
+		if len(call.Args) != 1 {
+			t.Fatalf("%s: %s(...) takes %d arguments and is not a recognised field "+
+				"constructor -- its body must return a resourcekit field literal whose Wire, "+
+				"Model and SDK are its own parameters. Guessing the positions would "+
+				"mis-attribute every field it builds", path, name, len(call.Args))
+		}
+		wrapper = name
 		el = call.Args[0]
 	}
 	lit, ok := el.(*ast.CompositeLit)
@@ -483,6 +667,26 @@ func parseField(t *testing.T, path string, el ast.Expr) descriptorField {
 	if field.Wire == "" {
 		t.Fatalf("%s: a %s entry has no Wire", path, field.Kind)
 	}
+	return field
+}
+
+// fieldFromHelper reads a call to a per-file constructor using the argument
+// positions derived from that constructor's own signature.
+func fieldFromHelper(
+	t *testing.T, path, name string, spec helperSpec, call *ast.CallExpr, wrapper string,
+) descriptorField {
+	t.Helper()
+	if spec.Wire >= len(call.Args) || spec.Model >= len(call.Args) || spec.SDK >= len(call.Args) {
+		t.Fatalf("%s: %s takes arguments this call does not supply", path, name)
+	}
+	field := descriptorField{Kind: spec.Kind, Wrapper: wrapper}
+	bl, ok := call.Args[spec.Wire].(*ast.BasicLit)
+	if !ok {
+		t.Fatalf("%s: %s's wire argument is %T, not a string literal", path, name, call.Args[spec.Wire])
+	}
+	field.Wire, _ = strconv.Unquote(bl.Value)
+	field.Model = returnedSelector(call.Args[spec.Model])
+	field.SDK = returnedSelector(call.Args[spec.SDK])
 	return field
 }
 
