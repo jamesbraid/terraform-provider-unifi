@@ -36,6 +36,22 @@ type maskedSurface struct {
 	unmanaged string
 	// managed names a field the resource does manage, as the positive control.
 	managed string
+	// conditionallyAssigned names fields the mapper assigns ONLY under a
+	// condition, and which must therefore stay OUT of the mask.
+	//
+	// THE DISTINCTION THE PARSER CANNOT SEE. It reports a field as assigned
+	// whether the assignment is unconditional or guarded, and for a guarded one
+	// the two are opposite: go-unifi sends a masked field's ZERO when the
+	// object does not carry a value, so naming a field the mapper leaves unset
+	// clears whatever the controller holds. vpnServerDNSServersToNetwork only
+	// assigns dhcpd_dns_1 and _2 when the practitioner supplied servers, so
+	// masking them would blank the controller's DNS on every apply that omits
+	// the block -- the destruction this whole area exists to stop, arriving
+	// through the fix for the opposite defect.
+	//
+	// Declared per field rather than skipped, so the exclusion carries its
+	// reason and a new one has to be argued for.
+	conditionallyAssigned []string
 }
 
 func maskedSurfaces() []maskedSurface {
@@ -43,16 +59,18 @@ func maskedSurfaces() []maskedSurface {
 		{
 			name: "vpn_client", file: "unifi/vpn_client_resource.go",
 			mapper: "modelToNetwork", encoder: "marshalVPNClient",
-			declared:  vpnClientWireFields,
-			unmanaged: "dhcpd_dns_enabled",
-			managed:   "wireguard_client_peer_ip",
+			declared:              vpnClientWireFields,
+			unmanaged:             "dhcpd_dns_enabled",
+			managed:               "wireguard_client_peer_ip",
+			conditionallyAssigned: []string{"dhcpd_dns_1", "dhcpd_dns_2"},
 		},
 		{
 			name: "vpn_server", file: "unifi/vpn_server_resource.go",
 			mapper: "modelToNetwork", encoder: "marshalUserVPN",
-			declared:  vpnServerWireFields,
-			unmanaged: "require_mschapv2",
-			managed:   "openvpn_mode",
+			declared:              vpnServerWireFields,
+			unmanaged:             "require_mschapv2",
+			managed:               "openvpn_mode",
+			conditionallyAssigned: []string{"dhcpd_dns_1", "dhcpd_dns_2"},
 		},
 	}
 }
@@ -85,7 +103,7 @@ func TestWireFieldMasksMatchTheirMappers(t *testing.T) {
 					t.Errorf("%s assigns Network.%s, which carries no json tag", surface.mapper, field)
 					continue
 				}
-				if emitted[tag] {
+				if emitted[tag] && !slices.Contains(surface.conditionallyAssigned, tag) {
 					want = append(want, tag)
 				}
 			}
@@ -195,27 +213,64 @@ func networkFieldsAssignedBy(t *testing.T, path, method string) []string {
 	if err != nil {
 		t.Fatalf("parsing %s: %v", path, err)
 	}
+	// FUNCTIONS THE MAPPER CALLS COUNT AS THE MAPPER, and leaving them out is
+	// how vpn_server lost local_port. The port a practitioner sets as
+	// wireguard.port reaches network.LocalPort through
+	// vpnServerLocalPortToNetwork -- a helper, not a line in modelToNetwork --
+	// so this parser never saw the assignment, the derived set never demanded
+	// the wire name, and the mask omitting it agreed with a check that could
+	// not look. The port change was accepted at plan and never written.
+	//
+	// ONE LEVEL, and only within this file. That is enough for every helper the
+	// mappers actually use, and it keeps the walk bounded: a transitive crawl
+	// would follow into go-unifi and start reporting fields no mapper touches.
+	// If a mapper ever assigns through two hops this reports too few again, and
+	// the honest place to find that out is a controller, which is what found
+	// this one.
+	bodies := map[string]*ast.FuncDecl{}
+	for _, decl := range file.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok {
+			bodies[fn.Name.Name] = fn
+		}
+	}
 	seen := map[string]bool{}
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Name.Name != method {
 			continue
 		}
+		targets := []*ast.FuncDecl{fn}
 		ast.Inspect(fn, func(n ast.Node) bool {
-			switch node := n.(type) {
-			case *ast.AssignStmt:
-				for _, lhs := range node.Lhs {
-					if sel, ok := lhs.(*ast.SelectorExpr); ok {
-						seen[sel.Sel.Name] = true
-					}
-				}
-			case *ast.KeyValueExpr:
-				if key, ok := node.Key.(*ast.Ident); ok {
-					seen[key.Name] = true
-				}
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			name, ok := call.Fun.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			if helper, ok := bodies[name.Name]; ok && helper != fn {
+				targets = append(targets, helper)
 			}
 			return true
 		})
+		for _, target := range targets {
+			ast.Inspect(target, func(n ast.Node) bool {
+				switch node := n.(type) {
+				case *ast.AssignStmt:
+					for _, lhs := range node.Lhs {
+						if sel, ok := lhs.(*ast.SelectorExpr); ok {
+							seen[sel.Sel.Name] = true
+						}
+					}
+				case *ast.KeyValueExpr:
+					if key, ok := node.Key.(*ast.Ident); ok {
+						seen[key.Name] = true
+					}
+				}
+				return true
+			})
+		}
 	}
 	out := make([]string, 0, len(seen))
 	for name := range seen {

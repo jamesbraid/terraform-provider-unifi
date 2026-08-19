@@ -28,8 +28,26 @@ func vpnServerWireFields() []string {
 		"enabled",
 		"ip_subnet",
 		"l2tp_allow_weak_ciphers",
+		// The port the practitioner sets as wireguard.port / openvpn.port /
+		// l2tp.port. It reaches network.LocalPort through
+		// vpnServerLocalPortToNetwork, and it was missing here, so a port change
+		// was accepted at plan and never written -- measured on 10.4.57, an
+		// update from 51820 to 51821 read back as 51820 and the apply failed
+		// with an inconsistent result for the whole wireguard block.
+		"local_port",
+		// THE PER-TYPE WAN FIELDS, reached through vpnServerWANIPToNetwork and
+		// vpnServerWANInterfaceToNetwork. Each helper assigns only the pair
+		// belonging to this server's own type, so the other four stay nil,
+		// drop out of the encoding on omitempty, and networkMaskFor removes
+		// them before the write. They were missing here for the same reason
+		// local_port was: the mask check could not see an assignment made in a
+		// helper.
+		"l2tp_interface",
+		"l2tp_local_wan_ip",
 		"name",
 		"openvpn_encryption_cipher",
+		"openvpn_interface",
+		"openvpn_local_wan_ip",
 		"openvpn_mode",
 		"purpose",
 		"radiusprofile_id",
@@ -44,6 +62,8 @@ func vpnServerWireFields() []string {
 		"x_server_key",
 		"x_shared_client_crt",
 		"x_shared_client_key",
+		"wireguard_interface",
+		"wireguard_local_wan_ip",
 		"x_wireguard_private_key",
 	}
 }
