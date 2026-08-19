@@ -45,8 +45,26 @@ toolchain stops it, unless `-allow-diagnostic-toolchain` is passed, which
 records `diagnostic_pass` instead. The build/schema gate differs here: it has no
 such flag and always writes its receipt, with the blockers named.
 
+Between those two layers there was a gap, and it is worth stating rather than
+inferring from each layer's own description. The unit layer removes `TF_ACC`, so
+it runs nothing that needs a controller. The controller layer sets `TF_ACC` but
+does not run the package: it runs a `-run` regex built from the plan, and the
+plan selected only names beginning `TestAcc`. A controller test named anything
+else therefore ran in neither layer, and the regression guards for the
+zero-value defect family were all in that state -- reachable only by a person
+typing `-run` by hand. `regression_tests` in the campaign policy is the second
+selector that closes it, and
+`unifi.TestEveryControllerTestIsReachableBySomething` fails if a controller test
+appears that neither selector can name.
+
 `cmd/catalog-controller-differential` plans the Wave 1-5 acceptance corpus and
-runs those test names against the released and candidate source trees. Both
+runs those test names against the released and candidate source trees. It also
+runs the declared regression guards against the candidate alone, writing
+`-regression-output` as its own receipt: those guards prove a named defect stays
+fixed rather than that a surface works, they have no released counterpart, and
+scoring them as half of a comparison would manufacture failures out of the
+passage of time. The receipt names every guard that ran, because a count cannot
+show a set that shrank. Both
 attempts use the same digest-pinned, locally cached controller and the same
 source-pinned synthetic fleet and Ryuk helper. Controller registry pulls are
 disabled. The candidate must pass every planned scenario outside the exact

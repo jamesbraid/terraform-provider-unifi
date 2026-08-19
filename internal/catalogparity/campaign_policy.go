@@ -23,6 +23,12 @@ type CampaignPolicy struct {
 	TestNameCount    int      `json:"test_name_count"`
 	AllowedSkips     []string `json:"allowed_skips"`
 
+	// RegressionTests is the campaign's second selector: guards that prove a
+	// named defect stays fixed, rather than scenarios proving a surface works.
+	// The first selector takes only names beginning "TestAcc", so before this
+	// existed a guard called anything else ran in no automated path at all.
+	RegressionTests []string `json:"regression_tests"`
+
 	// SharedScenarioExceptions names surfaces whose scenario is grafted onto
 	// the released tree even though their runtime differs.
 	//
@@ -177,8 +183,15 @@ func (policy CampaignPolicy) Validate() error {
 		}
 		seenExceptions[exception.SurfaceKey] = struct{}{}
 	}
+	// A SELECTOR CONSUMING AN EMPTY LIST IS A CHECK THAT CANNOT FAIL: the
+	// campaign would run a -run pattern matching nothing and report a suite
+	// that passed having executed no guard.
+	if len(policy.RegressionTests) == 0 {
+		return fmt.Errorf("campaign policy names no regression tests")
+	}
 	for _, names := range [][]string{
 		policy.AllowedSkips,
+		policy.RegressionTests,
 		policy.ReleasedAllowedFailures,
 		policy.ReleasedAllowedMissing,
 	} {

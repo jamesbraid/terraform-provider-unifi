@@ -30,6 +30,15 @@
     "TestAccSettingResource_ipsHoneypot",
     "TestAccWLANList_basic"
   ],
+  "regression_tests": [
+    "TestAnUnrelatedApplyDestroysControllerSideIPAliases",
+    "TestAnUnrelatedApplyInvertsAFirewallRule",
+    "TestAnUnrelatedApplyResetsAFirewallPolicySchedule",
+    "TestCanAFirewallPolicyBeCreatedWithoutASchedule",
+    "TestDoesTheControllerHoldAFirewallPolicySchedule",
+    "TestDoesTheControllerHoldEachSourceMatchFlag",
+    "TestEachDHCPFlagWithItsOperand"
+  ],
   "released_allowed_failures": [
     "TestAccDeviceFramework_basic"
   ],

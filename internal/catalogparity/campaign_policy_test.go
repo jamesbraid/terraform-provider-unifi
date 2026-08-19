@@ -221,3 +221,27 @@ func TestRuntimeChangeReasonsRejectAContradictedClaim(t *testing.T) {
 		t.Fatalf("the committed reason for managed_resource/unifi_device was rejected: %v", problems)
 	}
 }
+
+// TestCampaignPolicyRefusesAnEmptyRegressionSet is the earliest point the
+// second selector can be caught with nothing in it.
+//
+// The runner turns these names into a -run pattern. An empty list produces a
+// pattern matching nothing, the suite exits zero having executed no guard, and
+// the receipt records a pass. That is a check that cannot fail, in the thing
+// added to stop a guard from never running.
+func TestCampaignPolicyRefusesAnEmptyRegressionSet(t *testing.T) {
+	policy := testCampaignPolicy(t)
+	if err := policy.Validate(); err != nil {
+		t.Fatalf("the fixture is not valid to begin with, so the check below proves nothing: %v", err)
+	}
+
+	policy.RegressionTests = nil
+	err := policy.Validate()
+	if err == nil {
+		t.Fatal("a policy naming no regression tests was accepted; the campaign would run a " +
+			"pattern matching nothing and report a suite that guarded nothing")
+	}
+	if !strings.Contains(err.Error(), "regression") {
+		t.Errorf("the refusal does not name its subject: %v", err)
+	}
+}

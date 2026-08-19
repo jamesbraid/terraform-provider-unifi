@@ -123,7 +123,7 @@ steps:
       # CATALOG_REQUIRE_COMPLETE has no flag: it was false here, which selected
       # the shell's default of not additionally requiring result == "pass", and
       # that is what this binary does without being asked.
-      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-controller-differential -controller-image ghcr.io/jamesbraid/unifi-network@sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4 -synthetic-image local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55 -ryuk-image docker.io/testcontainers/ryuk@sha256:31b31269d06603366cbfd0284708dcd2e281e8a4188e53fce3d3304439d0df3d -herder /tmp/unifi-emu-herder -terraform /tmp/terraform -waves 1,2,3,4,5 -print-failure-diagnostics -output /tmp/catalog-controller-differential.json -tree-state "$(go run ./cmd/tree-state -what 'the controller differential receipt')"
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-controller-differential -controller-image ghcr.io/jamesbraid/unifi-network@sha256:9d19c8d03948a77d28181743fb81a515aa51a5cea0856bc0491b34d92a01bcf4 -synthetic-image local/unifi-emu:3df84e841e9dad8e32ad94d341bf8cf64fcf4d55 -ryuk-image docker.io/testcontainers/ryuk@sha256:31b31269d06603366cbfd0284708dcd2e281e8a4188e53fce3d3304439d0df3d -herder /tmp/unifi-emu-herder -terraform /tmp/terraform -waves 1,2,3,4,5 -print-failure-diagnostics -output /tmp/catalog-controller-differential.json -regression-output /tmp/catalog-controller-regression.json -tree-state "$(go run ./cmd/tree-state -what 'the controller differential receipt')"
       # THE .result CONJUNCT IS GONE FROM THIS LINE, and its removal is the last
       # of task 160's doors. It read `.result == "blocked_evidence"`, which is
       # the campaign's state today and not a property of a correct run: the
@@ -177,6 +177,12 @@ steps:
       # whether the plan lists any surfaces at all.
       - go run ./cmd/receipt-gate -gate catalog-controller-differential -receipt /tmp/catalog-controller-differential.json
       - jq '.' /tmp/catalog-controller-differential.json
+      # The guards report separately because they are not half of a comparison:
+      # a released tree does not carry a test written for a defect found after
+      # it shipped. Printed rather than only gated, so a reader can see WHICH
+      # guards ran -- a count cannot show a set that shrank.
+      - jq -e '.result == "pass" and (.test_names | length) > 0' /tmp/catalog-controller-regression.json
+      - jq '.test_names' /tmp/catalog-controller-regression.json
       # ONE INVOCATION, WHERE THE SHELL NEEDED TWO. The script printed a word and
       # said nothing on a rejection -- one jq -e of fourteen conjuncts, exit 1,
       # no output -- so this line ran it once grepping for diagnostic_complete
