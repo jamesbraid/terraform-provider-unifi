@@ -1286,7 +1286,12 @@ func Test_firewallPolicyResource_ListResourceConfigSchema(t *testing.T) {
 	}{
 		{
 			name: "has site attribute",
-			r:    &firewallPolicyResource{},
+			// CONSTRUCTED, not a zero value. The list config schema now comes
+			// from Spec.ListSurface, which newFirewallPolicyKitResource wires;
+			// a zero-valued resource carries no surface and would report an
+			// empty schema, which is the test failing for want of a subject
+			// rather than for want of the attribute.
+			r: newFirewallPolicyKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwlist.ListResourceSchemaRequest{},
@@ -1536,5 +1541,73 @@ func TestFirewallPolicyV0SchemaDescribesPortAsAnInteger(t *testing.T) {
 		if port != types.Int64Type {
 			t.Errorf("v0 %s.port is %v, want types.Int64Type — v0 state stores it as a number", key, port)
 		}
+	}
+}
+
+// Test_firewallPolicyKit_neverWritesTheExposedThree carries the property that
+// firewall_policy's row in plainMaskedSurfaces held, now that the row is gone.
+//
+// THE ROW COULD NOT SIMPLY BE DELETED. It declared match_ip_sec,
+// match_opposite_protocol and predefined as fields the SDK exposes and the
+// resource must never write, and it was the LAST row in that table -- so
+// removing it without restating the property would have left the claim
+// nowhere, in a table that then asserted nothing about anything. Same move
+// ap_group's for_wlanconf and radius_profile's tls_enabled got: assert it
+// against the DERIVATION rather than against a hand-kept list, because the
+// mask is now computed from Spec.Fields and a hand-kept list is exactly what
+// the kit removed.
+func Test_firewallPolicyKit_neverWritesTheExposedThree(t *testing.T) {
+	spec := firewallPolicyKitSpec()
+	names := spec.WireNames()
+
+	got := map[string]bool{}
+	for _, name := range names {
+		got[name] = true
+	}
+	for _, exposed := range []string{"match_ip_sec", "match_opposite_protocol", "predefined"} {
+		if got[exposed] {
+			t.Errorf("%s is on the wire; the SDK exposes it, the provider does not model it, "+
+				"and a write would reset whatever the controller holds", exposed)
+		}
+	}
+
+	// THE CONTROL. Without it the loop above passes for a derivation that came
+	// back empty, which is the shape this repository has shipped before.
+	//
+	// WireNames lists every MAPPED field, which is not the runtime mask: it
+	// includes a ReadOnly field and excludes AlwaysWire, because it answers
+	// "what does this descriptor claim to map" for the contract check. index is
+	// here for that reason and schedule is not.
+	want := map[string]bool{
+		"name": true, "action": true, "enabled": true, "protocol": true,
+		"description": true, "logging": true, "create_allow_respond": true,
+		"ip_version": true, "connection_state_type": true, "connection_states": true,
+		"icmp_typename": true, "icmp_v6_typename": true, "index": true,
+		"source": true, "destination": true,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("WireNames() = %v, want %v", got, want)
+	}
+
+	// THE RUNTIME MASK IS THE OTHER QUESTION, and it is the one that decides
+	// what reaches the controller. index must be absent from it despite being a
+	// mapped field -- it is controller-assigned, UniFi ignores a client-supplied
+	// value, and ReadOnly is what keeps it off the wire. schedule must be
+	// present despite being no field at all, because the controller refuses a
+	// policy whose schedule is null and AlwaysWire is what puts it there.
+	fields, err := firewallPolicyKitSpec().WireFields(&firewallPolicyKitModel{})
+	if err != nil {
+		t.Fatalf("deriving the mask: %v", err)
+	}
+	masked := map[string]bool{}
+	for _, name := range fields {
+		masked[name] = true
+	}
+	if masked["index"] {
+		t.Error("index reached the mask; it is controller-assigned and ReadOnly for that reason")
+	}
+	if !masked["schedule"] {
+		t.Error("schedule did not reach the mask, so the PUT would omit the key and the " +
+			"controller would refuse the whole update")
 	}
 }

@@ -4,85 +4,44 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_firewall_policy"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	resource_firewall_policy "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
+
+type firewallPolicyKitResource struct {
+	resourcekit.Resource[firewallPolicyKitModel, ui.FirewallPolicy]
+}
 
 var (
-	_ resource.Resource                 = &firewallPolicyResource{}
-	_ resource.ResourceWithImportState  = &firewallPolicyResource{}
-	_ resource.ResourceWithIdentity     = &firewallPolicyResource{}
-	_ resource.ResourceWithUpgradeState = &firewallPolicyResource{}
+	_ resource.Resource                 = &firewallPolicyKitResource{}
+	_ resource.ResourceWithImportState  = &firewallPolicyKitResource{}
+	_ resource.ResourceWithIdentity     = &firewallPolicyKitResource{}
+	_ resource.ResourceWithUpgradeState = &firewallPolicyKitResource{}
+	_ list.ListResource                 = &firewallPolicyKitResource{}
+	_ list.ListResourceWithConfigure    = &firewallPolicyKitResource{}
 )
 
-// Ensure provider defined types fully satisfy list interfaces.
-var (
-	_ list.ListResource              = &firewallPolicyResource{}
-	_ list.ListResourceWithConfigure = &firewallPolicyResource{}
-)
-
-func NewFirewallPolicyResource() resource.Resource {
-	return &firewallPolicyResource{}
+func newFirewallPolicyKitResource() *firewallPolicyKitResource {
+	r := &firewallPolicyKitResource{}
+	r.Spec = firewallPolicyKitSpec()
+	r.SchemaSpec = firewallPolicyKitSchema()
+	r.ListSurface = firewallPolicyKitList()
+	return r
 }
 
-func NewFirewallPolicyListResource() list.ListResource {
-	return &firewallPolicyResource{}
-}
+func NewFirewallPolicyResource() resource.Resource { return newFirewallPolicyKitResource() }
 
-// firewallPolicyListConfigModel describes the list configuration model.
-type firewallPolicyListConfigModel struct {
-	Site   types.String `tfsdk:"site"`
-	Filter types.List   `tfsdk:"filter"`
-}
-
-// firewallPolicyListFilterModel represents a single name/value filter entry.
-type firewallPolicyListFilterModel struct {
-	Name  types.String `tfsdk:"name"`
-	Value types.String `tfsdk:"value"`
-}
-
-type firewallPolicyResource struct {
-	client *Client
-}
-
-// firewallPolicyModel is the Terraform resource model.
-type firewallPolicyModel struct {
-	ID                 types.String `tfsdk:"id"`
-	Site               types.String `tfsdk:"site"`
-	Name               types.String `tfsdk:"name"`
-	Action             types.String `tfsdk:"action"`
-	Enabled            types.Bool   `tfsdk:"enabled"`
-	Protocol           types.String `tfsdk:"protocol"`
-	Description        types.String `tfsdk:"description"`
-	Logging            types.Bool   `tfsdk:"logging"`
-	Index              types.Int64  `tfsdk:"index"`
-	CreateAllowRespond types.Bool   `tfsdk:"create_allow_respond"`
-	IPVersion          types.String `tfsdk:"ip_version"`
-	// Firmware-managed fields the controller requires back on every PUT. They are
-	// not user-settable; the provider round-trips them so updates don't drop them
-	// (an omitted connection_state_type/icmp_typename makes the PUT fail HTTP 400).
-	ConnectionStateType types.String   `tfsdk:"connection_state_type"`
-	ConnectionStates    types.List     `tfsdk:"connection_states"`
-	ICMPTypename        types.String   `tfsdk:"icmp_typename"`
-	ICMPV6Typename      types.String   `tfsdk:"icmp_v6_typename"`
-	Source              types.Object   `tfsdk:"source"`
-	Destination         types.Object   `tfsdk:"destination"`
-	Timeouts            timeouts.Value `tfsdk:"timeouts"`
-}
+func NewFirewallPolicyListResource() list.ListResource { return newFirewallPolicyKitResource() }
 
 // firewallPolicyEndpointModel is the nested source/destination block model.
 type firewallPolicyEndpointModel struct {
@@ -133,7 +92,7 @@ func (m firewallPolicyEndpointModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-func (r *firewallPolicyResource) Metadata(
+func (r *firewallPolicyKitResource) Metadata(
 	ctx context.Context,
 	req resource.MetadataRequest,
 	resp *resource.MetadataResponse,
@@ -141,22 +100,7 @@ func (r *firewallPolicyResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_firewall_policy"
 }
 
-// IdentitySchema implements [resource.ResourceWithIdentity].
-func (r *firewallPolicyResource) IdentitySchema(
-	_ context.Context,
-	_ resource.IdentitySchemaRequest,
-	resp *resource.IdentitySchemaResponse,
-) {
-	resp.IdentitySchema = identityschema.Schema{
-		Attributes: map[string]identityschema.Attribute{
-			"id": identityschema.StringAttribute{
-				RequiredForImport: true,
-			},
-		},
-	}
-}
-
-func (r *firewallPolicyResource) Schema(
+func (r *firewallPolicyKitResource) Schema(
 	ctx context.Context,
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
@@ -170,7 +114,7 @@ func (r *firewallPolicyResource) Schema(
 	)
 }
 
-func (r *firewallPolicyResource) Configure(
+func (r *firewallPolicyKitResource) Configure(
 	ctx context.Context,
 	req resource.ConfigureRequest,
 	resp *resource.ConfigureResponse,
@@ -191,251 +135,14 @@ func (r *firewallPolicyResource) Configure(
 		return
 	}
 
-	r.client = client
+	r.Spec.Backend = firewallPolicyKitBackend(client.ApiClient)
+	// THE SCHEDULE HOOK IS WIRED HERE, next to the Backend, because it needs the
+	// same thing the Backend needs: a controller to read from. It reads through
+	// Backend.Read rather than the client directly, so there is one way this
+	// resource fetches a policy.
+	r.Spec.BeforeSend = firewallPolicyCarrySchedule(r.Spec.Backend.Read, client.Site)
+	r.DefaultSite = client.Site
 }
-
-func (r *firewallPolicyResource) Create(
-	ctx context.Context,
-	req resource.CreateRequest,
-	resp *resource.CreateResponse,
-) {
-	var plan firewallPolicyModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	createTimeout, timeoutDiags := plan.Timeouts.Create(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, createTimeout)
-	defer cancel()
-
-	site := plan.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	fp, diags := modelToFirewallPolicy(ctx, plan)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	created, err := r.client.CreateFirewallPolicy(ctx, site, fp)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Creating Firewall Policy",
-			"Could not create firewall policy: "+err.Error(),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(firewallPolicyToModel(ctx, created, &plan)...)
-	plan.Site = types.StringValue(site)
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), plan.ID)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-}
-
-func (r *firewallPolicyResource) Read(
-	ctx context.Context,
-	req resource.ReadRequest,
-	resp *resource.ReadResponse,
-) {
-	var state firewallPolicyModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	readTimeout, timeoutDiags := state.Timeouts.Read(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, readTimeout)
-	defer cancel()
-
-	site := state.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	fp, err := r.client.GetFirewallPolicy(ctx, site, state.ID.ValueString())
-	if err != nil {
-		if _, ok := err.(*unifi.NotFoundError); ok {
-			resp.State.RemoveResource(ctx)
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Error Reading Firewall Policy",
-			"Could not read firewall policy "+state.ID.ValueString()+": "+err.Error(),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(firewallPolicyToModel(ctx, fp, &state)...)
-	state.Site = types.StringValue(site)
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), state.ID)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-}
-
-func (r *firewallPolicyResource) Update(
-	ctx context.Context,
-	req resource.UpdateRequest,
-	resp *resource.UpdateResponse,
-) {
-	var plan firewallPolicyModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	var state firewallPolicyModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
-	defer cancel()
-
-	site := state.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	plan.ID = state.ID
-
-	fp, diags := modelToFirewallPolicy(ctx, plan)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// matching_target_type is firmware-derived: the controller (and the
-	// provider's own firewallPolicyMatchingTargetType helper) may set it to a
-	// concrete value during the PUT (e.g. "" -> "SPECIFIC" for a non-ANY match),
-	// which the planned value cannot anticipate. It is Computed +
-	// UseStateForUnknown, so the planned value is the prior-state value; capture
-	// it now and re-assert it on the post-apply state so Terraform's
-	// "inconsistent result after apply" check passes for policies whose state
-	// still carries an empty type (#324). The next Read reconciles state with the
-	// controller's value.
-	plannedSrcMTT := endpointMatchingTargetType(ctx, plan.Source, &resp.Diagnostics)
-	plannedDstMTT := endpointMatchingTargetType(ctx, plan.Destination, &resp.Diagnostics)
-
-	// CARRY THE CONTROLLER'S SCHEDULE FORWARD (#200).
-	//
-	// modelToFirewallPolicy supplies a literal ALWAYS because the model has no
-	// schedule to read, and the controller demands the field on every write.
-	// Left alone, that literal resets a policy the practitioner scheduled in
-	// the UI -- measured on 10.4.57, an apply that changed only the description
-	// turned 09:00-17:00 into always-on.
-	//
-	// A read is the only way to preserve it. There is no state to preserve it
-	// through: state holds nothing for a field with no schema attribute, which
-	// is what separates this from the fields fixed by Computed +
-	// UseStateForUnknown. If the read fails the literal stands, which is the
-	// behaviour before this change rather than a new failure mode.
-	if current, err := r.client.GetFirewallPolicy(ctx, site, state.ID.ValueString()); err == nil {
-		if current.Schedule != nil {
-			fp.Schedule = current.Schedule
-		}
-	}
-
-	// MASKED. The fetch before this write was laundered through the
-	// Terraform model, so it protected nothing; see the wire-field list.
-	updated, err := r.client.UpdateFirewallPolicyFields(ctx, site, fp, firewallPolicyManagedWireFields()...)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Updating Firewall Policy",
-			"Could not update firewall policy "+state.ID.ValueString()+": "+err.Error(),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(firewallPolicyToModel(ctx, updated, &plan)...)
-
-	// Only re-assert when the plan carried a known value: if it was unknown
-	// (an in-block field changed), the attribute is known-after-apply and the
-	// controller's value is accepted as-is.
-	if !plannedSrcMTT.IsNull() && !plannedSrcMTT.IsUnknown() {
-		plan.Source = withMatchingTargetType(ctx, plan.Source, plannedSrcMTT, &resp.Diagnostics)
-	}
-	if !plannedDstMTT.IsNull() && !plannedDstMTT.IsUnknown() {
-		plan.Destination = withMatchingTargetType(
-			ctx,
-			plan.Destination,
-			plannedDstMTT,
-			&resp.Diagnostics,
-		)
-	}
-
-	plan.Site = types.StringValue(site)
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), plan.ID)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-}
-
-func (r *firewallPolicyResource) Delete(
-	ctx context.Context,
-	req resource.DeleteRequest,
-	resp *resource.DeleteResponse,
-) {
-	var state firewallPolicyModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	deleteTimeout, timeoutDiags := state.Timeouts.Delete(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
-	defer cancel()
-
-	site := state.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	err := r.client.DeleteFirewallPolicy(ctx, site, state.ID.ValueString())
-	if err != nil {
-		if _, ok := err.(*unifi.NotFoundError); !ok {
-			resp.Diagnostics.AddError(
-				"Error Deleting Firewall Policy",
-				"Could not delete firewall policy "+state.ID.ValueString()+": "+err.Error(),
-			)
-		}
-	}
-}
-
-func (r *firewallPolicyResource) ImportState(
-	ctx context.Context,
-	req resource.ImportStateRequest,
-	resp *resource.ImportStateResponse,
-) {
-	idParts := strings.Split(req.ID, ":")
-	if len(idParts) == 2 {
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), idParts[0])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), idParts[1])...)
-		return
-	}
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
-}
-
-// ---------------------------------------------------------------------------
-// State upgrade (schema v0 -> v1: port int64 -> string)
-// ---------------------------------------------------------------------------
 
 // firewallPolicyEndpointModelV0 mirrors firewallPolicyEndpointModel but with the
 // pre-v1 integer `port`. It exists only to decode prior state during upgrade.
@@ -453,7 +160,7 @@ type firewallPolicyEndpointModelV0 struct {
 	MatchingTargetType types.String `tfsdk:"matching_target_type"`
 }
 
-func (r *firewallPolicyResource) UpgradeState(
+func (r *firewallPolicyKitResource) UpgradeState(
 	ctx context.Context,
 ) map[int64]resource.StateUpgrader {
 	// Build the prior (v0) schema from the current one and swap the
@@ -499,7 +206,7 @@ func (r *firewallPolicyResource) UpgradeState(
 				req resource.UpgradeStateRequest,
 				resp *resource.UpgradeStateResponse,
 			) {
-				var state firewallPolicyModel
+				var state firewallPolicyKitModel
 				resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 				if resp.Diagnostics.HasError() {
 					return
@@ -574,76 +281,6 @@ func portToStringValue(p string) types.String {
 	return types.StringValue(p)
 }
 
-// ---------------------------------------------------------------------------
-// Conversion helpers
-// ---------------------------------------------------------------------------
-
-func modelToFirewallPolicy(
-	ctx context.Context,
-	model firewallPolicyModel,
-) (*unifi.FirewallPolicy, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	fp := &unifi.FirewallPolicy{
-		ID:                  model.ID.ValueString(),
-		Name:                model.Name.ValueString(),
-		Action:              model.Action.ValueString(),
-		Enabled:             model.Enabled.ValueBool(),
-		Protocol:            model.Protocol.ValueString(),
-		Description:         model.Description.ValueString(),
-		Logging:             model.Logging.ValueBool(),
-		CreateAllowRespond:  model.CreateAllowRespond.ValueBool(),
-		Version:             model.IPVersion.ValueString(),
-		ConnectionStateType: model.ConnectionStateType.ValueString(),
-		ICMPTypename:        model.ICMPTypename.ValueString(),
-		ICMPV6Typename:      model.ICMPV6Typename.ValueString(),
-		ConnectionStates:    []string{},
-		// The CREATE default, and the update overwrites it from the controller
-		// (#200). Nothing here models a schedule -- no tfsdk tag, no schema
-		// attribute -- and the controller refuses a policy whose schedule is
-		// null, so a value has to come from somewhere.
-		//
-		// SENDING IT ON EVERY UPDATE IS THE DEFECT. Measured on 10.4.57: a
-		// description-only apply turned a rule running 09:00-17:00 into one
-		// running permanently, and terraform showed no diff for it because the
-		// field is not in the schema.
-		//
-		// THE MASK CANNOT FIX IT, which was measured too. Dropping "schedule"
-		// from firewallPolicyManagedWireFields makes the key absent from the
-		// PUT body, and the controller rejects that exactly as it rejects an
-		// explicit null: `on field 'schedule': rejected value [null] ... must
-		// not be null` (400). The field must be present on every write, so the
-		// only fix is to send the value the controller already holds.
-		Schedule: &unifi.FirewallPolicySchedule{
-			Mode: "ALWAYS",
-		},
-	}
-
-	// Round-trip the connection states (e.g. ["NEW"]) the controller reported.
-	// Omitting them makes a CUSTOM-state policy's PUT fail with HTTP 400 (#227).
-	if !model.ConnectionStates.IsNull() && !model.ConnectionStates.IsUnknown() {
-		diags.Append(model.ConnectionStates.ElementsAs(ctx, &fp.ConnectionStates, false)...)
-	}
-
-	// index is controller-assigned and read-only: UniFi ignores a client-supplied
-	// value on create/update (the policy is appended to the end of its zone-pair) and
-	// the supported API exposes no reorder operation, so we never send it (#348).
-
-	var srcModel firewallPolicyEndpointModel
-	diags.Append(model.Source.As(ctx, &srcModel, basetypes.ObjectAsOptions{})...)
-	if !diags.HasError() {
-		fp.Source = endpointModelToSource(ctx, srcModel, &diags)
-	}
-
-	var dstModel firewallPolicyEndpointModel
-	diags.Append(model.Destination.As(ctx, &dstModel, basetypes.ObjectAsOptions{})...)
-	if !diags.HasError() {
-		fp.Destination = endpointModelToDestination(ctx, dstModel, &diags)
-	}
-
-	return fp, diags
-}
-
 // firewallPolicyMatchingTargetType ensures a concrete matching_target_type is
 // sent for a specific (non-ANY) match. The controller rejects an IP/NETWORK/etc.
 // match whose matching_target_type is empty (#293,
@@ -665,372 +302,4 @@ func firewallPolicyMatchingTargetType(matchingTarget, currentType, ipGroupID str
 		return "SPECIFIC"
 	}
 	return currentType
-}
-
-func endpointModelToSource(
-	ctx context.Context,
-	m firewallPolicyEndpointModel,
-	diags *diag.Diagnostics,
-) *unifi.FirewallPolicySource {
-	ep := &unifi.FirewallPolicySource{
-		// The four the model now carries: sending the model's value rather
-		// than a Go zero is the whole of the fix.
-		MatchMAC:              m.MatchMAC.ValueBool(),
-		MatchOppositeIPs:      m.MatchOppositeIPs.ValueBool(),
-		MatchOppositeNetworks: m.MatchOppositeNetworks.ValueBool(),
-		MatchOppositePorts:    m.MatchOppositePorts.ValueBool(),
-		ZoneID:                m.ZoneID.ValueString(),
-		MatchingTarget:        m.MatchingTarget.ValueString(),
-		MatchingTargetType: firewallPolicyMatchingTargetType(
-			m.MatchingTarget.ValueString(), m.MatchingTargetType.ValueString(),
-			m.IPGroupID.ValueString(),
-		),
-		Port:             m.Port.ValueString(),
-		PortGroupID:      m.PortGroupID.ValueString(),
-		IPGroupID:        m.IPGroupID.ValueString(),
-		PortMatchingType: m.PortMatchingType.ValueString(),
-	}
-	if !m.IPs.IsNull() && !m.IPs.IsUnknown() {
-		diags.Append(m.IPs.ElementsAs(ctx, &ep.IPs, false)...)
-	}
-	if !m.NetworkIDs.IsNull() && !m.NetworkIDs.IsUnknown() {
-		diags.Append(m.NetworkIDs.ElementsAs(ctx, &ep.NetworkIDs, false)...)
-	}
-	if !m.ClientMACs.IsNull() && !m.ClientMACs.IsUnknown() {
-		diags.Append(m.ClientMACs.ElementsAs(ctx, &ep.ClientMACs, false)...)
-	}
-	if !m.WebDomains.IsNull() && !m.WebDomains.IsUnknown() {
-		diags.Append(m.WebDomains.ElementsAs(ctx, &ep.WebDomains, false)...)
-	}
-	return ep
-}
-
-func endpointModelToDestination(
-	ctx context.Context,
-	m firewallPolicyEndpointModel,
-	diags *diag.Diagnostics,
-) *unifi.FirewallPolicyDestination {
-	ep := &unifi.FirewallPolicyDestination{
-		// The four the model now carries: sending the model's value rather
-		// than a Go zero is the whole of the fix.
-		MatchMAC:              m.MatchMAC.ValueBool(),
-		MatchOppositeIPs:      m.MatchOppositeIPs.ValueBool(),
-		MatchOppositeNetworks: m.MatchOppositeNetworks.ValueBool(),
-		MatchOppositePorts:    m.MatchOppositePorts.ValueBool(),
-		ZoneID:                m.ZoneID.ValueString(),
-		MatchingTarget:        m.MatchingTarget.ValueString(),
-		MatchingTargetType: firewallPolicyMatchingTargetType(
-			m.MatchingTarget.ValueString(), m.MatchingTargetType.ValueString(),
-			m.IPGroupID.ValueString(),
-		),
-		Port:             m.Port.ValueString(),
-		PortGroupID:      m.PortGroupID.ValueString(),
-		IPGroupID:        m.IPGroupID.ValueString(),
-		PortMatchingType: m.PortMatchingType.ValueString(),
-	}
-	if !m.IPs.IsNull() && !m.IPs.IsUnknown() {
-		diags.Append(m.IPs.ElementsAs(ctx, &ep.IPs, false)...)
-	}
-	if !m.NetworkIDs.IsNull() && !m.NetworkIDs.IsUnknown() {
-		diags.Append(m.NetworkIDs.ElementsAs(ctx, &ep.NetworkIDs, false)...)
-	}
-	if !m.ClientMACs.IsNull() && !m.ClientMACs.IsUnknown() {
-		diags.Append(m.ClientMACs.ElementsAs(ctx, &ep.ClientMACs, false)...)
-	}
-	if !m.WebDomains.IsNull() && !m.WebDomains.IsUnknown() {
-		diags.Append(m.WebDomains.ElementsAs(ctx, &ep.WebDomains, false)...)
-	}
-	return ep
-}
-
-// endpointMatchingTargetType extracts the matching_target_type out of a
-// source/destination object, or a null string if the object is null/unknown.
-func endpointMatchingTargetType(
-	ctx context.Context,
-	obj types.Object,
-	diags *diag.Diagnostics,
-) types.String {
-	if obj.IsNull() || obj.IsUnknown() {
-		return types.StringNull()
-	}
-	var m firewallPolicyEndpointModel
-	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-	return m.MatchingTargetType
-}
-
-// withMatchingTargetType returns obj with its matching_target_type replaced by
-// mtt, leaving every other attribute untouched.
-func withMatchingTargetType(
-	ctx context.Context,
-	obj types.Object,
-	mtt types.String,
-	diags *diag.Diagnostics,
-) types.Object {
-	if obj.IsNull() || obj.IsUnknown() {
-		return obj
-	}
-	var m firewallPolicyEndpointModel
-	diags.Append(obj.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-	m.MatchingTargetType = mtt
-	newObj, d := types.ObjectValueFrom(
-		ctx,
-		firewallPolicyEndpointModel{}.AttributeTypes(),
-		m,
-	)
-	diags.Append(d...)
-	return newObj
-}
-
-func firewallPolicyToModel(
-	ctx context.Context,
-	fp *unifi.FirewallPolicy,
-	model *firewallPolicyModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	model.ID = types.StringValue(fp.ID)
-	model.Name = types.StringValue(fp.Name)
-	model.Action = types.StringValue(fp.Action)
-	model.Enabled = types.BoolValue(fp.Enabled)
-	model.Protocol = types.StringValue(fp.Protocol)
-	model.Description = types.StringValue(fp.Description)
-	model.Logging = types.BoolValue(fp.Logging)
-	model.CreateAllowRespond = types.BoolValue(fp.CreateAllowRespond)
-	model.IPVersion = types.StringValue(fp.Version)
-	model.ConnectionStateType = types.StringValue(fp.ConnectionStateType)
-	connStates, csDiags := types.ListValueFrom(ctx, types.StringType, fp.ConnectionStates)
-	diags.Append(csDiags...)
-	model.ConnectionStates = connStates
-	model.ICMPTypename = types.StringValue(fp.ICMPTypename)
-	model.ICMPV6Typename = types.StringValue(fp.ICMPV6Typename)
-
-	if fp.Index != nil {
-		model.Index = types.Int64Value(*fp.Index)
-	}
-
-	if fp.Source != nil {
-		srcModel := apiSourceToEndpointModel(ctx, fp.Source, &diags)
-		srcObj, d := types.ObjectValueFrom(
-			ctx,
-			firewallPolicyEndpointModel{}.AttributeTypes(),
-			srcModel,
-		)
-		diags.Append(d...)
-		model.Source = srcObj
-	}
-
-	if fp.Destination != nil {
-		dstModel := apiDestinationToEndpointModel(ctx, fp.Destination, &diags)
-		dstObj, d := types.ObjectValueFrom(
-			ctx,
-			firewallPolicyEndpointModel{}.AttributeTypes(),
-			dstModel,
-		)
-		diags.Append(d...)
-		model.Destination = dstObj
-	}
-
-	return diags
-}
-
-func apiSourceToEndpointModel(
-	ctx context.Context,
-	src *unifi.FirewallPolicySource,
-	diags *diag.Diagnostics,
-) firewallPolicyEndpointModel {
-	m := firewallPolicyEndpointModel{
-		ZoneID:             types.StringValue(src.ZoneID),
-		MatchingTarget:     types.StringValue(src.MatchingTarget),
-		MatchingTargetType: types.StringValue(src.MatchingTargetType),
-		Port:               portToStringValue(src.Port),
-		PortGroupID:        types.StringValue(src.PortGroupID),
-		IPGroupID:          types.StringValue(src.IPGroupID),
-		PortMatchingType:   types.StringValue(src.PortMatchingType),
-	}
-	networkIDs, nd := types.ListValueFrom(ctx, types.StringType, src.NetworkIDs)
-	diags.Append(nd...)
-	m.NetworkIDs = networkIDs
-
-	clientMACs, cd := types.ListValueFrom(ctx, types.StringType, src.ClientMACs)
-	diags.Append(cd...)
-	m.ClientMACs = clientMACs
-
-	ips, d := types.ListValueFrom(ctx, types.StringType, src.IPs)
-	diags.Append(d...)
-	m.IPs = ips
-
-	webDomains, wd := types.ListValueFrom(ctx, types.StringType, src.WebDomains)
-	diags.Append(wd...)
-	m.WebDomains = webDomains
-
-	m.MatchMAC = types.BoolValue(src.MatchMAC)
-	m.MatchOppositeIPs = types.BoolValue(src.MatchOppositeIPs)
-	m.MatchOppositeNetworks = types.BoolValue(src.MatchOppositeNetworks)
-	m.MatchOppositePorts = types.BoolValue(src.MatchOppositePorts)
-	return m
-}
-
-func apiDestinationToEndpointModel(
-	ctx context.Context,
-	dst *unifi.FirewallPolicyDestination,
-	diags *diag.Diagnostics,
-) firewallPolicyEndpointModel {
-	m := firewallPolicyEndpointModel{
-		ZoneID:             types.StringValue(dst.ZoneID),
-		MatchingTarget:     types.StringValue(dst.MatchingTarget),
-		MatchingTargetType: types.StringValue(dst.MatchingTargetType),
-		Port:               portToStringValue(dst.Port),
-		PortGroupID:        types.StringValue(dst.PortGroupID),
-		IPGroupID:          types.StringValue(dst.IPGroupID),
-		PortMatchingType:   types.StringValue(dst.PortMatchingType),
-	}
-	networkIDs, nd := types.ListValueFrom(ctx, types.StringType, dst.NetworkIDs)
-	diags.Append(nd...)
-	m.NetworkIDs = networkIDs
-
-	clientMACs, cd := types.ListValueFrom(ctx, types.StringType, dst.ClientMACs)
-	diags.Append(cd...)
-	m.ClientMACs = clientMACs
-
-	ips, d := types.ListValueFrom(ctx, types.StringType, dst.IPs)
-	diags.Append(d...)
-	m.IPs = ips
-
-	webDomains, wd := types.ListValueFrom(ctx, types.StringType, dst.WebDomains)
-	diags.Append(wd...)
-	m.WebDomains = webDomains
-
-	m.MatchMAC = types.BoolValue(dst.MatchMAC)
-	m.MatchOppositeIPs = types.BoolValue(dst.MatchOppositeIPs)
-	m.MatchOppositeNetworks = types.BoolValue(dst.MatchOppositeNetworks)
-	m.MatchOppositePorts = types.BoolValue(dst.MatchOppositePorts)
-	return m
-}
-
-// ---------------------------------------------------------------------------
-// List resource
-// ---------------------------------------------------------------------------
-
-// firewallPolicyListToModel populates the model's schema fields directly from
-// the API struct for listing. It reuses the nil-safe firewallPolicyToModel
-// flatten helper (which faithfully maps the source/destination nested objects)
-// and sets the site so the listed resource is self-contained.
-func (r *firewallPolicyResource) firewallPolicyListToModel(
-	ctx context.Context,
-	api *unifi.FirewallPolicy,
-	model *firewallPolicyModel,
-	site string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	diags.Append(firewallPolicyToModel(ctx, api, model)...)
-	model.Site = types.StringValue(site)
-	return diags
-}
-
-// ListResourceConfigSchema implements [list.ListResource].
-func (r *firewallPolicyResource) ListResourceConfigSchema(
-	ctx context.Context,
-	_ list.ListResourceSchemaRequest,
-	resp *list.ListResourceSchemaResponse,
-) {
-	resp.Schema = listresource_firewall_policy.FirewallPolicyListResourceSchema(ctx)
-}
-
-// List implements [list.ListResource].
-func (r *firewallPolicyResource) List(
-	ctx context.Context,
-	req list.ListRequest,
-	stream *list.ListResultsStream,
-) {
-	var config firewallPolicyListConfigModel
-
-	diags := req.Config.Get(ctx, &config)
-	if diags.HasError() {
-		stream.Results = list.ListResultsStreamDiagnostics(diags)
-		return
-	}
-
-	site := config.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	// Process filter blocks.
-	var filters []firewallPolicyListFilterModel
-	if !config.Filter.IsNull() && !config.Filter.IsUnknown() {
-		config.Filter.ElementsAs(ctx, &filters, false)
-	}
-
-	postFilters := make(map[string]string)
-	for _, f := range filters {
-		postFilters[f.Name.ValueString()] = f.Value.ValueString()
-	}
-
-	policies, err := r.client.ListFirewallPolicy(ctx, site)
-	if err != nil {
-		var d diag.Diagnostics
-		d.AddError(
-			"Error Listing Firewall Policies",
-			"Could not list firewall policies: "+err.Error(),
-		)
-		stream.Results = list.ListResultsStreamDiagnostics(d)
-		return
-	}
-
-	stream.Results = func(push func(list.ListResult) bool) {
-		for _, policy := range policies {
-			// Apply name filter.
-			if val, ok := postFilters["name"]; ok {
-				if policy.Name != val {
-					continue
-				}
-			}
-
-			// Apply action filter.
-			if val, ok := postFilters["action"]; ok {
-				if policy.Action != val {
-					continue
-				}
-			}
-
-			// Apply enabled filter.
-			if val, ok := postFilters["enabled"]; ok {
-				enabled := fmt.Sprintf("%t", policy.Enabled)
-				if enabled != val {
-					continue
-				}
-			}
-
-			result := req.NewListResult(ctx)
-
-			// Display name: prefer name, fall back to ID.
-			if policy.Name != "" {
-				result.DisplayName = policy.Name
-			} else {
-				result.DisplayName = policy.ID
-			}
-
-			// Set identity.
-			result.Diagnostics.Append(
-				result.Identity.SetAttribute(
-					ctx,
-					path.Root("id"),
-					types.StringValue(policy.ID),
-				)...,
-			)
-
-			// Convert to model.
-			p := policy
-			var model firewallPolicyModel
-			result.Diagnostics.Append(r.firewallPolicyListToModel(ctx, &p, &model, site)...)
-			if !result.Diagnostics.HasError() {
-				model.Timeouts = timeoutsNullValue()
-				result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
-			}
-
-			if !push(result) {
-				return
-			}
-		}
-	}
 }

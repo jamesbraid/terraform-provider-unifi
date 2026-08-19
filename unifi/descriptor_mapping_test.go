@@ -207,7 +207,7 @@ func TestEveryDescriptorAgreesWithItsSources(t *testing.T) {
 						"by %s. Either this entry is paired with another field, or the SDK "+
 						"renamed it", wire, f.SDK, desc.SDKType, wire, member.GoName)
 				}
-				if member.Pointer != strings.Contains(f.Kind, "Ptr") {
+				if member.Pointer != kindCarriesAPointer(f.Kind) {
 					t.Errorf("%s: the SDK field is pointer=%v and the descriptor uses %s; a "+
 						"pointer distinguishes absent from zero and the two must agree",
 						wire, member.Pointer, f.Kind)
@@ -721,4 +721,25 @@ func exprName(e ast.Expr) string {
 		return exprName(t.X)
 	}
 	return ""
+}
+
+// kindCarriesAPointer reports whether a field kind's SDK accessor addresses a
+// pointer, which is what decides whether it can express "absent" as distinct
+// from "the zero value".
+//
+// IT WAS A SUBSTRING TEST ON THE KIND'S NAME, and that held only while every
+// pointer-carrying kind happened to be spelled with Ptr in it. ObjectField's
+// accessor is func(*S) **E -- it is pointer-carrying by construction, and it
+// nils the SDK pointer when the model object is null, which is precisely the
+// absent-versus-zero distinction the rule is about. Its name says nothing about
+// that, so the substring test rejected the first ObjectField over a pointer
+// member and would have been read as the descriptor being wrong.
+//
+// ObjectListField is deliberately absent: its accessor is func(*S) *[]E over a
+// slice member, so the JSON member is not a pointer and the two already agree.
+func kindCarriesAPointer(kind string) bool {
+	if kind == "ObjectField" {
+		return true
+	}
+	return strings.Contains(kind, "Ptr")
 }
