@@ -105,10 +105,7 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		}
 	}
 
-	// Direction two: no model field may be typed against a generated custom
-	// value type. Nothing in the provider can produce one -- that is the defect
-	// nested-custom-type-strip removed from the schema side -- so a field
-	// declaring one is the same mismatch arriving from the other end.
+	// The generated type set, used by TYPE IDENTITY below.
 	generated, err := schemamodel.GeneratedTypes("../internal/generated")
 	if err != nil {
 		t.Fatal(err)
@@ -117,25 +114,53 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		t.Fatal("no types found in the generated tree, so the check below would be vacuous")
 	}
 
-	// DIRECTION ZERO, and it is the one this whole test exists for. A nested
-	// attribute must not bind a custom object type that the generated tree
-	// declares, because nothing in the provider produces a value of one --
-	// every runtime model carries the nested object as a plain types.Object --
-	// so the framework rejects the value at apply time.
+	// TYPE IDENTITY, and until this commit it was a header comment describing a
+	// check that did not exist.
 	//
-	// THIS WAS MISSING UNTIL A RETRODICTION TEST FOUND IT. The test was run
-	// against the tree as it stood before the bindings were removed, the tree
-	// that produced 54 controller regressions, and it PASSED. The attribute-set
-	// check cannot see the fault, because the members are identical whether or
-	// not a custom type is bound. The check below cannot either, because it
-	// reads model fields and those were always plain. The attribute's own
-	// CustomType was captured by the walk and never read.
+	// The file's own line above says of the prohibition that CustomType "was
+	// captured by the walk and never read" -- and that was true of the whole
+	// file: nested.CustomType was read in exactly one place, inside the
+	// prohibition, and compared against nothing. What stood here instead were
+	// two PROHIBITIONS, one forbidding the schema to bind a generated type and
+	// one forbidding a model to declare one. Together they pinned both ends to a
+	// single permitted value, which is identity only in the degenerate sense.
+	// Deleting either left nothing comparing the ends at all.
 	//
-	// A check built for a defect, which does not fire on that defect, is worth
-	// nothing. Being mutation-proven did not reveal it: every mutation tested
-	// the checks that already existed. Only running it against the broken tree
-	// did.
+	// A CHECK BUILT FOR A DEFECT, WHICH DOES NOT FIRE ON THAT DEFECT, IS WORTH
+	// NOTHING -- this file's lesson, applied to itself one layer out. And the
+	// sharper half: being mutation-proven did not reveal the absence, because
+	// every mutation tests a check that already exists. Mutation testing
+	// measures the checks you have against the code you have; it cannot see a
+	// check you only described. Read the code, not the header -- including this
+	// one.
+	//
+	// WHAT IT COMPARES. A schema binding CustomType X requires some model to
+	// declare that attribute as XValue, and a model field declared XValue
+	// requires some served attribute of that name to bind X.
+	//
+	// "SOME" RATHER THAN "THE", AND THAT BOUND IS REAL. Resolving which model
+	// serves a given attribute needs dataflow through the ObjectValueFrom call
+	// sites, for the reason the ambiguity note below gives. So this cannot catch
+	// a surface binding X correctly while a DIFFERENT surface's identically
+	// named attribute is wrong. It does catch every case where the pairing
+	// exists nowhere, which is what a migration gets wrong.
+	valueOf := func(customType string) string {
+		return strings.TrimSuffix(customType, "Type") + "Value"
+	}
+	modelledAs := map[string]map[string]bool{} // tfsdk tag -> Go types declaring it
+	for _, model := range index.Models {
+		for tag, goType := range model.Fields {
+			bare := strings.TrimPrefix(goType, "*")
+			if modelledAs[tag] == nil {
+				modelledAs[tag] = map[string]bool{}
+			}
+			modelledAs[tag][bare] = true
+		}
+	}
+
+	boundSomewhere := map[string]bool{} // XValue name -> a schema binds its X
 	for _, nested := range surfaces {
+		name := nested.Path[strings.LastIndex(nested.Path, ".")+1:]
 		for where, bound := range map[string]string{
 			"":         nested.CustomType,
 			" element": nested.ElementCustomType,
@@ -146,19 +171,36 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 			if _, isGenerated := generated[bound]; !isGenerated {
 				continue
 			}
-			t.Errorf("%s%s binds custom type %s, which the generated tree declares; "+
-				"nothing in the provider produces a value of one and the runtime model carries "+
-				"a plain object, so every apply touching this attribute fails",
-				nested.Path, where, bound)
+			want := valueOf(bound)
+			boundSomewhere[want] = true
+			if !modelledAs[name][want] {
+				t.Errorf("%s%s binds custom type %s, but no runtime model declares %q "+
+					"as %s -- the framework cannot convert the value and every apply "+
+					"touching the attribute fails. Type the model field, or drop the "+
+					"binding.", nested.Path, where, bound, name, want)
+			}
 		}
 	}
 
+	// The reverse. A model typed against a generated value type with no schema
+	// asking for it is the same mismatch arriving from the other end, and it is
+	// why the generated <X>Value declarations can be left in place: writing one
+	// into a model is caught here.
 	for _, model := range index.Models {
 		for tag, goType := range model.Fields {
-			if _, isGenerated := generated[strings.TrimPrefix(goType, "*")]; isGenerated {
-				t.Errorf("%s.%s in %s is declared %s, a type declared in the generated tree; "+
-					"nothing in the provider produces one and the served schema no longer asks for it",
-					model.Name, tag, model.File, goType)
+			bare := strings.TrimPrefix(goType, "*")
+			if !strings.HasSuffix(bare, "Value") {
+				continue
+			}
+			if _, isGenerated := generated[strings.TrimSuffix(bare, "Value")+"Type"]; !isGenerated {
+				continue
+			}
+			if !boundSomewhere[bare] {
+				t.Errorf("%s.%s in %s is declared %s, but no served schema binds %s for "+
+					"an attribute named %q -- nothing asks for this type and the framework "+
+					"has no converter for it.",
+					model.Name, tag, model.File, bare,
+					strings.TrimSuffix(bare, "Value")+"Type", tag)
 			}
 		}
 	}
