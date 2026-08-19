@@ -99,9 +99,20 @@ func Test_preservedValuesCannotBeUnknown(t *testing.T) {
 	}
 }
 
-// planNames are the identifiers this package uses for a model read out of the
-// plan. A function handed one of these can be reached on the create path.
-var planNames = []string{"plandata", "plan", "planmodel"}
+// funcKey identifies one function declaration.
+//
+// KEYED BY FILE AND RECEIVER, NOT BY BARE NAME, and that is a correction rather
+// than a refinement. networkToModel is a method on networkResource,
+// vpnClientResource and vpnServerResource. A single map keyed by "networkToModel"
+// made those one entry, so a plan-carrying call on any one of them put all three
+// in scope -- and renaming the variable in one file left the name in scope
+// through the other two, which is how a mutation test nearly recorded "renames
+// are safe".
+type funcKey struct {
+	file string
+	recv string
+	name string
+}
 
 // modelNames are the identifiers this package assigns a terraform model to.
 // Requiring the destination to be one keeps SDK-to-SDK copies out: those share
@@ -146,50 +157,207 @@ func parsePackage(t *testing.T) *parsedPackage {
 	return p
 }
 
-// planReceivers returns the names of functions that some call site passes a
-// plan-derived model to. Those are the ones whose "previous" argument is not
-// prior state on every path.
-func (p *parsedPackage) planReceivers() map[string]bool {
-	out := map[string]bool{}
-	for _, f := range p.files {
-		ast.Inspect(f, func(n ast.Node) bool {
+// planCarriers returns, per function, the parameters and locals that hold a
+// value read out of the PLAN.
+//
+// IT FOLLOWS THE VALUE RATHER THAN THE NAME. The previous version collected any
+// function called with an argument spelled "plan", "plandata" or "planmodel",
+// compared exactly and lowercased. That made the check's scope a naming
+// convention: renaming planData to anything else -- the commonest refactor there
+// is -- silently removed its coverage of the function it was written for, whose
+// own comment says the shape "shipped once and cost a release". Measured rather
+// than supposed: with the variable renamed in the three files that call a
+// networkToModel, an unguarded multicast_dns copy the check had just caught
+// three times became invisible.
+//
+// So the seed is the only place a plan can enter -- req.Plan.Get(ctx, &v) -- and
+// it propagates by ARGUMENT POSITION to a fixpoint.
+func (p *parsedPackage) planCarriers() map[funcKey]map[string]bool {
+	decls, byName := p.declarations()
+	carriers := map[funcKey]map[string]bool{}
+
+	mark := func(key funcKey, name string) bool {
+		if name == "" || name == "_" {
+			return false
+		}
+		if carriers[key] == nil {
+			carriers[key] = map[string]bool{}
+		}
+		if carriers[key][name] {
+			return false
+		}
+		carriers[key][name] = true
+		return true
+	}
+
+	// THE SEED. A plan reaches this package through req.Plan.Get(ctx, &v) and
+	// nowhere else; anything else called a plan is a copy of one.
+	for key, fn := range decls {
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
-			if !ok {
+			if !ok || len(call.Args) < 2 {
 				return true
 			}
-			for _, arg := range call.Args {
-				if u, ok := arg.(*ast.UnaryExpr); ok {
-					arg = u.X
-				}
-				ident, ok := arg.(*ast.Ident)
-				if !ok || !matchesAny(ident.Name, planNames) {
-					continue
-				}
-				switch fn := call.Fun.(type) {
-				case *ast.Ident:
-					out[fn.Name] = true
-				case *ast.SelectorExpr:
-					out[fn.Sel.Name] = true
-				}
+			get, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || get.Sel.Name != "Get" {
+				return true
+			}
+			source, ok := get.X.(*ast.SelectorExpr)
+			if !ok || source.Sel.Name != "Plan" {
+				return true
+			}
+			if ident, ok := identOf(call.Args[len(call.Args)-1]); ok {
+				mark(key, ident)
 			}
 			return true
 		})
 	}
+
+	// PROPAGATE BY POSITION to a fixpoint. A parameter is plan-derived when some
+	// caller passes it a plan-derived value, whatever either side calls it.
+	for changed := true; changed; {
+		changed = false
+		for key, fn := range decls {
+			held := carriers[key]
+			if len(held) == 0 {
+				continue
+			}
+			ast.Inspect(fn.Body, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				callee, ok := p.resolveCall(key, call, byName)
+				if !ok {
+					return true
+				}
+				params := parameterNames(decls[callee])
+				for i, arg := range call.Args {
+					ident, ok := identOf(arg)
+					if !ok || !held[ident] || i >= len(params) {
+						continue
+					}
+					if mark(callee, params[i]) {
+						changed = true
+					}
+				}
+				return true
+			})
+		}
+	}
+	return carriers
+}
+
+// declarations indexes every function in the package by key, and by bare name
+// for call resolution.
+func (p *parsedPackage) declarations() (map[funcKey]*ast.FuncDecl, map[string][]funcKey) {
+	decls := map[funcKey]*ast.FuncDecl{}
+	byName := map[string][]funcKey{}
+	for file, f := range p.files {
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			key := funcKey{file: file, recv: receiverType(fn), name: fn.Name.Name}
+			decls[key] = fn
+			byName[fn.Name.Name] = append(byName[fn.Name.Name], key)
+		}
+	}
+	return decls, byName
+}
+
+// resolveCall picks the declaration a call refers to, preferring the caller's
+// own file.
+//
+// Without go/types the receiver's type is not known here, and the file is the
+// best available proxy: each resource keeps its methods in one file, so a method
+// call inside network_resource.go means that file's method. A call with no local
+// declaration falls through to a package-level helper. Anything still ambiguous
+// is left unresolved rather than unioned -- guessing across three same-named
+// methods is the over-reach this rewrite removes.
+func (p *parsedPackage) resolveCall(
+	from funcKey, call *ast.CallExpr, byName map[string][]funcKey,
+) (funcKey, bool) {
+	var name string
+	switch fun := call.Fun.(type) {
+	case *ast.Ident:
+		name = fun.Name
+	case *ast.SelectorExpr:
+		name = fun.Sel.Name
+	default:
+		return funcKey{}, false
+	}
+	candidates := byName[name]
+	for _, candidate := range candidates {
+		if candidate.file == from.file {
+			return candidate, true
+		}
+	}
+	if len(candidates) == 1 {
+		return candidates[0], true
+	}
+	return funcKey{}, false
+}
+
+func receiverType(fn *ast.FuncDecl) string {
+	if fn.Recv == nil || len(fn.Recv.List) == 0 {
+		return ""
+	}
+	expr := fn.Recv.List[0].Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	if ident, ok := expr.(*ast.Ident); ok {
+		return ident.Name
+	}
+	return ""
+}
+
+func parameterNames(fn *ast.FuncDecl) []string {
+	if fn == nil || fn.Type.Params == nil {
+		return nil
+	}
+	var out []string
+	for _, field := range fn.Type.Params.List {
+		if len(field.Names) == 0 {
+			out = append(out, "")
+			continue
+		}
+		for _, name := range field.Names {
+			out = append(out, name.Name)
+		}
+	}
 	return out
+}
+
+// identOf reads the identifier out of x, &x or *x.
+func identOf(expr ast.Expr) (string, bool) {
+	switch typed := expr.(type) {
+	case *ast.Ident:
+		return typed.Name, true
+	case *ast.UnaryExpr:
+		return identOf(typed.X)
+	case *ast.StarExpr:
+		return identOf(typed.X)
+	}
+	return "", false
 }
 
 // planCopies finds `dst.Field = src.Field` inside functions that receive a
 // plan, and reports whether each sits under an IsUnknown guard on that field.
 func (p *parsedPackage) planCopies() []planCopy {
-	receivers := p.planReceivers()
+	carriers := p.planCarriers()
+	decls, _ := p.declarations()
 
 	var out []planCopy
-	for name, f := range p.files {
-		for _, decl := range f.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Body == nil || !receivers[fn.Name.Name] {
-				continue
-			}
+	for key, fn := range decls {
+		held := carriers[key]
+		if len(held) == 0 {
+			continue
+		}
+		name := key.file
+		{
 
 			var guards []ast.Expr
 			var walk func(n ast.Node)
@@ -220,6 +388,16 @@ func (p *parsedPackage) planCopies() []planCopy {
 							continue
 						}
 						if !matchesAny(dst.recv, modelNames) {
+							continue
+						}
+						// THE SOURCE MUST BE THE PLAN, not merely sit in a
+						// function that receives one. The old form flagged any
+						// same-field copy inside a plan-receiving function,
+						// which is wider than the claim and narrower at the same
+						// time: wider because a copy from prior state is safe,
+						// narrower because the function only qualified when a
+						// caller happened to spell its argument "plan".
+						if !held[src.recv] {
 							continue
 						}
 						pos := p.fset.Position(v.Pos())
@@ -450,4 +628,72 @@ func attributesThatCanBeUnknown(t *testing.T) map[string]bool {
 			"    schema, which cannot be true and means this test measures nothing")
 	}
 	return out
+}
+
+// TestPlanScopeSurvivesARename is the regression test for the rewrite above,
+// and it is deliberately not pointed at the package.
+//
+// The defect it guards is that the check's SCOPE used to be a naming
+// convention: a function entered it only when some caller spelled an argument
+// "plan", "plandata" or "planmodel". A pure rename -- the commonest refactor
+// there is -- removed coverage of the function the check was written for, and
+// nothing went red. Measured on the tree before this change: with planData
+// renamed, an unguarded copy the check had just caught three times became
+// invisible.
+//
+// A fixture rather than the package, for the same reason the device census uses
+// one: an assertion about the real tree passes or fails for whatever the tree
+// happens to contain today, and would go green the moment someone renamed a
+// variable back. Here the names are chosen to be wrong on purpose and stay
+// wrong.
+func TestPlanScopeSurvivesARename(t *testing.T) {
+	p := parseSources(t, map[string]string{
+		"resource.go": `package unifi
+
+func (r *thing) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var desired thingModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &desired)...)
+	r.toModel(ctx, &result, &desired)
+}
+
+func (r *thing) toModel(ctx context.Context, model *thingModel, carried *thingModel) {
+	model.Field = carried.Field
+}
+`,
+	})
+	carriers := p.planCarriers()
+
+	var toModel map[string]bool
+	for key, held := range carriers {
+		if key.name == "toModel" {
+			toModel = held
+		}
+	}
+	if toModel == nil {
+		t.Fatal("toModel is not in the carrier map at all; the plan did not propagate " +
+			"through the call, so the check has no scope and every verdict it gives is empty")
+	}
+	// NOT ONE OF THE OLD NAMES. "carried" is the parameter and "desired" the
+	// local, and neither is plan, plandata or planmodel. If this passes only
+	// because a name matched, the rewrite achieved nothing.
+	if !toModel["carried"] {
+		t.Errorf("the parameter holding the plan was not recognised: %v.\n"+
+			"    The scope is following names again rather than the value, and a rename "+
+			"will silently remove coverage the way it did before.", toModel)
+	}
+}
+
+// parseSources parses an in-memory package, so a scope test can name its
+// variables badly on purpose.
+func parseSources(t *testing.T, sources map[string]string) *parsedPackage {
+	t.Helper()
+	p := &parsedPackage{fset: token.NewFileSet(), files: map[string]*ast.File{}}
+	for name, src := range sources {
+		f, err := parser.ParseFile(p.fset, name, src, parser.SkipObjectResolution)
+		if err != nil {
+			t.Fatalf("parsing %s: %v", name, err)
+		}
+		p.files[name] = f
+	}
+	return p
 }
