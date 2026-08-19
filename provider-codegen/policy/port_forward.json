@@ -1,0 +1,236 @@
+{
+  "baseline_digests": {
+    "resource": "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6",
+    "identity": "1a6e443309d9484e62e9f1fe71a83b60cf348f4acbe3a92d8f7b8bb7d3274d33",
+    "list_resource": "1a62efc7f26708ffc9c085a1a7f86566f28d803cc5fd6dceaf2434e28245c503"
+  },
+  "description": "Forward a port or port range from a WAN interface to a host on the network.",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "A name for the port forwarding rule."
+      }
+    },
+    {
+      "structural_name": "proto",
+      "terraform_name": "protocol",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The protocol to forward. Must be one of `tcp_udp`, `tcp` or `udp`."
+      }
+    },
+    {
+      "structural_name": "log",
+      "terraform_name": "logging",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether to log matched traffic."
+      }
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether the rule is enabled."
+      }
+    },
+    {
+      "structural_name": "destination_ips",
+      "terraform_name": "destination_ips",
+      "terraform_type": "list_nested",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Additional destination addresses this rule matches, one per WAN interface."
+      },
+      "fields": [
+        {
+          "structural_name": "destination_ip",
+          "terraform_name": "destination_ip",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The destination address."
+          }
+        },
+        {
+          "structural_name": "interface",
+          "terraform_name": "interface",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The WAN interface the address belongs to."
+          }
+        }
+      ]
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "port_forward",
+  "groupings": [
+    {
+      "terraform_name": "wan",
+      "terraform_type": "single_nested",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Where the rule listens: the WAN interface, address and port."
+      },
+      "members": [
+        {
+          "structural_name": "pfwd_interface",
+          "terraform_name": "interface",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The WAN interface. One of `wan`, `wan2`..`wan9`, `both` or `all`."
+          }
+        },
+        {
+          "structural_name": "destination_ip",
+          "terraform_name": "ip_address",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The address the rule listens on, or `any`."
+          }
+        },
+        {
+          "structural_name": "dst_port",
+          "terraform_name": "port",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The port or port range the rule listens on."
+          }
+        }
+      ]
+    },
+    {
+      "terraform_name": "forward",
+      "terraform_type": "single_nested",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Where matched traffic is sent."
+      },
+      "members": [
+        {
+          "structural_name": "fwd",
+          "terraform_name": "ip",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The address traffic is forwarded to."
+          }
+        },
+        {
+          "structural_name": "fwd_port",
+          "terraform_name": "port",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The port or port range traffic is forwarded to."
+          }
+        }
+      ]
+    },
+    {
+      "terraform_name": "source_limiting",
+      "terraform_type": "single_nested",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Which sources the rule accepts traffic from."
+      },
+      "members": [
+        {
+          "structural_name": "src",
+          "terraform_name": "ip",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The source address, range or CIDR the rule accepts, or `any`."
+          }
+        },
+        {
+          "structural_name": "src_firewall_group_id",
+          "terraform_name": "firewall_group_id",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "A `unifi_firewall_group` whose addresses the rule accepts."
+          }
+        },
+        {
+          "structural_name": "src_limiting_enabled",
+          "terraform_name": "enabled",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Whether source limiting applies at all."
+          }
+        },
+        {
+          "structural_name": "src_limiting_type",
+          "terraform_name": "type",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "How the source is expressed. One of `ip` or `firewall_group`."
+          }
+        }
+      ]
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The site the rule belongs to."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    }
+  ],
+  "resource": "unifi_port_forward",
+  "source_specification_sha256": "5e8ad1ac38592094b19d95949d785ccee6e8ad4cdf690fe2873f5277c3bf892d",
+  "surface_kind": "managed_resource"
+}
