@@ -376,7 +376,12 @@ func TestNetworkMaskNamesOnlyWhatThePurposeEncodes(t *testing.T) {
 func TestNetworkMaskExcludesTheFieldsItDoesNotManage(t *testing.T) {
 	unmanaged := []string{
 		"dhcpd_mac_1", "dhcpd_mac_2", "dhcpd_mac_3",
-		"igmp_fastleave", "igmp_flood_unknown_multicast", "igmp_supression",
+		// THE THIRD NAME BELOW IS SPELLED WITH ONE P ON PURPOSE. That is the
+		// controller's own spelling, carried through go-unifi's json tag, while
+		// the Go field is IGMPSuppression with two -- so the struct and its own
+		// tag disagree about the same word, and a grep keyed off either misses
+		// the other. Correcting it here would name a field that does not exist.
+		"igmp_fastleave", "igmp_flood_unknown_multicast", "igmp_supression", //nolint:misspell // the controller's spelling
 		"ipv6_aliases", "mac_override_enabled", "upnp_lan_enabled",
 	}
 	name := "probe"
