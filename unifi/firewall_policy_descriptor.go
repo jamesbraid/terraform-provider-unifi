@@ -39,6 +39,7 @@ type firewallPolicyKitModel struct {
 	ConnectionStates    types.List     `tfsdk:"connection_states"`
 	ICMPTypename        types.String   `tfsdk:"icmp_typename"`
 	ICMPV6Typename      types.String   `tfsdk:"icmp_v6_typename"`
+	Schedule            types.Object   `tfsdk:"schedule"`
 	Source              types.Object   `tfsdk:"source"`
 	Destination         types.Object   `tfsdk:"destination"`
 	Timeouts            timeouts.Value `tfsdk:"timeouts"`
@@ -195,11 +196,13 @@ func firewallPolicyEndpointObjectFrom(
 // change rather than a new failure mode, and it keeps a transient controller
 // error from failing an apply that would otherwise succeed.
 //
-// THE PROPER FIX IS A REAL schedule ATTRIBUTE. As it stands a practitioner
-// cannot manage a schedule through Terraform, only avoid having theirs
-// destroyed. That is a schema addition of the kind the baseline gate now
-// licenses, and it is what would make this surface honest rather than merely
-// non-destructive.
+// THE ATTRIBUTE NOW EXISTS, so this hook is the fallback rather than the whole
+// story. A declared schedule is encoded by its ObjectField and returned above
+// untouched. What is left here is the two cases where the model carries
+// nothing: a create, which gets the literal, and an update whose state predates
+// the attribute, which gets the controller's own. Once a read has populated
+// state, the schema's Computed and UseStateForUnknown carry it and this hook
+// stops mattering.
 func firewallPolicyCarrySchedule(
 	read func(context.Context, string, string) (*ui.FirewallPolicy, error),
 	defaultSite string,
@@ -210,6 +213,15 @@ func firewallPolicyCarrySchedule(
 		sdk *ui.FirewallPolicy,
 		_ any,
 	) diag.Diagnostics {
+		// THE PRACTITIONER'S SCHEDULE WINS, and this clause is what makes the
+		// attribute worth having. ToSDK runs before this hook, so a declared
+		// block is already encoded here; carrying the controller's forward on
+		// top of it would make the attribute unsettable, which is the defect
+		// this closes wearing the shape of the fix for the previous one.
+		if sdk.Schedule != nil {
+			return nil
+		}
+
 		sdk.Schedule = &ui.FirewallPolicySchedule{Mode: firewallPolicyScheduleAlways}
 
 		// An empty id is a create: the kit passes the plan there, whose
@@ -237,6 +249,31 @@ func firewallPolicyCarrySchedule(
 		sdk.Schedule = current.Schedule
 		return nil
 	}
+}
+
+// firewallPolicyScheduleAttrTypes types the schedule block in state.
+func firewallPolicyScheduleAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"mode":             types.StringType,
+		"date":             types.StringType,
+		"date_start":       types.StringType,
+		"date_end":         types.StringType,
+		"repeat_on_days":   types.ListType{ElemType: types.StringType},
+		"time_all_day":     types.BoolType,
+		"time_range_start": types.StringType,
+		"time_range_end":   types.StringType,
+	}
+}
+
+type firewallPolicyScheduleModel struct {
+	Mode           types.String `tfsdk:"mode"`
+	Date           types.String `tfsdk:"date"`
+	DateStart      types.String `tfsdk:"date_start"`
+	DateEnd        types.String `tfsdk:"date_end"`
+	RepeatOnDays   types.List   `tfsdk:"repeat_on_days"`
+	TimeAllDay     types.Bool   `tfsdk:"time_all_day"`
+	TimeRangeStart types.String `tfsdk:"time_range_start"`
+	TimeRangeEnd   types.String `tfsdk:"time_range_end"`
 }
 
 func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.FirewallPolicy] {
@@ -337,6 +374,61 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 					SDK:   func(s *ui.FirewallPolicy) **int64 { return &s.Index },
 				},
 			),
+			resourcekit.ObjectField[
+				firewallPolicyKitModel, ui.FirewallPolicy, ui.FirewallPolicySchedule,
+			]{
+				Wire:      "schedule",
+				Model:     func(m *firewallPolicyKitModel) *types.Object { return &m.Schedule },
+				SDK:       func(s *ui.FirewallPolicy) **ui.FirewallPolicySchedule { return &s.Schedule },
+				AttrTypes: firewallPolicyScheduleAttrTypes(),
+				Encode: func(ctx context.Context, object types.Object) (*ui.FirewallPolicySchedule, diag.Diagnostics) {
+					var diags diag.Diagnostics
+					var m firewallPolicyScheduleModel
+					diags.Append(object.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+					if diags.HasError() {
+						return nil, diags
+					}
+					out := &ui.FirewallPolicySchedule{
+						Mode:           m.Mode.ValueString(),
+						Date:           m.Date.ValueString(),
+						DateStart:      m.DateStart.ValueString(),
+						DateEnd:        m.DateEnd.ValueString(),
+						TimeRangeStart: m.TimeRangeStart.ValueString(),
+						TimeRangeEnd:   m.TimeRangeEnd.ValueString(),
+						TimeAllDay:     m.TimeAllDay.ValueBoolPointer(),
+					}
+					if !m.RepeatOnDays.IsNull() && !m.RepeatOnDays.IsUnknown() {
+						diags.Append(m.RepeatOnDays.ElementsAs(ctx, &out.RepeatOnDays, false)...)
+					}
+					// A schedule with no mode is one the practitioner declared
+					// without saying when. The controller refuses it, and
+					// defaulting here would silently make it always-on -- the
+					// defect this attribute exists to end.
+					if out.Mode == "" {
+						out.Mode = firewallPolicyScheduleAlways
+					}
+					return out, diags
+				},
+				Decode: func(ctx context.Context, sdk *ui.FirewallPolicySchedule) (types.Object, diag.Diagnostics) {
+					var diags diag.Diagnostics
+					days, d := types.ListValueFrom(ctx, types.StringType, sdk.RepeatOnDays)
+					diags.Append(d...)
+					object, d := types.ObjectValueFrom(ctx, firewallPolicyScheduleAttrTypes(),
+						firewallPolicyScheduleModel{
+							Mode:           types.StringValue(sdk.Mode),
+							Date:           types.StringValue(sdk.Date),
+							DateStart:      types.StringValue(sdk.DateStart),
+							DateEnd:        types.StringValue(sdk.DateEnd),
+							RepeatOnDays:   days,
+							TimeAllDay:     types.BoolPointerValue(sdk.TimeAllDay),
+							TimeRangeStart: types.StringValue(sdk.TimeRangeStart),
+							TimeRangeEnd:   types.StringValue(sdk.TimeRangeEnd),
+						})
+					diags.Append(d...)
+					return object, diags
+				},
+				Elide: resourcekit.KeepZero,
+			},
 			resourcekit.ObjectField[
 				firewallPolicyKitModel, ui.FirewallPolicy, ui.FirewallPolicySource,
 			]{

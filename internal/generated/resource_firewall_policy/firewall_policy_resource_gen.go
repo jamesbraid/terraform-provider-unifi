@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -287,6 +288,93 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				},
 				Default: stringdefault.StaticString("all"),
 			},
+			"schedule": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"date": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "The single date a `ONE_TIME_ONLY` schedule runs on.",
+						MarkdownDescription: "The single date a `ONE_TIME_ONLY` schedule runs on.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"date_end": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Last date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.",
+						MarkdownDescription: "Last date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"date_start": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "First date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.",
+						MarkdownDescription: "First date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "How the schedule repeats. `ALWAYS` is always in force. `CUSTOM` appears in the SDK's own enumeration and is not measured against a controller.",
+						MarkdownDescription: "How the schedule repeats. `ALWAYS` is always in force. `CUSTOM` appears in the SDK's own enumeration and is not measured against a controller.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.String{
+							stringvalidator.OneOf("ALWAYS", "EVERY_DAY", "EVERY_WEEK", "ONE_TIME_ONLY", "CUSTOM"),
+						},
+					},
+					"repeat_on_days": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "Days an `EVERY_WEEK` schedule runs on, as `mon` through `sun`.",
+						MarkdownDescription: "Days an `EVERY_WEEK` schedule runs on, as `mon` through `sun`.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"time_all_day": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Whether the schedule covers the whole day rather than a time range.",
+						MarkdownDescription: "Whether the schedule covers the whole day rather than a time range.",
+						PlanModifiers: []planmodifier.Bool{
+							boolplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"time_range_end": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "End of the daily time range, as `HH:MM`.",
+						MarkdownDescription: "End of the daily time range, as `HH:MM`.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"time_range_start": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Start of the daily time range, as `HH:MM`.",
+						MarkdownDescription: "Start of the daily time range, as `HH:MM`.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "When the policy is in force. Omit it to leave the controller's schedule alone; a policy created without one is always in force.",
+				MarkdownDescription: "When the policy is in force. Omit it to leave the controller's schedule alone; a policy created without one is always in force.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"site": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
@@ -457,6 +545,7 @@ type FirewallPolicyModel struct {
 	Logging             types.Bool       `tfsdk:"logging"`
 	Name                types.String     `tfsdk:"name"`
 	Protocol            types.String     `tfsdk:"protocol"`
+	Schedule            ScheduleValue    `tfsdk:"schedule"`
 	Site                types.String     `tfsdk:"site"`
 	Source              SourceValue      `tfsdk:"source"`
 }
@@ -1736,6 +1825,748 @@ func (v DestinationValue) AttributeTypes(ctx context.Context) map[string]attr.Ty
 			ElemType: types.StringType,
 		},
 		"zone_id": basetypes.StringType{},
+	}
+}
+
+var _ basetypes.ObjectTypable = ScheduleType{}
+
+type ScheduleType struct {
+	basetypes.ObjectType
+}
+
+func (t ScheduleType) Equal(o attr.Type) bool {
+	other, ok := o.(ScheduleType)
+
+	if !ok {
+		return false
+	}
+
+	return t.ObjectType.Equal(other.ObjectType)
+}
+
+func (t ScheduleType) String() string {
+	return "ScheduleType"
+}
+
+func (t ScheduleType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributes := in.Attributes()
+
+	dateAttribute, ok := attributes["date"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`date is missing from object`)
+
+		return nil, diags
+	}
+
+	dateVal, ok := dateAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`date expected to be basetypes.StringValue, was: %T`, dateAttribute))
+	}
+
+	dateEndAttribute, ok := attributes["date_end"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`date_end is missing from object`)
+
+		return nil, diags
+	}
+
+	dateEndVal, ok := dateEndAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`date_end expected to be basetypes.StringValue, was: %T`, dateEndAttribute))
+	}
+
+	dateStartAttribute, ok := attributes["date_start"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`date_start is missing from object`)
+
+		return nil, diags
+	}
+
+	dateStartVal, ok := dateStartAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`date_start expected to be basetypes.StringValue, was: %T`, dateStartAttribute))
+	}
+
+	modeAttribute, ok := attributes["mode"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`mode is missing from object`)
+
+		return nil, diags
+	}
+
+	modeVal, ok := modeAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`mode expected to be basetypes.StringValue, was: %T`, modeAttribute))
+	}
+
+	repeatOnDaysAttribute, ok := attributes["repeat_on_days"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`repeat_on_days is missing from object`)
+
+		return nil, diags
+	}
+
+	repeatOnDaysVal, ok := repeatOnDaysAttribute.(basetypes.ListValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`repeat_on_days expected to be basetypes.ListValue, was: %T`, repeatOnDaysAttribute))
+	}
+
+	timeAllDayAttribute, ok := attributes["time_all_day"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`time_all_day is missing from object`)
+
+		return nil, diags
+	}
+
+	timeAllDayVal, ok := timeAllDayAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`time_all_day expected to be basetypes.BoolValue, was: %T`, timeAllDayAttribute))
+	}
+
+	timeRangeEndAttribute, ok := attributes["time_range_end"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`time_range_end is missing from object`)
+
+		return nil, diags
+	}
+
+	timeRangeEndVal, ok := timeRangeEndAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`time_range_end expected to be basetypes.StringValue, was: %T`, timeRangeEndAttribute))
+	}
+
+	timeRangeStartAttribute, ok := attributes["time_range_start"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`time_range_start is missing from object`)
+
+		return nil, diags
+	}
+
+	timeRangeStartVal, ok := timeRangeStartAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`time_range_start expected to be basetypes.StringValue, was: %T`, timeRangeStartAttribute))
+	}
+
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	return ScheduleValue{
+		Date:           dateVal,
+		DateEnd:        dateEndVal,
+		DateStart:      dateStartVal,
+		Mode:           modeVal,
+		RepeatOnDays:   repeatOnDaysVal,
+		TimeAllDay:     timeAllDayVal,
+		TimeRangeEnd:   timeRangeEndVal,
+		TimeRangeStart: timeRangeStartVal,
+		state:          attr.ValueStateKnown,
+	}, diags
+}
+
+func NewScheduleValueNull() ScheduleValue {
+	return ScheduleValue{
+		state: attr.ValueStateNull,
+	}
+}
+
+func NewScheduleValueUnknown() ScheduleValue {
+	return ScheduleValue{
+		state: attr.ValueStateUnknown,
+	}
+}
+
+func NewScheduleValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (ScheduleValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
+	ctx := context.Background()
+
+	for name, attributeType := range attributeTypes {
+		attribute, ok := attributes[name]
+
+		if !ok {
+			diags.AddError(
+				"Missing ScheduleValue Attribute Value",
+				"While creating a ScheduleValue value, a missing attribute value was detected. "+
+					"A ScheduleValue must contain values for all attributes, even if null or unknown. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("ScheduleValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
+			)
+
+			continue
+		}
+
+		if !attributeType.Equal(attribute.Type(ctx)) {
+			diags.AddError(
+				"Invalid ScheduleValue Attribute Type",
+				"While creating a ScheduleValue value, an invalid attribute value was detected. "+
+					"A ScheduleValue must use a matching attribute type for the value. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("ScheduleValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
+					fmt.Sprintf("ScheduleValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
+			)
+		}
+	}
+
+	for name := range attributes {
+		_, ok := attributeTypes[name]
+
+		if !ok {
+			diags.AddError(
+				"Extra ScheduleValue Attribute Value",
+				"While creating a ScheduleValue value, an extra attribute value was detected. "+
+					"A ScheduleValue must not contain values beyond the expected attribute types. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("Extra ScheduleValue Attribute Name: %s", name),
+			)
+		}
+	}
+
+	if diags.HasError() {
+		return NewScheduleValueUnknown(), diags
+	}
+
+	dateAttribute, ok := attributes["date"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`date is missing from object`)
+
+		return NewScheduleValueUnknown(), diags
+	}
+
+	dateVal, ok := dateAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`date expected to be basetypes.StringValue, was: %T`, dateAttribute))
+	}
+
+	dateEndAttribute, ok := attributes["date_end"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`date_end is missing from object`)
+
+		return NewScheduleValueUnknown(), diags
+	}
+
+	dateEndVal, ok := dateEndAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`date_end expected to be basetypes.StringValue, was: %T`, dateEndAttribute))
+	}
+
+	dateStartAttribute, ok := attributes["date_start"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`date_start is missing from object`)
+
+		return NewScheduleValueUnknown(), diags
+	}
+
+	dateStartVal, ok := dateStartAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`date_start expected to be basetypes.StringValue, was: %T`, dateStartAttribute))
+	}
+
+	modeAttribute, ok := attributes["mode"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`mode is missing from object`)
+
+		return NewScheduleValueUnknown(), diags
+	}
+
+	modeVal, ok := modeAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`mode expected to be basetypes.StringValue, was: %T`, modeAttribute))
+	}
+
+	repeatOnDaysAttribute, ok := attributes["repeat_on_days"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`repeat_on_days is missing from object`)
+
+		return NewScheduleValueUnknown(), diags
+	}
+
+	repeatOnDaysVal, ok := repeatOnDaysAttribute.(basetypes.ListValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`repeat_on_days expected to be basetypes.ListValue, was: %T`, repeatOnDaysAttribute))
+	}
+
+	timeAllDayAttribute, ok := attributes["time_all_day"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`time_all_day is missing from object`)
+
+		return NewScheduleValueUnknown(), diags
+	}
+
+	timeAllDayVal, ok := timeAllDayAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`time_all_day expected to be basetypes.BoolValue, was: %T`, timeAllDayAttribute))
+	}
+
+	timeRangeEndAttribute, ok := attributes["time_range_end"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`time_range_end is missing from object`)
+
+		return NewScheduleValueUnknown(), diags
+	}
+
+	timeRangeEndVal, ok := timeRangeEndAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`time_range_end expected to be basetypes.StringValue, was: %T`, timeRangeEndAttribute))
+	}
+
+	timeRangeStartAttribute, ok := attributes["time_range_start"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`time_range_start is missing from object`)
+
+		return NewScheduleValueUnknown(), diags
+	}
+
+	timeRangeStartVal, ok := timeRangeStartAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`time_range_start expected to be basetypes.StringValue, was: %T`, timeRangeStartAttribute))
+	}
+
+	if diags.HasError() {
+		return NewScheduleValueUnknown(), diags
+	}
+
+	return ScheduleValue{
+		Date:           dateVal,
+		DateEnd:        dateEndVal,
+		DateStart:      dateStartVal,
+		Mode:           modeVal,
+		RepeatOnDays:   repeatOnDaysVal,
+		TimeAllDay:     timeAllDayVal,
+		TimeRangeEnd:   timeRangeEndVal,
+		TimeRangeStart: timeRangeStartVal,
+		state:          attr.ValueStateKnown,
+	}, diags
+}
+
+func NewScheduleValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) ScheduleValue {
+	object, diags := NewScheduleValue(attributeTypes, attributes)
+
+	if diags.HasError() {
+		// This could potentially be added to the diag package.
+		diagsStrings := make([]string, 0, len(diags))
+
+		for _, diagnostic := range diags {
+			diagsStrings = append(diagsStrings, fmt.Sprintf(
+				"%s | %s | %s",
+				diagnostic.Severity(),
+				diagnostic.Summary(),
+				diagnostic.Detail()))
+		}
+
+		panic("NewScheduleValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
+	}
+
+	return object
+}
+
+func (t ScheduleType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	if in.Type() == nil {
+		return NewScheduleValueNull(), nil
+	}
+
+	if !in.Type().Equal(t.TerraformType(ctx)) {
+		return nil, fmt.Errorf("expected %s, got %s", t.TerraformType(ctx), in.Type())
+	}
+
+	if !in.IsKnown() {
+		return NewScheduleValueUnknown(), nil
+	}
+
+	if in.IsNull() {
+		return NewScheduleValueNull(), nil
+	}
+
+	attributes := map[string]attr.Value{}
+
+	val := map[string]tftypes.Value{}
+
+	err := in.As(&val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range val {
+		a, err := t.AttrTypes[k].ValueFromTerraform(ctx, v)
+
+		if err != nil {
+			return nil, err
+		}
+
+		attributes[k] = a
+	}
+
+	return NewScheduleValueMust(ScheduleValue{}.AttributeTypes(ctx), attributes), nil
+}
+
+func (t ScheduleType) ValueType(ctx context.Context) attr.Value {
+	return ScheduleValue{}
+}
+
+var _ basetypes.ObjectValuable = ScheduleValue{}
+
+type ScheduleValue struct {
+	Date           basetypes.StringValue `tfsdk:"date"`
+	DateEnd        basetypes.StringValue `tfsdk:"date_end"`
+	DateStart      basetypes.StringValue `tfsdk:"date_start"`
+	Mode           basetypes.StringValue `tfsdk:"mode"`
+	RepeatOnDays   basetypes.ListValue   `tfsdk:"repeat_on_days"`
+	TimeAllDay     basetypes.BoolValue   `tfsdk:"time_all_day"`
+	TimeRangeEnd   basetypes.StringValue `tfsdk:"time_range_end"`
+	TimeRangeStart basetypes.StringValue `tfsdk:"time_range_start"`
+	state          attr.ValueState
+}
+
+func (v ScheduleValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+	attrTypes := make(map[string]tftypes.Type, 8)
+
+	var val tftypes.Value
+	var err error
+
+	attrTypes["date"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["date_end"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["date_start"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["mode"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["repeat_on_days"] = basetypes.ListType{
+		ElemType: types.StringType,
+	}.TerraformType(ctx)
+	attrTypes["time_all_day"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["time_range_end"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["time_range_start"] = basetypes.StringType{}.TerraformType(ctx)
+
+	objectType := tftypes.Object{AttributeTypes: attrTypes}
+
+	switch v.state {
+	case attr.ValueStateKnown:
+		vals := make(map[string]tftypes.Value, 8)
+
+		val, err = v.Date.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["date"] = val
+
+		val, err = v.DateEnd.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["date_end"] = val
+
+		val, err = v.DateStart.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["date_start"] = val
+
+		val, err = v.Mode.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["mode"] = val
+
+		val, err = v.RepeatOnDays.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["repeat_on_days"] = val
+
+		val, err = v.TimeAllDay.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["time_all_day"] = val
+
+		val, err = v.TimeRangeEnd.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["time_range_end"] = val
+
+		val, err = v.TimeRangeStart.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["time_range_start"] = val
+
+		if err := tftypes.ValidateValue(objectType, vals); err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		return tftypes.NewValue(objectType, vals), nil
+	case attr.ValueStateNull:
+		return tftypes.NewValue(objectType, nil), nil
+	case attr.ValueStateUnknown:
+		return tftypes.NewValue(objectType, tftypes.UnknownValue), nil
+	default:
+		panic(fmt.Sprintf("unhandled Object state in ToTerraformValue: %s", v.state))
+	}
+}
+
+func (v ScheduleValue) IsNull() bool {
+	return v.state == attr.ValueStateNull
+}
+
+func (v ScheduleValue) IsUnknown() bool {
+	return v.state == attr.ValueStateUnknown
+}
+
+func (v ScheduleValue) String() string {
+	return "ScheduleValue"
+}
+
+func (v ScheduleValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	var repeatOnDaysVal basetypes.ListValue
+	switch {
+	case v.RepeatOnDays.IsUnknown():
+		repeatOnDaysVal = types.ListUnknown(types.StringType)
+	case v.RepeatOnDays.IsNull():
+		repeatOnDaysVal = types.ListNull(types.StringType)
+	default:
+		var d diag.Diagnostics
+		repeatOnDaysVal, d = types.ListValue(types.StringType, v.RepeatOnDays.Elements())
+		diags.Append(d...)
+	}
+
+	if diags.HasError() {
+		return types.ObjectUnknown(map[string]attr.Type{
+			"date":       basetypes.StringType{},
+			"date_end":   basetypes.StringType{},
+			"date_start": basetypes.StringType{},
+			"mode":       basetypes.StringType{},
+			"repeat_on_days": basetypes.ListType{
+				ElemType: types.StringType,
+			},
+			"time_all_day":     basetypes.BoolType{},
+			"time_range_end":   basetypes.StringType{},
+			"time_range_start": basetypes.StringType{},
+		}), diags
+	}
+
+	attributeTypes := map[string]attr.Type{
+		"date":       basetypes.StringType{},
+		"date_end":   basetypes.StringType{},
+		"date_start": basetypes.StringType{},
+		"mode":       basetypes.StringType{},
+		"repeat_on_days": basetypes.ListType{
+			ElemType: types.StringType,
+		},
+		"time_all_day":     basetypes.BoolType{},
+		"time_range_end":   basetypes.StringType{},
+		"time_range_start": basetypes.StringType{},
+	}
+
+	if v.IsNull() {
+		return types.ObjectNull(attributeTypes), diags
+	}
+
+	if v.IsUnknown() {
+		return types.ObjectUnknown(attributeTypes), diags
+	}
+
+	objVal, diags := types.ObjectValue(
+		attributeTypes,
+		map[string]attr.Value{
+			"date":             v.Date,
+			"date_end":         v.DateEnd,
+			"date_start":       v.DateStart,
+			"mode":             v.Mode,
+			"repeat_on_days":   repeatOnDaysVal,
+			"time_all_day":     v.TimeAllDay,
+			"time_range_end":   v.TimeRangeEnd,
+			"time_range_start": v.TimeRangeStart,
+		})
+
+	return objVal, diags
+}
+
+func (v ScheduleValue) Equal(o attr.Value) bool {
+	other, ok := o.(ScheduleValue)
+
+	if !ok {
+		return false
+	}
+
+	if v.state != other.state {
+		return false
+	}
+
+	if v.state != attr.ValueStateKnown {
+		return true
+	}
+
+	if !v.Date.Equal(other.Date) {
+		return false
+	}
+
+	if !v.DateEnd.Equal(other.DateEnd) {
+		return false
+	}
+
+	if !v.DateStart.Equal(other.DateStart) {
+		return false
+	}
+
+	if !v.Mode.Equal(other.Mode) {
+		return false
+	}
+
+	if !v.RepeatOnDays.Equal(other.RepeatOnDays) {
+		return false
+	}
+
+	if !v.TimeAllDay.Equal(other.TimeAllDay) {
+		return false
+	}
+
+	if !v.TimeRangeEnd.Equal(other.TimeRangeEnd) {
+		return false
+	}
+
+	if !v.TimeRangeStart.Equal(other.TimeRangeStart) {
+		return false
+	}
+
+	return true
+}
+
+func (v ScheduleValue) Type(ctx context.Context) attr.Type {
+	return ScheduleType{
+		basetypes.ObjectType{
+			AttrTypes: v.AttributeTypes(ctx),
+		},
+	}
+}
+
+func (v ScheduleValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
+	return map[string]attr.Type{
+		"date":       basetypes.StringType{},
+		"date_end":   basetypes.StringType{},
+		"date_start": basetypes.StringType{},
+		"mode":       basetypes.StringType{},
+		"repeat_on_days": basetypes.ListType{
+			ElemType: types.StringType,
+		},
+		"time_all_day":     basetypes.BoolType{},
+		"time_range_end":   basetypes.StringType{},
+		"time_range_start": basetypes.StringType{},
 	}
 }
 

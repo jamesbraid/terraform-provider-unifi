@@ -542,6 +542,231 @@
           "source": "Terraform plugin framework plan semantics. Reasoning, not observation -- and it is why this entry exists at all rather than the fix being a read-path change with no schema change."
         }
       ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is the block itself. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule.mode",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is how the schedule repeats. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule.date",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is the single date a ONE_TIME_ONLY schedule runs on. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule.date_start",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is the first date the schedule is in force. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule.date_end",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is the last date the schedule is in force. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule.repeat_on_days",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is the days an EVERY_WEEK schedule runs on. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule.time_all_day",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is whether the schedule covers the whole day. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule.time_range_start",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is the start of the daily time range. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
+    },
+    {
+      "surface": "unifi_firewall_policy",
+      "attribute": "schedule.time_range_end",
+      "field": "presence",
+      "old": "absent",
+      "new": "present",
+      "why_not_breaking": "This is the end of the daily time range. An added Optional+Computed attribute cannot invalidate an existing configuration: one that does not mention it is exactly what worked before, and none can mention it because it did not exist. It plans unknown, UseStateForUnknown resolves it from the value just read, and it is not Required, so nothing becomes incomplete. WHAT IT REPLACES IS A FIELD THE PRACTITIONER COULD NOT REACH. modelToFirewallPolicy built every policy with a literal Schedule{Mode: \"ALWAYS\"}. The field had no tfsdk tag and no schema attribute, so nothing a practitioner wrote could reach it, and \"schedule\" is in the update mask -- measured on 10.4.57, an apply that changed only the description turned a rule running 09:00-17:00 into one running permanently, with no diff shown because terraform shows none for a field the schema does not declare. d097f36f stopped the destruction by carrying the controller's schedule forward on update. This is the other half: it lets the practitioner MANAGE the schedule rather than only avoid losing it. TRANSITIONAL. The baseline tracks the last release and rebases when one ships; once it moves to the release containing this, the delta is zero and the entry should be dropped.",
+      "evidence": [
+        {
+          "claim": "The controller holds non-ALWAYS schedules -- EVERY_DAY with a 09:00-17:00 range, EVERY_WEEK on weekdays, and ONE_TIME_ONLY on a date -- so there is something for a practitioner to express.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: 3 of 3 non-ALWAYS modes accepted and held."
+        },
+        {
+          "claim": "The controller REFUSES a policy whose schedule is null and one with the key absent, so the field is on every write whatever the provider does. Declaring it changes who decides its value, not whether it is sent.",
+          "kind": "measured",
+          "source": "controller run against 10.4.57: `on field 'schedule': rejected value [null] ... must not be null` (400), on create and on update."
+        },
+        {
+          "claim": "CUSTOM is in the SDK's own enumeration for mode and is NOT measured against a controller. It is permitted by the validator rather than excluded, because excluding a value the controller accepts rejects a working configuration, while permitting one it does not surfaces as its own 400.",
+          "kind": "inferred",
+          "source": "go-unifi v1.103.0 FirewallPolicySchedule.Mode comment. Reasoning about which direction to be wrong in, not an observation."
+        }
+      ]
     }
   ]
 }
