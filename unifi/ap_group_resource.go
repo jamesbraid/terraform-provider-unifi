@@ -306,7 +306,9 @@ func (r *apGroupResource) Update(
 	// PUT keys on the ID.
 	apGroup.ID = id
 
-	apiAPGroup, err := r.client.UpdateAPGroup(ctx, site, apGroup)
+	// MASKED. The fetch before this write was laundered through the
+	// Terraform model, so it protected nothing; see the wire-field list.
+	apiAPGroup, err := r.client.UpdateAPGroupFields(ctx, site, apGroup, apGroupManagedWireFields()...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating AP Group",

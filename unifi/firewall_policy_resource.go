@@ -316,7 +316,9 @@ func (r *firewallPolicyResource) Update(
 	plannedSrcMTT := endpointMatchingTargetType(ctx, plan.Source, &resp.Diagnostics)
 	plannedDstMTT := endpointMatchingTargetType(ctx, plan.Destination, &resp.Diagnostics)
 
-	updated, err := r.client.UpdateFirewallPolicy(ctx, site, fp)
+	// MASKED. The fetch before this write was laundered through the
+	// Terraform model, so it protected nothing; see the wire-field list.
+	updated, err := r.client.UpdateFirewallPolicyFields(ctx, site, fp, firewallPolicyManagedWireFields()...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Firewall Policy",
