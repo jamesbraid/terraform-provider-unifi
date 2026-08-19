@@ -1670,6 +1670,21 @@ func (r *deviceResource) ImportState(
 // plan (user-configured, or state-inherited via the list's UseStateForUnknown),
 // its non-zero sub-fields (channel, tx_power, …) also travel in the PUT; sending
 // back the values the controller already returned is idempotent.
+// buildMinimalUpdateDevice builds the PUT body from the MODEL, not from the
+// fetched device. It takes currentDevice, but it is not read-modify-write: the
+// object that goes to the controller is a fresh one, and everything the
+// Terraform schema does not declare is absent from it.
+//
+// THAT IS SAFE ONLY BY COINCIDENCE, and the coincidence is worth naming.
+// unifi.Device force-emits exactly three fields -- adopted, port_overrides and
+// state -- so those three are the only ones a fresh object can reset, and all
+// three happen to be filled in below. Every other field carries omitempty and
+// drops out of the body rather than going back as a zero.
+//
+// A fourth force-emitted field added by an SDK regeneration would be reset on
+// every apply with nothing here failing. Test_deviceForceEmittedFieldsAreAll
+// RescuedHere pins the set of three so that shows up as a test failure instead
+// of as a support issue.
 func buildMinimalUpdateDevice(
 	deviceReq, currentDevice *unifi.Device,
 	portOverrides []unifi.DevicePortOverrides,

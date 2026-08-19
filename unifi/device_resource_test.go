@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -1581,5 +1582,71 @@ func Test_portOverridesAreAlwaysOnTheWire(t *testing.T) {
 	}
 	if !strings.Contains(string(body), `"port_overrides":[]`) {
 		t.Fatalf("a nil port_overrides no longer marshals to []; the body was %s", body)
+	}
+}
+
+// Test_deviceForceEmittedFieldsAreAllRescuedHere pins the coincidence that
+// makes buildMinimalUpdateDevice safe.
+//
+// The body it builds is a FRESH unifi.Device populated from the Terraform
+// model, so any field the schema does not declare goes to the controller as a
+// Go zero -- unless omitempty drops it from the encoding first. Exactly three
+// of Device's fields have no omitempty, and all three are filled in by hand
+// from the fetched device. Nothing enforces that; it is true today and an SDK
+// regeneration can end it silently.
+//
+// So the set is pinned rather than the behaviour described. A fourth
+// force-emitted field fails here, naming itself, instead of being reset on
+// every apply.
+func Test_deviceForceEmittedFieldsAreAllRescuedHere(t *testing.T) {
+	_, forceEmits := wireTagsOf(unifi.Device{})
+
+	got := make([]string, 0, len(forceEmits))
+	for name, unconditional := range forceEmits {
+		if unconditional && name != "_id" && name != "site_id" {
+			got = append(got, name)
+		}
+	}
+	sort.Strings(got)
+
+	want := []string{"adopted", "port_overrides", "state"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unifi.Device force-emits %v, not %v.\n\n"+
+			"buildMinimalUpdateDevice builds the PUT body from the Terraform model, so "+
+			"every force-emitted field it does not set is sent as a zero on every apply. "+
+			"The three in `want` are set by hand from the fetched device. A field that "+
+			"appears here and not there is silently reset; one that disappeared means the "+
+			"rescue is now dead code. Fix buildMinimalUpdateDevice, then update this list.",
+			got, want)
+	}
+}
+
+// Test_buildMinimalUpdateDeviceRescuesEveryForceEmittedField is the other half:
+// the set above is the right set, and each member actually survives the trip.
+// Pinning the names without checking the values would pass for a rescue that
+// had been deleted.
+func Test_buildMinimalUpdateDeviceRescuesEveryForceEmittedField(t *testing.T) {
+	idx := func(i int64) *int64 { return &i }
+	current := &unifi.Device{
+		ID:            "d1",
+		Adopted:       true,
+		State:         5,
+		PortOverrides: []unifi.DevicePortOverrides{{PortIDX: idx(1), Name: "uplink"}},
+	}
+	// A model that declares nothing beyond identity: the worst case.
+	deviceReq := &unifi.Device{ID: "d1"}
+
+	body := buildMinimalUpdateDevice(
+		deviceReq, current, portOverridesForUpdate(current, deviceReq.PortOverrides))
+
+	if !body.Adopted {
+		t.Error("adopted went back as false; a gateway rejects that (#177)")
+	}
+	if body.State != 5 {
+		t.Errorf("state went back as %d, want 5", body.State)
+	}
+	if len(body.PortOverrides) != 1 {
+		t.Errorf("port_overrides went back with %d entries, want 1 (#191)",
+			len(body.PortOverrides))
 	}
 }
