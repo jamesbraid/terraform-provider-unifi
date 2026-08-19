@@ -105,17 +105,29 @@ func firewallRuleKitSpec() resourcekit.Spec[firewallRuleKitModel, ui.FirewallRul
 				func(s *ui.FirewallRule) *string { return &s.Protocol }, resourcekit.NullZero),
 			str("protocol_v6", func(m *firewallRuleKitModel) *types.String { return &m.ProtocolV6 },
 				func(s *ui.FirewallRule) *string { return &s.ProtocolV6 }, resourcekit.NullZero),
-			str("icmp_typename", func(m *firewallRuleKitModel) *types.String { return &m.ICMPTypename },
-				func(s *ui.FirewallRule) *string { return &s.ICMPTypename }, resourcekit.NullZero),
+			str(
+				"icmp_typename",
+				func(m *firewallRuleKitModel) *types.String { return &m.ICMPTypename },
+				func(s *ui.FirewallRule) *string { return &s.ICMPTypename },
+				resourcekit.NullZero,
+			),
 			// THE WIRE NAME IS THE SDK'S, NOT TERRAFORM'S: icmp_v6_typename in
 			// the schema is icmpv6_typename on the controller.
-			str("icmpv6_typename", func(m *firewallRuleKitModel) *types.String { return &m.ICMPV6Typename },
-				func(s *ui.FirewallRule) *string { return &s.ICMPv6Typename }, resourcekit.NullZero),
+			str(
+				"icmpv6_typename",
+				func(m *firewallRuleKitModel) *types.String { return &m.ICMPV6Typename },
+				func(s *ui.FirewallRule) *string { return &s.ICMPv6Typename },
+				resourcekit.NullZero,
+			),
 			boolean("enabled", func(m *firewallRuleKitModel) *types.Bool { return &m.Enabled },
 				func(s *ui.FirewallRule) *bool { return &s.Enabled }),
 
-			str("src_networkconf_id", func(m *firewallRuleKitModel) *types.String { return &m.SrcNetworkID },
-				func(s *ui.FirewallRule) *string { return &s.SrcNetworkID }, resourcekit.NullZero),
+			str(
+				"src_networkconf_id",
+				func(m *firewallRuleKitModel) *types.String { return &m.SrcNetworkID },
+				func(s *ui.FirewallRule) *string { return &s.SrcNetworkID },
+				resourcekit.NullZero,
+			),
 			// NETv4 ON AN EMPTY READ, the capability static_route produced.
 			// The schema also carries Default: "NETv4", but that fills a PLAN
 			// when the config omits the attribute; this fills STATE when the
@@ -135,8 +147,12 @@ func firewallRuleKitSpec() resourcekit.Spec[firewallRuleKitModel, ui.FirewallRul
 			},
 			str("src_address", func(m *firewallRuleKitModel) *types.String { return &m.SrcAddress },
 				func(s *ui.FirewallRule) *string { return &s.SrcAddress }, resourcekit.NullZero),
-			str("src_address_ipv6", func(m *firewallRuleKitModel) *types.String { return &m.SrcAddressIPv6 },
-				func(s *ui.FirewallRule) *string { return &s.SrcAddressIPV6 }, resourcekit.NullZero),
+			str(
+				"src_address_ipv6",
+				func(m *firewallRuleKitModel) *types.String { return &m.SrcAddressIPv6 },
+				func(s *ui.FirewallRule) *string { return &s.SrcAddressIPV6 },
+				resourcekit.NullZero,
+			),
 			str("src_port", func(m *firewallRuleKitModel) *types.String { return &m.SrcPort },
 				func(s *ui.FirewallRule) *string { return &s.SrcPort }, resourcekit.NullZero),
 			// THE SECOND CUSTOM TYPE THROUGH StringLikeField. It was built for
@@ -153,8 +169,12 @@ func firewallRuleKitSpec() resourcekit.Spec[firewallRuleKitModel, ui.FirewallRul
 				Elide: resourcekit.NullZero,
 			},
 
-			str("dst_networkconf_id", func(m *firewallRuleKitModel) *types.String { return &m.DstNetworkID },
-				func(s *ui.FirewallRule) *string { return &s.DstNetworkID }, resourcekit.NullZero),
+			str(
+				"dst_networkconf_id",
+				func(m *firewallRuleKitModel) *types.String { return &m.DstNetworkID },
+				func(s *ui.FirewallRule) *string { return &s.DstNetworkID },
+				resourcekit.NullZero,
+			),
 			resourcekit.StringField[firewallRuleKitModel, ui.FirewallRule]{
 				Wire:        "dst_networkconf_type",
 				Model:       func(m *firewallRuleKitModel) *types.String { return &m.DstNetworkType },
@@ -169,21 +189,34 @@ func firewallRuleKitSpec() resourcekit.Spec[firewallRuleKitModel, ui.FirewallRul
 			},
 			str("dst_address", func(m *firewallRuleKitModel) *types.String { return &m.DstAddress },
 				func(s *ui.FirewallRule) *string { return &s.DstAddress }, resourcekit.NullZero),
-			str("dst_address_ipv6", func(m *firewallRuleKitModel) *types.String { return &m.DstAddressIPv6 },
-				func(s *ui.FirewallRule) *string { return &s.DstAddressIPV6 }, resourcekit.NullZero),
+			str(
+				"dst_address_ipv6",
+				func(m *firewallRuleKitModel) *types.String { return &m.DstAddressIPv6 },
+				func(s *ui.FirewallRule) *string { return &s.DstAddressIPV6 },
+				resourcekit.NullZero,
+			),
 			str("dst_port", func(m *firewallRuleKitModel) *types.String { return &m.DstPort },
 				func(s *ui.FirewallRule) *string { return &s.DstPort }, resourcekit.NullZero),
 
 			boolean("logging", func(m *firewallRuleKitModel) *types.Bool { return &m.Logging },
 				func(s *ui.FirewallRule) *bool { return &s.Logging }),
-			boolean("state_established", func(m *firewallRuleKitModel) *types.Bool { return &m.StateEstablished },
-				func(s *ui.FirewallRule) *bool { return &s.StateEstablished }),
-			boolean("state_invalid", func(m *firewallRuleKitModel) *types.Bool { return &m.StateInvalid },
-				func(s *ui.FirewallRule) *bool { return &s.StateInvalid }),
+			boolean(
+				"state_established",
+				func(m *firewallRuleKitModel) *types.Bool { return &m.StateEstablished },
+				func(s *ui.FirewallRule) *bool { return &s.StateEstablished },
+			),
+			boolean(
+				"state_invalid",
+				func(m *firewallRuleKitModel) *types.Bool { return &m.StateInvalid },
+				func(s *ui.FirewallRule) *bool { return &s.StateInvalid },
+			),
 			boolean("state_new", func(m *firewallRuleKitModel) *types.Bool { return &m.StateNew },
 				func(s *ui.FirewallRule) *bool { return &s.StateNew }),
-			boolean("state_related", func(m *firewallRuleKitModel) *types.Bool { return &m.StateRelated },
-				func(s *ui.FirewallRule) *bool { return &s.StateRelated }),
+			boolean(
+				"state_related",
+				func(m *firewallRuleKitModel) *types.Bool { return &m.StateRelated },
+				func(s *ui.FirewallRule) *bool { return &s.StateRelated },
+			),
 
 			str("ipsec", func(m *firewallRuleKitModel) *types.String { return &m.IPSec },
 				func(s *ui.FirewallRule) *string { return &s.IPSec }, resourcekit.NullZero),
@@ -191,10 +224,17 @@ func firewallRuleKitSpec() resourcekit.Spec[firewallRuleKitModel, ui.FirewallRul
 			// OneOf("auto","manual"): an empty is not a value the attribute
 			// accepts, so it is an absence. This is the field that corrected
 			// the Elide rule.
-			str("setting_preference", func(m *firewallRuleKitModel) *types.String { return &m.SettingPreference },
-				func(s *ui.FirewallRule) *string { return &s.SettingPreference }, resourcekit.NullZero),
-			boolean("protocol_match_excepted", func(m *firewallRuleKitModel) *types.Bool { return &m.ProtocolMatchExcept },
-				func(s *ui.FirewallRule) *bool { return &s.ProtocolMatchExcepted }),
+			str(
+				"setting_preference",
+				func(m *firewallRuleKitModel) *types.String { return &m.SettingPreference },
+				func(s *ui.FirewallRule) *string { return &s.SettingPreference },
+				resourcekit.NullZero,
+			),
+			boolean(
+				"protocol_match_excepted",
+				func(m *firewallRuleKitModel) *types.Bool { return &m.ProtocolMatchExcept },
+				func(s *ui.FirewallRule) *bool { return &s.ProtocolMatchExcepted },
+			),
 		},
 		Backend: resourcekit.Backend[ui.FirewallRule]{
 			GetID: func(s *ui.FirewallRule) string { return s.ID },

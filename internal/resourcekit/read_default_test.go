@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -51,7 +50,9 @@ func TestReadDefaultSubstitutesOnlyForAnEmptyRead(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			var model defaultModel
 			sdk := defaultSDK{Gateway: testCase.sdk}
-			if diags := defaultField("default").ToModel(context.Background(), &sdk, &model); diags.HasError() {
+			if diags := defaultField(
+				"default",
+			).ToModel(context.Background(), &sdk, &model); diags.HasError() {
 				t.Fatalf("ToModel: %v", diags)
 			}
 			if got := model.Gateway.ValueString(); got != testCase.want {
@@ -95,8 +96,10 @@ func TestAReadDefaultDoesNotChangeWhatThePlanReportsAsSet(t *testing.T) {
 		{"without one", defaultField("")},
 	} {
 		if testCase.field.SetInPlan(&absent) {
-			t.Errorf("%s: a null plan value reported as set, so the default would be sent on update",
-				testCase.name)
+			t.Errorf(
+				"%s: a null plan value reported as set, so the default would be sent on update",
+				testCase.name,
+			)
 		}
 	}
 	// The positive half: a value the practitioner DID write is still reported,
@@ -288,7 +291,9 @@ func TestInt64PtrOmitsZeroOnlyWhenAsked(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			var sdk intSDK
 			model := intModel{Group: testCase.value}
-			if diags := intPtrField(testCase.omitZero).ToSDK(context.Background(), &model, &sdk); diags.HasError() {
+			if diags := intPtrField(
+				testCase.omitZero,
+			).ToSDK(context.Background(), &model, &sdk); diags.HasError() {
 				t.Fatalf("ToSDK: %v", diags)
 			}
 			if (sdk.Group == nil) != testCase.wantNil {

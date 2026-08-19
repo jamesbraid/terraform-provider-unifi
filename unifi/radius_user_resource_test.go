@@ -275,7 +275,6 @@ func Test_radiusUserResource_IdentitySchema(t *testing.T) {
 }
 
 func Test_radiusUserResource_applyPlanToState(t *testing.T) {
-
 	t.Run("plan values override state", func(t *testing.T) {
 		plan := &radiusUserKitModel{
 			Name:             types.StringValue("new-name"),

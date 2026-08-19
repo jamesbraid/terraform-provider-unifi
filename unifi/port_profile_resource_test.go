@@ -645,7 +645,12 @@ func Test_portProfileResource_portProfileToModel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := portProfileToModelWithHooks(tt.args.ctx, tt.args.api, tt.args.model, tt.args.site)
+			got := portProfileToModelWithHooks(
+				tt.args.ctx,
+				tt.args.api,
+				tt.args.model,
+				tt.args.site,
+			)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ToModel() = %v, want %v", got, tt.want)
 			}
@@ -1201,7 +1206,12 @@ func TestPortProfileReadDefaults(t *testing.T) {
 				t.Fatalf("ToModel: %v", d)
 			}
 			if got := testCase.read(&model); got != testCase.want {
-				t.Errorf("%s = %q on an empty read, want %q", testCase.attribute, got, testCase.want)
+				t.Errorf(
+					"%s = %q on an empty read, want %q",
+					testCase.attribute,
+					got,
+					testCase.want,
+				)
 			}
 		})
 	}

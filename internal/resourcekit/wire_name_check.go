@@ -43,7 +43,9 @@ func WireNameProblems[M any, S any](spec Spec[M, S]) []string {
 		if !accessor.IsValid() || accessor.Kind() != reflect.Func {
 			problems = append(problems, fmt.Sprintf(
 				"%s: field %q has no SDK accessor the check could follow, so its wire name is unverifiable",
-				spec.TypeName, field.WireName()))
+				spec.TypeName,
+				field.WireName(),
+			))
 			continue
 		}
 		results := accessor.Call([]reflect.Value{reflect.ValueOf(&sdk)})
@@ -57,7 +59,9 @@ func WireNameProblems[M any, S any](spec Spec[M, S]) []string {
 		if !ok {
 			problems = append(problems, fmt.Sprintf(
 				"%s: field %q reaches a struct field carrying no json tag, so nothing names it on the wire",
-				spec.TypeName, field.WireName()))
+				spec.TypeName,
+				field.WireName(),
+			))
 			continue
 		}
 		if tag != field.WireName() {

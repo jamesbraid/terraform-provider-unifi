@@ -533,7 +533,12 @@ func Test_staticRouteFrameworkResource_wireMaskFollowsTheRouteType(t *testing.T)
 				t.Fatalf("WireFields: %v", err)
 			}
 			if slices.Contains(fields, testCase.absent) {
-				t.Errorf("a %s names %q on the wire: %v", testCase.routeType, testCase.absent, fields)
+				t.Errorf(
+					"a %s names %q on the wire: %v",
+					testCase.routeType,
+					testCase.absent,
+					fields,
+				)
 			}
 		})
 	}

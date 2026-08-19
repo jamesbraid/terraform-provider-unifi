@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/go-unifi/unifi"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	resource_port_profile "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_profile"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -97,8 +96,10 @@ func (r *portProfileKitResource) Configure(
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData),
+			fmt.Sprintf(
+				"Expected *Client, got: %T. Please report this issue to the provider developers.",
+				req.ProviderData,
+			),
 		)
 		return
 	}
@@ -117,7 +118,9 @@ func (r *portProfileKitResource) Configure(
 // AfterReceive turns them back. The kit runs all three on create, read, update
 // AND list, which is what makes a listed port profile agree with a read one.
 
-func portProfilePrefetchNetworks(client *ui.ApiClient) func(context.Context, string) (any, diag.Diagnostics) {
+func portProfilePrefetchNetworks(
+	client *ui.ApiClient,
+) func(context.Context, string) (any, diag.Diagnostics) {
 	return func(ctx context.Context, site string) (any, diag.Diagnostics) {
 		var diags diag.Diagnostics
 		networks, err := client.ListNetwork(ctx, site)
@@ -133,7 +136,7 @@ func portProfilePrefetchNetworks(client *ui.ApiClient) func(context.Context, str
 func portProfileBeforeSend(
 	ctx context.Context,
 	config, plan *portProfileKitModel,
-	sdk *unifi.PortProfile,
+	sdk *ui.PortProfile,
 	prefetched any,
 ) diag.Diagnostics {
 	// THE CONFIG, NOT THE PLAN. resolvePortProfileVLANMode refuses a
@@ -144,7 +147,7 @@ func portProfileBeforeSend(
 	if diags.HasError() {
 		return diags
 	}
-	networks, _ := prefetched.([]unifi.Network)
+	networks, _ := prefetched.([]ui.Network)
 	if err := applyPortProfileVLANConfig(
 		vlanConfig,
 		portProfileTaggedNetworkUniverse(networks, sdk.NATiveNetworkID),
@@ -157,11 +160,11 @@ func portProfileBeforeSend(
 
 func portProfileAfterReceive(
 	ctx context.Context,
-	sdk *unifi.PortProfile,
+	sdk *ui.PortProfile,
 	model *portProfileKitModel,
 	prefetched any,
 ) diag.Diagnostics {
-	networks, _ := prefetched.([]unifi.Network)
+	networks, _ := prefetched.([]ui.Network)
 	diags := setPortProfileTaggedNetworkState(ctx, sdk, networks, model)
 
 	// excluded_networkconf_ids is read back ONLY under the custom mode, which
@@ -183,14 +186,14 @@ func portProfileAfterReceive(
 // portProfileTaggedNetworkUniverse returns the site networks which can be
 // carried as tagged VLANs by a port profile. The native network is carried
 // untagged and therefore never belongs to this set.
-func portProfileTaggedNetworkUniverse(networks []unifi.Network, nativeNetworkID string) []string {
+func portProfileTaggedNetworkUniverse(networks []ui.Network, nativeNetworkID string) []string {
 	ids := make([]string, 0, len(networks))
 	for _, network := range networks {
 		if network.ID == "" || network.ID == nativeNetworkID || network.VLAN == nil {
 			continue
 		}
 		switch network.Purpose {
-		case unifi.PurposeCorporate, unifi.PurposeGuest, unifi.PurposeVLANOnly:
+		case ui.PurposeCorporate, ui.PurposeGuest, ui.PurposeVLANOnly:
 			ids = append(ids, network.ID)
 		}
 	}
@@ -407,7 +410,7 @@ func portProfileVLANConfigFromModel(
 func applyPortProfileVLANConfig(
 	config portProfileVLANConfig,
 	universe []string,
-	api *unifi.PortProfile,
+	api *ui.PortProfile,
 ) error {
 	var excluded []string
 	forward, err := resolvePortProfileForward(config.Mode, config.Forward)
@@ -438,8 +441,8 @@ func applyPortProfileVLANConfig(
 
 func setPortProfileTaggedNetworkState(
 	ctx context.Context,
-	api *unifi.PortProfile,
-	networks []unifi.Network,
+	api *ui.PortProfile,
+	networks []ui.Network,
 	model *portProfileKitModel,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics

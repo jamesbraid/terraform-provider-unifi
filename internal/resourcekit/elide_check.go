@@ -87,7 +87,9 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 		if !ok {
 			problems = append(problems, fmt.Sprintf(
 				"%s: field %q has no model accessor the check could follow, so its Elide is unverifiable",
-				spec.TypeName, field.WireName()))
+				spec.TypeName,
+				field.WireName(),
+			))
 			continue
 		}
 		attribute, ok := built.Attributes[name]
@@ -110,7 +112,10 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 		// OPTIONAL, because a Required attribute is always in the config, so
 		// the empty read the default exists to catch cannot happen -- a
 		// default there is dead code claiming to be a behaviour.
-		if def := value.FieldByName("ReadDefault"); def.IsValid() && def.Kind() == reflect.String && def.String() != "" {
+		if def := value.FieldByName(
+			"ReadDefault",
+		); def.IsValid() && def.Kind() == reflect.String &&
+			def.String() != "" {
 			if !attribute.IsOptional() || !attribute.IsComputed() {
 				problems = append(problems, fmt.Sprintf(
 					"%s.%s substitutes %q on an empty read but the schema declares it %s; "+
