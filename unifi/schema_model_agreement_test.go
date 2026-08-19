@@ -127,12 +127,16 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 	// Deleting either left nothing comparing the ends at all.
 	//
 	// A CHECK BUILT FOR A DEFECT, WHICH DOES NOT FIRE ON THAT DEFECT, IS WORTH
-	// NOTHING -- this file's lesson, applied to itself one layer out. And the
-	// sharper half: being mutation-proven did not reveal the absence, because
-	// every mutation tests a check that already exists. Mutation testing
-	// measures the checks you have against the code you have; it cannot see a
-	// check you only described. Read the code, not the header -- including this
-	// one.
+	// NOTHING -- this file's lesson, applied to itself one layer out.
+	//
+	// THE RULE WAS DESCRIBED HERE BEFORE IT WAS IMPLEMENTED, and the gap
+	// survived a suite that was mutation-proven throughout. That is not an
+	// oversight in the mutation testing: it exercises the checks you HAVE
+	// against the code you have, so it is structurally blind to a check that
+	// exists only in prose. Every mutation it ran tested something real.
+	//
+	// So a header is not coverage, and this file is now its own worked example
+	// of the difference. Read the code -- including this comment's own claims.
 	//
 	// WHAT IT COMPARES. A schema binding CustomType X requires some model to
 	// declare that attribute as XValue, and a model field declared XValue
