@@ -41,8 +41,27 @@ type nestedAttribute struct {
 //
 // It is also not bounded by test coverage, which is the point. The controller
 // run found the defect on nine surfaces and could not find it on
-// unifi_firewall_policy, which has no managed acceptance test and sixteen uses
+// unifi_firewall_policy, which had no managed acceptance test and sixteen uses
 // on the fleet.
+//
+// THAT SENTENCE WAS TRUE FOR FORTY-ONE MINUTES. It was written at 13:58 on
+// 2026-08-15 in 76969e84, on a branch where unifi_firewall_policy genuinely had
+// no managed acceptance test. 4ec8ab23 had added one at 12:22 the same day on a
+// DIVERGENT line, and 84189fe7 merged the two at 14:39 -- so the claim became
+// false without anyone editing this file or the tests it describes. Since then
+// three managed acceptance tests exercise the surface:
+// TestAccFirewallPolicyFramework_basic, TestAccFirewallPolicyScheduleIsManageable
+// and the match-flags regression.
+//
+// It is kept in the past tense rather than deleted because it records WHY the
+// controller run missed this surface, which is still the reason this check
+// exists. Two people later read it as a present-tense fact and planned work
+// around it.
+//
+// The general form, and it is worth more than the correction: A MERGE CAN
+// FALSIFY A COMMENT IN A FILE IT DOES NOT TOUCH. Nothing diffs, nothing fails,
+// and the sentence goes on reading as current. Prose that describes the tree
+// outside its own file has no guard, so date it and name the commit.
 //
 // TWO CHECKS, and the second runs in both directions:
 //
