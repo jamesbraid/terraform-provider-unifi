@@ -671,3 +671,99 @@ func TestBeforeSendRunsOnTheObjectThatIsActuallySent(t *testing.T) {
 			"was discarded -- move it after buildUpdateBody.", sent.Unmanaged)
 	}
 }
+
+// TestBeforeSendSeesAnEmptyIDOnCreateAndTheRealOneOnUpdate pins the invariant a
+// create/update asymmetry inside BeforeSend has to stand on.
+//
+// BeforeSend has ONE signature for BOTH writes, so a hook that must behave
+// differently on the two has to tell them apart from its arguments. The only
+// thing that separates them is the effective model's ID: Create passes the
+// plan, whose Computed id is unknown and reads as "", and Update passes state,
+// which carries the controller's id -- and Update refuses an empty id before
+// the hook is ever reached, so the update direction cannot silently take a
+// create branch.
+//
+// firewall_policy depends on exactly this. The controller rejects a policy
+// whose schedule is null, so the field has to be on every write, and the value
+// differs by operation: a literal on create, the controller's current schedule
+// on update. Getting the branch backwards is destructive rather than noisy --
+// it resets a practitioner's schedule with no diff to show for it -- which is
+// why the invariant is pinned here instead of assumed in the descriptor.
+func TestBeforeSendSeesAnEmptyIDOnCreateAndTheRealOneOnUpdate(t *testing.T) {
+	ctx := context.Background()
+
+	newHook := func(seen *[]string) func(context.Context, *kitModel, *kitModel, *kitSDK, any) diag.Diagnostics {
+		return func(_ context.Context, _, effective *kitModel, _ *kitSDK, _ any) diag.Diagnostics {
+			*seen = append(*seen, effective.ID.ValueString())
+			return nil
+		}
+	}
+
+	var onCreate []string
+	create := kitResource(Backend[kitSDK]{
+		Create: func(_ context.Context, _ string, in *kitSDK) (*kitSDK, error) {
+			return &kitSDK{ID: "assigned-by-controller", Name: in.Name}, nil
+		},
+	})
+	create.Spec.BeforeSend = newHook(&onCreate)
+	plan := kitStateWith(t, kitModel{
+		ID: types.StringNull(), Site: types.StringValue("default"),
+		Name: types.StringValue("probe"),
+	})
+	createIdentity := kitIdentity(t)
+	createResp := &resource.CreateResponse{
+		State: tfsdk.State{Schema: kitSchema(ctx)}, Identity: &createIdentity,
+	}
+	create.Create(ctx, resource.CreateRequest{
+		Plan: tfsdk.Plan(plan), Config: tfsdk.Config(plan),
+	}, createResp)
+	if createResp.Diagnostics.HasError() {
+		t.Fatalf("Create: %v", createResp.Diagnostics)
+	}
+
+	var onUpdate []string
+	update := kitResource(Backend[kitSDK]{
+		Read: func(context.Context, string, string) (*kitSDK, error) {
+			return &kitSDK{ID: "id-1", Name: "from-state"}, nil
+		},
+		UpdateFields: func(_ context.Context, _ string, in *kitSDK, _ ...string) (*kitSDK, error) {
+			return in, nil
+		},
+	})
+	update.Spec.BeforeSend = newHook(&onUpdate)
+	updateState := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("from-state"),
+	})
+	updatePlan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("renamed"),
+	})
+	updateIdentity := kitIdentity(t)
+	updateResp := &resource.UpdateResponse{
+		State: tfsdk.State{Schema: kitSchema(ctx)}, Identity: &updateIdentity,
+	}
+	update.Update(ctx, resource.UpdateRequest{
+		State: updateState, Plan: tfsdk.Plan(updatePlan), Config: tfsdk.Config(updatePlan),
+	}, updateResp)
+	if updateResp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", updateResp.Diagnostics)
+	}
+
+	// THE CONTROL. Without it every assertion below passes for a hook that
+	// never ran, which is the failure mode this file has hit before.
+	if len(onCreate) != 1 || len(onUpdate) != 1 {
+		t.Fatalf("BeforeSend ran %d time(s) on create and %d on update, want 1 each; "+
+			"the assertions below would otherwise pass vacuously", len(onCreate), len(onUpdate))
+	}
+	if onCreate[0] != "" {
+		t.Errorf("BeforeSend saw id %q on create, want empty. A hook that reads the id "+
+			"to mean \"this is an update\" would fetch an object that does not exist yet",
+			onCreate[0])
+	}
+	if onUpdate[0] != "id-1" {
+		t.Errorf("BeforeSend saw id %q on update, want id-1. A hook that carries a "+
+			"controller-owned field forward could not find the object to carry it from",
+			onUpdate[0])
+	}
+}
