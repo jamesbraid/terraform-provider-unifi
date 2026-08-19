@@ -7,24 +7,17 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_port_forward"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+	resource_port_forward "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_port_forward"
 )
 
 var (
@@ -164,151 +157,13 @@ func (r *portForwardResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a port forwarding rule on the gateway.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the port forwarding rule.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the port forwarding rule with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the port forwarding rule.",
-				Optional:            true,
-			},
-			"wan": schema.SingleNestedAttribute{
-				MarkdownDescription: "WAN configuration for the port forwarding rule.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"interface": schema.StringAttribute{
-						MarkdownDescription: "The WAN interface. Can be `wan`, `wan2`, or `both`.",
-						Optional:            true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("wan", "wan2", "both"),
-						},
-					},
-					"ip_address": schema.StringAttribute{
-						MarkdownDescription: "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
-						Optional:            true,
-						Validators: []validator.String{
-							validators.IPv4OrAnyValidator(),
-						},
-					},
-					"port": schema.StringAttribute{
-						MarkdownDescription: "The WAN port or port range (e.g. `1-10,11,12`).",
-						Optional:            true,
-					},
-				},
-			},
-			"forward": schema.SingleNestedAttribute{
-				MarkdownDescription: "Forward destination configuration.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"ip": schema.StringAttribute{
-						MarkdownDescription: "The forward IPv4 address to send traffic to.",
-						Optional:            true,
-						Validators: []validator.String{
-							validators.IPv4Validator(),
-						},
-					},
-					"port": schema.StringAttribute{
-						MarkdownDescription: "The forward port or port range (e.g. `1-10,11,12`).",
-						Optional:            true,
-					},
-				},
-			},
-			"source_limiting": schema.SingleNestedAttribute{
-				MarkdownDescription: "Source limiting configuration for the port forwarding rule.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"ip": schema.StringAttribute{
-						MarkdownDescription: "The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`.",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("any"),
-					},
-					"firewall_group_id": schema.StringAttribute{
-						MarkdownDescription: "The ID of the firewall group to use for source limiting.",
-						Optional:            true,
-					},
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether source limiting is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"type": schema.StringAttribute{
-						MarkdownDescription: "The source limiting type. Can be `ip` or `firewall_group`. Inferred automatically when only one of `ip` or `firewall_group_id` is set.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("ip", "firewall_group"),
-						},
-					},
-				},
-			},
-			"destination_ips": schema.ListNestedAttribute{
-				MarkdownDescription: "Additional destination IP/interface pairs for the port forwarding rule, used for multi-WAN setups.",
-				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"destination_ip": schema.StringAttribute{
-							MarkdownDescription: "The destination IPv4 address. Use `any` for all addresses.",
-							Optional:            true,
-							Validators: []validator.String{
-								validators.IPv4OrAnyValidator(),
-							},
-						},
-						"interface": schema.StringAttribute{
-							MarkdownDescription: "The WAN interface for this destination (e.g. `wan`, `wan2`).",
-							Optional:            true,
-							Validators: []validator.String{
-								stringvalidator.OneOf("wan", "wan2"),
-							},
-						},
-					},
-				},
-			},
-			"protocol": schema.StringAttribute{
-				MarkdownDescription: "The protocol for the port forwarding rule. Can be `tcp`, `udp`, or `tcp_udp`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("tcp_udp"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("tcp_udp", "tcp", "udp"),
-				},
-			},
-			"logging": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to enable syslog logging for forwarded traffic.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether the port forwarding rule is enabled or not.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(true),
-				DeprecationMessage:  "This attribute will be removed in a future release. Instead of disabling a port forwarding rule you can remove it from your configuration.",
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_port_forward.PortForwardResourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *portForwardResource) Configure(
