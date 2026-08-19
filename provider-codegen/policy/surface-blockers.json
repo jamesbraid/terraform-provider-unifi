@@ -92,9 +92,6 @@
     "power_supervisor": [
       "nested"
     ],
-    "radius_profile": [
-      "nested"
-    ],
     "setting": [
       "no-mapping"
     ],
@@ -132,6 +129,7 @@
     "custom-scalar": "StringLikeField[M,S,T basetypes.StringValuable]",
     "list-hooks": "Prefetch once + AfterReceive per object in the List path",
     "model-conditional": "WriteWhen func(*M) bool, gating ToSDK and SetInPlan",
+    "nested": "ObjectField for a SingleNested attribute and ObjectListField for a list or block, both with NestedProblems checking the element type for force-emitted members a top-level mask cannot reach",
     "nullable-duration": "DurationPtrField, distinguishing nil from a pointer to zero",
     "omit-zero-int": "Int64PtrField.OmitZero, a write rule distinct from Elide's read rule",
     "pointer-string": "StringLikePtrField, omitting the empty string the controller rejects",
