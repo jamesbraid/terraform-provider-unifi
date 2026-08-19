@@ -486,7 +486,11 @@ func (r *wanResource) adoptExistingWAN(
 	}
 
 	network.ID = existing.ID
-	return r.client.UpdateNetwork(ctx, site, network)
+	// MASKED. See wanWireFields: this PUTs the caller's plan-built object over
+	// an existing controller-configured WAN, so a whole-object write blanked
+	// every field the provider does not model -- including the PPPoE
+	// credentials.
+	return r.client.UpdateNetworkFields(ctx, site, network, wanWireFields(network)...)
 }
 
 // overlayConfig applies only explicitly-configured values from config onto state.
@@ -653,7 +657,10 @@ func (r *wanResource) Update(
 
 	// Step 4: Send to API
 	network.ID = state.ID.ValueString()
-	updatedNetwork, err := r.client.UpdateNetwork(ctx, site, network)
+	// MASKED, and this is the frequent site: Update runs on every apply that
+	// touches a WAN, where adoptExistingWAN runs once.
+	updatedNetwork, err := r.client.UpdateNetworkFields(
+		ctx, site, network, wanWireFields(network)...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Client Error",

@@ -454,3 +454,111 @@ func TestNetworkUpdateUsesTheMaskedCall(t *testing.T) {
 		t.Fatal("the file read is not network_resource.go; the assertions above prove nothing")
 	}
 }
+
+// unifi_wan has TWO call sites and both were whole-object. Update runs on every
+// apply that touches a WAN; adoptExistingWAN runs once, when a create finds the
+// interface already there. The frequent one is the one that went unnamed in the
+// first census, which is why this test counts call sites rather than checking
+// that a masked call exists somewhere.
+func TestWANUsesTheMaskedCallAtEverySite(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "unifi", "wan_resource.go"))
+	if err != nil {
+		t.Fatalf("reading the resource: %v", err)
+	}
+	src := string(raw)
+
+	if n := strings.Count(src, "UpdateNetworkFields("); n != 2 {
+		t.Errorf("found %d masked calls, want 2 -- Update and adoptExistingWAN", n)
+	}
+	if regexp.MustCompile(`UpdateNetwork\(ctx`).MatchString(src) {
+		t.Error("a whole-object UpdateNetwork( call remains in wan_resource.go")
+	}
+	if !strings.Contains(src, "func (r *wanResource) adoptExistingWAN(") {
+		t.Fatal("the file read is not wan_resource.go; the assertions above prove nothing")
+	}
+}
+
+// THE SEVEN FIELDS unifi_wan was blanking, two of them credentials.
+func TestWANMaskExcludesTheFieldsItDoesNotManage(t *testing.T) {
+	unmanaged := []string{
+		"x_wan_password", "wan_username",
+		"wan_pppoe_password_enabled", "wan_pppoe_username_enabled",
+		"interface_mtu_enabled", "wan_ipv6", "wan_gateway_v6",
+	}
+	name := "probe"
+	network := &ui.Network{Purpose: ui.PurposeWAN, Name: &name, Enabled: true}
+	mask := wanWireFields(network)
+	if len(mask) == 0 {
+		t.Fatal("the mask is empty, so the assertions below would pass vacuously")
+	}
+
+	raw, err := json.Marshal(network)
+	if err != nil {
+		t.Fatalf("encoding a WAN: %v", err)
+	}
+	var encoded map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &encoded); err != nil {
+		t.Fatalf("reading back: %v", err)
+	}
+
+	for _, field := range unmanaged {
+		if slices.Contains(mask, field) {
+			t.Errorf("%s is in the mask; the resource does not assign it and the "+
+				"whole-object write was blanking it", field)
+		}
+		// The control: the encoder DOES send it for this purpose, so excluding
+		// it from the mask is what stops the write.
+		if _, carried := encoded[field]; !carried {
+			t.Errorf("marshalWAN does not emit %s at all, so excluding it proves nothing", field)
+		}
+	}
+	if !slices.Contains(mask, "name") {
+		t.Error("name is missing from the mask, so a rename would not be written")
+	}
+}
+
+// The declared list must match what the resource assigns, same as network's.
+func TestWANManagedWireFieldsMatchTheResource(t *testing.T) {
+	assigned := networkFieldsAssignedBy(t, "unifi/wan_resource.go", "modelToNetwork")
+	if len(assigned) == 0 {
+		t.Fatal("no assignments found; the parse failed")
+	}
+	tags := networkJSONTags(t)
+	declared := map[string]bool{}
+	for _, name := range wanManagedWireFields() {
+		declared[name] = true
+	}
+	for _, field := range assigned {
+		tag, ok := tags[field]
+		if !ok || tag == "_id" || tag == "site_id" {
+			continue
+		}
+		if !declared[tag] {
+			t.Errorf("modelToNetwork assigns %s (Network.%s) but it is not in "+
+				"wanManagedWireFields, so it would never be written", tag, field)
+		}
+	}
+}
+
+// A mask may name only what the purpose encodes, or go-unifi refuses the write.
+func TestWANMaskNamesOnlyWhatThePurposeEncodes(t *testing.T) {
+	name := "probe"
+	network := &ui.Network{Purpose: ui.PurposeWAN, Name: &name, Enabled: true}
+	raw, err := json.Marshal(network)
+	if err != nil {
+		t.Fatalf("encoding: %v", err)
+	}
+	var encoded map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &encoded); err != nil {
+		t.Fatalf("reading back: %v", err)
+	}
+	mask := wanWireFields(network)
+	if len(mask) == 0 {
+		t.Fatal("the mask is empty")
+	}
+	for _, field := range mask {
+		if _, carried := encoded[field]; !carried {
+			t.Errorf("the mask names %q, which a WAN does not encode", field)
+		}
+	}
+}
