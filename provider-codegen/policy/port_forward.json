@@ -4,7 +4,7 @@
     "list_resource": "1a62efc7f26708ffc9c085a1a7f86566f28d803cc5fd6dceaf2434e28245c503",
     "resource": "dec99a303604aa0a4d86ed8c6082ab616d404b6627f5996ca4b4d9fd479f71b6"
   },
-  "description": "Forward a port or port range from a WAN interface to a host on the network.",
+  "description": "Manages a port forwarding rule on the gateway.",
   "fields": [
     {
       "disposition": "omitted",
@@ -38,7 +38,7 @@
     },
     {
       "attribute": {
-        "computed_optional_required": "required",
+        "computed_optional_required": "optional",
         "description": "The name of the port forwarding rule."
       },
       "disposition": "managed",
@@ -96,14 +96,14 @@
     },
     {
       "attribute": {
-        "computed_optional_required": "computed_optional",
+        "computed_optional_required": "optional",
         "description": "Additional destination IP/interface pairs for the port forwarding rule, used for multi-WAN setups."
       },
       "disposition": "managed",
       "fields": [
         {
           "attribute": {
-            "computed_optional_required": "computed_optional",
+            "computed_optional_required": "optional",
             "description": "The destination IPv4 address. Use `any` for all addresses.",
             "validators": [
               {
@@ -124,7 +124,7 @@
         },
         {
           "attribute": {
-            "computed_optional_required": "computed_optional",
+            "computed_optional_required": "optional",
             "description": "The WAN interface for this destination (e.g. `wan`, `wan2`).",
             "validators": [
               {
@@ -154,13 +154,13 @@
   "groupings": [
     {
       "attribute": {
-        "computed_optional_required": "computed_optional",
+        "computed_optional_required": "optional",
         "description": "WAN configuration for the port forwarding rule."
       },
       "members": [
         {
           "attribute": {
-            "computed_optional_required": "computed_optional",
+            "computed_optional_required": "optional",
             "description": "The WAN interface. Can be `wan`, `wan2`, or `both`.",
             "validators": [
               {
@@ -181,7 +181,7 @@
         },
         {
           "attribute": {
-            "computed_optional_required": "computed_optional",
+            "computed_optional_required": "optional",
             "description": "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
             "validators": [
               {
@@ -202,7 +202,7 @@
         },
         {
           "attribute": {
-            "computed_optional_required": "computed_optional",
+            "computed_optional_required": "optional",
             "description": "The WAN port or port range (e.g. `1-10,11,12`)."
           },
           "disposition": "managed",
@@ -215,13 +215,13 @@
     },
     {
       "attribute": {
-        "computed_optional_required": "computed_optional",
+        "computed_optional_required": "optional",
         "description": "Forward destination configuration."
       },
       "members": [
         {
           "attribute": {
-            "computed_optional_required": "computed_optional",
+            "computed_optional_required": "optional",
             "description": "The forward IPv4 address to send traffic to.",
             "validators": [
               {
@@ -242,7 +242,7 @@
         },
         {
           "attribute": {
-            "computed_optional_required": "computed_optional",
+            "computed_optional_required": "optional",
             "description": "The forward port or port range (e.g. `1-10,11,12`)."
           },
           "disposition": "managed",
@@ -255,7 +255,7 @@
     },
     {
       "attribute": {
-        "computed_optional_required": "computed_optional",
+        "computed_optional_required": "optional",
         "description": "Source limiting configuration for the port forwarding rule."
       },
       "members": [
@@ -273,7 +273,7 @@
         },
         {
           "attribute": {
-            "computed_optional_required": "computed_optional",
+            "computed_optional_required": "optional",
             "description": "The ID of the firewall group to use for source limiting."
           },
           "disposition": "managed",

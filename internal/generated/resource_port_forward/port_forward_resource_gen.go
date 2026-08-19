@@ -30,7 +30,6 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 					Attributes: map[string]schema.Attribute{
 						"destination_ip": schema.StringAttribute{
 							Optional:            true,
-							Computed:            true,
 							Description:         "The destination IPv4 address. Use `any` for all addresses.",
 							MarkdownDescription: "The destination IPv4 address. Use `any` for all addresses.",
 							Validators: []validator.String{
@@ -39,7 +38,6 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 						},
 						"interface": schema.StringAttribute{
 							Optional:            true,
-							Computed:            true,
 							Description:         "The WAN interface for this destination (e.g. `wan`, `wan2`).",
 							MarkdownDescription: "The WAN interface for this destination (e.g. `wan`, `wan2`).",
 							Validators: []validator.String{
@@ -49,7 +47,6 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 				Optional:            true,
-				Computed:            true,
 				Description:         "Additional destination IP/interface pairs for the port forwarding rule, used for multi-WAN setups.",
 				MarkdownDescription: "Additional destination IP/interface pairs for the port forwarding rule, used for multi-WAN setups.",
 			},
@@ -65,7 +62,6 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 				Attributes: map[string]schema.Attribute{
 					"ip": schema.StringAttribute{
 						Optional:            true,
-						Computed:            true,
 						Description:         "The forward IPv4 address to send traffic to.",
 						MarkdownDescription: "The forward IPv4 address to send traffic to.",
 						Validators: []validator.String{
@@ -74,13 +70,11 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 					},
 					"port": schema.StringAttribute{
 						Optional:            true,
-						Computed:            true,
 						Description:         "The forward port or port range (e.g. `1-10,11,12`).",
 						MarkdownDescription: "The forward port or port range (e.g. `1-10,11,12`).",
 					},
 				},
 				Optional:            true,
-				Computed:            true,
 				Description:         "Forward destination configuration.",
 				MarkdownDescription: "Forward destination configuration.",
 			},
@@ -100,7 +94,7 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 				Default:             booldefault.StaticBool(false),
 			},
 			"name": schema.StringAttribute{
-				Required:            true,
+				Optional:            true,
 				Description:         "The name of the port forwarding rule.",
 				MarkdownDescription: "The name of the port forwarding rule.",
 			},
@@ -135,7 +129,6 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 					},
 					"firewall_group_id": schema.StringAttribute{
 						Optional:            true,
-						Computed:            true,
 						Description:         "The ID of the firewall group to use for source limiting.",
 						MarkdownDescription: "The ID of the firewall group to use for source limiting.",
 					},
@@ -157,7 +150,6 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 				Optional:            true,
-				Computed:            true,
 				Description:         "Source limiting configuration for the port forwarding rule.",
 				MarkdownDescription: "Source limiting configuration for the port forwarding rule.",
 			},
@@ -165,7 +157,6 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 				Attributes: map[string]schema.Attribute{
 					"interface": schema.StringAttribute{
 						Optional:            true,
-						Computed:            true,
 						Description:         "The WAN interface. Can be `wan`, `wan2`, or `both`.",
 						MarkdownDescription: "The WAN interface. Can be `wan`, `wan2`, or `both`.",
 						Validators: []validator.String{
@@ -174,7 +165,6 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 					},
 					"ip_address": schema.StringAttribute{
 						Optional:            true,
-						Computed:            true,
 						Description:         "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
 						MarkdownDescription: "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
 						Validators: []validator.String{
@@ -183,18 +173,16 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 					},
 					"port": schema.StringAttribute{
 						Optional:            true,
-						Computed:            true,
 						Description:         "The WAN port or port range (e.g. `1-10,11,12`).",
 						MarkdownDescription: "The WAN port or port range (e.g. `1-10,11,12`).",
 					},
 				},
 				Optional:            true,
-				Computed:            true,
 				Description:         "WAN configuration for the port forwarding rule.",
 				MarkdownDescription: "WAN configuration for the port forwarding rule.",
 			},
 		},
-		MarkdownDescription: "Forward a port or port range from a WAN interface to a host on the network.",
+		MarkdownDescription: "Manages a port forwarding rule on the gateway.",
 	}
 }
 
