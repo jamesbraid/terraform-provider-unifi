@@ -137,7 +137,10 @@ func radiusProfileKitSpec() resourcekit.Spec[radiusProfileKitModel, ui.RADIUSPro
 				Wire:  "vlan_wlan_mode",
 				Model: func(m *radiusProfileKitModel) *types.String { return &m.VlanWlanMode },
 				SDK:   func(s *ui.RADIUSProfile) *string { return &s.VLANWLANMode },
-				Elide: resourcekit.NullZero,
+				// KeepZero DESPITE the OneOf rejecting "": the attribute also
+				// declares Default: StaticString(""), so every apply that omits
+				// it plans "" and the read has to give "" back.
+				Elide: resourcekit.KeepZero,
 			},
 			// THE WIRE NAMES ARE PLURAL AND THE TERRAFORM NAMES ARE NOT.
 			// acct_server is the block; acct_servers is what the controller
