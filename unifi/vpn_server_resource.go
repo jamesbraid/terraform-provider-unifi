@@ -719,9 +719,36 @@ func (r *vpnServerResource) networkToModel(
 			return types.StringValue(*ptr)
 		}
 
+		// DERIVED WHEN THE CONTROLLER DOES NOT SEND ONE, which on 10.4.57 is
+		// always: wireguard_public_key is absent on create, absent after every
+		// update, and absent forever, so this attribute was null for its whole
+		// life. Nothing errored, because Computed plus UseStateForUnknown makes
+		// a null plan agree with a null read -- it was consistently empty.
+		//
+		// A practitioner reading it into a peer configuration or an output got
+		// an empty string and no diagnostic, against a description promising a
+		// value computed from the private key. That is now true.
+		publicKeyVal := strPtrToType(network.WireguardPublicKey)
+		if publicKeyVal.IsNull() && !privateKeyVal.IsNull() && privateKeyVal.ValueString() != "" {
+			derived, err := wireguardPublicKey(privateKeyVal.ValueString())
+			if err != nil {
+				// REPORTED, NOT SWALLOWED. Falling back to null here would
+				// restore the behaviour this replaces, and silently: the
+				// practitioner would see the same empty string and have no way
+				// to learn the key was malformed.
+				diags.AddError(
+					"Cannot derive the WireGuard public key",
+					"The controller does not return wireguard_public_key, so the provider "+
+						"derives it from the private key. That failed: "+err.Error(),
+				)
+			} else {
+				publicKeyVal = types.StringValue(derived)
+			}
+		}
+
 		wireguardValue := vpnServerWireguardModel{
 			PrivateKey: privateKeyVal,
-			PublicKey:  strPtrToType(network.WireguardPublicKey),
+			PublicKey:  publicKeyVal,
 			Port:       vpnServerLocalPortFromNetwork(network),
 		}
 		var d diag.Diagnostics
