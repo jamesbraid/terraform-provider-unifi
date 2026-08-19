@@ -128,6 +128,10 @@ func TestPlainMasksMatchTheirResource(t *testing.T) {
 // radius_profile's six x_client_* secrets, which are unmanaged too and were
 // never at risk, because omitempty drops them.
 func TestPlainMasksExcludeWhatTheResourceDoesNotManage(t *testing.T) {
+	if len(plainMaskedSurfaces()) == 0 {
+		t.Skip("no surface carries a hand-kept wire mask; they all derive one from Spec.Fields")
+	}
+
 	for _, surface := range plainMaskedSurfaces() {
 		t.Run(surface.name, func(t *testing.T) {
 			mask := surface.declared()
@@ -164,6 +168,10 @@ func TestPlainMasksExcludeWhatTheResourceDoesNotManage(t *testing.T) {
 // go-unifi's maskedBody refuses a mask naming a key the encoding does not
 // carry, so a misspelling fails the apply rather than being ignored.
 func TestPlainMasksNameOnlyRealWireNames(t *testing.T) {
+	if len(plainMaskedSurfaces()) == 0 {
+		t.Skip("no surface carries a hand-kept wire mask; they all derive one from Spec.Fields")
+	}
+
 	for _, surface := range plainMaskedSurfaces() {
 		t.Run(surface.name, func(t *testing.T) {
 			tags, _ := wireTagsOf(surface.object)
