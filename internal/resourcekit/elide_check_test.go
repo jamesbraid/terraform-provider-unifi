@@ -44,15 +44,21 @@ func probeSpec(req, opt, cmp ElideZero) Spec[probeModel, probeSDK] {
 	return Spec[probeModel, probeSDK]{
 		TypeName: "probe",
 		Fields: []Field[probeModel, probeSDK]{
-			StringField[probeModel, probeSDK]{Wire: "req",
+			StringField[probeModel, probeSDK]{
+				Wire:  "req",
 				Model: func(m *probeModel) *types.String { return &m.Req },
-				SDK:   func(s *probeSDK) *string { return &s.Req }, Elide: req},
-			StringField[probeModel, probeSDK]{Wire: "opt",
+				SDK:   func(s *probeSDK) *string { return &s.Req }, Elide: req,
+			},
+			StringField[probeModel, probeSDK]{
+				Wire:  "opt",
 				Model: func(m *probeModel) *types.String { return &m.Opt },
-				SDK:   func(s *probeSDK) *string { return &s.Opt }, Elide: opt},
-			StringField[probeModel, probeSDK]{Wire: "cmp",
+				SDK:   func(s *probeSDK) *string { return &s.Opt }, Elide: opt,
+			},
+			StringField[probeModel, probeSDK]{
+				Wire:  "cmp",
 				Model: func(m *probeModel) *types.String { return &m.Cmp },
-				SDK:   func(s *probeSDK) *string { return &s.Cmp }, Elide: cmp},
+				SDK:   func(s *probeSDK) *string { return &s.Cmp }, Elide: cmp,
+			},
 		},
 	}
 }
@@ -92,17 +98,26 @@ func TestEachFieldIsJudgedOnItsOwn(t *testing.T) {
 		t.Errorf("the wrong field was not the one reported: %v", problems)
 	}
 	if !strings.Contains(problems[0], "Required") || !strings.Contains(problems[0], "KeepZero") {
-		t.Errorf("the message does not say what the schema declares or what it wants: %q", problems[0])
+		t.Errorf(
+			"the message does not say what the schema declares or what it wants: %q",
+			problems[0],
+		)
 	}
 }
 
 // TestAnAttributeMissingFromTheSchemaIsReported keeps the check from passing
 // silently when it cannot find what it is meant to compare against.
 func TestAnAttributeMissingFromTheSchemaIsReported(t *testing.T) {
-	bare := schema.Schema{Attributes: map[string]schema.Attribute{"req": schema.StringAttribute{Required: true}}}
+	bare := schema.Schema{
+		Attributes: map[string]schema.Attribute{"req": schema.StringAttribute{Required: true}},
+	}
 	problems := ElideProblems(probeSpec(KeepZero, NullZero, KeepZero), bare)
 	if len(problems) != 2 {
-		t.Fatalf("two attributes absent from the schema produced %d problem(s): %v", len(problems), problems)
+		t.Fatalf(
+			"two attributes absent from the schema produced %d problem(s): %v",
+			len(problems),
+			problems,
+		)
 	}
 	if !strings.Contains(strings.Join(problems, "\n"), "does not declare") {
 		t.Errorf("the message does not say the schema lacks the attribute: %v", problems)
@@ -132,12 +147,21 @@ func TestOptionalComputedKeepsItsZero(t *testing.T) {
 	}}
 
 	// cmp is Optional+Computed, so KeepZero is correct and NullZero is not.
-	if problems := ElideProblems(probeSpec(KeepZero, NullZero, KeepZero), optionalComputed); len(problems) != 0 {
+	if problems := ElideProblems(
+		probeSpec(KeepZero, NullZero, KeepZero),
+		optionalComputed,
+	); len(
+		problems,
+	) != 0 {
 		t.Fatalf("Optional+Computed with KeepZero was reported wrong: %v", problems)
 	}
 	problems := ElideProblems(probeSpec(KeepZero, NullZero, NullZero), optionalComputed)
 	if len(problems) != 1 {
-		t.Fatalf("Optional+Computed with NullZero produced %d problem(s), want 1: %v", len(problems), problems)
+		t.Fatalf(
+			"Optional+Computed with NullZero produced %d problem(s), want 1: %v",
+			len(problems),
+			problems,
+		)
 	}
 	if !strings.Contains(problems[0], "Optional+Computed") {
 		t.Errorf("the message collapses the combination that is at issue: %q", problems[0])
@@ -152,9 +176,11 @@ func TestAFieldKindWithNoElideIsReportedUnlessExempt(t *testing.T) {
 		TypeName: "probe",
 		Fields: []Field[flagModel, flagSDK]{
 			// BoolField is exempt by design and must stay silent.
-			BoolField[flagModel, flagSDK]{Wire: "req",
+			BoolField[flagModel, flagSDK]{
+				Wire:  "req",
 				Model: func(m *flagModel) *types.Bool { return &m.Flag },
-				SDK:   func(s *flagSDK) *bool { return &s.Flag }},
+				SDK:   func(s *flagSDK) *bool { return &s.Flag },
+			},
 		},
 	}
 	bare := schema.Schema{Attributes: map[string]schema.Attribute{
@@ -238,12 +264,16 @@ func splitSpec(enum, free ElideZero) Spec[splitModel, splitSDK] {
 	return Spec[splitModel, splitSDK]{
 		TypeName: "split",
 		Fields: []Field[splitModel, splitSDK]{
-			StringField[splitModel, splitSDK]{Wire: "enum",
+			StringField[splitModel, splitSDK]{
+				Wire:  "enum",
 				Model: func(m *splitModel) *types.String { return &m.Enum },
-				SDK:   func(s *splitSDK) *string { return &s.Enum }, Elide: enum},
-			StringField[splitModel, splitSDK]{Wire: "free",
+				SDK:   func(s *splitSDK) *string { return &s.Enum }, Elide: enum,
+			},
+			StringField[splitModel, splitSDK]{
+				Wire:  "free",
 				Model: func(m *splitModel) *types.String { return &m.Free },
-				SDK:   func(s *splitSDK) *string { return &s.Free }, Elide: free},
+				SDK:   func(s *splitSDK) *string { return &s.Free }, Elide: free,
+			},
 		},
 	}
 }
@@ -259,15 +289,27 @@ func splitSchema(required bool) schema.Schema {
 		"enum": enum,
 		// Same flags, no validator: a free-text attribute whose empty value is
 		// something the practitioner could legitimately have written.
-		"free": schema.StringAttribute{Optional: !required, Computed: !required, Required: required},
+		"free": schema.StringAttribute{
+			Optional: !required,
+			Computed: !required,
+			Required: required,
+		},
 	}}
 }
 
 func TestOptionalComputedSplitsOnWhetherTheZeroIsLegal(t *testing.T) {
 	// Correct: the enum nulls its illegal zero, the free-text one keeps its
 	// legal one. Nothing reported.
-	if problems := ElideProblems(splitSpec(NullZero, KeepZero), splitSchema(false)); len(problems) != 0 {
-		t.Fatalf("the correct pair was reported, so the must-fail cases below prove nothing: %v", problems)
+	if problems := ElideProblems(
+		splitSpec(NullZero, KeepZero),
+		splitSchema(false),
+	); len(
+		problems,
+	) != 0 {
+		t.Fatalf(
+			"the correct pair was reported, so the must-fail cases below prove nothing: %v",
+			problems,
+		)
 	}
 
 	// Swapped: BOTH must be reported, and each names its own attribute. One
@@ -287,10 +329,20 @@ func TestOptionalComputedSplitsOnWhetherTheZeroIsLegal(t *testing.T) {
 // excludes the empty string, so a rule applying the split to Required would
 // have demanded NullZero on all three and broken them.
 func TestARequiredAttributeKeepsItsZeroEvenWithARejectingValidator(t *testing.T) {
-	if problems := ElideProblems(splitSpec(KeepZero, KeepZero), splitSchema(true)); len(problems) != 0 {
+	if problems := ElideProblems(
+		splitSpec(KeepZero, KeepZero),
+		splitSchema(true),
+	); len(
+		problems,
+	) != 0 {
 		t.Fatalf("a Required attribute was made subject to the zero-is-legal split: %v", problems)
 	}
-	if problems := ElideProblems(splitSpec(NullZero, NullZero), splitSchema(true)); len(problems) != 2 {
+	if problems := ElideProblems(
+		splitSpec(NullZero, NullZero),
+		splitSchema(true),
+	); len(
+		problems,
+	) != 2 {
 		t.Fatalf("the Required case reports %d problem(s) for two wrong values, so the "+
 			"assertion above passes for a rule that never fires: %v", len(problems), problems)
 	}
@@ -307,12 +359,15 @@ func TestZeroIsRejectedAsksTheValidatorsRatherThanGuessing(t *testing.T) {
 		want      bool
 	}{
 		{"OneOf excluding the empty string", schema.StringAttribute{
-			Validators: []validator.String{stringvalidator.OneOf("auto", "manual")}}, true},
+			Validators: []validator.String{stringvalidator.OneOf("auto", "manual")},
+		}, true},
 		{"OneOf including the empty string", schema.StringAttribute{
-			Validators: []validator.String{stringvalidator.OneOf("", "auto")}}, false},
+			Validators: []validator.String{stringvalidator.OneOf("", "auto")},
+		}, false},
 		{"no validators at all", schema.StringAttribute{}, false},
 		{"a length floor, which is not a OneOf", schema.StringAttribute{
-			Validators: []validator.String{stringvalidator.LengthAtLeast(1)}}, true},
+			Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
+		}, true},
 		{"a non-string attribute", schema.SetAttribute{ElementType: types.StringType}, false},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

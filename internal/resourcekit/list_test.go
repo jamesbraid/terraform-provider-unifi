@@ -42,7 +42,9 @@ func kitListResource(objects []kitSDK) *Resource[kitModel, kitSDK] {
 	r.ListSurface = ListSpec[kitSDK]{
 		ConfigSchema: kitListSchema,
 		DisplayName:  func(s *kitSDK) string { return s.Name },
-		Filters:      map[string]func(*kitSDK) string{"name": func(s *kitSDK) string { return s.Name }},
+		Filters: map[string]func(*kitSDK) string{
+			"name": func(s *kitSDK) string { return s.Name },
+		},
 	}
 	return r
 }
@@ -57,10 +59,23 @@ func kitListRequest(t *testing.T, filterName, filterValue string) list.ListReque
 
 	configSchema := kitListSchema(ctx)
 	config := tfsdk.Config{Schema: configSchema}
-	filterType := configSchema.Type().TerraformType(ctx).(tftypes.Object).AttributeTypes["filter"]
+	// CHECKED RATHER THAN FORCED. An unchecked assertion in a helper panics
+	// with a runtime message that names the type, not the schema that produced
+	// it -- and this helper builds the config for every List test, so the
+	// failure would arrive far from its cause.
+	schemaObject, ok := configSchema.Type().TerraformType(ctx).(tftypes.Object)
+	if !ok {
+		t.Fatalf("the list config schema is not an object: %T",
+			configSchema.Type().TerraformType(ctx))
+	}
+	filterType := schemaObject.AttributeTypes["filter"]
 	filterValues := tftypes.NewValue(filterType, nil)
 	if filterName != "" {
-		element := filterType.(tftypes.List).ElementType
+		filterList, ok := filterType.(tftypes.List)
+		if !ok {
+			t.Fatalf("the filter attribute is not a list: %T", filterType)
+		}
+		element := filterList.ElementType
 		filterValues = tftypes.NewValue(filterType, []tftypes.Value{
 			tftypes.NewValue(element, map[string]tftypes.Value{
 				"name":  tftypes.NewValue(tftypes.String, filterName),
@@ -74,7 +89,11 @@ func kitListRequest(t *testing.T, filterName, filterValue string) list.ListReque
 	})
 
 	identityResp := &resource.IdentitySchemaResponse{}
-	(&Resource[kitModel, kitSDK]{}).IdentitySchema(ctx, resource.IdentitySchemaRequest{}, identityResp)
+	(&Resource[kitModel, kitSDK]{}).IdentitySchema(
+		ctx,
+		resource.IdentitySchemaRequest{},
+		identityResp,
+	)
 
 	return list.ListRequest{
 		Config:                 config,
@@ -90,7 +109,11 @@ func drain(t *testing.T, r *Resource[kitModel, kitSDK]) []list.ListResult {
 	return drainFiltered(t, r, "", "")
 }
 
-func drainFiltered(t *testing.T, r *Resource[kitModel, kitSDK], name, value string) []list.ListResult {
+func drainFiltered(
+	t *testing.T,
+	r *Resource[kitModel, kitSDK],
+	name, value string,
+) []list.ListResult {
 	t.Helper()
 	stream := &list.ListResultsStream{}
 	r.List(context.Background(), kitListRequest(t, name, value), stream)
@@ -200,7 +223,9 @@ func TestListStopsWhenPrefetchFails(t *testing.T) {
 		}
 	}
 	if !reported {
-		t.Fatal("a failed prefetch produced no error diagnostic, so the list would read as an empty site")
+		t.Fatal(
+			"a failed prefetch produced no error diagnostic, so the list would read as an empty site",
+		)
 	}
 }
 
@@ -248,7 +273,7 @@ func TestListWithNoHooksYieldsTheObjectItWasGiven(t *testing.T) {
 	if model.Name.ValueString() != "a" {
 		t.Errorf("Name = %q, want %q", model.Name.ValueString(), "a")
 	}
-	if !model.Timeouts.Object.IsNull() {
+	if !model.Timeouts.IsNull() {
 		t.Error("a listed object carries timeouts, which belong to a managed resource")
 	}
 }

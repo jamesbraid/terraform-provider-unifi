@@ -25,12 +25,16 @@ func wireSpec(keyWire, noteWire string) Spec[wireModel, wireSDK] {
 	return Spec[wireModel, wireSDK]{
 		TypeName: "wire",
 		Fields: []Field[wireModel, wireSDK]{
-			StringField[wireModel, wireSDK]{Wire: keyWire,
+			StringField[wireModel, wireSDK]{
+				Wire:  keyWire,
 				Model: func(m *wireModel) *types.String { return &m.Key },
-				SDK:   func(s *wireSDK) *string { return &s.Key }},
-			StringField[wireModel, wireSDK]{Wire: noteWire,
+				SDK:   func(s *wireSDK) *string { return &s.Key },
+			},
+			StringField[wireModel, wireSDK]{
+				Wire:  noteWire,
 				Model: func(m *wireModel) *types.String { return &m.Note },
-				SDK:   func(s *wireSDK) *string { return &s.Note }},
+				SDK:   func(s *wireSDK) *string { return &s.Note },
+			},
 		},
 	}
 }
@@ -79,9 +83,11 @@ func TestAFieldWithNoJSONTagIsReported(t *testing.T) {
 	spec := Spec[wireModel, untaggedSDK]{
 		TypeName: "untagged",
 		Fields: []Field[wireModel, untaggedSDK]{
-			StringField[wireModel, untaggedSDK]{Wire: "loose",
+			StringField[wireModel, untaggedSDK]{
+				Wire:  "loose",
 				Model: func(m *wireModel) *types.String { return &m.Key },
-				SDK:   func(s *untaggedSDK) *string { return &s.Loose }},
+				SDK:   func(s *untaggedSDK) *string { return &s.Loose },
+			},
 		},
 	}
 	problems := WireNameProblems(spec)
@@ -104,7 +110,8 @@ func TestAlwaysWireNamesAreCheckedAgainstTheSDK(t *testing.T) {
 	if len(problems) != 1 {
 		t.Fatalf("want exactly 1 problem, got %d: %v", len(problems), problems)
 	}
-	if !strings.Contains(problems[0], "no_such_field") || !strings.Contains(problems[0], "AlwaysWire") {
+	if !strings.Contains(problems[0], "no_such_field") ||
+		!strings.Contains(problems[0], "AlwaysWire") {
 		t.Errorf("the report must name the bad entry and where it came from: %q", problems[0])
 	}
 }

@@ -347,7 +347,8 @@ func (r *Resource[M, S]) Create(
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
+	resp.Diagnostics.Append(
+		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -396,7 +397,8 @@ func (r *Resource[M, S]) Read(
 	}
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, found, &data, site)...)
 	resp.Diagnostics.Append(r.afterReceive(ctx, found, &data, prefetched)...)
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
+	resp.Diagnostics.Append(
+		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -483,7 +485,8 @@ func (r *Resource[M, S]) Update(
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, updated, &state, site)...)
 	resp.Diagnostics.Append(r.afterReceive(ctx, updated, &state, prefetched)...)
 	*r.Spec.Timeouts(&state) = *r.Spec.Timeouts(&plan)
-	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&state)))...)
+	resp.Diagnostics.Append(
+		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&state)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -517,7 +520,11 @@ func (r *Resource[M, S]) Delete(
 	// outcome available for an object that is already gone.
 	//
 	// USER-VISIBLE, so it needs a release note when this lands.
-	if err := r.Spec.Backend.Delete(ctx, r.Site(&data), (*r.Spec.ID(&data)).ValueString()); err != nil {
+	if err := r.Spec.Backend.Delete(
+		ctx,
+		r.Site(&data),
+		(*r.Spec.ID(&data)).ValueString(),
+	); err != nil {
 		var notFound *ui.NotFoundError
 		if errors.As(err, &notFound) {
 			return
@@ -558,7 +565,12 @@ func (r *Resource[M, S]) prefetch(ctx context.Context, site string) (any, diag.D
 	return r.Spec.Prefetch(ctx, site)
 }
 
-func (r *Resource[M, S]) afterReceive(ctx context.Context, sdk *S, model *M, prefetched any) diag.Diagnostics {
+func (r *Resource[M, S]) afterReceive(
+	ctx context.Context,
+	sdk *S,
+	model *M,
+	prefetched any,
+) diag.Diagnostics {
 	if r.Spec.AfterReceive == nil {
 		return nil
 	}

@@ -3,12 +3,12 @@ package unifi
 import (
 	"context"
 	"encoding/json"
-	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -434,7 +434,9 @@ func TestEveryWireNameIsEmittedBySiteVPNEncoding(t *testing.T) {
 		t.Fatalf("reading back the encoded network: %v", err)
 	}
 	if len(emitted) == 0 {
-		t.Fatal("the encoder emitted no fields at all, so every assertion below would pass vacuously")
+		t.Fatal(
+			"the encoder emitted no fields at all, so every assertion below would pass vacuously",
+		)
 	}
 
 	// THE MASK, NOT EVERY FIELD. What must be emitted is what a write would

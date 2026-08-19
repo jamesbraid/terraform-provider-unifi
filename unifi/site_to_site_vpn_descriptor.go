@@ -164,8 +164,11 @@ func siteToSiteVPNKitSpec() resourcekit.Spec[s2sModel, ui.Network] {
 				// util.DurationPtrValue produced.
 				Elide: resourcekit.KeepZero,
 			},
-			s2sPtr("ipsec_esp_encryption", func(m *s2sModel) *types.String { return &m.ESPEncryption },
-				func(s *ui.Network) **string { return &s.IPSecEspEncryption }),
+			s2sPtr(
+				"ipsec_esp_encryption",
+				func(m *s2sModel) *types.String { return &m.ESPEncryption },
+				func(s *ui.Network) **string { return &s.IPSecEspEncryption },
+			),
 			s2sPtr("ipsec_esp_hash", func(m *s2sModel) *types.String { return &m.ESPHash },
 				func(s *ui.Network) **string { return &s.IPSecEspHash }),
 			s2sInt("ipsec_esp_dh_group", func(m *s2sModel) *types.Int64 { return &m.ESPDhGroup },

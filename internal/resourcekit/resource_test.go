@@ -42,10 +42,13 @@ type kitSDK struct {
 
 func kitSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{Attributes: map[string]schema.Attribute{
-		"id":       schema.StringAttribute{Computed: true},
-		"site":     schema.StringAttribute{Optional: true, Computed: true},
-		"name":     schema.StringAttribute{Required: true},
-		"timeouts": timeouts.Attributes(ctx, timeouts.Opts{Create: true, Read: true, Update: true, Delete: true}),
+		"id":   schema.StringAttribute{Computed: true},
+		"site": schema.StringAttribute{Optional: true, Computed: true},
+		"name": schema.StringAttribute{Required: true},
+		"timeouts": timeouts.Attributes(
+			ctx,
+			timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+		),
 	}}
 }
 
@@ -222,7 +225,7 @@ func TestCreateSendsTheModelAndKeepsTheReturnedID(t *testing.T) {
 		Identity: func() *tfsdk.ResourceIdentity { id := kitIdentity(t); return &id }(),
 	}
 	r.Create(context.Background(),
-		resource.CreateRequest{Plan: tfsdk.Plan{Schema: plan.Schema, Raw: plan.Raw}}, resp)
+		resource.CreateRequest{Plan: tfsdk.Plan(plan)}, resp)
 
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Create: %v", resp.Diagnostics)
@@ -272,7 +275,7 @@ func TestUpdateSendsOnlyTheFieldsThePlanSet(t *testing.T) {
 	}
 	r.Update(ctx, resource.UpdateRequest{
 		State: state,
-		Plan:  tfsdk.Plan{Schema: plan.Schema, Raw: plan.Raw},
+		Plan:  tfsdk.Plan(plan),
 	}, resp)
 
 	if resp.Diagnostics.HasError() {
@@ -311,7 +314,10 @@ func hookSpy(t *testing.T) (Spec[kitModel, kitSDK], *map[string]int) {
 		BeforeSend: func(_ context.Context, _, _ *kitModel, _ *kitSDK, prefetched any) diag.Diagnostics {
 			seen["beforeSend"]++
 			if prefetched != "inventory" {
-				t.Errorf("BeforeSend got prefetched = %v; the hooks are wired but not connected", prefetched)
+				t.Errorf(
+					"BeforeSend got prefetched = %v; the hooks are wired but not connected",
+					prefetched,
+				)
 			}
 			return nil
 		},
@@ -326,7 +332,10 @@ func hookSpy(t *testing.T) (Spec[kitModel, kitSDK], *map[string]int) {
 	return spec, &seen
 }
 
-func withHooks(t *testing.T, backend Backend[kitSDK]) (*Resource[kitModel, kitSDK], *map[string]int) {
+func withHooks(
+	t *testing.T,
+	backend Backend[kitSDK],
+) (*Resource[kitModel, kitSDK], *map[string]int) {
 	t.Helper()
 	r := kitResource(backend)
 	hooks, seen := hookSpy(t)
@@ -355,8 +364,8 @@ func TestUpdateRunsAllThreeHooks(t *testing.T) {
 	}
 	r.Update(ctx, resource.UpdateRequest{
 		State:  state,
-		Plan:   tfsdk.Plan{Schema: plan.Schema, Raw: plan.Raw},
-		Config: tfsdk.Config{Schema: plan.Schema, Raw: plan.Raw},
+		Plan:   tfsdk.Plan(plan),
+		Config: tfsdk.Config(plan),
 	}, resp)
 
 	if resp.Diagnostics.HasError() {
@@ -482,15 +491,17 @@ func TestBeforeSendGetsTheModelTheObjectWasBuiltFrom(t *testing.T) {
 	}
 	r.Update(ctx, resource.UpdateRequest{
 		State:  state,
-		Plan:   tfsdk.Plan{Schema: plan.Schema, Raw: plan.Raw},
-		Config: tfsdk.Config{Schema: plan.Schema, Raw: plan.Raw},
+		Plan:   tfsdk.Plan(plan),
+		Config: tfsdk.Config(plan),
 	}, resp)
 
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("update failed, so the hook may never have run: %v", resp.Diagnostics)
 	}
 	if sawEffective == "" && sawConfig == "" {
-		t.Fatal("BeforeSend did not run at all; the assertions below would pass for the wrong reason")
+		t.Fatal(
+			"BeforeSend did not run at all; the assertions below would pass for the wrong reason",
+		)
 	}
 	if sawEffective != "from-state" {
 		t.Errorf("effective.Name = %q, want %q -- the hook must see what ToSDK sent, "+

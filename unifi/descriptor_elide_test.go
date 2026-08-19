@@ -204,8 +204,16 @@ func TestTheShippedDescriptorMutatesToExactlyItsFieldCount(t *testing.T) {
 		mutated.Set(value)
 		elide := mutated.FieldByName("Elide")
 		elide.SetBool(!elide.Bool())
-		flipped.Fields = append(flipped.Fields,
-			mutated.Interface().(resourcekit.Field[dnsRecordKitModel, ui.DNSRecord]))
+		// CHECKED, because a forced assertion here would report "interface
+		// conversion" and leave the reader to work out which field kind stopped
+		// satisfying Field -- which is the thing this control would be telling
+		// them about.
+		field, ok := mutated.Interface().(resourcekit.Field[dnsRecordKitModel, ui.DNSRecord])
+		if !ok {
+			t.Fatalf("a mutated %T no longer satisfies Field, so the flipped descriptor "+
+				"cannot be built", mutated.Interface())
+		}
+		flipped.Fields = append(flipped.Fields, field)
 	}
 
 	if elidable == 0 {
