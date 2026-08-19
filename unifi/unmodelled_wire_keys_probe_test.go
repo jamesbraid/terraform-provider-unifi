@@ -33,6 +33,19 @@ import (
 // maps and compares their keys against the union of every json tag the package
 // declares.
 //
+// WHERE THIS BELONGS, AND WHY IT IS NOT THERE YET. Seven of the twelve
+// configuration collections had no documents on the controller this was first
+// run against, so their result was "measures nothing" rather than "clean". The
+// right moment is the END OF A CAMPAIGN, when the acceptance corpus has created
+// objects in most of them -- as a reported step, never a gate, because a survey
+// that blocks a build is a survey nobody runs twice.
+//
+// It is not wired there because provider CI is not currently dispatching: 60
+// consecutive pipelines, 48 cancelled and 12 pending, no success and no failure
+// at all. Adding a step to a pipeline nobody can run is how an unverified step
+// becomes a trusted one -- it would sit there looking wired. Wire it in the same
+// change that proves the campaign runs.
+//
 // THE UNION IS DELIBERATELY GENEROUS. A key modelled by SOME struct is not
 // reported here even if it belongs on another type -- that is a mapping
 // question, and reporting it would bury the keys nothing can hold at all.
