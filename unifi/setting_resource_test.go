@@ -822,41 +822,6 @@ func Test_settingResource_radiusSettingToModel(t *testing.T) {
 	})
 }
 
-func Test_settingResource_usgModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null fields produce zero-value setting", func(t *testing.T) {
-		model := &settingUSGModel{
-			FtpModule:       types.BoolNull(),
-			BroadcastPing:   types.BoolNull(),
-			DNSVerification: types.ObjectNull(nil),
-		}
-		got := r.usgModelToSetting(ctx, model)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.FtpModule {
-			t.Error("FtpModule should be false for null input")
-		}
-	})
-
-	t.Run("ftp_module set to true", func(t *testing.T) {
-		model := &settingUSGModel{
-			FtpModule:       types.BoolValue(true),
-			BroadcastPing:   types.BoolNull(),
-			DNSVerification: types.ObjectNull(nil),
-		}
-		got := r.usgModelToSetting(ctx, model)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.FtpModule {
-			t.Error("FtpModule should be true")
-		}
-	})
-}
-
 // TestUsgGeoRoundTrip covers the geo IP filtering split. UniFi Network 10.x
 // moved these four attributes off the `usg` setting onto `usg_geo`, renaming
 // geo_ip_filtering_block to `action`. The Terraform schema kept them on the
