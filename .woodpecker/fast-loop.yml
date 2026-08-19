@@ -174,8 +174,24 @@ steps:
       # and forcetypeassert -- whose findings share one message -- reads as 6
       # instead of 104. The config file sets both to zero; a --no-config run like
       # this one does not, so a survey run for deciding membership must pass them
-      # explicitly. This gate does not, deliberately: it is asserting zero, and a
-      # cap cannot hide a zero.
+      # explicitly. THIS GATE NOW PASSES THEM TOO, and for a narrower reason
+      # than it looks, so it is written down rather than left to be inferred.
+      #
+      # A cap cannot hide a zero. That was the original argument for leaving them
+      # off and it is still true: this gate asserts zero, and truncation cannot
+      # turn a non-zero count into a zero one. Measured on a throwaway module
+      # carrying 60 identical misspell findings, this invocation reported 3 and
+      # exited 1; with the caps off it reported 60 and exited 1. The verdict is
+      # the same either way, so the caps buy nothing on the pass/fail axis and
+      # nobody should expect them to.
+      #
+      # What they buy is a legible failure. The 3 is max-same-issues, not the 50,
+      # so repeated findings -- the shape a regression actually takes -- are cut
+      # hardest. Whoever trips this gate would fix the 3 they were shown, push,
+      # be shown 3 more, and repeat that twenty times while the work looked
+      # twenty times smaller than it was. A gate that is right about the verdict
+      # and wrong about the size still teaches the wrong thing about the cost of
+      # tripping it.
       #
       # The remaining enabled linters, measured on this tree with the caps off:
       # errcheck 245, staticcheck 18, unparam 4, nilerr 2, predeclared 2 and
@@ -192,7 +208,7 @@ steps:
       # The version is pinned here and nowhere else. If it goes stale the linter
       # merely ages; nothing breaks, which is why there is no guard on it.
       - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
-      - golangci-lint run --no-config --default=none --enable=ineffassign --enable=makezero --enable=misspell --enable=unconvert --enable=copyloopvar --enable=durationcheck --enable=usetesting --enable=forcetypeassert --timeout 5m ./...
+      - golangci-lint run --no-config --default=none --enable=ineffassign --enable=makezero --enable=misspell --enable=unconvert --enable=copyloopvar --enable=durationcheck --enable=usetesting --enable=forcetypeassert --timeout 5m ./... --max-issues-per-linter=0 --max-same-issues=0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.101.0
       - env GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go mod download github.com/jamesbraid/go-unifi@v1.102.0
       - go generate ./...

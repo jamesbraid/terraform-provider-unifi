@@ -3,9 +3,9 @@ package controllerdifferential
 import (
 	"bytes"
 	"encoding/json"
-	"sort"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 // maxPreTestDiagnostics caps the lines kept when a suite produced no test
@@ -77,9 +77,9 @@ func SummariseSuite(raw []byte, plan catalogparity.ControllerPlanReceipt, label 
 
 	receipt := catalogparity.ControllerSuiteReceipt{
 		ExitCode:           exitCode,
-		Passed:             keys(passedSet),
-		Skipped:            keys(skippedSet),
-		Failed:             keys(failedSet),
+		Passed:             cmdio.SortedKeys(passedSet),
+		Skipped:            cmdio.SortedKeys(skippedSet),
+		Failed:             cmdio.SortedKeys(failedSet),
 		PreTestDiagnostics: []string{},
 	}
 	receipt.AcceptedFailures = intersect(receipt.Failed, allowedFailures)
@@ -153,15 +153,6 @@ func suiteResult(receipt catalogparity.ControllerSuiteReceipt,
 		return "fail"
 	}
 	return "accepted_limitation"
-}
-
-func keys(set map[string]bool) []string {
-	out := make([]string, 0, len(set))
-	for value := range set {
-		out = append(out, value)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func without(values, removed []string) []string {

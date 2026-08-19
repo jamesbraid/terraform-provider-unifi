@@ -9,7 +9,6 @@ import (
 	fwaction "github.com/hashicorp/terraform-plugin-framework/action"
 	fwdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
-
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/metadatacontract"
 )
 
@@ -141,7 +140,11 @@ func configurableSurfaces(t *testing.T) map[string]func(any) (bool, any) {
 	for _, newResource := range provider.Resources(ctx) {
 		if s, ok := newResource().(fwresource.ResourceWithConfigure); ok {
 			out[goTypeName(s)] = func(data any) (bool, any) {
-				fresh := freshCopy(s).(fwresource.ResourceWithConfigure)
+				fresh, ok := freshCopy(s)
+				if !ok {
+					t.Errorf("%s: freshCopy produced a %T, not a fwresource.ResourceWithConfigure", goTypeName(s), fresh)
+					return true, nil
+				}
 				resp := &fwresource.ConfigureResponse{}
 				fresh.Configure(ctx, fwresource.ConfigureRequest{ProviderData: data}, resp)
 				return resp.Diagnostics.HasError(), fresh
@@ -151,7 +154,11 @@ func configurableSurfaces(t *testing.T) map[string]func(any) (bool, any) {
 	for _, newDataSource := range provider.DataSources(ctx) {
 		if s, ok := newDataSource().(fwdatasource.DataSourceWithConfigure); ok {
 			out[goTypeName(s)] = func(data any) (bool, any) {
-				fresh := freshCopy(s).(fwdatasource.DataSourceWithConfigure)
+				fresh, ok := freshCopy(s)
+				if !ok {
+					t.Errorf("%s: freshCopy produced a %T, not a fwdatasource.DataSourceWithConfigure", goTypeName(s), fresh)
+					return true, nil
+				}
 				resp := &fwdatasource.ConfigureResponse{}
 				fresh.Configure(ctx, fwdatasource.ConfigureRequest{ProviderData: data}, resp)
 				return resp.Diagnostics.HasError(), fresh
@@ -161,7 +168,11 @@ func configurableSurfaces(t *testing.T) map[string]func(any) (bool, any) {
 	for _, newAction := range provider.Actions(ctx) {
 		if s, ok := newAction().(fwaction.ActionWithConfigure); ok {
 			out[goTypeName(s)] = func(data any) (bool, any) {
-				fresh := freshCopy(s).(fwaction.ActionWithConfigure)
+				fresh, ok := freshCopy(s)
+				if !ok {
+					t.Errorf("%s: freshCopy produced a %T, not a fwaction.ActionWithConfigure", goTypeName(s), fresh)
+					return true, nil
+				}
 				resp := &fwaction.ConfigureResponse{}
 				fresh.Configure(ctx, fwaction.ConfigureRequest{ProviderData: data}, resp)
 				return resp.Diagnostics.HasError(), fresh
@@ -177,14 +188,29 @@ func configurableSurfaces(t *testing.T) map[string]func(any) (bool, any) {
 // type rather than reading a named field, because the surfaces do not agree on
 // what to call what they store.
 func storesProviderData(configured any) bool {
-	return !reflect.DeepEqual(freshCopy(configured), configured)
+	if configured == nil {
+		return false
+	}
+	fresh, _ := freshCopy(configured)
+	return !reflect.DeepEqual(fresh, configured)
 }
 
-// freshCopy returns a zero value of the same concrete type.
-func freshCopy(surface any) any {
+// freshCopy returns a zero value of surface's concrete type, typed as T so no
+// caller needs an assertion of its own.
+//
+// The assertion lives here, once and checked, because forcetypeassert is one of
+// the eight linters the fast-loop gate enables. It cannot fail in practice: the
+// caller has already established that surface satisfies T, and a new value of
+// the same concrete type satisfies it too. Reporting ok rather than panicking
+// keeps that reasoning falsifiable instead of assumed.
+func freshCopy[T any](surface T) (T, bool) {
 	v := reflect.ValueOf(surface)
+	var made any
 	if v.Kind() == reflect.Ptr {
-		return reflect.New(v.Type().Elem()).Interface()
+		made = reflect.New(v.Type().Elem()).Interface()
+	} else {
+		made = reflect.Zero(v.Type()).Interface()
 	}
-	return reflect.Zero(v.Type()).Interface()
+	fresh, ok := made.(T)
+	return fresh, ok
 }

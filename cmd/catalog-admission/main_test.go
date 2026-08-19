@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 func TestRunRejectsIncompleteArguments(t *testing.T) {
@@ -32,8 +33,8 @@ func TestDecodeStrictFileRejectsUnknownAndTrailingJSON(t *testing.T) {
 				t.Fatal(err)
 			}
 			var value catalogparity.BuildSchemaReceipt
-			if _, err := decodeStrictFile(path, &value); err == nil {
-				t.Fatal("decodeStrictFile() succeeded")
+			if _, err := cmdio.DecodeStrictFile(path, &value); err == nil {
+				t.Fatal("cmdio.DecodeStrictFile() succeeded")
 			}
 		})
 	}

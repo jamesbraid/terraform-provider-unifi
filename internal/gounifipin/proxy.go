@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 // SourceURL is the repository the pinned tag is cloned from.
@@ -136,7 +138,7 @@ func checkSourceRoot(path string) (string, error) {
 // commit assertion below on every run until someone cleared the cache by hand.
 func refreshCheckout(sourceRoot string, options ProxyOptions) error {
 	if isRepository(sourceRoot) {
-		head, err := gitOutput(sourceRoot, "rev-parse", "HEAD")
+		head, err := cmdio.GitLines(sourceRoot, "rev-parse", "HEAD")
 		if err != nil || head != options.ExpectedCommit {
 			if err := os.RemoveAll(sourceRoot); err != nil {
 				return fmt.Errorf("discarding the stale checkout at %s: %w", sourceRoot, err)
@@ -171,7 +173,7 @@ func isRepository(root string) bool {
 // exit non-zero at no particular line. That is the same defect the dependency
 // gate next door already carries a paragraph about.
 func verifyCheckout(sourceRoot string, options ProxyOptions) error {
-	head, err := gitOutput(sourceRoot, "rev-parse", "HEAD")
+	head, err := cmdio.GitLines(sourceRoot, "rev-parse", "HEAD")
 	if err != nil {
 		return fmt.Errorf("reading HEAD of %s: %w", sourceRoot, err)
 	}
@@ -183,7 +185,7 @@ func verifyCheckout(sourceRoot string, options ProxyOptions) error {
 	// The tag is resolved separately from HEAD. They differ exactly when the tag
 	// was moved after the checkout was made, which is the case a commit pin
 	// exists to catch.
-	tagged, err := gitOutput(sourceRoot, "rev-parse", options.Version+"^{commit}")
+	tagged, err := cmdio.GitLines(sourceRoot, "rev-parse", options.Version+"^{commit}")
 	if err != nil {
 		return fmt.Errorf("resolving tag %s in %s: %w", options.Version, sourceRoot, err)
 	}
@@ -200,7 +202,7 @@ func verifyCheckout(sourceRoot string, options ProxyOptions) error {
 		return fmt.Errorf("%s/go.mod declares module %s, want %s", sourceRoot, declared, ModulePath)
 	}
 
-	dirty, err := gitOutput(sourceRoot, "status", "--porcelain", "--untracked-files=no")
+	dirty, err := cmdio.GitLines(sourceRoot, "status", "--porcelain", "--untracked-files=no")
 	if err != nil {
 		return fmt.Errorf("reading the state of %s: %w", sourceRoot, err)
 	}
@@ -393,13 +395,4 @@ func removeModuleCache(root string) {
 		return nil
 	})
 	_ = os.RemoveAll(root)
-}
-
-func gitOutput(dir string, args ...string) (string, error) {
-	command := exec.Command("git", append([]string{"-C", dir}, args...)...)
-	out, err := command.Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimRight(string(out), "\n"), nil
 }

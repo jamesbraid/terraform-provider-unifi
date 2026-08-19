@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasedtree"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/schemaparity"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/unitdifferential"
@@ -85,7 +86,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	candidateCommit, err := gitOutput(repo, "rev-parse", "HEAD")
+	candidateCommit, err := cmdio.GitOutput(repo, "rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
@@ -123,7 +124,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	inventorySHA256, err := fileDigest(filepath.Join(repo, *inventoryPath))
+	inventorySHA256, err := cmdio.FileDigest(filepath.Join(repo, *inventoryPath))
 	if err != nil {
 		return err
 	}
@@ -240,20 +241,4 @@ func goEnvPair() (string, error) {
 		return "", err
 	}
 	return goos + "/" + goarch, nil
-}
-
-func gitOutput(repo string, args ...string) (string, error) {
-	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).Output()
-	if err != nil {
-		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
-	}
-	return strings.TrimSpace(string(out)), nil
-}
-
-func fileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	return unitdifferential.Digest(raw), nil
 }

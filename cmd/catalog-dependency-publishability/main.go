@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/dependencypin"
 )
 
@@ -87,7 +88,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	providerCommit, err := gitOutput(repo, "rev-parse", "HEAD")
+	providerCommit, err := cmdio.GitOutput(repo, "rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
@@ -174,7 +175,7 @@ func resolve(repo, modulePath, declaredVersion string) (dependencypin.Resolved, 
 	archive := filepath.Join(versionRoot, declaredVersion+".zip")
 	info := filepath.Join(versionRoot, declaredVersion+".info")
 
-	if resolved.ArchiveSHA256, err = dependencypin.FileDigest(archive); err != nil {
+	if resolved.ArchiveSHA256, err = cmdio.FileDigest(archive); err != nil {
 		return resolved, fmt.Errorf("module archive: %w", err)
 	}
 	if resolved.TreeSHA256, err = dependencypin.TreeDigest(resolved.Dir); err != nil {
@@ -208,12 +209,4 @@ func goEnv(name string) (string, error) {
 		return "", fmt.Errorf("go env %s is empty", name)
 	}
 	return value, nil
-}
-
-func gitOutput(repo string, args ...string) (string, error) {
-	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).Output()
-	if err != nil {
-		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
-	}
-	return strings.TrimSpace(string(out)), nil
 }

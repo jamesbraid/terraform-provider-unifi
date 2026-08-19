@@ -40,10 +40,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 func main() {
@@ -67,11 +68,11 @@ func main() {
 }
 
 func run(out *os.File, strict bool) error {
-	commit, err := gitOutput("rev-parse", "HEAD")
+	commit, err := cmdio.GitLines("", "rev-parse", "HEAD")
 	if err != nil {
 		return fmt.Errorf("workspace provenance: HEAD cannot be resolved: %w", err)
 	}
-	status, err := gitOutput("status", "--porcelain")
+	status, err := cmdio.GitLines("", "status", "--porcelain")
 	if err != nil {
 		return fmt.Errorf("workspace provenance: the working tree cannot be read: %w", err)
 	}
@@ -136,12 +137,4 @@ func digestOf(directory, suffix string) (string, error) {
 	// Twelve characters is enough to compare two runs by eye in a log, which is
 	// the only thing this is ever used for.
 	return hex.EncodeToString(overall.Sum(nil))[:12], nil
-}
-
-func gitOutput(args ...string) (string, error) {
-	output, err := exec.Command("git", args...).Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimRight(string(output), "\n"), nil
 }

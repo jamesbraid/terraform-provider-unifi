@@ -29,8 +29,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 type bootstrapDocument struct {
@@ -108,7 +109,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// about, because the surface next to it -- the managed resource -- exposes
 	// most of them.
 	fields := make([]map[string]any, 0, len(observed))
-	for _, name := range sortedKeysOf(observed) {
+	for _, name := range cmdio.SortedKeys(observed) {
 		fields = append(fields, map[string]any{
 			"structural_name": name, "terraform_name": name, "disposition": "omitted",
 		})
@@ -116,7 +117,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	attributes := object(block["attributes"])
 	providerOwned := make([]map[string]any, 0, len(attributes))
-	for _, name := range sortedKeys(attributes) {
+	for _, name := range cmdio.SortedKeys(attributes) {
 		attribute := object(attributes[name])
 		kind, err := scalarKind(attribute["type"])
 		if err != nil {
@@ -137,7 +138,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	blockTypes := object(block["block_types"])
 	groupings := make([]map[string]any, 0, len(blockTypes))
 	conflicts := []string{}
-	for _, name := range sortedKeys(blockTypes) {
+	for _, name := range cmdio.SortedKeys(blockTypes) {
 		declared := object(blockTypes[name])
 		nested := object(object(declared["block"])["attributes"])
 		// Is this the query block every list surface in this estate has? Its
@@ -153,7 +154,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		// member set instead keeps it rare and keeps it meaningful.
 		queryBlock := isQueryBlock(nested)
 		members := make([]map[string]any, 0, len(nested))
-		for _, member := range sortedKeys(nested) {
+		for _, member := range cmdio.SortedKeys(nested) {
 			body := object(nested[member])
 			kind, err := scalarKind(body["type"])
 			if err != nil {
@@ -336,22 +337,4 @@ func object(value any) map[string]any {
 func baselineString(value any) string {
 	s, _ := value.(string)
 	return s
-}
-
-func sortedKeys(m map[string]any) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
-}
-
-func sortedKeysOf(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/managementcontract"
 )
 
@@ -32,8 +33,8 @@ func TestDecodeStrictFileRejectsUnknownAndTrailingJSON(t *testing.T) {
 				t.Fatal(err)
 			}
 			var value managementcontract.CatalogManagementPolicy
-			if _, err := decodeStrictFile(path, &value); err == nil {
-				t.Fatal("decodeStrictFile() succeeded")
+			if _, err := cmdio.DecodeStrictFile(path, &value); err == nil {
+				t.Fatal("cmdio.DecodeStrictFile() succeeded")
 			}
 		})
 	}
