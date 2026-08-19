@@ -1507,3 +1507,79 @@ func Test_deviceResource_List(t *testing.T) {
 		})
 	}
 }
+
+// Test_portOverridesForUpdate_noDeclaredBlocks guards the case the #266 fix
+// left open: a device managed with NO port_override blocks at all.
+//
+// The merge was gated on len(declared) > 0, so that case skipped it and the
+// body carried deviceReq's own empty slice. mergePortOverridesByIndex has
+// always returned `current` for an empty declared set -- and there is a test
+// asserting exactly that -- but the gate meant production never reached it.
+// The tested path and the taken path were different paths.
+func Test_portOverridesForUpdate_noDeclaredBlocks(t *testing.T) {
+	idx := func(i int64) *int64 { return &i }
+	current := &unifi.Device{
+		ID: "d1",
+		PortOverrides: []unifi.DevicePortOverrides{
+			{PortIDX: idx(1), Name: "uplink"},
+			{PortIDX: idx(2), Name: "camera"},
+		},
+	}
+
+	t.Run("nil declared keeps every controller override", func(t *testing.T) {
+		got := portOverridesForUpdate(current, nil)
+		if len(got) != 2 {
+			t.Fatalf("kept %d override(s), want 2; an update that declares no "+
+				"port_override block must not clear the ones the controller holds", len(got))
+		}
+	})
+
+	t.Run("empty non-nil declared keeps them too", func(t *testing.T) {
+		// A SetNestedBlock with no elements converts to an allocated empty
+		// slice rather than nil, so both spellings have to be covered.
+		got := portOverridesForUpdate(current, []unifi.DevicePortOverrides{})
+		if len(got) != 2 {
+			t.Fatalf("kept %d override(s), want 2", len(got))
+		}
+	})
+
+	t.Run("declared blocks still merge by index", func(t *testing.T) {
+		got := portOverridesForUpdate(current, []unifi.DevicePortOverrides{
+			{PortIDX: idx(2), Name: "printer"},
+			{PortIDX: idx(9), Name: "new"},
+		})
+		if len(got) != 3 {
+			t.Fatalf("merged to %d, want 3 (1 kept, 2 replaced, 9 appended)", len(got))
+		}
+		for _, po := range got {
+			if po.PortIDX != nil && *po.PortIDX == 2 && po.Name != "printer" {
+				t.Errorf("port 2 was not replaced by the declared block: %+v", po)
+			}
+		}
+	})
+
+	t.Run("no current device leaves the declared set alone", func(t *testing.T) {
+		if got := portOverridesForUpdate(nil, nil); got != nil {
+			t.Errorf("with no fetched device there is nothing to preserve, got %v", got)
+		}
+	})
+}
+
+// Test_portOverridesAreAlwaysOnTheWire is the control that makes the test above
+// mean something, and it is the reason the fix could not be "leave the field
+// nil and let it drop out".
+//
+// port_overrides carries no omitempty. A nil slice therefore does not vanish
+// from the PUT body -- it marshals to [], which the controller reads as a full
+// replace with nothing. If this ever starts reporting the key as absent, the
+// merge stops being load-bearing and the comment on portOverridesForUpdate is
+// wrong.
+func Test_portOverridesAreAlwaysOnTheWire(t *testing.T) {
+	body, err := json.Marshal(buildMinimalUpdateDevice(&unifi.Device{ID: "d1"}, nil, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `"port_overrides":[]`) {
+		t.Fatalf("a nil port_overrides no longer marshals to []; the body was %s", body)
+	}
+}

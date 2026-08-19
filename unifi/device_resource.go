@@ -1735,19 +1735,7 @@ func (r *deviceResource) updateDevice(
 		deviceReq.Type = currentDevice.Type
 	}
 
-	// The UniFi PUT treats port_overrides as a full-replace array. Sending only the
-	// user-declared subset would wipe every other port's override (#266). When the
-	// user declared at least one port_override, merge the declared blocks (by
-	// port_idx) onto the device's current overrides so undeclared ports keep their
-	// existing controller-side config — i.e. partial management of just the declared
-	// ports. With no override declared we leave the field untouched as before.
-	portOverrides := deviceReq.PortOverrides
-	if currentDevice != nil && len(deviceReq.PortOverrides) > 0 {
-		portOverrides = mergePortOverridesByIndex(
-			currentDevice.PortOverrides,
-			deviceReq.PortOverrides,
-		)
-	}
+	portOverrides := portOverridesForUpdate(currentDevice, deviceReq.PortOverrides)
 
 	minimalDevice := buildMinimalUpdateDevice(deviceReq, currentDevice, portOverrides)
 
@@ -2106,6 +2094,33 @@ func (r *deviceResource) modelToAPIDevice(
 // declared ports. Ports present only in the current set are preserved; ports
 // declared but not yet present are appended. Declared order is preserved for the
 // appended entries so the result is deterministic.
+// portOverridesForUpdate decides what the PUT body carries for port_overrides.
+//
+// The UniFi PUT treats the array as a FULL REPLACE, so whatever goes in the
+// body is the device's entire override set afterwards. Sending only the
+// declared subset wipes every other port (#266), which is what
+// mergePortOverridesByIndex exists to prevent.
+//
+// THERE IS NO "LEAVE IT ALONE" OPTION. port_overrides has no omitempty, so a
+// nil slice does not drop out of the body -- it marshals to [], which is a
+// full replace with nothing and clears every override the controller holds.
+// The merge therefore has to run even when the practitioner declared no
+// blocks at all, and merging against an empty declared set is exactly the
+// case mergePortOverridesByIndex already returns `current` for.
+//
+// That also matches what the schema promises: removing a block stops managing
+// that port rather than resetting it. Removing the last one is not a special
+// case.
+func portOverridesForUpdate(
+	currentDevice *unifi.Device,
+	declared []unifi.DevicePortOverrides,
+) []unifi.DevicePortOverrides {
+	if currentDevice == nil {
+		return declared
+	}
+	return mergePortOverridesByIndex(currentDevice.PortOverrides, declared)
+}
+
 func mergePortOverridesByIndex(
 	current, declared []unifi.DevicePortOverrides,
 ) []unifi.DevicePortOverrides {
