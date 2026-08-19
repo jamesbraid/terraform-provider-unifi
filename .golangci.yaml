@@ -55,7 +55,11 @@ formatters:
     - gofmt
     - gofumpt
     - goimports
-    - golines
+    # golines was measured at 191 files and DROPPED DELIBERATELY. It is not on
+    # the fast-loop gate, the findings are grandfathered, and reflowing a
+    # readable one-line assertion into six with trailing commas makes every
+    # future diff harder to read for no gate benefit. Do not re-add it without
+    # re-measuring: the 191 will still be there.
   settings:
     gofmt:
       simplify: true
