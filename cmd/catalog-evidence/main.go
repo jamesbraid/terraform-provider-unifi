@@ -1,17 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasedtree"
 )
 
@@ -70,12 +69,12 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	var contracts catalogparity.SurfaceContractCorpus
-	if err := decodeStrictFile(*contractsPath, &contracts); err != nil {
+	if err := discardDigest(cmdio.DecodeStrictFile(*contractsPath, &contracts)); err != nil {
 		fmt.Fprintf(stderr, "contracts: %v\n", err)
 		return 1
 	}
 	var policy evidencePolicy
-	if err := decodeStrictFile(*policyPath, &policy); err != nil {
+	if err := discardDigest(cmdio.DecodeStrictFile(*policyPath, &policy)); err != nil {
 		fmt.Fprintf(stderr, "policy: %v\n", err)
 		return 1
 	}
@@ -141,57 +140,11 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "encode inventory: %v\n", err)
 		return 1
 	}
-	if err := writeAtomic(*outputPath, append(data, '\n')); err != nil {
+	if err := cmdio.WriteAtomic(*outputPath, append(data, '\n'), cmdio.NoParentDir(), cmdio.Mode(0o644)); err != nil {
 		fmt.Fprintf(stderr, "write inventory: %v\n", err)
 		return 1
 	}
 	return 0
-}
-
-func decodeStrictFile(path string, value any) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return fmt.Errorf("multiple JSON values")
-		}
-		return err
-	}
-	return nil
-}
-
-func writeAtomic(path string, data []byte) error {
-	directory := filepath.Dir(path)
-	temporary, err := os.CreateTemp(directory, ".catalog-evidence-*")
-	if err != nil {
-		return err
-	}
-	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
-	if _, err := temporary.Write(data); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Sync(); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Chmod(0o644); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Close(); err != nil {
-		return err
-	}
-	return os.Rename(temporaryPath, path)
 }
 
 // goModuleCache asks the toolchain rather than guessing at $HOME/go/pkg/mod.
@@ -209,3 +162,10 @@ func goModuleCache() (string, error) {
 	}
 	return cache, nil
 }
+
+// discardDigest drops the artifact digest cmdio.DecodeStrictFile returns.
+//
+// This command is the only one of the seven that never used it -- its local copy
+// returned just an error. Making the discard explicit keeps that visible rather
+// than hiding it behind a blank identifier at each call site.
+func discardDigest(_ string, err error) error { return err }

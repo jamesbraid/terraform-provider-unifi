@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -9,10 +8,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 func main() {
@@ -53,7 +52,7 @@ func run(args []string, stderr io.Writer) int {
 	}
 
 	var policy catalogparity.CampaignPolicy
-	if _, err := decodeStrictFile(*policyPath, &policy); err != nil {
+	if _, err := cmdio.DecodeStrictFile(*policyPath, &policy); err != nil {
 		fmt.Fprintf(stderr, "campaign policy: %v\n", err)
 		return 1
 	}
@@ -62,19 +61,19 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	var inventory catalogparity.EvidenceInventory
-	inventoryDigest, err := decodeStrictFile(*inventoryPath, &inventory)
+	inventoryDigest, err := cmdio.DecodeStrictFile(*inventoryPath, &inventory)
 	if err != nil {
 		fmt.Fprintf(stderr, "inventory: %v\n", err)
 		return 1
 	}
 	var fleetSummary catalogparity.FleetReferenceSummary
-	fleetSummaryDigest, err := decodeStrictFile(*fleetSummaryPath, &fleetSummary)
+	fleetSummaryDigest, err := cmdio.DecodeStrictFile(*fleetSummaryPath, &fleetSummary)
 	if err != nil {
 		fmt.Fprintf(stderr, "fleet summary: %v\n", err)
 		return 1
 	}
 	var references catalogparity.PragmaticReferenceSet
-	if _, err := decodeStrictFile(*referencesPath, &references); err != nil {
+	if _, err := cmdio.DecodeStrictFile(*referencesPath, &references); err != nil {
 		fmt.Fprintf(stderr, "references: %v\n", err)
 		return 1
 	}
@@ -104,7 +103,13 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "encode resolution: %v\n", err)
 		return 1
 	}
-	if err := writeAtomic(*outputPath, append(data, '\n')); err != nil {
+	// SkipSync PRESERVES AN EXISTING DIVERGENCE AND IS NOT A CHOICE MADE HERE.
+	// This was the only one of nine writers with no Sync() before the rename, and
+	// nothing in the original recorded why. It is kept exactly rather than
+	// silently corrected, because "the other eight fsync" is not a decision about
+	// release evidence durability. Filed as #174 for James; if the answer is that
+	// a copy lost a line, this option comes off in a commit that says so.
+	if err := cmdio.WriteAtomic(*outputPath, append(data, '\n'), cmdio.NoParentDir(), cmdio.SkipSync()); err != nil {
 		fmt.Fprintf(stderr, "write resolution: %v\n", err)
 		return 1
 	}
@@ -200,46 +205,4 @@ func validateControllerReceipt(path string, policy catalogparity.CampaignPolicy)
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil
-}
-
-func decodeStrictFile(path string, value any) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return "", err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		if err == nil {
-			return "", fmt.Errorf("multiple JSON values")
-		}
-		return "", err
-	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
-}
-
-func writeAtomic(path string, data []byte) error {
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".catalog-pragmatic-evidence-*")
-	if err != nil {
-		return err
-	}
-	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
-	if _, err := temporary.Write(data); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Chmod(0o600); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err := temporary.Close(); err != nil {
-		return err
-	}
-	return os.Rename(temporaryPath, path)
 }

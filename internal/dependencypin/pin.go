@@ -209,11 +209,3 @@ func TreeDigest(root string) (string, error) {
 }
 
 // FileDigest is the sha256 of a file's bytes.
-func FileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:]), nil
-}

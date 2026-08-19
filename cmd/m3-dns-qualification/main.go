@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasequalification"
 )
 
@@ -132,7 +133,7 @@ func run(argv []string, stdout, stderr io.Writer) error {
 
 	resolvedCommit := *sourceCommit
 	if resolvedCommit == "" {
-		resolvedCommit, err = gitOutput("rev-parse", "HEAD")
+		resolvedCommit, err = cmdio.GitOutput("", "rev-parse", "HEAD")
 		if err != nil {
 			return err
 		}
@@ -898,7 +899,8 @@ func copyTree(source, destination string) error {
 // the exit as parameters means a test can deliver a signal value and assert
 // both happened, in order.
 func discardOnSignal(signals <-chan os.Signal, stderr io.Writer, runID string,
-	discard func(), exit func(int)) {
+	discard func(), exit func(int),
+) {
 	received, ok := <-signals
 	if !ok {
 		return

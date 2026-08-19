@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerdifferential"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasedtree"
 )
@@ -175,7 +176,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	candidateCommit, err := gitOutput(repo, "rev-parse", "HEAD")
+	candidateCommit, err := cmdio.GitOutput(repo, "rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
@@ -318,10 +319,10 @@ func measureMachine(o options) (controllerdifferential.Environment, []string, er
 		RyukImage:         o.ryukImage,
 		RyukImageID:       imageID(o.ryukImage),
 	}
-	if environment.HerderSHA256, err = fileDigest(o.herderBin); err != nil {
+	if environment.HerderSHA256, err = cmdio.FileDigest(o.herderBin); err != nil {
 		return environment, nil, err
 	}
-	if environment.TerraformBinarySHA256, err = fileDigest(o.terraformBin); err != nil {
+	if environment.TerraformBinarySHA256, err = cmdio.FileDigest(o.terraformBin); err != nil {
 		return environment, nil, err
 	}
 	return environment, nil, nil
@@ -407,15 +408,6 @@ func imageID(reference string) string {
 	return strings.TrimSpace(string(out))
 }
 
-func fileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:]), nil
-}
-
 func digestOf(value any) (string, error) {
 	encoded, err := catalogparity.MarshalReceipt(value)
 	if err != nil {
@@ -445,14 +437,6 @@ func writeJSON(path string, value any) error {
 		return err
 	}
 	return os.WriteFile(path, encoded, 0o600)
-}
-
-func gitOutput(repo string, args ...string) (string, error) {
-	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).Output()
-	if err != nil {
-		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
-	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 // classifyReceipt answers what a completed run was, and says why not when it

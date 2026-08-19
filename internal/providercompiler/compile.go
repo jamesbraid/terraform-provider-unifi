@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 var validDispositions = map[string]struct{}{
@@ -136,7 +137,7 @@ func Compile(input CompileInput) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	for _, name := range sortedKeys(claimedFields) {
+	for _, name := range cmdio.SortedKeys(claimedFields) {
 		if _, exists := sourceFields[name]; !exists {
 			return Result{}, fmt.Errorf(
 				"%s consumes %q, which the catalog does not observe",
@@ -207,7 +208,7 @@ func Compile(input CompileInput) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	for _, name := range sortedKeys(grouped) {
+	for _, name := range cmdio.SortedKeys(grouped) {
 		if owner, claimed := claimedFields[name]; claimed {
 			return Result{}, fmt.Errorf(
 				"structural field %q is consumed by grouping %q and also by %s",
@@ -218,7 +219,7 @@ func Compile(input CompileInput) (Result, error) {
 	// Checked before coverage: a grouping naming a field that does not exist
 	// also leaves whatever it should have consumed unclassified, and reporting
 	// that consequence sends the reader to the wrong field.
-	for _, name := range sortedKeys(grouped) {
+	for _, name := range cmdio.SortedKeys(grouped) {
 		if _, exists := sourceFields[name]; !exists {
 			return Result{}, fmt.Errorf(
 				"grouping %q consumes %q, which the catalog does not observe",
@@ -249,7 +250,7 @@ func Compile(input CompileInput) (Result, error) {
 			declaredMembers[grouping.TerraformName+"."+member.TerraformName] = struct{}{}
 		}
 	}
-	for _, path := range sortedKeys(claimedMembers) {
+	for _, path := range cmdio.SortedKeys(claimedMembers) {
 		if _, top := claimedTopLevel[path]; top {
 			continue
 		}
@@ -850,14 +851,6 @@ func flattenedStructuralFields(
 }
 
 // sortedKeys orders map keys so diagnostics do not depend on iteration order.
-func sortedKeys(values map[string]string) []string {
-	keys := make([]string, 0, len(values))
-	for key := range values {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
 
 // groupedStructuralType reports the observed type behind one row of the mapping
 // report. An invented member consumes nothing, and the report says so rather

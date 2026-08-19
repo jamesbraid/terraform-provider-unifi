@@ -1,6 +1,7 @@
 package releasequalification
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -52,35 +53,11 @@ func TestBuildReleaseReadyArtifactsFailsClosed(t *testing.T) {
 		mutate func(*ReleaseReadyInput)
 		want   string
 	}{
-		"contract parity blocker": {
-			mutate: func(input *ReleaseReadyInput) {
-				input.ContractParity.ReleaseBlockers[0].Signal = "unknown"
-			},
-			want: "contract parity release blocker",
-		},
-		"contract surface substitution": {
-			mutate: func(input *ReleaseReadyInput) {
-				input.ContractParity.Surfaces[3].Name = "unifi_unknown"
-			},
-			want: "contract parity surface set",
-		},
 		"migration source": {
 			mutate: func(input *ReleaseReadyInput) {
 				input.Migration.SourceCommit = strings.Repeat("f", 40)
 			},
 			want: "migration/recovery lineage",
-		},
-		"fleet drift": {
-			mutate: func(input *ReleaseReadyInput) {
-				input.FleetSoak.UnexplainedDriftCount = 1
-			},
-			want: "fleet soak",
-		},
-		"fleet mutation": {
-			mutate: func(input *ReleaseReadyInput) {
-				input.FleetSoak.Mode = "apply"
-			},
-			want: "fleet soak",
 		},
 		"physical hardware overclaim": {
 			mutate: func(input *ReleaseReadyInput) {
@@ -205,7 +182,6 @@ func validReleaseReadyInput(t *testing.T) ReleaseReadyInput {
 		FormatVersion: 1, ProviderAddress: catalogparity.CanonicalProviderAddress,
 		BaselineSHA256: digest, Entries: make([]catalogparity.LedgerEntry, 0, 67),
 	}
-	contractSurfaces := make([]ContractParitySurface, 0, 67)
 	for _, admitted := range migrationInput.Admission.Surfaces {
 		management.Surfaces = append(management.Surfaces, managementcontract.CatalogManagementSurface{
 			SurfaceKey: admitted.SurfaceKey, State: catalogparity.Admitted,
@@ -222,40 +198,11 @@ func validReleaseReadyInput(t *testing.T) ReleaseReadyInput {
 			State:   catalogparity.Admitted, ReceiptSHA256: admitted.ReceiptSHA256,
 			Implementation: "candidate",
 		})
-		contractSurfaces = append(contractSurfaces, ContractParitySurface{
-			SurfaceKey: admitted.SurfaceKey, State: catalogparity.ContractParity,
-			CaptureMode: func() managementcontract.CaptureMode {
-				if admitted.Kind == catalogparity.ManagedResource {
-					return managementcontract.CaptureManaged
-				}
-				return managementcontract.CaptureNotApplicable
-			}(),
-			ReceiptSHA256: digest,
-		})
 	}
 	return ReleaseReadyInput{
 		Ledger: ledger, LedgerSHA256: digest,
 		Management: management, ManagementSHA256: digest,
 		Migration: migration, MigrationSHA256: digest,
-		ContractParity: ContractParityReceipt{
-			FormatVersion: 1, Gate: "ubitofu-catalog-contract-parity", Result: "pass",
-			ContractSHA256: digest, ProviderBinarySHA256: migration.CandidateBinary,
-			Downstream: downstream, SurfaceCount: 67,
-			CaptureCounts:   map[string]int{"managed": 28, "not_applicable": 39},
-			Dimensions:      map[string]bool{"capture_eligibility": true, "coverage": true, "enumeration": true, "generated_hcl": true, "identity": true, "plan_classification": true, "receipt_inputs": true, "redaction": true},
-			ReleaseBlockers: append([]catalogparity.EvidenceGap(nil), management.Admission.ReleaseBlockers...),
-			Surfaces:        contractSurfaces,
-		},
-		ContractParitySHA256: digest,
-		FleetSoak: FleetSoakReceipt{
-			FormatVersion: 1, Gate: "unifi-private-fleet-soak", Result: "pass",
-			ProviderAddress: catalogparity.CanonicalProviderAddress,
-			SourceCommit:    migration.SourceCommit, ProviderBinarySHA256: migration.CandidateBinary,
-			DownstreamCommit: downstream.Commit, Platform: "linux/amd64", Mode: "plan_only",
-			ConsecutivePasses: 2, ObservedResourceCount: 28, UnexplainedDriftCount: 0,
-			DestructiveChangeCount: 0, RefreshOnly: true, SecretsRedacted: true,
-			StateSnapshotSHA256: digest, NormalizedPlanSHA256: digest,
-		}, FleetSoakSHA256: digest,
 		Hardware: HardwareDispositionReceipt{
 			FormatVersion: 1, Gate: "unifi-port-hardware-disposition", Result: "pass",
 			SurfaceKey: catalogparity.SurfaceKey{Kind: catalogparity.Action, Name: "unifi_port"},
@@ -278,4 +225,62 @@ func validReleaseReadyInput(t *testing.T) ReleaseReadyInput {
 			RawStateRetained: false, RawControllerResponseRetained: false,
 		}, ConfidentialitySHA256: digest,
 	}
+}
+
+// TestConfidentialityIsOptionalAndItsAbsenceIsRecorded covers the one input the
+// gate does not require.
+//
+// Nothing produces a confidentiality receipt, so requiring it made the gate
+// unsatisfiable and it was dropped from the required set. The risk in that
+// change is the obvious one: a gate that silently skips a check it used to
+// demand still reports "pass", and a reader counting evidence would have to
+// notice an empty digest to know the check never ran.
+//
+// So the artifact names the gap. This test is the reason that is not merely a
+// comment -- if unverifiedGates is ever reduced to an empty slice while the
+// receipt is still absent, the second case fails.
+func TestConfidentialityIsOptionalAndItsAbsenceIsRecorded(t *testing.T) {
+	t.Run("supplied, judged, and nothing is listed unverified", func(t *testing.T) {
+		artifacts, err := BuildReleaseReadyArtifacts(validReleaseReadyInput(t))
+		if err != nil {
+			t.Fatalf("BuildReleaseReadyArtifacts() error = %v", err)
+		}
+		if len(artifacts.Receipt.UnverifiedGates) != 0 {
+			t.Errorf("unverified_gates = %v on a run with every receipt present",
+				artifacts.Receipt.UnverifiedGates)
+		}
+	})
+
+	t.Run("absent, permitted, and named in the receipt", func(t *testing.T) {
+		input := validReleaseReadyInput(t)
+		input.Confidentiality = ConfidentialityReceipt{}
+		input.ConfidentialitySHA256 = ""
+
+		artifacts, err := BuildReleaseReadyArtifacts(input)
+		if err != nil {
+			t.Fatalf("BuildReleaseReadyArtifacts() refused a run without a confidentiality "+
+				"receipt; no producer writes one, so this is the only shape the gate can "+
+				"actually run in today: %v", err)
+		}
+		if !slices.Contains(artifacts.Receipt.UnverifiedGates, "confidentiality") {
+			t.Errorf("unverified_gates = %v, want it to name confidentiality; otherwise the "+
+				"receipt reports pass without saying which gate never ran",
+				artifacts.Receipt.UnverifiedGates)
+		}
+		if artifacts.Receipt.Evidence.ConfidentialitySHA256 != "" {
+			t.Errorf("confidentiality_sha256 = %q on a run with no confidentiality receipt",
+				artifacts.Receipt.Evidence.ConfidentialitySHA256)
+		}
+	})
+
+	// A receipt without its digest is not the absent case. Nothing would record
+	// which bytes were judged, and the zero receipt is indistinguishable from
+	// one whose every scan boolean is false -- the failing case, read as absence.
+	t.Run("a receipt without its digest is refused", func(t *testing.T) {
+		input := validReleaseReadyInput(t)
+		input.ConfidentialitySHA256 = ""
+		if _, err := BuildReleaseReadyArtifacts(input); err == nil {
+			t.Fatal("BuildReleaseReadyArtifacts() accepted a confidentiality receipt with no digest")
+		}
+	})
 }

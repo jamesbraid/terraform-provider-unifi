@@ -215,3 +215,22 @@ steps:
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-migration-recovery -policy provider-codegen/policy/catalog-campaign.json -admission /tmp/catalog-admission.json -build-schema /tmp/catalog-build-schema.json -controller /tmp/catalog-controller-differential.json -inventory build/release-ready/catalog-evidence-inventory.json -migration-manifest provider-codegen/generated/catalog-migration-manifest.json -dns-lifecycle /tmp/catalog-dns-lifecycle.json -output /tmp/catalog-migration-recovery.json -tree-state "$(go run ./cmd/tree-state -what 'the migration and recovery receipt')"
       - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-migration-verify -receipt /tmp/catalog-migration-recovery.json
       - jq '.' /tmp/catalog-migration-recovery.json
+      # THE RELEASE GATE, and the four receipts above are its inputs. It is last
+      # because it reads all of them; a producer below its consumer is as broken
+      # as an absent one, which is how pipeline 190 died.
+      #
+      # The ledger comes from the tree rather than /tmp: nothing in this pipeline
+      # writes one, and the committed artifact is what the release describes.
+      #
+      # -confidentiality is deliberately not passed. No producer writes that
+      # receipt, and requiring it is what made this gate unrunnable. The gate
+      # names it in unverified_gates instead, which is what the assertion below
+      # checks -- if a producer ever appears and the flag is added here, that
+      # assertion fails and forces this comment to be revisited.
+      - env GOPROXY=off GOSUMDB=off 'GOVCS=*:off' GIT_TERMINAL_PROMPT=0 GOTOOLCHAIN=local go run ./cmd/catalog-release-ready -ledger provider-codegen/generated/catalog-parity-ledger.json -management-contract /tmp/catalog-management-contract.json -migration-recovery /tmp/catalog-migration-recovery.json -hardware-disposition /tmp/catalog-hardware-disposition.json -dependency-publishability /tmp/catalog-dependency-publishability.json -receipt-output /tmp/catalog-release-ready.json -ledger-output /tmp/catalog-release-ready-ledger.json -contract-output /tmp/catalog-release-promotion-contract.json
+      # `.result` is NOT asserted on purpose. The producer writes the literal
+      # "pass" and returns an error on every failure, so a clause comparing it to
+      # "pass" would compare a constant to itself and hold on any receipt this
+      # command managed to write. These clauses name values that vary.
+      - jq -e '.unverified_gates == ["confidentiality"] and .evidence.confidentiality_sha256 == "" and (.evidence.management_contract_sha256 | length) == 64 and (.evidence.migration_recovery_sha256 | length) == 64 and (.evidence.hardware_disposition_sha256 | length) == 64 and (.evidence.dependency_publishability_sha256 | length) == 64 and .surface_count == .release_ready_surface_count and .surface_count > 0' /tmp/catalog-release-ready.json
+      - jq '.' /tmp/catalog-release-ready.json

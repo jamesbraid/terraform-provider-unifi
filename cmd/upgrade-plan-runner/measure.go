@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -13,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/catalogparity"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/releasedtree"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/upgradeplan"
 )
@@ -72,11 +71,11 @@ func measure(ctx context.Context, logger *log.Logger, root string, settings sett
 		return 1, err
 	}
 
-	oldSHA256, err := fileDigest(filepath.Join(oldPlugins, upgradeplan.ProviderBinaryName))
+	oldSHA256, err := cmdio.FileDigest(filepath.Join(oldPlugins, upgradeplan.ProviderBinaryName))
 	if err != nil {
 		return 1, err
 	}
-	newSHA256, err := fileDigest(filepath.Join(newPlugins, upgradeplan.ProviderBinaryName))
+	newSHA256, err := cmdio.FileDigest(filepath.Join(newPlugins, upgradeplan.ProviderBinaryName))
 	if err != nil {
 		return 1, err
 	}
@@ -124,7 +123,7 @@ func measure(ctx context.Context, logger *log.Logger, root string, settings sett
 	_, destroyCode := runCLI(ctx, settings.cli, oldConfig, configDirectory,
 		"destroy", "-auto-approve", "-input=false")
 
-	candidateCommit, err := gitOutput(root, "rev-parse", "HEAD")
+	candidateCommit, err := cmdio.GitOutput(root, "rev-parse", "HEAD")
 	if err != nil {
 		return 1, err
 	}
@@ -290,23 +289,6 @@ func isExecutable(path string) bool {
 	}
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
-}
-
-func fileDigest(path string) (string, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:]), nil
-}
-
-func gitOutput(repo string, args ...string) (string, error) {
-	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).Output()
-	if err != nil {
-		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
-	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 func indent(logger *log.Logger, text string) {

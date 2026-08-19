@@ -30,6 +30,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 )
 
 type specification struct {
@@ -155,7 +157,7 @@ func render(pkg string, surfaces []actionSurface) ([]byte, error) {
 	// it. Collected rather than assumed: the estate has one today, and a
 	// hard-coded import would make the second one a compile error in generated
 	// code rather than a rendered line.
-	for _, path := range sortedKeys(imports) {
+	for _, path := range cmdio.SortedKeys(imports) {
 		fmt.Fprintf(out, "\t%q\n", path)
 	}
 	fmt.Fprintf(out, ")\n")
@@ -215,8 +217,11 @@ func scalarOf(surface string, entry attribute) (string, *scalar, error) {
 		name string
 		body *scalar
 	}{
-		{"Bool", entry.Bool}, {"Float64", entry.Float64}, {"Int64", entry.Int64},
-		{"Number", entry.Number}, {"String", entry.String},
+		{"Bool", entry.Bool},
+		{"Float64", entry.Float64},
+		{"Int64", entry.Int64},
+		{"Number", entry.Number},
+		{"String", entry.String},
 	}
 	var found []string
 	var chosen struct {
@@ -271,14 +276,5 @@ func exportedName(surface string) string {
 func sortedAttributes(in []attribute) []attribute {
 	out := append([]attribute(nil), in...)
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out
-}
-
-func sortedKeys(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
 	return out
 }
