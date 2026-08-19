@@ -298,7 +298,9 @@ func (r *radiusProfileResource) Update(
 	radiusProfile := r.modelToRadiusProfile(ctx, &state)
 	radiusProfile.ID = state.ID.ValueString()
 
-	updatedRadiusProfile, err := r.client.UpdateRADIUSProfile(ctx, site, radiusProfile)
+	// MASKED. The fetch before this write was laundered through the
+	// Terraform model, so it protected nothing; see the wire-field list.
+	updatedRadiusProfile, err := r.client.UpdateRADIUSProfileFields(ctx, site, radiusProfile, radiusProfileManagedWireFields()...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating RADIUS Profile",
