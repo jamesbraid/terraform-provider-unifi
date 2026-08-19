@@ -365,7 +365,8 @@ func (r *vpnClientResource) Update(
 	// MASKED, NOT WHOLE-OBJECT. See vpnClientWireFields for why: the object is
 	// built from the plan alone, so a whole-object write sent every unmodelled
 	// field as its Go zero and reset whatever the controller held.
-	updatedNetwork, err := r.client.UpdateNetworkFields(ctx, site, network, vpnClientWireFields()...)
+	updatedNetwork, err := r.client.UpdateNetworkFields(
+		ctx, site, network, networkMaskFor(vpnClientWireFields(), network)...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating VPN Client",

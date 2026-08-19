@@ -161,7 +161,11 @@ func TestMaskedSurfacesUseTheMaskedCall(t *testing.T) {
 				t.Fatalf("reading the resource: %v", err)
 			}
 			src := string(raw)
-			if !strings.Contains(src, "UpdateNetworkFields(ctx, site, network,") {
+			// MATCHED ACROSS LINES, because the argument list now wraps: the
+			// mask is narrowed by networkMaskFor before it is passed, and gofmt
+			// splits the call. A literal one-line substring made this assertion
+			// fail for a formatting change while the property it guards held.
+			if !maskedUpdateCall.MatchString(src) {
 				t.Error("the update does not call UpdateNetworkFields; a whole-object write " +
 					"resets every field this resource does not manage")
 			}
@@ -316,7 +320,8 @@ func TestVPNClientUpdateUsesTheMaskedCall(t *testing.T) {
 	}
 	src := string(raw)
 
-	if !strings.Contains(src, "UpdateNetworkFields(ctx, site, network, vpnClientWireFields()...)") {
+	if !maskedUpdateCall.MatchString(src) ||
+		!strings.Contains(src, "vpnClientWireFields()") {
 		t.Error("the update does not call UpdateNetworkFields with vpnClientWireFields; " +
 			"a whole-object write resets every field this resource does not manage")
 	}
@@ -755,3 +760,9 @@ func TestWLANUsesTheMaskedCall(t *testing.T) {
 		t.Fatal("the file read is not wlan_resource.go")
 	}
 }
+
+// maskedUpdateCall matches the masked update however its arguments are laid
+// out. The call takes a narrowed mask now -- networkMaskFor(...) around the
+// surface's field list -- so gofmt wraps it, and a literal substring would
+// report a whole-object write on a surface that does not do one.
+var maskedUpdateCall = regexp.MustCompile(`(?s)UpdateNetworkFields\(\s*ctx,\s*site,\s*network,`)

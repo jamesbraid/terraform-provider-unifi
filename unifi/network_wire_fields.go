@@ -100,7 +100,10 @@ func networkManagedWireFields() []string {
 // that purpose carries -- no second copy of go-unifi's knowledge, and no table
 // to fall out of date when a purpose gains a field.
 //
-// THE INTERSECTION IS LOAD-BEARING HERE, unlike on vpn_client and vpn_server.
+// THE INTERSECTION IS LOAD-BEARING HERE, and on vpn_server too -- this comment
+// used to name vpn_server as a surface that did not need it, which was measured
+// false: twelve of its 21 names are dropped by the encoder and every update
+// failed. vpn_client remains the surface where it is inert.
 // maskedBody refuses a mask naming a field the encoder drops, and a vlan-only
 // network encodes 22 fields against corporate's 99 -- so an unfiltered mask
 // would turn today's silent no-op into a failed apply on the surface with the
