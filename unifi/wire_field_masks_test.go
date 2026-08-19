@@ -639,3 +639,119 @@ func TestUnconditionalEmptySlicesAreMaskedOnlyWhereManaged(t *testing.T) {
 		})
 	}
 }
+
+// unifi_wlan is the largest instance of the class and has no purpose
+// discriminator, so its mask is the assigned set with no runtime filter.
+func TestWLANMaskExcludesTheFieldsItDoesNotManage(t *testing.T) {
+	unmanaged := []string{
+		"dpi_enabled", "rrm_enabled", "bc_filter_enabled", "auth_cache",
+		"p2p", "p2p_cross_connect", "tdls_prohibit", "radius_das_enabled",
+		"iot_channel_lock", "sae_psk_vlan_required", "dpigroup_id",
+	}
+	mask := wlanManagedWireFields()
+	if len(mask) == 0 {
+		t.Fatal("the mask is empty, so the assertions below would pass vacuously")
+	}
+
+	// The control: every one of these IS force-emitted by a zero WLAN, so
+	// excluding it from the mask is what stops the write.
+	raw, err := json.Marshal(&ui.WLAN{})
+	if err != nil {
+		t.Fatalf("encoding a zero WLAN: %v", err)
+	}
+	var encoded map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &encoded); err != nil {
+		t.Fatalf("reading back: %v", err)
+	}
+
+	for _, field := range unmanaged {
+		if slices.Contains(mask, field) {
+			t.Errorf("%s is in the mask; the resource does not assign it and the "+
+				"whole-object write was resetting it", field)
+		}
+		if _, emitted := encoded[field]; !emitted {
+			t.Errorf("a zero WLAN does not emit %s at all, so excluding it proves nothing", field)
+		}
+	}
+	// enabled is force-emitted here as on every network purpose, and the
+	// resource does assign it -- so it belongs in the mask.
+	if !slices.Contains(mask, "enabled") {
+		t.Error("enabled is missing from the mask; the resource assigns it and a " +
+			"disable would never be written")
+	}
+}
+
+// The declared list must match what the resource assigns.
+func TestWLANManagedWireFieldsMatchTheResource(t *testing.T) {
+	assigned := wlanFieldsAssignedBy(t)
+	if len(assigned) == 0 {
+		t.Fatal("no assignments found; the parse failed")
+	}
+	tags := map[string]string{}
+	typ := reflect.TypeOf(ui.WLAN{})
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		tag := field.Tag.Get("json")
+		if tag == "" || tag == "-" {
+			continue
+		}
+		name, _, _ := strings.Cut(tag, ",")
+		tags[field.Name] = name
+	}
+	declared := map[string]bool{}
+	for _, name := range wlanManagedWireFields() {
+		declared[name] = true
+	}
+	for _, field := range assigned {
+		tag, ok := tags[field]
+		if !ok || tag == "_id" || tag == "site_id" {
+			continue
+		}
+		if !declared[tag] {
+			t.Errorf("the resource assigns %s (WLAN.%s) but it is not in "+
+				"wlanManagedWireFields, so it would never be written", tag, field)
+		}
+	}
+}
+
+// wlanFieldsAssignedBy reads assignments onto a *unifi.WLAN across the whole
+// file, because planToWLAN delegates the way modelToNetwork does -- which is
+// how a regex scoped to one function missed wan_networkgroup twice.
+func wlanFieldsAssignedBy(t *testing.T) []string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "unifi", "wlan_resource.go"))
+	if err != nil {
+		t.Fatalf("reading the resource: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, m := range regexp.MustCompile(`\bwlan\.([A-Z]\w*)\s*=`).FindAllStringSubmatch(string(raw), -1) {
+		seen[m[1]] = true
+	}
+	for _, m := range regexp.MustCompile(`(?m)^\t\t([A-Z]\w*):\s`).FindAllStringSubmatch(string(raw), -1) {
+		seen[m[1]] = true
+	}
+	out := make([]string, 0, len(seen))
+	for name := range seen {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// unifi_wlan must use the masked call.
+func TestWLANUsesTheMaskedCall(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "unifi", "wlan_resource.go"))
+	if err != nil {
+		t.Fatalf("reading the resource: %v", err)
+	}
+	src := string(raw)
+	if !strings.Contains(src, "UpdateWLANFields(ctx, site, wlan, wlanManagedWireFields()...)") {
+		t.Error("the update does not call UpdateWLANFields with wlanManagedWireFields")
+	}
+	if regexp.MustCompile(`UpdateWLAN\(ctx`).MatchString(src) {
+		t.Error("a whole-object UpdateWLAN( call remains")
+	}
+	if !strings.Contains(src, "func (r *wlanFrameworkResource)") {
+		t.Fatal("the file read is not wlan_resource.go")
+	}
+}
