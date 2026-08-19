@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -291,5 +292,37 @@ func TestTheCommittedPlanHasNoSuchContradiction(t *testing.T) {
 		t.Fatalf("the committed plan declares %d missing and lends %d owner(s); with either at "+
 			"zero the disjointness holds trivially and this control checks nothing",
 			len(plan.ReleasedAllowedMissing), len(plan.SharedScenarioOwners))
+	}
+}
+
+// TestRegressionTestRegexIsAnchored covers the second selector's pattern.
+//
+// TestRegex is anchored so a plan naming TestAccFoo does not also run
+// TestAccFooBar, and the guards need the same property for the same reason: an
+// unanchored name silently widens a run, and a widened run is not the run the
+// receipt says it was.
+func TestRegressionTestRegexIsAnchored(t *testing.T) {
+	pattern := RegressionTestRegex([]string{"TestGuardTwo", "TestGuardOne", "TestGuardOne"})
+	want := "^(TestGuardOne|TestGuardTwo)(/.*)?$"
+	if pattern != want {
+		t.Fatalf("RegressionTestRegex() = %q, want %q. The names are deduplicated and sorted "+
+			"so a receipt records the same set however the policy file was ordered.",
+			pattern, want)
+	}
+
+	compiled, err := regexp.Compile(pattern)
+	if err != nil {
+		t.Fatalf("the pattern does not compile: %v", err)
+	}
+	for _, name := range []string{"TestGuardOne", "TestGuardOne/subtest"} {
+		if !compiled.MatchString(name) {
+			t.Errorf("%q does not match, so the guard would not run", name)
+		}
+	}
+	// The widening the anchors exist to stop.
+	for _, name := range []string{"TestGuardOneExtra", "XTestGuardOne", "TestGuardThree"} {
+		if compiled.MatchString(name) {
+			t.Errorf("%q matches, so the run is wider than the receipt says", name)
+		}
 	}
 }

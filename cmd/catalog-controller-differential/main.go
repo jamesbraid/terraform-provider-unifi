@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -37,16 +38,17 @@ import (
 )
 
 type options struct {
-	repository   string
-	inventory    string
-	policy       string
-	waves        string
-	testNames    string
-	output       string
-	treeStateRaw string
-	releasedRef  string
-	planOnly     bool
-	prepareOnly  bool
+	repository       string
+	inventory        string
+	policy           string
+	waves            string
+	testNames        string
+	output           string
+	regressionOutput string
+	treeStateRaw     string
+	releasedRef      string
+	planOnly         bool
+	prepareOnly      bool
 
 	controllerImage string
 	syntheticImage  string
@@ -80,6 +82,9 @@ func run(args []string) error {
 		"diagnostic: run only these tests, comma or semicolon separated. Every name must already "+
 			"be in the plan")
 	flags.StringVar(&o.output, "output", "", "write the receipt here; required")
+	flags.StringVar(&o.regressionOutput, "regression-output", "",
+		"write the regression-guard receipt here; required. The guards are not part of the "+
+			"differential -- they have no released counterpart -- so they report on their own")
 	flags.StringVar(&o.treeStateRaw, "tree-state", "",
 		"JSON from the tree-state measurement; required, no default")
 	flags.StringVar(&o.releasedRef, "released-ref", "v0.101.2", "the released side's tag")
@@ -118,12 +123,20 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
+	// After the tree state, deliberately. A run from a dirty tree is refused
+	// for what it would attest, whatever else is missing, and putting a newer
+	// requirement in front of that would change which refusal an operator sees
+	// first for a reason that has nothing to do with them.
+	if o.regressionOutput == "" {
+		return errors.New("-regression-output is required; a run that writes no guard receipt " +
+			"leaves nothing to say which guards ran")
+	}
 	repo, err := filepath.Abs(o.repository)
 	if err != nil {
 		return err
 	}
 
-	plan, err := buildPlan(o, repo)
+	plan, policy, err := buildPlan(o, repo)
 	if err != nil {
 		return err
 	}
@@ -165,11 +178,34 @@ func run(args []string) error {
 		{"candidate", repo},
 		{"released", prepared.Root},
 	} {
-		suite, err := runSuite(o, work, side.label, side.root, plan)
+		suite, err := runSuite(o, work, side.label, side.root, plan,
+			controllerdifferential.TestRegex(plan))
 		if err != nil {
 			return err
 		}
 		suites[side.label] = suite
+	}
+
+	// THE REGRESSION GUARDS, on the candidate only.
+	//
+	// They are not half of a comparison. A released tree does not carry a guard
+	// written for a defect found after it shipped, so a missing one there would
+	// be correct rather than a finding -- running them on both sides would
+	// manufacture failures out of the passage of time.
+	//
+	// The summary plan carries the regression names as its planned set and no
+	// dispositions at all: a guard has no licence to skip, to fail, or to be
+	// absent. That is what separates it from a scenario, which the released
+	// side is allowed to fall short on.
+	regressionPlan := plan
+	regressionPlan.TestNames = uniqueSortedNames(policy.RegressionTests)
+	regressionPlan.AllowedSkips = nil
+	regressionPlan.ReleasedAllowedFailures = nil
+	regressionPlan.ReleasedAllowedMissing = nil
+	regression, err := runSuite(o, work, "regression", repo, regressionPlan,
+		controllerdifferential.RegressionTestRegex(policy.RegressionTests))
+	if err != nil {
+		return err
 	}
 
 	releasedCommit, err := releasedtree.ResolveCommit(repo, o.releasedRef)
@@ -201,9 +237,39 @@ func run(args []string) error {
 
 	// The receipt is written before the verdict is reported. An hour of
 	// controllers that ends with no artifact is an hour nobody can read.
+	regressionNames := uniqueSortedNames(policy.RegressionTests)
+	regressionReceipt := catalogparity.ControllerRegressionReceipt{
+		FormatVersion:   1,
+		Gate:            "catalog controller regression",
+		TreeState:       treeState,
+		Result:          regression.Result,
+		CandidateCommit: candidateCommit,
+		TestNames:       regressionNames,
+		Suite:           regression,
+	}
+	if err := writeJSON(o.regressionOutput, regressionReceipt); err != nil {
+		return err
+	}
+
+	// NAME THE GUARDS THAT RAN, every time and before any verdict. A count
+	// cannot show a set that shrank, and "the campaign passed" meaning
+	// something different this week from last is how a suite nothing ran became
+	// possible in the first place.
+	fmt.Fprintf(os.Stderr, "regression guards (%s), %d run: %s\n",
+		regression.Result, len(regressionNames), strings.Join(regressionNames, " "))
+
 	if receipt.Result == "fail" {
 		return fmt.Errorf("the differential failed: released %q, candidate %q; the receipt is at %s",
 			receipt.Released.Result, receipt.Candidate.Result, o.output)
+	}
+	// A GUARD THAT FAILS FAILS THE RUN, separately from the differential's own
+	// verdict. The differential can be a clean pass while a defect this
+	// campaign already fixed has come back, and those are different sentences
+	// said to different people.
+	if regression.Result != "pass" {
+		return fmt.Errorf("a regression guard failed: %q; the receipt is at %s. "+
+			"A defect this campaign already measured and fixed has returned",
+			regression.Result, o.regressionOutput)
 	}
 	fmt.Fprintf(os.Stderr, "catalog controller differential: %s. released %q, candidate %q, "+
 		"%d evidence gap(s) across %d surface(s)\n",
@@ -212,29 +278,44 @@ func run(args []string) error {
 	return nil
 }
 
-func buildPlan(o options, repo string) (catalogparity.ControllerPlanReceipt, error) {
+func buildPlan(
+	o options, repo string,
+) (catalogparity.ControllerPlanReceipt, controllerdifferential.CampaignPolicy, error) {
 	var plan catalogparity.ControllerPlanReceipt
+	var policy controllerdifferential.CampaignPolicy
 	var inventory controllerdifferential.Inventory
 	if err := readJSON(filepath.Join(repo, o.inventory), &inventory); err != nil {
-		return plan, err
+		return plan, policy, err
 	}
-	var policy controllerdifferential.CampaignPolicy
 	if err := readJSON(filepath.Join(repo, o.policy), &policy); err != nil {
-		return plan, err
+		return plan, policy, err
+	}
+	// A SELECTOR CONSUMING AN EMPTY LIST IS A CHECK THAT CANNOT FAIL: the run
+	// would use a -run pattern matching nothing and report a suite that passed
+	// having executed no guard at all.
+	if len(policy.RegressionTests) == 0 {
+		return plan, policy, fmt.Errorf("%s names no regression tests; a run that executes "+
+			"none of them would report a pass having guarded nothing", o.policy)
 	}
 
 	waves, err := parseWaves(o.waves)
 	if err != nil {
-		return plan, err
+		return plan, policy, err
 	}
 	plan, err = controllerdifferential.BuildPlan(inventory, policy, waves)
 	if err != nil {
-		return plan, err
+		return plan, policy, err
 	}
 	if o.testNames == "" {
-		return plan, nil
+		return plan, policy, nil
 	}
-	return controllerdifferential.Narrow(plan, splitNames(o.testNames))
+	// THE GUARDS ARE NOT NARROWED. A diagnostic run selects a subset of the
+	// catalog because an operator is chasing one failure; the guards are cheap
+	// and they answer a different question, so narrowing them would quietly
+	// turn the one run an operator makes when something is already wrong into
+	// the run that checks the least.
+	plan, err = controllerdifferential.Narrow(plan, splitNames(o.testNames))
+	return plan, policy, err
 }
 
 // parseWaves refuses a list it cannot read rather than selecting nothing. An
@@ -328,9 +409,12 @@ func measureMachine(o options) (controllerdifferential.Environment, []string, er
 	return environment, nil, nil
 }
 
-func runSuite(o options, work, label, root string, plan catalogparity.ControllerPlanReceipt) (catalogparity.ControllerSuiteReceipt, error) {
+func runSuite(
+	o options, work, label, root string,
+	plan catalogparity.ControllerPlanReceipt, pattern string,
+) (catalogparity.ControllerSuiteReceipt, error) {
 	command := exec.Command("go", "test", "-json", "-count=1", "-timeout", "90m", "./unifi",
-		"-run", controllerdifferential.TestRegex(plan))
+		"-run", pattern)
 	command.Dir = root
 	command.Env = append(os.Environ(),
 		"TF_ACC=1",
@@ -470,4 +554,20 @@ func classifyReceipt(o options, path string) error {
 	}
 	fmt.Println(classification)
 	return nil
+}
+
+// uniqueSortedNames is the deterministic form of a policy list, so a receipt
+// records the same set however the file was ordered.
+func uniqueSortedNames(names []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }

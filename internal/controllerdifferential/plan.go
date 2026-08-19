@@ -42,7 +42,23 @@ type InventorySurface struct {
 // declared in this file -- one fact with two homes, which is the shape of drift
 // this campaign has been bitten by repeatedly.
 type CampaignPolicy struct {
-	AllowedSkips             []string            `json:"allowed_skips"`
+	AllowedSkips []string `json:"allowed_skips"`
+	// RegressionTests is the second selector, and it exists because the first
+	// one could not name these.
+	//
+	// AcceptanceTests takes only names beginning "TestAcc", so a controller
+	// test called anything else ran in no automated path at all: TF_ACC is
+	// unset on a push, and the -run regex never mentioned it. The regression
+	// guards for the zero-value defect family were all in that state.
+	//
+	// THEY ARE NOT SCENARIOS AND MUST NOT BE RENAMED INTO ONE. A TestAcc proves
+	// a surface works and is compared released-against-candidate; a regression
+	// guard proves a specific defect stays fixed, has no released counterpart,
+	// and never will. Routing them through the scenario naming would give every
+	// one of them a permanent released_allowed_missing entry -- an exemption
+	// list that only grows. A separate list keeps two concepts apart that were
+	// joined by nothing but a string.
+	RegressionTests          []string            `json:"regression_tests"`
 	ReleasedAllowedFailures  []string            `json:"released_allowed_failures"`
 	ReleasedAllowedMissing   []string            `json:"released_allowed_missing"`
 	SharedScenarioExceptions []ScenarioException `json:"shared_scenario_exceptions"`
@@ -288,4 +304,19 @@ func lentTests(inventory Inventory, owners []string) map[string]bool {
 		}
 	}
 	return lent
+}
+
+// RegressionTestRegex is the -run pattern for the regression guards.
+//
+// It takes the NAMES rather than a plan, because the guards are deliberately
+// not in the plan. ControllerPlanReceipt is compared byte for byte against what
+// the shell built on pipeline 232 -- that comparison is the migration's
+// acceptance criterion -- and a key the shell never wrote would be the Go port
+// claiming to have invented evidence. The guards postdate the shell, so they
+// travel in their own receipt instead of growing this one.
+//
+// Anchored the same way TestRegex is, and for the same reason: an unanchored
+// name silently widens the run.
+func RegressionTestRegex(names []string) string {
+	return "^(" + strings.Join(uniqueSorted(names), "|") + ")(/.*)?$"
 }

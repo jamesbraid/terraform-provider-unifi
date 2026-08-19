@@ -394,6 +394,10 @@ func validMigrationInput(t *testing.T) MigrationRecoveryInput {
 			FormatVersion: 1, Gate: "catalog controller differential",
 			SurfaceCount: 67, EvidenceGapCount: 8,
 			TestNameCount: 152,
+			// The campaign's second selector. The policy refuses an empty list,
+			// because a selector with nothing in it runs a pattern matching
+			// nothing and reports a suite that guarded nothing.
+			RegressionTests: []string{"TestAnUnrelatedApplyInvertsAFirewallRule"},
 			// The fixture's admission carries one release blocker, so the policy
 			// must declare exactly that one. Declaring more, or fewer, is now a
 			// failure rather than something only a hardcoded constant knew.

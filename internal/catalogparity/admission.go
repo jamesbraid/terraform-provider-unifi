@@ -643,8 +643,10 @@ func validateSchemaCLI(name string, receipt SchemaCLIReceipt, version string) er
 	if receipt.Version != version {
 		return fmt.Errorf("build/schema %s version is %q", name, receipt.Version)
 	}
-	for _, digest := range []string{receipt.BinarySHA256, receipt.ReleasedRawSHA256,
-		receipt.CandidateRawSHA256, receipt.CanonicalSHA256} {
+	for _, digest := range []string{
+		receipt.BinarySHA256, receipt.ReleasedRawSHA256,
+		receipt.CandidateRawSHA256, receipt.CanonicalSHA256,
+	} {
 		if !validSHA256(digest) {
 			return fmt.Errorf("build/schema %s SHA-256 is invalid", name)
 		}
@@ -1054,4 +1056,34 @@ func canonicalDigest(value any) (string, error) {
 		return "", err
 	}
 	return byteSHA256(append(data, '\n')), nil
+}
+
+// ControllerRegressionReceipt is the campaign's second suite, in its own
+// artifact rather than as a field of the differential.
+//
+// TWO REASONS IT IS SEPARATE, and only the first is about file layout.
+//
+// It is not half of a comparison. The differential judges a released tree
+// against a candidate one; a regression guard is written for a defect found
+// after the released tree shipped, so it has no released counterpart and a
+// missing one there would be correct rather than a finding. Scoring it as part
+// of that comparison would manufacture failures out of the passage of time.
+//
+// And ControllerDifferentialReceipt is compared byte for byte against what the
+// shell emitted on pipeline 232 -- that comparison is the migration's
+// acceptance criterion. A key the shell never wrote would be the Go port
+// claiming to have invented evidence, which the frozen tests exist to catch.
+// The guards postdate the shell, so they get their own receipt instead of
+// growing one whose shape is load-bearing.
+type ControllerRegressionReceipt struct {
+	FormatVersion   int        `json:"format_version"`
+	Gate            string     `json:"gate"`
+	TreeState       *TreeState `json:"tree_state,omitempty"`
+	Result          string     `json:"result"`
+	CandidateCommit string     `json:"candidate_commit"`
+	// TestNames is what ran, named rather than counted. "The campaign passed"
+	// meaning something different this week from last is how a suite nothing
+	// ran became possible, and a count cannot show a set that shrank.
+	TestNames []string               `json:"test_names"`
+	Suite     ControllerSuiteReceipt `json:"suite"`
 }
