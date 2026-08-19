@@ -5,11 +5,18 @@ package resource_port_forward
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -24,127 +31,167 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 						"destination_ip": schema.StringAttribute{
 							Optional:            true,
 							Computed:            true,
-							Description:         "The destination address.",
-							MarkdownDescription: "The destination address.",
+							Description:         "The destination IPv4 address. Use `any` for all addresses.",
+							MarkdownDescription: "The destination IPv4 address. Use `any` for all addresses.",
+							Validators: []validator.String{
+								validators.IPv4OrAnyValidator(),
+							},
 						},
 						"interface": schema.StringAttribute{
 							Optional:            true,
 							Computed:            true,
-							Description:         "The WAN interface the address belongs to.",
-							MarkdownDescription: "The WAN interface the address belongs to.",
+							Description:         "The WAN interface for this destination (e.g. `wan`, `wan2`).",
+							MarkdownDescription: "The WAN interface for this destination (e.g. `wan`, `wan2`).",
+							Validators: []validator.String{
+								stringvalidator.OneOf("wan", "wan2"),
+							},
 						},
 					},
 				},
 				Optional:            true,
 				Computed:            true,
-				Description:         "Additional destination addresses this rule matches, one per WAN interface.",
-				MarkdownDescription: "Additional destination addresses this rule matches, one per WAN interface.",
+				Description:         "Additional destination IP/interface pairs for the port forwarding rule, used for multi-WAN setups.",
+				MarkdownDescription: "Additional destination IP/interface pairs for the port forwarding rule, used for multi-WAN setups.",
 			},
 			"enabled": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "Whether the rule is enabled.",
-				MarkdownDescription: "Whether the rule is enabled.",
+				Description:         "Specifies whether the port forwarding rule is enabled or not.",
+				MarkdownDescription: "Specifies whether the port forwarding rule is enabled or not.",
+				DeprecationMessage:  "This attribute will be removed in a future release. Instead of disabling a port forwarding rule you can remove it from your configuration.",
+				Default:             booldefault.StaticBool(true),
 			},
 			"forward": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"ip": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "The address traffic is forwarded to.",
-						MarkdownDescription: "The address traffic is forwarded to.",
+						Description:         "The forward IPv4 address to send traffic to.",
+						MarkdownDescription: "The forward IPv4 address to send traffic to.",
+						Validators: []validator.String{
+							validators.IPv4Validator(),
+						},
 					},
 					"port": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "The port or port range traffic is forwarded to.",
-						MarkdownDescription: "The port or port range traffic is forwarded to.",
+						Description:         "The forward port or port range (e.g. `1-10,11,12`).",
+						MarkdownDescription: "The forward port or port range (e.g. `1-10,11,12`).",
 					},
 				},
 				Optional:            true,
 				Computed:            true,
-				Description:         "Where matched traffic is sent.",
-				MarkdownDescription: "Where matched traffic is sent.",
+				Description:         "Forward destination configuration.",
+				MarkdownDescription: "Forward destination configuration.",
+			},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				Description:         "The ID of the port forwarding rule.",
+				MarkdownDescription: "The ID of the port forwarding rule.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"logging": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "Whether to log matched traffic.",
-				MarkdownDescription: "Whether to log matched traffic.",
+				Description:         "Specifies whether to enable syslog logging for forwarded traffic.",
+				MarkdownDescription: "Specifies whether to enable syslog logging for forwarded traffic.",
+				Default:             booldefault.StaticBool(false),
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
-				Description:         "A name for the port forwarding rule.",
-				MarkdownDescription: "A name for the port forwarding rule.",
+				Description:         "The name of the port forwarding rule.",
+				MarkdownDescription: "The name of the port forwarding rule.",
 			},
 			"protocol": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "The protocol to forward. Must be one of `tcp_udp`, `tcp` or `udp`.",
-				MarkdownDescription: "The protocol to forward. Must be one of `tcp_udp`, `tcp` or `udp`.",
+				Description:         "The protocol for the port forwarding rule. Can be `tcp`, `udp`, or `tcp_udp`.",
+				MarkdownDescription: "The protocol for the port forwarding rule. Can be `tcp`, `udp`, or `tcp_udp`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("tcp_udp", "tcp", "udp"),
+				},
+				Default: stringdefault.StaticString("tcp_udp"),
 			},
 			"site": schema.StringAttribute{
 				Optional:            true,
-				Description:         "The site the rule belongs to.",
-				MarkdownDescription: "The site the rule belongs to.",
+				Computed:            true,
+				Description:         "The name of the site to associate the port forwarding rule with.",
+				MarkdownDescription: "The name of the site to associate the port forwarding rule with.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"source_limiting": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"enabled": schema.BoolAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Whether source limiting applies at all.",
-						MarkdownDescription: "Whether source limiting applies at all.",
+						Description:         "Specifies whether source limiting is enabled.",
+						MarkdownDescription: "Specifies whether source limiting is enabled.",
+						Default:             booldefault.StaticBool(false),
 					},
 					"firewall_group_id": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "A `unifi_firewall_group` whose addresses the rule accepts.",
-						MarkdownDescription: "A `unifi_firewall_group` whose addresses the rule accepts.",
+						Description:         "The ID of the firewall group to use for source limiting.",
+						MarkdownDescription: "The ID of the firewall group to use for source limiting.",
 					},
 					"ip": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "The source address, range or CIDR the rule accepts, or `any`.",
-						MarkdownDescription: "The source address, range or CIDR the rule accepts, or `any`.",
+						Description:         "The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`.",
+						MarkdownDescription: "The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`.",
+						Default:             stringdefault.StaticString("any"),
 					},
 					"type": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "How the source is expressed. One of `ip` or `firewall_group`.",
-						MarkdownDescription: "How the source is expressed. One of `ip` or `firewall_group`.",
+						Description:         "The source limiting type. Can be `ip` or `firewall_group`. Inferred automatically when only one of `ip` or `firewall_group_id` is set.",
+						MarkdownDescription: "The source limiting type. Can be `ip` or `firewall_group`. Inferred automatically when only one of `ip` or `firewall_group_id` is set.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("ip", "firewall_group"),
+						},
 					},
 				},
 				Optional:            true,
 				Computed:            true,
-				Description:         "Which sources the rule accepts traffic from.",
-				MarkdownDescription: "Which sources the rule accepts traffic from.",
+				Description:         "Source limiting configuration for the port forwarding rule.",
+				MarkdownDescription: "Source limiting configuration for the port forwarding rule.",
 			},
 			"wan": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"interface": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "The WAN interface. One of `wan`, `wan2`..`wan9`, `both` or `all`.",
-						MarkdownDescription: "The WAN interface. One of `wan`, `wan2`..`wan9`, `both` or `all`.",
+						Description:         "The WAN interface. Can be `wan`, `wan2`, or `both`.",
+						MarkdownDescription: "The WAN interface. Can be `wan`, `wan2`, or `both`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("wan", "wan2", "both"),
+						},
 					},
 					"ip_address": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "The address the rule listens on, or `any`.",
-						MarkdownDescription: "The address the rule listens on, or `any`.",
+						Description:         "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
+						MarkdownDescription: "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
+						Validators: []validator.String{
+							validators.IPv4OrAnyValidator(),
+						},
 					},
 					"port": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "The port or port range the rule listens on.",
-						MarkdownDescription: "The port or port range the rule listens on.",
+						Description:         "The WAN port or port range (e.g. `1-10,11,12`).",
+						MarkdownDescription: "The WAN port or port range (e.g. `1-10,11,12`).",
 					},
 				},
 				Optional:            true,
 				Computed:            true,
-				Description:         "Where the rule listens: the WAN interface, address and port.",
-				MarkdownDescription: "Where the rule listens: the WAN interface, address and port.",
+				Description:         "WAN configuration for the port forwarding rule.",
+				MarkdownDescription: "WAN configuration for the port forwarding rule.",
 			},
 		},
 		MarkdownDescription: "Forward a port or port range from a WAN interface to a host on the network.",
@@ -155,6 +202,7 @@ type PortForwardModel struct {
 	DestinationIps types.List          `tfsdk:"destination_ips"`
 	Enabled        types.Bool          `tfsdk:"enabled"`
 	Forward        ForwardValue        `tfsdk:"forward"`
+	Id             types.String        `tfsdk:"id"`
 	Logging        types.Bool          `tfsdk:"logging"`
 	Name           types.String        `tfsdk:"name"`
 	Protocol       types.String        `tfsdk:"protocol"`
