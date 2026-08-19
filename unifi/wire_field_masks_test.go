@@ -1,6 +1,7 @@
 package unifi
 
 import (
+	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -328,5 +329,123 @@ func TestVPNClientUpdateUsesTheMaskedCall(t *testing.T) {
 	if !strings.Contains(src, "func (r *vpnClientResource) modelToNetwork(") {
 		t.Fatal("the file read does not contain vpnClientResource.modelToNetwork; " +
 			"the path is wrong and the assertions above prove nothing")
+	}
+}
+
+// unifi_network gets its own tests rather than a row in the table above,
+// because it writes THREE purposes and the table's single-encoder shape cannot
+// express that. Forcing it in would mean weakening the table's assertions for
+// the two surfaces where they are exact.
+
+// THE MASK MUST BE PURPOSE-CORRECT, and this is the surface where getting it
+// wrong is a failed apply rather than a silent no-op: maskedBody refuses a mask
+// naming a field the encoder drops, and vlan-only encodes 15 fields against
+// corporate's 40.
+func TestNetworkMaskNamesOnlyWhatThePurposeEncodes(t *testing.T) {
+	name := "probe"
+	for _, purpose := range []string{
+		ui.PurposeCorporate, ui.PurposeGuest, ui.PurposeVLANOnly,
+	} {
+		t.Run(purpose, func(t *testing.T) {
+			network := &ui.Network{Purpose: purpose, Name: &name, Enabled: true}
+			raw, err := json.Marshal(network)
+			if err != nil {
+				t.Fatalf("encoding a %s network: %v", purpose, err)
+			}
+			var encoded map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &encoded); err != nil {
+				t.Fatalf("reading back: %v", err)
+			}
+
+			mask := networkWireFields(network)
+			if len(mask) == 0 {
+				t.Fatal("the mask is empty, so every assertion below would pass vacuously")
+			}
+			for _, field := range mask {
+				if _, carried := encoded[field]; !carried {
+					t.Errorf("the mask names %q, which a %s network does not encode; "+
+						"go-unifi refuses a mask naming a dropped field", field, purpose)
+				}
+			}
+		})
+	}
+}
+
+// THE NINE UNMANAGED FIELDS MUST NEVER BE MASKED, on any purpose. They are what
+// the whole-object write was resetting, and the resource assigns none of them.
+func TestNetworkMaskExcludesTheFieldsItDoesNotManage(t *testing.T) {
+	unmanaged := []string{
+		"dhcpd_mac_1", "dhcpd_mac_2", "dhcpd_mac_3",
+		"igmp_fastleave", "igmp_flood_unknown_multicast", "igmp_supression",
+		"ipv6_aliases", "mac_override_enabled", "upnp_lan_enabled",
+	}
+	name := "probe"
+	for _, purpose := range []string{
+		ui.PurposeCorporate, ui.PurposeGuest, ui.PurposeVLANOnly,
+	} {
+		t.Run(purpose, func(t *testing.T) {
+			network := &ui.Network{Purpose: purpose, Name: &name, Enabled: true}
+			mask := networkWireFields(network)
+			for _, field := range unmanaged {
+				if slices.Contains(mask, field) {
+					t.Errorf("%s is in the %s mask; the resource does not assign it and the "+
+						"whole-object write was resetting it", field, purpose)
+				}
+			}
+			// The positive control: a field the resource DOES manage is masked,
+			// or the assertions above would hold for an empty mask.
+			if !slices.Contains(mask, "name") {
+				t.Errorf("name is missing from the %s mask, so a rename would not be written",
+					purpose)
+			}
+		})
+	}
+}
+
+// The declared managed list must match what the resource assigns. Same reason
+// as the table above: a hand-kept enumeration nothing checks goes stale.
+func TestNetworkManagedWireFieldsMatchTheResource(t *testing.T) {
+	assigned := networkFieldsAssignedBy(t, "unifi/network_resource.go", "modelToNetwork")
+	if len(assigned) == 0 {
+		t.Fatal("no assignments found; the parse failed")
+	}
+	tags := networkJSONTags(t)
+	declared := map[string]bool{}
+	for _, name := range networkManagedWireFields() {
+		declared[name] = true
+	}
+	// modelToNetwork delegates to helpers, so this checks the ONE DIRECTION it
+	// can: everything the mapper itself assigns must be declared. The reverse
+	// is covered by TestNetworkMaskNamesOnlyWhatThePurposeEncodes, which fails
+	// if a declared name is not real.
+	for _, field := range assigned {
+		tag, ok := tags[field]
+		if !ok || tag == "_id" || tag == "site_id" {
+			continue
+		}
+		if !declared[tag] {
+			t.Errorf("modelToNetwork assigns %s (Network.%s) but it is not in "+
+				"networkManagedWireFields, so it would never be written", tag, field)
+		}
+	}
+}
+
+// unifi_network must use the masked call. Separate from the table's version
+// because its call passes networkWireFields(network) rather than a bare list.
+func TestNetworkUpdateUsesTheMaskedCall(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "unifi", "network_resource.go"))
+	if err != nil {
+		t.Fatalf("reading the resource: %v", err)
+	}
+	src := string(raw)
+	if !strings.Contains(src, "UpdateNetworkFields(\n\t\tctx, site, network, networkWireFields(network)...)") &&
+		!strings.Contains(src, "UpdateNetworkFields(ctx, site, network, networkWireFields(network)...)") {
+		t.Error("the update does not call UpdateNetworkFields with networkWireFields")
+	}
+	if regexp.MustCompile(`UpdateNetwork\(ctx`).MatchString(src) {
+		t.Error("a whole-object UpdateNetwork( call remains in network_resource.go")
+	}
+	if !strings.Contains(src, "func (r *networkResource) modelToNetwork(") {
+		t.Fatal("the file read is not network_resource.go; the assertions above prove nothing")
 	}
 }
