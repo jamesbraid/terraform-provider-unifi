@@ -1566,7 +1566,18 @@ func (r *settingResource) Create(
 			return
 		}
 
-		setting := r.usgModelToSetting(ctx, &usg)
+		// Read current remote settings as the base so unset fields keep their values.
+		_, currentUsg, err := ui.GetSetting[*settings.Usg](r.client.ApiClient, ctx, site)
+		if err != nil {
+			var notFound *ui.NotFoundError
+			if !errors.As(err, &notFound) {
+				resp.Diagnostics.AddError("Error Reading USG Setting", err.Error())
+				return
+			}
+			currentUsg = &settings.Usg{}
+		}
+
+		setting := r.usgModelToSetting(ctx, &usg, currentUsg)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
 			resp.Diagnostics.AddError("Error Creating USG Setting", err.Error())
 			return
@@ -1867,7 +1878,18 @@ func (r *settingResource) Update(
 			return
 		}
 
-		setting := r.usgModelToSetting(ctx, &usg)
+		// Read current remote settings as the base so unset fields keep their values.
+		_, currentUsg, err := ui.GetSetting[*settings.Usg](r.client.ApiClient, ctx, site)
+		if err != nil {
+			var notFound *ui.NotFoundError
+			if !errors.As(err, &notFound) {
+				resp.Diagnostics.AddError("Error Reading USG Setting", err.Error())
+				return
+			}
+			currentUsg = &settings.Usg{}
+		}
+
+		setting := r.usgModelToSetting(ctx, &usg, currentUsg)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
 			resp.Diagnostics.AddError("Error Updating USG Setting", err.Error())
 			return
@@ -2645,11 +2667,29 @@ func (r *settingResource) writeUsgGeo(
 	}
 }
 
+// usgModelToSetting overlays the model onto the setting the controller already
+// holds.
+//
+// IT TAKES A BASE FOR THE SAME REASON mgmt, radius AND igmpSnooping DO. This
+// mapper built a fresh settings.Usg, and 23 of the type's 46 fields carry no
+// omitempty -- so every one the schema does not declare went back as a Go zero
+// on every apply. Six were in that state: dhcpd_hostfile_update,
+// dhcpd_use_dnsmasq, dhcp_relay_agents_packets, dnsmasq_all_servers,
+// lldp_enable_all and mdns_enabled.
+//
+// A mask would have been the other fix and is not available: there is no
+// UpdateSettingFields in the SDK -- UpdateSetting takes a settings.Setting
+// interface. Starting from the fetched object needs no such call, which is why
+// three of the fifteen mappers here already do it.
+//
+// Every assignment below is guarded on the model declaring a value, so
+// overlaying rather than rebuilding changes nothing for a managed field.
 func (r *settingResource) usgModelToSetting(
 	ctx context.Context,
 	model *settingUSGModel,
+	base *settings.Usg,
 ) *settings.Usg {
-	setting := &settings.Usg{}
+	setting := base
 
 	if !model.BroadcastPing.IsNull() {
 		setting.BroadcastPing = model.BroadcastPing.ValueBool()
