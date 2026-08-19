@@ -1563,3 +1563,41 @@ func (r *wanResource) List(
 		}
 	}
 }
+
+// ValidateConfig warns when the configuration sets a value the controller will
+// not receive for this kind of network.
+//
+// go-unifi serialises a Network through one of seven per-purpose structs, and
+// any field the chosen one omits is discarded with no diagnostic at any layer:
+// the plan is clean, the apply succeeds, and the controller keeps what it had.
+// Measured across the provider's attributes, 62 can be set and never arrive.
+//
+// AT PLAN TIME, so a practitioner sees it before applying rather than after.
+// The cost is that an attribute still unknown at plan time reads as unset here
+// and goes unreported -- a miss rather than a false alarm, which is the right
+// way round for a warning.
+func (r *wanResource) ValidateConfig(
+	ctx context.Context,
+	req resource.ValidateConfigRequest,
+	resp *resource.ValidateConfigResponse,
+) {
+	var model wanResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &model)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	network, diags := r.modelToNetwork(ctx, &model)
+	// A configuration this mapper cannot build is a problem the apply will
+	// report properly; warning about its fields here would be noise on top of
+	// a real error.
+	if diags.HasError() || network == nil {
+		return
+	}
+	resp.Diagnostics.Append(droppedOnWrite("WAN", network)...)
+}
+
+// THE ASSERTION IS THE GUARD, not decoration. The framework calls ValidateConfig
+// only if the type satisfies this interface, so a mistyped signature would mean
+// the warning above is simply never raised -- with nothing failing to say so.
+// This makes that a compile error.
+var _ resource.ResourceWithValidateConfig = &wanResource{}

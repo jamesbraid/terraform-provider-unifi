@@ -1745,3 +1745,41 @@ func networkBootFromNetwork(
 	diags.Append(d...)
 	return object
 }
+
+// ValidateConfig warns when the configuration sets a value the controller will
+// not receive for this network's purpose.
+//
+// THIS IS THE SURFACE THE MEASUREMENT IS ABOUT. go-unifi serialises a Network
+// through one of seven per-purpose structs, and a vlan-only network discards 44
+// of the 51 attributes this resource exposes -- silently, with a clean plan and
+// a successful apply. Corporate and guest drop 4 each.
+//
+// The subject comes from the built object's own Purpose rather than a constant,
+// because this resource writes three different ones and a warning that said
+// only "network" would not tell a practitioner which rule they had hit.
+//
+// AT PLAN TIME, so it arrives before the apply. An attribute still unknown then
+// reads as unset and goes unreported, which is a miss rather than a false
+// alarm.
+func (r *networkResource) ValidateConfig(
+	ctx context.Context,
+	req resource.ValidateConfigRequest,
+	resp *resource.ValidateConfigResponse,
+) {
+	var model networkResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &model)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	network, diags := r.modelToNetwork(ctx, &model)
+	if diags.HasError() || network == nil {
+		return
+	}
+	resp.Diagnostics.Append(droppedOnWrite(network.Purpose+" network", network)...)
+}
+
+// THE ASSERTION IS THE GUARD, not decoration. The framework calls ValidateConfig
+// only if the type satisfies this interface, so a mistyped signature would mean
+// the warning above is simply never raised -- with nothing failing to say so.
+// This makes that a compile error.
+var _ resource.ResourceWithValidateConfig = &networkResource{}
