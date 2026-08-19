@@ -1848,8 +1848,20 @@
   "groupings": [
     {
       "attribute": {
-        "computed_optional_required": "optional",
-        "description": "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network."
+        "computed_optional_required": "computed_optional",
+        "description": "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       },
       "members": [
         {
@@ -1894,8 +1906,20 @@
     },
     {
       "attribute": {
-        "computed_optional_required": "optional",
-        "description": "DHCP relay configuration."
+        "computed_optional_required": "computed_optional",
+        "description": "DHCP relay configuration.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       },
       "members": [
         {
@@ -1941,8 +1965,20 @@
     },
     {
       "attribute": {
-        "computed_optional_required": "optional",
-        "description": "DHCP server configuration."
+        "computed_optional_required": "computed_optional",
+        "description": "DHCP server configuration.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       },
       "members": [
         {
@@ -2302,8 +2338,20 @@
     },
     {
       "attribute": {
-        "computed_optional_required": "optional",
-        "description": "DHCPv6 server configuration."
+        "computed_optional_required": "computed_optional",
+        "description": "DHCPv6 server configuration.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
       },
       "members": [
         {
