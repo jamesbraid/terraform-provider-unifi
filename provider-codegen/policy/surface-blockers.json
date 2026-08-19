@@ -79,9 +79,6 @@
     "dynamic_dns": [
       "multi-identity"
     ],
-    "firewall_policy": [
-      "nested"
-    ],
     "network": [
       "nested",
       "undefined-fields"

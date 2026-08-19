@@ -11,8 +11,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-
-	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 // The PLAIN-STRUCT family, as opposed to the Network surfaces in
@@ -61,15 +59,12 @@ type plainMaskedSurface struct {
 // the derivation itself.
 func plainMaskedSurfaces() []plainMaskedSurface {
 	return []plainMaskedSurface{
-		{
-			name: "firewall_policy", file: "unifi/firewall_policy_resource.go",
-			object: unifi.FirewallPolicy{}, literal: "FirewallPolicy", objectVar: "fp",
-			declared:        firewallPolicyManagedWireFields,
-			maskedCall:      "UpdateFirewallPolicyFields(ctx, site, fp,",
-			wholeObjectCall: "UpdateFirewallPolicy(ctx",
-			exposed:         []string{"match_ip_sec", "match_opposite_protocol", "predefined"},
-			managed:         "action",
-		},
+		// EMPTY, and that is the milestone rather than a fault: every
+		// surface that carried a hand-kept mask now derives one from
+		// Spec.Fields. firewall_policy was the last, and the property its row
+		// held -- match_ip_sec, match_opposite_protocol and predefined stay off
+		// the wire -- is asserted against the derivation in
+		// Test_firewallPolicyKit_neverWritesTheExposedThree.
 	}
 }
 
@@ -82,6 +77,16 @@ func plainMaskedSurfaces() []plainMaskedSurface {
 // masked but never assigned sends a zero the resource does not own, which is
 // the very clobber the mask exists to stop.
 func TestPlainMasksMatchTheirResource(t *testing.T) {
+	// AN EMPTY TABLE RUNS NO SUBTESTS AND REPORTS SUCCESS, which is the exact
+	// shape of a check that cannot fail. It is skipped loudly instead, so
+	// "everything migrated" stays distinguishable from "somebody emptied the
+	// table" -- and a skip rather than a failure, because a check that breaks
+	// at the moment the thing it guards starts working is one somebody deletes
+	// rather than reads.
+	if len(plainMaskedSurfaces()) == 0 {
+		t.Skip("no surface carries a hand-kept wire mask; they all derive one from Spec.Fields")
+	}
+
 	for _, surface := range plainMaskedSurfaces() {
 		t.Run(surface.name, func(t *testing.T) {
 			tags, _ := wireTagsOf(surface.object)
@@ -181,6 +186,16 @@ func TestPlainMasksNameOnlyRealWireNames(t *testing.T) {
 // excludes the unmanaged fields -- it is simply no longer consulted, and Go
 // does not complain about an unused package-level function.
 func TestPlainMaskedSurfacesUseTheMaskedCall(t *testing.T) {
+	// AN EMPTY TABLE RUNS NO SUBTESTS AND REPORTS SUCCESS, which is the exact
+	// shape of a check that cannot fail. It is skipped loudly instead, so
+	// "everything migrated" stays distinguishable from "somebody emptied the
+	// table" -- and a skip rather than a failure, because a check that breaks
+	// at the moment the thing it guards starts working is one somebody deletes
+	// rather than reads.
+	if len(plainMaskedSurfaces()) == 0 {
+		t.Skip("no surface carries a hand-kept wire mask; they all derive one from Spec.Fields")
+	}
+
 	for _, surface := range plainMaskedSurfaces() {
 		t.Run(surface.name, func(t *testing.T) {
 			raw, err := os.ReadFile(filepath.Join("..", surface.file))

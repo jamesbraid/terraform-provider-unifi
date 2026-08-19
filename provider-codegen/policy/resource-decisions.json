@@ -21,6 +21,26 @@
     "wrong on exactly one surface."
   ],
   "surfaces": {
+    "unifi_ap_group": {
+      "sdk_type": "APGroup",
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      }
+    },
+    "unifi_client_qos_rate": {
+      "sdk_type": "ClientGroup",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
     "unifi_dns_record": {
       "sdk_type": "DNSRecord",
       "duration_units": {
@@ -36,17 +56,6 @@
       },
       "schema_version": 1
     },
-    "unifi_client_qos_rate": {
-      "sdk_type": "ClientGroup",
-      "duration_units": {},
-      "list": {
-        "display_field": "Name",
-        "filters": [
-          "name"
-        ]
-      },
-      "schema_version": 0
-    },
     "unifi_firewall_group": {
       "sdk_type": "FirewallGroup",
       "duration_units": {},
@@ -59,28 +68,18 @@
       },
       "schema_version": 0
     },
-    "unifi_firewall_zone": {
-      "sdk_type": "FirewallZone",
-      "duration_units": {},
-      "list": {
-        "display_field": "Name",
-        "filters": [
-          "name"
-        ]
-      },
-      "schema_version": 0
-    },
-    "unifi_static_route": {
-      "sdk_type": "Routing",
+    "unifi_firewall_policy": {
+      "sdk_type": "FirewallPolicy",
       "duration_units": {},
       "list": {
         "display_field": "Name",
         "filters": [
           "name",
-          "type"
+          "action",
+          "enabled"
         ]
       },
-      "schema_version": 0
+      "schema_version": 1
     },
     "unifi_firewall_rule": {
       "sdk_type": "FirewallRule",
@@ -96,10 +95,34 @@
       },
       "schema_version": 0
     },
+    "unifi_firewall_zone": {
+      "sdk_type": "FirewallZone",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
     "unifi_port_profile": {
       "sdk_type": "PortProfile",
       "duration_units": {
         "dot1x_idle_timeout": "time.Second"
+      },
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 1
+    },
+    "unifi_radius_profile": {
+      "sdk_type": "RADIUSProfile",
+      "duration_units": {
+        "interim_update_interval": "time.Second"
       },
       "list": {
         "display_field": "Name",
@@ -134,27 +157,17 @@
       },
       "schema_version": 1
     },
-    "unifi_ap_group": {
-      "sdk_type": "APGroup",
+    "unifi_static_route": {
+      "sdk_type": "Routing",
+      "duration_units": {},
       "list": {
         "display_field": "Name",
         "filters": [
-          "name"
-        ]
-      }
-    },
-    "unifi_radius_profile": {
-      "sdk_type": "RADIUSProfile",
-      "duration_units": {
-        "interim_update_interval": "time.Second"
-      },
-      "list": {
-        "display_field": "Name",
-        "filters": [
-          "name"
+          "name",
+          "type"
         ]
       },
-      "schema_version": 1
+      "schema_version": 0
     }
   }
 }
