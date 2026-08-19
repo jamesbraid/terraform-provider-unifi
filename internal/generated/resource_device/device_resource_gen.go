@@ -767,7 +767,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration — the provider merges your declared ports (by `index`) into the device's current overrides rather than replacing the whole set. Removing a block stops managing that port but does not reset it; clear a port by overriding it back to the defaults instead.",
 			},
 		},
-		MarkdownDescription: "Manages a UniFi device: adoption, per-port overrides, radios and outlets.",
+		MarkdownDescription: "`unifi_device` manages a device of the network.\n\nDevices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.",
 	}
 }
 

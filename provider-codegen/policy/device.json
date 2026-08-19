@@ -4,7 +4,7 @@
     "list_resource": "d765c8e10bee92c50a75e0f795d66676529daf0ea8a17b188f6608c211cfdba6",
     "resource": "07a38835abeb0265967d8b196bb6d4943ea2323eeee1ae736cf8e885cf87daf0"
   },
-  "description": "Manages a UniFi device: adoption, per-port overrides, radios and outlets.",
+  "description": "`unifi_device` manages a device of the network.\n\nDevices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.",
   "fields": [
     {
       "disposition": "omitted",
