@@ -581,7 +581,11 @@ func (r *wlanFrameworkResource) Update(
 		)
 		return
 	}
-	updatedWLAN, err := r.client.UpdateWLAN(ctx, site, wlan)
+	// MASKED, NOT WHOLE-OBJECT. See wlanManagedWireFields: the object is built
+	// from a model that holds nothing for the fields this resource does not
+	// declare, so a whole-object write sent twenty-one of them as false on
+	// every apply.
+	updatedWLAN, err := r.client.UpdateWLANFields(ctx, site, wlan, wlanManagedWireFields()...)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating WLAN",
