@@ -192,3 +192,100 @@ func NestedProblems[M any, S any](spec Spec[M, S]) []string {
 	}
 	return problems
 }
+
+// ObjectListField carries a list of nested objects: a types.List on the model,
+// a []E on the SDK struct. It is what serves a ListNestedAttribute or a
+// ListNestedBlock, where ObjectField serves a SingleNested one.
+//
+// SAME DIVISION OF LABOUR as ObjectField: the descriptor supplies Encode and
+// Decode for one element, and the kind does the list plumbing and the check.
+// Doing it per-element rather than per-list is what keeps a descriptor from
+// re-implementing iteration eleven times.
+type ObjectListField[M any, S any, E any] struct {
+	Wire  string
+	Model func(*M) *types.List
+	SDK   func(*S) *[]E
+
+	// AttrTypes types ONE element, not the list.
+	AttrTypes map[string]attr.Type
+
+	Encode func(ctx context.Context, object types.Object) (E, diag.Diagnostics)
+	Decode func(ctx context.Context, element E) (types.Object, diag.Diagnostics)
+
+	// Unmodelled enumerates wire names of ELEMENT members knowingly left to the
+	// controller. See ObjectField.Unmodelled: it is a list rather than a flag so
+	// a member added by a later SDK regeneration fails rather than being
+	// absorbed.
+	Unmodelled []string
+
+	Elide ElideZero
+}
+
+func (f ObjectListField[M, S, E]) WireName() string { return f.Wire }
+
+func (f ObjectListField[M, S, E]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
+	var diags diag.Diagnostics
+	value := *f.Model(model)
+	if value.IsNull() || value.IsUnknown() {
+		*f.SDK(sdk) = nil
+		return diags
+	}
+	elements := value.Elements()
+	// ALLOCATED EVEN WHEN EMPTY. A nil slice and an empty one are the same JSON
+	// only where the field carries omitempty; where it does not, nil marshals to
+	// null and empty to [], and the two mean different things to the controller.
+	// StringSetField.ToSDK carries the same note for the same reason.
+	out := make([]E, 0, len(elements))
+	for _, element := range elements {
+		object, ok := element.(types.Object)
+		if !ok {
+			diags.AddError("Converting "+f.Wire,
+				"a list element is not an object, so the descriptor's Encode cannot read it")
+			continue
+		}
+		encoded, d := f.Encode(ctx, object)
+		diags.Append(d...)
+		out = append(out, encoded)
+	}
+	*f.SDK(sdk) = out
+	return diags
+}
+
+func (f ObjectListField[M, S, E]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
+	var diags diag.Diagnostics
+	objectType := types.ObjectType{AttrTypes: f.AttrTypes}
+	elements := *f.SDK(sdk)
+	if len(elements) == 0 && bool(f.Elide) {
+		*f.Model(model) = types.ListNull(objectType)
+		return diags
+	}
+	values := make([]attr.Value, 0, len(elements))
+	for _, element := range elements {
+		object, d := f.Decode(ctx, element)
+		diags.Append(d...)
+		values = append(values, object)
+	}
+	// An absent collection becomes an EMPTY list rather than a null one unless
+	// Elide says otherwise -- the nil-versus-empty distinction that cost
+	// ip_aliases a permanent diff.
+	list, d := types.ListValue(objectType, values)
+	diags.Append(d...)
+	*f.Model(model) = list
+	return diags
+}
+
+func (f ObjectListField[M, S, E]) SetInPlan(plan *M) bool {
+	value := *f.Model(plan)
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f ObjectListField[M, S, E]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}
+
+func (f ObjectListField[M, S, E]) nestedProblems() []string {
+	var element E
+	return nestedTypeProblems(f.Wire, reflect.TypeOf(element), f.AttrTypes, f.Unmodelled)
+}

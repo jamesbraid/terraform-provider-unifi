@@ -234,3 +234,136 @@ func TestNestedProblemsReachesFieldsThroughTheSpecAndThroughReadOnly(t *testing.
 		}
 	})
 }
+
+// radiusServer stands in for RADIUSProfileAcctServers: three members, all
+// omitempty, which is what a clean nested type looks like.
+type radiusServer struct {
+	IP     string `json:"ip,omitempty"`
+	Port   *int64 `json:"port,omitempty"`
+	Secret string `json:"x_secret,omitempty"`
+}
+
+type listModel struct {
+	Servers types.List `tfsdk:"servers"`
+}
+
+type listSDK struct {
+	Servers []radiusServer
+}
+
+func serverListField() ObjectListField[listModel, listSDK, radiusServer] {
+	attrTypes := map[string]attr.Type{"ip": types.StringType, "x_secret": types.StringType}
+	return ObjectListField[listModel, listSDK, radiusServer]{
+		Wire:      "acct_servers",
+		Model:     func(m *listModel) *types.List { return &m.Servers },
+		SDK:       func(s *listSDK) *[]radiusServer { return &s.Servers },
+		AttrTypes: attrTypes,
+		Encode: func(_ context.Context, o types.Object) (radiusServer, diag.Diagnostics) {
+			var diags diag.Diagnostics
+			ip, _ := o.Attributes()["ip"].(types.String)
+			secret, _ := o.Attributes()["x_secret"].(types.String)
+			return radiusServer{IP: ip.ValueString(), Secret: secret.ValueString()}, diags
+		},
+		Decode: func(_ context.Context, e radiusServer) (types.Object, diag.Diagnostics) {
+			return types.ObjectValue(attrTypes, map[string]attr.Value{
+				"ip":       types.StringValue(e.IP),
+				"x_secret": types.StringValue(e.Secret),
+			})
+		},
+		Elide: KeepZero,
+	}
+}
+
+func TestObjectListFieldCarriesEveryElementBothWays(t *testing.T) {
+	ctx := context.Background()
+	field := serverListField()
+	attrTypes := field.AttrTypes
+
+	t.Run("the controller's list reaches the model", func(t *testing.T) {
+		var model listModel
+		sdk := listSDK{Servers: []radiusServer{
+			{IP: "10.0.0.1", Secret: "a"}, {IP: "10.0.0.2", Secret: "b"},
+		}}
+		if diags := field.ToModel(ctx, &sdk, &model); diags.HasError() {
+			t.Fatalf("ToModel: %v", diags)
+		}
+		if n := len(model.Servers.Elements()); n != 2 {
+			t.Fatalf("model carries %d element(s), want 2", n)
+		}
+	})
+
+	t.Run("the model's list reaches the SDK", func(t *testing.T) {
+		one, d := types.ObjectValue(attrTypes, map[string]attr.Value{
+			"ip": types.StringValue("10.0.0.9"), "x_secret": types.StringValue("z"),
+		})
+		if d.HasError() {
+			t.Fatal(d)
+		}
+		list, d := types.ListValue(types.ObjectType{AttrTypes: attrTypes}, []attr.Value{one})
+		if d.HasError() {
+			t.Fatal(d)
+		}
+		model := listModel{Servers: list}
+		var sdk listSDK
+		if diags := field.ToSDK(ctx, &model, &sdk); diags.HasError() {
+			t.Fatalf("ToSDK: %v", diags)
+		}
+		if len(sdk.Servers) != 1 || sdk.Servers[0].IP != "10.0.0.9" {
+			t.Fatalf("SDK carries %+v, want one server with IP 10.0.0.9", sdk.Servers)
+		}
+	})
+
+	// An EMPTY configured list must not become nil, for the reason ip_aliases
+	// established: where the wire field lacks omitempty, nil is null and empty
+	// is [], and the two mean different things.
+	t.Run("an empty configured list stays an allocated empty slice", func(t *testing.T) {
+		list, d := types.ListValue(types.ObjectType{AttrTypes: attrTypes}, []attr.Value{})
+		if d.HasError() {
+			t.Fatal(d)
+		}
+		model := listModel{Servers: list}
+		var sdk listSDK
+		if diags := field.ToSDK(ctx, &model, &sdk); diags.HasError() {
+			t.Fatalf("ToSDK: %v", diags)
+		}
+		if sdk.Servers == nil {
+			t.Error("an empty configured list produced a nil slice; where the wire field " +
+				"has no omitempty that is null rather than [], which the controller reads " +
+				"as a different request")
+		}
+	})
+
+	t.Run("a null model list leaves the SDK slice nil", func(t *testing.T) {
+		model := listModel{Servers: types.ListNull(types.ObjectType{AttrTypes: attrTypes})}
+		sdk := listSDK{Servers: []radiusServer{{IP: "stale"}}}
+		if diags := field.ToSDK(ctx, &model, &sdk); diags.HasError() {
+			t.Fatalf("ToSDK: %v", diags)
+		}
+		if sdk.Servers != nil {
+			t.Errorf("SDK slice = %+v, want nil so an omitempty key drops out", sdk.Servers)
+		}
+	})
+}
+
+// TestObjectListFieldChecksItsElementType is the same refusal as ObjectField's,
+// reaching one level further: the members that matter are the ELEMENT's, and a
+// check that stopped at the list would see none of them.
+func TestObjectListFieldChecksItsElementType(t *testing.T) {
+	clean := serverListField()
+	if problems := clean.nestedProblems(); len(problems) != 0 {
+		t.Errorf("radiusServer has no force-emitted members and reported %d problem(s): %s",
+			len(problems), strings.Join(problems, "\n"))
+	}
+
+	// The positive control: the same kind pointed at an element type that DOES
+	// force-emit reports it, so the clean result above is a fact about
+	// radiusServer rather than about the check.
+	hazardous := ObjectListField[listModel, listSDK, ui.FirewallPolicySource]{
+		Wire:      "endpoints",
+		AttrTypes: map[string]attr.Type{},
+	}
+	if problems := hazardous.nestedProblems(); len(problems) != 4 {
+		t.Errorf("an element type with four force-emitted members reported %d problem(s): %s",
+			len(problems), strings.Join(problems, "\n"))
+	}
+}
