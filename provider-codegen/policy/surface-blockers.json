@@ -28,17 +28,18 @@
     "last blocker was resolved is visibly ready rather than silently unchanged."
   ],
   "blocker_kinds": [
-    "nested",
-    "undefined-fields",
-    "custom-scalar",
-    "typed-collection",
     "SDK-masked-update",
+    "custom-scalar",
     "derived-value",
-    "model-conditional",
-    "preWriteHook",
     "identity-key",
+    "model-conditional",
     "multi-identity",
-    "no-mapping"
+    "nested",
+    "no-mapping",
+    "parent-key",
+    "preWriteHook",
+    "typed-collection",
+    "undefined-fields"
   ],
   "surfaces": {
     "bgp": [
@@ -95,7 +96,9 @@
       "nested",
       "undefined-fields"
     ],
-    "wireguard_peer": [],
+    "wireguard_peer": [
+      "parent-key"
+    ],
     "wlan": [
       "nested",
       "undefined-fields"
