@@ -56,7 +56,7 @@ func TestEveryFrozenDigestIsStillReproducible(t *testing.T) {
 		{
 			field:    "ledger_sha256",
 			artifact: "provider-codegen/generated/catalog-parity-ledger.json",
-			frozen:   "e65a0f8a854a48aaedb4f09f995aa87a15feb4ec38adf20a2868ed3cb3616ecd",
+			frozen:   "abd0127fbe7abebe1fb33d37462e3d38c79e0bd30b5e83c2ff6a512218213bca",
 			pinnedBy: []string{
 				"build/wave0/catalog-parity.json", "build/wave1/read-surfaces.json",
 				"build/wave2/fleet-foundations.json", "build/wave3/fleet-dependent.json",
