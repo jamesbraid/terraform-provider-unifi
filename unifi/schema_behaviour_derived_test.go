@@ -237,10 +237,29 @@ func Test_schemaBehaviourIsDerivable(t *testing.T) {
 	// This is deliberately a floor on the COMPARED population rather than on the
 	// inputs, because that is the population the result rests on.
 	if compared == 0 {
+		// TWO WAYS TO COMPARE NOTHING, AND ONLY ONE IS A FAULT. The comment above
+		// anticipated this population shrinking with every migration; it reached
+		// zero when the last surface was rewired. A tree where EVERY managed
+		// surface serves a generated schema has no hand-written behaviour left to
+		// compare, and reading that as a broken harness would block the migration
+		// it exists to protect.
+		//
+		// DISCRIMINATED ON THE SURFACES, NOT ON THE FACT COUNTS. The tally below
+		// mixes populations counted in different units -- the note further down
+		// records what that cost last time -- so the question asked here is the
+		// one that has a single unit: is there a managed surface that is not
+		// delegated?
+		if len(delegated) == len(surfaces) {
+			t.Skipf("all %d managed surface(s) serve a generated schema, so no hand-written "+
+				"behaviour remains to compare; this resumes if a surface is added "+
+				"hand-written", len(surfaces))
+		}
 		t.Fatalf("nothing was compared: %d behaviour(s) observed, all of them set aside "+
-			"(%d data source, %d delegated, %d opaque). Every assertion above passes vacuously "+
-			"when the deriver reads nothing, so this is the harness failing rather than the "+
-			"provider passing.", len(observedLines), dataSourceFacts, delegatedFacts, opaqueFacts)
+			"(%d data source, %d delegated, %d opaque), while %d of %d managed surface(s) are "+
+			"still hand-written. Every assertion above passes vacuously when the deriver reads "+
+			"nothing, so this is the harness failing rather than the provider passing.",
+			len(observedLines), dataSourceFacts, delegatedFacts, opaqueFacts,
+			len(surfaces)-len(delegated), len(surfaces))
 	}
 
 	// Reported as three separate figures because they have three separate causes,
