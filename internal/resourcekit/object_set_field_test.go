@@ -32,9 +32,18 @@ func newObjectSetField() ObjectSetField[objSetModel, objSetSDK, objSetElem] {
 		Encode: func(_ context.Context, o types.Object) (objSetElem, diag.Diagnostics) {
 			var d diag.Diagnostics
 			attrs := o.Attributes()
+			// Checked rather than forced: an unchecked assertion here would
+			// panic on a malformed object instead of reporting it, and the
+			// panic would name the test rather than the shape that caused it.
+			index, indexOK := attrs["index"].(types.Int64)
+			name, nameOK := attrs["name"].(types.String)
+			if !indexOK || !nameOK {
+				d.AddError("bad element", "object does not carry index and name")
+				return objSetElem{}, d
+			}
 			return objSetElem{
-				Index: attrs["index"].(types.Int64).ValueInt64(),
-				Name:  attrs["name"].(types.String).ValueString(),
+				Index: index.ValueInt64(),
+				Name:  name.ValueString(),
 			}, d
 		},
 		Decode: func(_ context.Context, e objSetElem) (types.Object, diag.Diagnostics) {
