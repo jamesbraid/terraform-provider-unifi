@@ -175,7 +175,40 @@
     "a per-surface fact only its migration can settle. device needed a",
     "set_nested_block, which the general capability had not anticipated, and that",
     "only surfaced at step 4. An empty blocker list here means nothing known",
-    "blocks it, not that a migration will be uneventful."
+    "blocks it, not that a migration will be uneventful.",
+    "",
+    "CORRECTION, SAME DAY. I cleared nested off seven surfaces on the strength of",
+    "it appearing in resolved_capabilities with a live instance. That was wrong,",
+    "and it is reinstated. The capability is real and it does not fit them.",
+    "",
+    "ObjectField is keyed on SDK func(*S) **E and ObjectListField on *[]E: both",
+    "need the SDK to HAVE a nested struct for the model's object to correspond to.",
+    "Every kit field kind points at exactly one SDK field.",
+    "",
+    "MEASURED ACROSS ALL SEVEN: 24 types.Object fields in their resource models,",
+    "and 24 have no backing SDK nested struct. wan alone has ten -- vlan,",
+    "egress_qos, dns, dhcp, dhcpv6, smartq, upnp, load_balance, igmp_proxy,",
+    "provider_capabilities -- every one a model-side grouping over flat fields of",
+    "unifi.Network. vpn_client's wireguard sets network.WireguardPrivateKey,",
+    "WireguardClientPresharedKeyEnabled and WireguardInterface, three flat fields",
+    "from one object.",
+    "",
+    "POSITIVE CONTROL, and it is what makes the number mean something:",
+    "firewall_policy uses ObjectField today and its three objects -- schedule,",
+    "source, destination -- are 3 of 3 backed by real nested structs on",
+    "ui.FirewallPolicy. The same measure that reports 24 gaps reports zero there.",
+    "",
+    "So the missing capability is a FIELD KIND THAT DISTRIBUTES ONE MODEL OBJECT",
+    "ACROSS SEVERAL FLAT SDK FIELDS, which nothing in the kit does. Until it",
+    "exists these seven cannot be kit-migrated, and a resolved_capabilities entry",
+    "naming nested is true about a mechanism nobody here can use.",
+    "",
+    "THE LESSON IS THE ONE I HAD ALREADY WRITTEN ABOVE AND DID NOT APPLY. \"A",
+    "complete capability does not promise a given surface's shape is expressible.\"",
+    "I wrote that as a caveat to a clearance I made in the same commit, then",
+    "cleared seven surfaces without checking any of their shapes against it. The",
+    "caveat was correct and inert -- knowing the failure mode is not the same as",
+    "running the check."
   ],
   "blocker_kinds": [
     "SDK-masked-update",
@@ -199,13 +232,16 @@
     ],
     "client": [
       "derived-value",
-      "identity-key"
+      "identity-key",
+      "nested"
     ],
     "device": [],
     "dynamic_dns": [
       "multi-identity"
     ],
-    "network": [],
+    "network": [
+      "nested"
+    ],
     "port_forward": [],
     "power_supervisor": [
       "sdk-int"
@@ -214,16 +250,25 @@
     "site": [
       "derived-value"
     ],
-    "traffic_route": [],
-    "vpn_client": [],
-    "vpn_server": [
-      "derived-value"
+    "traffic_route": [
+      "nested"
     ],
-    "wan": [],
+    "vpn_client": [
+      "nested"
+    ],
+    "vpn_server": [
+      "derived-value",
+      "nested"
+    ],
+    "wan": [
+      "nested"
+    ],
     "wireguard_peer": [
       "parent-key"
     ],
-    "wlan": []
+    "wlan": [
+      "nested"
+    ]
   },
   "resolved_capabilities": {
     "SDK-masked-update": "Backend.Update plus buildUpdateBody: for an SDK with no Update<T>Fields the kit fetches the current object and applies only the masked fields onto it, so the object sent is the one that came back from Get. client's entry was ALSO stale -- UpdateClientFields exists.",
