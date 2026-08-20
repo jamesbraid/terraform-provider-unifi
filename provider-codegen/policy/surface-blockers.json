@@ -134,7 +134,48 @@
     "NOT COVERED BY ANY OF THE FOUR: a force-emitted field assigned under a",
     "null-guard. setting's ips block has four, and they are invisible to every",
     "mask-shaped check precisely BECAUSE they are assigned. See unifi_setting's",
-    "migration reason."
+    "migration reason.",
+    "",
+    "RE-DERIVED 2026-08-19 AT d3129c8f. Three blocker kinds were cleared and the",
+    "evidence for each is here, because a cleared blocker with no record is the",
+    "same defect as a stale one pointing the other way.",
+    "",
+    "no-mapping OFF device, setting, port_forward. #199 decomposed it as \"the",
+    "resource policy file was never written\". All three now have a policy, a",
+    "generated package, and a rewired resource -- device and setting on main, and",
+    "port_forward's rewire on forgejo awaiting a push nobody has routed around.",
+    "device shows two literal schema attributes and they are in its IDENTITY",
+    "schema, not its resource schema.",
+    "",
+    "undefined-fields OFF all SEVEN carrying it, not the five that get quoted:",
+    "client and traffic_route carry it too. Each has one of the four remedies the",
+    "definition above names, and each was read at the call site rather than",
+    "inferred. network, vpn_client, vpn_server, wan and wlan have wire-field",
+    "masks and measured zero unprotected. client does GetClient, mergeClient,",
+    "UpdateClient -- an unmodelled field arrives from the fetch and goes back.",
+    "traffic_route builds the whole object from the model, and its two",
+    "force-emitted fields, enabled and kill_switch_enabled, are both assigned",
+    "unconditionally in a struct literal rather than under a guard.",
+    "",
+    "A REGEX SAID traffic_route WAS READ-MODIFY-WRITE AND IT IS NOT. A loose",
+    "multi-line pattern matched a Get and an Update in the same function and",
+    "reported a remedy the surface does not use. It reached the right verdict by",
+    "the wrong route, which is the failure that survives review. Every one of the",
+    "seven was then read directly.",
+    "",
+    "nested OFF the same seven. It is listed in resolved_capabilities in this",
+    "file -- ObjectField, ObjectListField and NestedProblems -- so the file",
+    "already contained both the claim and its contradiction. Verified rather than",
+    "trusted: all three are declared in internal/resourcekit/object_field.go,",
+    "firewall_policy uses ObjectField and ObjectListField today, and",
+    "NestedProblems is exercised by two test files.",
+    "",
+    "WHAT THAT DOES NOT PROVE, and the caveat is load-bearing. The capability is",
+    "complete; whether a given surface's particular nested shape is expressible is",
+    "a per-surface fact only its migration can settle. device needed a",
+    "set_nested_block, which the general capability had not anticipated, and that",
+    "only surfaced at step 4. An empty blocker list here means nothing known",
+    "blocks it, not that a migration will be uneventful."
   ],
   "blocker_kinds": [
     "SDK-masked-update",
@@ -158,56 +199,31 @@
     ],
     "client": [
       "derived-value",
-      "identity-key",
-      "nested",
-      "undefined-fields"
+      "identity-key"
     ],
-    "device": [
-      "no-mapping"
-    ],
+    "device": [],
     "dynamic_dns": [
       "multi-identity"
     ],
-    "network": [
-      "nested",
-      "undefined-fields"
-    ],
-    "port_forward": [
-      "no-mapping"
-    ],
+    "network": [],
+    "port_forward": [],
     "power_supervisor": [
       "sdk-int"
     ],
-    "setting": [
-      "no-mapping"
-    ],
+    "setting": [],
     "site": [
       "derived-value"
     ],
-    "traffic_route": [
-      "nested",
-      "undefined-fields"
-    ],
-    "vpn_client": [
-      "nested",
-      "undefined-fields"
-    ],
+    "traffic_route": [],
+    "vpn_client": [],
     "vpn_server": [
-      "derived-value",
-      "nested",
-      "undefined-fields"
+      "derived-value"
     ],
-    "wan": [
-      "nested",
-      "undefined-fields"
-    ],
+    "wan": [],
     "wireguard_peer": [
       "parent-key"
     ],
-    "wlan": [
-      "nested",
-      "undefined-fields"
-    ]
+    "wlan": []
   },
   "resolved_capabilities": {
     "SDK-masked-update": "Backend.Update plus buildUpdateBody: for an SDK with no Update<T>Fields the kit fetches the current object and applies only the masked fields onto it, so the object sent is the one that came back from Get. client's entry was ALSO stale -- UpdateClientFields exists.",
