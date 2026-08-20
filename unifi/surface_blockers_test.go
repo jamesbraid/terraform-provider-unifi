@@ -1,6 +1,7 @@
 package unifi
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -61,8 +62,28 @@ func resourceSurfaces(t *testing.T) map[string]bool {
 			continue
 		}
 		name := strings.TrimSuffix(path, "_resource.go")
-		_, err := os.Stat(name + "_descriptor.go")
-		out[name] = err == nil
+		// CUT OVER MEANS SERVED FROM THE KIT, NOT "A DESCRIPTOR FILE EXISTS".
+		//
+		// This read os.Stat(name+"_descriptor.go") and took the file's presence
+		// as the answer. A descriptor written but not yet wired -- the state a
+		// migration is in for as long as it takes to write one -- flipped its
+		// surface to cut over, which made TestNoRecordedBlockerOutlivesItsSurface
+		// demand its blockers be deleted while the resource was still served by
+		// hand-written CRUD. Deleting them would then satisfy
+		// TestEveryUncutSurfaceHasARecordedBlocker too, because that one asks
+		// the same detector. Both checks would be green about a surface nobody
+		// had migrated.
+		//
+		// The wiring is what the record is about, so the wiring is what is read:
+		// a kit resource embeds resourcekit.Resource[Model, SDK] and a
+		// hand-written one does not. Measured across the tree, the two detectors
+		// agree on all twelve migrated surfaces and disagree only where a
+		// descriptor exists unwired -- which is the case that matters.
+		source, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[name] = bytes.Contains(source, []byte("resourcekit.Resource["))
 	}
 	if len(out) == 0 {
 		t.Fatal("no resource files found; the detector is broken, not the tree")
