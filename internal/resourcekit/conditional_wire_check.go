@@ -53,12 +53,24 @@ func ConditionalWireProblems[M any, S any](
 	objects []types.Object,
 	seed func(*S),
 ) []string {
-	if len(field.ConditionalWires) == 0 {
-		return nil
-	}
+	// NO EARLY RETURN FOR AN EMPTY DECLARATION, and removing it is the whole
+	// point of this revision.
+	//
+	// The check used to return nil when a field declared no ConditionalWires,
+	// and to iterate the DECLARATION when it did. Both take the population from
+	// the thing being checked, so the only case that destroys anything -- a
+	// conditional wire NOBODY DECLARED -- was the one case it could not see.
+	// network's dhcp_server and dhcp_v6_server declare none between them and
+	// would have been approved in silence over seventeen wires that end at
+	// their zero.
+	//
+	// The population is field.Wires now. Deleting an entry from
+	// ConditionalWires fails, because the wire is still checked and still turns
+	// out to be conditional.
 	ctx := context.Background()
 	var problems []string
 	sawTrue, sawFalse := map[string]bool{}, map[string]bool{}
+	sawWritten, sawSkipped := map[string]bool{}, map[string]bool{}
 
 	for index, object := range objects {
 		if object.IsNull() || object.IsUnknown() {
@@ -72,8 +84,17 @@ func ConditionalWireProblems[M any, S any](
 			problems = append(problems, fmt.Sprintf("object %d: %v", index, err))
 			continue
 		}
-		for _, wire := range sortedKeys(field.ConditionalWires) {
-			predicate := field.ConditionalWires[wire](object)
+		for _, wire := range field.Wires {
+			if written[wire] {
+				sawWritten[wire] = true
+			} else {
+				sawSkipped[wire] = true
+			}
+			test, declared := field.ConditionalWires[wire]
+			if !declared {
+				continue
+			}
+			predicate := test(object)
 			if predicate {
 				sawTrue[wire] = true
 			} else {
@@ -91,6 +112,24 @@ func ConditionalWireProblems[M any, S any](
 						"name is dropped from the mask and the value is never sent",
 					index, wire))
 			}
+		}
+	}
+
+	// AN UNDECLARED WIRE THE OBJECTS SHOW IS CONDITIONAL IS THE DESTRUCTIVE
+	// CASE, and it is reported first because it is the one nothing else looks
+	// for. Encode wrote it for some objects and left it alone for others, so it
+	// is conditional by the same definition the declared ones are judged by --
+	// and with no entry it stays on the mask whatever the plan says.
+	for _, wire := range field.Wires {
+		if _, declared := field.ConditionalWires[wire]; declared {
+			continue
+		}
+		if sawWritten[wire] && sawSkipped[wire] {
+			problems = append(problems, fmt.Sprintf(
+				"Encode writes %q for some of these objects and leaves it alone for others, "+
+					"and it is not in ConditionalWires -- so the mask carries it even when "+
+					"nothing wrote it and go-unifi sends its zero over whatever the "+
+					"controller holds", wire))
 		}
 	}
 
