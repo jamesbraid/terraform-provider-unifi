@@ -41,6 +41,18 @@
       },
       "schema_version": 0
     },
+    "unifi_device": {
+      "sdk_type": "Device",
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "mac",
+          "model",
+          "type"
+        ]
+      }
+    },
     "unifi_dns_record": {
       "sdk_type": "DNSRecord",
       "duration_units": {

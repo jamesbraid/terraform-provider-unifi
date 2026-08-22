@@ -2,17 +2,12 @@ package unifi
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
-	"sort"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -108,234 +103,6 @@ func indexOverrides(pos []unifi.DevicePortOverrides) map[int64]unifi.DevicePortO
 	return m
 }
 
-// Test_buildMinimalUpdateDevice_mgmtNetworkID guards #329: a configured
-// mgmt_network_id (the UI "Network Override") must travel in the minimal PUT body,
-// and a null value must stay off the wire so it never reintroduces the #177
-// zero-value rejection. modelToAPIDevice sets deviceReq.MgmtNetworkID only when
-// configured, so nullness is represented here by an empty value on deviceReq.
-func Test_buildMinimalUpdateDevice_mgmtNetworkID(t *testing.T) {
-	t.Run("configured mgmt_network_id is sent in the PUT body", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:            "dev-1",
-			Type:          "usw",
-			MAC:           "aa:bb:cc:dd:ee:ff",
-			Name:          "Test Switch",
-			MgmtNetworkID: "net-mgmt",
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		if body.MgmtNetworkID != "net-mgmt" {
-			t.Fatalf(
-				"MgmtNetworkID = %q, want %q (override dropped from PUT, #329)",
-				body.MgmtNetworkID,
-				"net-mgmt",
-			)
-		}
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if !strings.Contains(string(raw), `"mgmt_network_id":"net-mgmt"`) {
-			t.Errorf("PUT body missing mgmt_network_id: %s", raw)
-		}
-	})
-
-	t.Run("null mgmt_network_id stays off the wire (no #177 regression)", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:   "dev-1",
-			Type: "usw",
-			MAC:  "aa:bb:cc:dd:ee:ff",
-			Name: "Test Switch",
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		if body.MgmtNetworkID != "" {
-			t.Errorf("MgmtNetworkID = %q, want empty for a null override", body.MgmtNetworkID)
-		}
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if strings.Contains(string(raw), "mgmt_network_id") {
-			t.Errorf("null mgmt_network_id leaked into PUT body: %s", raw)
-		}
-	})
-}
-
-// Test_buildMinimalUpdateDevice_switchVLANEnabled guards the switch_vlan_enabled
-// bug class: a configured "Port VLAN" toggle (true) must travel in the minimal
-// PUT body, else the controller keeps its old value and the post-apply read
-// conflicts with the plan. Being `omitempty`, a false stays off the wire and
-// doesn't disturb the controller default.
-func Test_buildMinimalUpdateDevice_switchVLANEnabled(t *testing.T) {
-	t.Run("configured switch_vlan_enabled is sent in the PUT body", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:                "dev-1",
-			Type:              "uap",
-			MAC:               "aa:bb:cc:dd:ee:ff",
-			Name:              "Test AP",
-			SwitchVLANEnabled: true,
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		if !body.SwitchVLANEnabled {
-			t.Fatal("SwitchVLANEnabled = false, want true (toggle dropped from PUT)")
-		}
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if !strings.Contains(string(raw), `"switch_vlan_enabled":true`) {
-			t.Errorf("PUT body missing switch_vlan_enabled: %s", raw)
-		}
-	})
-
-	t.Run("false switch_vlan_enabled stays off the wire (omitempty)", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:   "dev-1",
-			Type: "uap",
-			MAC:  "aa:bb:cc:dd:ee:ff",
-			Name: "Test AP",
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		if body.SwitchVLANEnabled {
-			t.Errorf("SwitchVLANEnabled = true, want false when unconfigured")
-		}
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if strings.Contains(string(raw), "switch_vlan_enabled") {
-			t.Errorf("false switch_vlan_enabled leaked into PUT body: %s", raw)
-		}
-	})
-}
-
-// Test_buildMinimalUpdateDevice_vwireEnabled guards the radio_table[].vwire_enabled
-// bug class (the UI "Mesh Parent" toggle): the hand-listed minimal PUT never
-// copied radio_table across, so every radio sub-field — vwire_enabled included —
-// was dropped, the controller kept its old value, and the post-apply read
-// conflicted with the plan. Being `omitempty` at every level, an empty
-// radio_table stays off the wire and doesn't disturb the controller default.
-func Test_buildMinimalUpdateDevice_vwireEnabled(t *testing.T) {
-	t.Run("configured vwire_enabled is sent in the PUT body", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:   "dev-1",
-			Type: "uap",
-			MAC:  "aa:bb:cc:dd:ee:ff",
-			Name: "Test AP",
-			RadioTable: []unifi.DeviceRadioTable{
-				{Name: "wifi0", Radio: "ng", VwireEnabled: true},
-				{Name: "wifi1", Radio: "na", VwireEnabled: true},
-			},
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		if len(body.RadioTable) != 2 {
-			t.Fatalf(
-				"RadioTable len = %d, want 2 (radio_table dropped from PUT)",
-				len(body.RadioTable),
-			)
-		}
-		for _, radio := range body.RadioTable {
-			if !radio.VwireEnabled {
-				t.Fatalf(
-					"radio %q VwireEnabled = false, want true (toggle dropped from PUT)",
-					radio.Name,
-				)
-			}
-		}
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if !strings.Contains(string(raw), `"vwire_enabled":true`) {
-			t.Errorf("PUT body missing vwire_enabled: %s", raw)
-		}
-	})
-
-	t.Run("false vwire_enabled stays off the wire (omitempty)", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:   "dev-1",
-			Type: "uap",
-			MAC:  "aa:bb:cc:dd:ee:ff",
-			Name: "Test AP",
-			RadioTable: []unifi.DeviceRadioTable{
-				{Name: "wifi0", Radio: "ng"},
-			},
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if strings.Contains(string(raw), "vwire_enabled") {
-			t.Errorf("false vwire_enabled leaked into PUT body: %s", raw)
-		}
-	})
-
-	t.Run("nil radio_table stays off the wire (omitempty)", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:   "dev-1",
-			Type: "usw",
-			MAC:  "aa:bb:cc:dd:ee:ff",
-			Name: "Test Switch",
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if strings.Contains(string(raw), "radio_table") {
-			t.Errorf("empty radio_table leaked into PUT body: %s", raw)
-		}
-	})
-}
-
-// Test_buildMinimalUpdateDevice_meshStaVapEnabled guards the top-level
-// mesh_sta_vap_enabled bug class (the UI "Mesh Connect" toggle): a configured
-// true must travel in the minimal PUT body, else the controller keeps its old
-// value and the post-apply read conflicts with the plan. Being `omitempty`, a
-// false stays off the wire and doesn't disturb the controller default.
-func Test_buildMinimalUpdateDevice_meshStaVapEnabled(t *testing.T) {
-	t.Run("configured mesh_sta_vap_enabled is sent in the PUT body", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:                "dev-1",
-			Type:              "uap",
-			MAC:               "aa:bb:cc:dd:ee:ff",
-			Name:              "Test AP",
-			MeshStaVapEnabled: true,
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		if !body.MeshStaVapEnabled {
-			t.Fatal("MeshStaVapEnabled = false, want true (toggle dropped from PUT)")
-		}
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if !strings.Contains(string(raw), `"mesh_sta_vap_enabled":true`) {
-			t.Errorf("PUT body missing mesh_sta_vap_enabled: %s", raw)
-		}
-	})
-
-	t.Run("false mesh_sta_vap_enabled stays off the wire (omitempty)", func(t *testing.T) {
-		deviceReq := &unifi.Device{
-			ID:   "dev-1",
-			Type: "uap",
-			MAC:  "aa:bb:cc:dd:ee:ff",
-			Name: "Test AP",
-		}
-		body := buildMinimalUpdateDevice(deviceReq, nil, nil)
-		if body.MeshStaVapEnabled {
-			t.Errorf("MeshStaVapEnabled = true, want false when unconfigured")
-		}
-		raw, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal: %v", err)
-		}
-		if strings.Contains(string(raw), "mesh_sta_vap_enabled") {
-			t.Errorf("false mesh_sta_vap_enabled leaked into PUT body: %s", raw)
-		}
-	})
-}
-
 // TestAccDeviceFramework_basic drives whichever device the harness started for
 // it. The MAC comes from the herder's ready event rather than from a literal,
 // because a literal can only name a controller-simulated demo device, which
@@ -384,40 +151,24 @@ resource "unifi_device" "test" {
 }
 
 func TestNewDeviceFrameworkResource(t *testing.T) {
-	tests := []struct {
-		name string
-		want fwresource.Resource
-	}{
-		{
-			name: "returns deviceResource",
-			want: &deviceResource{},
-		},
+	// A populated Spec carries closures, which are never DeepEqual, so the
+	// thing worth asserting is the type the provider registers.
+	got := NewDeviceFrameworkResource()
+	if got == nil {
+		t.Fatal("NewDeviceFrameworkResource() = nil")
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewDeviceFrameworkResource(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDeviceFrameworkResource() = %v, want %v", got, tt.want)
-			}
-		})
+	if _, ok := got.(*deviceKitResource); !ok {
+		t.Errorf("NewDeviceFrameworkResource() = %T, want *deviceKitResource", got)
 	}
 }
 
 func TestNewDeviceListResource(t *testing.T) {
-	tests := []struct {
-		name string
-		want fwlist.ListResource
-	}{
-		{
-			name: "returns deviceResource",
-			want: &deviceResource{},
-		},
+	got := NewDeviceListResource()
+	if got == nil {
+		t.Fatal("NewDeviceListResource() = nil")
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewDeviceListResource(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDeviceListResource() = %v, want %v", got, tt.want)
-			}
-		})
+	if _, ok := got.(*deviceKitResource); !ok {
+		t.Errorf("NewDeviceListResource() = %T, want *deviceKitResource", got)
 	}
 }
 
@@ -450,12 +201,12 @@ func Test_deviceResource_IdentitySchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *deviceResource
+		r    *deviceKitResource
 		args args
 	}{
 		{
 			name: "returns identity schema",
-			r:    &deviceResource{},
+			r:    newDeviceKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwresource.IdentitySchemaRequest{},
@@ -478,12 +229,12 @@ func Test_deviceResource_Schema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *deviceResource
+		r    *deviceKitResource
 		args args
 	}{
 		{
 			name: "returns schema",
-			r:    &deviceResource{},
+			r:    newDeviceKitResource(),
 			args: args{
 				ctx:  context.Background(),
 				req:  fwresource.SchemaRequest{},
@@ -499,7 +250,7 @@ func Test_deviceResource_Schema(t *testing.T) {
 }
 
 func Test_deviceResource_UpgradeState(t *testing.T) {
-	got := (&deviceResource{}).UpgradeState(context.Background())
+	got := newDeviceKitResource().UpgradeState(context.Background())
 	for _, version := range []int64{0, 1} {
 		if _, ok := got[version]; !ok {
 			t.Errorf("missing state upgrader for schema version %d", version)
@@ -571,7 +322,7 @@ func Test_dropAssistedRoaming_nonRadioState(t *testing.T) {
 // from old state.
 func Test_deviceResource_UpgradeState_dropsAssistedRoaming(t *testing.T) {
 	ctx := context.Background()
-	r := &deviceResource{}
+	r := newDeviceKitResource()
 
 	priorState := `{
 		"id": "abc123",
@@ -646,234 +397,33 @@ func Test_deviceResource_UpgradeState_dropsAssistedRoaming(t *testing.T) {
 	}
 }
 
-func Test_deviceResource_Create(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.CreateRequest
-		resp *fwresource.CreateResponse
+// A DEVICE IS ADOPTED IF THE CREATE SUCCEEDED, whatever the write answered
+// with. BeforeSend adopts and waits for Connected before anything is written,
+// so a response still carrying the pre-adoption flag would otherwise record the
+// device as unadopted immediately after the apply that adopted it -- and the
+// next plan would proceed to adopt it again.
+//
+// This moved from restoreCreatePlanValues, which the hand-written resource
+// called at the end of Create.
+func Test_deviceRestoreCreateValues_preservesSuccessfulAdoption(t *testing.T) {
+	created := &unifi.Device{Adopted: false, Name: ""}
+	deviceRestoreCreateValues(created, &unifi.Device{Name: "planned-name"})
+
+	if !created.Adopted {
+		t.Error("Adopted = false, want true after a successful create")
 	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Create(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
+	if created.Name != "planned-name" {
+		t.Errorf("Name = %q, want the name that was just written", created.Name)
 	}
 }
 
-func Test_restoreCreatePlanValues_preservesSuccessfulAdoption(t *testing.T) {
-	model := deviceResourceModel{
-		Adopted: types.BoolValue(false),
-	}
+// A controller-chosen name is kept when the request did not carry one.
+func Test_deviceRestoreCreateValues_keepsControllerNameWhenUnset(t *testing.T) {
+	created := &unifi.Device{Name: "from-controller"}
+	deviceRestoreCreateValues(created, &unifi.Device{Name: ""})
 
-	restoreCreatePlanValues(&model, types.BoolValue(true), types.BoolValue(false), types.StringNull(), types.SetNull(types.ObjectType{AttrTypes: portOverrideAttrTypes()}))
-
-	if !model.Adopted.ValueBool() {
-		t.Fatal("Adopted = false, want true after successful create")
-	}
-}
-
-func Test_deviceResource_Read(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ReadRequest
-		resp *fwresource.ReadResponse
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Read(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_deviceResource_Update(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.UpdateRequest
-		resp *fwresource.UpdateResponse
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Update(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_deviceResource_Delete(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.DeleteRequest
-		resp *fwresource.DeleteResponse
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Delete(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_deviceResource_ImportState(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ImportStateRequest
-		resp *fwresource.ImportStateResponse
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.ImportState(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-// Test_buildMinimalUpdateDevice guards #337: the update PUT body must carry the
-// LED override fields. They used to be filled by modelToAPIDevice but dropped
-// when assembling the minimal PUT payload, so the controller kept the old LED
-// values and the post-apply read conflicted with the plan.
-func Test_buildMinimalUpdateDevice(t *testing.T) {
-	deviceReq := &unifi.Device{
-		ID:                         "dev-1",
-		Type:                       "uap",
-		MAC:                        "00:11:22:33:44:55",
-		Name:                       "AP-Hallway",
-		LedOverride:                "on",
-		LedOverrideColor:           "#00ff00",
-		LedOverrideColorBrightness: ptrInt64(20),
-	}
-	current := &unifi.Device{State: 1, Adopted: true}
-	overrides := []unifi.DevicePortOverrides{{PortIDX: ptrInt64(1)}}
-
-	got := buildMinimalUpdateDevice(deviceReq, current, overrides)
-
-	if got.LedOverride != "on" {
-		t.Errorf("LedOverride = %q, want on", got.LedOverride)
-	}
-	if got.LedOverrideColor != "#00ff00" {
-		t.Errorf("LedOverrideColor = %q, want #00ff00", got.LedOverrideColor)
-	}
-	if got.LedOverrideColorBrightness == nil || *got.LedOverrideColorBrightness != 20 {
-		t.Errorf("LedOverrideColorBrightness = %v, want 20", got.LedOverrideColorBrightness)
-	}
-	// State/Adopted carried over from the current device; other fields preserved.
-	if got.State != 1 || !got.Adopted {
-		t.Errorf(
-			"State/Adopted not carried from current: state=%v adopted=%v",
-			got.State,
-			got.Adopted,
-		)
-	}
-	if got.Name != "AP-Hallway" || len(got.PortOverrides) != 1 {
-		t.Errorf(
-			"unexpected name/overrides: name=%q overrides=%d",
-			got.Name,
-			len(got.PortOverrides),
-		)
-	}
-
-	// Unset LED fields stay zero-valued (omitempty drops them from the PUT body).
-	bare := buildMinimalUpdateDevice(&unifi.Device{ID: "d2"}, nil, nil)
-	if bare.LedOverride != "" || bare.LedOverrideColorBrightness != nil {
-		t.Errorf("unset LED fields should be zero: %q %v",
-			bare.LedOverride, bare.LedOverrideColorBrightness)
-	}
-}
-
-func Test_deviceResource_updateDevice(t *testing.T) {
-	type args struct {
-		ctx   context.Context
-		model *deviceResourceModel
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-		want diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.updateDevice(
-				tt.args.ctx,
-				tt.args.model,
-			); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("deviceResource.updateDevice() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_setResourceData(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		diags  *diag.Diagnostics
-		device *unifi.Device
-		model  *deviceResourceModel
-		site   string
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.setResourceData(
-				tt.args.ctx,
-				tt.args.diags,
-				tt.args.device,
-				tt.args.model,
-				tt.args.site,
-			)
-		})
-	}
-}
-
-func Test_deviceResource_modelToAPIDevice(t *testing.T) {
-	type args struct {
-		ctx   context.Context
-		model *deviceResourceModel
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  *unifi.Device
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.modelToAPIDevice(tt.args.ctx, tt.args.model)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("deviceResource.modelToAPIDevice() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("deviceResource.modelToAPIDevice() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
+	if created.Name != "from-controller" {
+		t.Errorf("Name = %q, want the controller's own", created.Name)
 	}
 }
 
@@ -915,147 +465,6 @@ func Test_mergePortOverridesByIndex(t *testing.T) {
 				tt.want,
 			) {
 				t.Errorf("mergePortOverridesByIndex() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_reconcilePortOverrides(t *testing.T) {
-	type args struct {
-		ctx          context.Context
-		prior        types.Set
-		apiOverrides []unifi.DevicePortOverrides
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  types.Set
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.reconcilePortOverrides(
-				tt.args.ctx,
-				tt.args.prior,
-				tt.args.apiOverrides,
-			)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("deviceResource.reconcilePortOverrides() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.reconcilePortOverrides() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_portOverridesToFramework(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		pos []unifi.DevicePortOverrides
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  types.Set
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.portOverridesToFramework(tt.args.ctx, tt.args.pos)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"deviceResource.portOverridesToFramework() got = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.portOverridesToFramework() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_frameworkToPortOverrides(t *testing.T) {
-	type args struct {
-		ctx             context.Context
-		portOverrideSet types.Set
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  []unifi.DevicePortOverrides
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.frameworkToPortOverrides(tt.args.ctx, tt.args.portOverrideSet)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"deviceResource.frameworkToPortOverrides() got = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.frameworkToPortOverrides() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_waitForDeviceState(t *testing.T) {
-	type args struct {
-		ctx           context.Context
-		site          string
-		mac           string
-		targetState   unifi.DeviceState
-		pendingStates []unifi.DeviceState
-		timeout       time.Duration
-	}
-	tests := []struct {
-		name    string
-		r       *deviceResource
-		args    args
-		want    *unifi.Device
-		wantErr bool
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.r.waitForDeviceState(
-				tt.args.ctx,
-				tt.args.site,
-				tt.args.mac,
-				tt.args.targetState,
-				tt.args.pendingStates,
-				tt.args.timeout,
-			)
-			if (err != nil) != tt.wantErr {
-				t.Errorf(
-					"deviceResource.waitForDeviceState() error = %v, wantErr %v",
-					err,
-					tt.wantErr,
-				)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("deviceResource.waitForDeviceState() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -1243,226 +652,6 @@ func Test_int64OrNull(t *testing.T) {
 	}
 }
 
-func Test_deviceResource_configNetworkToFramework(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		cn  *unifi.DeviceConfigNetwork
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  types.Object
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.configNetworkToFramework(tt.args.ctx, tt.args.cn)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"deviceResource.configNetworkToFramework() got = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.configNetworkToFramework() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_radioTableToFramework(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		radios []unifi.DeviceRadioTable
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  types.List
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.radioTableToFramework(tt.args.ctx, tt.args.radios)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("deviceResource.radioTableToFramework() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.radioTableToFramework() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_outletOverridesToFramework(t *testing.T) {
-	type args struct {
-		ctx     context.Context
-		outlets []unifi.DeviceOutletOverrides
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  types.List
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.outletOverridesToFramework(tt.args.ctx, tt.args.outlets)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"deviceResource.outletOverridesToFramework() got = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.outletOverridesToFramework() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_frameworkToConfigNetwork(t *testing.T) {
-	type args struct {
-		ctx              context.Context
-		configNetworkObj types.Object
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  *unifi.DeviceConfigNetwork
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.frameworkToConfigNetwork(tt.args.ctx, tt.args.configNetworkObj)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"deviceResource.frameworkToConfigNetwork() got = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.frameworkToConfigNetwork() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_frameworkToRadioTable(t *testing.T) {
-	type args struct {
-		ctx       context.Context
-		radioList types.List
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  []unifi.DeviceRadioTable
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.frameworkToRadioTable(tt.args.ctx, tt.args.radioList)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("deviceResource.frameworkToRadioTable() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.frameworkToRadioTable() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_frameworkToOutletOverrides(t *testing.T) {
-	type args struct {
-		ctx        context.Context
-		outletList types.List
-	}
-	tests := []struct {
-		name  string
-		r     *deviceResource
-		args  args
-		want  []unifi.DeviceOutletOverrides
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.frameworkToOutletOverrides(tt.args.ctx, tt.args.outletList)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"deviceResource.frameworkToOutletOverrides() got = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"deviceResource.frameworkToOutletOverrides() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_deviceResource_deviceListToModel(t *testing.T) {
-	type args struct {
-		ctx   context.Context
-		api   *unifi.Device
-		model *deviceResourceModel
-		site  string
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-		want diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.deviceListToModel(
-				tt.args.ctx,
-				tt.args.api,
-				tt.args.model,
-				tt.args.site,
-			); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("deviceResource.deviceListToModel() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_deviceResource_ListResourceConfigSchema(t *testing.T) {
 	type args struct {
 		in0  context.Context
@@ -1471,12 +660,12 @@ func Test_deviceResource_ListResourceConfigSchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *deviceResource
+		r    *deviceKitResource
 		args args
 	}{
 		{
 			name: "returns list schema",
-			r:    &deviceResource{},
+			r:    newDeviceKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwlist.ListResourceSchemaRequest{},
@@ -1487,24 +676,6 @@ func Test_deviceResource_ListResourceConfigSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.r.ListResourceConfigSchema(tt.args.in0, tt.args.in1, tt.args.resp)
-		})
-	}
-}
-
-func Test_deviceResource_List(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		req    fwlist.ListRequest
-		stream *fwlist.ListResultsStream
-	}
-	tests := []struct {
-		name string
-		r    *deviceResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.List(tt.args.ctx, tt.args.req, tt.args.stream)
 		})
 	}
 }
@@ -1564,89 +735,4 @@ func Test_portOverridesForUpdate_noDeclaredBlocks(t *testing.T) {
 			t.Errorf("with no fetched device there is nothing to preserve, got %v", got)
 		}
 	})
-}
-
-// Test_portOverridesAreAlwaysOnTheWire is the control that makes the test above
-// mean something, and it is the reason the fix could not be "leave the field
-// nil and let it drop out".
-//
-// port_overrides carries no omitempty. A nil slice therefore does not vanish
-// from the PUT body -- it marshals to [], which the controller reads as a full
-// replace with nothing. If this ever starts reporting the key as absent, the
-// merge stops being load-bearing and the comment on portOverridesForUpdate is
-// wrong.
-func Test_portOverridesAreAlwaysOnTheWire(t *testing.T) {
-	body, err := json.Marshal(buildMinimalUpdateDevice(&unifi.Device{ID: "d1"}, nil, nil))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(body), `"port_overrides":[]`) {
-		t.Fatalf("a nil port_overrides no longer marshals to []; the body was %s", body)
-	}
-}
-
-// Test_deviceForceEmittedFieldsAreAllRescuedHere pins the coincidence that
-// makes buildMinimalUpdateDevice safe.
-//
-// The body it builds is a FRESH unifi.Device populated from the Terraform
-// model, so any field the schema does not declare goes to the controller as a
-// Go zero -- unless omitempty drops it from the encoding first. Exactly three
-// of Device's fields have no omitempty, and all three are filled in by hand
-// from the fetched device. Nothing enforces that; it is true today and an SDK
-// regeneration can end it silently.
-//
-// So the set is pinned rather than the behaviour described. A fourth
-// force-emitted field fails here, naming itself, instead of being reset on
-// every apply.
-func Test_deviceForceEmittedFieldsAreAllRescuedHere(t *testing.T) {
-	_, forceEmits := wireTagsOf(unifi.Device{})
-
-	got := make([]string, 0, len(forceEmits))
-	for name, unconditional := range forceEmits {
-		if unconditional && name != "_id" && name != "site_id" {
-			got = append(got, name)
-		}
-	}
-	sort.Strings(got)
-
-	want := []string{"adopted", "port_overrides", "state"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("unifi.Device force-emits %v, not %v.\n\n"+
-			"buildMinimalUpdateDevice builds the PUT body from the Terraform model, so "+
-			"every force-emitted field it does not set is sent as a zero on every apply. "+
-			"The three in `want` are set by hand from the fetched device. A field that "+
-			"appears here and not there is silently reset; one that disappeared means the "+
-			"rescue is now dead code. Fix buildMinimalUpdateDevice, then update this list.",
-			got, want)
-	}
-}
-
-// Test_buildMinimalUpdateDeviceRescuesEveryForceEmittedField is the other half:
-// the set above is the right set, and each member actually survives the trip.
-// Pinning the names without checking the values would pass for a rescue that
-// had been deleted.
-func Test_buildMinimalUpdateDeviceRescuesEveryForceEmittedField(t *testing.T) {
-	idx := func(i int64) *int64 { return &i }
-	current := &unifi.Device{
-		ID:            "d1",
-		Adopted:       true,
-		State:         5,
-		PortOverrides: []unifi.DevicePortOverrides{{PortIDX: idx(1), Name: "uplink"}},
-	}
-	// A model that declares nothing beyond identity: the worst case.
-	deviceReq := &unifi.Device{ID: "d1"}
-
-	body := buildMinimalUpdateDevice(
-		deviceReq, current, portOverridesForUpdate(current, deviceReq.PortOverrides))
-
-	if !body.Adopted {
-		t.Error("adopted went back as false; a gateway rejects that (#177)")
-	}
-	if body.State != 5 {
-		t.Errorf("state went back as %d, want 5", body.State)
-	}
-	if len(body.PortOverrides) != 1 {
-		t.Errorf("port_overrides went back with %d entries, want 1 (#191)",
-			len(body.PortOverrides))
-	}
 }
