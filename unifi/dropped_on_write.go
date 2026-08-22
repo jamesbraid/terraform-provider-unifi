@@ -34,6 +34,9 @@ import (
 // missing: absent from the alias struct entirely, and present but tagged
 // omitempty so a set-but-zero value vanishes.
 //
+// THE 62 AND THE 44 ABOVE ARE PINNED IN internal/blastradius, by name and not by
+// count, so a figure quoted here cannot drift from the one a test measures.
+//
 // A ZERO FIELD IS NOT REPORTED, deliberately. The encoder legitimately omits
 // zero values everywhere, and the provider cannot tell an attribute the
 // practitioner set to zero from one they never mentioned once it has reached
