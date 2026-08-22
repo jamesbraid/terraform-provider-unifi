@@ -151,3 +151,25 @@ func Test_deviceForceEmittedFieldsAreStillJustThree(t *testing.T) {
 			got, want)
 	}
 }
+
+// TYPE TRAVELS ON EVERY WRITE, AND NOTHING HAS MEASURED WHETHER IT MUST.
+//
+// The hand-written resource echoed `type` from a fresh GET because the API was
+// said to require it in the PUT body. That claim is about the controller, so no
+// amount of reading settles it, and provider CI has dispatched nothing for days
+// (#214) -- there is no acceptance run to defer to.
+//
+// It is therefore kept and pinned here rather than left to a comment. On an
+// update `type` would be masked anyway, since the plan carries what the last
+// read returned. On a CREATE it would not: `type` is Computed, so the plan
+// holds it unknown and SetInPlan drops it. This asserts the create case, which
+// is the one that would break if the requirement is real.
+//
+// If something ever measures the controller and finds `type` is not required,
+// delete the AlwaysWire entry, the echo in BeforeSend, and this test together.
+func Test_deviceTypeIsAlwaysOnTheWire(t *testing.T) {
+	mask := deviceMaskFor(t, deviceKitModel{})
+	if !deviceMaskHas(mask, "type") {
+		t.Fatalf("type is not in the mask of a plan that does not carry it: %v", mask)
+	}
+}
