@@ -72,11 +72,11 @@ func scatterField() ScatteredObjectField[scatterModel, scatterSDK] {
 	}
 }
 
-func scatterObject(t *testing.T, key, iface string, preshared bool) types.Object {
+func scatterObject(t *testing.T, key, iface string) types.Object {
 	t.Helper()
 	object, diags := types.ObjectValue(scatterAttrs, map[string]attr.Value{
 		"private_key":           types.StringValue(key),
-		"preshared_key_enabled": types.BoolValue(preshared),
+		"preshared_key_enabled": types.BoolValue(true),
 		"interface":             types.StringValue(iface),
 	})
 	if diags.HasError() {
@@ -95,7 +95,7 @@ func TestScatteredObjectPutsEveryNameInTheMask(t *testing.T) {
 		TypeName: "unifi_scatter",
 		Fields:   []Field[scatterModel, scatterSDK]{scatterField()},
 	}
-	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0", true)}
+	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0")}
 
 	fields, err := spec.WireFields(plan)
 	if err != nil {
@@ -176,7 +176,7 @@ func TestScatteredObjectRoundTripsThroughTheFlatFields(t *testing.T) {
 	field := scatterField()
 
 	sdk := &scatterSDK{}
-	model := &scatterModel{Wireguard: scatterObject(t, "privkey", "wg1", true)}
+	model := &scatterModel{Wireguard: scatterObject(t, "privkey", "wg1")}
 	if diags := field.ToSDK(ctx, model, sdk); diags.HasError() {
 		t.Fatalf("ToSDK: %v", diags)
 	}
@@ -215,7 +215,7 @@ func TestScatteredObjectCopyPlanToStateKeepsWhatTheReadProduced(t *testing.T) {
 		t.Fatal(diags)
 	}
 	plan := &scatterModel{Wireguard: planned}
-	state := &scatterModel{Wireguard: scatterObject(t, "from-read", "wg-read", true)}
+	state := &scatterModel{Wireguard: scatterObject(t, "from-read", "wg-read")}
 
 	scatterField().CopyPlanToState(plan, state)
 
@@ -306,7 +306,7 @@ func TestScatteredObjectNamesDedupeAgainstAlwaysWire(t *testing.T) {
 		Fields:     []Field[scatterModel, scatterSDK]{scatterField()},
 		AlwaysWire: []string{"wireguard_interface", "unrelated"},
 	}
-	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0", true)}
+	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0")}
 
 	fields, err := spec.WireFields(plan)
 	if err != nil {
@@ -340,7 +340,7 @@ func TestTwoFieldsClaimingOneAttributeAreRefused(t *testing.T) {
 			overlapping,
 		},
 	}
-	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0", true)}
+	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0")}
 	if _, err := spec.WireFields(plan); err == nil {
 		t.Error("two fields naming wireguard_interface produced a mask rather than an error")
 	}
