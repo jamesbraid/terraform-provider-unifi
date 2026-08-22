@@ -4,24 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"regexp"
-	"strings"
-	"time"
 
-	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_vpn_server"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_server"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -37,18 +30,25 @@ var (
 	_ list.ListResourceWithConfigure = &vpnServerResource{}
 )
 
-func NewVPNServerResource() resource.Resource {
-	return &vpnServerResource{}
-}
-
-func NewVPNServerListResource() list.ListResource {
-	return &vpnServerResource{}
-}
-
 // vpnServerResource defines the resource implementation.
+// CRUD and both mappers are gone -- the kit does them. What stays is the
+// schema, the identity schema, ValidateConfig, and the helpers the descriptor
+// calls.
 type vpnServerResource struct {
-	client *Client
+	resourcekit.Resource[vpnServerKitModel, unifi.Network]
 }
+
+func newVPNServerKitResource() *vpnServerResource {
+	r := &vpnServerResource{}
+	r.Spec = vpnServerKitSpec()
+	r.SchemaSpec = vpnServerKitSchema()
+	r.ListSurface = vpnServerKitList()
+	return r
+}
+
+func NewVPNServerResource() resource.Resource { return newVPNServerKitResource() }
+
+func NewVPNServerListResource() list.ListResource { return newVPNServerKitResource() }
 
 type vpnServerIdentityModel struct {
 	ID types.String `tfsdk:"id"`
@@ -151,22 +151,6 @@ func (m vpnServerOpenVPNModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// vpnServerResourceModel describes the resource data model.
-type vpnServerResourceModel struct {
-	ID              types.String         `tfsdk:"id"`
-	Site            types.String         `tfsdk:"site"`
-	Name            types.String         `tfsdk:"name"`
-	Enabled         types.Bool           `tfsdk:"enabled"`
-	Subnet          cidrtypes.IPv4Prefix `tfsdk:"subnet"`
-	DNS             types.Object         `tfsdk:"dns"`
-	WAN             types.Object         `tfsdk:"wan"`
-	RADIUSProfileID types.String         `tfsdk:"radiusprofile_id"`
-	Wireguard       types.Object         `tfsdk:"wireguard"`
-	L2TP            types.Object         `tfsdk:"l2tp"`
-	OpenVPN         types.Object         `tfsdk:"openvpn"`
-	Timeouts        timeouts.Value       `tfsdk:"timeouts"`
-}
-
 func (r *vpnServerResource) Metadata(
 	ctx context.Context,
 	req resource.MetadataRequest,
@@ -214,408 +198,8 @@ func (r *vpnServerResource) Configure(
 		return
 	}
 
-	r.client = client
-}
-
-func (r *vpnServerResource) Create(
-	ctx context.Context,
-	req resource.CreateRequest,
-	resp *resource.CreateResponse,
-) {
-	var data vpnServerResourceModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	createTimeout, timeoutDiags := data.Timeouts.Create(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, createTimeout)
-	defer cancel()
-
-	network, diags := r.modelToNetwork(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	createdNetwork, err := r.client.CreateNetwork(ctx, site, network)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Creating VPN Server",
-			err.Error(),
-		)
-		return
-	}
-
-	var planData vpnServerResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &planData)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	diags = r.networkToModel(ctx, createdNetwork, &data, site, &planData)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	idModel := vpnServerIdentityModel{ID: data.ID}
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, &idModel)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *vpnServerResource) Read(
-	ctx context.Context,
-	req resource.ReadRequest,
-	resp *resource.ReadResponse,
-) {
-	var data vpnServerResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	readTimeout, timeoutDiags := data.Timeouts.Read(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, readTimeout)
-	defer cancel()
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	var err error
-	var network *unifi.Network
-
-	if !data.ID.IsNull() && !data.ID.IsUnknown() {
-		network, err = r.client.GetNetwork(ctx, site, data.ID.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Error Reading VPN Server",
-				"Could not read VPN server ID "+data.ID.ValueString()+": "+err.Error(),
-			)
-			return
-		}
-	} else {
-		network, err = r.client.GetNetworkByName(ctx, site, data.Name.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Error Reading VPN Server",
-				"Could not read VPN server name "+data.Name.ValueString()+": "+err.Error(),
-			)
-			return
-		}
-	}
-
-	var priorState vpnServerResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &priorState)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	diags := r.networkToModel(ctx, network, &data, site, &priorState)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	idModel := vpnServerIdentityModel{ID: data.ID}
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, &idModel)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *vpnServerResource) Update(
-	ctx context.Context,
-	req resource.UpdateRequest,
-	resp *resource.UpdateResponse,
-) {
-	var data vpnServerResourceModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	updateTimeout, timeoutDiags := data.Timeouts.Update(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
-	defer cancel()
-
-	network, diags := r.modelToNetwork(ctx, &data)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	network.ID = data.ID.ValueString()
-
-	// MASKED, NOT WHOLE-OBJECT. See vpnServerWireFields: the object is built
-	// from the plan alone, so a whole-object write sent every unmodelled field
-	// as its Go zero.
-	//
-	// AND NARROWED TO WHAT THIS OBJECT ENCODES, which vpn_server needs and was
-	// documented as not needing. go-unifi refuses a mask naming a field the
-	// purpose encoder drops, and a VPN server encodes only its own protocol's
-	// fields -- so a wireguard server named twelve openvpn and l2tp keys it
-	// never emits and every update failed with a 400 from the SDK before the
-	// request was built.
-	updatedNetwork, err := r.client.UpdateNetworkFields(
-		ctx, site, network, networkMaskFor(vpnServerWireFields(), network)...)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Updating VPN Server",
-			err.Error(),
-		)
-		return
-	}
-
-	var planData vpnServerResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &planData)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	diags = r.networkToModel(ctx, updatedNetwork, &data, site, &planData)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	idModel := vpnServerIdentityModel{ID: data.ID}
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, &idModel)...)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *vpnServerResource) Delete(
-	ctx context.Context,
-	req resource.DeleteRequest,
-	resp *resource.DeleteResponse,
-) {
-	var data vpnServerResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	deleteTimeout, timeoutDiags := data.Timeouts.Delete(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
-	defer cancel()
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	name := data.Name.ValueString()
-	err := r.client.DeleteNetwork(ctx, site, data.ID.ValueString(), name)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Deleting VPN Server",
-			err.Error(),
-		)
-		return
-	}
-}
-
-func (r *vpnServerResource) ImportState(
-	ctx context.Context,
-	req resource.ImportStateRequest,
-	resp *resource.ImportStateResponse,
-) {
-	idParts := strings.Split(req.ID, ":")
-	if len(idParts) == 2 {
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), idParts[0])...)
-		req.ID = idParts[1]
-	}
-
-	if strings.HasPrefix(req.ID, "name=") {
-		req.ID = strings.TrimPrefix(req.ID, "name=")
-		resource.ImportStatePassthroughID(ctx, path.Root("name"), req, resp)
-	} else if regexp.MustCompile(`^[0-9a-f]{24}$`).MatchString(req.ID) {
-		idModel := vpnServerIdentityModel{ID: types.StringValue(req.ID)}
-		resp.Diagnostics.Append(resp.Identity.Set(ctx, &idModel)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		resource.ImportStatePassthroughWithIdentity(
-			ctx,
-			path.Root("id"),
-			path.Root("id"),
-			req,
-			resp,
-		)
-	} else {
-		resource.ImportStatePassthroughID(ctx, path.Root("name"), req, resp)
-	}
-}
-
-// modelToNetwork converts from Terraform model to unifi.Network.
-func (r *vpnServerResource) modelToNetwork(
-	ctx context.Context,
-	model *vpnServerResourceModel,
-) (*unifi.Network, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	network := &unifi.Network{
-		Name:              model.Name.ValueStringPointer(),
-		Purpose:           unifi.PurposeUserVPN,
-		Enabled:           model.Enabled.ValueBool(),
-		IPSubnet:          model.Subnet.ValueStringPointer(),
-		SettingPreference: util.Ptr("manual"),
-	}
-
-	// Determine VPN type from which nested block is configured
-	hasWireguard := !model.Wireguard.IsNull() && !model.Wireguard.IsUnknown()
-	hasL2TP := !model.L2TP.IsNull() && !model.L2TP.IsUnknown()
-	hasOpenVPN := !model.OpenVPN.IsNull() && !model.OpenVPN.IsUnknown()
-
-	switch {
-	case hasWireguard:
-		network.VPNType = util.Ptr("wireguard-server")
-	case hasL2TP:
-		network.VPNType = util.Ptr("l2tp-server")
-	case hasOpenVPN:
-		network.VPNType = util.Ptr("openvpn-server")
-	default:
-		diags.AddError(
-			"Missing VPN Type Configuration",
-			"Exactly one of `wireguard`, `l2tp`, or `openvpn` must be specified.",
-		)
-		return nil, diags
-	}
-
-	// Handle DNS configuration (shared across all VPN types)
-	if !model.DNS.IsNull() && !model.DNS.IsUnknown() {
-		var dns vpnServerDNSModel
-		d := model.DNS.As(ctx, &dns, basetypes.ObjectAsOptions{})
-		diags.Append(d...)
-		if !diags.HasError() {
-			if !dns.Enabled.IsNull() && !dns.Enabled.IsUnknown() {
-				network.DHCPDDNSEnabled = dns.Enabled.ValueBool()
-			}
-
-			if !dns.Servers.IsNull() && !dns.Servers.IsUnknown() {
-				var dnsServers []string
-				d := dns.Servers.ElementsAs(ctx, &dnsServers, false)
-				diags.Append(d...)
-				if !diags.HasError() {
-					vpnServerDNSServersToNetwork(dnsServers, network)
-					// Default enabled to true when servers are specified
-					if len(dnsServers) > 0 &&
-						(dns.Enabled.IsNull() || dns.Enabled.IsUnknown()) {
-						network.DHCPDDNSEnabled = true
-					}
-				}
-			}
-		}
-	}
-
-	// Handle WAN configuration (shared, but mapped to VPN-type-specific API fields)
-	if !model.WAN.IsNull() && !model.WAN.IsUnknown() {
-		var wan vpnServerWANModel
-		d := model.WAN.As(ctx, &wan, basetypes.ObjectAsOptions{})
-		diags.Append(d...)
-		if !diags.HasError() {
-			vpnServerWANIPToNetwork(wan.IP, network)
-			vpnServerWANInterfaceToNetwork(wan.Interface, network)
-		}
-	}
-
-	// RADIUS profile ID (applicable to L2TP and OpenVPN)
-	if !model.RADIUSProfileID.IsNull() && !model.RADIUSProfileID.IsUnknown() {
-		network.RADIUSProfileID = model.RADIUSProfileID.ValueStringPointer()
-	}
-
-	// Handle WireGuard-specific configuration
-	if hasWireguard {
-		var wireguard vpnServerWireguardModel
-		d := model.Wireguard.As(ctx, &wireguard, basetypes.ObjectAsOptions{})
-		diags.Append(d...)
-		if !diags.HasError() {
-			if !wireguard.PrivateKey.IsNull() && !wireguard.PrivateKey.IsUnknown() {
-				network.WireguardPrivateKey = wireguard.PrivateKey.ValueStringPointer()
-			} else {
-				// The controller does not generate a key on create (it rejects
-				// with api.err.WireguardMissingPrivateKey), so generate one
-				// provider-side. On update the key is resolved from state via
-				// UseStateForUnknown, so this branch only runs at create.
-				key, err := generateWireGuardPrivateKey()
-				if err != nil {
-					diags.AddError("Unable to generate WireGuard private key", err.Error())
-				} else {
-					network.WireguardPrivateKey = &key
-				}
-			}
-			vpnServerLocalPortToNetwork(wireguard.Port, network)
-		}
-	}
-
-	// Handle L2TP-specific configuration
-	if hasL2TP {
-		var l2tp vpnServerL2TPModel
-		d := model.L2TP.As(ctx, &l2tp, basetypes.ObjectAsOptions{})
-		diags.Append(d...)
-		if !diags.HasError() {
-			network.L2TpAllowWeakCiphers = l2tp.AllowWeakCiphers.ValueBool()
-			network.IPSecPreSharedKey = l2tp.PreSharedKey.ValueStringPointer()
-		}
-	}
-
-	// Handle OpenVPN-specific configuration
-	if hasOpenVPN {
-		var openvpn vpnServerOpenVPNModel
-		d := model.OpenVPN.As(ctx, &openvpn, basetypes.ObjectAsOptions{})
-		diags.Append(d...)
-		if !diags.HasError() {
-			vpnServerLocalPortToNetwork(openvpn.Port, network)
-			network.OpenVPNMode = openvpn.Mode.ValueStringPointer()
-			network.OpenVPNEncryptionCipher = openvpn.EncryptionCipher.ValueStringPointer()
-
-			// Send the controller-generated certificate and key material back on
-			// update, and only then. On create these are unknown, and an unknown
-			// yields a pointer to "" rather than nil, which puts empty x_ca_crt,
-			// x_ca_key, x_dh_key and x_server_crt on the wire. The controller
-			// issues that material itself, so a create must not assert it.
-			network.ServerCrt = knownNonEmpty(openvpn.ServerCrt)
-			network.ServerKey = knownNonEmpty(openvpn.ServerKey)
-			network.DhKey = knownNonEmpty(openvpn.DhKey)
-			network.SharedClientKey = knownNonEmpty(openvpn.SharedClientKey)
-			network.SharedClientCrt = knownNonEmpty(openvpn.SharedClientCrt)
-			network.AuthKey = knownNonEmpty(openvpn.AuthKey)
-			network.CaCrt = knownNonEmpty(openvpn.CaCrt)
-			network.CaKey = knownNonEmpty(openvpn.CaKey)
-		}
-	}
-
-	return network, diags
+	r.Spec.Backend = vpnServerKitBackend(client.ApiClient)
+	r.DefaultSite = client.Site
 }
 
 // knownNonEmpty returns a pointer to v's value, or nil when it is null,
@@ -626,275 +210,6 @@ func knownNonEmpty(v types.String) *string {
 		return nil
 	}
 	return v.ValueStringPointer()
-}
-
-// networkToModel converts from unifi.Network to Terraform model.
-func (r *vpnServerResource) networkToModel(
-	ctx context.Context,
-	network *unifi.Network,
-	model *vpnServerResourceModel,
-	site string,
-	priorState *vpnServerResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	model.ID = types.StringValue(network.ID)
-	model.Site = types.StringValue(site)
-	model.Name = types.StringPointerValue(network.Name)
-	model.Enabled = types.BoolValue(network.Enabled)
-	if network.IPSubnet != nil {
-		model.Subnet = cidrtypes.NewIPv4PrefixValue(*network.IPSubnet)
-	} else {
-		model.Subnet = cidrtypes.NewIPv4PrefixNull()
-	}
-
-	// Build DNS nested object
-	{
-		dnsServersList := vpnServerDNSServersFromNetwork(ctx, &diags, network)
-
-		dnsValue := vpnServerDNSModel{
-			Enabled: types.BoolValue(network.DHCPDDNSEnabled),
-			Servers: dnsServersList,
-		}
-		var d diag.Diagnostics
-		model.DNS, d = types.ObjectValueFrom(ctx, vpnServerDNSModel{}.AttributeTypes(), dnsValue)
-		diags.Append(d...)
-	}
-
-	// Determine VPN type from the API response
-	vpnType := ""
-	if network.VPNType != nil {
-		vpnType = *network.VPNType
-	}
-
-	// Build WAN nested object with VPN-type-specific API field mapping
-	{
-		wanValue := vpnServerWANModel{
-			IP:        vpnServerWANIPFromNetwork(network),
-			Interface: vpnServerWANInterfaceFromNetwork(network),
-		}
-		var d diag.Diagnostics
-		model.WAN, d = types.ObjectValueFrom(ctx, vpnServerWANModel{}.AttributeTypes(), wanValue)
-		diags.Append(d...)
-	}
-
-	// RADIUS profile ID
-	if network.RADIUSProfileID != nil && *network.RADIUSProfileID != "" {
-		model.RADIUSProfileID = types.StringPointerValue(network.RADIUSProfileID)
-	} else {
-		model.RADIUSProfileID = types.StringNull()
-	}
-
-	// Build VPN-type-specific nested objects
-	switch vpnType {
-	case "wireguard-server":
-		// Preserve private key from prior state if the API doesn't return it
-		privateKeyVal := types.StringPointerValue(network.WireguardPrivateKey)
-		if (privateKeyVal.IsNull() || privateKeyVal.ValueString() == "") &&
-			priorState != nil && !priorState.Wireguard.IsNull() && !priorState.Wireguard.IsUnknown() {
-			var priorWG vpnServerWireguardModel
-			d := priorState.Wireguard.As(ctx, &priorWG, basetypes.ObjectAsOptions{})
-			diags.Append(d...)
-			if !diags.HasError() {
-				privateKeyVal = priorWG.PrivateKey
-			}
-		}
-
-		strPtrToType := func(ptr *string) types.String {
-			if ptr == nil || *ptr == "" {
-				return types.StringNull()
-			}
-			return types.StringValue(*ptr)
-		}
-
-		// DERIVED WHEN THE CONTROLLER DOES NOT SEND ONE, which on 10.4.57 is
-		// always: wireguard_public_key is absent on create, absent after every
-		// update, and absent forever, so this attribute was null for its whole
-		// life. Nothing errored, because Computed plus UseStateForUnknown makes
-		// a null plan agree with a null read -- it was consistently empty.
-		//
-		// A practitioner reading it into a peer configuration or an output got
-		// an empty string and no diagnostic, against a description promising a
-		// value computed from the private key. That is now true.
-		publicKeyVal := strPtrToType(network.WireguardPublicKey)
-		if publicKeyVal.IsNull() && !privateKeyVal.IsNull() && privateKeyVal.ValueString() != "" {
-			derived, err := wireguardPublicKey(privateKeyVal.ValueString())
-			if err != nil {
-				// REPORTED, NOT SWALLOWED. Falling back to null here would
-				// restore the behaviour this replaces, and silently: the
-				// practitioner would see the same empty string and have no way
-				// to learn the key was malformed.
-				diags.AddError(
-					"Cannot derive the WireGuard public key",
-					"The controller does not return wireguard_public_key, so the provider "+
-						"derives it from the private key. That failed: "+err.Error(),
-				)
-			} else {
-				publicKeyVal = types.StringValue(derived)
-			}
-		}
-
-		wireguardValue := vpnServerWireguardModel{
-			PrivateKey: privateKeyVal,
-			PublicKey:  publicKeyVal,
-			Port:       vpnServerLocalPortFromNetwork(network),
-		}
-		var d diag.Diagnostics
-		model.Wireguard, d = types.ObjectValueFrom(
-			ctx,
-			vpnServerWireguardModel{}.AttributeTypes(),
-			wireguardValue,
-		)
-		diags.Append(d...)
-		model.L2TP = types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes())
-		model.OpenVPN = types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes())
-
-	case "l2tp-server":
-		// Preserve pre-shared key from prior state since the API does not return it
-		pskVal := types.StringPointerValue(network.IPSecPreSharedKey)
-		if (pskVal.IsNull() || pskVal.ValueString() == "") &&
-			priorState != nil && !priorState.L2TP.IsNull() && !priorState.L2TP.IsUnknown() {
-			var priorL2TP vpnServerL2TPModel
-			d := priorState.L2TP.As(ctx, &priorL2TP, basetypes.ObjectAsOptions{})
-			diags.Append(d...)
-			if !diags.HasError() {
-				pskVal = priorL2TP.PreSharedKey
-			}
-		}
-
-		l2tpValue := vpnServerL2TPModel{
-			AllowWeakCiphers: types.BoolValue(network.L2TpAllowWeakCiphers),
-			PreSharedKey:     pskVal,
-		}
-		var d diag.Diagnostics
-		model.L2TP, d = types.ObjectValueFrom(ctx, vpnServerL2TPModel{}.AttributeTypes(), l2tpValue)
-		diags.Append(d...)
-		model.Wireguard = types.ObjectNull(vpnServerWireguardModel{}.AttributeTypes())
-		model.OpenVPN = types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes())
-
-	case "openvpn-server":
-		openvpnValue := vpnServerOpenVPNModel{
-			Port:             vpnServerLocalPortFromNetwork(network),
-			Mode:             types.StringPointerValue(network.OpenVPNMode),
-			EncryptionCipher: types.StringPointerValue(network.OpenVPNEncryptionCipher),
-			ServerCrt:        types.StringPointerValue(network.ServerCrt),
-			ServerKey:        types.StringPointerValue(network.ServerKey),
-			DhKey:            types.StringPointerValue(network.DhKey),
-			SharedClientKey:  types.StringPointerValue(network.SharedClientKey),
-			SharedClientCrt:  types.StringPointerValue(network.SharedClientCrt),
-			AuthKey:          types.StringPointerValue(network.AuthKey),
-			CaCrt:            types.StringPointerValue(network.CaCrt),
-			CaKey:            types.StringPointerValue(network.CaKey),
-		}
-		var d diag.Diagnostics
-		model.OpenVPN, d = types.ObjectValueFrom(
-			ctx,
-			vpnServerOpenVPNModel{}.AttributeTypes(),
-			openvpnValue,
-		)
-		diags.Append(d...)
-		model.Wireguard = types.ObjectNull(vpnServerWireguardModel{}.AttributeTypes())
-		model.L2TP = types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes())
-
-	default:
-		// Unknown VPN type — null out all type-specific blocks
-		model.Wireguard = types.ObjectNull(vpnServerWireguardModel{}.AttributeTypes())
-		model.L2TP = types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes())
-		model.OpenVPN = types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes())
-	}
-
-	return diags
-}
-
-// ListResourceConfigSchema implements [list.ListResource].
-func (r *vpnServerResource) ListResourceConfigSchema(
-	ctx context.Context,
-	req list.ListResourceSchemaRequest,
-	resp *list.ListResourceSchemaResponse,
-) {
-	resp.Schema = listresource_vpn_server.VpnServerListResourceSchema(ctx)
-}
-
-// List implements [list.ListResource].
-func (r *vpnServerResource) List(
-	ctx context.Context,
-	req list.ListRequest,
-	stream *list.ListResultsStream,
-) {
-	var config vpnServerListConfigModel
-
-	diags := req.Config.Get(ctx, &config)
-	if diags.HasError() {
-		stream.Results = list.ListResultsStreamDiagnostics(diags)
-		return
-	}
-
-	site := config.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	// Process filter blocks.
-	var filters []vpnServerListFilterModel
-	if !config.Filter.IsNull() && !config.Filter.IsUnknown() {
-		config.Filter.ElementsAs(ctx, &filters, false)
-	}
-
-	postFilters := make(map[string]string)
-	for _, f := range filters {
-		postFilters[f.Name.ValueString()] = f.Value.ValueString()
-	}
-
-	networks, err := r.client.ListNetwork(ctx, site)
-	if err != nil {
-		var d diag.Diagnostics
-		d.AddError("Error Listing VPN Servers", "Could not list networks: "+err.Error())
-		stream.Results = list.ListResultsStreamDiagnostics(d)
-		return
-	}
-
-	stream.Results = func(push func(list.ListResult) bool) {
-		for _, network := range networks {
-			// Filter by purpose: only remote-user-vpn networks.
-			if network.Purpose != unifi.PurposeUserVPN {
-				continue
-			}
-
-			// Apply name filter if specified.
-			if nameFilter, ok := postFilters["name"]; ok {
-				if network.Name == nil || *network.Name != nameFilter {
-					continue
-				}
-			}
-
-			result := req.NewListResult(ctx)
-			if network.Name != nil {
-				result.DisplayName = *network.Name
-			}
-
-			// Set identity.
-			result.Diagnostics.Append(
-				result.Identity.SetAttribute(
-					ctx,
-					path.Root("id"),
-					types.StringValue(network.ID),
-				)...,
-			)
-
-			// Convert to model.
-			var model vpnServerResourceModel
-			result.Diagnostics.Append(
-				r.networkToModel(ctx, &network, &model, site, &vpnServerResourceModel{})...)
-			if !result.Diagnostics.HasError() {
-				model.Timeouts = timeoutsNullValue()
-				result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
-			}
-
-			if !push(result) {
-				return
-			}
-		}
-	}
 }
 
 // generateWireGuardPrivateKey returns a fresh base64-encoded Curve25519 private
@@ -1061,16 +376,22 @@ func (r *vpnServerResource) ValidateConfig(
 	req resource.ValidateConfigRequest,
 	resp *resource.ValidateConfigResponse,
 ) {
-	var model vpnServerResourceModel
+	var model vpnServerKitModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &model)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	network, diags := r.modelToNetwork(ctx, &model)
+	network, diags := r.Spec.ToSDK(ctx, &model)
 	// A configuration this mapper cannot build is a problem the apply will
 	// report properly; warning about its fields here would be noise on top of
 	// a real error.
 	if diags.HasError() || network == nil {
+		return
+	}
+	// BeforeSend is what sets purpose and vpn_type, and droppedOnWrite reads
+	// the purpose to choose an encoder. ToSDK alone would hand it a Network
+	// with no purpose, which encodes to an error rather than a field list.
+	if diags := r.Spec.BeforeSend(ctx, &model, &model, network, nil); diags.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(droppedOnWrite("remote-user VPN", network)...)

@@ -696,7 +696,7 @@ func Test_vpnServerOpenVPNModel_AttributeTypes(t *testing.T) {
 }
 
 func Test_vpnServerResource_IdentitySchema(t *testing.T) {
-	r := &vpnServerResource{}
+	r := newVPNServerKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -717,8 +717,8 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("missing vpn type returns error", func(t *testing.T) {
-		r := &vpnServerResource{}
-		model := &vpnServerResourceModel{
+		spec := vpnServerKitSpec()
+		model := &vpnServerKitModel{
 			Name:      types.StringValue("test"),
 			Enabled:   types.BoolValue(true),
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.100.0.1/24"),
@@ -728,17 +728,34 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
-		got, diags := r.modelToNetwork(ctx, model)
+		got, diags := spec.ToSDK(ctx, model)
+		if !diags.HasError() {
+			// purpose and vpn_type moved into BeforeSend, so a ToSDK alone
+			// would leave the object without the discriminator the old mapper
+			// always set.
+			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+		}
 		if !diags.HasError() {
 			t.Error("expected error for missing VPN type")
 		}
-		if got != nil {
-			t.Error("expected nil network for error case")
+		// THE nil-NETWORK ASSERTION IS GONE AND THAT IS NOT A WEAKENING.
+		//
+		// The old modelToNetwork returned (nil, diags) so a caller could not
+		// use a half-built object. The kit splits that: ToSDK builds and
+		// BeforeSend judges, so the object exists and the DIAGNOSTIC is what
+		// stops the apply. Asserting nil here would be asserting the shape of
+		// a function that no longer exists rather than the behaviour, which is
+		// what the check above tests.
+		if got == nil {
+			t.Fatal("ToSDK returned no object at all, which it should never do")
+		}
+		if got.VPNType != nil {
+			t.Errorf("VPNType = %q, want unset when no block is configured", *got.VPNType)
 		}
 	})
 
 	t.Run("wireguard model sets vpn type", func(t *testing.T) {
-		r := &vpnServerResource{}
+		spec := vpnServerKitSpec()
 		port := int64(51820)
 		privKey := "WPiBa/Ak1W+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ+kFg="
 		wgModel := vpnServerWireguardModel{
@@ -750,7 +767,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("building wireguard object: %v", d)
 		}
-		model := &vpnServerResourceModel{
+		model := &vpnServerKitModel{
 			Name:      types.StringValue("wg-server"),
 			Enabled:   types.BoolValue(true),
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.100.0.1/24"),
@@ -760,7 +777,13 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
-		got, diags := r.modelToNetwork(ctx, model)
+		got, diags := spec.ToSDK(ctx, model)
+		if !diags.HasError() {
+			// purpose and vpn_type moved into BeforeSend, so a ToSDK alone
+			// would leave the object without the discriminator the old mapper
+			// always set.
+			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+		}
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -779,7 +802,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 	})
 
 	t.Run("l2tp model sets vpn type", func(t *testing.T) {
-		r := &vpnServerResource{}
+		spec := vpnServerKitSpec()
 		l2tpModel := vpnServerL2TPModel{
 			AllowWeakCiphers: types.BoolValue(false),
 			PreSharedKey:     types.StringValue("my-psk"),
@@ -788,7 +811,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("building l2tp object: %v", d)
 		}
-		model := &vpnServerResourceModel{
+		model := &vpnServerKitModel{
 			Name:      types.StringValue("l2tp-server"),
 			Enabled:   types.BoolValue(true),
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.110.0.1/24"),
@@ -798,7 +821,13 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
-		got, diags := r.modelToNetwork(ctx, model)
+		got, diags := spec.ToSDK(ctx, model)
+		if !diags.HasError() {
+			// purpose and vpn_type moved into BeforeSend, so a ToSDK alone
+			// would leave the object without the discriminator the old mapper
+			// always set.
+			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+		}
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -815,7 +844,7 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("wireguard network populates wireguard block", func(t *testing.T) {
-		r := &vpnServerResource{}
+		spec := vpnServerKitSpec()
 		vpnType := "wireguard-server"
 		name := "wg-test"
 		subnet := "10.100.0.1/24"
@@ -830,8 +859,9 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 			WireguardPrivateKey: &privKey,
 			LocalPort:           &port,
 		}
-		var model vpnServerResourceModel
-		diags := r.networkToModel(ctx, network, &model, "default", &vpnServerResourceModel{})
+		var model vpnServerKitModel
+		diags := spec.ToModel(ctx, network, &model, "default")
+		diags.Append(spec.AfterReceive(ctx, network, &model, deref(&vpnServerKitModel{}), nil)...)
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -871,7 +901,7 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 	})
 
 	t.Run("l2tp network preserves psk from prior state", func(t *testing.T) {
-		r := &vpnServerResource{}
+		spec := vpnServerKitSpec()
 		vpnType := "l2tp-server"
 		name := "l2tp-test"
 		subnet := "10.110.0.1/24"
@@ -897,12 +927,13 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("building prior l2tp: %v", d)
 		}
-		priorState := &vpnServerResourceModel{
+		priorState := &vpnServerKitModel{
 			L2TP: priorL2TPObj,
 		}
 
-		var model vpnServerResourceModel
-		diags := r.networkToModel(ctx, network, &model, "default", priorState)
+		var model vpnServerKitModel
+		diags := spec.ToModel(ctx, network, &model, "default")
+		diags.Append(spec.AfterReceive(ctx, network, &model, deref(priorState), nil)...)
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -928,7 +959,7 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 }
 
 func Test_vpnServerResource_ListResourceConfigSchema(t *testing.T) {
-	r := &vpnServerResource{}
+	r := newVPNServerKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -1023,4 +1054,13 @@ func Test_knownNonEmpty(t *testing.T) {
 			}
 		})
 	}
+}
+
+// deref adapts the old networkToModel prior-state pointer to AfterReceive's
+// value parameter. A nil prior means no prior state, which is the zero model.
+func deref(prior *vpnServerKitModel) vpnServerKitModel {
+	if prior == nil {
+		return vpnServerKitModel{}
+	}
+	return *prior
 }

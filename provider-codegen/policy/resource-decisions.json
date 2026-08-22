@@ -228,6 +228,15 @@
       },
       "schema_version": 0
     },
+    "unifi_vpn_server": {
+      "sdk_type": "Network",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": []
+      },
+      "schema_version": 0
+    },
     "unifi_wlan": {
       "sdk_type": "WLAN",
       "duration_units": {},
