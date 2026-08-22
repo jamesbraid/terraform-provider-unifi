@@ -62,9 +62,47 @@ func vpnClientWireguardField() resourcekit.ScatteredObjectField[vpnClientResourc
 		Wires:     vpnClientWireguardWires(),
 		Model:     func(m *vpnClientResourceModel) *types.Object { return &m.Wireguard },
 		AttrTypes: wireguardModel{}.AttributeTypes(),
-		Encode:    encodeVPNClientWireguard,
-		Decode:    decodeVPNClientWireguard,
+		// TWO OF THE TEN TRAVEL ONLY WITH dns_servers, and declaring all ten
+		// unconditionally is a destructive write rather than an untidy one.
+		//
+		// wireguardDNSServersToNetwork assigns DHCPDDNS1 and DHCPDDNS2 only when
+		// the practitioner supplied servers, and go-unifi sends a masked field's
+		// ZERO when the object carries no value. So a mask naming them on an
+		// apply that set a wireguard block without dns_servers writes two empty
+		// strings and blanks the controller's DNS. The hand-written mask this
+		// field replaces omits exactly these two and unifi/wire_field_masks_test.go
+		// records why, under conditionallyAssigned.
+		//
+		// Measured on the field as it stood before ConditionalWires existed: both
+		// names were in the mask with the SDK object carrying "". Nothing caught
+		// it -- the descriptor compiles, ElideProblems passes, and WireNameProblems
+		// passes because both ARE real json tags on ui.Network.
+		ConditionalWires: map[string]func(types.Object) bool{
+			"dhcpd_dns_1": vpnClientWireguardWritesDNS,
+			"dhcpd_dns_2": vpnClientWireguardWritesDNS,
+		},
+		Encode: encodeVPNClientWireguard,
+		Decode: decodeVPNClientWireguard,
 	}
+}
+
+// vpnClientWireguardWritesDNS reports whether Encode will write the two DNS
+// wires for this object.
+//
+// IT ASKS THE SAME QUESTION Encode ASKS, and the two must not drift: Encode
+// writes them when dns_servers is set, and ALSO when a configuration file
+// supplies DNS and dns_servers is null. The second case cannot be judged
+// without parsing the file, so this answers true whenever a configuration is
+// present -- masking a wire Encode might write is safe, and failing to mask one
+// it did write is the silent drop.
+func vpnClientWireguardWritesDNS(object types.Object) bool {
+	attributes := object.Attributes()
+	if servers, ok := attributes["dns_servers"].(types.List); ok &&
+		!servers.IsNull() && !servers.IsUnknown() {
+		return true
+	}
+	configuration, ok := attributes["configuration"].(types.Object)
+	return ok && !configuration.IsNull() && !configuration.IsUnknown()
 }
 
 func encodeVPNClientWireguard(

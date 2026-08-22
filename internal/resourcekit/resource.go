@@ -235,10 +235,13 @@ func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
 		if !field.SetInPlan(plan) {
 			continue
 		}
-		// EVERY name the field maps, not one. A scattered object spans several
-		// flat SDK attributes, and a mask carrying one of them writes one of
-		// them while the apply succeeds.
-		for _, name := range fieldWireNames[M, S](field) {
+		// EVERY name the field WILL WRITE, not one, and not every name it can.
+		// A scattered object spans several flat SDK attributes and a mask
+		// carrying one of them writes one of them while the apply succeeds --
+		// but a wire its Encode leaves alone must NOT be masked either, because
+		// go-unifi sends a masked field's zero and that clears the controller's
+		// value. See ScatteredObjectField.ConditionalWires.
+		for _, name := range fieldMaskWireNames[M, S](field, plan) {
 			if _, duplicate := seen[name]; duplicate {
 				return nil, fmt.Errorf("%s patch names %q twice", s.TypeName, name)
 			}
