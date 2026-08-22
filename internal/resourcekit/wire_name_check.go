@@ -3,6 +3,7 @@ package resourcekit
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -33,11 +34,41 @@ func WireNameProblems[M any, S any](spec Spec[M, S]) []string {
 	var sdk S
 	tags := jsonOffsets(&sdk)
 
+	tagValues := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		tagValues = append(tagValues, tag)
+	}
+
 	var problems []string
 	for _, field := range spec.Fields {
 		if wrapper, ok := field.(interface{ Unwrap() Field[M, S] }); ok {
 			field = wrapper.Unwrap()
 		}
+		// A FIELD THAT NAMES SEVERAL ATTRIBUTES IS CHECKED BY NAME, not by
+		// accessor. It has no single SDK function to follow -- that is what
+		// makes it a scattered object -- so each of its names is verified
+		// against the type's tags the same way AlwaysWire's are below. The
+		// accessor route proves the name and the field agree; this one proves
+		// the name exists, which is the whole of what a mask needs and the whole
+		// of what can be known here.
+		if multi, ok := any(field).(multiWireField); ok {
+			names := multi.wireNames()
+			if len(names) == 0 {
+				problems = append(problems, fmt.Sprintf(
+					"%s: a field mapping several attributes names none, so nothing it "+
+						"carries reaches the mask", spec.TypeName))
+				continue
+			}
+			for _, name := range names {
+				if !slices.Contains(tagValues, name) {
+					problems = append(problems, fmt.Sprintf(
+						"%s: field %q is not an attribute of the SDK type; a mask naming it "+
+							"is accepted and changes nothing", spec.TypeName, name))
+				}
+			}
+			continue
+		}
+
 		value := reflect.ValueOf(field)
 		accessor := value.FieldByName("SDK")
 		if !accessor.IsValid() || accessor.Kind() != reflect.Func {
