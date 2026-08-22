@@ -868,12 +868,13 @@ func devicePortOverridesFromModel(
 // blocks must not have the controller's full port list written into their
 // state, or the next plan proposes removing every port they never managed.
 func deviceKitAfterReceive() func(
-	context.Context, *ui.Device, *deviceKitModel, any,
+	context.Context, *ui.Device, *deviceKitModel, deviceKitModel, any,
 ) diag.Diagnostics {
 	return func(
 		ctx context.Context,
 		sdk *ui.Device,
 		model *deviceKitModel,
+		_ deviceKitModel,
 		_ any,
 	) diag.Diagnostics {
 		var diags diag.Diagnostics

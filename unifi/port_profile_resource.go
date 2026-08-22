@@ -152,6 +152,7 @@ func portProfileAfterReceive(
 	ctx context.Context,
 	sdk *ui.PortProfile,
 	model *portProfileKitModel,
+	_ portProfileKitModel,
 	prefetched any,
 ) diag.Diagnostics {
 	networks, _ := prefetched.([]ui.Network)

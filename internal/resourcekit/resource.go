@@ -147,28 +147,40 @@ type Spec[M any, S any] struct {
 	// that touched anything else. The hook exists to adjust the object ToSDK
 	// produced, so handing it a different model than ToSDK used was the seam.
 	//
-	// AFTERRECEIVE CANNOT CARRY PRIOR STATE FOR AN ATTRIBUTE A FIELD DECODES,
-	// and two surfaces were written against the belief that it can.
+	// AFTERRECEIVE TAKES THE PRIOR MODEL, AND UNTIL IT DID, HALF OF WHAT PEOPLE
+	// REACHED FOR IT FOR WAS IMPOSSIBLE.
 	//
 	// The read path loads prior state into the model, runs Spec.ToModel, and
-	// only then calls AfterReceive. So the boundary is ownership, not timing:
+	// only then calls this hook. The boundary is ownership, not timing:
 	//
-	//   an attribute NO Field touches   still holds its prior value here, which
-	//                                   is how device's port_override is
+	//   an attribute NO Field touches   still holds its prior value in model,
+	//                                   which is how device's port_override is
 	//                                   reconstructed from the managed set
 	//                                   rather than from every port the switch
 	//                                   reports
-	//   an attribute a Field DECODES    has already been overwritten, and the
-	//                                   prior value is gone
+	//   an attribute a Field DECODES    has already been overwritten in model,
+	//                                   and is readable only through prior
 	//
-	// port_forward is where the second half was found: its hand-written read
-	// consulted prior model state in three places and there is nowhere on the
-	// kit's path to do that for a decoded field. A surface needing it either
-	// takes the attribute out of Fields, or accepts that the controller's
-	// answer is the only one it has.
+	// Two surfaces were written against the belief that the second case worked
+	// anyway, and vpn_client's wireguard field recorded it as the kit's answer.
+	// port_forward is where it was found to be false, and vpn_client is where
+	// being false stopped being a documentation problem: the practitioner
+	// supplies a wireguard config FILE, the provider parses it and sends the
+	// controller manual mode, and the controller reports manual mode forever.
+	// Five attributes have to be carried forward from what was there before,
+	// and without prior a create with a configuration block ends in "provider
+	// produced inconsistent result after apply" -- a failed apply, not a diff.
+	//
+	// prior is the plan on create, the state on read, and the state with the
+	// plan applied on update. Update passes the EFFECTIVE model rather than the
+	// raw plan for the reason BeforeSend takes both: an attribute the plan does
+	// not mention is null in the plan and present in the state, so the raw plan
+	// would make an apply that changed only the name look like one that cleared
+	// everything it never mentioned. A list hands a zero model, because nothing
+	// was recorded for an object being discovered.
 	Prefetch     func(ctx context.Context, site string) (any, diag.Diagnostics)
 	BeforeSend   func(ctx context.Context, config, effective *M, sdk *S, prefetched any) diag.Diagnostics
-	AfterReceive func(ctx context.Context, sdk *S, model *M, prefetched any) diag.Diagnostics
+	AfterReceive func(ctx context.Context, sdk *S, model *M, prior M, prefetched any) diag.Diagnostics
 
 	// BeforeDelete decides whether destroying the resource destroys the object.
 	// Returning false drops it from state and leaves the controller alone.
@@ -414,8 +426,12 @@ func (r *Resource[M, S]) Create(
 		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, err.Error())
 		return
 	}
+	// THE PLAN IS THE PRIOR HERE. data holds what the practitioner wrote until
+	// ToModel overwrites it, so a hook that has to carry a value forward from
+	// the configuration gets it from this copy and from nowhere else.
+	prior := data
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, created, &data, site)...)
-	resp.Diagnostics.Append(r.afterReceive(ctx, created, &data, prefetched)...)
+	resp.Diagnostics.Append(r.afterReceive(ctx, created, &data, prior, prefetched)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -467,8 +483,10 @@ func (r *Resource[M, S]) Read(
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// THE STATE IS THE PRIOR HERE -- what the last apply recorded.
+	prior := data
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, found, &data, site)...)
-	resp.Diagnostics.Append(r.afterReceive(ctx, found, &data, prefetched)...)
+	resp.Diagnostics.Append(r.afterReceive(ctx, found, &data, prior, prefetched)...)
 	resp.Diagnostics.Append(
 		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -569,8 +587,13 @@ func (r *Resource[M, S]) Update(
 		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
 		return
 	}
+	// THE EFFECTIVE MODEL IS THE PRIOR HERE, not the raw plan, for the reason
+	// BeforeSend takes both: an attribute the plan does not mention is absent
+	// from it and present in the state, and a hook carrying a value forward
+	// wants what the object was actually built from.
+	prior := state
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, updated, &state, site)...)
-	resp.Diagnostics.Append(r.afterReceive(ctx, updated, &state, prefetched)...)
+	resp.Diagnostics.Append(r.afterReceive(ctx, updated, &state, prior, prefetched)...)
 	*r.Spec.Timeouts(&state) = *r.Spec.Timeouts(&plan)
 	resp.Diagnostics.Append(
 		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&state)))...)
@@ -738,12 +761,13 @@ func (r *Resource[M, S]) afterReceive(
 	ctx context.Context,
 	sdk *S,
 	model *M,
+	prior M,
 	prefetched any,
 ) diag.Diagnostics {
 	if r.Spec.AfterReceive == nil {
 		return nil
 	}
-	return r.Spec.AfterReceive(ctx, sdk, model, prefetched)
+	return r.Spec.AfterReceive(ctx, sdk, model, prior, prefetched)
 }
 
 // SchemaSpec is the schema half of a resource, all of it generated or declared.

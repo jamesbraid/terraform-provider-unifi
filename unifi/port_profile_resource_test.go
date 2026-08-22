@@ -1139,7 +1139,7 @@ func portProfileToModelWithHooks(
 ) diag.Diagnostics {
 	spec := portProfileKitSpec()
 	diags := spec.ToModel(ctx, api, model, site)
-	diags.Append(portProfileAfterReceive(ctx, api, model, []unifi.Network(nil))...)
+	diags.Append(portProfileAfterReceive(ctx, api, model, portProfileKitModel{}, []unifi.Network(nil))...)
 	return diags
 }
 
