@@ -3,6 +3,7 @@ package unifi
 import (
 	"context"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -65,11 +66,18 @@ func TestWireguardFieldNamesAreAttributesOfNetwork(t *testing.T) {
 	}
 }
 
-// Every name travels together or the write is partial. Ten is the whole point:
-// the eight wireguard_-prefixed ones are findable by grep, and dhcpd_dns_1 and
-// dhcpd_dns_2 are not.
+// Every name Encode writes travels or the write is partial. Ten is the whole
+// point: the eight wireguard_-prefixed ones are findable by grep, and
+// dhcpd_dns_1 and dhcpd_dns_2 are not.
+//
+// THE PLAN HAS TO EXERCISE EVERY PATH, and it did not until seven of the ten
+// were declared conditional. Encode writes only three of them unconditionally
+// -- the private key, the interface and the preshared-key flag -- so a plan
+// that sets a wireguard block and nothing else produces a five-name mask, which
+// is correct and is not what this test is about. It is about all ten travelling
+// when all ten are written.
 func TestWireguardFieldPutsAllTenNamesInTheMask(t *testing.T) {
-	fields, err := wireguardSpec(vpnClientWireguardWires()).WireFields(wireguardPlan(t))
+	fields, err := wireguardSpec(vpnClientWireguardWires()).WireFields(wireguardPlanWritingEverything(t))
 	if err != nil {
 		t.Fatalf("WireFields: %v", err)
 	}
@@ -95,7 +103,7 @@ func TestWireguardFieldWithTheDNSNamesMissingWritesThemAndCannotSendThem(t *test
 	})
 
 	network := &ui.Network{}
-	if diags := encodeVPNClientWireguard(ctx, wireguardPlan(t).Wireguard, network); diags.HasError() {
+	if diags := encodeVPNClientWireguard(ctx, wireguardPlanWritingEverything(t).Wireguard, network); diags.HasError() {
 		t.Fatalf("Encode: %v", diags)
 	}
 	// CONTROL: the value really is written, or the absence below proves nothing.
@@ -104,7 +112,7 @@ func TestWireguardFieldWithTheDNSNamesMissingWritesThemAndCannotSendThem(t *test
 			"is not a demonstration of anything", network.DHCPDDNS1)
 	}
 
-	fields, err := wireguardSpec(incomplete).WireFields(wireguardPlan(t))
+	fields, err := wireguardSpec(incomplete).WireFields(wireguardPlanWritingEverything(t))
 	if err != nil {
 		t.Fatalf("WireFields: %v", err)
 	}
@@ -215,11 +223,18 @@ func TestWireguardFieldDropsTheDNSNamesWhenNothingWillWriteThem(t *testing.T) {
 				"and the controller's DNS is blanked", name)
 		}
 	}
-	// AND THE OTHER EIGHT STILL TRAVEL. A field that masks nothing is the
-	// silent write-drop this kind exists to prevent, and it looks identical to
-	// a correct narrowing from here.
-	if len(fields) != 8 {
-		t.Errorf("the mask carries %d name(s), want the other 8: %v", len(fields), fields)
+	// AND THE THREE UNCONDITIONAL ONES STILL TRAVEL. A field that masks nothing
+	// is the silent write-drop this kind exists to prevent, and it looks
+	// identical to a correct narrowing from here. This plan sets no
+	// configuration, no peer and no preshared key either, so the five other
+	// conditional wires are correctly absent too.
+	want := []string{
+		"x_wireguard_private_key",
+		"wireguard_interface",
+		"wireguard_client_preshared_key_enabled",
+	}
+	if !slices.Equal(fields, want) {
+		t.Errorf("the mask carries %v, want exactly the unconditional %v", fields, want)
 	}
 }
 
@@ -256,4 +271,233 @@ func TestWireguardFieldKeepsTheDNSNamesWhenAConfigurationFileIsSet(t *testing.T)
 				"a value Encode writes and the mask omits is silently dropped", name)
 		}
 	}
+}
+
+// wireguardPlanWritingEverything exercises every path through Encode, so that
+// all ten wires are written and all ten must therefore be masked.
+//
+// peer rather than configuration, because the two are the arms of one switch
+// and only one can run. Both write the same four wires; the peer arm needs no
+// base64 fixture to parse.
+func wireguardPlanWritingEverything(t *testing.T) *vpnClientResourceModel {
+	t.Helper()
+	ctx := context.Background()
+	dns, diags := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.1", "10.0.0.2"})
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	peer, d := types.ObjectValue(wireguardPeerModel{}.AttributeTypes(), map[string]attr.Value{
+		"ip":         types.StringValue("198.51.100.7"),
+		"port":       types.Int64Value(51820),
+		"public_key": types.StringValue("pubkey"),
+	})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	value := wireguardModel{
+		PrivateKey:          types.StringValue("privkey"),
+		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
+		Peer:                peer,
+		PresharedKeyEnabled: types.BoolValue(true),
+		PresharedKey:        types.StringValue("psk"),
+		Interface:           types.StringValue("wan"),
+		DnsServers:          dns,
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	return &vpnClientResourceModel{Wireguard: object}
+}
+
+// wireguardWireValues reads the ten wires off an SDK object as comparable
+// strings. All ten have a case, not just the conditional ones, because the
+// derivation below would otherwise be blind to the missing one and it would
+// read as unconditional.
+func wireguardWireValues(network *ui.Network) map[string]string {
+	text := func(p *string) string {
+		if p == nil {
+			return "<nil>"
+		}
+		return *p
+	}
+	number := func(p *int64) string {
+		if p == nil {
+			return "<nil>"
+		}
+		return strconv.FormatInt(*p, 10)
+	}
+	return map[string]string{
+		"x_wireguard_private_key":                text(network.WireguardPrivateKey),
+		"wireguard_interface":                    text(network.WireguardInterface),
+		"wireguard_client_preshared_key_enabled": strconv.FormatBool(network.WireguardClientPresharedKeyEnabled),
+		"wireguard_client_preshared_key":         text(network.WireguardClientPresharedKey),
+		"wireguard_client_mode":                  text(network.WireguardClientMode),
+		"wireguard_client_peer_public_key":       text(network.WireguardClientPeerPublicKey),
+		"wireguard_client_peer_ip":               text(network.WireguardClientPeerIP),
+		"wireguard_client_peer_port":             number(network.WireguardClientPeerPort),
+		"dhcpd_dns_1":                            network.DHCPDDNS1,
+		"dhcpd_dns_2":                            network.DHCPDDNS2,
+	}
+}
+
+// writtenWires reports which of the ten wires Encode ASSIGNS for this plan,
+// which is not the same question as which are non-zero afterwards.
+//
+// TWO SEEDS, BECAUSE A DELIBERATE WRITE OF THE ZERO VALUE IS INDISTINGUISHABLE
+// FROM NO WRITE. wireguard_client_preshared_key_enabled is a plain bool that
+// Encode assigns on every path, so a plan with the flag off leaves it false --
+// and a value-based reading calls that "not written", which is exactly the
+// conflation networkMaskFor makes. Reported that way it looks like an eighth
+// conditional wire and it is an instrument fault.
+//
+// So Encode runs twice, over two objects whose ten fields differ. A field it
+// assigns ends up the same in both, because the plan decided it. A field it
+// leaves alone keeps whichever seed it started with, and the two disagree.
+// No per-field knowledge, and it works for a bool, where there are only two
+// values to seed with.
+func writtenWires(t *testing.T, plan *vpnClientResourceModel) []string {
+	t.Helper()
+	ctx := context.Background()
+	encode := func(seed *ui.Network) map[string]string {
+		if diags := encodeVPNClientWireguard(ctx, plan.Wireguard, seed); diags.HasError() {
+			t.Fatalf("Encode: %v", diags)
+		}
+		return wireguardWireValues(seed)
+	}
+	sentinel := "SEEDED-NOT-WRITTEN"
+	port := int64(65001)
+	first := encode(&ui.Network{})
+	second := encode(&ui.Network{
+		WireguardPrivateKey:                &sentinel,
+		WireguardInterface:                 &sentinel,
+		WireguardClientPresharedKeyEnabled: true,
+		WireguardClientPresharedKey:        &sentinel,
+		WireguardClientMode:                &sentinel,
+		WireguardClientPeerPublicKey:       &sentinel,
+		WireguardClientPeerIP:              &sentinel,
+		WireguardClientPeerPort:            &port,
+		DHCPDDNS1:                          sentinel,
+		DHCPDDNS2:                          sentinel,
+	})
+
+	var written []string
+	for _, wire := range vpnClientWireguardWires() {
+		before, ok := first[wire]
+		if !ok {
+			t.Fatalf("%s has no reader here, so the derivation cannot see it and it would "+
+				"read as unconditional", wire)
+		}
+		if before == second[wire] {
+			written = append(written, wire)
+		}
+	}
+	slices.Sort(written)
+	return written
+}
+
+// THE DECLARED CONDITIONAL SET MUST EQUAL THE DERIVED ONE.
+//
+// WITHOUT THIS THE TABLE BELOW CANNOT FAIL FOR A MISSING ENTRY, because it takes
+// its population FROM the declaration -- delete an entry and the wire simply
+// stops being checked, which is a check whose population is the thing being
+// checked. A first pass declared two of the seven and every test was green.
+//
+// So the conditional set is derived from behaviour: run Encode against a plan
+// that takes no optional path and one that takes every path, and a wire written
+// only by the second is conditional by definition.
+func TestTheDeclaredConditionalWiresAreTheOnesEncodeWritesConditionally(t *testing.T) {
+	field := vpnClientWireguardField()
+	always := writtenWires(t, wireguardPlanWithoutDNS(t))
+	everything := writtenWires(t, wireguardPlanWritingEverything(t))
+
+	var derived []string
+	for _, wire := range everything {
+		if !slices.Contains(always, wire) {
+			derived = append(derived, wire)
+		}
+	}
+	slices.Sort(derived)
+
+	declared := conditionalWiresOf(t, field)
+	if !slices.Equal(declared, derived) {
+		t.Errorf("ConditionalWires declares %v and Encode writes %v conditionally.\n"+
+			"A wire Encode writes only sometimes and the descriptor calls unconditional is "+
+			"masked with nothing behind it, and go-unifi sends the zero -- the controller's "+
+			"value is cleared. One the descriptor calls conditional and Encode always writes "+
+			"leaves the mask and the write is silently dropped.", declared, derived)
+	}
+	if len(derived) == 0 {
+		t.Fatal("nothing reads as conditional; the two plans do not differ and this proves nothing")
+	}
+}
+
+// EVERY PREDICATE IS CHECKED AGAINST WHAT Encode ACTUALLY DOES, BOTH WAYS.
+// EVERY PREDICATE IS CHECKED AGAINST WHAT Encode ACTUALLY DOES, BOTH WAYS.
+//
+// A ConditionalWires entry is a second statement of a guard that already exists
+// inside Encode, and two lists that must agree is the shape this whole area
+// keeps failing on. So each conditional wire gets a plan where its predicate
+// says NO -- asserting Encode left the SDK field at its zero -- and one where it
+// says YES, asserting Encode wrote it.
+//
+// THE SECOND HALF IS NOT OPTIONAL. A false-only assertion passes for a predicate
+// that always returns false, which masks nothing and silently drops every write
+// -- the same one-of-many failure pointing the other way. Twenty-two wires on
+// wan will be a table, not twenty-two tests, and this is the shape to copy.
+func TestEveryConditionalWireAgreesWithWhatEncodeWrites(t *testing.T) {
+	field := vpnClientWireguardField()
+
+	written := func(t *testing.T, plan *vpnClientResourceModel, wire string) bool {
+		t.Helper()
+		return slices.Contains(writtenWires(t, plan), wire)
+	}
+
+	// THE POPULATION IS DERIVED, not listed. A wire declared conditional and
+	// absent from a hand-kept table here would go unchecked, which is the
+	// two-lists problem this test exists to remove, reappearing inside it.
+	conditional := conditionalWiresOf(t, field)
+	if len(conditional) == 0 {
+		t.Fatal("no conditional wires found; this test cannot fail and is worthless")
+	}
+	t.Logf("checking %d conditional wire(s) of %d", len(conditional), len(vpnClientWireguardWires()))
+
+	noPaths := wireguardPlanWithoutDNS(t) // no dns_servers, no configuration, no peer, psk off
+	allPaths := wireguardPlanWritingEverything(t)
+
+	for _, wire := range conditional {
+		t.Run(wire, func(t *testing.T) {
+			predicate := field.ConditionalWires[wire]
+
+			if predicate(noPaths.Wireguard) {
+				t.Errorf("the predicate says %s will be written for a plan that sets none of "+
+					"its paths", wire)
+			} else if written(t, noPaths, wire) {
+				t.Errorf("the predicate says %s will NOT be written and Encode wrote it; "+
+					"the wire leaves the mask and the value is silently dropped", wire)
+			}
+
+			if !predicate(allPaths.Wireguard) {
+				t.Errorf("the predicate says %s will not be written for a plan that sets "+
+					"every path", wire)
+			} else if !written(t, allPaths, wire) {
+				t.Errorf("the predicate says %s WILL be written and Encode did not; the wire "+
+					"joins the mask with nothing behind it and the controller's value is cleared",
+					wire)
+			}
+		})
+	}
+}
+
+func conditionalWiresOf(
+	t *testing.T,
+	field resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network],
+) []string {
+	t.Helper()
+	names := make([]string, 0, len(field.ConditionalWires))
+	for name := range field.ConditionalWires {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
 }

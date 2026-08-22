@@ -77,9 +77,22 @@ func vpnClientWireguardField() resourcekit.ScatteredObjectField[vpnClientResourc
 		// names were in the mask with the SDK object carrying "". Nothing caught
 		// it -- the descriptor compiles, ElideProblems passes, and WireNameProblems
 		// passes because both ARE real json tags on ui.Network.
+		//
+		// SEVEN OF THE TEN ARE CONDITIONAL, WHICH IS THE MAJORITY. Only
+		// x_wireguard_private_key, wireguard_interface and
+		// wireguard_client_preshared_key_enabled are assigned on every path
+		// through Encode; everything else sits behind the dns_servers guard,
+		// the configuration-or-peer switch, or the preshared-key-enabled test.
+		// A first pass declared two and the other five were left masked with
+		// nothing behind them.
 		ConditionalWires: map[string]func(types.Object) bool{
-			"dhcpd_dns_1": vpnClientWireguardWritesDNS,
-			"dhcpd_dns_2": vpnClientWireguardWritesDNS,
+			"dhcpd_dns_1":                      vpnClientWireguardWritesDNS,
+			"dhcpd_dns_2":                      vpnClientWireguardWritesDNS,
+			"wireguard_client_mode":            vpnClientWireguardWritesPeer,
+			"wireguard_client_peer_public_key": vpnClientWireguardWritesPeer,
+			"wireguard_client_peer_ip":         vpnClientWireguardWritesPeer,
+			"wireguard_client_peer_port":       vpnClientWireguardWritesPeer,
+			"wireguard_client_preshared_key":   vpnClientWireguardWritesPresharedKey,
 		},
 		Encode: encodeVPNClientWireguard,
 		Decode: decodeVPNClientWireguard,
@@ -99,6 +112,35 @@ func vpnClientWireguardWritesDNS(object types.Object) bool {
 	attributes := object.Attributes()
 	if servers, ok := attributes["dns_servers"].(types.List); ok &&
 		!servers.IsNull() && !servers.IsUnknown() {
+		return true
+	}
+	configuration, ok := attributes["configuration"].(types.Object)
+	return ok && !configuration.IsNull() && !configuration.IsUnknown()
+}
+
+// vpnClientWireguardWritesPeer reports whether Encode will write the four wires
+// of the manual-mode switch. Both arms write all four: the configuration arm
+// derives them from the parsed file, the peer arm copies them from the block.
+// Neither arm runs when the practitioner supplied neither.
+func vpnClientWireguardWritesPeer(object types.Object) bool {
+	attributes := object.Attributes()
+	if configuration, ok := attributes["configuration"].(types.Object); ok &&
+		!configuration.IsNull() && !configuration.IsUnknown() {
+		return true
+	}
+	peer, ok := attributes["peer"].(types.Object)
+	return ok && !peer.IsNull() && !peer.IsUnknown()
+}
+
+// vpnClientWireguardWritesPresharedKey reports whether Encode will write the
+// key itself. It writes it when preshared_key_enabled is true, and ALSO from a
+// configuration file that carries one -- which cannot be judged without parsing,
+// so a configuration present answers true. Over-masking a wire Encode might
+// write is safe; failing to mask one it did write is the silent drop.
+func vpnClientWireguardWritesPresharedKey(object types.Object) bool {
+	attributes := object.Attributes()
+	if enabled, ok := attributes["preshared_key_enabled"].(types.Bool); ok &&
+		enabled.ValueBool() {
 		return true
 	}
 	configuration, ok := attributes["configuration"].(types.Object)
