@@ -219,19 +219,28 @@ func encodeVPNClientWireguard(
 // decodeVPNClientWireguard builds the object from WHAT THE CONTROLLER RETURNS,
 // which is not all of it.
 //
-// THE KIT'S Decode TAKES (ctx, *S) AND NOTHING ELSE, and two members of this
-// object cannot be read from an *S at any time: x_wireguard_private_key and
-// wireguard_client_preshared_key are write-only, so the controller never sends
-// them back and the hand-written read path carries them forward from PRIOR
-// STATE. That is not a limitation of this field kind -- ObjectField's Decode has
-// the same signature -- it is the kit's contract, and the place a surface
-// expresses prior-state carry-forward is AfterReceive, the way port_profile
-// expresses its inversion in BeforeSend.
+// x_wireguard_private_key and wireguard_client_preshared_key are write-only: the
+// controller never sends them back, and the hand-written read path carries them
+// forward from PRIOR STATE.
 //
-// So this returns them null and vpn_client's descriptor owes an AfterReceive.
-// Leaving that to a hook rather than smuggling a prior-state argument into
-// Decode keeps every other kind's signature unchanged, and makes the carry
-// visible in the descriptor rather than buried in one field.
+// AN EARLIER VERSION OF THIS COMMENT SAID AfterReceive IS WHERE A SURFACE
+// EXPRESSES THAT, AND THAT IS WRONG. Read runs Spec.ToModel and THEN afterReceive
+// -- resource.go:450-451 -- so by the time the hook sees the model, every
+// attribute a Field decodes has already been overwritten. The rule that does hold
+// is narrower: an attribute NO FIELD TOUCHES keeps its prior value, which is how
+// device's port_override survives. An attribute a Field decodes does not.
+//
+// THE PRIOR VALUE IS STILL REACHABLE, ONE LEVEL IN. Spec.ToModel passes the model
+// that was loaded from state, so at the moment a field's ToModel runs,
+// *f.Model(model) is still the prior object. The kind cannot use it because
+// Decode's signature is (ctx, *S) and never sees the model.
+//
+// SO THE SEAM IS ScatteredObjectField.Decode, NOT A HOOK, and closing it means
+// giving that one kind's Decode the prior object rather than widening anything
+// shared. Until then these decode null, which is visible and wrong in the safe
+// direction -- a refresh blanks two secrets in state rather than inventing values
+// for them -- and vpn_client cannot be cut over on this field alone. Recorded
+// here because this file is the worked example for the kind.
 func decodeVPNClientWireguard(
 	ctx context.Context,
 	network *ui.Network,
