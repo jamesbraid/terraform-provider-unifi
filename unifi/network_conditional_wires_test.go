@@ -1,0 +1,299 @@
+package unifi
+
+import (
+	"context"
+	"encoding/json"
+	"reflect"
+	"sort"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
+)
+
+// THE WIRES network's SCATTERED ENCODES LEAVE AT ZERO, and the reason its mask
+// narrowing cannot yet be improved.
+//
+// network narrows its update mask by dropping names THIS object's encoding did
+// not carry. That is what makes a vlan-only update possible at all -- go-unifi
+// refuses a mask naming a field the encoder never emits -- and it carries a
+// known cost: a name absent merely because its field is at the zero value is
+// dropped too, so unifi_network cannot clear a field (#178).
+//
+// The fix is to ask whether a POPULATED object of the same purpose would emit
+// the name, which separates the two absences. It is also the change that arms a
+// destruction, and this is the measurement that says so for this surface.
+// Dropping a zero-valued name is what has been protecting every wire these
+// Encodes leave at zero when a member is unset: under a would-emit narrowing
+// the name stays on the mask and go-unifi sends its zero over whatever the
+// controller holds.
+//
+// So this enumerates those wires and asserts the narrowing is still the safe
+// kind while any of them is unclassified. Each needs an answer before the fix
+// can land -- "sending the zero IS the intent here", as it is for the wpad_url,
+// tftp_server and dns slots the old mapper explicitly blanked, or a
+// ConditionalWires declaration so the name leaves the mask instead.
+//
+// I READ THE HELPERS AND CONCLUDED THEY WERE ALL UNCONDITIONAL. They clear the
+// slots they skip, which looked like "always written". It is not the same
+// question: a slot cleared to "" and a slot never assigned both arrive at the
+// zero, and it is the zero that travels.
+//
+// HOW "ENDS AT ZERO" IS DECIDED WITHOUT GUESSING A VALUE. Encode runs onto two
+// differently pre-filled structs, bare and sentinel. A wire whose value agrees
+// across both, and is carried in the encoding, was written to something real. A
+// wire missing from either is at its zero -- whether Encode skipped it or
+// assigned a zero makes no difference to what the mask would send.
+func TestNetworkNarrowingStaysSafeWhileWiresAreUnclassified(t *testing.T) {
+	fields := scatteredFieldsOf(t, networkKitSpec())
+	if len(fields) != 4 {
+		t.Fatalf("found %d scattered fields on network, want 4; the walk is wrong "+
+			"and a field it missed is a field nothing below checks", len(fields))
+	}
+
+	checked := 0
+	var atRisk []string
+	for _, field := range fields {
+		objects := networkScatteredProbeObjects(t, field.AttrTypes)
+		if len(objects) < 2 {
+			t.Fatalf("a scattered field got %d probe objects; conditionality cannot "+
+				"be observed without at least a full one and a sparse one", len(objects))
+		}
+
+		written := make([]map[string]bool, 0, len(objects))
+		for _, object := range objects {
+			written = append(written, wiresWrittenByEncode(t, field, object))
+		}
+
+		for _, wire := range field.Wires {
+			any, all := false, true
+			for _, w := range written {
+				if w[wire] {
+					any = true
+				} else {
+					all = false
+				}
+			}
+			if !any || all {
+				continue // never written, or always written: not at risk
+			}
+			if _, declared := field.ConditionalWires[wire]; declared {
+				continue // already declared, so it leaves the mask when unwritten
+			}
+			checked++
+			atRisk = append(atRisk, wire)
+		}
+	}
+	sort.Strings(atRisk)
+	if checked == 0 {
+		t.Error("no wire came out at its zero on any of network's four scattered " +
+			"fields, which contradicts the positional slot writers; the probe " +
+			"objects are not discriminating and this test asserts nothing")
+	}
+	t.Logf("%d undeclared wire(s) end at zero when their member is unset: %v",
+		len(atRisk), atRisk)
+
+	// THE GATE. While any of those is unclassified, the narrowing must still be
+	// the kind that drops a zero-valued name -- otherwise each of them is an
+	// explicit zero on the wire.
+	if len(atRisk) == 0 {
+		return
+	}
+	spec := networkKitSpec()
+	if spec.UnwritableWires == nil {
+		t.Fatal("network declares no UnwritableWires at all; a vlan-only update " +
+			"would be refused outright")
+	}
+	// A corporate network with nothing set: dhcpd_wpad_url is a name the encoder
+	// WOULD emit when populated, so a would-emit narrowing keeps it and a
+	// did-emit narrowing drops it. Which one comes back says which is in force.
+	sparse := &ui.Network{Purpose: ui.PurposeCorporate}
+	dropped := map[string]bool{}
+	for _, name := range spec.UnwritableWires(sparse) {
+		dropped[name] = true
+	}
+	if !dropped["dhcpd_wpad_url"] {
+		t.Errorf("network's narrowing no longer drops a zero-valued name, so it has "+
+			"moved to would-emit -- but %d wire(s) that end at zero are still "+
+			"undeclared: %v.\n\nEach of those is now an explicit zero sent over "+
+			"whatever the controller holds. Classify them first: either sending "+
+			"the zero is the intent, or the wire belongs in ConditionalWires.",
+			len(atRisk), atRisk)
+	}
+}
+
+// wiresWrittenByEncode reports which of unifi.Network's json fields this Encode
+// assigns for the given object.
+func wiresWrittenByEncode(
+	t *testing.T,
+	field resourcekit.ScatteredObjectField[netModel, ui.Network],
+	object types.Object,
+) map[string]bool {
+	t.Helper()
+	bare := &ui.Network{Purpose: ui.PurposeCorporate}
+	seeded := &ui.Network{Purpose: ui.PurposeCorporate}
+	sentinelFill(reflect.ValueOf(seeded).Elem())
+	seeded.Purpose = ui.PurposeCorporate
+	// The corporate encoder derives DHCP range defaults from the subnet and
+	// logs when it will not parse. A real CIDR keeps the probe quiet without
+	// changing which keys are emitted.
+	subnet := "10.0.0.0/24"
+	seeded.IPSubnet = &subnet
+	bare.IPSubnet = &subnet
+
+	if diags := field.Encode(t.Context(), object, bare); diags.HasError() {
+		t.Fatalf("Encode onto a bare object: %v", diags)
+	}
+	if diags := field.Encode(t.Context(), object, seeded); diags.HasError() {
+		t.Fatalf("Encode onto a seeded object: %v", diags)
+	}
+
+	a, b := marshalKeys(t, bare), marshalKeys(t, seeded)
+	out := map[string]bool{}
+	for _, wire := range field.Wires {
+		av, aok := a[wire]
+		bv, bok := b[wire]
+		// Agreement across the two runs IS the write.
+		out[wire] = aok && bok && string(av) == string(bv)
+	}
+	return out
+}
+
+func marshalKeys(t *testing.T, network *ui.Network) map[string]json.RawMessage {
+	t.Helper()
+	raw, err := json.Marshal(network)
+	if err != nil {
+		t.Fatalf("marshalling: %v", err)
+	}
+	var out map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("reading back: %v", err)
+	}
+	return out
+}
+
+// sentinelFill puts a distinguishable non-zero in every settable field, so that
+// a field Encode does not touch differs from the bare run.
+func sentinelFill(v reflect.Value) {
+	switch v.Kind() {
+	case reflect.String:
+		v.SetString("sentinel")
+	case reflect.Bool:
+		v.SetBool(true)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		v.SetInt(9)
+	case reflect.Ptr:
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
+		}
+		sentinelFill(v.Elem())
+	case reflect.Slice:
+		if v.Type().Elem().Kind() == reflect.String {
+			v.Set(reflect.ValueOf([]string{"sentinel"}))
+		}
+	case reflect.Struct:
+		for i := range v.NumField() {
+			if v.Field(i).CanSet() {
+				sentinelFill(v.Field(i))
+			}
+		}
+	}
+}
+
+// networkScatteredProbeObjects builds a fully-populated object and a sparse one
+// for the same shape. The sparse one is what makes a conditional write visible.
+func networkScatteredProbeObjects(
+	t *testing.T,
+	attrTypes map[string]attr.Type,
+) []types.Object {
+	t.Helper()
+	full := map[string]attr.Value{}
+	sparse := map[string]attr.Value{}
+	names := make([]string, 0, len(attrTypes))
+	for name := range attrTypes {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		full[name] = populatedAttr(t, attrTypes[name])
+		sparse[name] = nullAttr(attrTypes[name])
+	}
+	fullObject, d := types.ObjectValue(attrTypes, full)
+	if d.HasError() {
+		t.Fatalf("building the populated probe object: %v", d)
+	}
+	sparseObject, d := types.ObjectValue(attrTypes, sparse)
+	if d.HasError() {
+		t.Fatalf("building the sparse probe object: %v", d)
+	}
+	return []types.Object{fullObject, sparseObject}
+}
+
+func populatedAttr(t *testing.T, typ attr.Type) attr.Value {
+	t.Helper()
+	switch concrete := typ.(type) {
+	case types.ListType:
+		element := populatedAttr(t, concrete.ElemType)
+		list, d := types.ListValue(concrete.ElemType, []attr.Value{element, element, element})
+		if d.HasError() {
+			t.Fatalf("building a probe list: %v", d)
+		}
+		return list
+	case types.ObjectType:
+		inner := map[string]attr.Value{}
+		for name, attrType := range concrete.AttrTypes {
+			inner[name] = populatedAttr(t, attrType)
+		}
+		object, d := types.ObjectValue(concrete.AttrTypes, inner)
+		if d.HasError() {
+			t.Fatalf("building a probe object: %v", d)
+		}
+		return object
+	}
+	// BUILT THROUGH THE TYPE ITSELF, so a string-valuable custom type --
+	// timetypes.GoDuration on dhcp_server.leasetime -- gets its own value
+	// rather than a plain string that will not fit.
+	ctx := t.Context()
+	tfType := typ.TerraformType(ctx)
+	var raw tftypes.Value
+	switch {
+	case tfType.Is(tftypes.Bool):
+		raw = tftypes.NewValue(tfType, true)
+	case tfType.Is(tftypes.Number):
+		raw = tftypes.NewValue(tfType, 9)
+	default:
+		raw = tftypes.NewValue(tfType, "2s")
+	}
+	value, err := typ.ValueFromTerraform(ctx, raw)
+	if err != nil {
+		t.Fatalf("building a probe value for %T: %v", typ, err)
+	}
+	return value
+}
+
+func nullAttr(typ attr.Type) attr.Value {
+	switch concrete := typ.(type) {
+	case types.ListType:
+		return types.ListNull(concrete.ElemType)
+	case types.ObjectType:
+		return types.ObjectNull(concrete.AttrTypes)
+	}
+	return typ.ValueType(context.Background())
+}
+
+// scatteredFieldsOf pulls the ScatteredObjectField entries out of a Spec.
+func scatteredFieldsOf(
+	t *testing.T, spec resourcekit.Spec[netModel, ui.Network],
+) []resourcekit.ScatteredObjectField[netModel, ui.Network] {
+	t.Helper()
+	var out []resourcekit.ScatteredObjectField[netModel, ui.Network]
+	for _, field := range spec.Fields {
+		if scattered, ok := field.(resourcekit.ScatteredObjectField[netModel, ui.Network]); ok {
+			out = append(out, scattered)
+		}
+	}
+	return out
+}
