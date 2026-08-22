@@ -414,6 +414,29 @@ func deviceKitBeforeSend(
 		// is not being written, which is why port_overrides is NOT in AlwaysWire:
 		// forcing it into every mask would restore exactly the coupling the mask
 		// removes.
+		// TYPE IS ECHOED FROM THE CONTROLLER, AND THE REASON IS UNVERIFIED.
+		//
+		// The hand-written resource copied `type` across from a fresh GET,
+		// saying the API requires it in the PUT body. I could not confirm that
+		// against a controller -- provider CI has dispatched nothing for days
+		// (#214), so no acceptance run is available to anyone -- and it is not
+		// answerable by reading code, because it is a claim about the API.
+		//
+		// So it is kept rather than dropped, and this comment is the record.
+		// On an update it would be sent anyway: `type` is a modelled field and
+		// the plan carries the value the last read returned. On a CREATE it
+		// would not -- `type` is Computed, so the plan holds it unknown, ToSDK
+		// elides it to "" and SetInPlan leaves it out of the mask. That is the
+		// gap this closes, together with the AlwaysWire entry that carries it.
+		//
+		// IF THE REQUIREMENT IS REAL, dropping this breaks every create with an
+		// api.err from the controller. If it is not, the cost is one correct
+		// value written back unchanged on each apply. The asymmetry is why it
+		// stays until something can measure it.
+		if sdk.Type == "" && current != nil {
+			sdk.Type = current.Type
+		}
+
 		// port_overrides is not a Field, so ToSDK left it empty and the
 		// declared blocks have to be encoded here.
 		declared, d := devicePortOverridesFromModel(ctx, effective.PortOverride)
@@ -1153,11 +1176,16 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 		Prefetch:     deviceKitPrefetch(),
 		AfterReceive: deviceKitAfterReceive(),
 
-		// port_overrides IS DERIVED, so nothing in the plan can put it in the
-		// mask. It is not a Field -- see devicePortOverrideEncode for why the
-		// read direction cannot be one -- so BeforeSend is what fills it in,
-		// and this is what carries it to the wire.
-		AlwaysWire: []string{"port_overrides"},
+		// BOTH ENTRIES ARE FILLED IN BY BeforeSend, WHICH IS THE ONLY REASON
+		// THEY ARE HERE. A field the practitioner sets belongs in Fields.
+		//
+		// port_overrides is derived: it is not a Field at all -- see
+		// devicePortOverrideEncode for why the read direction cannot be one --
+		// so nothing in the plan can name it and this is what carries it to the
+		// wire. type IS a Field, but it is Computed, so on a create the plan
+		// holds it unknown and SetInPlan leaves it out; BeforeSend echoes the
+		// controller's value and this makes sure it travels.
+		AlwaysWire: []string{"port_overrides", "type"},
 
 		// A device is hardware. Destroying the resource releases it from state;
 		// forgetting the device is a separate, opt-in act.

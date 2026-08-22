@@ -34,6 +34,15 @@ const DefaultTimeout = 20 * time.Minute
 // not -- a field-masked update is a different method from a whole-object one,
 // and choosing it is a decision about what the provider may overwrite.
 type Backend[S any] struct {
+	// Create POSTs a NEW object, and that is an assumption rather than a
+	// description. The controller holds nothing yet, so a whole-object body is
+	// correct and a field the practitioner left unset takes a controller
+	// default rather than overwriting a live one.
+	//
+	// A SURFACE THAT ADOPTS AN EXISTING OBJECT CANNOT USE THIS -- it wants
+	// CreateFields. unifi_device is the case: the device exists with its full
+	// configuration before Terraform first names it, so writing the whole
+	// object asserts a zero for every attribute the plan did not set.
 	Create func(ctx context.Context, site string, in *S) (*S, error)
 	// CreateFields is the field-masked create, for a surface whose "create" is
 	// a PATCH of an object the controller already holds.
