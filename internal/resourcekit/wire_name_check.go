@@ -30,6 +30,26 @@ import (
 // pointer into it, and the struct field at that address carries the json tag.
 // Same mechanism ElideProblems uses on the model side, and it works for
 // surfaces with no mapping file at all.
+// sortedConditionalWires reads the keys of a scattered field's ConditionalWires
+// by reflection, so the check needs no second type parameter and works for any
+// field kind that grows the member later.
+func sortedConditionalWires(field any) []string {
+	value := reflect.ValueOf(field)
+	if value.Kind() != reflect.Struct {
+		return nil
+	}
+	conditional := value.FieldByName("ConditionalWires")
+	if !conditional.IsValid() || conditional.Kind() != reflect.Map {
+		return nil
+	}
+	names := make([]string, 0, conditional.Len())
+	for _, key := range conditional.MapKeys() {
+		names = append(names, key.String())
+	}
+	sort.Strings(names)
+	return names
+}
+
 func WireNameProblems[M any, S any](spec Spec[M, S]) []string {
 	var sdk S
 	tags := jsonOffsets(&sdk)
@@ -64,6 +84,19 @@ func WireNameProblems[M any, S any](spec Spec[M, S]) []string {
 					problems = append(problems, fmt.Sprintf(
 						"%s: field %q is not an attribute of the SDK type; a mask naming it "+
 							"is accepted and changes nothing", spec.TypeName, name))
+				}
+			}
+			// A CONDITIONAL WIRE THAT NAMES NOTHING IS WORSE THAN NO
+			// DECLARATION, because it reads as one. The key silently matches no
+			// wire, the wire it was meant to guard stays unconditional, and the
+			// descriptor says in writing that it does not -- which is how a
+			// masked zero reaches the controller with a comment above it
+			// explaining why it cannot.
+			for _, name := range sortedConditionalWires(field) {
+				if !slices.Contains(names, name) {
+					problems = append(problems, fmt.Sprintf(
+						"%s: %q is declared a conditional wire and is not one of the field's "+
+							"wires, so it guards nothing", spec.TypeName, name))
 				}
 			}
 			continue

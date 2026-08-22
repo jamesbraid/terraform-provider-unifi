@@ -57,6 +57,30 @@ type ScatteredObjectField[M any, S any] struct {
 	// Decode builds the model's object from the SDK's flat fields.
 	Decode func(ctx context.Context, sdk *S) (types.Object, diag.Diagnostics)
 
+	// ConditionalWires names the wires Encode writes only SOMETIMES, each with
+	// the test for whether THIS object will write one.
+	//
+	// A WIRE NAMED HERE JOINS THE MASK ONLY WHEN ITS TEST HOLDS, and every wire
+	// not named travels whenever the object does. That distinction is the whole
+	// point: go-unifi sends a masked field's ZERO when the object carries no
+	// value, so masking a wire Encode did not write CLEARS whatever the
+	// controller holds.
+	//
+	// vpn_client is the case and it was measured rather than argued. Its
+	// wireguard object spans ten wires, and two of them -- dhcpd_dns_1 and
+	// dhcpd_dns_2 -- are written only when the practitioner supplies
+	// dns_servers. The hand-written mask omits exactly those two and
+	// unifi/wire_field_masks_test.go records why. Declaring all ten
+	// unconditionally puts two empty strings on the wire on every apply that
+	// sets a wireguard block without dns_servers, which blanks the controller's
+	// DNS -- the destruction that mask exists to prevent, arriving through the
+	// kind that replaced it.
+	//
+	// EVERY KEY MUST BE ONE OF Wires and WireNameProblems checks it, because a
+	// key that matches nothing silently leaves the wire unconditional -- which
+	// is the failure this field is meant to remove, reached by a typo.
+	ConditionalWires map[string]func(object types.Object) bool
+
 	// Elide says what an all-zero read means. Unlike ObjectField, where a nil
 	// pointer answers it, nothing here distinguishes "the controller returned
 	// nothing" from "it returned zeros" -- the fields are always present. So the
@@ -79,6 +103,51 @@ type multiWireField interface {
 }
 
 func (f ScatteredObjectField[M, S]) wireNames() []string { return f.Wires }
+
+// maskWireField is the second optional interface, and it answers a DIFFERENT
+// QUESTION from wireNames.
+//
+//	wireNames()               every wire this field CAN write -- what the
+//	                          checks verify against the SDK's tags
+//	maskedWireNames(plan)     the wires it WILL write for this plan -- what
+//	                          the update mask may name
+//
+// They are the same set for every field with no conditional wire, which is all
+// of them but one. Keeping them separate is what stops a check that wants the
+// declared set from silently reading a plan-narrowed one.
+type maskWireField[M any] interface {
+	maskedWireNames(plan *M) []string
+}
+
+func (f ScatteredObjectField[M, S]) maskedWireNames(plan *M) []string {
+	object := *f.Model(plan)
+	if object.IsNull() || object.IsUnknown() {
+		// SetInPlan already excluded the field, so reaching here would mean the
+		// caller asked without checking. Answering nothing is the safe reading:
+		// Encode writes nothing for a null object.
+		return nil
+	}
+	if len(f.ConditionalWires) == 0 {
+		return f.Wires
+	}
+	names := make([]string, 0, len(f.Wires))
+	for _, wire := range f.Wires {
+		if writes, conditional := f.ConditionalWires[wire]; conditional && !writes(object) {
+			continue
+		}
+		names = append(names, wire)
+	}
+	return names
+}
+
+// fieldMaskWireNames is what the UPDATE MASK asks. Every other consumer asks
+// fieldWireNames, which reports the declared set.
+func fieldMaskWireNames[M any, S any](field Field[M, S], plan *M) []string {
+	if masked, ok := any(field).(maskWireField[M]); ok {
+		return masked.maskedWireNames(plan)
+	}
+	return fieldWireNames(field)
+}
 
 // fieldWireNames is what every mask consumer asks instead of WireName, so a
 // scattered field contributes all of its names and every other field contributes

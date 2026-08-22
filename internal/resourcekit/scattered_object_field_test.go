@@ -3,6 +3,8 @@ package resourcekit
 import (
 	"context"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -343,5 +345,119 @@ func TestTwoFieldsClaimingOneAttributeAreRefused(t *testing.T) {
 	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0")}
 	if _, err := spec.WireFields(plan); err == nil {
 		t.Error("two fields naming wireguard_interface produced a mask rather than an error")
+	}
+}
+
+// A WIRE Encode WRITES ONLY SOMETIMES MUST NOT BE MASKED WHEN IT WILL NOT BE.
+//
+// go-unifi sends a masked field's ZERO when the object carries no value, so a
+// mask naming a wire Encode left alone CLEARS whatever the controller holds.
+// vpn_client is the case: two of its wireguard object's ten wires -- dhcpd_dns_1
+// and dhcpd_dns_2 -- are written only when the practitioner supplies
+// dns_servers, and the hand-written mask this kind replaces omits exactly those
+// two for exactly this reason.
+//
+// Measured before it was built: the field as it stood put both names in the
+// mask with the SDK object carrying empty strings, so every apply setting a
+// wireguard block without dns_servers would have blanked the controller's DNS.
+// The descriptor compiled and every existing check passed.
+func scatterFieldWithConditionalInterface() ScatteredObjectField[scatterModel, scatterSDK] {
+	field := scatterField()
+	field.ConditionalWires = map[string]func(types.Object) bool{
+		"wireguard_interface": func(object types.Object) bool {
+			iface, ok := object.Attributes()["interface"].(types.String)
+			return ok && !iface.IsNull() && iface.ValueString() != ""
+		},
+	}
+	return field
+}
+
+func TestAConditionalWireLeavesTheMaskWhenItsMemberIsUnset(t *testing.T) {
+	spec := Spec[scatterModel, scatterSDK]{
+		TypeName: "unifi_scatter",
+		Fields:   []Field[scatterModel, scatterSDK]{scatterFieldWithConditionalInterface()},
+	}
+	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "")}
+
+	fields, err := spec.WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	if slices.Contains(fields, "wireguard_interface") {
+		t.Error("wireguard_interface is in the mask although Encode will not write it; " +
+			"go-unifi sends a masked field's zero, so this clears the controller's value")
+	}
+	// THE CONTROL, AND IT IS THE HALF THAT MATTERS. Dropping a name from the
+	// mask is also what a broken predicate does, and a field that masks nothing
+	// is the silent write-drop this kind exists to prevent. The wires with no
+	// condition must still travel.
+	for _, wire := range []string{
+		"wireguard_private_key",
+		"wireguard_client_preshared_key_enabled",
+	} {
+		if !slices.Contains(fields, wire) {
+			t.Errorf("%s left the mask too; only the conditional wire may", wire)
+		}
+	}
+}
+
+func TestAConditionalWireJoinsTheMaskWhenItsMemberIsSet(t *testing.T) {
+	spec := Spec[scatterModel, scatterSDK]{
+		TypeName: "unifi_scatter",
+		Fields:   []Field[scatterModel, scatterSDK]{scatterFieldWithConditionalInterface()},
+	}
+	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0")}
+
+	fields, err := spec.WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	if !slices.Contains(fields, "wireguard_interface") {
+		t.Error("wireguard_interface is absent from the mask although the practitioner set " +
+			"it; a value that is set and not masked is one the apply silently drops")
+	}
+}
+
+// THE DECLARED SET AND THE MASKED SET ANSWER DIFFERENT QUESTIONS, and the
+// checks must keep reading the first. A conditional wire is still a wire this
+// field can write, so it still has to be a real attribute of the SDK type --
+// narrowing what the checks see would make a typo in a conditional name
+// unverifiable exactly when the plan happens not to trigger it.
+func TestAConditionalWireIsStillCheckedAgainstTheSDK(t *testing.T) {
+	field := scatterFieldWithConditionalInterface()
+	if names := field.wireNames(); !slices.Contains(names, "wireguard_interface") {
+		t.Errorf("wireNames() = %v, want the conditional wire among them", names)
+	}
+	spec := Spec[scatterModel, scatterSDK]{
+		TypeName: "unifi_scatter",
+		Fields:   []Field[scatterModel, scatterSDK]{field},
+	}
+	if problems := WireNameProblems(spec); len(problems) != 0 {
+		t.Errorf("WireNameProblems = %v, want none", problems)
+	}
+}
+
+// A CONDITION ON A NAME THAT IS NOT A WIRE READS AS A GUARD AND IS NONE. The
+// key matches nothing, the wire it was meant to guard stays unconditional, and
+// the descriptor says in writing that it does not -- a masked zero reaching the
+// controller with a comment above it explaining why it cannot.
+func TestAConditionOnAnUnknownWireIsRefused(t *testing.T) {
+	field := scatterField()
+	// A NEAR-MISS RATHER THAN A NONSENSE STRING, because the failure this
+	// guards is a transcription slip and a probe that could not plausibly be
+	// typed proves the check fires on something nobody would write.
+	field.ConditionalWires = map[string]func(types.Object) bool{
+		"wireguard_iface": func(types.Object) bool { return false },
+	}
+	spec := Spec[scatterModel, scatterSDK]{
+		TypeName: "unifi_scatter",
+		Fields:   []Field[scatterModel, scatterSDK]{field},
+	}
+	problems := WireNameProblems(spec)
+	if len(problems) == 0 {
+		t.Fatal("a condition naming no wire was accepted")
+	}
+	if !strings.Contains(problems[0], "guards nothing") {
+		t.Errorf("problem = %q, want it to say the condition guards nothing", problems[0])
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
@@ -153,5 +154,106 @@ func TestWireguardFieldRoundTripsWhatTheControllerReturns(t *testing.T) {
 	if !decoded.PrivateKey.IsNull() {
 		t.Errorf("private key came back as %q; the controller does not return it, so a "+
 			"non-null here means Decode invented a value", decoded.PrivateKey.ValueString())
+	}
+}
+
+// wireguardPlanWithout builds the same plan with one member cleared, so the
+// conditional-wire cases differ from the ten-name case by exactly the thing
+// under test.
+func wireguardPlanWithoutDNS(t *testing.T) *vpnClientResourceModel {
+	t.Helper()
+	value := wireguardModel{
+		PrivateKey:          types.StringValue("privkey"),
+		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
+		Peer:                types.ObjectNull(wireguardPeerModel{}.AttributeTypes()),
+		PresharedKeyEnabled: types.BoolValue(false),
+		PresharedKey:        types.StringNull(),
+		Interface:           types.StringValue("wan"),
+		DnsServers:          types.ListNull(types.StringType),
+	}
+	object, d := types.ObjectValueFrom(context.Background(), value.AttributeTypes(), value)
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	return &vpnClientResourceModel{Wireguard: object}
+}
+
+// THE TWO DNS NAMES LEAVE THE MASK WHEN NOTHING WILL WRITE THEM, and that is a
+// destructive bug rather than an untidy one if they do not.
+//
+// go-unifi sends a masked field's ZERO when the object carries no value, so a
+// mask naming dhcpd_dns_1 on an apply that set a wireguard block WITHOUT
+// dns_servers writes an empty string over whatever DNS the controller holds.
+// The hand-written mask this field replaces omits exactly these two and
+// wire_field_masks_test.go records why, under conditionallyAssigned.
+//
+// Measured before ConditionalWires existed: both names were in the mask with
+// the SDK object carrying "". The descriptor compiled, ElideProblems passed,
+// and WireNameProblems passed because both ARE real json tags.
+func TestWireguardFieldDropsTheDNSNamesWhenNothingWillWriteThem(t *testing.T) {
+	ctx := context.Background()
+	plan := wireguardPlanWithoutDNS(t)
+
+	// CONTROL FIRST: Encode really does leave them empty, or their absence from
+	// the mask below is protecting nothing.
+	network := &ui.Network{}
+	if diags := encodeVPNClientWireguard(ctx, plan.Wireguard, network); diags.HasError() {
+		t.Fatalf("Encode: %v", diags)
+	}
+	if network.DHCPDDNS1 != "" || network.DHCPDDNS2 != "" {
+		t.Fatalf("Encode wrote dhcpd_dns_1=%q dhcpd_dns_2=%q for a plan with no dns_servers; "+
+			"this case is not the one it is named for", network.DHCPDDNS1, network.DHCPDDNS2)
+	}
+
+	fields, err := wireguardSpec(vpnClientWireguardWires()).WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	for _, name := range []string{"dhcpd_dns_1", "dhcpd_dns_2"} {
+		if slices.Contains(fields, name) {
+			t.Errorf("%s is in the mask although Encode left it empty; the update sends \"\" "+
+				"and the controller's DNS is blanked", name)
+		}
+	}
+	// AND THE OTHER EIGHT STILL TRAVEL. A field that masks nothing is the
+	// silent write-drop this kind exists to prevent, and it looks identical to
+	// a correct narrowing from here.
+	if len(fields) != 8 {
+		t.Errorf("the mask carries %d name(s), want the other 8: %v", len(fields), fields)
+	}
+}
+
+// A CONFIGURATION FILE CAN SUPPLY THE DNS TOO, so the predicate cannot ask only
+// about dns_servers. Encode parses the file and writes the two wires from it
+// whenever dns_servers is null, and judging that without parsing is impossible
+// -- so a configuration present means both names are masked. Masking a wire
+// Encode might write is safe; failing to mask one it did write is the drop.
+func TestWireguardFieldKeepsTheDNSNamesWhenAConfigurationFileIsSet(t *testing.T) {
+	configuration, d := types.ObjectValue(wireguardConfigurationModel{}.AttributeTypes(),
+		map[string]attr.Value{
+			"content":  types.StringValue("Zm9v"),
+			"filename": types.StringValue("wg0.conf"),
+		})
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	plan := wireguardPlanWithoutDNS(t)
+	attributes := plan.Wireguard.Attributes()
+	attributes["configuration"] = configuration
+	object, d := types.ObjectValue(wireguardModel{}.AttributeTypes(), attributes)
+	if d.HasError() {
+		t.Fatal(d)
+	}
+	plan.Wireguard = object
+
+	fields, err := wireguardSpec(vpnClientWireguardWires()).WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	for _, name := range []string{"dhcpd_dns_1", "dhcpd_dns_2"} {
+		if !slices.Contains(fields, name) {
+			t.Errorf("%s left the mask although a configuration file may supply it; "+
+				"a value Encode writes and the mask omits is silently dropped", name)
+		}
 	}
 }
