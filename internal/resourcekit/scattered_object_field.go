@@ -89,6 +89,27 @@ type ScatteredObjectField[M any, S any] struct {
 	// is the failure this field is meant to remove, reached by a typo.
 	ConditionalWires map[string]func(object types.Object) bool
 
+	// ReadOnlyWires names wires this field DECODES and never encodes, so they
+	// stay out of the mask while still being declared.
+	//
+	// vpn_server's wireguard.public_key is the case. The controller issues the
+	// key and accepts none: unifi.Network carries wireguard_public_key, and
+	// marshalUserVPN -- the alias its purpose selects -- does not emit it. So
+	// maskedBody refuses a mask naming it and the whole update fails.
+	//
+	// NONE OF THE OTHER THREE MECHANISMS CAN SAY THIS, which is why it is its
+	// own field rather than a convention. A Fields entry masks it. AlwaysWire
+	// masks it. A ConditionalWires predicate that is never true is reported by
+	// ConditionalWireProblems as a direction no object exercised -- correctly,
+	// because a predicate nothing makes true is one nothing could have caught
+	// lying. The wire is not conditional; it is unwritable, and that is a
+	// different fact.
+	//
+	// IT STAYS IN Wires DELIBERATELY. WireNameProblems checks names against the
+	// SDK type's own json tags, where wireguard_public_key is real, so the
+	// declaration still catches a typo. What it leaves is the mask.
+	ReadOnlyWires []string
+
 	// Elide says what an all-zero read means. Unlike ObjectField, where a nil
 	// pointer answers it, nothing here distinguishes "the controller returned
 	// nothing" from "it returned zeros" -- the fields are always present. So the
@@ -135,11 +156,19 @@ func (f ScatteredObjectField[M, S]) maskedWireNames(plan *M) []string {
 		// Encode writes nothing for a null object.
 		return nil
 	}
-	if len(f.ConditionalWires) == 0 {
+	if len(f.ConditionalWires) == 0 && len(f.ReadOnlyWires) == 0 {
 		return f.Wires
+	}
+	readOnly := make(map[string]bool, len(f.ReadOnlyWires))
+	for _, wire := range f.ReadOnlyWires {
+		readOnly[wire] = true
 	}
 	names := make([]string, 0, len(f.Wires))
 	for _, wire := range f.Wires {
+		// A wire nothing encodes never reaches the mask, whatever the plan says.
+		if readOnly[wire] {
+			continue
+		}
 		if writes, conditional := f.ConditionalWires[wire]; conditional && !writes(object) {
 			continue
 		}

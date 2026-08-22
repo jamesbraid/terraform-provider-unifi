@@ -176,3 +176,53 @@ func TestConditionalWireProblemsSeesAnUntouchedSlice(t *testing.T) {
 		t.Errorf("a truthful predicate over a slice wire reported %v", problems)
 	}
 }
+
+// A READ-ONLY WIRE STAYS OFF THE MASK AND OUT OF THE REPORT.
+//
+// vpn_server's wireguard.public_key is the shape: unifi.Network carries the tag,
+// marshalUserVPN does not emit it, so masking it makes go-unifi refuse the whole
+// update. It is not conditional -- it is unwritable -- and none of Fields,
+// AlwaysWire or a never-true predicate can say that.
+func TestReadOnlyWireStaysOffTheMask(t *testing.T) {
+	field := condField(nil)
+	field.ConditionalWires = nil
+	field.Wires = []string{"always", "maybe"}
+	field.ReadOnlyWires = []string{"maybe"}
+	field.Encode = func(_ context.Context, _ types.Object, sdk *condSDK) diag.Diagnostics {
+		sdk.Always = "written"
+		return nil
+	}
+	if problems := ConditionalWireProblems(field, condObjects(t), nil); problems != nil {
+		t.Errorf("a read-only wire nothing encodes reported %v", problems)
+	}
+	plan := &condModel{Object: condObject(t, true)}
+	got := field.maskedWireNames(plan)
+	if len(got) != 1 || got[0] != "always" {
+		t.Errorf("mask = %v, want only [always]", got)
+	}
+}
+
+// The other direction: declaring read-only a wire Encode does write silently
+// drops the value, so it is reported.
+func TestReadOnlyWireEncodeWritesIsReported(t *testing.T) {
+	field := condField(nil)
+	field.ConditionalWires = nil
+	field.Wires = []string{"always"}
+	field.ReadOnlyWires = []string{"always"}
+	problems := ConditionalWireProblems(field, condObjects(t), nil)
+	if len(problems) != 1 || !strings.Contains(problems[0], "never sent") {
+		t.Errorf("a read-only wire Encode writes reported %v", problems)
+	}
+}
+
+// A name that is not one of Wires keeps nothing off the mask.
+func TestReadOnlyWireNotInWiresIsReported(t *testing.T) {
+	field := condField(nil)
+	field.ConditionalWires = nil
+	field.Wires = []string{"always"}
+	field.ReadOnlyWires = []string{"typo"}
+	problems := ConditionalWireProblems(field, condObjects(t), nil)
+	if len(problems) != 1 || !strings.Contains(problems[0], "names nothing") {
+		t.Errorf("a misspelled read-only wire reported %v", problems)
+	}
+}

@@ -115,6 +115,32 @@ func ConditionalWireProblems[M any, S any](
 		}
 	}
 
+	// A ReadOnlyWires ENTRY THE Encode ACTUALLY WRITES IS THE OPPOSITE FAILURE
+	// and it is silent: the name never reaches the mask, so the practitioner
+	// sets a value and the apply sends nothing. Declared read-only means the
+	// encoder cannot carry it, and that is checkable here because the objects
+	// are already in hand.
+	//
+	// A NAME THAT IS NOT ONE OF Wires IS A TYPO THAT DISABLES NOTHING AND
+	// PROTECTS NOTHING, the same hazard ConditionalWires has.
+	declared := make(map[string]bool, len(field.Wires))
+	for _, wire := range field.Wires {
+		declared[wire] = true
+	}
+	for _, wire := range field.ReadOnlyWires {
+		if !declared[wire] {
+			problems = append(problems, fmt.Sprintf(
+				"%q is in ReadOnlyWires and is not one of Wires, so it names nothing and "+
+					"keeps nothing off the mask", wire))
+			continue
+		}
+		if sawWritten[wire] {
+			problems = append(problems, fmt.Sprintf(
+				"%q is declared read-only and Encode writes it, so it is kept off the mask "+
+					"and the value is never sent", wire))
+		}
+	}
+
 	// AN UNDECLARED WIRE THE OBJECTS SHOW IS CONDITIONAL IS THE DESTRUCTIVE
 	// CASE, and it is reported first because it is the one nothing else looks
 	// for. Encode wrote it for some objects and left it alone for others, so it
