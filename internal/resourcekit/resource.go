@@ -214,6 +214,38 @@ type Spec[M any, S any] struct {
 	// clear a field to its zero. Applying it everywhere would spread that.
 	//
 	// It runs AFTER BeforeSend, because the hook is what sets the discriminator.
+	//
+	// AND THE OBVIOUS IMPROVEMENT TO IT ARMS A DESTRUCTION, which is the one
+	// thing to read before changing this.
+	//
+	// The narrowing above asks "did the encoder emit this name", and the fix
+	// for the cannot-clear is to ask "WOULD it emit this name if the field held
+	// a non-zero value" -- which keeps an omitempty-at-zero name on the mask so
+	// maskedBody can send its zero. That is correct and it reads as strictly
+	// safer. It is not.
+	//
+	// Dropping a name because the field is at its zero is ALSO what has been
+	// protecting every conditionally-written wire: a scattered object's Encode
+	// that skipped a member left it zero, the encoder omitted it, and the
+	// narrowing removed it from the mask before it could be sent as an explicit
+	// zero over whatever the controller holds. MEASURED on vpn_client: all
+	// SEVEN of its conditional wires are dropped by the current filter, and the
+	// purpose alias adds omitempty to dhcpd_dns_1 and _2 that the generated
+	// struct does not carry -- so a reading of the STRUCT's tags says five and
+	// the wire format says seven.
+	//
+	// So changing did to would removes the only guard those wires have, unless
+	// ScatteredObjectField.ConditionalWires already declares every one of them.
+	// ConditionalWires is not belt-and-braces here; under a would-emit
+	// narrowing it is the whole protection.
+	//
+	//	would-emit alone            arms the blanking on every undeclared
+	//	                            conditional wire
+	//	ConditionalWires alone      correct, and leaves the cannot-clear
+	//	both                        correct
+	//
+	// Do not make that change on a surface whose scattered objects have
+	// undeclared conditional wires.
 	NarrowMask func(sdk *S, fields []string) []string
 
 	// AlwaysWire names wire fields that BeforeSend sets, so they join the
