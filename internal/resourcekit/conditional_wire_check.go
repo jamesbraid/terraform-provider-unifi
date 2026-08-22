@@ -191,6 +191,24 @@ func ConditionalWireProblems[M any, S any](
 }
 
 // wiresEncodeWrites reports, per wire name, whether Encode assigned it.
+// WiresEncodeWrites reports which of a scattered field's wires Encode assigns
+// for one object, by the two-probe method the checks above rest on.
+//
+// EXPORTED SO THERE IS ONE INSTRUMENT AND NOT TWO. A surface test that rolls its
+// own comparison inherits whichever conflation that copy happens to have --
+// unifi/network_conditional_wires_test.go compared MARSHALLED KEYS, so a
+// pointer Encode assigned nil was absent from both probes and read as "not
+// written", which is the assigned-nil case reading as untouched. Same class as
+// #240 and the opposite sign.
+func WiresEncodeWrites[M any, S any](
+	ctx context.Context,
+	field ScatteredObjectField[M, S],
+	object types.Object,
+	seed func(*S),
+) (map[string]bool, error) {
+	return wiresEncodeWrites(ctx, field, object, seed)
+}
+
 func wiresEncodeWrites[M any, S any](
 	ctx context.Context,
 	field ScatteredObjectField[M, S],
@@ -248,6 +266,55 @@ func wiresEncodeWrites[M any, S any](
 		written[wire] = reflect.DeepEqual(before[wire].Interface(), after[wire].Interface())
 	}
 	return written, nil
+}
+
+// WiresAtZero reports which of a scattered field's wires hold their type's ZERO
+// after Encode has run for this object.
+//
+// IT ANSWERS A DIFFERENT QUESTION FROM WiresEncodeWrites AND THE TWO ARE OFTEN
+// CONFUSED. That one asks whether Encode assigned the field at all; this asks
+// what it assigned. A mapper written as `sdk.Field = model.X.ValueStringPointer()`
+// ALWAYS assigns, and assigns nil when X is null -- so it is written, and it is
+// written as nothing.
+//
+// THE DIFFERENCE DECIDES WHETHER ConditionalWires CAN HELP. A wire Encode
+// sometimes skips is conditional and declarable. A wire Encode always assigns
+// and sometimes assigns the zero is NOT: the declaration has nothing to key on,
+// and the remedy is to stop assigning. Which is a change to the mapper rather
+// than to the descriptor.
+//
+// WHY IT MATTERS AT ALL: a narrowing that asks "did this object emit the name"
+// drops such a wire, because a zero behind omitempty is absent from the
+// encoding. One that asks "would a populated object emit it" keeps it -- and
+// then go-unifi sends the zero over whatever the controller holds. The second
+// is the fix for a cannot-clear, so the two protections trade off and the
+// population has to be known before the trade is made.
+func WiresAtZero[M any, S any](
+	ctx context.Context,
+	field ScatteredObjectField[M, S],
+	object types.Object,
+	seed func(*S),
+) (map[string]bool, error) {
+	var probe S
+	if seed != nil {
+		seed(&probe)
+	}
+	if diags := field.Encode(ctx, object, &probe); diags.HasError() {
+		return nil, fmt.Errorf("encoding onto the probe: %v", diags)
+	}
+	fields, err := structFieldsByWire(&probe)
+	if err != nil {
+		return nil, err
+	}
+	atZero := make(map[string]bool, len(field.Wires))
+	for _, wire := range field.Wires {
+		value, known := fields[wire]
+		if !known {
+			return nil, fmt.Errorf("%q is not a json field of the SDK type", wire)
+		}
+		atZero[wire] = value.IsZero()
+	}
+	return atZero, nil
 }
 
 // structFieldsByWire indexes a struct's fields by their json name.

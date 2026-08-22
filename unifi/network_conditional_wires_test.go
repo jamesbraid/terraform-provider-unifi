@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -43,11 +44,20 @@ import (
 // question: a slot cleared to "" and a slot never assigned both arrive at the
 // zero, and it is the zero that travels.
 //
-// HOW "ENDS AT ZERO" IS DECIDED WITHOUT GUESSING A VALUE. Encode runs onto two
-// differently pre-filled structs, bare and sentinel. A wire whose value agrees
-// across both, and is carried in the encoding, was written to something real. A
-// wire missing from either is at its zero -- whether Encode skipped it or
-// assigned a zero makes no difference to what the mask would send.
+// HOW "ENDS AT ZERO" IS DECIDED. resourcekit.WiresAtZero runs Encode onto a
+// seeded probe and reads the struct field back, so the answer is what the field
+// HOLDS rather than what the encoding shows.
+//
+// IT USED TO ASK WHETHER Encode WROTE THE WIRE, VIA THE ENCODED FORM, and that
+// was two mistakes cancelling. A pointer assigned nil is absent from the
+// encoding exactly as an untouched one is, so "written" meant "written to
+// something real" only by accident -- and swapping in a struct-level comparison
+// took the reported population from seventeen to ZERO, because every one of
+// these Encodes assigns every wire on every path. None of them is conditional.
+// What they do is assign the zero, which is a different fact and the one that
+// matters here: ConditionalWires cannot express it, because there is nothing to
+// key a predicate on. The remedy for such a wire is to stop assigning it, in
+// the mapper, not to declare it in the descriptor.
 func TestNetworkNarrowingStaysSafeWhileWiresAreUnclassified(t *testing.T) {
 	fields := scatteredFieldsOf(t, networkKitSpec())
 	if len(fields) != 4 {
@@ -64,22 +74,20 @@ func TestNetworkNarrowingStaysSafeWhileWiresAreUnclassified(t *testing.T) {
 				"be observed without at least a full one and a sparse one", len(objects))
 		}
 
-		written := make([]map[string]bool, 0, len(objects))
+		zeroed := make([]map[string]bool, 0, len(objects))
 		for _, object := range objects {
-			written = append(written, wiresWrittenByEncode(t, field, object))
+			zeroed = append(zeroed, wiresAtZeroAfterEncode(t, field, object))
 		}
 
 		for _, wire := range field.Wires {
-			any, all := false, true
-			for _, w := range written {
-				if w[wire] {
-					any = true
-				} else {
-					all = false
+			atZero := false
+			for _, z := range zeroed {
+				if z[wire] {
+					atZero = true
 				}
 			}
-			if !any || all {
-				continue // never written, or always written: not at risk
+			if !atZero {
+				continue // never comes out at its zero: nothing for the mask to clear
 			}
 			if _, declared := field.ConditionalWires[wire]; declared {
 				continue // already declared, so it leaves the mask when unwritten
@@ -89,6 +97,60 @@ func TestNetworkNarrowingStaysSafeWhileWiresAreUnclassified(t *testing.T) {
 		}
 	}
 	sort.Strings(atRisk)
+
+	// THE POPULATION IS PINNED BY NAME, NOT LOGGED.
+	//
+	// A count that is only printed cannot catch an instrument that quietly
+	// stops seeing part of its subject, and this one did: reading the ENCODED
+	// form instead of the struct field drops every bool -- dhcpd_enabled,
+	// dhcpguard_enabled and nine more -- along with the DHCP pool range, because
+	// a false behind omitempty is absent exactly as an unwritten field is. The
+	// reported set went from 23 to 19 and nothing failed, since the gate below
+	// is satisfied by any non-empty list.
+	//
+	// EXPECT THIS LIST TO SHRINK. Each name leaves it by being classified:
+	// either sending the zero is the intent here, or the mapper stops assigning
+	// the wire and the descriptor declares it in ConditionalWires. Removing a
+	// name without doing one of those is the change this pin exists to catch.
+	wantAtRisk := []string{
+		"dhcp_relay_enabled",
+		"dhcpd_boot_enabled",
+		"dhcpd_boot_server",
+		"dhcpd_conflict_checking",
+		"dhcpd_dns_1",
+		"dhcpd_dns_2",
+		"dhcpd_dns_3",
+		"dhcpd_dns_4",
+		"dhcpd_dns_enabled",
+		"dhcpd_enabled",
+		"dhcpd_gateway_enabled",
+		"dhcpd_leasetime",
+		"dhcpd_ntp_enabled",
+		"dhcpd_start",
+		"dhcpd_stop",
+		"dhcpd_time_offset_enabled",
+		"dhcpd_wins_enabled",
+		"dhcpdv6_dns_auto",
+		"dhcpdv6_enabled",
+		"dhcpdv6_leasetime",
+		"dhcpdv6_start",
+		"dhcpdv6_stop",
+		"dhcpguard_enabled",
+	}
+	for _, name := range wantAtRisk {
+		if !slices.Contains(atRisk, name) {
+			t.Errorf("%s no longer reads as ending at its zero. If it was classified, "+
+				"remove it from this list in the same commit; if the probe stopped "+
+				"seeing it, the instrument lost part of its subject", name)
+		}
+	}
+	for _, name := range atRisk {
+		if !slices.Contains(wantAtRisk, name) {
+			t.Errorf("%s now ends at its zero and was not in the pinned set; a wire the "+
+				"mask would carry with nothing behind it has appeared", name)
+		}
+	}
+
 	if checked == 0 {
 		t.Error("no wire came out at its zero on any of network's four scattered " +
 			"fields, which contradicts the positional slot writers; the probe " +
@@ -126,41 +188,36 @@ func TestNetworkNarrowingStaysSafeWhileWiresAreUnclassified(t *testing.T) {
 	}
 }
 
-// wiresWrittenByEncode reports which of unifi.Network's json fields this Encode
-// assigns for the given object.
+// wiresWrittenByEncode asks the KIT which wires Encode assigns, rather than
+// deciding here.
+//
+// IT USED TO COMPARE MARSHALLED KEYS AND THAT WAS THE #240 CONFLATION WITH THE
+// OPPOSITE SIGN. A pointer field Encode assigns NIL is absent from both probes'
+// encodings, so "present in both and equal" called it NOT written -- and a
+// field Encode never touched reads the same way. Assigned-nil and untouched are
+// different facts and the encoded form cannot hold the difference, so the 17
+// wires this test reports were a mixture of the two with no way to separate
+// them. resourcekit.WiresEncodeWrites compares the struct fields.
 func wiresWrittenByEncode(
 	t *testing.T,
 	field resourcekit.ScatteredObjectField[netModel, ui.Network],
 	object types.Object,
 ) map[string]bool {
 	t.Helper()
-	bare := &ui.Network{Purpose: ui.PurposeCorporate}
-	seeded := &ui.Network{Purpose: ui.PurposeCorporate}
-	sentinelFill(reflect.ValueOf(seeded).Elem())
-	seeded.Purpose = ui.PurposeCorporate
 	// The corporate encoder derives DHCP range defaults from the subnet and
 	// logs when it will not parse. A real CIDR keeps the probe quiet without
-	// changing which keys are emitted.
-	subnet := "10.0.0.0/24"
-	seeded.IPSubnet = &subnet
-	bare.IPSubnet = &subnet
-
-	if diags := field.Encode(t.Context(), object, bare); diags.HasError() {
-		t.Fatalf("Encode onto a bare object: %v", diags)
+	// changing which keys are emitted, and the purpose is not optional: a zero
+	// Network cannot marshal at all.
+	written, err := resourcekit.WiresEncodeWrites(t.Context(), field, object,
+		func(n *ui.Network) {
+			n.Purpose = ui.PurposeCorporate
+			subnet := "10.0.0.0/24"
+			n.IPSubnet = &subnet
+		})
+	if err != nil {
+		t.Fatalf("asking which wires Encode writes: %v", err)
 	}
-	if diags := field.Encode(t.Context(), object, seeded); diags.HasError() {
-		t.Fatalf("Encode onto a seeded object: %v", diags)
-	}
-
-	a, b := marshalKeys(t, bare), marshalKeys(t, seeded)
-	out := map[string]bool{}
-	for _, wire := range field.Wires {
-		av, aok := a[wire]
-		bv, bok := b[wire]
-		// Agreement across the two runs IS the write.
-		out[wire] = aok && bok && string(av) == string(bv)
-	}
-	return out
+	return written
 }
 
 func marshalKeys(t *testing.T, network *ui.Network) map[string]json.RawMessage {
@@ -453,4 +510,25 @@ func TestNetworkHasNoConditionallyWrittenWires(t *testing.T) {
 				"objects and the silence above means nothing", field.Wires[0])
 		}
 	}
+}
+
+// wiresAtZeroAfterEncode reports which wires hold their type's zero once Encode
+// has run for this object -- which is what the mask would send if the narrowing
+// kept the name.
+func wiresAtZeroAfterEncode(
+	t *testing.T,
+	field resourcekit.ScatteredObjectField[netModel, ui.Network],
+	object types.Object,
+) map[string]bool {
+	t.Helper()
+	atZero, err := resourcekit.WiresAtZero(t.Context(), field, object,
+		func(n *ui.Network) {
+			n.Purpose = ui.PurposeCorporate
+			subnet := "10.0.0.0/24"
+			n.IPSubnet = &subnet
+		})
+	if err != nil {
+		t.Fatalf("asking which wires end at their zero: %v", err)
+	}
+	return atZero
 }
