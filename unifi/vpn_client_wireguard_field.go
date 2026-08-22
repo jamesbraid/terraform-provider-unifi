@@ -11,17 +11,14 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// vpnClientWireguardWires is every attribute of unifi.Network that the
-// `wireguard` object writes. ALL of them reach the mask; a name missing here is
-// a value the practitioner sets and the apply never sends.
+// vpnClientWireguardWires and vpnClientWireguardField READ THE SHIPPED
+// DESCRIPTOR rather than declaring a second copy.
 //
-// TEN, NOT THREE, and the two that are not wireguard-named are the point.
+// TEN WIRES, NOT THREE, AND THE TWO THAT ARE NOT WIREGUARD-NAMED ARE THE POINT.
 // dhcpd_dns_1 and dhcpd_dns_2 are written by wireguardDNSServersToNetwork from
-// the block's dns_servers list, so an author enumerating this list by grepping
-// the SDK for "Wireguard" produces eight names, the mask omits two, and
-// dns_servers becomes an attribute the practitioner can set and nothing writes.
-// That is the silent write-drop this kind exists to prevent, and it is reachable
-// on the first real surface.
+// the block's dns_servers list, so an author enumerating by grepping the SDK for
+// "Wireguard" produces eight names, the mask omits two, and dns_servers becomes
+// an attribute the practitioner can set and nothing writes.
 //
 // x_wireguard_private_key IS THE OTHER TRAP. The Go field is
 // WireguardPrivateKey, so a name transcribed from the struct is
@@ -29,100 +26,21 @@ import (
 // naming it is accepted and changes nothing, which is dns_record's `name` ->
 // `key` again. WireNameProblems catches it; nothing else does.
 //
-// THREE OF THE TEN ARE FORCE-EMITTED: wireguard_client_preshared_key_enabled,
-// dhcpd_dns_1 and dhcpd_dns_2 carry no omitempty on the struct. The last two are
-// #211's cannot-clear pair -- the VPNClient encoder adds omitempty that the
-// struct does not -- so a practitioner can set them and cannot empty them. That
-// is an open defect this field neither causes nor fixes, recorded here because
-// this is where someone will next look at these two names.
-func vpnClientWireguardWires() []string {
-	return []string{
-		"x_wireguard_private_key",
-		"wireguard_interface",
-		"wireguard_client_preshared_key_enabled",
-		"wireguard_client_preshared_key",
-		"wireguard_client_mode",
-		"wireguard_client_peer_public_key",
-		"wireguard_client_peer_ip",
-		"wireguard_client_peer_port",
-		"dhcpd_dns_1",
-		"dhcpd_dns_2",
-	}
-}
-
-// vpnClientWireguardField binds the wireguard object to those ten fields.
-//
-// Encode is the existing mapper's wireguard branch, moved rather than rewritten:
-// the configuration-file path parses and derives, the peer path writes manual
-// mode, and the preshared key is optional to both. Decode is its counterpart
-// from the read side. What the kind adds is the mask half -- that every name
-// above travels together, and that each is a real attribute of the SDK type.
+// THE NAMES LIVE IN THE Spec LITERAL because the mapping reader parses a Fields
+// entry as a composite literal and a helper returning one hides every name it
+// declares. Reading them back from there is what keeps this from becoming the
+// second list that has to agree with the first.
 func vpnClientWireguardField() resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network] {
-	return resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network]{
-		Wires:     vpnClientWireguardWires(),
-		Model:     func(m *vpnClientResourceModel) *types.Object { return &m.Wireguard },
-		AttrTypes: wireguardModel{}.AttributeTypes(),
-		// TWO OF THE TEN TRAVEL ONLY WITH dns_servers, and declaring all ten
-		// unconditionally is a destructive write rather than an untidy one.
-		//
-		// wireguardDNSServersToNetwork assigns DHCPDDNS1 and DHCPDDNS2 only when
-		// the practitioner supplied servers, and go-unifi sends a masked field's
-		// ZERO when the object carries no value. So a mask naming them on an
-		// apply that set a wireguard block without dns_servers writes two empty
-		// strings and blanks the controller's DNS. The hand-written mask this
-		// field replaces omits exactly these two and unifi/wire_field_masks_test.go
-		// records why, under conditionallyAssigned.
-		//
-		// Measured on the field as it stood before ConditionalWires existed: both
-		// names were in the mask with the SDK object carrying "". Nothing caught
-		// it -- the descriptor compiles, ElideProblems passes, and WireNameProblems
-		// passes because both ARE real json tags on ui.Network.
-		//
-		// SEVEN OF THE TEN ARE CONDITIONAL, WHICH IS THE MAJORITY. Only
-		// x_wireguard_private_key, wireguard_interface and
-		// wireguard_client_preshared_key_enabled are assigned on every path
-		// through Encode; everything else sits behind the dns_servers guard,
-		// the configuration-or-peer switch, or the preshared-key-enabled test.
-		// A first pass declared two and the other five were left masked with
-		// nothing behind them.
-		ConditionalWires: map[string]func(types.Object) bool{
-			// ONE PREDICATE PER DNS WIRE, TAKING THE ORDINAL. A single shared
-			// predicate asking "is dns_servers set" was wrong and destructive:
-			// wireguardDNSServersToNetwork writes dhcpd_dns_1 at len > 0 and
-			// dhcpd_dns_2 at len > 1, so a practitioner supplying ONE server had
-			// dhcpd_dns_2 masked, unwritten, and sent as "" over whatever the
-			// controller held. The wire carries no omitempty, so nothing dropped
-			// it on the way.
-			"dhcpd_dns_1":                      vpnClientWireguardWritesDNS(1),
-			"dhcpd_dns_2":                      vpnClientWireguardWritesDNS(2),
-			"wireguard_client_mode":            vpnClientWireguardWritesPeer,
-			"wireguard_client_peer_public_key": vpnClientWireguardWritesPeer,
-			"wireguard_client_peer_ip":         vpnClientWireguardWritesPeer,
-			"wireguard_client_peer_port":       vpnClientWireguardWritesPeer,
-			"wireguard_client_preshared_key":   vpnClientWireguardWritesPresharedKey,
-		},
-		Encode: encodeVPNClientWireguard,
-		Decode: decodeVPNClientWireguard,
+	for _, field := range vpnClientKitSpec().Fields {
+		if scattered, ok := field.(resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network]); ok {
+			return scattered
+		}
 	}
+	panic("the vpn_client descriptor declares no scattered object field")
 }
 
-// vpnClientWireguardWritesDNS reports whether Encode will write the nth DNS
-// wire for this object.
-//
-// ONE PREDICATE PER WIRE, BECAUSE THE TWO WIRES HAVE DIFFERENT CONDITIONS AND A
-// SHARED PREDICATE GOT IT WRONG. wireguardDNSServersToNetwork writes
-// dhcpd_dns_1 when the list is non-empty and dhcpd_dns_2 only when it has a
-// SECOND entry, so a practitioner supplying one server had dhcpd_dns_2 masked,
-// unwritten, and sent as "" -- blanking the controller's second DNS. That is
-// the destruction ConditionalWires exists to prevent, surviving inside the
-// remedy at a cardinality nobody exercised.
-//
-// IT PARSES THE CONFIGURATION FILE FOR THE SAME REASON. Encode's config branch
-// feeds parsed.DNS through the same helper, so the same length rule decides it,
-// and a predicate that answered "configuration is set, therefore both" would
-// reproduce the defect one branch over. Parsing twice is duplicated work the
-// shape of ConditionalWires imposes -- the predicate has to re-answer a
-// question Encode already answered -- and the alternative is guessing.
+func vpnClientWireguardWires() []string { return vpnClientWireguardField().Wires }
+
 func vpnClientWireguardWritesDNS(nth int) func(types.Object) bool {
 	return func(object types.Object) bool {
 		attributes := object.Attributes()
@@ -236,7 +154,7 @@ func encodeVPNClientWireguard(
 		if diags.HasError() {
 			return diags
 		}
-		network.WireguardClientMode = util.Ptr("manual")
+		// The mode goes with the peer: wireguardPeerToNetwork writes it.
 		wireguardPeerToNetwork(peer, network)
 	}
 
@@ -271,6 +189,26 @@ func encodeVPNClientWireguard(
 // direction -- a refresh blanks two secrets in state rather than inventing values
 // for them -- and vpn_client cannot be cut over on this field alone. Recorded
 // here because this file is the worked example for the kind.
+// decodeVPNClientPeer builds the peer block from what the controller reports,
+// and returns null when it reports no manual mode.
+//
+// THE CONTROLLER ALWAYS SAYS MANUAL. The provider converts a configuration file
+// to manual mode on the way out, so this cannot tell a practitioner who wrote a
+// peer block from one who supplied a file -- and answering "peer" for the second
+// replaces their configuration on every refresh. Only prior state can tell them
+// apart, which is what the descriptor's AfterReceive is for. This produces the
+// answer for the peer case and AfterReceive overrides it for the other.
+func decodeVPNClientPeer(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *ui.Network,
+) types.Object {
+	if network.WireguardClientMode == nil || *network.WireguardClientMode != "manual" {
+		return types.ObjectNull(wireguardPeerModel{}.AttributeTypes())
+	}
+	return wireguardPeerFromNetwork(ctx, diags, network)
+}
+
 func decodeVPNClientWireguard(
 	ctx context.Context,
 	network *ui.Network,
@@ -279,7 +217,7 @@ func decodeVPNClientWireguard(
 	value := wireguardModel{
 		PrivateKey:          types.StringNull(),
 		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
-		Peer:                types.ObjectNull(wireguardPeerModel{}.AttributeTypes()),
+		Peer:                decodeVPNClientPeer(ctx, &diags, network),
 		PresharedKeyEnabled: types.BoolValue(network.WireguardClientPresharedKeyEnabled),
 		PresharedKey:        types.StringNull(),
 		Interface:           types.StringPointerValue(network.WireguardInterface),

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
@@ -12,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
-	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 func TestAccVPNClient_file_mode(t *testing.T) {
@@ -294,7 +292,7 @@ func Test_wireguardModel_AttributeTypes(t *testing.T) {
 }
 
 func Test_vpnClientResource_IdentitySchema(t *testing.T) {
-	r := &vpnClientResource{}
+	r := newVPNClientKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -305,140 +303,8 @@ func Test_vpnClientResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_vpnClientResource_modelToNetwork(t *testing.T) {
-	ctx := context.Background()
-	r := &vpnClientResource{}
-
-	t.Run("basic manual mode fields", func(t *testing.T) {
-		peerObj, d := types.ObjectValueFrom(
-			ctx,
-			wireguardPeerModel{}.AttributeTypes(),
-			wireguardPeerModel{
-				IP:        types.StringValue("1.2.3.4"),
-				Port:      types.Int64Value(51820),
-				PublicKey: types.StringValue("pubkey=="),
-			},
-		)
-		if d.HasError() {
-			t.Fatalf("building peer: %v", d)
-		}
-		wg := wireguardModel{
-			PrivateKey:          types.StringValue("privkey=="),
-			Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
-			Peer:                peerObj,
-			PresharedKeyEnabled: types.BoolValue(false),
-			PresharedKey:        types.StringNull(),
-			Interface:           types.StringValue("wan"),
-			DnsServers:          types.ListNull(types.StringType),
-		}
-		wgObj, d := types.ObjectValueFrom(ctx, wg.AttributeTypes(), wg)
-		if d.HasError() {
-			t.Fatalf("building wireguard: %v", d)
-		}
-
-		from := cidrtypes.NewIPv4PrefixValue("10.0.0.2/24")
-		model := &vpnClientResourceModel{
-			Name:         types.StringValue("test-vpn"),
-			Enabled:      types.BoolValue(true),
-			Subnet:       from,
-			DefaultRoute: types.BoolValue(false),
-			PullDNS:      types.BoolValue(false),
-			Wireguard:    wgObj,
-		}
-		network, diags := r.modelToNetwork(ctx, model)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if network.Purpose != unifi.PurposeVPNClient {
-			t.Errorf("Purpose = %q, want vpn-client", network.Purpose)
-		}
-		if network.VPNType == nil || *network.VPNType != "wireguard-client" {
-			t.Errorf("VPNType = %v, want wireguard-client", network.VPNType)
-		}
-		if network.WireguardClientMode == nil || *network.WireguardClientMode != "manual" {
-			t.Errorf("WireguardClientMode = %v, want manual", network.WireguardClientMode)
-		}
-	})
-
-	t.Run("null wireguard produces basic network", func(t *testing.T) {
-		from := cidrtypes.NewIPv4PrefixValue("10.0.0.1/24")
-		model := &vpnClientResourceModel{
-			Name:      types.StringValue("min-vpn"),
-			Enabled:   types.BoolValue(true),
-			Subnet:    from,
-			Wireguard: types.ObjectNull(wireguardModel{}.AttributeTypes()),
-		}
-		network, diags := r.modelToNetwork(ctx, model)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if network == nil {
-			t.Fatal("expected non-nil network")
-		}
-		if network.Purpose != unifi.PurposeVPNClient {
-			t.Errorf("Purpose = %q, want vpn-client", network.Purpose)
-		}
-	})
-}
-
-func Test_vpnClientResource_networkToModel(t *testing.T) {
-	ctx := context.Background()
-	r := &vpnClientResource{}
-
-	t.Run("manual mode populates peer", func(t *testing.T) {
-		mode := "manual"
-		ip := "1.2.3.4"
-		port := int64(51820)
-		pubKey := "pubkey=="
-		subnet := "10.0.0.2/24"
-		name := "test-vpn"
-		network := &unifi.Network{
-			ID:                           "net-1",
-			Name:                         &name,
-			Enabled:                      true,
-			IPSubnet:                     &subnet,
-			WireguardClientMode:          &mode,
-			WireguardClientPeerIP:        &ip,
-			WireguardClientPeerPort:      &port,
-			WireguardClientPeerPublicKey: &pubKey,
-		}
-		model := &vpnClientResourceModel{}
-		priorState := &vpnClientResourceModel{}
-		diags := r.networkToModel(ctx, network, model, "default", priorState)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if model.ID.ValueString() != "net-1" {
-			t.Errorf("ID = %q, want net-1", model.ID.ValueString())
-		}
-		if model.Site.ValueString() != "default" {
-			t.Errorf("Site = %q, want default", model.Site.ValueString())
-		}
-		if model.Wireguard.IsNull() {
-			t.Error("Wireguard should not be null")
-		}
-	})
-
-	t.Run("no mode produces null peer and null configuration", func(t *testing.T) {
-		name := "no-mode-vpn"
-		network := &unifi.Network{
-			ID:   "net-2",
-			Name: &name,
-		}
-		model := &vpnClientResourceModel{}
-		priorState := &vpnClientResourceModel{}
-		diags := r.networkToModel(ctx, network, model, "default", priorState)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if model.Wireguard.IsNull() {
-			t.Error("Wireguard object should not be null even with no mode")
-		}
-	})
-}
-
 func Test_vpnClientResource_ListResourceConfigSchema(t *testing.T) {
-	r := &vpnClientResource{}
+	r := newVPNClientKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
