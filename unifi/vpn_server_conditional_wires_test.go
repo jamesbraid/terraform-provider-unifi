@@ -76,7 +76,15 @@ func TestVPNServerConditionalWiresAgreeWithEncode(t *testing.T) {
 			return types.StringNull()
 		}
 		return object(t, vpnServerOpenVPNModel{}.AttributeTypes(), map[string]attr.Value{
-			"port":              types.Int64Null(),
+			// The port varies with `filled` so local_port is exercised in both
+			// directions here too. Leaving it null in both objects would let
+			// the check pass on a wire it never got to judge.
+			"port": func() attr.Value {
+				if filled {
+					return types.Int64Value(1194)
+				}
+				return types.Int64Null()
+			}(),
 			"mode":              v("site-to-site"),
 			"encryption_cipher": v("aes-256-gcm"),
 			"server_crt":        v("server-crt"),
@@ -96,40 +104,64 @@ func TestVPNServerConditionalWiresAgreeWithEncode(t *testing.T) {
 		})
 	}
 
-	cases := map[string][]types.Object{
-		// none, one and two servers: the only shape that drives dhcpd_dns_1 and
-		// dhcpd_dns_2 to different answers, which is the split a shared
-		// predicate would have hidden.
-		"dns":  {dnsObject(t), dnsObject(t, "1.1.1.1"), dnsObject(t, "1.1.1.1", "8.8.8.8")},
-		"l2tp": {l2tpObject(t, ""), l2tpObject(t, "a-pre-shared-key")},
-		// every certificate set, then none: ten predicates, both directions.
-		"openvpn": {openVPNObject(t, false), openVPNObject(t, true)},
-	}
-
 	// Without this the loop below could match nothing and report success over a
 	// descriptor whose conditional wires were never looked at.
+	wanObject := func(t *testing.T, filled bool) types.Object {
+		v := func(x string) types.String {
+			if filled {
+				return types.StringValue(x)
+			}
+			return types.StringNull()
+		}
+		return object(t, vpnServerWANModel{}.AttributeTypes(), map[string]attr.Value{
+			"ip":        v("203.0.113.10"),
+			"interface": v("wan"),
+		})
+	}
+	wireguardObject := func(t *testing.T, filled bool) types.Object {
+		key := types.StringNull()
+		port := types.Int64Null()
+		if filled {
+			key = types.StringValue("a-private-key")
+			port = types.Int64Value(51820)
+		}
+		return object(t, vpnServerWireguardModel{}.AttributeTypes(), map[string]attr.Value{
+			"private_key": key,
+			"public_key":  types.StringNull(),
+			"port":        port,
+		})
+	}
+
+	// EVERY SCATTERED FIELD, not only the ones that declare predicates. The
+	// check's population is field.Wires, so an UNDECLARED conditional wire is
+	// reported by name -- which is the only case that destroys anything, and
+	// the case the check could not see before efa16ae3. Skipping the two fields
+	// with no declarations would put them back out of reach.
+	byLeadWire := map[string][]types.Object{
+		"dhcpd_dns_enabled":       {dnsObject(t), dnsObject(t, "1.1.1.1"), dnsObject(t, "1.1.1.1", "8.8.8.8")},
+		"l2tp_allow_weak_ciphers": {l2tpObject(t, ""), l2tpObject(t, "a-pre-shared-key")},
+		"local_port":              {openVPNObject(t, false), openVPNObject(t, true)},
+		"x_wireguard_private_key": {wireguardObject(t, false), wireguardObject(t, true)},
+		"wireguard_local_wan_ip":  {wanObject(t, false), wanObject(t, true)},
+	}
+
 	matched := 0
 	for _, field := range spec.Fields {
 		scattered, ok := field.(resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network])
-		if !ok || len(scattered.ConditionalWires) == 0 {
+		if !ok {
 			continue
 		}
-		var objects []types.Object
-		switch {
-		case scattered.Model(&vpnServerKitModel{}) != nil && len(scattered.Wires) > 0 && scattered.Wires[0] == "dhcpd_dns_enabled":
-			objects = cases["dns"]
-		case scattered.Wires[0] == "l2tp_allow_weak_ciphers":
-			objects = cases["l2tp"]
-		default:
-			objects = cases["openvpn"]
+		objects, known := byLeadWire[scattered.Wires[0]]
+		if !known {
+			t.Fatalf("scattered field leading with %q has no objects here; a new field must be exercised, not skipped", scattered.Wires[0])
 		}
 		matched++
 		for _, problem := range resourcekit.ConditionalWireProblems(scattered, objects, seed) {
-			t.Errorf("%v: %s", scattered.Wires, problem)
+			t.Errorf("%s: %s", scattered.Wires[0], problem)
 		}
 	}
-	if matched != 3 {
-		t.Fatalf("exercised %d scattered fields with conditional wires, want 3; the descriptor changed shape and this test stopped seeing it", matched)
+	if matched != 5 {
+		t.Fatalf("exercised %d scattered fields, want 5; the descriptor changed shape and this test stopped seeing it", matched)
 	}
 	_ = ctx
 }

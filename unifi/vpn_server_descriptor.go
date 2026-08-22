@@ -2,7 +2,6 @@ package unifi
 
 import (
 	"context"
-	"slices"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -119,7 +118,8 @@ func vpnServerDNSServerCount(object types.Object) int {
 
 // encodeVPNServerWAN writes wan.ip and wan.interface into the pair belonging to
 // the configured VPN type. Encode receives the SDK object, so it can read the
-// discriminator; the MASK cannot, which is what vpnServerNarrowMask is for.
+// discriminator; the MASK cannot, which is what
+// vpnServerUnwritableWires is for.
 func encodeVPNServerWAN(ctx context.Context, object types.Object, sdk *ui.Network) diag.Diagnostics {
 	var diags diag.Diagnostics
 	var wan vpnServerWANModel
@@ -146,29 +146,22 @@ func encodeVPNServerWireguard(ctx context.Context, object types.Object, sdk *ui.
 		diags.AddError("Invalid wireguard block", "could not read the wireguard block")
 		return diags
 	}
+	// ENCODE MUST BE DETERMINISTIC, and generating the key here made it not.
+	//
+	// ConditionalWireProblems decides whether a wire was written by encoding
+	// onto two differently-seeded structs and asking whether they converge. A
+	// fresh random key on each call never converges, so a wire that is ALWAYS
+	// written read as written-sometimes. Generation moved to BeforeSend, where
+	// derived values belong; Encode now only copies what the practitioner gave.
 	if knownNonEmptyIn(wg.PrivateKey) {
 		sdk.WireguardPrivateKey = wg.PrivateKey.ValueStringPointer()
-	} else {
-		// The controller rejects a create with no key
-		// (api.err.WireguardMissingPrivateKey), so one is generated here. On
-		// update UseStateForUnknown resolves it from state, so this only runs
-		// at create -- which is why x_wireguard_private_key is NOT declared
-		// conditional: the block being present guarantees the wire is written.
-		key, err := generateWireGuardPrivateKey()
-		if err != nil {
-			diags.AddError("Unable to generate WireGuard private key", err.Error())
-			return diags
-		}
-		sdk.WireguardPrivateKey = &key
 	}
-	vpnServerLocalPortToNetwork(wg.Port, sdk)
+	if !wg.Port.IsNull() && !wg.Port.IsUnknown() {
+		vpnServerLocalPortToNetwork(wg.Port, sdk)
+	}
 	return diags
 }
 
-// A BLOCK BELONGING TO ANOTHER VPN TYPE READS BACK NULL, not an object of
-// zeros. The three are mutually exclusive, so a wireguard server must not
-// present an empty l2tp block -- that would be a permanent diff against a
-// configuration that never mentioned it.
 func decodeVPNServerWireguard(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
 	if vpnServerType(sdk) != "wireguard-server" {
 		return types.ObjectNull(vpnServerWireguardModel{}.AttributeTypes()), nil
@@ -215,7 +208,12 @@ func encodeVPNServerOpenVPN(ctx context.Context, object types.Object, sdk *ui.Ne
 		diags.AddError("Invalid openvpn block", "could not read the openvpn block")
 		return diags
 	}
-	vpnServerLocalPortToNetwork(ovpn.Port, sdk)
+	// Guarded for the same reason as every assignment below: writing nil for an
+	// unset port makes the wire read as unconditionally written, and a masked
+	// local_port with no value sends null over the controller's own port.
+	if !ovpn.Port.IsNull() && !ovpn.Port.IsUnknown() {
+		vpnServerLocalPortToNetwork(ovpn.Port, sdk)
+	}
 	// ASSIGN ONLY WHAT IS SET, rather than assigning nil for what is not.
 	//
 	// The hand-written mapper wrote nil through knownNonEmpty, which reads the
@@ -281,47 +279,56 @@ func openVPNMemberSet(attribute string) func(types.Object) bool {
 	}
 }
 
-// vpnServerNarrowMask drops the wan wires belonging to the two VPN families
-// that are not configured.
+// vpnServerUnwritableWires names the wan wires belonging to the two VPN
+// families that are NOT configured, so the kit drops them from the mask.
 //
 // IT IS NOT THE did-emit NARROWING AND DOES NOT REINTRODUCE THE CANNOT-CLEAR.
-// The hazard NarrowMask's own comment documents comes from dropping a name
-// BECAUSE THE FIELD SITS AT ITS ZERO, which cannot tell "omitted at zero" from
-// "never emitted". This one never looks at a value: it drops openvpn_* on a
-// wireguard server by name, so an empty wireguard_interface on a wireguard
-// server stays masked and can still be cleared.
+// The hazard recorded against this hook comes from dropping a name BECAUSE THE
+// FIELD SITS AT ITS ZERO, which cannot tell "omitted at zero" from "never
+// emitted" and so throws away maskedBody's ability to clear a value. This one
+// never looks at a value: it drops openvpn_* on a wireguard server BY NAME,
+// keyed on the family. An empty wireguard_interface on a wireguard server stays
+// on the mask and can still be cleared. Different question, different failure
+// mode, no overlap with the ban.
 //
-// It exists because ConditionalWires cannot express this. Its predicate is
-// handed the object alone, the values live in the wan block, and the condition
-// -- which of wireguard, l2tp and openvpn is set -- lives in a sibling
-// attribute the predicate cannot see. Encode can, because it receives the SDK
-// object; the mask cannot, and this is the seam for it.
-func vpnServerNarrowMask(sdk *ui.Network, fields []string) []string {
+// It exists because ConditionalWires cannot express this. That predicate is
+// handed the object alone; the values live in the wan block and the family
+// lives in the SDK object, which only a hook running after BeforeSend can read.
+// A null wan block needs nothing from here -- ScatteredObjectField's SetInPlan
+// already keeps all six names off the mask when the object is absent.
+func vpnServerUnwritableWires(sdk *ui.Network) []string {
 	families := map[string][]string{
 		"wireguard-server": {"wireguard_local_wan_ip", "wireguard_interface"},
 		"l2tp-server":      {"l2tp_local_wan_ip", "l2tp_interface"},
 		"openvpn-server":   {"openvpn_local_wan_ip", "openvpn_interface"},
 	}
 	configured := vpnServerType(sdk)
-	var foreign []string
-	for family, wires := range families {
+	var unwritable []string
+	for _, family := range []string{"wireguard-server", "l2tp-server", "openvpn-server"} {
 		if family != configured {
-			foreign = append(foreign, wires...)
+			unwritable = append(unwritable, families[family]...)
 		}
 	}
-	out := make([]string, 0, len(fields))
-	for _, name := range fields {
-		if !slices.Contains(foreign, name) {
-			out = append(out, name)
-		}
-	}
-	return out
+	return unwritable
 }
 
 func vpnServerBeforeSend(_ context.Context, _, effective *vpnServerKitModel, sdk *ui.Network, _ any) diag.Diagnostics {
 	var diags diag.Diagnostics
 	sdk.Purpose = ui.PurposeUserVPN
 	sdk.SettingPreference = util.Ptr("manual")
+
+	// The WireGuard key the practitioner did not supply. Here rather than in
+	// Encode so Encode stays deterministic. x_wireguard_private_key is in
+	// AlwaysWire because this guarantees a value whenever the block is set.
+	if !effective.Wireguard.IsNull() && !effective.Wireguard.IsUnknown() &&
+		(sdk.WireguardPrivateKey == nil || *sdk.WireguardPrivateKey == "") {
+		key, err := generateWireGuardPrivateKey()
+		if err != nil {
+			diags.AddError("Unable to generate WireGuard private key", err.Error())
+			return diags
+		}
+		sdk.WireguardPrivateKey = &key
+	}
 	switch {
 	case !effective.Wireguard.IsNull() && !effective.Wireguard.IsUnknown():
 		sdk.VPNType = util.Ptr("wireguard-server")
@@ -386,10 +393,14 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 		IDWire:   "_id",
 		// purpose, setting_preference and vpn_type are set by BeforeSend and
 		// held by no attribute, so nothing else would put them on the mask.
-		AlwaysWire:   []string{"purpose", "setting_preference", "vpn_type"},
-		BeforeSend:   vpnServerBeforeSend,
-		AfterReceive: vpnServerAfterReceive,
-		NarrowMask:   vpnServerNarrowMask,
+		AlwaysWire: []string{
+			"purpose", "setting_preference", "vpn_type",
+			// BeforeSend guarantees this whenever the block is set.
+			"x_wireguard_private_key",
+		},
+		BeforeSend:      vpnServerBeforeSend,
+		AfterReceive:    vpnServerAfterReceive,
+		UnwritableWires: vpnServerUnwritableWires,
 		Fields: []resourcekit.Field[vpnServerKitModel, ui.Network]{
 			resourcekit.StringLikePtrField[vpnServerKitModel, ui.Network, types.String]{
 				Wire:  "name",
@@ -430,7 +441,7 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 					"dhcpd_dns_2": func(o types.Object) bool { return vpnServerDNSServerCount(o) > 1 },
 				},
 			},
-			// All six wan wires are declared; vpnServerNarrowMask removes the
+			// All six wan wires are declared; vpnServerUnwritableWires drops the
 			// four belonging to the families that are not configured.
 			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
 				Wires: []string{
@@ -453,6 +464,10 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 				Elide:     resourcekit.NullZero,
 				Encode:    encodeVPNServerWireguard,
 				Decode:    decodeVPNServerWireguard,
+				ConditionalWires: map[string]func(types.Object) bool{
+					"x_wireguard_private_key": openVPNMemberSet("private_key"),
+					"local_port":              portSet,
+				},
 				// wireguard_public_key IS DELIBERATELY ABSENT FROM Wires, AND
 				// THE KIT HAS NO WAY TO SAY WHY. The controller issues it and
 				// accepts none -- marshalUserVPN emits no such wire at all --
@@ -504,6 +519,7 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 					"x_auth_key":                openVPNMemberSet("auth_key"),
 					"x_ca_crt":                  openVPNMemberSet("ca_crt"),
 					"x_ca_key":                  openVPNMemberSet("ca_key"),
+					"local_port":                portSet,
 				},
 			},
 		},
@@ -561,4 +577,11 @@ func vpnServerKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Network] {
 		GetID: func(s *ui.Network) string { return s.ID },
 		SetID: func(s *ui.Network, id string) { s.ID = id },
 	}
+}
+
+// portSet reports whether a block's port member carries a value, for the two
+// blocks that write local_port from their own port attribute.
+func portSet(object types.Object) bool {
+	port, ok := object.Attributes()["port"].(types.Int64)
+	return ok && !port.IsNull() && !port.IsUnknown()
 }
