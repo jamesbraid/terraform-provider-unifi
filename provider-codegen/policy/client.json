@@ -1,559 +1,581 @@
 {
- "baseline_digests": {
-  "identity": "d262369e703af8c418c2118b4b4ceb9940e1cc68fff3ea44804c993d1654af1a",
-  "list_resource": "0bf66601997e929adf6d15cab63bb1a3fb5c3c87cc000c49eb3a8086000647a6",
-  "resource": "4cdec2917133d131835a3e1d6f8ce94bf9f9e1d9bd11814c870fb7efc5ed804b"
- },
- "description": "Manages a client of the network, identified by unique MAC addresses.\n\nClients are created in the controller when observed on the network, so the resource defaults to allowing itself to just take over management of a MAC address, but this can be turned off.",
- "fields": [
-  {
-   "attribute": {
-    "computed_optional_required": "computed",
-    "description": "The ID of the client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "_id",
-   "terraform_name": "id"
+  "baseline_digests": {
+    "identity": "d262369e703af8c418c2118b4b4ceb9940e1cc68fff3ea44804c993d1654af1a",
+    "list_resource": "0bf66601997e929adf6d15cab63bb1a3fb5c3c87cc000c49eb3a8086000647a6",
+    "resource": "4cdec2917133d131835a3e1d6f8ce94bf9f9e1d9bd11814c870fb7efc5ed804b"
   },
-  {
-   "disposition": "omitted",
-   "structural_name": "attr_hidden",
-   "terraform_name": "attr_hidden"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "attr_hidden_id",
-   "terraform_name": "attr_hidden_id"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "attr_no_delete",
-   "terraform_name": "attr_no_delete"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "attr_no_edit",
-   "terraform_name": "attr_no_edit"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "default": {
-     "static": false
-    },
-    "description": "Specifies whether this client should be blocked from the network.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-        }
-       ],
-       "schema_definition": "boolplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "blocked",
-   "terraform_name": "blocked"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "description": "The display name of the client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "display_name",
-   "terraform_name": "display_name"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "fixed_ap_enabled",
-   "terraform_name": "fixed_ap_enabled"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "custom_type": {
-     "import": {
-      "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
-     },
-     "type": "hwtypes.MACAddressType{}",
-     "value_type": "hwtypes.MACAddress"
-    },
-    "description": "The MAC address of the access point to which this client should be fixed.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "fixed_ap_mac",
-   "terraform_name": "fixed_ap_mac"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "custom_type": {
-     "import": {
-      "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
-     },
-     "type": "iptypes.IPv4AddressType{}",
-     "value_type": "iptypes.IPv4Address"
-    },
-    "description": "A fixed IPv4 address for this client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "fixed_ip",
-   "terraform_name": "fixed_ip"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed",
-    "description": "The hostname of the client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "hostname",
-   "terraform_name": "hostname"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed",
-    "description": "The most recent IP address the controller has seen for this client (read-only).",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "last_ip",
-   "terraform_name": "last_ip"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "last_seen",
-   "terraform_name": "last_seen"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "description": "Specifies the local DNS record for this client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "local_dns_record",
-   "terraform_name": "local_dns_record"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "local_dns_record_enabled",
-   "terraform_name": "local_dns_record_enabled"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "required",
-    "custom_type": {
-     "import": {
-      "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
-     },
-     "type": "hwtypes.MACAddressType{}",
-     "value_type": "hwtypes.MACAddress"
-    },
-    "description": "The MAC address of the client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.RequiresReplace()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "mac",
-   "terraform_name": "mac"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "description": "The name of the client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "name",
-   "terraform_name": "name"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "network_id",
-   "terraform_name": "network_id_unused"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "description": "List of network members group names for this client.",
-    "element_type": {
-     "string": {}
-    },
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-        }
-       ],
-       "schema_definition": "listplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "network_members_group_ids",
-   "terraform_name": "groups",
-   "terraform_type": "list"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "description": "A note with additional information for the client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "note",
-   "terraform_name": "note"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "site_id",
-   "terraform_name": "site_id"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "use_fixedip",
-   "terraform_name": "use_fixedip"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "virtual_network_override_enabled",
-   "terraform_name": "virtual_network_override_enabled"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "description": "The network ID for this client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "structural_name": "virtual_network_override_id",
-   "terraform_name": "network_id"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "_id",
-   "structural_source": "ClientGroup",
-   "terraform_name": "clientgroup_id"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "attr_hidden",
-   "structural_source": "ClientGroup",
-   "terraform_name": "clientgroup_attr_hidden"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "attr_hidden_id",
-   "structural_source": "ClientGroup",
-   "terraform_name": "clientgroup_attr_hidden_id"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "attr_no_delete",
-   "structural_source": "ClientGroup",
-   "terraform_name": "clientgroup_attr_no_delete"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "attr_no_edit",
-   "structural_source": "ClientGroup",
-   "terraform_name": "clientgroup_attr_no_edit"
-  },
-  {
-   "disposition": "omitted",
-   "structural_name": "site_id",
-   "structural_source": "ClientGroup",
-   "terraform_name": "clientgroup_site_id"
-  }
- ],
- "format_version": 1,
- "generator_name": "client",
- "groupings": [
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "description": "QoS rate limiting configuration. Controls the client group (usergroup) used for bandwidth limits.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
-        }
-       ],
-       "schema_definition": "objectplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "members": [
+  "description": "Manages a client of the network, identified by unique MAC addresses.\n\nClients are created in the controller when observed on the network, so the resource defaults to allowing itself to just take over management of a MAC address, but this can be turned off.",
+  "fields": [
     {
-     "attribute": {
-      "computed_optional_required": "computed_optional",
-      "description": "The ID of the client group (usergroup). If set, this group is used directly."
-     },
-     "disposition": "managed",
-     "structural_name": "usergroup_id",
-     "terraform_name": "id"
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
     },
     {
-     "attribute": {
-      "computed_optional_required": "computed_optional",
-      "description": "The name of the client group. If set, the group is looked up or created by name."
-     },
-     "disposition": "managed",
-     "structural_name": "name",
-     "structural_source": "ClientGroup",
-     "terraform_name": "name"
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
     },
     {
-     "attribute": {
-      "computed_optional_required": "computed_optional",
-      "description": "Maximum upload rate in kbps."
-     },
-     "disposition": "managed",
-     "structural_name": "qos_rate_max_up",
-     "structural_source": "ClientGroup",
-     "terraform_name": "max_up"
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
     },
     {
-     "attribute": {
-      "computed_optional_required": "computed_optional",
-      "description": "Maximum download rate in kbps."
-     },
-     "disposition": "managed",
-     "structural_name": "qos_rate_max_down",
-     "structural_source": "ClientGroup",
-     "terraform_name": "max_down"
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether this client should be blocked from the network.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "blocked",
+      "terraform_name": "blocked"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The display name of the client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "display_name",
+      "terraform_name": "display_name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "fixed_ap_enabled",
+      "terraform_name": "fixed_ap_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+          },
+          "type": "hwtypes.MACAddressType{}",
+          "value_type": "hwtypes.MACAddress"
+        },
+        "description": "The MAC address of the access point to which this client should be fixed.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "fixed_ap_mac",
+      "terraform_name": "fixed_ap_mac"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+          },
+          "type": "iptypes.IPv4AddressType{}",
+          "value_type": "iptypes.IPv4Address"
+        },
+        "description": "A fixed IPv4 address for this client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "fixed_ip",
+      "terraform_name": "fixed_ip"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The hostname of the client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "hostname",
+      "terraform_name": "hostname"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The most recent IP address the controller has seen for this client (read-only).",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "last_ip",
+      "terraform_name": "last_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "last_seen",
+      "terraform_name": "last_seen"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Specifies the local DNS record for this client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "local_dns_record",
+      "terraform_name": "local_dns_record"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "local_dns_record_enabled",
+      "terraform_name": "local_dns_record_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+          },
+          "type": "hwtypes.MACAddressType{}",
+          "value_type": "hwtypes.MACAddress"
+        },
+        "description": "The MAC address of the client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "mac",
+      "terraform_name": "mac"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "network_id",
+      "terraform_name": "network_id_unused"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "List of network members group names for this client.",
+        "element_type": {
+          "string": {}
+        },
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                }
+              ],
+              "schema_definition": "listplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "network_members_group_ids",
+      "terraform_name": "groups",
+      "terraform_type": "list"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "A note with additional information for the client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "note",
+      "terraform_name": "note"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "use_fixedip",
+      "terraform_name": "use_fixedip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "virtual_network_override_enabled",
+      "terraform_name": "virtual_network_override_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The network ID for this client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "virtual_network_override_id",
+      "terraform_name": "network_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "ClientGroup",
+      "terraform_name": "clientgroup_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "ClientGroup",
+      "terraform_name": "clientgroup_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "ClientGroup",
+      "terraform_name": "clientgroup_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "ClientGroup",
+      "terraform_name": "clientgroup_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "ClientGroup",
+      "terraform_name": "clientgroup_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "ClientGroup",
+      "terraform_name": "clientgroup_site_id"
     }
-   ],
-   "terraform_name": "qos_rate",
-   "terraform_type": "single_nested"
-  }
- ],
- "provider_owned": [
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "description": "The name of the site to associate the client with.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
+  ],
+  "format_version": 1,
+  "generator_name": "client",
+  "groupings": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "QoS rate limiting configuration. Controls the client group (usergroup) used for bandwidth limits.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
         {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-        }
-       ],
-       "schema_definition": "stringplanmodifier.RequiresReplace()"
-      }
-     },
-     {
-      "custom": {
-       "imports": [
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The ID of the client group (usergroup). If set, this group is used directly."
+          },
+          "disposition": "managed",
+          "structural_name": "usergroup_id",
+          "terraform_name": "id"
+        },
         {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The name of the client group. If set, the group is looked up or created by name."
+          },
+          "disposition": "managed",
+          "structural_name": "name",
+          "structural_source": "ClientGroup",
+          "terraform_name": "name"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Maximum upload rate in kbps."
+          },
+          "disposition": "managed",
+          "structural_name": "qos_rate_max_up",
+          "structural_source": "ClientGroup",
+          "terraform_name": "max_up"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Maximum download rate in kbps."
+          },
+          "disposition": "managed",
+          "structural_name": "qos_rate_max_down",
+          "structural_source": "ClientGroup",
+          "terraform_name": "max_down"
         }
-       ],
-       "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "generated": true,
-   "terraform_name": "site",
-   "terraform_type": "string"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "default": {
-     "static": true
+      ],
+      "terraform_name": "qos_rate",
+      "terraform_type": "single_nested"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the client with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
     },
-    "description": "Specifies whether this resource should just take over control of an existing client.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-        }
-       ],
-       "schema_definition": "boolplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "generated": true,
-   "terraform_name": "allow_existing",
-   "terraform_type": "bool"
-  },
-  {
-   "attribute": {
-    "computed_optional_required": "computed_optional",
-    "default": {
-     "static": false
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Specifies whether this resource should just take over control of an existing client.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "allow_existing",
+      "terraform_type": "bool"
     },
-    "description": "Specifies whether this resource should tell the controller to \"forget\" the client on destroy.",
-    "plan_modifiers": [
-     {
-      "custom": {
-       "imports": [
-        {
-         "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-        }
-       ],
-       "schema_definition": "boolplanmodifier.UseStateForUnknown()"
-      }
-     }
-    ]
-   },
-   "disposition": "managed",
-   "generated": true,
-   "terraform_name": "skip_forget_on_destroy",
-   "terraform_type": "bool"
-  },
-  {
-   "disposition": "managed",
-   "generated": false,
-   "terraform_name": "timeouts"
-  }
- ],
- "resource": "unifi_client",
- "source_specification_sha256": "e5954987b39335314530ab83fea2273eedce75dc442339e7626a9602c2e3aee7",
- "surface_kind": "managed_resource"
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether this resource should tell the controller to \"forget\" the client on destroy.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "skip_forget_on_destroy",
+      "terraform_type": "bool"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_client",
+  "source_specification_sha256": "e5954987b39335314530ab83fea2273eedce75dc442339e7626a9602c2e3aee7",
+  "surface_kind": "managed_resource",
+  "claims": [
+    {
+      "mapping": {
+        "from_api": "clientKitAfterReceive",
+        "kind": "dedicated",
+        "to_api": "clientResolveGroup"
+      },
+      "reason": "qos_rate is not a shape of unifi.Client at all: it is a view onto a SEPARATE ClientGroup object, and the client carries only the group's id. Reading it turns usergroup_id into the group's name and rates; writing it looks the group up by name, re-rates it if the limits differ, and CREATES it when no group matches -- which is why the write half lives in BeforeSend and not in Prefetch, where it would fire on every refresh.",
+      "structural_names": [
+        "ClientGroup.name",
+        "ClientGroup.qos_rate_max_up",
+        "ClientGroup.qos_rate_max_down",
+        "usergroup_id"
+      ],
+      "terraform_members": [
+        "qos_rate.name",
+        "qos_rate.max_up",
+        "qos_rate.max_down",
+        "qos_rate.id"
+      ]
+    }
+  ]
 }
