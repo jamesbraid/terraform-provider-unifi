@@ -196,57 +196,31 @@ type Spec[M any, S any] struct {
 	// decides. This runs where the model is still in hand.
 	BeforeDelete func(ctx context.Context, model *M) (bool, diag.Diagnostics)
 
-	// NarrowMask drops names the object's own encoder would not emit, and only
-	// a surface whose SDK type has a DISCRIMINATOR needs it.
+	// UnwritableWires reports the wire names THIS object's encoder will not
+	// emit, so the mask can omit them rather than have the write refused.
 	//
-	// unifi.Network is the one such type in go-unifi: its MarshalJSON emits a
-	// different field set per purpose, and a vlan-only network drops 54 of the
-	// 67 names unifi_network declares. maskedBody REFUSES a mask naming a field
-	// the encoder never emits, so without narrowing every vlan-only update
-	// fails. Measured, not inferred: a plausible vlan-only plan masks ten names
-	// and the encoder drops three of them.
+	// go-unifi resolves a masked name three ways: present in the encoding, send
+	// it; absent but the encoder WOULD emit it, send its zero -- that is how a
+	// mask clears a value; absent and never emitted, hard error. Only the third
+	// is a fault, and encoderEmits is unexported, so the kit cannot ask.
 	//
-	// IT IS OPT-IN BECAUSE NARROWING COSTS SOMETHING. maskedBody deliberately
-	// sends an explicit zero for a field omitempty dropped -- that is how a mask
-	// clears a value -- and a narrowing that cannot tell "omitted at zero" from
-	// "never emitted" throws that away. The hand-written networkMaskFor could
-	// not tell them apart, which is why unifi_network has never been able to
-	// clear a field to its zero. Applying it everywhere would spread that.
+	// unifi.Network is the only type in go-unifi with a discriminator, and
+	// unifi_network is the only surface that VARIES it -- wan, vpn_client,
+	// vpn_server and site_to_site_vpn each pin one purpose statically, and
+	// site_to_site_vpn ships on an unfiltered mask today. A vlan-only network
+	// omits 54 of the 67 names that descriptor declares.
 	//
-	// It runs AFTER BeforeSend, because the hook is what sets the discriminator.
+	// IT RETURNS WHAT TO DROP RATHER THAN THE FILTERED LIST, so the kit does the
+	// subtraction and can refuse an empty result naming the surface. A hook that
+	// over-reports fails loudly into that path instead of silently masking a
+	// subset.
 	//
-	// AND THE OBVIOUS IMPROVEMENT TO IT ARMS A DESTRUCTION, which is the one
-	// thing to read before changing this.
-	//
-	// The narrowing above asks "did the encoder emit this name", and the fix
-	// for the cannot-clear is to ask "WOULD it emit this name if the field held
-	// a non-zero value" -- which keeps an omitempty-at-zero name on the mask so
-	// maskedBody can send its zero. That is correct and it reads as strictly
-	// safer. It is not.
-	//
-	// Dropping a name because the field is at its zero is ALSO what has been
-	// protecting every conditionally-written wire: a scattered object's Encode
-	// that skipped a member left it zero, the encoder omitted it, and the
-	// narrowing removed it from the mask before it could be sent as an explicit
-	// zero over whatever the controller holds. MEASURED on vpn_client: all
-	// SEVEN of its conditional wires are dropped by the current filter, and the
-	// purpose alias adds omitempty to dhcpd_dns_1 and _2 that the generated
-	// struct does not carry -- so a reading of the STRUCT's tags says five and
-	// the wire format says seven.
-	//
-	// So changing did to would removes the only guard those wires have, unless
-	// ScatteredObjectField.ConditionalWires already declares every one of them.
-	// ConditionalWires is not belt-and-braces here; under a would-emit
-	// narrowing it is the whole protection.
-	//
-	//	would-emit alone            arms the blanking on every undeclared
-	//	                            conditional wire
-	//	ConditionalWires alone      correct, and leaves the cannot-clear
-	//	both                        correct
-	//
-	// Do not make that change on a surface whose scattered objects have
-	// undeclared conditional wires.
-	NarrowMask func(sdk *S, fields []string) []string
+	// THE IMPLEMENTATION MUST DISTINGUISH THE TWO ABSENCES. Deciding by "is this
+	// name in the encoding of the object in hand" conflates omitempty-at-zero
+	// with never-emitted and drops both, which is a cannot-clear -- that is what
+	// the hand-written networkMaskFor did. Deciding against a FULLY POPULATED
+	// object of the same purpose separates them.
+	UnwritableWires func(sdk *S) []string
 
 	// AlwaysWire names wire fields that BeforeSend sets, so they join the
 	// update mask whether or not the plan mentions them. Only for values a
@@ -632,15 +606,25 @@ func (r *Resource[M, S]) Update(
 		}
 	}
 
-	if r.Spec.NarrowMask != nil {
-		fields = r.Spec.NarrowMask(body, fields)
-		if len(fields) == 0 {
+	if r.Spec.UnwritableWires != nil {
+		unwritable := make(map[string]struct{})
+		for _, name := range r.Spec.UnwritableWires(body) {
+			unwritable[name] = struct{}{}
+		}
+		kept := fields[:0:0]
+		for _, name := range fields {
+			if _, drop := unwritable[name]; !drop {
+				kept = append(kept, name)
+			}
+		}
+		if len(kept) == 0 {
 			resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject,
-				r.Spec.TypeName+" narrowed its update mask to nothing, so the write "+
-					"would say nothing; this is a descriptor fault rather than a "+
-					"configuration one")
+				r.Spec.TypeName+" reports every field in its update mask as unwritable, "+
+					"so the write would say nothing; this is a descriptor fault rather "+
+					"than a configuration one")
 			return
 		}
+		fields = kept
 	}
 
 	var updated *S
