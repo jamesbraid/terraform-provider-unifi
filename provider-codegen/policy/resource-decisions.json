@@ -106,6 +106,18 @@
       },
       "schema_version": 0
     },
+    "unifi_port_forward": {
+      "sdk_type": "PortForward",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "enabled"
+        ]
+      },
+      "schema_version": 0
+    },
     "unifi_port_profile": {
       "sdk_type": "PortProfile",
       "duration_units": {

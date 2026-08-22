@@ -7,14 +7,12 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
-	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 func TestAccPortForward_basic(t *testing.T) {
@@ -745,7 +743,7 @@ func Test_portForwardResource_IdentitySchema(t *testing.T) {
 	}{
 		{
 			name: "does not panic",
-			r:    &portForwardResource{},
+			r:    newPortForwardKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwresource.IdentitySchemaRequest{},
@@ -756,161 +754,6 @@ func Test_portForwardResource_IdentitySchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.r.IdentitySchema(tt.args.in0, tt.args.in1, tt.args.resp)
-		})
-	}
-}
-
-func Test_portForwardResource_modelToPortForward(t *testing.T) {
-	type args struct {
-		ctx   context.Context
-		model *portForwardResourceModel
-	}
-	destElemType := types.ObjectType{AttrTypes: portForwardDestinationIPModel{}.AttributeTypes()}
-	tests := []struct {
-		name  string
-		r     *portForwardResource
-		args  args
-		want  *unifi.PortForward
-		want1 diag.Diagnostics
-	}{
-		{
-			name: "minimal model with null nested objects",
-			r:    &portForwardResource{},
-			args: args{
-				ctx: context.Background(),
-				model: &portForwardResourceModel{
-					Name:     types.StringValue("test"),
-					Protocol: types.StringValue("tcp_udp"),
-					Enabled:  types.BoolValue(true),
-					Logging:  types.BoolValue(false),
-					Wan:      types.ObjectNull(portForwardWanModel{}.AttributeTypes()),
-					Forward:  types.ObjectNull(portForwardForwardModel{}.AttributeTypes()),
-					SourceLimiting: types.ObjectNull(
-						portForwardSourceLimitingModel{}.AttributeTypes(),
-					),
-					DestinationIPs: types.ListNull(destElemType),
-				},
-			},
-			want: &unifi.PortForward{
-				Name:    "test",
-				Proto:   "tcp_udp",
-				Enabled: true,
-				Log:     false,
-			},
-			want1: nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.modelToPortForward(tt.args.ctx, tt.args.model)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("portForwardResource.modelToPortForward() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"portForwardResource.modelToPortForward() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_portForwardResource_portForwardToModel(t *testing.T) {
-	type args struct {
-		ctx         context.Context
-		portForward *unifi.PortForward
-		model       *portForwardResourceModel
-		site        string
-	}
-	tests := []struct {
-		name string
-		r    *portForwardResource
-		args args
-		want diag.Diagnostics
-	}{
-		{
-			name: "basic port forward to model",
-			r:    &portForwardResource{},
-			args: args{
-				ctx: context.Background(),
-				portForward: &unifi.PortForward{
-					ID:      "pf-123",
-					Name:    "test",
-					Proto:   "tcp_udp",
-					Enabled: true,
-					Log:     false,
-				},
-				model: &portForwardResourceModel{
-					Wan:     types.ObjectNull(portForwardWanModel{}.AttributeTypes()),
-					Forward: types.ObjectNull(portForwardForwardModel{}.AttributeTypes()),
-					SourceLimiting: types.ObjectNull(
-						portForwardSourceLimitingModel{}.AttributeTypes(),
-					),
-				},
-				site: "default",
-			},
-			want: nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.r.portForwardToModel(
-				tt.args.ctx,
-				tt.args.portForward,
-				tt.args.model,
-				tt.args.site,
-			)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("portForwardResource.portForwardToModel() = %v, want %v", got, tt.want)
-			}
-			if tt.args.model.ID.ValueString() != tt.args.portForward.ID {
-				t.Errorf(
-					"model.ID = %v, want %v",
-					tt.args.model.ID.ValueString(),
-					tt.args.portForward.ID,
-				)
-			}
-			if tt.args.model.Name.ValueString() != tt.args.portForward.Name {
-				t.Errorf(
-					"model.Name = %v, want %v",
-					tt.args.model.Name.ValueString(),
-					tt.args.portForward.Name,
-				)
-			}
-			if tt.args.model.Site.ValueString() != tt.args.site {
-				t.Errorf("model.Site = %v, want %v", tt.args.model.Site.ValueString(), tt.args.site)
-			}
-		})
-	}
-}
-
-func Test_stringValueOrNull(t *testing.T) {
-	type args struct {
-		s string
-	}
-	tests := []struct {
-		name string
-		args args
-		want types.String
-	}{
-		{
-			name: "empty string returns null",
-			args: args{s: ""},
-			want: types.StringNull(),
-		},
-		{
-			name: "non-empty string returns value",
-			args: args{s: "hello"},
-			want: types.StringValue("hello"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := stringValueOrNull(tt.args.s); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("stringValueOrNull() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }
@@ -928,7 +771,7 @@ func Test_portForwardResource_ListResourceConfigSchema(t *testing.T) {
 	}{
 		{
 			name: "does not panic",
-			r:    &portForwardResource{},
+			r:    newPortForwardKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwlist.ListResourceSchemaRequest{},
