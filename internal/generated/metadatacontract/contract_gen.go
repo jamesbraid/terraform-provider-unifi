@@ -47,7 +47,7 @@ var FrozenTypeNames = map[string]string{
 	"siteFrameworkResource":       "unifi_site",
 	"siteToSiteVPNKitResource":    "unifi_site_to_site_vpn",
 	"staticRouteKitResource":      "unifi_static_route",
-	"trafficRouteResource":        "unifi_traffic_route",
+	"trafficRouteKitResource":     "unifi_traffic_route",
 	"unifiProvider":               "unifi",
 	"vpnClientResource":           "unifi_vpn_client",
 	"vpnServerResource":           "unifi_vpn_server",

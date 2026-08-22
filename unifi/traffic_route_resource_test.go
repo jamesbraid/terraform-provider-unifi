@@ -2,6 +2,7 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -558,7 +559,7 @@ func Test_destinationModel_AttributeTypes(t *testing.T) {
 }
 
 func Test_trafficRouteResource_IdentitySchema(t *testing.T) {
-	r := &trafficRouteResource{}
+	r := newTrafficRouteKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -575,15 +576,14 @@ func Test_trafficRouteResource_ImportState(t *testing.T) {
 	)
 }
 
-func Test_trafficRouteResource_modelToAPI(t *testing.T) {
+func Test_trafficRouteSpec_ToSDK(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("nil client causes error on network lookup", func(t *testing.T) {
-		// modelToAPI with an empty NetworkID will try to call defaultWANNetworkID,
-		// which requires a live client. Test that the non-network-lookup path works
-		// by pre-populating NetworkID.
-		r := &trafficRouteResource{}
-		model := &trafficRouteResourceModel{
+		// A network_id the practitioner set is carried through untouched.
+		// The empty case is BeforeSend's, and Test_trafficRouteBeforeSend
+		// covers it -- ToSDK no longer reaches a client at all.
+		model := &trafficRouteKitModel{
 			Description:       types.StringValue("test-route"),
 			Enabled:           types.BoolValue(true),
 			KillSwitchEnabled: types.BoolValue(false),
@@ -591,7 +591,7 @@ func Test_trafficRouteResource_modelToAPI(t *testing.T) {
 			Destination:       types.ObjectNull(destinationModel{}.AttributeTypes()),
 			Source:            types.ObjectNull(sourceModel{}.AttributeTypes()),
 		}
-		got, diags := r.modelToAPI(ctx, model, "default")
+		got, diags := trafficRouteKitSpec().ToSDK(ctx, model)
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -610,7 +610,6 @@ func Test_trafficRouteResource_modelToAPI(t *testing.T) {
 	})
 
 	t.Run("domain destination sets MatchingTarget", func(t *testing.T) {
-		r := &trafficRouteResource{}
 		domainList, d := types.ListValueFrom(ctx, types.StringType, []string{"example.com"})
 		if d.HasError() {
 			t.Fatalf("building domain list: %v", d)
@@ -626,14 +625,14 @@ func Test_trafficRouteResource_modelToAPI(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("building destination object: %v", d)
 		}
-		model := &trafficRouteResourceModel{
+		model := &trafficRouteKitModel{
 			Enabled:           types.BoolValue(true),
 			KillSwitchEnabled: types.BoolValue(false),
 			NetworkID:         types.StringValue("net-1"),
 			Destination:       destObj,
 			Source:            types.ObjectNull(sourceModel{}.AttributeTypes()),
 		}
-		got, diags := r.modelToAPI(ctx, model, "default")
+		got, diags := trafficRouteKitSpec().ToSDK(ctx, model)
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -646,11 +645,10 @@ func Test_trafficRouteResource_modelToAPI(t *testing.T) {
 	})
 }
 
-func Test_trafficRouteResource_apiToModel(t *testing.T) {
+func Test_trafficRouteSpec_ToModel(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("basic fields populated", func(t *testing.T) {
-		r := &trafficRouteResource{}
 		route := &unifi.TrafficRoute{
 			ID:                "route-123",
 			Description:       "my-route",
@@ -660,8 +658,8 @@ func Test_trafficRouteResource_apiToModel(t *testing.T) {
 			MatchingTarget:    "INTERNET",
 			TargetDevices:     []unifi.TrafficRouteTargetDevices{{Type: "ALL_CLIENTS"}},
 		}
-		var model trafficRouteResourceModel
-		diags := r.apiToModel(ctx, route, &model, "default")
+		var model trafficRouteKitModel
+		diags := trafficRouteKitSpec().ToModel(ctx, route, &model, "default")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -680,7 +678,6 @@ func Test_trafficRouteResource_apiToModel(t *testing.T) {
 	})
 
 	t.Run("domain route sets destination", func(t *testing.T) {
-		r := &trafficRouteResource{}
 		route := &unifi.TrafficRoute{
 			ID:             "route-456",
 			Enabled:        true,
@@ -691,8 +688,8 @@ func Test_trafficRouteResource_apiToModel(t *testing.T) {
 			},
 			TargetDevices: []unifi.TrafficRouteTargetDevices{{Type: "ALL_CLIENTS"}},
 		}
-		var model trafficRouteResourceModel
-		diags := r.apiToModel(ctx, route, &model, "site1")
+		var model trafficRouteKitModel
+		diags := trafficRouteKitSpec().ToModel(ctx, route, &model, "site1")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -718,7 +715,7 @@ func Test_trafficRouteResource_apiToModel(t *testing.T) {
 }
 
 func Test_trafficRouteResource_ListResourceConfigSchema(t *testing.T) {
-	r := &trafficRouteResource{}
+	r := newTrafficRouteKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -729,11 +726,10 @@ func Test_trafficRouteResource_ListResourceConfigSchema(t *testing.T) {
 	}
 }
 
-// Test_trafficRouteResource_modelToAPI_ipRange verifies IP range addresses are
+// Test_trafficRouteSpec_ToSDK_ipRange verifies IP range addresses are
 // converted to TrafficRouteIPRanges (not IPAddresses) in the API struct.
-func Test_trafficRouteResource_modelToAPI_ipRange(t *testing.T) {
+func Test_trafficRouteSpec_ToSDK_ipRange(t *testing.T) {
 	ctx := context.Background()
-	r := &trafficRouteResource{}
 
 	ipEntry := destinationIPModel{
 		Address: types.StringValue("10.0.0.1-10.0.0.100"),
@@ -760,7 +756,7 @@ func Test_trafficRouteResource_modelToAPI_ipRange(t *testing.T) {
 		t.Fatalf("building destination object: %v", d)
 	}
 
-	model := &trafficRouteResourceModel{
+	model := &trafficRouteKitModel{
 		Enabled:           types.BoolValue(true),
 		KillSwitchEnabled: types.BoolValue(false),
 		NetworkID:         types.StringValue("net-1"),
@@ -768,7 +764,7 @@ func Test_trafficRouteResource_modelToAPI_ipRange(t *testing.T) {
 		Source:            types.ObjectNull(sourceModel{}.AttributeTypes()),
 	}
 
-	got, diags := r.modelToAPI(ctx, model, "default")
+	got, diags := trafficRouteKitSpec().ToSDK(ctx, model)
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
@@ -814,5 +810,141 @@ func TestAccTrafficRouteList_basic(t *testing.T) {
 				},
 			},
 		},
+	})
+}
+
+// Test_trafficRouteWireFields is the check the scattered kind exists for.
+//
+// A masked update sends the names in the mask and nothing else. destination
+// spans FIVE wire attributes, and a mask carrying four of them succeeds while
+// writing four fifths of what the practitioner asked for -- the apply reports
+// no error and the route matches on the wrong thing. Asserting the count is not
+// enough, because the omission that matters is a specific name: matching_target
+// is the one no member of the object is called, so it is the one an author
+// transcribing from the model would leave out.
+func Test_trafficRouteWireFields(t *testing.T) {
+	ctx := context.Background()
+
+	domainList, d := types.ListValueFrom(ctx, types.StringType, []string{"example.com"})
+	if d.HasError() {
+		t.Fatalf("building domain list: %v", d)
+	}
+	destObj, d := types.ObjectValueFrom(ctx, destinationModel{}.AttributeTypes(), destinationModel{
+		Domain: domainList,
+		IP:     types.ListNull(types.ObjectType{AttrTypes: destinationIPModel{}.AttributeTypes()}),
+		Region: types.ListNull(types.StringType),
+	})
+	if d.HasError() {
+		t.Fatalf("building destination object: %v", d)
+	}
+
+	plan := &trafficRouteKitModel{
+		Description:       types.StringValue("r"),
+		Enabled:           types.BoolValue(true),
+		KillSwitchEnabled: types.BoolValue(false),
+		NetworkID:         types.StringValue("net-1"),
+		Destination:       destObj,
+		Source:            types.ObjectNull(sourceModel{}.AttributeTypes()),
+	}
+
+	fields, err := trafficRouteKitSpec().WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	got := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		got[f] = true
+	}
+	for _, want := range []string{"domains", "regions", "ip_addresses", "ip_ranges", "matching_target"} {
+		if !got[want] {
+			t.Errorf("mask is missing %q: the apply succeeds and the controller keeps its old value", want)
+		}
+	}
+
+	// target_devices and network_id are AlwaysWire, so they travel even though
+	// source is null here and nothing in the plan carries the derived WAN id.
+	for _, want := range []string{"target_devices", "network_id"} {
+		if !got[want] {
+			t.Errorf("mask is missing AlwaysWire field %q", want)
+		}
+	}
+}
+
+// Test_trafficRouteWireFields_nullDestination pins the other half: a route with
+// no destination still says INTERNET, which is what the hand-written
+// whole-object write sent on every apply.
+func Test_trafficRouteWireFields_nullDestination(t *testing.T) {
+	ctx := context.Background()
+
+	plan := &trafficRouteKitModel{
+		Enabled:           types.BoolValue(true),
+		KillSwitchEnabled: types.BoolValue(false),
+		NetworkID:         types.StringValue("net-1"),
+		Destination:       types.ObjectNull(destinationModel{}.AttributeTypes()),
+		Source:            types.ObjectNull(sourceModel{}.AttributeTypes()),
+	}
+
+	fields, err := trafficRouteKitSpec().WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	found := false
+	for _, f := range fields {
+		if f == "matching_target" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("matching_target must stay on the mask when destination is null")
+	}
+
+	sdk, diags := trafficRouteKitSpec().ToSDK(ctx, plan)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+	if sdk.MatchingTarget != "INTERNET" {
+		t.Errorf("MatchingTarget = %q, want INTERNET", sdk.MatchingTarget)
+	}
+	if len(sdk.TargetDevices) != 1 || sdk.TargetDevices[0].Type != "ALL_CLIENTS" {
+		t.Errorf("TargetDevices = %v, want one ALL_CLIENTS entry", sdk.TargetDevices)
+	}
+}
+
+// Test_trafficRouteBeforeSend covers the network_id derivation that moved out
+// of the write mapper: it fires only when the encoded object left the field
+// empty, so a pinned network_id survives an update that touches anything else.
+func Test_trafficRouteBeforeSend(t *testing.T) {
+	ctx := context.Background()
+	lookup := func(context.Context) (string, error) { return "derived-wan", nil }
+
+	t.Run("fills an empty network_id", func(t *testing.T) {
+		sdk := &unifi.TrafficRoute{}
+		if d := trafficRouteBeforeSend(ctx, nil, nil, sdk, lookup); d.HasError() {
+			t.Fatalf("unexpected diags: %v", d)
+		}
+		if sdk.NetworkID != "derived-wan" {
+			t.Errorf("NetworkID = %q, want derived-wan", sdk.NetworkID)
+		}
+	})
+
+	t.Run("leaves a set network_id alone", func(t *testing.T) {
+		sdk := &unifi.TrafficRoute{NetworkID: "pinned"}
+		if d := trafficRouteBeforeSend(ctx, nil, nil, sdk, lookup); d.HasError() {
+			t.Fatalf("unexpected diags: %v", d)
+		}
+		if sdk.NetworkID != "pinned" {
+			t.Errorf("NetworkID = %q, want pinned", sdk.NetworkID)
+		}
+	})
+
+	t.Run("reports a lookup failure", func(t *testing.T) {
+		failing := func(context.Context) (string, error) {
+			return "", fmt.Errorf("no default WAN network found")
+		}
+		sdk := &unifi.TrafficRoute{}
+		d := trafficRouteBeforeSend(ctx, nil, nil, sdk, failing)
+		if !d.HasError() {
+			t.Fatal("expected an error diagnostic")
+		}
 	})
 }

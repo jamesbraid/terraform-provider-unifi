@@ -168,6 +168,20 @@
         ]
       },
       "schema_version": 0
+    },
+    "unifi_traffic_route": {
+      "sdk_type": "TrafficRoute",
+      "duration_units": {},
+      "list": {
+        "display_field": "Description",
+        "filters": [
+          "description",
+          "enabled",
+          "matching_target",
+          "network_id"
+        ]
+      },
+      "schema_version": 0
     }
   }
 }

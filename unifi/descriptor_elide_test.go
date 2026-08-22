@@ -20,6 +20,7 @@ import (
 	resource_radius_user "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_radius_user"
 	resource_site_to_site_vpn "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site_to_site_vpn"
 	resource_static_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_static_route"
+	resource_traffic_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_traffic_route"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
@@ -42,6 +43,21 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				firewallZoneKitSpec(), resource_firewall_zone.FirewallZoneResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		// traffic_route's two ScatteredObjectFields are the reason WireNameProblems
+		// matters more here than anywhere else: destination puts FIVE names on
+		// the mask and one of them, matching_target, is spelled after nothing in
+		// the model. A typo there drops the discriminator and the route matches
+		// on whatever it matched on before.
+		"traffic_route": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(trafficRouteKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				trafficRouteKitSpec(), resource_traffic_route.TrafficRouteResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

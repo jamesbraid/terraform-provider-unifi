@@ -245,7 +245,24 @@
     "vpn_client IS NOT READY EVEN SO. Its Decode returns ObjectNull for",
     "configuration and peer because Decode(ctx, *S) cannot see prior state, and",
     "two members are write-only secrets. The descriptor owes an AfterReceive that",
-    "carries them forward. A field that binds is not a surface that migrates."
+    "carries them forward. A field that binds is not a surface that migrates.",
+    "",
+    "traffic_route IS CUT OVER AND ITS ENTRY IS GONE, not emptied. A surface served",
+    "from the kit has no blocker list at all -- an empty one would read as READY TO",
+    "CUT OVER for something already cut over, which is the setting defect pointing",
+    "the other way. TestNoRecordedBlockerOutlivesItsSurface enforces it.",
+    "",
+    "ITS nested WAS CLEARED BY BUILDING THE FIELD, which is the only clearance this",
+    "file accepts. destination scatters across FIVE wires -- domains, regions,",
+    "ip_addresses, ip_ranges and matching_target -- and the fifth is a discriminator",
+    "no member of the object is named after, so a mask transcribed from the model",
+    "misses it. source scatters across ONE, target_devices, because two model lists",
+    "partition into one observed array on a per-entry type field.",
+    "",
+    "THE ONE-WIRE CASE IS THE USEFUL PRECEDENT. ScatteredObjectField reads as the",
+    "kind for objects spread wide, and source is not spread at all. What decides the",
+    "kind is that the model object has no SDK object to correspond to: ObjectField",
+    "needs a **E and ObjectListField a *[]E on the model side. Width is incidental."
   ],
   "blocker_kinds": [
     "SDK-masked-update",
@@ -289,9 +306,6 @@
     ],
     "site": [
       "derived-value"
-    ],
-    "traffic_route": [
-      "nested"
     ],
     "vpn_client": [
       "nested"
