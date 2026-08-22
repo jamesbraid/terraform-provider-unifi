@@ -1,0 +1,172 @@
+package unifi
+
+import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
+)
+
+// vpnClientWireguardWires is every attribute of unifi.Network that the
+// `wireguard` object writes. ALL of them reach the mask; a name missing here is
+// a value the practitioner sets and the apply never sends.
+//
+// TEN, NOT THREE, and the two that are not wireguard-named are the point.
+// dhcpd_dns_1 and dhcpd_dns_2 are written by wireguardDNSServersToNetwork from
+// the block's dns_servers list, so an author enumerating this list by grepping
+// the SDK for "Wireguard" produces eight names, the mask omits two, and
+// dns_servers becomes an attribute the practitioner can set and nothing writes.
+// That is the silent write-drop this kind exists to prevent, and it is reachable
+// on the first real surface.
+//
+// x_wireguard_private_key IS THE OTHER TRAP. The Go field is
+// WireguardPrivateKey, so a name transcribed from the struct is
+// wireguard_private_key -- an attribute unifi.Network does not have. A mask
+// naming it is accepted and changes nothing, which is dns_record's `name` ->
+// `key` again. WireNameProblems catches it; nothing else does.
+//
+// THREE OF THE TEN ARE FORCE-EMITTED: wireguard_client_preshared_key_enabled,
+// dhcpd_dns_1 and dhcpd_dns_2 carry no omitempty on the struct. The last two are
+// #211's cannot-clear pair -- the VPNClient encoder adds omitempty that the
+// struct does not -- so a practitioner can set them and cannot empty them. That
+// is an open defect this field neither causes nor fixes, recorded here because
+// this is where someone will next look at these two names.
+func vpnClientWireguardWires() []string {
+	return []string{
+		"x_wireguard_private_key",
+		"wireguard_interface",
+		"wireguard_client_preshared_key_enabled",
+		"wireguard_client_preshared_key",
+		"wireguard_client_mode",
+		"wireguard_client_peer_public_key",
+		"wireguard_client_peer_ip",
+		"wireguard_client_peer_port",
+		"dhcpd_dns_1",
+		"dhcpd_dns_2",
+	}
+}
+
+// vpnClientWireguardField binds the wireguard object to those ten fields.
+//
+// Encode is the existing mapper's wireguard branch, moved rather than rewritten:
+// the configuration-file path parses and derives, the peer path writes manual
+// mode, and the preshared key is optional to both. Decode is its counterpart
+// from the read side. What the kind adds is the mask half -- that every name
+// above travels together, and that each is a real attribute of the SDK type.
+func vpnClientWireguardField() resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network] {
+	return resourcekit.ScatteredObjectField[vpnClientResourceModel, ui.Network]{
+		Wires:     vpnClientWireguardWires(),
+		Model:     func(m *vpnClientResourceModel) *types.Object { return &m.Wireguard },
+		AttrTypes: wireguardModel{}.AttributeTypes(),
+		Encode:    encodeVPNClientWireguard,
+		Decode:    decodeVPNClientWireguard,
+	}
+}
+
+func encodeVPNClientWireguard(
+	ctx context.Context,
+	object types.Object,
+	network *ui.Network,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	var wireguard wireguardModel
+	diags.Append(object.As(ctx, &wireguard, basetypes.ObjectAsOptions{})...)
+	if diags.HasError() {
+		return diags
+	}
+
+	network.WireguardPrivateKey = wireguard.PrivateKey.ValueStringPointer()
+	network.WireguardClientPresharedKeyEnabled = wireguard.PresharedKeyEnabled.ValueBool()
+	network.WireguardInterface = wireguard.Interface.ValueStringPointer()
+
+	if !wireguard.DnsServers.IsNull() && !wireguard.DnsServers.IsUnknown() {
+		var dnsServers []string
+		diags.Append(wireguard.DnsServers.ElementsAs(ctx, &dnsServers, false)...)
+		if diags.HasError() {
+			return diags
+		}
+		wireguardDNSServersToNetwork(dnsServers, network)
+	}
+
+	switch {
+	case !wireguard.Configuration.IsNull() && !wireguard.Configuration.IsUnknown():
+		var config wireguardConfigurationModel
+		diags.Append(wireguard.Configuration.As(ctx, &config, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return diags
+		}
+		parsed, err := parseWireGuardBase64Config(config.Content.ValueString())
+		if err != nil {
+			diags.AddError("Invalid WireGuard Configuration File",
+				"Failed to parse WireGuard configuration: "+err.Error())
+			return diags
+		}
+		network.WireguardClientMode = util.Ptr("manual")
+		network.WireguardClientPeerPublicKey = util.Ptr(parsed.PublicKey)
+		network.WireguardClientPeerIP = util.Ptr(parsed.EndpointIP)
+		network.WireguardClientPeerPort = util.Ptr(parsed.EndpointPort)
+		if parsed.PrivateKey != "" &&
+			(wireguard.PrivateKey.IsNull() || wireguard.PrivateKey.IsUnknown()) {
+			network.WireguardPrivateKey = util.Ptr(parsed.PrivateKey)
+		}
+		if parsed.PresharedKey != "" {
+			network.WireguardClientPresharedKeyEnabled = true
+			network.WireguardClientPresharedKey = util.Ptr(parsed.PresharedKey)
+		}
+		if len(parsed.DNS) > 0 && wireguard.DnsServers.IsNull() {
+			wireguardDNSServersToNetwork(parsed.DNS, network)
+		}
+	case !wireguard.Peer.IsNull() && !wireguard.Peer.IsUnknown():
+		var peer wireguardPeerModel
+		diags.Append(wireguard.Peer.As(ctx, &peer, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return diags
+		}
+		network.WireguardClientMode = util.Ptr("manual")
+		wireguardPeerToNetwork(peer, network)
+	}
+
+	if wireguard.PresharedKeyEnabled.ValueBool() {
+		network.WireguardClientPresharedKey = wireguard.PresharedKey.ValueStringPointer()
+	}
+	return diags
+}
+
+// decodeVPNClientWireguard builds the object from WHAT THE CONTROLLER RETURNS,
+// which is not all of it.
+//
+// THE KIT'S Decode TAKES (ctx, *S) AND NOTHING ELSE, and two members of this
+// object cannot be read from an *S at any time: x_wireguard_private_key and
+// wireguard_client_preshared_key are write-only, so the controller never sends
+// them back and the hand-written read path carries them forward from PRIOR
+// STATE. That is not a limitation of this field kind -- ObjectField's Decode has
+// the same signature -- it is the kit's contract, and the place a surface
+// expresses prior-state carry-forward is AfterReceive, the way port_profile
+// expresses its inversion in BeforeSend.
+//
+// So this returns them null and vpn_client's descriptor owes an AfterReceive.
+// Leaving that to a hook rather than smuggling a prior-state argument into
+// Decode keeps every other kind's signature unchanged, and makes the carry
+// visible in the descriptor rather than buried in one field.
+func decodeVPNClientWireguard(
+	ctx context.Context,
+	network *ui.Network,
+) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	value := wireguardModel{
+		PrivateKey:          types.StringNull(),
+		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
+		Peer:                types.ObjectNull(wireguardPeerModel{}.AttributeTypes()),
+		PresharedKeyEnabled: types.BoolValue(network.WireguardClientPresharedKeyEnabled),
+		PresharedKey:        types.StringNull(),
+		Interface:           types.StringPointerValue(network.WireguardInterface),
+		DnsServers:          wireguardDNSServersFromNetwork(ctx, &diags, network),
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	diags.Append(d...)
+	return object, diags
+}
