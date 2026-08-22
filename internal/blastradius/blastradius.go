@@ -215,3 +215,161 @@ func Dropped(attrs []Attribute, emitted []string) []string {
 	sort.Strings(dropped)
 	return dropped
 }
+
+// AlwaysEmitted returns the JSON field names purpose's encoder sends for a
+// Network nobody has touched. A key here carries no omitempty, so every write
+// puts a value on the wire whether or not anything set one.
+func AlwaysEmitted(purpose string) ([]string, error) {
+	network := ui.Network{Purpose: purpose}
+	return marshalKeys(&network, purpose)
+}
+
+// ForceEmitted returns the field names purpose's encoder sends unconditionally
+// that no attribute of the surface owns -- so every unmasked write sends the Go
+// zero for each of them, and the controller keeps whatever the provider does
+// not model only by luck.
+//
+// owned is every field name the surface touches at all, managed or hand-mapped;
+// it must NOT be the managed set alone. dhcpd_ip_1 through 3 are hand-mapped
+// into dhcp_guarding.servers and would otherwise read as unowned.
+//
+// purpose itself is excluded: the encoder switches on it, so it is not a value
+// anything failed to set.
+func ForceEmitted(always []string, owned map[string]bool) []string {
+	var forced []string
+	for _, name := range always {
+		if name == "purpose" || owned[name] {
+			continue
+		}
+		forced = append(forced, name)
+	}
+	sort.Strings(forced)
+	return forced
+}
+
+// CannotClear returns the attributes of a surface whose value the encoder
+// refuses to send once it is empty, so the practitioner can set them and never
+// unset them.
+//
+// EMPTY-BUT-SPECIFIED, NOT ABSENT. Each SDK field in turn is set to an empty
+// value that is still present -- a pointer to the zero value where the field is
+// a pointer, the zero itself where it is not -- and the object is remarshalled.
+// A key that disappears is one omitempty drops, or one the encoder nils out on
+// the way past: marshalVLANOnly runs name through nilIfEmpty, so an empty name
+// vanishes even though the field is a pointer and omitempty alone would keep
+// it. Reading the struct tags would miss that.
+//
+// NOT EVERY ENTRY IS A DEFECT. An attribute constrained to an enum or carrying
+// a static default has no meaningful empty value, and one that is required or
+// computed is not the practitioner's to clear. The defect is the free-form
+// remainder, and the sharpest cases are the booleans -- a bool behind omitempty
+// can be turned on and never off.
+func CannotClear(purpose string, managed map[string]string) ([]string, error) {
+	full, err := Emitted(purpose)
+	if err != nil {
+		return nil, err
+	}
+	sent := make(map[string]struct{}, len(full))
+	for _, name := range full {
+		sent[name] = struct{}{}
+	}
+
+	networkType := reflect.TypeOf(ui.Network{})
+	seen := map[string]struct{}{}
+	var stuck []string
+	for i := range networkType.NumField() {
+		if !networkType.Field(i).IsExported() {
+			continue
+		}
+		var network ui.Network
+		value := reflect.ValueOf(&network).Elem()
+		fill(value)
+		subnet := "10.0.0.0/24"
+		network.IPSubnet = &subnet
+		field := value.Field(i)
+		if field.Kind() == reflect.Ptr {
+			field.Set(reflect.New(field.Type().Elem()))
+		} else {
+			field.Set(reflect.Zero(field.Type()))
+		}
+		network.Purpose = purpose
+
+		after, err := marshalKeys(&network, purpose)
+		if err != nil {
+			return nil, err
+		}
+		gone := make(map[string]struct{}, len(sent))
+		for name := range sent {
+			gone[name] = struct{}{}
+		}
+		for _, name := range after {
+			delete(gone, name)
+		}
+		for name := range gone {
+			attribute, owned := managed[name]
+			if !owned {
+				continue
+			}
+			if _, already := seen[attribute]; already {
+				continue
+			}
+			seen[attribute] = struct{}{}
+			stuck = append(stuck, attribute)
+		}
+	}
+	sort.Strings(stuck)
+	return stuck, nil
+}
+
+func marshalKeys(network *ui.Network, purpose string) ([]string, error) {
+	raw, err := json.Marshal(network)
+	if err != nil {
+		return nil, fmt.Errorf("marshal %s: %w", purpose, err)
+	}
+	var emitted map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &emitted); err != nil {
+		return nil, fmt.Errorf("reread %s: %w", purpose, err)
+	}
+	names := make([]string, 0, len(emitted))
+	for name := range emitted {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+// Ownership reads a surface's generated mapping and returns the API field names
+// it manages, keyed by field name, and the wider set it touches at all.
+//
+// TOUCHED IS NOT MANAGED. A row with an empty disposition is one the provider
+// hand-maps in Go -- dhcpd_dns_1 through 4 fold into dhcp_server.dns_servers
+// that way. Those fields have an owner even though no single attribute names
+// them, and counting them as unowned would report the provider clobbering
+// values it is deliberately writing.
+func Ownership(mapping []byte) (managed map[string]string, touched map[string]bool, err error) {
+	var document struct {
+		Fields []struct {
+			StructuralName string `json:"structural_name"`
+			TerraformName  string `json:"terraform_name"`
+			Disposition    string `json:"disposition"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(mapping, &document); err != nil {
+		return nil, nil, fmt.Errorf("parse mapping: %w", err)
+	}
+	if len(document.Fields) == 0 {
+		return nil, nil, fmt.Errorf("mapping has no fields")
+	}
+	managed = map[string]string{}
+	touched = map[string]bool{}
+	for _, field := range document.Fields {
+		if field.StructuralName == "" || field.Disposition == "omitted" {
+			continue
+		}
+		touched[field.StructuralName] = true
+		if field.Disposition == "managed" {
+			managed[field.StructuralName] = field.TerraformName
+		}
+	}
+	return managed, touched, nil
+}

@@ -399,3 +399,377 @@ func TestEveryPurposeEncodes(t *testing.T) {
 		}
 	}
 }
+
+// The other two encoder-visible mechanisms, pinned the same way.
+//
+// THE 62 ABOVE ARE ONE MECHANISM, NOT THE WHOLE DEFECT CLASS. An attribute can
+// fail to reach the controller four ways, and only the first is what the 62
+// counts:
+//
+//	encoder drift   the chosen alias struct has no such key -- the 62
+//	cannot-clear    the key is there, but omitempty drops the empty value, so
+//	                the attribute can be set and never unset
+//	force-emitted   the key is there with no omitempty and no attribute behind
+//	                it, so every unmasked write sends the Go zero
+//	guarded-assign  the provider skips the assignment under a null check --
+//	                not visible at the encoder at all, and not measured here
+//
+// They need different remedies, which is why they are counted apart rather than
+// added together.
+//
+// FORCE-EMITTED IS A CEILING, NOT THE OPEN COUNT. Five surfaces filter their
+// writes through a wire-field mask, and a masked write drops every name below
+// because none of them is in the mask -- that is what the mask is for. What
+// this measures is the encoder, which cannot see the mask, so the exposure that
+// remains is whatever write paths do not use one.
+//
+// NOT EVERY cannotClear ENTRY IS A DEFECT. Enum-constrained and defaulted
+// attributes have no meaningful empty value, and required or computed ones are
+// not the practitioner's to clear. The measurement is deliberately unfiltered
+// so that the judgement stays visible here rather than buried in the walk: of
+// the whole set, the free-form remainder is the defect, and site-vpn's
+// dynamic_routing and pfs are the sharpest of them -- booleans behind omitempty
+// that can be turned on and never off.
+var mechanisms = []struct {
+	surface      string
+	purpose      string
+	always       int // keys emitted for a Network nobody touched
+	forceEmitted []string
+	cannotClear  []string
+}{
+	{
+		surface: "network",
+		purpose: "corporate",
+		always:  39,
+		forceEmitted: []string{
+			"dhcpd_mac_1",
+			"dhcpd_mac_2",
+			"dhcpd_mac_3",
+			"igmp_fastleave",
+			"igmp_flood_unknown_multicast",
+			"igmp_supression", //nolint:misspell // go-unifi spells the wire field this way
+			"ipv6_aliases",
+			"mac_override_enabled",
+			"upnp_lan_enabled",
+		},
+		cannotClear: []string{
+			"dhcp_server.tftp_server",
+			"dhcp_server.unifi_controller",
+			"dhcp_server.wpad_url",
+			"dhcp_v6_server.start",
+			"dhcp_v6_server.stop",
+			"domain_name",
+			"gateway_type",
+			"id",
+			"ipv6_client_address_assignment",
+			"ipv6_interface_type",
+			"ipv6_pd_interface",
+			"ipv6_pd_start",
+			"ipv6_pd_stop",
+			"ipv6_ra_priority",
+			"ipv6_static_subnet",
+			"name",
+			"setting_preference",
+			"subnet",
+		},
+	},
+	{
+		surface: "network",
+		purpose: "guest",
+		always:  39,
+		forceEmitted: []string{
+			"dhcpd_mac_1",
+			"dhcpd_mac_2",
+			"dhcpd_mac_3",
+			"igmp_fastleave",
+			"igmp_flood_unknown_multicast",
+			"igmp_supression", //nolint:misspell // go-unifi spells the wire field this way
+			"ipv6_aliases",
+			"mac_override_enabled",
+			"upnp_lan_enabled",
+		},
+		cannotClear: []string{
+			"dhcp_server.tftp_server",
+			"dhcp_server.unifi_controller",
+			"dhcp_server.wpad_url",
+			"dhcp_v6_server.start",
+			"dhcp_v6_server.stop",
+			"domain_name",
+			"gateway_type",
+			"id",
+			"ipv6_client_address_assignment",
+			"ipv6_interface_type",
+			"ipv6_pd_interface",
+			"ipv6_pd_start",
+			"ipv6_pd_stop",
+			"ipv6_ra_priority",
+			"ipv6_static_subnet",
+			"name",
+			"setting_preference",
+			"subnet",
+		},
+	},
+	{
+		surface: "network",
+		purpose: "vlan-only",
+		always:  14,
+		forceEmitted: []string{
+			"dhcpd_mac_1",
+			"dhcpd_mac_2",
+			"dhcpd_mac_3",
+			"networkgroup",
+		},
+		cannotClear: []string{
+			"id",
+			"name",
+		},
+	},
+	{
+		surface: "wan",
+		purpose: "wan",
+		always:  18,
+		forceEmitted: []string{
+			"interface_mtu_enabled",
+			"ipv6_enabled",
+			"wan_gateway_v6",
+			"wan_ip_aliases",
+			"wan_ipv6",
+			"wan_pppoe_password_enabled",
+			"wan_pppoe_username_enabled",
+			"wan_username",
+			"x_wan_password",
+		},
+		cannotClear: []string{
+			"dhcpv6.options",
+			"dhcpv6.wan_delegation_type",
+			"dns.ipv6_preference",
+			"dns.ipv6_primary",
+			"dns.ipv6_secondary",
+			"dns.preference",
+			"dns.primary",
+			"dns.secondary",
+			"id",
+			"igmp_proxy.downstream",
+			"ipv6_setting_preference",
+			"load_balance.type",
+			"name",
+			"networkgroup",
+			"setting_preference",
+			"type",
+			"type_v6",
+			"upnp.wan_interface",
+			"wan_dslite_remote_host",
+		},
+	},
+	{
+		surface: "vpn_server",
+		purpose: "remote-user-vpn",
+		always:  6,
+		forceEmitted: []string{
+			"require_mschapv2",
+			"vpn_client_configuration_remote_ip_override_enabled",
+		},
+		cannotClear: []string{
+			"id",
+			"l2tp.pre_shared_key",
+			"name",
+			"openvpn.auth_key",
+			"openvpn.ca_crt",
+			"openvpn.ca_key",
+			"openvpn.dh_key",
+			"openvpn.encryption_cipher",
+			"openvpn.mode",
+			"openvpn.server_crt",
+			"openvpn.server_key",
+			"openvpn.shared_client_crt",
+			"openvpn.shared_client_key",
+			"radiusprofile_id",
+			"subnet",
+			"wireguard.private_key",
+		},
+	},
+	{
+		surface: "vpn_client",
+		purpose: "vpn-client",
+		always:  6,
+		forceEmitted: []string{
+			"dhcpd_dns_enabled",
+		},
+		cannotClear: []string{
+			"id",
+			"name",
+			"subnet",
+			"wireguard.interface",
+			"wireguard.preshared_key",
+			"wireguard.private_key",
+		},
+	},
+	{
+		surface: "site_to_site_vpn",
+		purpose: "site-vpn",
+		always:  5,
+		forceEmitted: []string{
+			"ipsec_local_identifier_enabled",
+			"ipsec_remote_identifier_enabled",
+			"ipsec_separate_ikev2_networks",
+		},
+		cannotClear: []string{
+			"dynamic_routing",
+			"esp_encryption",
+			"esp_hash",
+			"id",
+			"ike_encryption",
+			"ike_hash",
+			"interface",
+			"key_exchange",
+			"local_ip",
+			"name",
+			"peer_ip",
+			"pfs",
+			"pre_shared_key",
+			"profile",
+			"remote_subnets",
+		},
+	},
+}
+
+func TestTheOtherTwoEncoderMechanisms(t *testing.T) {
+	for _, want := range mechanisms {
+		t.Run(want.surface+"/"+want.purpose, func(t *testing.T) {
+			raw, err := os.ReadFile("../../provider-codegen/generated/" + want.surface + ".mapping.json")
+			if err != nil {
+				t.Fatalf("read mapping: %v", err)
+			}
+			managed, touched, err := Ownership(raw)
+			if err != nil {
+				t.Fatalf("ownership: %v", err)
+			}
+			always, err := AlwaysEmitted(want.purpose)
+			if err != nil {
+				t.Fatalf("always emitted: %v", err)
+			}
+			if len(always) != want.always {
+				t.Errorf("%s sends %d fields for an untouched Network, baseline says %d",
+					want.purpose, len(always), want.always)
+			}
+			compare(t, "sent as the Go zero with nothing behind it", want.forceEmitted, ForceEmitted(always, touched))
+
+			stuck, err := CannotClear(want.purpose, managed)
+			if err != nil {
+				t.Fatalf("cannot clear: %v", err)
+			}
+			compare(t, "set once and never unset", want.cannotClear, stuck)
+		})
+	}
+}
+
+// DROPPED AND CANNOT-CLEAR MUST NOT OVERLAP, measured rather than read back
+// off the pins above. An attribute whose key the encoder never sends has no
+// value to clear, so a name in both means one of the two walks is wrong.
+//
+// ONLY THIS PAIR CAN BE COMPARED. The first version of this test also checked
+// the force-emitted set against the other two and could never have failed:
+// force-emitted names are API field names and the other two are terraform
+// attribute paths, so the comparison was between two vocabularies that do not
+// share members. A field that is force-emitted has no attribute at all, which
+// is what puts it in that set -- there is nothing to collide with.
+func TestNoAttributeIsBothDroppedAndImpossibleToClear(t *testing.T) {
+	for _, want := range mechanisms {
+		mapped, err := os.ReadFile("../../provider-codegen/generated/" + want.surface + ".mapping.json")
+		if err != nil {
+			t.Fatalf("read mapping: %v", err)
+		}
+		managed, _, err := Ownership(mapped)
+		if err != nil {
+			t.Fatalf("ownership: %v", err)
+		}
+		_, attrs, err := Attributes(policyFor(t, want.surface))
+		if err != nil {
+			t.Fatalf("attributes: %v", err)
+		}
+		emitted, err := Emitted(want.purpose)
+		if err != nil {
+			t.Fatalf("emitted: %v", err)
+		}
+		dropped := Dropped(attrs, emitted)
+		stuck, err := CannotClear(want.purpose, managed)
+		if err != nil {
+			t.Fatalf("cannot clear: %v", err)
+		}
+		for _, name := range stuck {
+			if slices.Contains(dropped, name) {
+				t.Errorf("%s/%s: %s is reported as never sent AND as impossible to clear",
+					want.surface, want.purpose, name)
+			}
+		}
+		if len(stuck) == 0 && len(dropped) == 0 {
+			t.Errorf("%s/%s measured nothing under either mechanism, so this proves nothing",
+				want.surface, want.purpose)
+		}
+	}
+}
+
+// THE INSTRUMENT HAS TO DISCRIMINATE, not just report. A field that IS sent
+// must come out as sent, or a zero from any of the three counts above is a
+// broken probe rather than a finding. vlan-only emits twenty-two keys and
+// nothing may claim otherwise: enabled is on the wire, owned by an attribute,
+// and survives being set to its zero because the alias struct declares it
+// without omitempty.
+func TestAFieldThatIsSentComesOutAsSent(t *testing.T) {
+	raw, err := os.ReadFile("../../provider-codegen/generated/network.mapping.json")
+	if err != nil {
+		t.Fatalf("read mapping: %v", err)
+	}
+	managed, touched, err := Ownership(raw)
+	if err != nil {
+		t.Fatalf("ownership: %v", err)
+	}
+	if managed["enabled"] == "" {
+		t.Fatal("unifi_network does not manage enabled; pick another control")
+	}
+	always, err := AlwaysEmitted(ui.PurposeVLANOnly)
+	if err != nil {
+		t.Fatalf("always emitted: %v", err)
+	}
+	if !slices.Contains(always, "enabled") {
+		t.Error("enabled is not emitted for an untouched vlan-only network, so it is not the control this test needs")
+	}
+	if forced := ForceEmitted(always, touched); slices.Contains(forced, "enabled") {
+		t.Error("enabled is owned by an attribute and must not read as force-emitted")
+	}
+	stuck, err := CannotClear(ui.PurposeVLANOnly, managed)
+	if err != nil {
+		t.Fatalf("cannot clear: %v", err)
+	}
+	if slices.Contains(stuck, managed["enabled"]) {
+		t.Error("enabled has no omitempty and must not read as impossible to clear")
+	}
+	emitted, err := Emitted(ui.PurposeVLANOnly)
+	if err != nil {
+		t.Fatalf("emitted: %v", err)
+	}
+	if !slices.Contains(emitted, "enabled") {
+		t.Error("enabled must read as sent, not dropped")
+	}
+}
+
+// nilIfEmpty IS WHY THE PROBE SETS AN EMPTY VALUE RATHER THAN READING TAGS.
+// marshalVLANOnly declares Name as *string with omitempty and then assigns
+// nilIfEmpty(n.Name), so a name the practitioner cleared to "" reaches the
+// encoder as a live pointer and leaves it as nothing at all. A struct-tag walk
+// sees a pointer field and concludes an empty string would be sent.
+func TestAnEmptyStringIsNilledOnItsWayPastTheEncoder(t *testing.T) {
+	empty := ""
+	network := ui.Network{Purpose: ui.PurposeVLANOnly, Name: &empty}
+	raw, err := json.Marshal(&network)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var sent map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &sent); err != nil {
+		t.Fatalf("reread: %v", err)
+	}
+	if _, present := sent["name"]; present {
+		t.Error("an empty name reached the wire; nilIfEmpty no longer drops it and cannotClear should shrink")
+	}
+}
