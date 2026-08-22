@@ -378,9 +378,6 @@
     "dynamic_dns": [
       "multi-identity"
     ],
-    "network": [
-      "nested"
-    ],
     "power_supervisor": [
       "sdk-int"
     ],

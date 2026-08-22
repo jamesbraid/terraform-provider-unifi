@@ -1,0 +1,658 @@
+package unifi
+
+// network's descriptor. The surface spans 38 attributes over one SDK struct,
+// four of them nested objects that the SDK does not model as objects at all --
+// dhcp_server, dhcp_v6_server, dhcp_guarding and dhcp_relay are each a grouping
+// the PROVIDER invented over flat dhcpd_* fields on unifi.Network.
+//
+// unifi.Network is shared with site_to_site_vpn, which models a disjoint set of
+// the same struct's fields. Neither descriptor may write the other's, which the
+// field mask makes structural rather than a matter of care: a wire name absent
+// from Fields has no way onto the wire.
+
+import (
+	"context"
+	"time"
+
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
+)
+
+type networkKitModel struct {
+	ID                          types.String         `tfsdk:"id"`
+	Site                        types.String         `tfsdk:"site"`
+	Enabled                     types.Bool           `tfsdk:"enabled"`
+	Name                        types.String         `tfsdk:"name"`
+	NatOutboundIPAddresses      types.List           `tfsdk:"nat_outbound_ip_addresses"`
+	AutoScale                   types.Bool           `tfsdk:"auto_scale"`
+	Subnet                      cidrtypes.IPv4Prefix `tfsdk:"subnet"`
+	DomainName                  types.String         `tfsdk:"domain_name"`
+	Vlan                        types.Int64          `tfsdk:"vlan"`
+	NetworkIsolation            types.Bool           `tfsdk:"network_isolation"`
+	SettingPreference           types.String         `tfsdk:"setting_preference"`
+	InternetAccess              types.Bool           `tfsdk:"internet_access"`
+	IgmpSnooping                types.Bool           `tfsdk:"igmp_snooping"`
+	MulticastDNS                types.Bool           `tfsdk:"multicast_dns"`
+	GatewayType                 types.String         `tfsdk:"gateway_type"`
+	IPv6InterfaceType           types.String         `tfsdk:"ipv6_interface_type"`
+	IPv6ClientAddressAssignment types.String         `tfsdk:"ipv6_client_address_assignment"`
+	IPv6StaticSubnet            types.String         `tfsdk:"ipv6_static_subnet"`
+	IPv6RA                      types.Bool           `tfsdk:"ipv6_ra"`
+	IPv6RAPriority              types.String         `tfsdk:"ipv6_ra_priority"`
+	IPv6RAPreferredLifetime     timetypes.GoDuration `tfsdk:"ipv6_ra_preferred_lifetime"`
+	IPv6RAValidLifetime         timetypes.GoDuration `tfsdk:"ipv6_ra_valid_lifetime"`
+	IPv6PDInterface             types.String         `tfsdk:"ipv6_pd_interface"`
+	IPv6PDPrefixID              types.String         `tfsdk:"ipv6_pd_prefixid"`
+	IPv6PDStart                 types.String         `tfsdk:"ipv6_pd_start"`
+	IPv6PDStop                  types.String         `tfsdk:"ipv6_pd_stop"`
+	IPv6PDAutoPrefixidEnabled   types.Bool           `tfsdk:"ipv6_pd_auto_prefixid_enabled"`
+	LteLan                      types.Bool           `tfsdk:"lte_lan"`
+	IPAliases                   types.List           `tfsdk:"ip_aliases"`
+	IPv6Aliases                 types.List           `tfsdk:"ipv6_aliases"`
+	ThirdPartyGateway           types.Bool           `tfsdk:"third_party_gateway"`
+	Purpose                     types.String         `tfsdk:"purpose"`
+	DhcpGuarding                types.Object         `tfsdk:"dhcp_guarding"`
+	DhcpServer                  types.Object         `tfsdk:"dhcp_server"`
+	DhcpV6Server                types.Object         `tfsdk:"dhcp_v6_server"`
+	DhcpRelay                   types.Object         `tfsdk:"dhcp_relay"`
+	Timeouts                    timeouts.Value       `tfsdk:"timeouts"`
+}
+
+type netModel = networkKitModel
+
+// netPtr is the shape most of unifi.Network's scalars have: a *string the model
+// carries as a plain types.String. Same helper, same reason, as s2sPtr.
+func netPtr(
+	wire string,
+	model func(*netModel) *types.String,
+	sdk func(*ui.Network) **string,
+) resourcekit.StringLikePtrField[netModel, ui.Network, types.String] {
+	// StringLikePtrField carries no Elide: a nil pointer is null and there is
+	// nothing else it could mean, so there is no decision to record.
+	return resourcekit.StringLikePtrField[netModel, ui.Network, types.String]{
+		Wire: wire, Model: model, SDK: sdk,
+		New: func(v basetypes.StringValue) types.String { return v },
+	}
+}
+
+func netBool(
+	wire string,
+	model func(*netModel) *types.Bool,
+	sdk func(*ui.Network) *bool,
+) resourcekit.BoolField[netModel, ui.Network] {
+	return resourcekit.BoolField[netModel, ui.Network]{Wire: wire, Model: model, SDK: sdk}
+}
+
+// emptyIfUnset sends "" rather than omitting, for a field whose omitempty would
+// otherwise leave the controller's old value in place when clearing it.
+func emptyIfUnset(v types.String) *string {
+	if v.IsNull() || v.IsUnknown() {
+		return util.Ptr("")
+	}
+	return v.ValueStringPointer()
+}
+
+// strPtrOrNull is stringOrNull for a pointer: nil and "" are both absence.
+//
+// It was a closure defined inside networkToModel, and identical copies live
+// inside vpn_client's and vpn_server's read mappers. This is the package-level
+// one; the other two can adopt it whenever those surfaces move.
+func strPtrOrNull(ptr *string) types.String {
+	if ptr == nil || *ptr == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(*ptr)
+}
+
+func networkKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Network] {
+	return resourcekit.Backend[ui.Network]{
+		// A network IS created -- unlike a device, which is adopted -- so the
+		// whole object goes on create and the mask governs updates only.
+		Create: func(ctx context.Context, site string, in *ui.Network) (*ui.Network, error) {
+			return client.CreateNetwork(ctx, site, in)
+		},
+		Read: func(ctx context.Context, site, id string) (*ui.Network, error) {
+			return client.GetNetwork(ctx, site, id)
+		},
+		UpdateFields: func(
+			ctx context.Context, site string, in *ui.Network, fields ...string,
+		) (*ui.Network, error) {
+			return client.UpdateNetworkFields(ctx, site, in, fields...)
+		},
+		// THE DELETE BODY CARRIES THE NAME, and Backend.Delete is handed only a
+		// site and an id -- the same narrowness that made device need
+		// BeforeDelete. Here a read answers it, so no kit change: the object is
+		// about to be destroyed, and one GET to learn what to call it is
+		// cheaper than widening a signature every surface shares.
+		Delete: func(ctx context.Context, site, id string) error {
+			existing, err := client.GetNetwork(ctx, site, id)
+			if err != nil {
+				return err
+			}
+			name := ""
+			if existing.Name != nil {
+				name = *existing.Name
+			}
+			return client.DeleteNetwork(ctx, site, id, name)
+		},
+		List: func(ctx context.Context, site string) ([]ui.Network, error) {
+			return client.ListNetwork(ctx, site)
+		},
+		GetID: func(s *ui.Network) string { return s.ID },
+		SetID: func(s *ui.Network, id string) { s.ID = id },
+	}
+}
+
+// networkKitBeforeSend owns the three things no Field can express.
+//
+// PURPOSE AND THIRD_PARTY_GATEWAY ARE TWO ATTRIBUTES OVER ONE WIRE FIELD, and
+// vlan is one attribute over two. Neither fits a Field, which maps one to one,
+// so both derivations live here and AlwaysWire carries the results.
+//
+// THE DHCP DEFAULTS ARE CREATE-ONLY NOW, AND THAT IS A FIX RATHER THAN A LOSS.
+// The hand-written mapper applied them on every write, because a whole-object
+// PUT had to say something about every dhcpd_* field. That meant an apply which
+// touched only the name re-asserted a DHCP server the practitioner had never
+// configured, overwriting whatever they had set on the controller -- #121's
+// defect class exactly. Under a mask, an unconfigured dhcp_server puts none of
+// its 22 wires in the mask, so an update leaves the controller's own alone.
+// A create still sends the whole object, which is where the defaults belong:
+// a new LAN with no dhcp_server block gets a DHCP server, as it always has.
+func networkKitBeforeSend(
+	ctx context.Context,
+	_, effective *netModel,
+	sdk *ui.Network,
+	_ any,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	// networkgroup is not modelled and the controller requires it.
+	sdk.NetworkGroup = util.Ptr("LAN")
+	// mdns_enabled is deprecated in the 10.x schema and retained for backwards
+	// compatibility. It is still the only wire multicast_dns has, and the
+	// attribute is released, so it is written until the attribute is retired.
+	sdk.MdnsEnabled = effective.MulticastDNS.ValueBool() //nolint:staticcheck // the only wire for a released attribute
+	sdk.Purpose = ui.PurposeCorporate
+	networkPurposeToNetwork(effective.Purpose, effective.ThirdPartyGateway, sdk)
+	networkVLANToNetwork(effective.Vlan, sdk)
+
+	if sdk.IPAliases == nil {
+		sdk.IPAliases = []string{}
+	}
+
+	creating := sdk.ID == ""
+	if !creating {
+		return diags
+	}
+
+	relayEnabled := false
+	if !effective.DhcpRelay.IsNull() && !effective.DhcpRelay.IsUnknown() {
+		var relay dhcpRelayModel
+		if d := effective.DhcpRelay.As(ctx, &relay, basetypes.ObjectAsOptions{}); !d.HasError() {
+			relayEnabled = relay.Enabled.ValueBool()
+		}
+	}
+
+	dhcpServerUnset := effective.DhcpServer.IsNull() || effective.DhcpServer.IsUnknown()
+	if dhcpServerUnset && !relayEnabled {
+		// A DHCP server and a DHCP relay cannot coexist: with relay on, saying
+		// dhcpd_enabled=true makes the controller reject the request.
+		sdk.DHCPDBootEnabled = false
+		sdk.DHCPDBootServer = ""
+		sdk.DHCPDBootFilename = util.Ptr("")
+		sdk.DHCPDEnabled = true
+		sdk.DHCPDGatewayEnabled = false
+		sdk.DHCPDConflictChecking = true
+		sdk.DHCPDNtpEnabled = false
+		sdk.DHCPDTimeOffsetEnabled = false
+		sdk.DHCPDDNSEnabled = false
+		sdk.DHCPDLeaseTime = util.Ptr(int64(86400))
+		sdk.DHCPDWinsEnabled = false
+		sdk.DHCPDWins1 = util.Ptr("")
+		sdk.DHCPDWins2 = util.Ptr("")
+		sdk.DHCPDWPAdUrl = util.Ptr("")
+		sdk.DHCPDTFTPServer = util.Ptr("")
+		sdk.DHCPDUnifiController = util.Ptr("")
+		sdk.DHCPDDNS1 = ""
+		sdk.DHCPDDNS2 = ""
+		sdk.DHCPDDNS3 = ""
+		sdk.DHCPDDNS4 = ""
+	}
+	return diags
+}
+
+// networkKitAfterReceive computes the two attributes that share purpose.
+func networkKitAfterReceive(
+	_ context.Context, sdk *ui.Network, model *netModel, prior netModel, _ any,
+) diag.Diagnostics {
+	model.Purpose, model.ThirdPartyGateway = networkPurposeFromNetwork(sdk)
+
+	// #282: SOME CONTROLLERS FORCE multicast_dns TO FALSE on a corporate
+	// network. A practitioner who configured true would then fail the
+	// consistency check on an attribute they set to exactly what they asked
+	// for. So a KNOWN value survives the read and only an unset one takes the
+	// controller's.
+	//
+	// This is why multicast_dns is not a Field: a Field's ToModel overwrites
+	// from the SDK unconditionally, and by the time a hook ran the prior value
+	// would already be gone. Left out of Fields, the model still holds prior
+	// state here.
+	if prior.MulticastDNS.IsNull() || prior.MulticastDNS.IsUnknown() {
+		model.MulticastDNS = types.BoolValue(sdk.MdnsEnabled) //nolint:staticcheck // as above
+	} else {
+		model.MulticastDNS = prior.MulticastDNS
+	}
+	model.Vlan = networkVLANFromNetwork(sdk)
+	// ipv6_aliases stays null. The SDK HAS an IPV6Aliases field -- the comments
+	// saying otherwise are stale -- but the provider has never written it, and
+	// starting to is a practitioner-visible change that belongs in its own
+	// commit rather than smuggled into a migration. See #231.
+	model.IPv6Aliases = types.ListNull(types.StringType)
+	return nil
+}
+
+func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
+	return resourcekit.Spec[netModel, ui.Network]{
+		TypeName: "network",
+		Subject:  "Network",
+		New:      func() *ui.Network { return &ui.Network{} },
+		ID:       func(m *netModel) *types.String { return &m.ID },
+		Site:     func(m *netModel) *types.String { return &m.Site },
+		Timeouts: func(m *netModel) *timeouts.Value { return &m.Timeouts },
+		// ONE LITERAL BECAUSE AN INSTRUMENT READS IT. The descriptor checks
+		// parse this file rather than run it, so a list assembled from helper
+		// calls at run time is invisible to them and every field in it reads
+		// as missing.
+		Fields: []resourcekit.Field[netModel, ui.Network]{
+			netPtr("name", func(m *netModel) *types.String { return &m.Name },
+				func(s *ui.Network) **string { return &s.Name }),
+			netBool("enabled", func(m *netModel) *types.Bool { return &m.Enabled },
+				func(s *ui.Network) *bool { return &s.Enabled }),
+			netBool("auto_scale_enabled", func(m *netModel) *types.Bool { return &m.AutoScale },
+				func(s *ui.Network) *bool { return &s.AutoScaleEnabled }),
+			resourcekit.StringLikePtrField[netModel, ui.Network, cidrtypes.IPv4Prefix]{
+				Wire:  "ip_subnet",
+				Model: func(m *netModel) *cidrtypes.IPv4Prefix { return &m.Subnet },
+				SDK:   func(s *ui.Network) **string { return &s.IPSubnet },
+				New: func(v basetypes.StringValue) cidrtypes.IPv4Prefix {
+					return cidrtypes.IPv4Prefix{StringValue: v}
+				},
+			},
+			netPtr("domain_name", func(m *netModel) *types.String { return &m.DomainName },
+				func(s *ui.Network) **string { return &s.DomainName }),
+			netBool("network_isolation_enabled",
+				func(m *netModel) *types.Bool { return &m.NetworkIsolation },
+				func(s *ui.Network) *bool { return &s.NetworkIsolationEnabled }),
+			netPtr("setting_preference",
+				func(m *netModel) *types.String { return &m.SettingPreference },
+				func(s *ui.Network) **string { return &s.SettingPreference }),
+			netBool("internet_access_enabled",
+				func(m *netModel) *types.Bool { return &m.InternetAccess },
+				func(s *ui.Network) *bool { return &s.InternetAccessEnabled }),
+			netBool("igmp_snooping", func(m *netModel) *types.Bool { return &m.IgmpSnooping },
+				func(s *ui.Network) *bool { return &s.IGMPSnooping }),
+			netPtr("gateway_type", func(m *netModel) *types.String { return &m.GatewayType },
+				func(s *ui.Network) **string { return &s.GatewayType }),
+			netPtr("ipv6_interface_type",
+				func(m *netModel) *types.String { return &m.IPv6InterfaceType },
+				func(s *ui.Network) **string { return &s.IPV6InterfaceType }),
+			netPtr("ipv6_client_address_assignment",
+				func(m *netModel) *types.String { return &m.IPv6ClientAddressAssignment },
+				func(s *ui.Network) **string { return &s.IPV6ClientAddressAssignment }),
+			netPtr("ipv6_subnet", func(m *netModel) *types.String { return &m.IPv6StaticSubnet },
+				func(s *ui.Network) **string { return &s.IPV6Subnet }),
+			netBool("ipv6_ra_enabled", func(m *netModel) *types.Bool { return &m.IPv6RA },
+				func(s *ui.Network) *bool { return &s.IPV6RaEnabled }),
+			netPtr("ipv6_ra_priority", func(m *netModel) *types.String { return &m.IPv6RAPriority },
+				func(s *ui.Network) **string { return &s.IPV6RaPriority }),
+			resourcekit.DurationPtrField[netModel, ui.Network]{
+				Wire:  "ipv6_ra_preferred_lifetime",
+				Model: func(m *netModel) *timetypes.GoDuration { return &m.IPv6RAPreferredLifetime },
+				SDK:   func(s *ui.Network) **int64 { return &s.IPV6RaPreferredLifetime },
+				Units: time.Second,
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.DurationPtrField[netModel, ui.Network]{
+				Wire:  "ipv6_ra_valid_lifetime",
+				Model: func(m *netModel) *timetypes.GoDuration { return &m.IPv6RAValidLifetime },
+				SDK:   func(s *ui.Network) **int64 { return &s.IPV6RaValidLifetime },
+				Units: time.Second,
+				Elide: resourcekit.KeepZero,
+			},
+			netPtr("ipv6_pd_interface", func(m *netModel) *types.String { return &m.IPv6PDInterface },
+				func(s *ui.Network) **string { return &s.IPV6PDInterface }),
+			resourcekit.StringField[netModel, ui.Network]{
+				// The one ipv6_pd_* field the SDK does not carry as a pointer.
+				Wire:  "ipv6_pd_prefixid",
+				Model: func(m *netModel) *types.String { return &m.IPv6PDPrefixID },
+				SDK:   func(s *ui.Network) *string { return &s.IPV6PDPrefixid },
+				Elide: resourcekit.KeepZero,
+			},
+			netPtr("ipv6_pd_start", func(m *netModel) *types.String { return &m.IPv6PDStart },
+				func(s *ui.Network) **string { return &s.IPV6PDStart }),
+			netPtr("ipv6_pd_stop", func(m *netModel) *types.String { return &m.IPv6PDStop },
+				func(s *ui.Network) **string { return &s.IPV6PDStop }),
+			netBool("ipv6_pd_auto_prefixid_enabled",
+				func(m *netModel) *types.Bool { return &m.IPv6PDAutoPrefixidEnabled },
+				func(s *ui.Network) *bool { return &s.IPV6PDAutoPrefixidEnabled }),
+			netBool("lte_lan_enabled", func(m *netModel) *types.Bool { return &m.LteLan },
+				func(s *ui.Network) *bool { return &s.LteLanEnabled }),
+			resourcekit.StringListField[netModel, ui.Network]{
+				// KeepZero, NOT NullZero. An empty membership must read back as an
+				// empty list: nulling it means a config saying ip_aliases = []
+				// never stops planning a change.
+				Wire:  "ip_aliases",
+				Model: func(m *netModel) *types.List { return &m.IPAliases },
+				SDK:   func(s *ui.Network) *[]string { return &s.IPAliases },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.ScatteredObjectField[netModel, ui.Network]{
+				Wires: []string{
+					"dhcpguard_enabled", "dhcpd_ip_1", "dhcpd_ip_2", "dhcpd_ip_3",
+				},
+				Model:     func(m *netModel) *types.Object { return &m.DhcpGuarding },
+				AttrTypes: dhcpGuardingModel{}.AttributeTypes(),
+				// THE THREE SLOTS ARE FILLED POSITIONALLY AND THE UNUSED ONES
+				// ARE NOT CLEARED, unlike the dhcp_server DNS write. Masking a
+				// slot the encoder did not write sends its zero, which blanks
+				// whatever the controller holds -- so a two-server list must
+				// not put dhcpd_ip_3 in the mask.
+				ConditionalWires: map[string]func(types.Object) bool{
+					"dhcpd_ip_1": func(o types.Object) bool {
+						return dhcpGuardingServerCount(o) > 0
+					},
+					"dhcpd_ip_2": func(o types.Object) bool {
+						return dhcpGuardingServerCount(o) > 1
+					},
+					"dhcpd_ip_3": func(o types.Object) bool {
+						return dhcpGuardingServerCount(o) > 2
+					},
+				},
+				Encode: func(
+					ctx context.Context, object types.Object, sdk *ui.Network,
+				) diag.Diagnostics {
+					var guarding dhcpGuardingModel
+					diags := object.As(ctx, &guarding, basetypes.ObjectAsOptions{})
+					if diags.HasError() {
+						return diags
+					}
+					sdk.DHCPguardEnabled = guarding.Enabled.ValueBool()
+					networkDHCPGuardingServersToNetwork(ctx, &diags, guarding.Servers, sdk)
+					return diags
+				},
+				Decode: func(
+					ctx context.Context, sdk *ui.Network,
+				) (types.Object, diag.Diagnostics) {
+					var diags diag.Diagnostics
+					value := dhcpGuardingModel{
+						Enabled: types.BoolValue(sdk.DHCPguardEnabled),
+						Servers: networkDHCPGuardingServersFromNetwork(ctx, &diags, sdk),
+					}
+					object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+					diags.Append(d...)
+					return object, diags
+				},
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.ScatteredObjectField[netModel, ui.Network]{
+				Wires: []string{
+					"dhcpd_enabled", "dhcpd_start", "dhcpd_stop", "dhcpd_gateway_enabled",
+					"dhcpd_conflict_checking", "dhcpd_ntp_enabled", "dhcpd_time_offset_enabled",
+					"dhcpd_dns_enabled", "dhcpd_leasetime", "dhcpd_wpad_url", "dhcpd_tftp_server",
+					"dhcpd_unifi_controller", "dhcpd_dns_1", "dhcpd_dns_2", "dhcpd_dns_3",
+					"dhcpd_dns_4", "dhcpd_boot_enabled", "dhcpd_boot_server", "dhcpd_boot_filename",
+					"dhcpd_wins_enabled", "dhcpd_wins_1", "dhcpd_wins_2",
+				},
+				Model:     func(m *netModel) *types.Object { return &m.DhcpServer },
+				AttrTypes: dhcpServerModel{}.AttributeTypes(),
+				Encode: func(
+					ctx context.Context, object types.Object, sdk *ui.Network,
+				) diag.Diagnostics {
+					var server dhcpServerModel
+					diags := object.As(ctx, &server, basetypes.ObjectAsOptions{})
+					if diags.HasError() {
+						return diags
+					}
+					networkBootToNetwork(ctx, &diags, server.Boot, sdk)
+					sdk.DHCPDEnabled = server.Enabled.ValueBool()
+					sdk.DHCPDStart = server.Start.ValueStringPointer()
+					sdk.DHCPDStop = server.Stop.ValueStringPointer()
+					sdk.DHCPDGatewayEnabled = server.GatewayEnabled.ValueBool()
+					sdk.DHCPDConflictChecking = server.ConflictChecking.ValueBool()
+					sdk.DHCPDNtpEnabled = server.NtpEnabled.ValueBool()
+					sdk.DHCPDTimeOffsetEnabled = server.TimeOffsetEnabled.ValueBool()
+					sdk.DHCPDDNSEnabled = server.DnsEnabled.ValueBool()
+					sdk.DHCPDLeaseTime = util.DurationUnitsPtr(server.Leasetime, time.Second)
+					networkWINSToNetwork(ctx, &diags, server.Wins, sdk)
+					// THESE THREE SEND AN EMPTY STRING RATHER THAN OMITTING. A null
+					// wpad_url has to clear the controller's value, and the field
+					// carries omitempty, so a nil pointer would leave the old one in
+					// place instead of clearing it.
+					sdk.DHCPDWPAdUrl = emptyIfUnset(server.WpadUrl)
+					sdk.DHCPDTFTPServer = emptyIfUnset(server.TftpServer)
+					sdk.DHCPDUnifiController = emptyIfUnset(server.UnifiController)
+					networkDHCPServerDNSToNetwork(ctx, &diags, server.DnsServers, sdk)
+					return diags
+				},
+				Decode: func(
+					ctx context.Context, sdk *ui.Network,
+				) (types.Object, diag.Diagnostics) {
+					var diags diag.Diagnostics
+					value := dhcpServerModel{
+						Boot:              networkBootFromNetwork(ctx, &diags, sdk),
+						Enabled:           types.BoolValue(sdk.DHCPDEnabled),
+						GatewayEnabled:    types.BoolValue(sdk.DHCPDGatewayEnabled),
+						ConflictChecking:  types.BoolValue(sdk.DHCPDConflictChecking),
+						NtpEnabled:        types.BoolValue(sdk.DHCPDNtpEnabled),
+						TimeOffsetEnabled: types.BoolValue(sdk.DHCPDTimeOffsetEnabled),
+						DnsEnabled:        types.BoolValue(sdk.DHCPDDNSEnabled),
+						Leasetime:         util.DurationPtrValue(sdk.DHCPDLeaseTime, time.Second),
+						Wins:              networkWINSFromNetwork(ctx, &diags, sdk),
+						WpadUrl:           strPtrOrNull(sdk.DHCPDWPAdUrl),
+						Start:             types.StringPointerValue(sdk.DHCPDStart),
+						Stop:              types.StringPointerValue(sdk.DHCPDStop),
+						TftpServer:        strPtrOrNull(sdk.DHCPDTFTPServer),
+						UnifiController:   strPtrOrNull(sdk.DHCPDUnifiController),
+						DnsServers:        networkDHCPServerDNSFromNetwork(ctx, &diags, sdk),
+					}
+					object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+					diags.Append(d...)
+					return object, diags
+				},
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.ScatteredObjectField[netModel, ui.Network]{
+				Wires: []string{
+					"dhcpdv6_enabled", "dhcpdv6_dns_auto", "dhcpdv6_start", "dhcpdv6_stop",
+					"dhcpdv6_leasetime", "dhcpdv6_dns_1", "dhcpdv6_dns_2", "dhcpdv6_dns_3",
+					"dhcpdv6_dns_4",
+				},
+				Model:     func(m *netModel) *types.Object { return &m.DhcpV6Server },
+				AttrTypes: dhcpV6ServerModel{}.AttributeTypes(),
+				Encode: func(
+					ctx context.Context, object types.Object, sdk *ui.Network,
+				) diag.Diagnostics {
+					var v6 dhcpV6ServerModel
+					diags := object.As(ctx, &v6, basetypes.ObjectAsOptions{})
+					if diags.HasError() {
+						return diags
+					}
+					sdk.DHCPDV6Enabled = v6.Enabled.ValueBool()
+					sdk.DHCPDV6DNSAuto = v6.DNSAuto.ValueBool()
+					sdk.DHCPDV6Start = v6.Start.ValueStringPointer()
+					sdk.DHCPDV6Stop = v6.Stop.ValueStringPointer()
+					sdk.DHCPDV6LeaseTime = v6.Lease.ValueInt64Pointer()
+					networkDHCPV6ServerDNSToNetwork(ctx, &diags, v6.DNSServers, sdk)
+					return diags
+				},
+				Decode: func(
+					ctx context.Context, sdk *ui.Network,
+				) (types.Object, diag.Diagnostics) {
+					var diags diag.Diagnostics
+					value := dhcpV6ServerModel{
+						Enabled:    types.BoolValue(sdk.DHCPDV6Enabled),
+						DNSAuto:    types.BoolValue(sdk.DHCPDV6DNSAuto),
+						DNSServers: networkDHCPV6ServerDNSFromNetwork(ctx, &diags, sdk),
+						Lease:      types.Int64PointerValue(sdk.DHCPDV6LeaseTime),
+						Start:      types.StringPointerValue(sdk.DHCPDV6Start),
+						Stop:       types.StringPointerValue(sdk.DHCPDV6Stop),
+					}
+					object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+					diags.Append(d...)
+					return object, diags
+				},
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.ScatteredObjectField[netModel, ui.Network]{
+				Wires: []string{"dhcp_relay_enabled", "dhcp_relay_servers"},
+				Model: func(m *netModel) *types.Object { return &m.DhcpRelay },
+				// The server list is written only when the practitioner
+				// supplied one; masking it otherwise sends [] and clears the
+				// controller's.
+				ConditionalWires: map[string]func(types.Object) bool{
+					"dhcp_relay_servers": func(o types.Object) bool {
+						return !objectListMember(o, "servers").IsNull()
+					},
+				},
+				AttrTypes: dhcpRelayModel{}.AttributeTypes(),
+				Encode: func(
+					ctx context.Context, object types.Object, sdk *ui.Network,
+				) diag.Diagnostics {
+					var relay dhcpRelayModel
+					diags := object.As(ctx, &relay, basetypes.ObjectAsOptions{})
+					if diags.HasError() {
+						return diags
+					}
+					sdk.DHCPRelayEnabled = relay.Enabled.ValueBool()
+					if !relay.Servers.IsNull() && !relay.Servers.IsUnknown() {
+						var servers []string
+						diags.Append(relay.Servers.ElementsAs(ctx, &servers, false)...)
+						if !diags.HasError() {
+							sdk.DHCPRelayServers = servers
+						}
+					}
+					return diags
+				},
+				Decode: func(
+					ctx context.Context, sdk *ui.Network,
+				) (types.Object, diag.Diagnostics) {
+					var diags diag.Diagnostics
+					servers := types.ListNull(types.StringType)
+					if len(sdk.DHCPRelayServers) > 0 {
+						var d diag.Diagnostics
+						servers, d = types.ListValueFrom(ctx, types.StringType, sdk.DHCPRelayServers)
+						diags.Append(d...)
+					}
+					value := dhcpRelayModel{
+						Enabled: types.BoolValue(sdk.DHCPRelayEnabled),
+						Servers: servers,
+					}
+					object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+					diags.Append(d...)
+					return object, diags
+				},
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.ObjectListField[netModel, ui.Network, ui.NetworkNATOutboundIPAddresses]{
+				Wire:       "nat_outbound_ip_addresses",
+				Model:      func(m *netModel) *types.List { return &m.NatOutboundIPAddresses },
+				SDK:        func(s *ui.Network) *[]ui.NetworkNATOutboundIPAddresses { return &s.NATOutboundIPAddresses },
+				AttrTypes:  natOutboundIPAddresses(),
+				Unmodelled: []string{"ip_address_pool"},
+				Encode: func(
+					ctx context.Context, object types.Object,
+				) (ui.NetworkNATOutboundIPAddresses, diag.Diagnostics) {
+					var entry natOutboundIPAddressesModel
+					diags := object.As(ctx, &entry, basetypes.ObjectAsOptions{})
+					if diags.HasError() {
+						return ui.NetworkNATOutboundIPAddresses{}, diags
+					}
+					return ui.NetworkNATOutboundIPAddresses{
+						IPAddress:       entry.IPAddress.ValueString(),
+						Mode:            entry.Mode.ValueStringPointer(),
+						WANNetworkGroup: entry.WANNetworkGroup.ValueStringPointer(),
+					}, diags
+				},
+				Decode: func(
+					ctx context.Context, entry ui.NetworkNATOutboundIPAddresses,
+				) (types.Object, diag.Diagnostics) {
+					var diags diag.Diagnostics
+					pool := types.ListNull(types.StringType)
+					if entry.IPAddressPool != nil {
+						value, d := types.ListValueFrom(ctx, types.StringType, entry.IPAddressPool)
+						diags.Append(d...)
+						pool = value
+					}
+					object, d := types.ObjectValue(natOutboundIPAddresses(), map[string]attr.Value{
+						"ip_address":        types.StringValue(entry.IPAddress),
+						"ip_address_pool":   pool,
+						"mode":              types.StringPointerValue(entry.Mode),
+						"wan_network_group": types.StringPointerValue(entry.WANNetworkGroup),
+					})
+					diags.Append(d...)
+					return object, diags
+				},
+				Elide: resourcekit.KeepZero,
+			},
+		},
+
+		Backend: resourcekit.Backend[ui.Network]{
+			// SEEDED SO ToModel DOES NOT NIL-DEREFERENCE. Configure replaces the
+			// whole Backend, so a test binary that never calls it would panic
+			// here rather than report a diagnostic.
+			GetID: func(s *ui.Network) string { return s.ID },
+			SetID: func(s *ui.Network, id string) { s.ID = id },
+		},
+
+		BeforeSend:   networkKitBeforeSend,
+		AfterReceive: networkKitAfterReceive,
+
+		// unifi.Network encodes a different field set per purpose. A vlan-only
+		// network drops 54 of the 67 names this descriptor declares, and
+		// go-unifi refuses a mask naming a field the encoder never emits, so
+		// without this every vlan-only update fails. networkMaskFor is the same
+		// filter the hand-written resource used, and vpn_client, vpn_server and
+		// wan still use it.
+		NarrowMask: func(sdk *ui.Network, fields []string) []string {
+			return networkMaskFor(fields, sdk)
+		},
+
+		// purpose and vlan are derived by BeforeSend from attributes that are
+		// not Fields, so nothing in the plan can put them in the mask.
+		// networkgroup is not modelled at all and the controller requires it.
+		AlwaysWire: []string{"purpose", "vlan", "vlan_enabled", "networkgroup", "mdns_enabled"},
+	}
+}
+
+// dhcpGuardingServerCount reports how many guarding servers the object carries,
+// which is what decides how many of the three positional slots Encode writes.
+func dhcpGuardingServerCount(object types.Object) int {
+	list := objectListMember(object, "servers")
+	if list.IsNull() || list.IsUnknown() {
+		return 0
+	}
+	return len(list.Elements())
+}
+
+// objectListMember reads a list-typed member, answering a null list when the
+// member is absent or of another type -- which means the same thing to the
+// callers above: nothing to write.
+func objectListMember(object types.Object, name string) types.List {
+	value, ok := object.Attributes()[name]
+	if !ok {
+		return types.ListNull(types.StringType)
+	}
+	list, ok := value.(types.List)
+	if !ok {
+		return types.ListNull(types.StringType)
+	}
+	return list
+}
