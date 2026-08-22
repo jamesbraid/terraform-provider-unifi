@@ -12,6 +12,10 @@ package unifi
 
 import (
 	"context"
+	"reflect"
+	"sort"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
@@ -615,14 +619,37 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 		BeforeSend:   networkKitBeforeSend,
 		AfterReceive: networkKitAfterReceive,
 
-		// unifi.Network encodes a different field set per purpose. A vlan-only
-		// network drops 54 of the 67 names this descriptor declares, and
-		// go-unifi refuses a mask naming a field the encoder never emits, so
-		// without this every vlan-only update fails. networkMaskFor is the same
-		// filter the hand-written resource used, and vpn_client, vpn_server and
-		// wan still use it.
-		NarrowMask: func(sdk *ui.Network, fields []string) []string {
-			return networkMaskFor(fields, sdk)
+		// unifi.Network encodes a different field set per purpose, and network
+		// is the only surface that VARIES its purpose. A vlan-only network
+		// omits 54 of the 67 names this descriptor declares, and go-unifi
+		// refuses a mask naming a field the encoder never emits -- so without
+		// this every vlan-only update fails.
+		//
+		// IT ASKS WHAT THIS OBJECT DID EMIT, NOT WHAT A POPULATED ONE WOULD,
+		// AND THAT IS DELIBERATE EVEN THOUGH IT CARRIES A CANNOT-CLEAR.
+		//
+		// Asking "would a populated object emit this name" is the fix for
+		// #178: it keeps an omitempty-at-zero name on the mask so go-unifi can
+		// send its zero. It also removes the only thing protecting every wire
+		// this surface's scattered Encodes leave at zero when a member is
+		// unset -- because that zero then travels, over whatever the controller
+		// holds. TestEveryConditionalWireOnNetworkIsDeclared measures which
+		// wires those are; until each is classified as "clearing this is the
+		// intent" or declared in ConditionalWires, the narrowing has to stay
+		// as it is. ConditionalWires is not belt-and-braces under a would-emit
+		// narrowing, it is the whole protection.
+		UnwritableWires: func(sdk *ui.Network) []string {
+			emitted := make(map[string]struct{})
+			for _, name := range networkMaskFor(networkAllWireNames(), sdk) {
+				emitted[name] = struct{}{}
+			}
+			var unwritable []string
+			for _, name := range networkAllWireNames() {
+				if _, ok := emitted[name]; !ok {
+					unwritable = append(unwritable, name)
+				}
+			}
+			return unwritable
 		},
 
 		// purpose and vlan are derived by BeforeSend from attributes that are
@@ -656,3 +683,33 @@ func objectListMember(object types.Object, name string) types.List {
 	}
 	return list
 }
+
+// networkAllWireNames is every top-level json tag on unifi.Network.
+//
+// UnwritableWires answers a question about the ENCODER, not about this
+// descriptor, so it reports every name the object cannot write and lets the kit
+// subtract that from whatever the mask happened to name. Returning a superset
+// is free; deriving it from this descriptor's own declarations would make the
+// answer depend on who is asking.
+func networkAllWireNames() []string {
+	networkWireNamesOnce.Do(func() {
+		typ := reflect.TypeOf(ui.Network{})
+		for i := range typ.NumField() {
+			tag := typ.Field(i).Tag.Get("json")
+			if tag == "" || tag == "-" {
+				continue
+			}
+			name, _, _ := strings.Cut(tag, ",")
+			if name != "" {
+				networkWireNames = append(networkWireNames, name)
+			}
+		}
+		sort.Strings(networkWireNames)
+	})
+	return networkWireNames
+}
+
+var (
+	networkWireNamesOnce sync.Once
+	networkWireNames     []string
+)
