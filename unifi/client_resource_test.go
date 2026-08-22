@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -27,7 +28,7 @@ import (
 // clean. For this minimal client clientToModel makes no API calls, so no live
 // controller (and no mock) is needed.
 func TestClientToModel_DefaultsWhenAPIOmitsFields(t *testing.T) {
-	r := &clientResource{}
+	r := newClientKitResource()
 
 	client := &unifi.Client{
 		ID:                     "61d1...",
@@ -39,7 +40,7 @@ func TestClientToModel_DefaultsWhenAPIOmitsFields(t *testing.T) {
 		NetworkMembersGroupIDs: nil, // no groups
 	}
 
-	var model clientResourceModel
+	var model clientModel
 	diags := r.clientToModel(context.Background(), client, &model, "default")
 	if diags.HasError() {
 		t.Fatalf("clientToModel returned errors: %v", diags)
@@ -61,11 +62,11 @@ func TestClientToModel_DefaultsWhenAPIOmitsFields(t *testing.T) {
 
 // TestClientToModel_PreservesBlockedTrue ensures a blocked client still round-trips.
 func TestClientToModel_PreservesBlockedTrue(t *testing.T) {
-	r := &clientResource{}
+	r := newClientKitResource()
 	blocked := true
 	client := &unifi.Client{MAC: "02:00:00:de:ad:02", Blocked: &blocked}
 
-	var model clientResourceModel
+	var model clientModel
 	if diags := r.clientToModel(context.Background(), client, &model, "default"); diags.HasError() {
 		t.Fatalf("clientToModel returned errors: %v", diags)
 	}
@@ -265,40 +266,26 @@ resource "unifi_client" "test" {
 }
 
 func TestNewClientResource(t *testing.T) {
-	tests := []struct {
-		name string
-		want fwresource.Resource
-	}{
-		{
-			name: "returns clientResource",
-			want: &clientResource{},
-		},
+	// A populated Spec carries closures, which are never DeepEqual, so the
+	// thing worth asserting is the type the provider registers.
+	got := NewClientResource()
+	if got == nil {
+		t.Fatal("NewClientResource() = nil")
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewClientResource(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewClientResource() = %v, want %v", got, tt.want)
-			}
-		})
+	if _, ok := got.(*clientKitResource); !ok {
+		t.Errorf("NewClientResource() = %T, want *clientKitResource", got)
 	}
 }
 
 func TestNewClientListResource(t *testing.T) {
-	tests := []struct {
-		name string
-		want fwlist.ListResource
-	}{
-		{
-			name: "returns clientResource",
-			want: &clientResource{},
-		},
+	// A populated Spec carries closures, which are never DeepEqual, so the
+	// thing worth asserting is the type the provider registers.
+	got := NewClientListResource()
+	if got == nil {
+		t.Fatal("NewClientListResource() = nil")
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewClientListResource(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewClientListResource() = %v, want %v", got, tt.want)
-			}
-		})
+	if _, ok := got.(*clientKitResource); !ok {
+		t.Errorf("NewClientListResource() = %T, want *clientKitResource", got)
 	}
 }
 
@@ -336,12 +323,12 @@ func Test_clientResource_IdentitySchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *clientResource
+		r    *clientKitResource
 		args args
 	}{
 		{
 			name: "returns identity schema",
-			r:    &clientResource{},
+			r:    newClientKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwresource.IdentitySchemaRequest{},
@@ -364,12 +351,12 @@ func Test_clientResource_Schema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *clientResource
+		r    *clientKitResource
 		args args
 	}{
 		{
 			name: "returns schema",
-			r:    &clientResource{},
+			r:    newClientKitResource(),
 			args: args{
 				ctx:  context.Background(),
 				req:  fwresource.SchemaRequest{},
@@ -384,268 +371,73 @@ func Test_clientResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_clientResource_Create(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.CreateRequest
-		resp *fwresource.CreateResponse
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Create(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_clientResource_Read(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ReadRequest
-		resp *fwresource.ReadResponse
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Read(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_clientResource_Update(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.UpdateRequest
-		resp *fwresource.UpdateResponse
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Update(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_clientResource_applyPlanToState(t *testing.T) {
-	type args struct {
-		in0   context.Context
-		plan  *clientResourceModel
-		state *clientResourceModel
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.applyPlanToState(tt.args.in0, tt.args.plan, tt.args.state)
-		})
-	}
-}
-
-func Test_clientResource_Delete(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.DeleteRequest
-		resp *fwresource.DeleteResponse
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Delete(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_clientResource_ImportState(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ImportStateRequest
-		resp *fwresource.ImportStateResponse
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.ImportState(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_clientResource_planToClient(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		site string
-		plan clientResourceModel
-	}
-	tests := []struct {
-		name  string
-		r     *clientResource
-		args  args
-		want  *unifi.Client
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.planToClient(tt.args.ctx, tt.args.site, tt.args.plan)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("clientResource.planToClient() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("clientResource.planToClient() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
-
-func Test_clientResource_reconcileCreatedClient(t *testing.T) {
-	type args struct {
-		ctx           context.Context
-		site          string
-		currentClient *unifi.Client
-		plannedClient *unifi.Client
-	}
-	tests := []struct {
-		name  string
-		r     *clientResource
-		args  args
-		want  *unifi.Client
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.reconcileCreatedClient(
-				tt.args.ctx,
-				tt.args.site,
-				tt.args.currentClient,
-				tt.args.plannedClient,
-			)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("clientResource.reconcileCreatedClient() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf(
-					"clientResource.reconcileCreatedClient() got1 = %v, want %v",
-					got1,
-					tt.want1,
-				)
-			}
-		})
-	}
-}
-
-func Test_clientResource_clientToModel(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		client *unifi.Client
-		model  *clientResourceModel
-		site   string
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-		want diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.clientToModel(
-				tt.args.ctx,
-				tt.args.client,
-				tt.args.model,
-				tt.args.site,
-			); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("clientResource.clientToModel() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_clientResource_mergeClient(t *testing.T) {
-	type args struct {
-		existing *unifi.Client
-		planned  *unifi.Client
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-		want *unifi.Client
+// THE COMPANION FLAGS, which is the half of mergeClient that did not become
+// structural.
+//
+// mergeClient started from the fetched object and overlaid the planned writable
+// fields, so UniFi's internal fields survived a write. The field mask does that
+// by construction now: a field the mask does not name is never in the body, so
+// there is nothing to preserve it FROM. That half needs no test.
+//
+// What it also did was derive use_fixedip from whether fixed_ip was set, and
+// local_dns_record_enabled likewise -- the controller ignores the value without
+// the flag. That is a derivation, it lives in BeforeSend now, and it is what
+// this asserts. The clearing direction is the one that mattered: an emptied
+// fixed_ip has to turn the flag OFF, or the controller keeps applying the old
+// address.
+func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		fixedIP     iptypes.IPv4Address
+		dnsRecord   types.String
+		wantFixed   bool
+		wantDNSFlag bool
 	}{
 		{
-			name: "planned values override existing",
-			r:    &clientResource{},
-			args: args{
-				existing: &unifi.Client{
-					ID:   "existing-id",
-					MAC:  "aa:bb:cc:dd:ee:ff",
-					Name: "old-name",
-				},
-				planned: &unifi.Client{
-					Name:    "new-name",
-					FixedIP: "192.168.1.100",
-				},
-			},
-			want: &unifi.Client{
-				ID:         "existing-id",
-				MAC:        "aa:bb:cc:dd:ee:ff",
-				Name:       "new-name",
-				FixedIP:    "192.168.1.100",
-				UseFixedIP: true,
-			},
+			name:      "a set fixed_ip turns the flag on",
+			fixedIP:   iptypes.NewIPv4AddressValue("192.168.1.100"),
+			dnsRecord: types.StringNull(),
+			wantFixed: true,
 		},
 		{
-			name: "empty fixed_ip clears UseFixedIP",
-			r:    &clientResource{},
-			args: args{
-				existing: &unifi.Client{
-					ID:         "id1",
-					FixedIP:    "10.0.0.1",
-					UseFixedIP: true,
-				},
-				planned: &unifi.Client{
-					FixedIP: "",
-				},
-			},
-			want: &unifi.Client{
-				ID:         "id1",
-				UseFixedIP: false,
-			},
+			name:      "an emptied fixed_ip turns the flag off",
+			fixedIP:   iptypes.NewIPv4AddressValue(""),
+			dnsRecord: types.StringNull(),
+			wantFixed: false,
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.mergeClient(
-				tt.args.existing,
-				tt.args.planned,
-			); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("clientResource.mergeClient() = %v, want %v", got, tt.want)
+		{
+			name:      "a null fixed_ip turns the flag off",
+			fixedIP:   iptypes.NewIPv4AddressNull(),
+			dnsRecord: types.StringNull(),
+			wantFixed: false,
+		},
+		{
+			name:        "local_dns_record carries its own flag",
+			fixedIP:     iptypes.NewIPv4AddressNull(),
+			dnsRecord:   types.StringValue("host.example"),
+			wantDNSFlag: true,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			model := clientModel{
+				FixedIP:        testCase.fixedIP,
+				LocalDNSRecord: testCase.dnsRecord,
+				QOSRate:        types.ObjectNull(qosRateModel{}.AttributeTypes()),
+				Groups:         types.ListNull(types.StringType),
+			}
+			sdk := &unifi.Client{}
+			// A nil api is safe here: with qos_rate and groups both null there
+			// is nothing for BeforeSend to look up or create.
+			hook := clientKitBeforeSend(nil)
+			if diags := hook(t.Context(), &model, &model, sdk, &clientGroups{}); diags.HasError() {
+				t.Fatalf("BeforeSend: %v", diags)
+			}
+			if sdk.UseFixedIP != testCase.wantFixed {
+				t.Errorf("use_fixedip = %v, want %v", sdk.UseFixedIP, testCase.wantFixed)
+			}
+			if sdk.LocalDNSRecordEnabled != testCase.wantDNSFlag {
+				t.Errorf("local_dns_record_enabled = %v, want %v",
+					sdk.LocalDNSRecordEnabled, testCase.wantDNSFlag)
 			}
 		})
 	}
@@ -659,12 +451,12 @@ func Test_clientResource_ListResourceConfigSchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *clientResource
+		r    *clientKitResource
 		args args
 	}{
 		{
 			name: "returns list schema",
-			r:    &clientResource{},
+			r:    newClientKitResource(),
 			args: args{
 				ctx:  context.Background(),
 				req:  fwlist.ListResourceSchemaRequest{},
@@ -675,108 +467,6 @@ func Test_clientResource_ListResourceConfigSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.r.ListResourceConfigSchema(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
-	}
-}
-
-func Test_clientResource_resolveGroupNames(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		site string
-		ids  []string
-	}
-	tests := []struct {
-		name    string
-		r       *clientResource
-		args    args
-		want    []string
-		wantErr bool
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.r.resolveGroupNames(tt.args.ctx, tt.args.site, tt.args.ids)
-			if (err != nil) != tt.wantErr {
-				t.Errorf(
-					"clientResource.resolveGroupNames() error = %v, wantErr %v",
-					err,
-					tt.wantErr,
-				)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("clientResource.resolveGroupNames() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_clientResource_resolveGroupID(t *testing.T) {
-	type args struct {
-		ctx       context.Context
-		site      string
-		groupName string
-	}
-	tests := []struct {
-		name    string
-		r       *clientResource
-		args    args
-		want    string
-		wantErr bool
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.r.resolveGroupID(tt.args.ctx, tt.args.site, tt.args.groupName)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("clientResource.resolveGroupID() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("clientResource.resolveGroupID() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_clientResource_resolveClientGroup(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		site string
-		qos  qosRateModel
-	}
-	tests := []struct {
-		name  string
-		r     *clientResource
-		args  args
-		want  string
-		want1 diag.Diagnostics
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := tt.r.resolveClientGroup(tt.args.ctx, tt.args.site, tt.args.qos)
-			if got != tt.want {
-				t.Errorf("clientResource.resolveClientGroup() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("clientResource.resolveClientGroup() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
-
-func Test_clientResource_List(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		req    fwlist.ListRequest
-		stream *fwlist.ListResultsStream
-	}
-	tests := []struct {
-		name string
-		r    *clientResource
-		args args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.List(tt.args.ctx, tt.args.req, tt.args.stream)
 		})
 	}
 }
@@ -958,4 +648,26 @@ func TestAccClientList_basic(t *testing.T) {
 			},
 		},
 	})
+}
+
+// A SHIM, so the two read-path tests keep asserting exactly what they asserted
+// before the surface moved onto the kit.
+//
+// clientToModel is gone; ToModel fills the Fields and AfterReceive derives
+// qos_rate and groups. Rewriting the call sites would have meant re-deriving
+// their expectations by hand, which is how a migration quietly changes what a
+// test checks.
+//
+// nil prefetched is the point of these two cases rather than an omission: this
+// client has no usergroup and no member groups, so there is nothing to look up
+// and the typed nulls are what the assertions are about.
+func (r *clientKitResource) clientToModel(
+	ctx context.Context,
+	client *unifi.Client,
+	model *clientModel,
+	site string,
+) diag.Diagnostics {
+	diags := r.Spec.ToModel(ctx, client, model, site)
+	diags.Append(r.Spec.AfterReceive(ctx, client, model, clientModel{}, nil)...)
+	return diags
 }
