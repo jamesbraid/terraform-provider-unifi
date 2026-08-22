@@ -1,0 +1,564 @@
+package unifi
+
+import (
+	"context"
+	"slices"
+
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	listresource_vpn_server "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_vpn_server"
+	resource_vpn_server "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_server"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
+)
+
+// THE WIRE FORMAT IS THE PURPOSE ALIAS, NOT THE STRUCT, and every conditional
+// declaration below was measured against it.
+//
+// unifi.Network marshals through marshalUserVPN for PurposeUserVPN. That alias
+// emits 48 wires, six of them without omitempty -- purpose, enabled,
+// dhcpd_dns_enabled, l2tp_allow_weak_ciphers, require_mschapv2 and
+// vpn_client_configuration_remote_ip_override_enabled. Every other wire this
+// surface writes carries omitempty THERE even where the generated struct does
+// not, so reading the struct's tags gives a different and wrong answer. That
+// mistake was made twice on vpn_client before it was caught.
+//
+// 22 of the 29 wires this surface writes are written only sometimes, and TEN of
+// those carry certificates or private keys. The three VPN types are mutually
+// exclusive, so a wireguard server leaves every openvpn wire unassigned on
+// EVERY apply -- the blanking is the normal path here, not an edge case.
+
+// vpnServerKitModel describes the resource data model.
+type vpnServerKitModel struct {
+	ID              types.String         `tfsdk:"id"`
+	Site            types.String         `tfsdk:"site"`
+	Name            types.String         `tfsdk:"name"`
+	Enabled         types.Bool           `tfsdk:"enabled"`
+	Subnet          cidrtypes.IPv4Prefix `tfsdk:"subnet"`
+	DNS             types.Object         `tfsdk:"dns"`
+	WAN             types.Object         `tfsdk:"wan"`
+	RADIUSProfileID types.String         `tfsdk:"radiusprofile_id"`
+	Wireguard       types.Object         `tfsdk:"wireguard"`
+	L2TP            types.Object         `tfsdk:"l2tp"`
+	OpenVPN         types.Object         `tfsdk:"openvpn"`
+	Timeouts        timeouts.Value       `tfsdk:"timeouts"`
+}
+
+// local_port is written by whichever of the wireguard and openvpn blocks is
+// configured, from that block's own port attribute. It is spelled out at both
+// declaration sites rather than shared through a constant: the mapping checker
+// parses Wires entries as string literals and refuses an identifier, because a
+// name it cannot read is a wire it cannot account for.
+
+func vpnServerObjectAs[T any](ctx context.Context, object types.Object, into *T) bool {
+	return !object.As(ctx, into, basetypes.ObjectAsOptions{}).HasError()
+}
+
+// knownNonEmptyIn reports whether a member of an object is set to something the
+// controller should be told about. It is the predicate half of knownNonEmpty:
+// the mapper sends nil for null, unknown or empty, so the wire must not be
+// masked in those cases or the mask sends "" over the controller's own value.
+func knownNonEmptyIn(v types.String) bool {
+	return !v.IsNull() && !v.IsUnknown() && v.ValueString() != ""
+}
+
+func encodeVPNServerDNS(ctx context.Context, object types.Object, sdk *ui.Network) diag.Diagnostics {
+	var diags diag.Diagnostics
+	var dns vpnServerDNSModel
+	if !vpnServerObjectAs(ctx, object, &dns) {
+		diags.AddError("Invalid DNS block", "could not read the dns block")
+		return diags
+	}
+	if !dns.Enabled.IsNull() && !dns.Enabled.IsUnknown() {
+		sdk.DHCPDDNSEnabled = dns.Enabled.ValueBool()
+	}
+	if !dns.Servers.IsNull() && !dns.Servers.IsUnknown() {
+		var servers []string
+		diags.Append(dns.Servers.ElementsAs(ctx, &servers, false)...)
+		if diags.HasError() {
+			return diags
+		}
+		vpnServerDNSServersToNetwork(servers, sdk)
+		if len(servers) > 0 && (dns.Enabled.IsNull() || dns.Enabled.IsUnknown()) {
+			sdk.DHCPDDNSEnabled = true
+		}
+	}
+	return diags
+}
+
+func decodeVPNServerDNS(ctx context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	return types.ObjectValue(vpnServerDNSModel{}.AttributeTypes(), map[string]attr.Value{
+		"enabled": types.BoolValue(sdk.DHCPDDNSEnabled),
+		"servers": vpnServerDNSServersFromNetwork(ctx, &diags, sdk),
+	})
+}
+
+// vpnServerDNSServerCount is the predicate half of the positional distribution.
+//
+// ONE PREDICATE PER WIRE, NOT ONE PER BLOCK. vpnServerDNSServersToNetwork writes
+// slot one at len > 0 and slot two at len > 1, so a shared test would mask
+// dhcpd_dns_2 for a practitioner who supplied a single server -- and a masked
+// but unwritten field goes out as its zero, blanking the controller's second
+// DNS. That is the defect vpn_client shipped before it was caught.
+//
+// It reads Attributes() rather than decoding the object, because a
+// ConditionalWires predicate is handed the object alone with no context.
+func vpnServerDNSServerCount(object types.Object) int {
+	servers, ok := object.Attributes()["servers"].(types.List)
+	if !ok || servers.IsNull() || servers.IsUnknown() {
+		return 0
+	}
+	return len(servers.Elements())
+}
+
+// encodeVPNServerWAN writes wan.ip and wan.interface into the pair belonging to
+// the configured VPN type. Encode receives the SDK object, so it can read the
+// discriminator; the MASK cannot, which is what vpnServerNarrowMask is for.
+func encodeVPNServerWAN(ctx context.Context, object types.Object, sdk *ui.Network) diag.Diagnostics {
+	var diags diag.Diagnostics
+	var wan vpnServerWANModel
+	if !vpnServerObjectAs(ctx, object, &wan) {
+		diags.AddError("Invalid WAN block", "could not read the wan block")
+		return diags
+	}
+	vpnServerWANIPToNetwork(wan.IP, sdk)
+	vpnServerWANInterfaceToNetwork(wan.Interface, sdk)
+	return diags
+}
+
+func decodeVPNServerWAN(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+	return types.ObjectValue(vpnServerWANModel{}.AttributeTypes(), map[string]attr.Value{
+		"ip":        vpnServerWANIPFromNetwork(sdk),
+		"interface": vpnServerWANInterfaceFromNetwork(sdk),
+	})
+}
+
+func encodeVPNServerWireguard(ctx context.Context, object types.Object, sdk *ui.Network) diag.Diagnostics {
+	var diags diag.Diagnostics
+	var wg vpnServerWireguardModel
+	if !vpnServerObjectAs(ctx, object, &wg) {
+		diags.AddError("Invalid wireguard block", "could not read the wireguard block")
+		return diags
+	}
+	if knownNonEmptyIn(wg.PrivateKey) {
+		sdk.WireguardPrivateKey = wg.PrivateKey.ValueStringPointer()
+	} else {
+		// The controller rejects a create with no key
+		// (api.err.WireguardMissingPrivateKey), so one is generated here. On
+		// update UseStateForUnknown resolves it from state, so this only runs
+		// at create -- which is why x_wireguard_private_key is NOT declared
+		// conditional: the block being present guarantees the wire is written.
+		key, err := generateWireGuardPrivateKey()
+		if err != nil {
+			diags.AddError("Unable to generate WireGuard private key", err.Error())
+			return diags
+		}
+		sdk.WireguardPrivateKey = &key
+	}
+	vpnServerLocalPortToNetwork(wg.Port, sdk)
+	return diags
+}
+
+// A BLOCK BELONGING TO ANOTHER VPN TYPE READS BACK NULL, not an object of
+// zeros. The three are mutually exclusive, so a wireguard server must not
+// present an empty l2tp block -- that would be a permanent diff against a
+// configuration that never mentioned it.
+func decodeVPNServerWireguard(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+	if vpnServerType(sdk) != "wireguard-server" {
+		return types.ObjectNull(vpnServerWireguardModel{}.AttributeTypes()), nil
+	}
+	return types.ObjectValue(vpnServerWireguardModel{}.AttributeTypes(), map[string]attr.Value{
+		"private_key": types.StringPointerValue(sdk.WireguardPrivateKey),
+		"public_key":  types.StringPointerValue(sdk.WireguardPublicKey),
+		"port":        vpnServerLocalPortFromNetwork(sdk),
+	})
+}
+
+func encodeVPNServerL2TP(ctx context.Context, object types.Object, sdk *ui.Network) diag.Diagnostics {
+	var diags diag.Diagnostics
+	var l2tp vpnServerL2TPModel
+	if !vpnServerObjectAs(ctx, object, &l2tp) {
+		diags.AddError("Invalid l2tp block", "could not read the l2tp block")
+		return diags
+	}
+	sdk.L2TpAllowWeakCiphers = l2tp.AllowWeakCiphers.ValueBool()
+	if knownNonEmptyIn(l2tp.PreSharedKey) {
+		sdk.IPSecPreSharedKey = l2tp.PreSharedKey.ValueStringPointer()
+	}
+	return diags
+}
+
+// A BLOCK BELONGING TO ANOTHER VPN TYPE READS BACK NULL, not an object of
+// zeros. The three are mutually exclusive, so a wireguard server must not
+// present an empty l2tp block -- that would be a permanent diff against a
+// configuration that never mentioned it.
+func decodeVPNServerL2TP(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+	if vpnServerType(sdk) != "l2tp-server" {
+		return types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes()), nil
+	}
+	return types.ObjectValue(vpnServerL2TPModel{}.AttributeTypes(), map[string]attr.Value{
+		"allow_weak_ciphers": types.BoolValue(sdk.L2TpAllowWeakCiphers),
+		"pre_shared_key":     types.StringPointerValue(sdk.IPSecPreSharedKey),
+	})
+}
+
+func encodeVPNServerOpenVPN(ctx context.Context, object types.Object, sdk *ui.Network) diag.Diagnostics {
+	var diags diag.Diagnostics
+	var ovpn vpnServerOpenVPNModel
+	if !vpnServerObjectAs(ctx, object, &ovpn) {
+		diags.AddError("Invalid openvpn block", "could not read the openvpn block")
+		return diags
+	}
+	vpnServerLocalPortToNetwork(ovpn.Port, sdk)
+	// ASSIGN ONLY WHAT IS SET, rather than assigning nil for what is not.
+	//
+	// The hand-written mapper wrote nil through knownNonEmpty, which reads the
+	// same on a freshly built object and NOT the same on one opened from the
+	// controller: nil over a value clears it. ConditionalWireProblems caught
+	// the disagreement -- Encode touched a wire its predicate said it would not
+	// -- and skipping is the direction that cannot destroy anything.
+	set := func(target **string, v types.String) {
+		if knownNonEmptyIn(v) {
+			*target = v.ValueStringPointer()
+		}
+	}
+	set(&sdk.OpenVPNMode, ovpn.Mode)
+	set(&sdk.OpenVPNEncryptionCipher, ovpn.EncryptionCipher)
+	// The controller ISSUES this material. On create these are unknown, and
+	// knownNonEmpty yields nil so nothing is asserted; on update the values
+	// come back from state and are echoed. Each is masked only when it is
+	// actually written -- eight separate predicates, because a practitioner may
+	// supply any subset and masking an unwritten one sends "" over a
+	// certificate.
+	set(&sdk.ServerCrt, ovpn.ServerCrt)
+	set(&sdk.ServerKey, ovpn.ServerKey)
+	set(&sdk.DhKey, ovpn.DhKey)
+	set(&sdk.SharedClientKey, ovpn.SharedClientKey)
+	set(&sdk.SharedClientCrt, ovpn.SharedClientCrt)
+	set(&sdk.AuthKey, ovpn.AuthKey)
+	set(&sdk.CaCrt, ovpn.CaCrt)
+	set(&sdk.CaKey, ovpn.CaKey)
+	return diags
+}
+
+// A BLOCK BELONGING TO ANOTHER VPN TYPE READS BACK NULL, not an object of
+// zeros. The three are mutually exclusive, so a wireguard server must not
+// present an empty l2tp block -- that would be a permanent diff against a
+// configuration that never mentioned it.
+func decodeVPNServerOpenVPN(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+	if vpnServerType(sdk) != "openvpn-server" {
+		return types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()), nil
+	}
+	return types.ObjectValue(vpnServerOpenVPNModel{}.AttributeTypes(), map[string]attr.Value{
+		"port":              vpnServerLocalPortFromNetwork(sdk),
+		"mode":              types.StringPointerValue(sdk.OpenVPNMode),
+		"encryption_cipher": types.StringPointerValue(sdk.OpenVPNEncryptionCipher),
+		"server_crt":        types.StringPointerValue(sdk.ServerCrt),
+		"server_key":        types.StringPointerValue(sdk.ServerKey),
+		"dh_key":            types.StringPointerValue(sdk.DhKey),
+		"shared_client_key": types.StringPointerValue(sdk.SharedClientKey),
+		"shared_client_crt": types.StringPointerValue(sdk.SharedClientCrt),
+		"auth_key":          types.StringPointerValue(sdk.AuthKey),
+		"ca_crt":            types.StringPointerValue(sdk.CaCrt),
+		"ca_key":            types.StringPointerValue(sdk.CaKey),
+	})
+}
+
+// openVPNMemberSet builds the per-wire predicate for one certificate member,
+// keyed by its attribute name. Eight of these rather than one shared test,
+// because a practitioner may supply any subset and each wire is written only
+// when its own member is set.
+func openVPNMemberSet(attribute string) func(types.Object) bool {
+	return func(object types.Object) bool {
+		value, ok := object.Attributes()[attribute].(types.String)
+		return ok && knownNonEmptyIn(value)
+	}
+}
+
+// vpnServerNarrowMask drops the wan wires belonging to the two VPN families
+// that are not configured.
+//
+// IT IS NOT THE did-emit NARROWING AND DOES NOT REINTRODUCE THE CANNOT-CLEAR.
+// The hazard NarrowMask's own comment documents comes from dropping a name
+// BECAUSE THE FIELD SITS AT ITS ZERO, which cannot tell "omitted at zero" from
+// "never emitted". This one never looks at a value: it drops openvpn_* on a
+// wireguard server by name, so an empty wireguard_interface on a wireguard
+// server stays masked and can still be cleared.
+//
+// It exists because ConditionalWires cannot express this. Its predicate is
+// handed the object alone, the values live in the wan block, and the condition
+// -- which of wireguard, l2tp and openvpn is set -- lives in a sibling
+// attribute the predicate cannot see. Encode can, because it receives the SDK
+// object; the mask cannot, and this is the seam for it.
+func vpnServerNarrowMask(sdk *ui.Network, fields []string) []string {
+	families := map[string][]string{
+		"wireguard-server": {"wireguard_local_wan_ip", "wireguard_interface"},
+		"l2tp-server":      {"l2tp_local_wan_ip", "l2tp_interface"},
+		"openvpn-server":   {"openvpn_local_wan_ip", "openvpn_interface"},
+	}
+	configured := vpnServerType(sdk)
+	var foreign []string
+	for family, wires := range families {
+		if family != configured {
+			foreign = append(foreign, wires...)
+		}
+	}
+	out := make([]string, 0, len(fields))
+	for _, name := range fields {
+		if !slices.Contains(foreign, name) {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
+func vpnServerBeforeSend(_ context.Context, _, effective *vpnServerKitModel, sdk *ui.Network, _ any) diag.Diagnostics {
+	var diags diag.Diagnostics
+	sdk.Purpose = ui.PurposeUserVPN
+	sdk.SettingPreference = util.Ptr("manual")
+	switch {
+	case !effective.Wireguard.IsNull() && !effective.Wireguard.IsUnknown():
+		sdk.VPNType = util.Ptr("wireguard-server")
+	case !effective.L2TP.IsNull() && !effective.L2TP.IsUnknown():
+		sdk.VPNType = util.Ptr("l2tp-server")
+	case !effective.OpenVPN.IsNull() && !effective.OpenVPN.IsUnknown():
+		sdk.VPNType = util.Ptr("openvpn-server")
+	default:
+		diags.AddError(
+			"Missing VPN Type Configuration",
+			"Exactly one of `wireguard`, `l2tp`, or `openvpn` must be specified.",
+		)
+	}
+	return diags
+}
+
+// vpnServerAfterReceive restores the two secrets the controller does not echo.
+//
+// THIS IS WHAT AfterReceive's prior PARAMETER EXISTS FOR. Both members belong to
+// objects a Field decodes, so by the time this runs ToModel has already
+// overwritten them with whatever came back -- which for these two is nothing.
+// Reading the model would find the loss; reading prior finds the value.
+//
+// Restoring only when the fresh read is empty matters: a controller that DOES
+// return the key must win, or a key rotated outside Terraform would be masked
+// by state forever.
+func vpnServerAfterReceive(ctx context.Context, _ *ui.Network, model *vpnServerKitModel, prior vpnServerKitModel, _ any) diag.Diagnostics {
+	var diags diag.Diagnostics
+	carry := func(current *types.Object, priorObject types.Object, member string) {
+		if current.IsNull() || current.IsUnknown() || priorObject.IsNull() || priorObject.IsUnknown() {
+			return
+		}
+		fresh, ok := current.Attributes()[member].(types.String)
+		if !ok || knownNonEmptyIn(fresh) {
+			return
+		}
+		kept, ok := priorObject.Attributes()[member].(types.String)
+		if !ok || !knownNonEmptyIn(kept) {
+			return
+		}
+		attributes := current.Attributes()
+		attributes[member] = kept
+		rebuilt, d := types.ObjectValue(current.AttributeTypes(ctx), attributes)
+		diags.Append(d...)
+		if !d.HasError() {
+			*current = rebuilt
+		}
+	}
+	carry(&model.Wireguard, prior.Wireguard, "private_key")
+	carry(&model.L2TP, prior.L2TP, "pre_shared_key")
+	return diags
+}
+
+func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
+	return resourcekit.Spec[vpnServerKitModel, ui.Network]{
+		TypeName: "vpn_server",
+		Subject:  "VPN Server",
+		New:      func() *ui.Network { return &ui.Network{} },
+		ID:       func(m *vpnServerKitModel) *types.String { return &m.ID },
+		Site:     func(m *vpnServerKitModel) *types.String { return &m.Site },
+		Timeouts: func(m *vpnServerKitModel) *timeouts.Value { return &m.Timeouts },
+		IDWire:   "_id",
+		// purpose, setting_preference and vpn_type are set by BeforeSend and
+		// held by no attribute, so nothing else would put them on the mask.
+		AlwaysWire:   []string{"purpose", "setting_preference", "vpn_type"},
+		BeforeSend:   vpnServerBeforeSend,
+		AfterReceive: vpnServerAfterReceive,
+		NarrowMask:   vpnServerNarrowMask,
+		Fields: []resourcekit.Field[vpnServerKitModel, ui.Network]{
+			resourcekit.StringLikePtrField[vpnServerKitModel, ui.Network, types.String]{
+				Wire:  "name",
+				Model: func(m *vpnServerKitModel) *types.String { return &m.Name },
+				SDK:   func(s *ui.Network) **string { return &s.Name },
+				New:   func(v basetypes.StringValue) types.String { return v },
+			},
+			resourcekit.StringLikePtrField[vpnServerKitModel, ui.Network, cidrtypes.IPv4Prefix]{
+				Wire:  "ip_subnet",
+				Model: func(m *vpnServerKitModel) *cidrtypes.IPv4Prefix { return &m.Subnet },
+				SDK:   func(s *ui.Network) **string { return &s.IPSubnet },
+				New: func(v basetypes.StringValue) cidrtypes.IPv4Prefix {
+					return cidrtypes.IPv4Prefix{StringValue: v}
+				},
+			},
+			resourcekit.BoolField[vpnServerKitModel, ui.Network]{
+				Wire:  "enabled",
+				Model: func(m *vpnServerKitModel) *types.Bool { return &m.Enabled },
+				SDK:   func(s *ui.Network) *bool { return &s.Enabled },
+			},
+			resourcekit.StringLikePtrField[vpnServerKitModel, ui.Network, types.String]{
+				Wire:  "radiusprofile_id",
+				Model: func(m *vpnServerKitModel) *types.String { return &m.RADIUSProfileID },
+				SDK:   func(s *ui.Network) **string { return &s.RADIUSProfileID },
+				New:   func(v basetypes.StringValue) types.String { return v },
+			},
+			// dhcpd_dns_enabled has NO omitempty in the UserVPN alias, so it
+			// travels whenever the block does and needs no predicate. The two
+			// slots do, and they differ -- see vpnServerDNSServerCount.
+			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
+				Wires:     []string{"dhcpd_dns_enabled", "dhcpd_dns_1", "dhcpd_dns_2"},
+				Model:     func(m *vpnServerKitModel) *types.Object { return &m.DNS },
+				AttrTypes: vpnServerDNSModel{}.AttributeTypes(),
+				Encode:    encodeVPNServerDNS,
+				Decode:    decodeVPNServerDNS,
+				ConditionalWires: map[string]func(types.Object) bool{
+					"dhcpd_dns_1": func(o types.Object) bool { return vpnServerDNSServerCount(o) > 0 },
+					"dhcpd_dns_2": func(o types.Object) bool { return vpnServerDNSServerCount(o) > 1 },
+				},
+			},
+			// All six wan wires are declared; vpnServerNarrowMask removes the
+			// four belonging to the families that are not configured.
+			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
+				Wires: []string{
+					"wireguard_local_wan_ip", "wireguard_interface",
+					"l2tp_local_wan_ip", "l2tp_interface",
+					"openvpn_local_wan_ip", "openvpn_interface",
+				},
+				Model:     func(m *vpnServerKitModel) *types.Object { return &m.WAN },
+				AttrTypes: vpnServerWANModel{}.AttributeTypes(),
+				Encode:    encodeVPNServerWAN,
+				Decode:    decodeVPNServerWAN,
+			},
+			// x_wireguard_private_key is NOT conditional: when the block is
+			// present the key is either supplied or generated, so the wire is
+			// always written. local_port likewise comes from the block's port.
+			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
+				Wires:     []string{"x_wireguard_private_key", "local_port"},
+				Model:     func(m *vpnServerKitModel) *types.Object { return &m.Wireguard },
+				AttrTypes: vpnServerWireguardModel{}.AttributeTypes(),
+				Elide:     resourcekit.NullZero,
+				Encode:    encodeVPNServerWireguard,
+				Decode:    decodeVPNServerWireguard,
+				// wireguard_public_key IS DELIBERATELY ABSENT FROM Wires, AND
+				// THE KIT HAS NO WAY TO SAY WHY. The controller issues it and
+				// accepts none -- marshalUserVPN emits no such wire at all --
+				// so masking it names a field the encoder cannot write and
+				// maskedBody refuses the whole update. Decode reads it; there
+				// is no write half to declare.
+				//
+				// A wire is accounted for by a Fields entry, AlwaysWire or a
+				// claim, and read-only is none of the three, so the mapping
+				// check reports it as not round-tripping. ConditionalWires
+				// cannot carry it either: a never-true predicate is reported by
+				// ConditionalWireProblems as a written direction no object
+				// exercised, which is that check working correctly.
+			},
+			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
+				Wires:     []string{"l2tp_allow_weak_ciphers", "x_ipsec_pre_shared_key"},
+				Model:     func(m *vpnServerKitModel) *types.Object { return &m.L2TP },
+				AttrTypes: vpnServerL2TPModel{}.AttributeTypes(),
+				Elide:     resourcekit.NullZero,
+				Encode:    encodeVPNServerL2TP,
+				Decode:    decodeVPNServerL2TP,
+				ConditionalWires: map[string]func(types.Object) bool{
+					"x_ipsec_pre_shared_key": openVPNMemberSet("pre_shared_key"),
+				},
+			},
+			// EIGHT SEPARATE PREDICATES FOR EIGHT CERTIFICATES. A practitioner
+			// may supply any subset, the controller issues the rest, and a
+			// masked-but-unwritten wire goes out as "" over key material.
+			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
+				Wires: []string{
+					"local_port", "openvpn_mode", "openvpn_encryption_cipher",
+					"x_server_crt", "x_server_key", "x_dh_key",
+					"x_shared_client_key", "x_shared_client_crt",
+					"x_auth_key", "x_ca_crt", "x_ca_key",
+				},
+				Model:     func(m *vpnServerKitModel) *types.Object { return &m.OpenVPN },
+				AttrTypes: vpnServerOpenVPNModel{}.AttributeTypes(),
+				Elide:     resourcekit.NullZero,
+				Encode:    encodeVPNServerOpenVPN,
+				Decode:    decodeVPNServerOpenVPN,
+				ConditionalWires: map[string]func(types.Object) bool{
+					"openvpn_mode":              openVPNMemberSet("mode"),
+					"openvpn_encryption_cipher": openVPNMemberSet("encryption_cipher"),
+					"x_server_crt":              openVPNMemberSet("server_crt"),
+					"x_server_key":              openVPNMemberSet("server_key"),
+					"x_dh_key":                  openVPNMemberSet("dh_key"),
+					"x_shared_client_key":       openVPNMemberSet("shared_client_key"),
+					"x_shared_client_crt":       openVPNMemberSet("shared_client_crt"),
+					"x_auth_key":                openVPNMemberSet("auth_key"),
+					"x_ca_crt":                  openVPNMemberSet("ca_crt"),
+					"x_ca_key":                  openVPNMemberSet("ca_key"),
+				},
+			},
+		},
+		Backend: resourcekit.Backend[ui.Network]{
+			GetID: func(s *ui.Network) string { return s.ID },
+			SetID: func(s *ui.Network, id string) { s.ID = id },
+		},
+	}
+}
+
+func vpnServerKitSchema() resourcekit.SchemaSpec {
+	return resourcekit.SchemaSpec{
+		Resource: resource_vpn_server.VpnServerResourceSchema,
+		Timeouts: timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	}
+}
+
+func vpnServerKitList() resourcekit.ListSpec[ui.Network] {
+	return resourcekit.ListSpec[ui.Network]{
+		ConfigSchema: listresource_vpn_server.VpnServerListResourceSchema,
+		DisplayName: func(s *ui.Network) string {
+			if s.Name != nil && *s.Name != "" {
+				return *s.Name
+			}
+			return s.ID
+		},
+	}
+}
+
+func vpnServerKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Network] {
+	return resourcekit.Backend[ui.Network]{
+		Create: func(ctx context.Context, site string, in *ui.Network) (*ui.Network, error) {
+			return client.CreateNetwork(ctx, site, in)
+		},
+		Read: func(ctx context.Context, site, id string) (*ui.Network, error) {
+			return client.GetNetwork(ctx, site, id)
+		},
+		UpdateFields: func(ctx context.Context, site string, in *ui.Network, fields ...string) (*ui.Network, error) {
+			return client.UpdateNetworkFields(ctx, site, in, fields...)
+		},
+		Delete: func(ctx context.Context, site, id string) error {
+			existing, err := client.GetNetwork(ctx, site, id)
+			if err != nil {
+				return err
+			}
+			name := ""
+			if existing.Name != nil {
+				name = *existing.Name
+			}
+			return client.DeleteNetwork(ctx, site, id, name)
+		},
+		List: func(ctx context.Context, site string) ([]ui.Network, error) {
+			return client.ListNetwork(ctx, site)
+		},
+		GetID: func(s *ui.Network) string { return s.ID },
+		SetID: func(s *ui.Network, id string) { s.ID = id },
+	}
+}
