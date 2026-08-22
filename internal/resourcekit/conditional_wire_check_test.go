@@ -107,10 +107,31 @@ func TestConditionalWireProblemsReportsAnUnexercisedDirection(t *testing.T) {
 	}
 }
 
-func TestConditionalWireProblemsIsSilentWithoutConditionalWires(t *testing.T) {
+// THIS TEST ASSERTED THE BLINDNESS IT WAS NAMED AFTER. It handed the check a
+// field whose Encode writes "maybe" conditionally, removed the declaration, and
+// required silence -- which is exactly the case that leaves the wire on the mask
+// with nothing behind it. The check returned early on an empty declaration and
+// so agreed.
+//
+// It now asserts the opposite, on the same fixture, because the fixture was
+// always the destructive shape.
+func TestConditionalWireProblemsReportsAnUndeclaredConditionalWire(t *testing.T) {
 	plain := condField(nil)
 	plain.ConditionalWires = nil
-	if problems := ConditionalWireProblems(plain, condObjects(t), nil); problems != nil {
-		t.Errorf("a field declaring no conditional wire reported %v", problems)
+	problems := ConditionalWireProblems(plain, condObjects(t), nil)
+	if len(problems) != 1 || !strings.Contains(problems[0], `not in ConditionalWires`) {
+		t.Errorf("an undeclared conditional wire reported %v", problems)
+	}
+}
+
+// The silence that IS correct: every wire the field declares is written on every
+// path, so there is nothing to declare and nothing to report. Without this the
+// change above would be satisfied by a check that reports everything.
+func TestConditionalWireProblemsIsSilentWhenNothingIsConditional(t *testing.T) {
+	unconditional := condField(nil)
+	unconditional.ConditionalWires = nil
+	unconditional.Wires = []string{"always"}
+	if problems := ConditionalWireProblems(unconditional, condObjects(t), nil); problems != nil {
+		t.Errorf("a field whose wires are all unconditional reported %v", problems)
 	}
 }
