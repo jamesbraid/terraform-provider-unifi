@@ -472,6 +472,43 @@ Neither of these was visible to any gate. Both descriptors compiled, both passed
 `dhcpd_dns_1` **is** a real json tag — the check proves a name exists, not that
 anything writes it.
 
+## A control that only asserts output is not a control
+
+Five instruments on this work were satisfied by something other than the thing
+they were checking, and all five were green. The shape is the same every time:
+**the assertion was that the instrument produced OUTPUT, not that it produced
+the output only the real work produces.**
+
+- A non-vacuity guard on `network`'s conditional-wire report required the total
+  to be non-zero. It was non-zero because of a **false positive** — a slice wire
+  the checker misread as written. Repairing the checker turned the guard red,
+  which is how the objects were found never to have exercised anything.
+- Its replacement declared a deliberately wrong predicate and asserted the check
+  reported something. It passes **with no objects at all**, because a pinned
+  predicate also trips the "no object makes this true" complaint, which the check
+  emits from the declaration alone.
+- A conformance fixture fed `Zm9v` as a WireGuard configuration file. It decodes
+  to `foo`, which does not parse, so `Encode` raised a diagnostic and wrote
+  nothing — and the test **required** the destructive behaviour.
+- A disjointness test compared force-emitted API field names against dropped
+  Terraform attribute paths. Two vocabularies, no members in common, and it
+  could never have failed.
+- A mutation was verified by grepping for the marker comment it added rather
+  than by reading the diff. The marker landed, the behaviour did not, and the run
+  reported no failures — which would have been written down as "the guard is
+  untested".
+
+**The rule: assert the finding that can only come from doing the job.** Not
+"reports something", but "reports THIS, and reports it only when the work
+happened". The cheap way to check is to **mutate the control** — take the input
+away and confirm the assertion fails. Each of the five above survives that test
+in one line, and none of them was subjected to it before landing.
+
+**Corollary: one class holding every member is what a broken probe looks like.**
+"Everything is conditional" and "nothing is conditional" were the two answers a
+mis-driven check gave on the same surface twenty minutes apart. A uniform result
+is a reason to distrust the instrument, not a finding.
+
 ## Smaller things that cost an afternoon
 
 - **`tfplugingen-framework` does not create its output directory.** A new
