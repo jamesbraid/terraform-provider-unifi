@@ -38,10 +38,10 @@ import (
 // change a test rather than be absorbed by one rewritten alongside the code.
 type (
 	portForwardCRUD      = *portForwardResource
-	portForwardCRUDModel = portForwardResourceModel
+	portForwardCRUDModel = portForwardKitModel
 )
 
-func newPortForwardCRUD() portForwardCRUD { return &portForwardResource{} }
+func newPortForwardCRUD() portForwardCRUD { return newPortForwardKitResource() }
 
 // forwardServer answers the four paths port_forward uses and keeps the raw body
 // of every write.
@@ -524,24 +524,37 @@ func portForwardStringOrNull(s string) types.String {
 	return types.StringValue(s)
 }
 
-// SOURCE LIMITING SET OUTSIDE TERRAFORM IS DISABLED BY THE NEXT APPLY, and this
-// records that as it stands rather than approving it.
+// SOURCE LIMITING SET OUTSIDE TERRAFORM SURVIVES THE NEXT APPLY -- and it did
+// not before the cutover, which is why this test exists in both forms.
 //
-// THE MECHANISM IS TWO CORRECT PIECES. applyPlanToState tracks the plan exactly
-// for this block, including a null, deliberately -- a stale non-null state would
-// re-send limiting the practitioner had removed. And src_limiting_enabled
-// carries no omitempty on ui.PortForward, so a whole-object write puts `false`
+// THE DEFECT WAS TWO CORRECT PIECES. applyPlanToState tracked the plan exactly
+// for this block including a null, deliberately, because a stale non-null state
+// would re-send limiting the practitioner had removed. And src_limiting_enabled
+// carries no omitempty on ui.PortForward, so the whole-object write put `false`
 // on the wire whether or not anything set it. Together: a rule whose source
-// limiting was configured in the controller UI has it turned off by an apply
-// that changed only the name.
+// limiting was configured in the controller UI had it turned off by an apply
+// that changed only the name. The three companion wires DO carry omitempty and
+// were omitted, which was the worst version -- the configuration survived in
+// the controller and stopped taking effect.
 //
-// The three companion wires are omitted because they DO carry omitempty, which
-// is why the controller keeps their values and only the flag flips. That is the
-// worst version -- the configuration survives and stops taking effect.
+// THE MASKED UPDATE CLOSES IT. A block absent from the plan puts none of the
+// four names in the mask, so the controller keeps what it holds.
 //
-// A MASKED UPDATE CLOSES IT, because a block absent from the plan puts none of
-// the four names in the mask. When this test changes, that is what changed.
-func TestPortForwardUpdateDisablesSourceLimitingThePlanDoesNotDeclare(t *testing.T) {
+// THE SECOND HALF IS THE CONTROL AND IT IS NOT OPTIONAL. "None of the four is
+// sent" is also what a descriptor that forgot to declare them produces, and
+// that is the silent write-drop ScatteredObjectField exists to prevent. So the
+// same wires must appear the moment the plan does declare the block.
+// NAMED HERE RATHER THAN READ OFF THE DESCRIPTOR. A test that asked the
+// descriptor which wires it declares would agree with it by construction, and
+// the property under test is exactly that the descriptor declares all four.
+var sourceLimitingWires = []string{
+	"src",
+	"src_limiting_enabled",
+	"src_firewall_group_id",
+	"src_limiting_type",
+}
+
+func TestPortForwardUpdateLeavesSourceLimitingThePlanDoesNotDeclare(t *testing.T) {
 	ctx := context.Background()
 	server := &forwardServer{rules: []map[string]any{{
 		"_id": "pf-1", "name": "web", "proto": "tcp", "enabled": true,
@@ -568,20 +581,100 @@ func TestPortForwardUpdateDisablesSourceLimitingThePlanDoesNotDeclare(t *testing
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("Update: %v", resp.Diagnostics)
 	}
-
 	body := server.lastBody(t)
-	flag, present := body["src_limiting_enabled"]
-	if !present {
-		t.Fatal("src_limiting_enabled is absent from the update; if the write is now masked, " +
-			"this test has served its purpose and should assert the new behaviour")
-	}
-	if string(flag) != "false" {
-		t.Errorf("src_limiting_enabled = %s, want false: the whole-object write sends the Go zero", flag)
-	}
-	for _, kept := range []string{"src", "src_limiting_type"} {
-		if _, sent := body[kept]; sent {
-			t.Errorf("%s reached the controller; it carries omitempty and should be omitted, "+
-				"which is what leaves the configuration in place while the flag turns it off", kept)
+	for _, wire := range sourceLimitingWires {
+		if _, sent := body[wire]; sent {
+			t.Errorf("%s reached the controller although the plan declares no "+
+				"source_limiting block; the mask is carrying a name the plan did not set", wire)
 		}
+	}
+
+	// THE CONTROL. Same resource, same server, a plan that DOES declare the
+	// block: every one of the four must travel.
+	declared := portForwardModel(t, "pf-1")
+	declared.SourceLimiting = portForwardSourceLimiting(t, "203.0.113.0/24", "grp-9", true,
+		types.StringValue("firewall_group"))
+	plan = state
+	if diags := plan.Set(ctx, declared); diags.HasError() {
+		t.Fatalf("set the plan: %v", diags)
+	}
+	resp = &fwresource.UpdateResponse{State: state, Identity: &identity}
+	r.Update(ctx, fwresource.UpdateRequest{Plan: tfsdk.Plan(plan), State: state}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+	body = server.lastBody(t)
+	for _, wire := range sourceLimitingWires {
+		if _, sent := body[wire]; !sent {
+			t.Errorf("%s did not reach the controller although the plan declares the block; "+
+				"a name missing from the mask is a value the practitioner set and the apply drops", wire)
+		}
+	}
+}
+
+// A BLOCK THE CONTROLLER HAS EMPTIED NOW READS AS ABSENT, and before the
+// cutover it read as an object whose members were all null.
+//
+// THE HAND-WRITTEN READ CONSULTED PRIOR MODEL STATE, in three places: `wan` and
+// `forward` kept a non-null object when state already held one, and
+// source_limiting's elision had the same clause. The kit hands Decode the SDK
+// object and nothing else, and its AfterReceive hook runs AFTER ToModel has
+// overwritten the model -- so there is nowhere on the kit's path to read the
+// prior value from. vpn_client's wireguard field records the kit's answer as
+// "express prior-state carry-forward in AfterReceive"; that answer does not
+// work, for this reason, and this surface is where it was tried.
+//
+// SOURCE LIMITING KEEPS ITS PREDICATE AND LOSES ONLY THE STATE CLAUSE, so the
+// controller-default case above still elides and a configured one still comes
+// back. What changed is confined to the two blocks whose whole content the
+// controller can empty, and only when it empties ALL of it: a port forward with
+// any of pfwd_interface, destination_ip or dst_port set is unaffected, which is
+// every rule a controller will accept.
+//
+// WHY THE NEW BEHAVIOUR IS THE BETTER ONE, rather than merely the reachable
+// one: an object with every member null is a thing the controller does not have,
+// manufactured by the provider. Both forms produce a diff against a
+// configuration that declares the block. Only one of them says what is true.
+func TestPortForwardReadReportsABlockTheControllerEmptiedAsAbsent(t *testing.T) {
+	ctx := context.Background()
+	server := &forwardServer{rules: []map[string]any{{
+		"_id": "pf-1", "name": "web", "proto": "tcp", "enabled": true,
+	}}}
+	r, state, identity := portForwardHarness(t, server.start(t))
+	if diags := state.Set(ctx, portForwardModel(t, "pf-1")); diags.HasError() {
+		t.Fatalf("set the state: %v", diags)
+	}
+	resp := &fwresource.ReadResponse{State: state, Identity: &identity}
+	r.Read(ctx, fwresource.ReadRequest{State: state, Identity: &identity}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Read: %v", resp.Diagnostics)
+	}
+	var got portForwardCRUDModel
+	if diags := resp.State.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("read back the state: %v", diags)
+	}
+	for name, object := range map[string]types.Object{"wan": got.Wan, "forward": got.Forward} {
+		if !object.IsNull() {
+			t.Errorf("%s = %v, want null: the controller reported none of its members", name, object)
+		}
+	}
+
+	// THE CONTROL, so that "null" is a decision and not a decoder that stopped
+	// working. One member is enough to bring the whole block back.
+	server.rules[0]["dst_port"] = "8080"
+	resp = &fwresource.ReadResponse{State: state, Identity: &identity}
+	r.Read(ctx, fwresource.ReadRequest{State: state, Identity: &identity}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Read: %v", resp.Diagnostics)
+	}
+	if diags := resp.State.Get(ctx, &got); diags.HasError() {
+		t.Fatalf("read back the state: %v", diags)
+	}
+	if got.Wan.IsNull() {
+		t.Fatal("wan is null although the controller reported a dst_port")
+	}
+	port, ok := got.Wan.Attributes()["port"].(types.String)
+	if !ok || port.ValueString() != "8080" {
+		t.Errorf("wan.port = %v, want the controller's value", got.Wan.Attributes()["port"])
 	}
 }

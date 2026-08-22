@@ -297,7 +297,6 @@
     "network": [
       "nested"
     ],
-    "port_forward": [],
     "power_supervisor": [
       "sdk-int"
     ],
