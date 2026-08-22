@@ -292,21 +292,11 @@ func (d *clientListDataSource) Configure(
 	req datasource.ConfigureRequest,
 	resp *datasource.ConfigureResponse,
 ) {
-	if req.ProviderData == nil {
+	client, ok := dataSourceClient(req.ProviderData, &resp.Diagnostics)
+	if !ok {
 		return
 	}
-
-	if client, ok := req.ProviderData.(*Client); ok {
-		d.client = client
-	} else {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-	}
+	d.client = client
 }
 
 // resolveGroupID looks up a network members group by name and returns its ID.
