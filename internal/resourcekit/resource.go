@@ -165,12 +165,16 @@ func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
 		if !field.SetInPlan(plan) {
 			continue
 		}
-		name := field.WireName()
-		if _, duplicate := seen[name]; duplicate {
-			return nil, fmt.Errorf("%s patch names %q twice", s.TypeName, name)
+		// EVERY name the field maps, not one. A scattered object spans several
+		// flat SDK attributes, and a mask carrying one of them writes one of
+		// them while the apply succeeds.
+		for _, name := range fieldWireNames[M, S](field) {
+			if _, duplicate := seen[name]; duplicate {
+				return nil, fmt.Errorf("%s patch names %q twice", s.TypeName, name)
+			}
+			seen[name] = struct{}{}
+			fields = append(fields, name)
 		}
-		seen[name] = struct{}{}
-		fields = append(fields, name)
 	}
 	// FIELDS A HOOK DERIVES JOIN THE MASK UNCONDITIONALLY, because nothing in
 	// the plan can put them there.
@@ -211,7 +215,7 @@ func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
 func (s Spec[M, S]) WireNames() []string {
 	names := make([]string, 0, len(s.Fields))
 	for _, field := range s.Fields {
-		names = append(names, field.WireName())
+		names = append(names, fieldWireNames[M, S](field)...)
 	}
 	return names
 }
@@ -566,7 +570,19 @@ func (r *Resource[M, S]) buildUpdateBody(
 		masked[name] = struct{}{}
 	}
 	for _, field := range r.Spec.Fields {
-		if _, ok := masked[field.WireName()]; ok {
+		// ANY of the field's names being masked applies it. For every kind but
+		// one that is a single name; for a scattered object the names go into
+		// the mask together, so any of them answers the same question --
+		// indexing the first would read as if position meant something and
+		// would panic on a field declaring none.
+		applies := false
+		for _, name := range fieldWireNames[M, S](field) {
+			if _, ok := masked[name]; ok {
+				applies = true
+				break
+			}
+		}
+		if applies {
 			diags.Append(field.ToSDK(ctx, model, current)...)
 		}
 	}
