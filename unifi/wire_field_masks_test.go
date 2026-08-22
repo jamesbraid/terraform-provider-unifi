@@ -59,8 +59,32 @@ type maskedSurface struct {
 // cutover, so the parser looked for modelToNetwork in a file that no longer has
 // one -- and the test said so rather than passing on an empty list, which is
 // the guard doing its job.
+// EMPTY BECAUSE EVERY HAND-WRITTEN MASKED SURFACE HAS BEEN MIGRATED, and that
+// is a state this table has to be able to express out loud.
+//
+// It carried vpn_client and vpn_server this morning. Both are now served from
+// the kit, which derives its mask from Fields plus AlwaysWire and checks it with
+// ScatteredObjectField.ConditionalWires and resourcekit.ConditionalWireProblems.
+// So the four tests below have nothing left to walk.
+//
+// AN EMPTY POPULATION IS HOW A CHECK STOPS CHECKING WITHOUT FAILING. Ranging
+// over nothing passes, four times, in a file whose own comment says a hand-kept
+// enumeration that nothing compares against its subject goes stale in silence.
+// Each caller therefore skips with the reason rather than passing quietly, and a
+// new hand-written masked surface puts its row back here and turns them on
+// again.
 func maskedSurfaces() []maskedSurface {
 	return []maskedSurface{}
+}
+
+// skipIfNoMaskedSurfaces reports that the run measured nothing, rather than
+// letting a range over an empty slice read as a pass.
+func skipIfNoMaskedSurfaces(t *testing.T) {
+	t.Helper()
+	if len(maskedSurfaces()) == 0 {
+		t.Skip("no hand-written masked surfaces remain; every one has been migrated " +
+			"to the kit, whose mask is derived and checked by ConditionalWireProblems")
+	}
 }
 
 // A DECLARED LIST IS ONLY SAFE IF SOMETHING CHECKS IT. Each mask is
@@ -73,6 +97,7 @@ func maskedSurfaces() []maskedSurface {
 // something the object never carries, which go-unifi's maskedBody refuses.
 func TestWireFieldMasksMatchTheirMappers(t *testing.T) {
 	tags := networkJSONTags(t)
+	skipIfNoMaskedSurfaces(t)
 	for _, surface := range maskedSurfaces() {
 		t.Run(surface.name, func(t *testing.T) {
 			assigned := networkFieldsAssignedBy(t, surface.file, surface.mapper)
@@ -108,6 +133,7 @@ func TestWireFieldMasksMatchTheirMappers(t *testing.T) {
 
 // THE DEFECT ITSELF, asserted rather than described.
 func TestWireFieldMasksExcludeWhatTheResourceDoesNotManage(t *testing.T) {
+	skipIfNoMaskedSurfaces(t)
 	for _, surface := range maskedSurfaces() {
 		t.Run(surface.name, func(t *testing.T) {
 			mask := surface.declared()
@@ -138,6 +164,7 @@ func TestWireFieldMasksExcludeWhatTheResourceDoesNotManage(t *testing.T) {
 // write. Inert on both surfaces here and asserted anyway, because network
 // reuses this shape and there the filter is load-bearing.
 func TestWireFieldMasksNameOnlyEmittedFields(t *testing.T) {
+	skipIfNoMaskedSurfaces(t)
 	for _, surface := range maskedSurfaces() {
 		t.Run(surface.name, func(t *testing.T) {
 			emitted := purposeEncoderEmits(t, surface.encoder)
@@ -160,6 +187,7 @@ func TestWireFieldMasksNameOnlyEmittedFields(t *testing.T) {
 // reverts in one line with nothing failing.
 func TestMaskedSurfacesUseTheMaskedCall(t *testing.T) {
 	wholeObject := regexp.MustCompile(`UpdateNetwork\(ctx`)
+	skipIfNoMaskedSurfaces(t)
 	for _, surface := range maskedSurfaces() {
 		t.Run(surface.name, func(t *testing.T) {
 			raw, err := os.ReadFile(filepath.Join("..", surface.file))
