@@ -141,6 +141,20 @@ type Spec[M any, S any] struct {
 	BeforeSend   func(ctx context.Context, config, effective *M, sdk *S, prefetched any) diag.Diagnostics
 	AfterReceive func(ctx context.Context, sdk *S, model *M, prefetched any) diag.Diagnostics
 
+	// BeforeDelete decides whether destroying the resource destroys the object.
+	// Returning false drops it from state and leaves the controller alone.
+	//
+	// DESTROYING A RESOURCE IS NOT ALWAYS DESTROYING A THING. unifi_device is
+	// the case: a device is physical, so the provider cannot delete one. All it
+	// can do is forget it, which unadopts real hardware, and the schema makes
+	// that opt-in through forget_on_destroy. Without this hook the kit's Delete
+	// would forget every device on every destroy -- a resource removal silently
+	// unadopting hardware the practitioner asked it not to touch.
+	//
+	// Backend.Delete takes site and id, so it cannot see the attribute that
+	// decides. This runs where the model is still in hand.
+	BeforeDelete func(ctx context.Context, model *M) (bool, diag.Diagnostics)
+
 	// AlwaysWire names wire fields that BeforeSend sets, so they join the
 	// update mask whether or not the plan mentions them. Only for values a
 	// hook derives: a field the practitioner sets belongs in Fields, where
@@ -635,6 +649,17 @@ func (r *Resource[M, S]) Delete(
 	// outcome available for an object that is already gone.
 	//
 	// USER-VISIBLE, so it needs a release note when this lands.
+	if r.Spec.BeforeDelete != nil {
+		proceed, deleteDiags := r.Spec.BeforeDelete(ctx, &data)
+		resp.Diagnostics.Append(deleteDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if !proceed {
+			return
+		}
+	}
+
 	if err := r.Spec.Backend.Delete(
 		ctx,
 		r.Site(&data),
