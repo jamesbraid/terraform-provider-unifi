@@ -86,8 +86,15 @@ func vpnClientWireguardField() resourcekit.ScatteredObjectField[vpnClientResourc
 		// A first pass declared two and the other five were left masked with
 		// nothing behind them.
 		ConditionalWires: map[string]func(types.Object) bool{
-			"dhcpd_dns_1":                      vpnClientWireguardWritesDNS,
-			"dhcpd_dns_2":                      vpnClientWireguardWritesDNS,
+			// ONE PREDICATE PER DNS WIRE, TAKING THE ORDINAL. A single shared
+			// predicate asking "is dns_servers set" was wrong and destructive:
+			// wireguardDNSServersToNetwork writes dhcpd_dns_1 at len > 0 and
+			// dhcpd_dns_2 at len > 1, so a practitioner supplying ONE server had
+			// dhcpd_dns_2 masked, unwritten, and sent as "" over whatever the
+			// controller held. The wire carries no omitempty, so nothing dropped
+			// it on the way.
+			"dhcpd_dns_1":                      vpnClientWireguardWritesDNS(1),
+			"dhcpd_dns_2":                      vpnClientWireguardWritesDNS(2),
 			"wireguard_client_mode":            vpnClientWireguardWritesPeer,
 			"wireguard_client_peer_public_key": vpnClientWireguardWritesPeer,
 			"wireguard_client_peer_ip":         vpnClientWireguardWritesPeer,
@@ -99,23 +106,46 @@ func vpnClientWireguardField() resourcekit.ScatteredObjectField[vpnClientResourc
 	}
 }
 
-// vpnClientWireguardWritesDNS reports whether Encode will write the two DNS
-// wires for this object.
+// vpnClientWireguardWritesDNS reports whether Encode will write the nth DNS
+// wire for this object.
 //
-// IT ASKS THE SAME QUESTION Encode ASKS, and the two must not drift: Encode
-// writes them when dns_servers is set, and ALSO when a configuration file
-// supplies DNS and dns_servers is null. The second case cannot be judged
-// without parsing the file, so this answers true whenever a configuration is
-// present -- masking a wire Encode might write is safe, and failing to mask one
-// it did write is the silent drop.
-func vpnClientWireguardWritesDNS(object types.Object) bool {
-	attributes := object.Attributes()
-	if servers, ok := attributes["dns_servers"].(types.List); ok &&
-		!servers.IsNull() && !servers.IsUnknown() {
-		return true
+// ONE PREDICATE PER WIRE, BECAUSE THE TWO WIRES HAVE DIFFERENT CONDITIONS AND A
+// SHARED PREDICATE GOT IT WRONG. wireguardDNSServersToNetwork writes
+// dhcpd_dns_1 when the list is non-empty and dhcpd_dns_2 only when it has a
+// SECOND entry, so a practitioner supplying one server had dhcpd_dns_2 masked,
+// unwritten, and sent as "" -- blanking the controller's second DNS. That is
+// the destruction ConditionalWires exists to prevent, surviving inside the
+// remedy at a cardinality nobody exercised.
+//
+// IT PARSES THE CONFIGURATION FILE FOR THE SAME REASON. Encode's config branch
+// feeds parsed.DNS through the same helper, so the same length rule decides it,
+// and a predicate that answered "configuration is set, therefore both" would
+// reproduce the defect one branch over. Parsing twice is duplicated work the
+// shape of ConditionalWires imposes -- the predicate has to re-answer a
+// question Encode already answered -- and the alternative is guessing.
+func vpnClientWireguardWritesDNS(nth int) func(types.Object) bool {
+	return func(object types.Object) bool {
+		attributes := object.Attributes()
+		if servers, ok := attributes["dns_servers"].(types.List); ok &&
+			!servers.IsNull() && !servers.IsUnknown() {
+			return len(servers.Elements()) >= nth
+		}
+		configuration, ok := attributes["configuration"].(types.Object)
+		if !ok || configuration.IsNull() || configuration.IsUnknown() {
+			return false
+		}
+		content, ok := configuration.Attributes()["content"].(types.String)
+		if !ok || content.IsNull() || content.IsUnknown() {
+			return false
+		}
+		parsed, err := parseWireGuardBase64Config(content.ValueString())
+		if err != nil {
+			// Encode surfaces the error and writes nothing, so nothing is
+			// written here either.
+			return false
+		}
+		return len(parsed.DNS) >= nth
 	}
-	configuration, ok := attributes["configuration"].(types.Object)
-	return ok && !configuration.IsNull() && !configuration.IsUnknown()
 }
 
 // vpnClientWireguardWritesPeer reports whether Encode will write the four wires
