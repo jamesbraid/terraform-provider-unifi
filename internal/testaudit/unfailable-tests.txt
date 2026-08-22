@@ -127,5 +127,3 @@ unifi/wlan_resource_test.go	Test_wlanFrameworkResource_ListResourceConfigSchema	
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_Read	skip-stub
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_Update	skip-stub	task 102: unifi_wlan cannot update
 unifi/wlan_resource_test.go	Test_wlanFrameworkResource_applyPlanToState	skip-stub	task 102: unifi_wlan cannot create or update
-unifi/wlan_resource_test.go	Test_wlanFrameworkResource_readPassphraseWO	skip-stub
-unifi/wlan_resource_test.go	Test_wlanFrameworkResource_setDefaultWLANGroupID	skip-stub

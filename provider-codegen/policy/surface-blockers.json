@@ -402,9 +402,6 @@
     ],
     "wireguard_peer": [
       "parent-key"
-    ],
-    "wlan": [
-      "nested"
     ]
   },
   "resolved_capabilities": {
