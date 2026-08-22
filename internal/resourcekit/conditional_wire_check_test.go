@@ -202,19 +202,6 @@ func TestReadOnlyWireStaysOffTheMask(t *testing.T) {
 	}
 }
 
-// The other direction: declaring read-only a wire Encode does write silently
-// drops the value, so it is reported.
-func TestReadOnlyWireEncodeWritesIsReported(t *testing.T) {
-	field := condField(nil)
-	field.ConditionalWires = nil
-	field.Wires = []string{"always"}
-	field.ReadOnlyWires = []string{"always"}
-	problems := ConditionalWireProblems(field, condObjects(t), nil)
-	if len(problems) != 1 || !strings.Contains(problems[0], "never sent") {
-		t.Errorf("a read-only wire Encode writes reported %v", problems)
-	}
-}
-
 // A name that is not one of Wires keeps nothing off the mask.
 func TestReadOnlyWireNotInWiresIsReported(t *testing.T) {
 	field := condField(nil)

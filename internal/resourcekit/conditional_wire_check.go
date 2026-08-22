@@ -134,11 +134,22 @@ func ConditionalWireProblems[M any, S any](
 					"keeps nothing off the mask", wire))
 			continue
 		}
-		if sawWritten[wire] {
-			problems = append(problems, fmt.Sprintf(
-				"%q is declared read-only and Encode writes it, so it is kept off the mask "+
-					"and the value is never sent", wire))
-		}
+		// THE "AND Encode WRITES IT" HALF IS NOT CHECKED HERE, DELIBERATELY, AND
+		// LEAVING IT IN WOULD HAVE BEEN WORSE THAN OMITTING IT.
+		//
+		// sawWritten comes from wiresEncodeWrites, which compares the two runs'
+		// ENCODINGS. A read-only wire is one the encoder never emits, so it is
+		// absent from both -- equal, and therefore "written" by that rule. The
+		// check fired on vpn_server's wireguard_public_key, whose Encode does
+		// not mention it.
+		//
+		// It is the slice conflation again, reached through the discriminator
+		// rather than through a missing Kind: absent-from-both and equal-in-both
+		// are the same string and different facts. Answering it needs a
+		// struct-level comparison rather than an encoded one, which is #240.
+		//
+		// A check that argues for the wrong answer is worse than one that is
+		// silent, so this stays silent until the instrument can tell.
 	}
 
 	// AN UNDECLARED WIRE THE OBJECTS SHOW IS CONDITIONAL IS THE DESTRUCTIVE

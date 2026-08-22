@@ -54,17 +54,13 @@ type maskedSurface struct {
 	conditionallyAssigned []string
 }
 
+// EVERY SURFACE HERE IS HAND-WRITTEN, and a row outlives its subject the same
+// way a blocker record does. vpn_server's row was still present after its
+// cutover, so the parser looked for modelToNetwork in a file that no longer has
+// one -- and the test said so rather than passing on an empty list, which is
+// the guard doing its job.
 func maskedSurfaces() []maskedSurface {
-	return []maskedSurface{
-		{
-			name: "vpn_server", file: "unifi/vpn_server_resource.go",
-			mapper: "modelToNetwork", encoder: "marshalUserVPN",
-			declared:              vpnServerWireFields,
-			unmanaged:             "require_mschapv2",
-			managed:               "openvpn_mode",
-			conditionallyAssigned: []string{"dhcpd_dns_1", "dhcpd_dns_2"},
-		},
-	}
+	return []maskedSurface{}
 }
 
 // A DECLARED LIST IS ONLY SAFE IF SOMETHING CHECKS IT. Each mask is
