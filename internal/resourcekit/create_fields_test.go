@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -112,5 +113,93 @@ func TestCreateRefusesADescriptorThatDeclaresBothWriters(t *testing.T) {
 	}
 	if reached != 0 {
 		t.Errorf("a writer ran %d time(s); neither may run when the descriptor is ambiguous", reached)
+	}
+}
+
+// DESTROYING A RESOURCE IS NOT ALWAYS DESTROYING A THING.
+//
+// unifi_device is physical: the provider cannot delete one, only forget it,
+// which unadopts real hardware. The schema makes that opt-in through
+// forget_on_destroy, and Backend.Delete takes site and id so it cannot see the
+// attribute that decides. Without the hook every destroy would forget the
+// device -- these pin that a refusal reaches the backend as silence.
+func TestBeforeDeleteCanRefuseToDeleteTheObject(t *testing.T) {
+	reached := 0
+	r := kitResource(Backend[kitSDK]{
+		Delete: func(context.Context, string, string) error {
+			reached++
+			return nil
+		},
+	})
+	r.Spec.BeforeDelete = func(context.Context, *kitModel) (bool, diag.Diagnostics) {
+		return false, nil
+	}
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("probe"),
+	})
+	resp := &resource.DeleteResponse{State: state}
+	r.Delete(context.Background(), resource.DeleteRequest{State: state}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Delete: %v", resp.Diagnostics)
+	}
+	if reached != 0 {
+		t.Errorf("Backend.Delete ran %d time(s) after BeforeDelete refused", reached)
+	}
+}
+
+func TestBeforeDeleteProceedsWhenItReturnsTrue(t *testing.T) {
+	reached := 0
+	r := kitResource(Backend[kitSDK]{
+		Delete: func(context.Context, string, string) error {
+			reached++
+			return nil
+		},
+	})
+	r.Spec.BeforeDelete = func(context.Context, *kitModel) (bool, diag.Diagnostics) {
+		return true, nil
+	}
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("probe"),
+	})
+	resp := &resource.DeleteResponse{State: state}
+	r.Delete(context.Background(), resource.DeleteRequest{State: state}, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Delete: %v", resp.Diagnostics)
+	}
+	if reached != 1 {
+		t.Errorf("Backend.Delete ran %d time(s), want exactly 1", reached)
+	}
+}
+
+// A hook that fails must not fall through to the destructive call.
+func TestBeforeDeleteErrorStopsTheDelete(t *testing.T) {
+	reached := 0
+	r := kitResource(Backend[kitSDK]{
+		Delete: func(context.Context, string, string) error {
+			reached++
+			return nil
+		},
+	})
+	r.Spec.BeforeDelete = func(context.Context, *kitModel) (bool, diag.Diagnostics) {
+		var diags diag.Diagnostics
+		diags.AddError("Cannot Delete", "the hook could not decide")
+		return true, diags
+	}
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("probe"),
+	})
+	resp := &resource.DeleteResponse{State: state}
+	r.Delete(context.Background(), resource.DeleteRequest{State: state}, resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a failing BeforeDelete was ignored")
+	}
+	if reached != 0 {
+		t.Errorf("Backend.Delete ran %d time(s) after BeforeDelete errored", reached)
 	}
 }
