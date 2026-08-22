@@ -146,6 +146,26 @@ type Spec[M any, S any] struct {
 	// practitioner had pinned would be silently re-derived on the next apply
 	// that touched anything else. The hook exists to adjust the object ToSDK
 	// produced, so handing it a different model than ToSDK used was the seam.
+	//
+	// AFTERRECEIVE CANNOT CARRY PRIOR STATE FOR AN ATTRIBUTE A FIELD DECODES,
+	// and two surfaces were written against the belief that it can.
+	//
+	// The read path loads prior state into the model, runs Spec.ToModel, and
+	// only then calls AfterReceive. So the boundary is ownership, not timing:
+	//
+	//   an attribute NO Field touches   still holds its prior value here, which
+	//                                   is how device's port_override is
+	//                                   reconstructed from the managed set
+	//                                   rather than from every port the switch
+	//                                   reports
+	//   an attribute a Field DECODES    has already been overwritten, and the
+	//                                   prior value is gone
+	//
+	// port_forward is where the second half was found: its hand-written read
+	// consulted prior model state in three places and there is nowhere on the
+	// kit's path to do that for a decoded field. A surface needing it either
+	// takes the attribute out of Fields, or accepts that the controller's
+	// answer is the only one it has.
 	Prefetch     func(ctx context.Context, site string) (any, diag.Diagnostics)
 	BeforeSend   func(ctx context.Context, config, effective *M, sdk *S, prefetched any) diag.Diagnostics
 	AfterReceive func(ctx context.Context, sdk *S, model *M, prefetched any) diag.Diagnostics
