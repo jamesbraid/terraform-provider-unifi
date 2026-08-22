@@ -294,3 +294,54 @@ func scatterString(t *testing.T, attrs map[string]attr.Value, name string) strin
 	}
 	return value.ValueString()
 }
+
+// AlwaysWire was flagged as an unexamined interaction, so it is asserted rather
+// than reasoned about. A hook's names dedupe against the same set the fields
+// filled, and it SKIPS a duplicate where the field loop ERRORS on one -- so a
+// scattered field already carrying a name a hook also derives is fine, and the
+// name appears once.
+func TestScatteredObjectNamesDedupeAgainstAlwaysWire(t *testing.T) {
+	spec := Spec[scatterModel, scatterSDK]{
+		TypeName:   "unifi_scatter",
+		Fields:     []Field[scatterModel, scatterSDK]{scatterField()},
+		AlwaysWire: []string{"wireguard_interface", "unrelated"},
+	}
+	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0", true)}
+
+	fields, err := spec.WireFields(plan)
+	if err != nil {
+		t.Fatalf("a hook naming an attribute a scattered field already carries: %v", err)
+	}
+	counts := map[string]int{}
+	for _, name := range fields {
+		counts[name]++
+	}
+	if counts["wireguard_interface"] != 1 {
+		t.Errorf("wireguard_interface appears %d time(s); a mask naming a field twice is "+
+			"refused by go-unifi", counts["wireguard_interface"])
+	}
+	// CONTROL: the hook's OWN name must still arrive, or this passes against a
+	// merge that dropped AlwaysWire entirely.
+	if counts["unrelated"] != 1 {
+		t.Errorf("the hook's own name did not reach the mask: %v", fields)
+	}
+}
+
+// The other side of the same seam: two fields claiming one attribute is a
+// descriptor bug the mask cannot express, and it was UNDETECTABLE before a field
+// could name more than one. Now it is an error at build time.
+func TestTwoFieldsClaimingOneAttributeAreRefused(t *testing.T) {
+	overlapping := scatterField()
+	overlapping.Wires = []string{"wireguard_interface", "unrelated"}
+	spec := Spec[scatterModel, scatterSDK]{
+		TypeName: "unifi_scatter",
+		Fields: []Field[scatterModel, scatterSDK]{
+			scatterField(),
+			overlapping,
+		},
+	}
+	plan := &scatterModel{Wireguard: scatterObject(t, "abc", "wg0", true)}
+	if _, err := spec.WireFields(plan); err == nil {
+		t.Error("two fields naming wireguard_interface produced a mask rather than an error")
+	}
+}
