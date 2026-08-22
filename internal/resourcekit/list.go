@@ -163,9 +163,15 @@ func (r *Resource[M, S]) List(
 			result.Diagnostics.Append(result.Identity.SetAttribute(
 				ctx, path.Root("id"), types.StringValue(r.Spec.Backend.GetID(object)))...)
 
+			// A LIST HAS NO PRIOR AND SAYS SO WITH A ZERO MODEL. Nothing was
+			// recorded for these objects -- the resource is being discovered,
+			// not refreshed -- so a hook that carries a value forward has
+			// nothing to carry and must see that rather than see the previous
+			// element's.
 			var model M
+			var prior M
 			result.Diagnostics.Append(r.Spec.ToModel(ctx, object, &model, site)...)
-			result.Diagnostics.Append(r.afterReceive(ctx, object, &model, prefetched)...)
+			result.Diagnostics.Append(r.afterReceive(ctx, object, &model, prior, prefetched)...)
 			*r.Spec.Timeouts(&model) = nullTimeouts()
 			result.Diagnostics.Append(result.Resource.Set(ctx, model)...)
 

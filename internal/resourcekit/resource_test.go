@@ -332,7 +332,7 @@ func hookSpy(t *testing.T) (Spec[kitModel, kitSDK], *map[string]int) {
 			}
 			return nil
 		},
-		AfterReceive: func(_ context.Context, _ *kitSDK, _ *kitModel, prefetched any) diag.Diagnostics {
+		AfterReceive: func(_ context.Context, _ *kitSDK, _ *kitModel, _ kitModel, prefetched any) diag.Diagnostics {
 			seen["afterReceive"]++
 			if prefetched != "inventory" {
 				t.Errorf("AfterReceive got prefetched = %v", prefetched)
@@ -765,5 +765,145 @@ func TestBeforeSendSeesAnEmptyIDOnCreateAndTheRealOneOnUpdate(t *testing.T) {
 		t.Errorf("BeforeSend saw id %q on update, want id-1. A hook that carries a "+
 			"controller-owned field forward could not find the object to carry it from",
 			onUpdate[0])
+	}
+}
+
+// AfterReceive'S PRIOR MODEL, ONE TEST PER OPERATION.
+//
+// WHY THE PARAMETER EXISTS AT ALL. Spec.ToModel writes into the SAME model the
+// operation started with, so by the time any hook runs, every attribute a Field
+// owns holds what the controller returned. An attribute NO field touches still
+// holds its old value -- which is why device's port_override works through this
+// hook -- and the two cases look identical from outside. vpn_client is where
+// that mattered: five attributes have to be carried forward from what was there
+// before, and without a prior a create ends in "provider produced inconsistent
+// result after apply".
+//
+// EACH OPERATION HANDS A DIFFERENT THING and getting one wrong is silent, so
+// each has its own case rather than one test asserting "prior is non-empty".
+// The probe answers a name the plan did not ask for, so a prior that were
+// really the post-decode model would carry the controller's value and fail.
+
+func captureAfterReceivePrior(r *Resource[kitModel, kitSDK]) *kitModel {
+	var captured kitModel
+	r.Spec.AfterReceive = func(
+		_ context.Context, _ *kitSDK, _ *kitModel, prior kitModel, _ any,
+	) diag.Diagnostics {
+		captured = prior
+		return nil
+	}
+	return &captured
+}
+
+func TestCreateHandsAfterReceiveThePlan(t *testing.T) {
+	ctx := context.Background()
+	r := kitResource(Backend[kitSDK]{
+		Create: func(_ context.Context, _ string, in *kitSDK) (*kitSDK, error) {
+			out := *in
+			out.ID = "id-1"
+			out.Name = "what-the-controller-chose"
+			return &out, nil
+		},
+	})
+	captured := captureAfterReceivePrior(r)
+
+	plan := kitStateWith(t, kitModel{
+		Site: types.StringValue("default"), Name: types.StringValue("what-the-plan-said"),
+	})
+	identity := kitIdentity(t)
+	resp := &resource.CreateResponse{
+		State: tfsdk.State{Schema: kitSchema(ctx)}, Identity: &identity,
+	}
+	r.Create(ctx, resource.CreateRequest{Plan: tfsdk.Plan(plan)}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Create: %v", resp.Diagnostics)
+	}
+	if got := captured.Name.ValueString(); got != "what-the-plan-said" {
+		t.Errorf("prior.name = %q, want the planned value; a hook carrying a value "+
+			"forward from the configuration has nowhere else to read it", got)
+	}
+}
+
+func TestReadHandsAfterReceiveThePriorState(t *testing.T) {
+	ctx := context.Background()
+	r := kitResource(Backend[kitSDK]{
+		Read: func(context.Context, string, string) (*kitSDK, error) {
+			return &kitSDK{ID: "id-1", Name: "what-the-controller-reports"}, nil
+		},
+	})
+	captured := captureAfterReceivePrior(r)
+
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("what-state-recorded"),
+	})
+	identity := kitIdentity(t)
+	resp := &resource.ReadResponse{State: state, Identity: &identity}
+	r.Read(ctx, resource.ReadRequest{State: state}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Read: %v", resp.Diagnostics)
+	}
+	if got := captured.Name.ValueString(); got != "what-state-recorded" {
+		t.Errorf("prior.name = %q, want what state held before the refresh", got)
+	}
+}
+
+// UPDATE HANDS THE EFFECTIVE MODEL, NOT THE RAW PLAN, and this is the case that
+// would be silently wrong.
+//
+// An attribute the plan does not mention is null in the plan and present in the
+// state. Handing the raw plan would make an apply that changed only some OTHER
+// attribute look like one that cleared this one -- which is exactly the shape of
+// the port_forward defect, where a block absent from the plan turned into a
+// value being dropped. BeforeSend already takes both models for this reason and
+// its comment says so.
+func TestUpdateHandsAfterReceiveTheEffectiveModelNotTheRawPlan(t *testing.T) {
+	ctx := context.Background()
+	r := kitResource(Backend[kitSDK]{
+		UpdateFields: func(_ context.Context, _ string, in *kitSDK, _ ...string) (*kitSDK, error) {
+			out := *in
+			out.Name = "what-the-controller-reports"
+			return &out, nil
+		},
+	})
+	// A SECOND FIELD, SO THE MASK IS NOT EMPTY. The kit refuses a patch that
+	// names nothing, and this test needs an apply that changes SOMETHING while
+	// leaving name alone -- which is the whole case. site carries it.
+	r.Spec.Fields = append(r.Spec.Fields, StringField[kitModel, kitSDK]{
+		Wire:  "unmanaged",
+		Model: func(m *kitModel) *types.String { return &m.Site },
+		SDK:   func(s *kitSDK) *string { return &s.Unmanaged },
+		Elide: KeepZero,
+	})
+	captured := captureAfterReceivePrior(r)
+
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("what-state-recorded"),
+	})
+	// THE PLAN LEAVES name UNKNOWN, which is what the framework produces for an
+	// attribute an apply does not change and the provider may recompute.
+	plan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringUnknown(),
+	})
+	identity := kitIdentity(t)
+	resp := &resource.UpdateResponse{
+		State: tfsdk.State{Schema: kitSchema(ctx)}, Identity: &identity,
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan: tfsdk.Plan(plan), State: state,
+	}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", resp.Diagnostics)
+	}
+	switch got := captured.Name; {
+	case got.IsUnknown():
+		t.Error("prior.name is unknown, so Update handed the RAW PLAN; an attribute " +
+			"the apply did not mention reads as cleared and a hook carrying it " +
+			"forward drops it")
+	case got.ValueString() != "what-state-recorded":
+		t.Errorf("prior.name = %q, want what the object was actually built from",
+			got.ValueString())
 	}
 }

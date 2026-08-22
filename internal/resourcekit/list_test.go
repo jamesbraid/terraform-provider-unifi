@@ -207,7 +207,7 @@ func TestListStopsWhenPrefetchFails(t *testing.T) {
 		return nil, diags
 	}
 	afterReceiveRan := false
-	r.Spec.AfterReceive = func(context.Context, *kitSDK, *kitModel, any) diag.Diagnostics {
+	r.Spec.AfterReceive = func(context.Context, *kitSDK, *kitModel, kitModel, any) diag.Diagnostics {
 		afterReceiveRan = true
 		return nil
 	}
