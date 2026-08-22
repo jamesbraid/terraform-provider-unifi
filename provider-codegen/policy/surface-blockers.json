@@ -286,7 +286,22 @@
     "at all, which is exactly what made wireguard's count wrong. wireguard is the",
     "outlier, not the norm, and TWO POINTS IS NOT A RATE: nobody should extrapolate",
     "from wan either. wlan was enumerated the same way and a types.Object count",
-    "found ONE object-shaped attribute where the write-set found THREE."
+    "found ONE object-shaped attribute where the write-set found THREE.",
+    "",
+    "device's ENTRY IS GONE AND IT SURVIVED A GUARD WRITTEN TO CATCH EXACTLY THIS.",
+    "It sat here with an EMPTY list -- this file's way of saying READY TO CUT OVER --",
+    "for as long as device was already served from the kit. The setting defect,",
+    "pointing the other way, on a surface that had been migrated.",
+    "",
+    "THE GUARD DERIVED THE SURFACE NAME FROM A FILENAME. device is the first surface",
+    "whose kit wiring does not live in <surface>_resource.go: the descriptor took",
+    "that name's contents and the wiring went to device_kit_resource.go. Trimming",
+    "\"_resource.go\" produced \"device_kit\", recorded as cut over, while the real",
+    "\"device\" read as uncut from the leftover helper file. Both guards passed.",
+    "",
+    "The detector now reads the name the file SERVES, out of its Metadata method,",
+    "and ORs across files so a surface spanning two of them is cut over if either",
+    "carries the wiring. A filename is a label; the served type name is the thing."
   ],
   "blocker_kinds": [
     "SDK-masked-update",
@@ -314,7 +329,6 @@
       "identity-key",
       "nested"
     ],
-    "device": [],
     "dynamic_dns": [
       "multi-identity"
     ],

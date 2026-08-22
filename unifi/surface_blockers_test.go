@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -83,7 +84,28 @@ func resourceSurfaces(t *testing.T) map[string]bool {
 		if err != nil {
 			t.Fatal(err)
 		}
-		out[name] = bytes.Contains(source, []byte("resourcekit.Resource["))
+		// THE SURFACE NAME COMES FROM WHAT THE FILE SERVES, NOT FROM ITS NAME.
+		//
+		// device is the first surface whose kit wiring does not live in
+		// <surface>_resource.go: its descriptor took that filename's contents and
+		// the wiring went to device_kit_resource.go. Trimming "_resource.go"
+		// yielded "device_kit" -- a surface nobody has ever heard of, recorded as
+		// cut over -- while the real "device" read as uncut from the leftover
+		// helper file. Its blocker list is empty, and an empty list is this
+		// file's way of saying READY TO CUT OVER, so both guards passed while
+		// advertising a migration that had already happened.
+		//
+		// Metadata is in the same file by necessity -- cmd/metadata-contract-gen
+		// parses for it and a promoted one is invisible -- so the served name is
+		// always readable right here.
+		if served := servedTypeName(source); served != "" {
+			name = served
+		}
+		// OR, NOT ASSIGN, because a surface can span files. device's wiring is in
+		// device_kit_resource.go and its leftover helpers in device_resource.go;
+		// assigning would let whichever the glob visits last decide, and the glob
+		// is sorted, so the helper file would always win.
+		out[name] = out[name] || bytes.Contains(source, []byte("resourcekit.Resource["))
 	}
 	if len(out) == 0 {
 		t.Fatal("no resource files found; the detector is broken, not the tree")
@@ -157,3 +179,16 @@ func TestEveryRecordedBlockerIsADeclaredKind(t *testing.T) {
 		}
 	}
 }
+
+// servedTypeName reads the suffix a file's Metadata method serves, or "" when
+// the file declares none.
+func servedTypeName(source []byte) string {
+	match := servedTypeNamePattern.FindSubmatch(source)
+	if match == nil {
+		return ""
+	}
+	return string(match[1])
+}
+
+var servedTypeNamePattern = regexp.MustCompile(
+	`resp\.TypeName = req\.ProviderTypeName \+ "_([a-z0-9_]+)"`)
