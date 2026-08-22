@@ -235,7 +235,7 @@ func Test_wlanFrameworkResource_Schema_noAssistedRoaming(t *testing.T) {
 }
 
 func Test_wlanFrameworkResource_UpgradeState(t *testing.T) {
-	r := &wlanFrameworkResource{}
+	r := newWLANKitResource()
 	got := r.UpgradeState(context.Background())
 	if got == nil {
 		t.Fatal("UpgradeState() returned nil")
@@ -243,10 +243,6 @@ func Test_wlanFrameworkResource_UpgradeState(t *testing.T) {
 	if _, ok := got[0]; !ok {
 		t.Error("UpgradeState() missing key 0")
 	}
-}
-
-func Test_wlanFrameworkResource_setDefaultWLANGroupID(t *testing.T) {
-	t.Skip("requires configured client")
 }
 
 func Test_wlanFrameworkResource_Create(t *testing.T) {
@@ -259,10 +255,6 @@ func Test_wlanFrameworkResource_Read(t *testing.T) {
 
 func Test_wlanFrameworkResource_Update(t *testing.T) {
 	t.Skip("requires terraform state and configured client")
-}
-
-func Test_wlanFrameworkResource_readPassphraseWO(t *testing.T) {
-	t.Skip("requires terraform state")
 }
 
 func Test_wlanFrameworkResource_applyPlanToState(t *testing.T) {
@@ -279,9 +271,9 @@ func Test_wlanFrameworkResource_ImportState(t *testing.T) {
 
 func Test_wlanFrameworkResource_planToWLAN(t *testing.T) {
 	ctx := context.Background()
-	r := &wlanFrameworkResource{}
+	spec := wlanKitSpec()
 
-	plan := wlanFrameworkResourceModel{
+	plan := wlanKitModel{
 		Name:     types.StringValue("test"),
 		Security: types.StringValue("wpapsk"),
 		MacFilter: types.ObjectNull(map[string]attr.Type{
@@ -298,9 +290,9 @@ func Test_wlanFrameworkResource_planToWLAN(t *testing.T) {
 		BroadcastFilterList: types.SetNull(types.StringType),
 	}
 
-	got, diags := r.planToWLAN(ctx, plan)
+	got, diags := spec.ToSDK(ctx, &plan)
 	if diags.HasError() {
-		t.Fatalf("planToWLAN() diagnostics: %v", diags)
+		t.Fatalf("ToSDK() diagnostics: %v", diags)
 	}
 	if got.Name != "test" {
 		t.Errorf("Name = %q, want %q", got.Name, "test")
@@ -308,24 +300,35 @@ func Test_wlanFrameworkResource_planToWLAN(t *testing.T) {
 	if got.Security != "wpapsk" {
 		t.Errorf("Security = %q, want %q", got.Security, "wpapsk")
 	}
-	if got.ScheduleWithDuration == nil {
-		t.Error("ScheduleWithDuration should not be nil (empty slice expected)")
+	// THIS ASSERTION IS INVERTED FROM WHAT IT WAS, deliberately.
+	//
+	// It used to require a non-nil ScheduleWithDuration, pinning a guard in
+	// planToWLAN that forced an empty slice so the field would not marshal as
+	// null. That guard stopped working when go-unifi added omitempty to the tag
+	// -- encoding/json drops a zero-length slice nil or not -- so it prevented a
+	// failure that can no longer happen while the one that can, an emptied
+	// schedule silently not clearing, went unguarded. See task #228.
+	//
+	// The guard is not carried into the descriptor, so nil is now correct and a
+	// test demanding otherwise would be pinning dead code.
+	if got.ScheduleWithDuration != nil {
+		t.Errorf("ScheduleWithDuration = %v, want nil for an absent schedule", got.ScheduleWithDuration)
 	}
 }
 
 func Test_wlanFrameworkResource_wlanToModel(t *testing.T) {
 	ctx := context.Background()
-	r := &wlanFrameworkResource{}
+	spec := wlanKitSpec()
 
 	wlan := &unifi.WLAN{
 		ID:       "wlan-123",
 		Name:     "test-wlan",
 		Security: "wpapsk",
 	}
-	var model wlanFrameworkResourceModel
-	diags := r.wlanToModel(ctx, wlan, &model, "default")
+	var model wlanKitModel
+	diags := spec.ToModel(ctx, wlan, &model, "default")
 	if diags.HasError() {
-		t.Fatalf("wlanToModel() diagnostics: %v", diags)
+		t.Fatalf("ToModel() diagnostics: %v", diags)
 	}
 	if model.ID.ValueString() != "wlan-123" {
 		t.Errorf("ID = %q, want %q", model.ID.ValueString(), "wlan-123")
@@ -342,7 +345,7 @@ func Test_wlanFrameworkResource_wlanToModel(t *testing.T) {
 }
 
 func Test_wlanFrameworkResource_ListResourceConfigSchema(t *testing.T) {
-	r := &wlanFrameworkResource{}
+	r := newWLANKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 }
@@ -358,7 +361,7 @@ func Test_wlanFrameworkResource_List(t *testing.T) {
 // password.
 func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 	ctx := context.Background()
-	r := &wlanFrameworkResource{}
+	spec := wlanKitSpec()
 
 	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()}
 	ppskList, d := types.ListValueFrom(ctx, ppskType, []wlanPrivatePresharedKeyModel{
@@ -369,7 +372,7 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 		t.Fatalf("building PPSK list: %v", d)
 	}
 
-	plan := wlanFrameworkResourceModel{
+	plan := wlanKitModel{
 		Name:                        types.StringValue("ppsk-wlan"),
 		Security:                    types.StringValue("wpapsk"),
 		PrivatePresharedKeysEnabled: types.BoolValue(true),
@@ -377,9 +380,9 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 	}
 
 	// plan -> API
-	wlan, diags := r.planToWLAN(ctx, plan)
+	wlan, diags := spec.ToSDK(ctx, &plan)
 	if diags.HasError() {
-		t.Fatalf("planToWLAN: %v", diags)
+		t.Fatalf("ToSDK: %v", diags)
 	}
 	if !wlan.PrivatePresharedKeysEnabled {
 		t.Errorf("PrivatePresharedKeysEnabled = false, want true")
@@ -397,8 +400,8 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 	}
 
 	// API -> model
-	var model wlanFrameworkResourceModel
-	if diags := r.wlanToModel(ctx, wlan, &model, "default"); diags.HasError() {
+	var model wlanKitModel
+	if diags := spec.ToModel(ctx, wlan, &model, "default"); diags.HasError() {
 		t.Fatalf("wlanToModel: %v", diags)
 	}
 	if !model.PrivatePresharedKeysEnabled.ValueBool() {
@@ -425,10 +428,10 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 // plan drift for WLANs that don't use private pre-shared keys.
 func TestWLANPrivatePresharedKeys_emptyIsNull(t *testing.T) {
 	ctx := context.Background()
-	r := &wlanFrameworkResource{}
+	spec := wlanKitSpec()
 
-	var model wlanFrameworkResourceModel
-	if diags := r.wlanToModel(ctx, &unifi.WLAN{}, &model, "default"); diags.HasError() {
+	var model wlanKitModel
+	if diags := spec.ToModel(ctx, &unifi.WLAN{}, &model, "default"); diags.HasError() {
 		t.Fatalf("wlanToModel: %v", diags)
 	}
 	if model.PrivatePresharedKeysEnabled.ValueBool() {
@@ -445,7 +448,7 @@ func TestWLANPrivatePresharedKeys_emptyIsNull(t *testing.T) {
 // error. When enhanced_iot is false it must be a no-op.
 func TestApplyEnhancedIotOverrides(t *testing.T) {
 	t.Run("enhanced_iot true forces the controller-managed fields", func(t *testing.T) {
-		m := &wlanFrameworkResourceModel{
+		m := &wlanKitModel{
 			EnhancedIot:    types.BoolValue(true),
 			IappEnabled:    types.BoolValue(false),
 			WPA3Support:    types.BoolValue(true),
@@ -474,7 +477,7 @@ func TestApplyEnhancedIotOverrides(t *testing.T) {
 	})
 
 	t.Run("enhanced_iot false is a no-op", func(t *testing.T) {
-		m := &wlanFrameworkResourceModel{
+		m := &wlanKitModel{
 			EnhancedIot: types.BoolValue(false),
 			WPA3Support: types.BoolValue(true),
 			PMFMode:     types.StringValue("optional"),

@@ -206,6 +206,18 @@
         ]
       },
       "schema_version": 0
+    },
+    "unifi_wlan": {
+      "sdk_type": "WLAN",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "enabled"
+        ]
+      },
+      "schema_version": 1
     }
   }
 }

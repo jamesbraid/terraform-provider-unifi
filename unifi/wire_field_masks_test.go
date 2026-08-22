@@ -798,21 +798,64 @@ func wlanFieldsAssignedBy(t *testing.T) []string {
 	return out
 }
 
-// unifi_wlan must use the masked call.
+// unifi_wlan must use the masked call, and the mask must be the one the
+// hand-written resource used.
+//
+// THIS USED TO GREP wlan_resource.go FOR A LITERAL CALL STRING. That checked a
+// declaration rather than a state, and the cutover to the kit made the string
+// vanish while the behaviour stayed correct -- the test would have failed on a
+// change that broke nothing, which is the same fault as passing on a change
+// that breaks something.
+//
+// It now compares two derived sets. The kit builds the update mask from the
+// descriptor's Fields plus AlwaysWire; wlanManagedWireFields is what the
+// hand-written resource sent. Equality is the real claim -- that migrating the
+// surface did not quietly add or drop a wire -- and it is checked against the
+// spec that runs rather than against source text.
 func TestWLANUsesTheMaskedCall(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "unifi", "wlan_resource.go"))
+	raw, err := os.ReadFile(filepath.Join("..", "unifi", "wlan_descriptor.go"))
 	if err != nil {
-		t.Fatalf("reading the resource: %v", err)
+		t.Fatalf("reading the descriptor: %v", err)
 	}
 	src := string(raw)
-	if !strings.Contains(src, "UpdateWLANFields(ctx, site, wlan, wlanManagedWireFields()...)") {
-		t.Error("the update does not call UpdateWLANFields with wlanManagedWireFields")
+	if !strings.Contains(src, "UpdateWLANFields(ctx, site, in, fields...)") {
+		t.Error("the kit Backend does not bind UpdateWLANFields")
 	}
 	if regexp.MustCompile(`UpdateWLAN\(ctx`).MatchString(src) {
 		t.Error("a whole-object UpdateWLAN( call remains")
 	}
-	if !strings.Contains(src, "func (r *wlanFrameworkResource)") {
-		t.Fatal("the file read is not wlan_resource.go")
+
+	spec := wlanKitSpec()
+	got := map[string]bool{}
+	for _, name := range spec.WireNames() {
+		got[name] = true
+	}
+	for _, name := range spec.AlwaysWire {
+		got[name] = true
+	}
+	// The identity is reached through Backend.GetID and is never a masked
+	// field; Spec.IDWire exists to say so.
+	delete(got, spec.IDWire)
+
+	want := map[string]bool{}
+	for _, name := range wlanManagedWireFields() {
+		want[name] = true
+	}
+
+	// Without this the two maps could both be empty and agree.
+	if len(want) == 0 {
+		t.Fatal("wlanManagedWireFields is empty, so this comparison would pass having checked nothing")
+	}
+
+	for name := range want {
+		if !got[name] {
+			t.Errorf("the hand-written mask sent %q and the descriptor does not; a practitioner setting it would see the apply silently drop it", name)
+		}
+	}
+	for name := range got {
+		if !want[name] {
+			t.Errorf("the descriptor sends %q and the hand-written mask did not; the migration widened what this surface writes", name)
+		}
 	}
 }
 
