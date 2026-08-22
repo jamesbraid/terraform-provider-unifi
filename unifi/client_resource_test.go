@@ -831,7 +831,6 @@ func portOverrideSetWith(t *testing.T, overrides map[string]attr.Value) types.Se
 // devices that reject op_mode on PUT keep working (#213).
 func TestFrameworkToPortOverrides_AggregateOpMode(t *testing.T) {
 	ctx := context.Background()
-	r := &deviceResource{}
 
 	members, d := types.ListValue(types.Int64Type, []attr.Value{
 		types.Int64Value(9),
@@ -847,9 +846,9 @@ func TestFrameworkToPortOverrides_AggregateOpMode(t *testing.T) {
 		"aggregate_members": members,
 	})
 
-	pos, diags := r.frameworkToPortOverrides(ctx, set)
+	pos, diags := devicePortOverridesFromModel(ctx, set)
 	if diags.HasError() {
-		t.Fatalf("frameworkToPortOverrides errored: %v", diags)
+		t.Fatalf("devicePortOverridesFromModel errored: %v", diags)
 	}
 	if len(pos) != 1 {
 		t.Fatalf("got %d port overrides, want 1", len(pos))
@@ -869,16 +868,15 @@ func TestFrameworkToPortOverrides_AggregateOpMode(t *testing.T) {
 // write fix (#213).
 func TestFrameworkToPortOverrides_SwitchOpModeOmitted(t *testing.T) {
 	ctx := context.Background()
-	r := &deviceResource{}
 
 	set := portOverrideSetWith(t, map[string]attr.Value{
 		"index":   types.Int64Value(1),
 		"op_mode": types.StringValue("switch"),
 	})
 
-	pos, diags := r.frameworkToPortOverrides(ctx, set)
+	pos, diags := devicePortOverridesFromModel(ctx, set)
 	if diags.HasError() {
-		t.Fatalf("frameworkToPortOverrides errored: %v", diags)
+		t.Fatalf("devicePortOverridesFromModel errored: %v", diags)
 	}
 	if len(pos) != 1 {
 		t.Fatalf("got %d port overrides, want 1", len(pos))
@@ -895,30 +893,18 @@ func TestFrameworkToPortOverrides_SwitchOpModeOmitted(t *testing.T) {
 // "types.ListType[!!! MISSING TYPE !!!]" Value Conversion Error during the
 // Read/refresh (and import) of any unifi_device that has port overrides.
 func TestPortOverridesToFramework_TaggedNetworkIDsTypedNull(t *testing.T) {
-	r := &deviceResource{}
-
-	set, diags := r.portOverridesToFramework(context.Background(), []unifi.DevicePortOverrides{
-		{Name: "Port 1"},
-	})
+	obj, diags := devicePortOverrideDecode(
+		context.Background(), unifi.DevicePortOverrides{Name: "Port 1"},
+	)
 
 	if diags.HasError() {
 		t.Fatalf(
-			"portOverridesToFramework returned diagnostics (regression #235): %v",
+			"devicePortOverrideDecode returned diagnostics (regression #235): %v",
 			diags.Errors(),
 		)
 	}
-	if set.IsNull() {
-		t.Fatal("expected a non-null port_override set for a single override")
-	}
-
-	elems := set.Elements()
-	if len(elems) != 1 {
-		t.Fatalf("expected 1 port_override element, got %d", len(elems))
-	}
-
-	obj, ok := elems[0].(types.Object)
-	if !ok {
-		t.Fatalf("expected port_override element to be types.Object, got %T", elems[0])
+	if obj.IsNull() {
+		t.Fatal("expected a non-null port_override object for a single override")
 	}
 
 	taggedAttr, ok := obj.Attributes()["tagged_networkconf_ids"]
