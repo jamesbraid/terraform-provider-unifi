@@ -109,6 +109,21 @@ func derive(dir string) (map[string]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", name, err)
 		}
+		// A PROMOTED Metadata IS INVISIBLE HERE, and the surface leaves the
+		// contract without anything failing at the point of the change.
+		//
+		// This walks declarations in unifi/*.go. A surface that embeds a kit and
+		// inherits Metadata from it declares no Metadata of its own, so it is
+		// simply absent from the frozen list -- and the next run of
+		// TestEveryConfigurableSurfaceAcceptsProviderData reports it as
+		// "departed", pointing at the contract rather than at the embedding that
+		// caused it.
+		//
+		// MEASURED, on eight data sources at once: moving Metadata into a kit
+		// dropped all eight. unifi/*_resource.go carries the sibling rule for
+		// Schema and internal/schemabehaviour; this is the same constraint on a
+		// different method and a different generator, and Schema is the one that
+		// gets quoted, so the Metadata half is written here.
 		for _, decl := range file.Decls {
 			fd, ok := decl.(*ast.FuncDecl)
 			if !ok || fd.Name.Name != "Metadata" || fd.Recv == nil || len(fd.Recv.List) == 0 {
