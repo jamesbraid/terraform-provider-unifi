@@ -432,6 +432,46 @@ collected. Merging them would put twenty-five working surfaces behind a change
 made for one new one, for a shared core of a dozen lines. **A third use case
 should merge them, not the second.**
 
+## The old mapper's redundant-looking guards are load-bearing
+
+**Twice in one day the kit replaced hand-written code and walked straight past a
+protection that code carried.** Both times the guard looked like an oversight
+from the new implementation's side, and both times it was the point.
+
+**`AfterReceive` had no prior model.** `vpn_client`'s hand-written read threads a
+`priorState` parameter through `networkToModel` and consults it five times,
+because the practitioner supplies a wireguard config FILE, the provider parses
+it and sends the controller manual mode, and the controller reports manual mode
+forever. `Spec.ToModel` writes into the same model the operation started with,
+so every attribute a Field owns is already overwritten by the time any hook
+runs. Without the prior, a create with a `configuration` block ends in *provider
+produced inconsistent result after apply* — a failed apply, not a diff.
+
+**A scattered object masked a wire nothing had written.** `vpn_client`'s
+hand-written mask names fifteen wires and omits `dhcpd_dns_1` and `dhcpd_dns_2`,
+which reads like a gap. It is the opposite: those two are assigned only when the
+practitioner supplies `dns_servers`, and go-unifi sends a masked field's ZERO
+when the object carries no value — so naming them clears whatever DNS the
+controller holds. `ScatteredObjectField` declared all ten unconditionally,
+because *all of them reach the mask* is its stated design, and the measured
+result was a ten-name mask with two empty strings behind it.
+
+**The near-miss is the lesson, not the fix.** The first reading of that omission
+was that the hand-written mask had a hole the new kind had found — a defect
+report, half written. Acting on it would have deleted a guard and shipped the
+destruction. What made checking possible is that the exclusion carries its
+reason: `wire_field_masks_test.go` declares it per field *"so the exclusion
+carries its reason and a new one has to be argued for"*.
+
+So: **anything the old mapper does that looks redundant is the first place to
+check, not the last.** Ask what it protects before deciding it protects nothing,
+and if the answer is not written down, that is a finding on its own.
+
+Neither of these was visible to any gate. Both descriptors compiled, both passed
+`ElideProblems`, and `WireNameProblems` passed on the mask case because
+`dhcpd_dns_1` **is** a real json tag — the check proves a name exists, not that
+anything writes it.
+
 ## Smaller things that cost an afternoon
 
 - **`tfplugingen-framework` does not create its output directory.** A new

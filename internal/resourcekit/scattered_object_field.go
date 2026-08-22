@@ -76,6 +76,14 @@ type ScatteredObjectField[M any, S any] struct {
 	// DNS -- the destruction that mask exists to prevent, arriving through the
 	// kind that replaced it.
 	//
+	// THE HAND-WRITTEN OMISSION IS THE PROTECTION, AND IT WAS FIRST READ AS A
+	// HOLE. The obvious conclusion from a fifteen-name mask beside a ten-wire
+	// object is that the mask is missing two -- a defect in the code being
+	// replaced. It is the reverse, and acting on that reading would have
+	// deleted a guard and shipped the clearing. What made it checkable is that
+	// the exclusion carries its reason: wire_field_masks_test.go declares it
+	// per field so a new one has to be argued for.
+	//
 	// EVERY KEY MUST BE ONE OF Wires and WireNameProblems checks it, because a
 	// key that matches nothing silently leaves the wire unconditional -- which
 	// is the failure this field is meant to remove, reached by a typo.
