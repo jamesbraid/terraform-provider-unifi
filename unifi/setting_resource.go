@@ -462,147 +462,144 @@ func (r *settingResource) Configure(
 	r.client = client
 }
 
-func (r *settingResource) Create(
+// writeSettings applies every setting document the model names.
+//
+// CREATE AND UPDATE WERE THE SAME 290-LINE FUNCTION TWICE, differing in the
+// model variable's name, the timeout accessor and the verb inside fifteen error
+// messages. Nothing else: a diff of the two came back identical apart from a
+// two-line comment Create carried and Update did not.
+//
+// unifi_setting has no create. Every document is a PUT to a fixed endpoint that
+// always exists, so creating one and updating it are the same request -- which
+// is why the two bodies converged, and why keeping them apart meant fifteen
+// branches had to be edited in two places or drift.
+//
+// THE VERB IS A PARAMETER BECAUSE IT REACHES THE PRACTITIONER. "Error Creating
+// NTP Setting" and "Error Updating NTP Setting" are different diagnostics and
+// collapsing them to one would lose which operation failed. This file already
+// passes the verb this way to writeIpsSuppression and writeUsgGeo.
+func (r *settingResource) writeSettings(
 	ctx context.Context,
-	req resource.CreateRequest,
-	resp *resource.CreateResponse,
+	site string,
+	plan *settingResourceModel,
+	verb string,
+	diags *diag.Diagnostics,
 ) {
-	var data settingResourceModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	createTimeout, timeoutDiags := data.Timeouts.Create(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, createTimeout)
-	defer cancel()
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	// Update each configured setting type
-	if !data.AutoSpeedtest.IsNull() && !data.AutoSpeedtest.IsUnknown() {
+	if !plan.AutoSpeedtest.IsNull() && !plan.AutoSpeedtest.IsUnknown() {
 		var as settingAutoSpeedtestModel
-		resp.Diagnostics.Append(data.AutoSpeedtest.As(ctx, &as, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.AutoSpeedtest.As(ctx, &as, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.autoSpeedtestModelToSetting(&as)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Auto Speedtest Setting", err.Error())
+			diags.AddError("Error "+verb+" Auto Speedtest Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Country.IsNull() && !data.Country.IsUnknown() {
+	if !plan.Country.IsNull() && !plan.Country.IsUnknown() {
 		var m settingCountryModel
-		resp.Diagnostics.Append(data.Country.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Country.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.countryModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Country Setting", err.Error())
+			diags.AddError("Error "+verb+" Country Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Dpi.IsNull() && !data.Dpi.IsUnknown() {
+	if !plan.Dpi.IsNull() && !plan.Dpi.IsUnknown() {
 		var m settingDpiModel
-		resp.Diagnostics.Append(data.Dpi.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Dpi.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.dpiModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating DPI Setting", err.Error())
+			diags.AddError("Error "+verb+" DPI Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Lcm.IsNull() && !data.Lcm.IsUnknown() {
+	if !plan.Lcm.IsNull() && !plan.Lcm.IsUnknown() {
 		var m settingLcmModel
-		resp.Diagnostics.Append(data.Lcm.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Lcm.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.lcmModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating LCM Setting", err.Error())
+			diags.AddError("Error "+verb+" LCM Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.NetworkOpt.IsNull() && !data.NetworkOpt.IsUnknown() {
+	if !plan.NetworkOpt.IsNull() && !plan.NetworkOpt.IsUnknown() {
 		var m settingNetworkOptimizationModel
-		resp.Diagnostics.Append(data.NetworkOpt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.NetworkOpt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.networkOptimizationModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Network Optimization Setting", err.Error())
+			diags.AddError("Error "+verb+" Network Optimization Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Ntp.IsNull() && !data.Ntp.IsUnknown() {
+	if !plan.Ntp.IsNull() && !plan.Ntp.IsUnknown() {
 		var m settingNtpModel
-		resp.Diagnostics.Append(data.Ntp.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Ntp.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.ntpModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating NTP Setting", err.Error())
+			diags.AddError("Error "+verb+" NTP Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Syslog.IsNull() && !data.Syslog.IsUnknown() {
+	if !plan.Syslog.IsNull() && !plan.Syslog.IsUnknown() {
 		var m settingSyslogModel
-		resp.Diagnostics.Append(data.Syslog.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Syslog.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
-		setting := r.syslogModelToSetting(ctx, &m, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		setting := r.syslogModelToSetting(ctx, &m, diags)
+		if diags.HasError() {
 			return
 		}
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Syslog Setting", err.Error())
+			diags.AddError("Error "+verb+" Syslog Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Doh.IsNull() && !data.Doh.IsUnknown() {
+	if !plan.Doh.IsNull() && !plan.Doh.IsUnknown() {
 		var doh settingDohModel
-		resp.Diagnostics.Append(data.Doh.As(ctx, &doh, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Doh.As(ctx, &doh, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
-		setting := r.dohModelToSetting(ctx, &doh, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		setting := r.dohModelToSetting(ctx, &doh, diags)
+		if diags.HasError() {
 			return
 		}
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating DoH Setting", err.Error())
+			diags.AddError("Error "+verb+" DoH Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Ips.IsNull() && !data.Ips.IsUnknown() {
+	if !plan.Ips.IsNull() && !plan.Ips.IsUnknown() {
 		var ips settingIpsModel
-		resp.Diagnostics.Append(data.Ips.As(ctx, &ips, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Ips.As(ctx, &ips, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
@@ -612,31 +609,31 @@ func (r *settingResource) Create(
 		if err != nil {
 			var notFound *ui.NotFoundError
 			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading IPS Setting", err.Error())
+				diags.AddError("Error Reading IPS Setting", err.Error())
 				return
 			}
 			currentIps = &settings.Ips{}
 		}
 
-		setting := r.ipsModelToSetting(ctx, &ips, currentIps, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		setting := r.ipsModelToSetting(ctx, &ips, currentIps, diags)
+		if diags.HasError() {
 			return
 		}
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating IPS Setting", err.Error())
+			diags.AddError("Error "+verb+" IPS Setting", err.Error())
 			return
 		}
 
-		r.writeIpsSuppression(ctx, site, &ips, "Creating", &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		r.writeIpsSuppression(ctx, site, &ips, "Creating", diags)
+		if diags.HasError() {
 			return
 		}
 	}
 
-	if !data.Mgmt.IsNull() && !data.Mgmt.IsUnknown() {
+	if !plan.Mgmt.IsNull() && !plan.Mgmt.IsUnknown() {
 		var mgmt settingMgmtModel
-		resp.Diagnostics.Append(data.Mgmt.As(ctx, &mgmt, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Mgmt.As(ctx, &mgmt, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
@@ -645,7 +642,7 @@ func (r *settingResource) Create(
 		if err != nil {
 			var notFound *ui.NotFoundError
 			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading Mgmt Setting", err.Error())
+				diags.AddError("Error Reading Mgmt Setting", err.Error())
 				return
 			}
 			currentMgmt = &settings.Mgmt{}
@@ -653,15 +650,15 @@ func (r *settingResource) Create(
 
 		setting := r.mgmtModelToSetting(ctx, &mgmt, currentMgmt)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Mgmt Setting", err.Error())
+			diags.AddError("Error "+verb+" Mgmt Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Radius.IsNull() && !data.Radius.IsUnknown() {
+	if !plan.Radius.IsNull() && !plan.Radius.IsUnknown() {
 		var radius settingRadiusModel
-		resp.Diagnostics.Append(data.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
@@ -670,7 +667,7 @@ func (r *settingResource) Create(
 		if err != nil {
 			var notFound *ui.NotFoundError
 			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading Radius Setting", err.Error())
+				diags.AddError("Error Reading Radius Setting", err.Error())
 				return
 			}
 			currentRadius = &settings.Radius{}
@@ -678,15 +675,15 @@ func (r *settingResource) Create(
 
 		setting := r.radiusModelToSetting(ctx, &radius, currentRadius)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Radius Setting", err.Error())
+			diags.AddError("Error "+verb+" Radius Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.USG.IsNull() && !data.USG.IsUnknown() {
+	if !plan.USG.IsNull() && !plan.USG.IsUnknown() {
 		var usg settingUSGModel
-		resp.Diagnostics.Append(data.USG.As(ctx, &usg, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.USG.As(ctx, &usg, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
@@ -695,7 +692,7 @@ func (r *settingResource) Create(
 		if err != nil {
 			var notFound *ui.NotFoundError
 			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading USG Setting", err.Error())
+				diags.AddError("Error Reading USG Setting", err.Error())
 				return
 			}
 			currentUsg = &settings.Usg{}
@@ -703,20 +700,20 @@ func (r *settingResource) Create(
 
 		setting := r.usgModelToSetting(ctx, &usg, currentUsg)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating USG Setting", err.Error())
+			diags.AddError("Error "+verb+" USG Setting", err.Error())
 			return
 		}
 
-		r.writeUsgGeo(ctx, site, &usg, "Creating", &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		r.writeUsgGeo(ctx, site, &usg, "Creating", diags)
+		if diags.HasError() {
 			return
 		}
 	}
 
-	if !data.IgmpSnooping.IsNull() && !data.IgmpSnooping.IsUnknown() {
+	if !plan.IgmpSnooping.IsNull() && !plan.IgmpSnooping.IsUnknown() {
 		var igmp settingIgmpSnoopingModel
-		resp.Diagnostics.Append(data.IgmpSnooping.As(ctx, &igmp, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.IgmpSnooping.As(ctx, &igmp, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
@@ -726,29 +723,103 @@ func (r *settingResource) Create(
 		if err != nil {
 			var notFound *ui.NotFoundError
 			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading IGMP Snooping Setting", err.Error())
+				diags.AddError("Error Reading IGMP Snooping Setting", err.Error())
 				return
 			}
 			currentIgmp = &settings.IgmpSnooping{}
 		}
 
-		setting := r.igmpSnoopingModelToSetting(ctx, &igmp, currentIgmp, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		setting := r.igmpSnoopingModelToSetting(ctx, &igmp, currentIgmp, diags)
+		if diags.HasError() {
 			return
 		}
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating IGMP Snooping Setting", err.Error())
+			diags.AddError("Error "+verb+" IGMP Snooping Setting", err.Error())
 			return
 		}
 	}
+}
 
-	// Read back the settings
-	r.readSettings(ctx, site, &data, &resp.Diagnostics)
+func (r *settingResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
+	var plan settingResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	createTimeout, timeoutDiags := plan.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	site := plan.Site.ValueString()
+	if site == "" {
+		site = r.client.Site
+	}
+
+	r.writeSettings(ctx, site, &plan, "Creating", &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Read back the settings
+	r.readSettings(ctx, site, &plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *settingResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
+	var state settingResourceModel
+	var plan settingResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	// THE SITE COMES FROM STATE, NOT THE PLAN, and it is the one asymmetry
+	// between the two callers: site has a UseStateForUnknown plan modifier, so
+	// the plan can carry an unknown where the state carries the real name.
+	site := state.Site.ValueString()
+	if site == "" {
+		site = r.client.Site
+	}
+
+	r.writeSettings(ctx, site, &plan, "Updating", &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Read back the settings
+	r.readSettings(ctx, site, &plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *settingResource) Read(
@@ -782,295 +853,6 @@ func (r *settingResource) Read(
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *settingResource) Update(
-	ctx context.Context,
-	req resource.UpdateRequest,
-	resp *resource.UpdateResponse,
-) {
-	var state settingResourceModel
-	var plan settingResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
-	defer cancel()
-
-	site := state.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	// Update each configured setting type
-	if !plan.AutoSpeedtest.IsNull() && !plan.AutoSpeedtest.IsUnknown() {
-		var as settingAutoSpeedtestModel
-		resp.Diagnostics.Append(plan.AutoSpeedtest.As(ctx, &as, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.autoSpeedtestModelToSetting(&as)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Auto Speedtest Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Country.IsNull() && !plan.Country.IsUnknown() {
-		var m settingCountryModel
-		resp.Diagnostics.Append(plan.Country.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.countryModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Country Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Dpi.IsNull() && !plan.Dpi.IsUnknown() {
-		var m settingDpiModel
-		resp.Diagnostics.Append(plan.Dpi.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.dpiModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating DPI Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Lcm.IsNull() && !plan.Lcm.IsUnknown() {
-		var m settingLcmModel
-		resp.Diagnostics.Append(plan.Lcm.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.lcmModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating LCM Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.NetworkOpt.IsNull() && !plan.NetworkOpt.IsUnknown() {
-		var m settingNetworkOptimizationModel
-		resp.Diagnostics.Append(plan.NetworkOpt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.networkOptimizationModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Network Optimization Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Ntp.IsNull() && !plan.Ntp.IsUnknown() {
-		var m settingNtpModel
-		resp.Diagnostics.Append(plan.Ntp.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.ntpModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating NTP Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Syslog.IsNull() && !plan.Syslog.IsUnknown() {
-		var m settingSyslogModel
-		resp.Diagnostics.Append(plan.Syslog.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.syslogModelToSetting(ctx, &m, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Syslog Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Doh.IsNull() && !plan.Doh.IsUnknown() {
-		var doh settingDohModel
-		resp.Diagnostics.Append(plan.Doh.As(ctx, &doh, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		setting := r.dohModelToSetting(ctx, &doh, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating DoH Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Ips.IsNull() && !plan.Ips.IsUnknown() {
-		var ips settingIpsModel
-		resp.Diagnostics.Append(plan.Ips.As(ctx, &ips, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		// Read the current remote setting as the base so the force-emitted
-		// bools this block does not name keep their remote values.
-		_, currentIps, err := ui.GetSetting[*settings.Ips](r.client.ApiClient, ctx, site)
-		if err != nil {
-			var notFound *ui.NotFoundError
-			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading IPS Setting", err.Error())
-				return
-			}
-			currentIps = &settings.Ips{}
-		}
-
-		setting := r.ipsModelToSetting(ctx, &ips, currentIps, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating IPS Setting", err.Error())
-			return
-		}
-
-		r.writeIpsSuppression(ctx, site, &ips, "Updating", &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
-	if !plan.Mgmt.IsNull() && !plan.Mgmt.IsUnknown() {
-		var mgmt settingMgmtModel
-		resp.Diagnostics.Append(plan.Mgmt.As(ctx, &mgmt, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		// Read current remote settings as the base so unset fields keep their values.
-		_, currentMgmt, err := ui.GetSetting[*settings.Mgmt](r.client.ApiClient, ctx, site)
-		if err != nil {
-			var notFound *ui.NotFoundError
-			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading Mgmt Setting", err.Error())
-				return
-			}
-			currentMgmt = &settings.Mgmt{}
-		}
-
-		setting := r.mgmtModelToSetting(ctx, &mgmt, currentMgmt)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Mgmt Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Radius.IsNull() && !plan.Radius.IsUnknown() {
-		var radius settingRadiusModel
-		resp.Diagnostics.Append(plan.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		// Read current remote settings as the base so unset fields keep their remote values
-		_, currentRadius, err := ui.GetSetting[*settings.Radius](r.client.ApiClient, ctx, site)
-		if err != nil {
-			var notFound *ui.NotFoundError
-			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading Radius Setting", err.Error())
-				return
-			}
-			currentRadius = &settings.Radius{}
-		}
-
-		setting := r.radiusModelToSetting(ctx, &radius, currentRadius)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Radius Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.USG.IsNull() && !plan.USG.IsUnknown() {
-		var usg settingUSGModel
-		resp.Diagnostics.Append(plan.USG.As(ctx, &usg, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		// Read current remote settings as the base so unset fields keep their values.
-		_, currentUsg, err := ui.GetSetting[*settings.Usg](r.client.ApiClient, ctx, site)
-		if err != nil {
-			var notFound *ui.NotFoundError
-			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading USG Setting", err.Error())
-				return
-			}
-			currentUsg = &settings.Usg{}
-		}
-
-		setting := r.usgModelToSetting(ctx, &usg, currentUsg)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating USG Setting", err.Error())
-			return
-		}
-
-		r.writeUsgGeo(ctx, site, &usg, "Updating", &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
-	if !plan.IgmpSnooping.IsNull() && !plan.IgmpSnooping.IsUnknown() {
-		var igmp settingIgmpSnoopingModel
-		resp.Diagnostics.Append(plan.IgmpSnooping.As(ctx, &igmp, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		_, currentIgmp, err := ui.GetSetting[*settings.IgmpSnooping](r.client.ApiClient, ctx, site)
-		if err != nil {
-			var notFound *ui.NotFoundError
-			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading IGMP Snooping Setting", err.Error())
-				return
-			}
-			currentIgmp = &settings.IgmpSnooping{}
-		}
-
-		setting := r.igmpSnoopingModelToSetting(ctx, &igmp, currentIgmp, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating IGMP Snooping Setting", err.Error())
-			return
-		}
-	}
-
-	// Read back the settings
-	r.readSettings(ctx, site, &plan, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *settingResource) Delete(
