@@ -11,8 +11,9 @@ import (
 )
 
 type condSDK struct {
-	Always string `json:"always"`
-	Maybe  string `json:"maybe"`
+	Always string   `json:"always"`
+	Maybe  string   `json:"maybe"`
+	List   []string `json:"list,omitempty"`
 }
 
 type condModel struct{ Object types.Object }
@@ -133,5 +134,45 @@ func TestConditionalWireProblemsIsSilentWhenNothingIsConditional(t *testing.T) {
 	unconditional.Wires = []string{"always"}
 	if problems := ConditionalWireProblems(unconditional, condObjects(t), nil); problems != nil {
 		t.Errorf("a field whose wires are all unconditional reported %v", problems)
+	}
+}
+
+// A SLICE THE Encode NEVER TOUCHES MUST READ AS UNWRITTEN, and it did not.
+//
+// fillSentinel switched on Kind over strings, bools, numbers and pointers to
+// those, and had no case for a slice. So a slice field stayed nil in the
+// sentinel struct exactly as in the zero one, both marshalled the same, and
+// "equal across the two runs" -- the definition of written -- reported every
+// untouched slice as written.
+//
+// THE DIRECTION IS WHY THIS IS WORSE THAN A GAP. The check then tells the author
+// that Encode writes the wire and their predicate denies it, and an author who
+// believes it declares the predicate always true. That masks the name when
+// nothing wrote it, and under a would-emit narrowing go-unifi sends the empty
+// list over whatever the controller holds. A silent check would have been safer
+// than one arguing for the blanking.
+//
+// network's dhcp_relay_servers is where it surfaced: vpn_client's seven
+// conditional wires are all strings and pointers, so nothing had exercised a
+// slice through this.
+func TestConditionalWireProblemsSeesAnUntouchedSlice(t *testing.T) {
+	// The predicate is truthful: the list is written exactly when `want` is set.
+	truthful := func(o types.Object) bool {
+		want, ok := o.Attributes()["want"].(types.Bool)
+		return ok && want.ValueBool()
+	}
+	field := condField(truthful)
+	field.Wires = []string{"always", "list"}
+	field.ConditionalWires = map[string]func(types.Object) bool{"list": truthful}
+	field.Encode = func(_ context.Context, object types.Object, sdk *condSDK) diag.Diagnostics {
+		sdk.Always = "written"
+		want, ok := object.Attributes()["want"].(types.Bool)
+		if ok && want.ValueBool() {
+			sdk.List = []string{"written"}
+		}
+		return nil
+	}
+	if problems := ConditionalWireProblems(field, condObjects(t), nil); problems != nil {
+		t.Errorf("a truthful predicate over a slice wire reported %v", problems)
 	}
 }
