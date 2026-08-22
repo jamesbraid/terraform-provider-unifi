@@ -35,29 +35,54 @@ import (
 // the resource never constructs by literal has no keys at all, which the
 // coverage check below reports rather than passing off as "nothing assigned".
 func TestTheDeviceNestedCensus(t *testing.T) {
+	// SOURCES, PLURAL, BECAUSE THE LITERALS MOVE. A surface served from the
+	// resource kit builds its nested SDK types in its DESCRIPTOR, not in the
+	// resource file that used to hold its CRUD. Naming only the resource file
+	// made this instrument quietly stop seeing the surfaces it names: it errors
+	// when a file yields no composite literals at all, and those files still
+	// hold plenty of other ones, so a surface could contribute nothing to the
+	// classification while the check stayed green. firewall_policy -- the
+	// control this test leans on by name -- had already been in that state.
 	surfaces := []struct {
 		name    string
-		source  string
+		sources []string
 		subject any
 	}{
-		{"unifi_device", "unifi/device_resource.go", ui.Device{}},
+		{"unifi_device", []string{
+			"unifi/device_resource.go", "unifi/device_descriptor.go",
+		}, ui.Device{}},
 		// THE CONTROL SURFACES, and they are here to make the device answer
 		// mean something rather than to be reported. A census that returns zero
 		// for device is only informative if the same instrument returns
 		// non-zero somewhere -- otherwise it is the earlier regex failure again,
 		// wearing a different implementation.
-		{"unifi_network", "unifi/network_resource.go", ui.Network{}},
-		{"unifi_wlan", "unifi/wlan_resource.go", ui.WLAN{}},
-		{"unifi_firewall_policy", "unifi/firewall_policy_resource.go", ui.FirewallPolicy{}},
+		{"unifi_network", []string{
+			"unifi/network_resource.go", "unifi/network_descriptor.go",
+		}, ui.Network{}},
+		{"unifi_wlan", []string{"unifi/wlan_resource.go"}, ui.WLAN{}},
+		{"unifi_firewall_policy", []string{
+			"unifi/firewall_policy_resource.go",
+			"unifi/firewall_policy_descriptor.go",
+		}, ui.FirewallPolicy{}},
 	}
 
 	totalPopulation, totalManaged, totalAtRisk := 0, 0, 0
 	classes := map[string][]string{}
 	for _, surface := range surfaces {
-		assigned := compositeLiteralKeys(t, surface.source)
+		assigned := map[string]map[string]bool{}
+		for _, source := range surface.sources {
+			for typeName, keys := range compositeLiteralKeys(t, source) {
+				if assigned[typeName] == nil {
+					assigned[typeName] = map[string]bool{}
+				}
+				for key := range keys {
+					assigned[typeName][key] = true
+				}
+			}
+		}
 		if len(assigned) == 0 {
-			t.Errorf("%s: no composite literals parsed from %s, so every field would read "+
-				"as unassigned", surface.name, surface.source)
+			t.Errorf("%s: no composite literals parsed from %v, so every field would read "+
+				"as unassigned", surface.name, surface.sources)
 			continue
 		}
 

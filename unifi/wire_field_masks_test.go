@@ -467,51 +467,34 @@ func TestNetworkMaskExcludesTheFieldsItDoesNotManage(t *testing.T) {
 	}
 }
 
-// The declared managed list must match what the resource assigns. Same reason
-// as the table above: a hand-kept enumeration nothing checks goes stale.
-func TestNetworkManagedWireFieldsMatchTheResource(t *testing.T) {
-	assigned := networkFieldsAssignedBy(t, "unifi/network_resource.go", "modelToNetwork")
-	if len(assigned) == 0 {
-		t.Fatal("no assignments found; the parse failed")
-	}
-	tags := networkJSONTags(t)
-	declared := map[string]bool{}
-	for _, name := range networkManagedWireFields() {
-		declared[name] = true
-	}
-	// modelToNetwork delegates to helpers, so this checks the ONE DIRECTION it
-	// can: everything the mapper itself assigns must be declared. The reverse
-	// is covered by TestNetworkMaskNamesOnlyWhatThePurposeEncodes, which fails
-	// if a declared name is not real.
-	for _, field := range assigned {
-		tag, ok := tags[field]
-		if !ok || tag == "_id" || tag == "site_id" {
-			continue
-		}
-		if !declared[tag] {
-			t.Errorf("modelToNetwork assigns %s (Network.%s) but it is not in "+
-				"networkManagedWireFields, so it would never be written", tag, field)
-		}
-	}
-}
+// TestNetworkManagedWireFieldsMatchTheResource IS GONE, replaced rather than
+// dropped. It compared what modelToNetwork assigned against a hand-maintained
+// networkManagedWireFields list. unifi_network is served from the kit now: the
+// mask is DERIVED from the descriptor's Fields, so a flat field's wire name is
+// its declaration and the two cannot disagree. What can still disagree is a
+// hand-written hook -- a ScatteredObjectField Encode against its own Wires, and
+// BeforeSend against everything -- and those are checked in
+// scattered_encode_wires_test.go.
 
 // unifi_network must use the masked call. Separate from the table's version
 // because its call passes networkWireFields(network) rather than a bare list.
 func TestNetworkUpdateUsesTheMaskedCall(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "unifi", "network_resource.go"))
+	raw, err := os.ReadFile(filepath.Join("..", "unifi", "network_descriptor.go"))
 	if err != nil {
-		t.Fatalf("reading the resource: %v", err)
+		t.Fatalf("reading the descriptor: %v", err)
 	}
 	src := string(raw)
-	if !strings.Contains(src, "UpdateNetworkFields(\n\t\tctx, site, network, networkWireFields(network)...)") &&
-		!strings.Contains(src, "UpdateNetworkFields(ctx, site, network, networkWireFields(network)...)") {
-		t.Error("the update does not call UpdateNetworkFields with networkWireFields")
+	// The kit builds the mask from Fields and hands it to Backend.UpdateFields,
+	// so what this can still check is that the masked call is the one wired up
+	// and the whole-object one is not.
+	if !strings.Contains(src, "UpdateNetworkFields(ctx, site, in, fields...)") {
+		t.Error("Backend.UpdateFields does not call UpdateNetworkFields with the mask")
 	}
 	if regexp.MustCompile(`UpdateNetwork\(ctx`).MatchString(src) {
-		t.Error("a whole-object UpdateNetwork( call remains in network_resource.go")
+		t.Error("a whole-object UpdateNetwork( call remains in network_descriptor.go")
 	}
-	if !strings.Contains(src, "func (r *networkResource) modelToNetwork(") {
-		t.Fatal("the file read is not network_resource.go; the assertions above prove nothing")
+	if !strings.Contains(src, "func networkKitBackend(") {
+		t.Fatal("the file read is not network_descriptor.go; the assertions above prove nothing")
 	}
 }
 
@@ -864,3 +847,29 @@ func TestWLANUsesTheMaskedCall(t *testing.T) {
 // surface's field list -- so gofmt wraps it, and a literal substring would
 // report a whole-object write on a surface that does not do one.
 var maskedUpdateCall = regexp.MustCompile(`(?s)UpdateNetworkFields\(\s*ctx,\s*site,\s*network,`)
+
+// networkWireFields is now derived from the descriptor rather than maintained
+// beside it, and it lives here because only tests ask the question.
+//
+// The production list it replaces was hand-written: a name added to one and not
+// the other was a field the provider either could not write or claimed it
+// could. unifi_network is served from the kit, so the mask comes from Fields,
+// Wires and AlwaysWire -- this reads those three and answers what the surface
+// can write on ANY plan, which is the worst case each caller wants.
+//
+// The purpose argument is ignored. The old function narrowed the mask by what a
+// given purpose encodes; the checks that mattered are about the widest set, and
+// TestNetworkMaskNamesOnlyWhatThePurposeEncodes is the one that pins the
+// narrowing -- against the encoder itself rather than against another list.
+func networkWireFields(network *ui.Network) []string {
+	declared, _ := networkDescriptorWiresAndHooks(&testing.T{})
+	out := make([]string, 0, len(declared))
+	for name := range declared {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	// NARROWED THE WAY THE SURFACE NARROWS IT. Spec.NarrowMask runs
+	// networkMaskFor before the write, so a check that skipped it would report
+	// names the resource never sends.
+	return networkMaskFor(out, network)
+}

@@ -196,6 +196,26 @@ type Spec[M any, S any] struct {
 	// decides. This runs where the model is still in hand.
 	BeforeDelete func(ctx context.Context, model *M) (bool, diag.Diagnostics)
 
+	// NarrowMask drops names the object's own encoder would not emit, and only
+	// a surface whose SDK type has a DISCRIMINATOR needs it.
+	//
+	// unifi.Network is the one such type in go-unifi: its MarshalJSON emits a
+	// different field set per purpose, and a vlan-only network drops 54 of the
+	// 67 names unifi_network declares. maskedBody REFUSES a mask naming a field
+	// the encoder never emits, so without narrowing every vlan-only update
+	// fails. Measured, not inferred: a plausible vlan-only plan masks ten names
+	// and the encoder drops three of them.
+	//
+	// IT IS OPT-IN BECAUSE NARROWING COSTS SOMETHING. maskedBody deliberately
+	// sends an explicit zero for a field omitempty dropped -- that is how a mask
+	// clears a value -- and a narrowing that cannot tell "omitted at zero" from
+	// "never emitted" throws that away. The hand-written networkMaskFor could
+	// not tell them apart, which is why unifi_network has never been able to
+	// clear a field to its zero. Applying it everywhere would spread that.
+	//
+	// It runs AFTER BeforeSend, because the hook is what sets the discriminator.
+	NarrowMask func(sdk *S, fields []string) []string
+
 	// AlwaysWire names wire fields that BeforeSend sets, so they join the
 	// update mask whether or not the plan mentions them. Only for values a
 	// hook derives: a field the practitioner sets belongs in Fields, where
@@ -576,6 +596,17 @@ func (r *Resource[M, S]) Update(
 		}
 		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &state, body, prefetched)...)
 		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	if r.Spec.NarrowMask != nil {
+		fields = r.Spec.NarrowMask(body, fields)
+		if len(fields) == 0 {
+			resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject,
+				r.Spec.TypeName+" narrowed its update mask to nothing, so the write "+
+					"would say nothing; this is a descriptor fault rather than a "+
+					"configuration one")
 			return
 		}
 	}
