@@ -231,11 +231,34 @@ func fillSentinel(v any) error {
 			if err := fillSentinelValue(pointed.Elem()); err == nil {
 				field.Set(pointed)
 			}
+		default:
+			if err := fillSentinelValue(field); err != nil {
+				continue
+			}
 		}
 	}
 	return nil
 }
 
+// fillSentinelValue puts a value in v that a zero one cannot equal.
+//
+// A KIND WITH NO CASE HERE READS AS WRITTEN FOR EVERY WIRE OF THAT TYPE, and
+// silently. wiresEncodeWrites calls a wire written when the zero run and the
+// sentinel run agree, so a field the sentinel pass leaves at its zero agrees
+// with itself and every Encode that never touches it looks like an Encode that
+// did. Slices had no case, and network's dhcp_relay_servers is where that
+// surfaced -- vpn_client's seven conditional wires are strings and pointers.
+//
+// THE ERROR RUNS IN THE DANGEROUS DIRECTION, which is why a missing kind is a
+// defect rather than a gap. The check tells the author Encode writes the wire
+// and their predicate denies it; an author who believes it declares the
+// predicate always true, the name is masked when nothing wrote it, and a
+// would-emit narrowing sends the zero over whatever the controller holds. A
+// check that said nothing would have been safer than one arguing for that.
+//
+// So add the kind rather than letting it fall through, and note that for a
+// slice or a map the ELEMENT's sentinel is optional: a one-element container
+// already differs from nil, which is all the comparison needs.
 func fillSentinelValue(v reflect.Value) error {
 	switch v.Kind() {
 	case reflect.String:
@@ -244,8 +267,24 @@ func fillSentinelValue(v reflect.Value) error {
 		v.SetBool(true)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		v.SetInt(9973)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		v.SetUint(9973)
 	case reflect.Float32, reflect.Float64:
 		v.SetFloat(9973)
+	case reflect.Slice:
+		one := reflect.MakeSlice(v.Type(), 1, 1)
+		_ = fillSentinelValue(one.Index(0))
+		v.Set(one)
+	case reflect.Map:
+		m := reflect.MakeMap(v.Type())
+		key := reflect.New(v.Type().Key()).Elem()
+		if err := fillSentinelValue(key); err != nil {
+			return err
+		}
+		val := reflect.New(v.Type().Elem()).Elem()
+		_ = fillSentinelValue(val)
+		m.SetMapIndex(key, val)
+		v.Set(m)
 	default:
 		return fmt.Errorf("no sentinel for %s", v.Kind())
 	}
