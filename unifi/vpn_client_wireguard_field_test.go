@@ -238,38 +238,60 @@ func TestWireguardFieldDropsTheDNSNamesWhenNothingWillWriteThem(t *testing.T) {
 	}
 }
 
-// A CONFIGURATION FILE CAN SUPPLY THE DNS TOO, so the predicate cannot ask only
-// about dns_servers. Encode parses the file and writes the two wires from it
-// whenever dns_servers is null, and judging that without parsing is impossible
-// -- so a configuration present means both names are masked. Masking a wire
-// Encode might write is safe; failing to mask one it did write is the drop.
-func TestWireguardFieldKeepsTheDNSNamesWhenAConfigurationFileIsSet(t *testing.T) {
-	configuration, d := types.ObjectValue(wireguardConfigurationModel{}.AttributeTypes(),
-		map[string]attr.Value{
-			"content":  types.StringValue("Zm9v"),
-			"filename": types.StringValue("wg0.conf"),
-		})
-	if d.HasError() {
-		t.Fatal(d)
-	}
-	plan := wireguardPlanWithoutDNS(t)
-	attributes := plan.Wireguard.Attributes()
-	attributes["configuration"] = configuration
-	object, d := types.ObjectValue(wireguardModel{}.AttributeTypes(), attributes)
-	if d.HasError() {
-		t.Fatal(d)
-	}
-	plan.Wireguard = object
+// A configuration file supplies DNS only sometimes, and the mask has to follow
+// WHICH sometimes.
+//
+// THIS ASSERTED THE COARSE RULE AGAINST A FIXTURE THAT DOES NOT PARSE. It used
+// "Zm9v" -- base64 for "foo" -- and required both names to stay in the mask
+// because a configuration file "may supply" them. On that input Encode raises a
+// diagnostic and writes nothing, so keeping the names masked sends two empty
+// strings and blanks the controller's DNS. The reasoning was sound given the
+// premise that a predicate cannot know which; it can know, by parsing exactly as
+// Encode does, so the trade between dropping a write and destroying a value does
+// not arise.
+func TestWireguardFieldDNSNamesFollowWhatTheConfigurationSupplies(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		content string
+		masked  bool
+	}{
+		{"two DNS entries", "W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IGFXUmxiblJwZEhsclpYbHBaR1Z1ZEdsMGVXdGxlV2xrWlc1MGFYUjVNREE9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgpETlMgPSAxLjEuMS4xLCA4LjguOC44CgpbUGVlcl0KUHVibGljS2V5ID0gY0dWbGNuQjFZbXhwWTJ0bGVYQmxaWEp3ZFdKc2FXTnJaWGx3WldWeU1EQT0KRW5kcG9pbnQgPSAyMDMuMC4xMTMuMTA6NTE4MjAK", true},
+		{"a valid file with no DNS", "W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IGFXUmxiblJwZEhsclpYbHBaR1Z1ZEdsMGVXdGxlV2xrWlc1MGFYUjVNREE9CkFkZHJlc3MgPSAxMC4wLjAuMi8zMgoKW1BlZXJdClB1YmxpY0tleSA9IGNHVmxjbkIxWW14cFkydGxlWEJsWlhKd2RXSnNhV05yWlhsd1pXVnlNREE9CkVuZHBvaW50ID0gMjAzLjAuMTEzLjEwOjUxODIwCg==", false},
+		{"a file that does not parse", "Zm9v", false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			configuration, d := types.ObjectValue(wireguardConfigurationModel{}.AttributeTypes(),
+				map[string]attr.Value{
+					"content":  types.StringValue(testCase.content),
+					"filename": types.StringValue("wg0.conf"),
+				})
+			if d.HasError() {
+				t.Fatal(d)
+			}
+			plan := wireguardPlanWithoutDNS(t)
+			attributes := plan.Wireguard.Attributes()
+			attributes["configuration"] = configuration
+			object, d := types.ObjectValue(wireguardModel{}.AttributeTypes(), attributes)
+			if d.HasError() {
+				t.Fatal(d)
+			}
+			plan.Wireguard = object
 
-	fields, err := wireguardSpec(vpnClientWireguardWires()).WireFields(plan)
-	if err != nil {
-		t.Fatalf("WireFields: %v", err)
-	}
-	for _, name := range []string{"dhcpd_dns_1", "dhcpd_dns_2"} {
-		if !slices.Contains(fields, name) {
-			t.Errorf("%s left the mask although a configuration file may supply it; "+
-				"a value Encode writes and the mask omits is silently dropped", name)
-		}
+			fields, err := wireguardSpec(vpnClientWireguardWires()).WireFields(plan)
+			if err != nil {
+				t.Fatalf("WireFields: %v", err)
+			}
+			// CONTROL: a wire that is never conditional must be present in every
+			// case, or an empty mask would satisfy the false rows.
+			if !slices.Contains(fields, "wireguard_interface") {
+				t.Fatalf("the unconditional wires are missing too; the mask is empty: %v", fields)
+			}
+			for _, name := range []string{"dhcpd_dns_1", "dhcpd_dns_2"} {
+				if got := slices.Contains(fields, name); got != testCase.masked {
+					t.Errorf("%s masked=%v, want %v", name, got, testCase.masked)
+				}
+			}
+		})
 	}
 }
 
