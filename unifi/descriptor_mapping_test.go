@@ -72,11 +72,30 @@ var loadSDK = sync.OnceValues(func() (*sdkshape.Package, error) {
 
 // descriptorField is one entry of a Spec's Fields slice, read off the source.
 type descriptorField struct {
-	Kind    string // StringField, Int64PtrField, DurationField, ...
-	Wire    string
+	Kind string // StringField, Int64PtrField, DurationField, ...
+	Wire string
+	// Wires is set instead of Wire by ScatteredObjectField, which maps one
+	// model object onto several flat SDK attributes.
+	Wires   []string
 	Model   string // the model struct field the closure returns
 	SDK     string // the SDK struct field the closure returns
 	Wrapper string // ReadOnly, or empty
+}
+
+// wires is every SDK attribute this entry maps.
+//
+// ASK THIS, NOT .Wire. A checker reading the single field would verify one of
+// destination's five and report the other four as carried by nothing -- which
+// is the one-of-many blind spot ScatteredObjectField exists to prevent,
+// reproduced inside the check written to catch it.
+func (f descriptorField) wires() []string {
+	if len(f.Wires) > 0 {
+		return f.Wires
+	}
+	if f.Wire == "" {
+		return nil
+	}
+	return []string{f.Wire}
 }
 
 // descriptor is one parsed *_descriptor.go.
@@ -142,15 +161,40 @@ func TestEveryDescriptorAgreesWithItsSources(t *testing.T) {
 
 			got := map[string]descriptorField{}
 			for _, f := range desc.Fields {
-				got[f.Wire] = f
+				for _, wire := range f.wires() {
+					got[wire] = f
+				}
 			}
 
+			// A DESCRIPTOR WIRE IS ACCOUNTED FOR BY ANY OF THREE ARTIFACTS,
+			// and reading only the first reports two correct descriptors as
+			// typos.
+			//
+			// managed is the ordinary case. AlwaysWire is a value a hook
+			// derives, which by definition is not a schema attribute the
+			// mapping can call managed -- traffic_route's matching_target says
+			// which of four arrays the controller should read and no
+			// practitioner writes it. And a CLAIM is the policy's own word for
+			// a wire whose relationship to the schema is not one-to-one, which
+			// the mapping renders with an empty disposition rather than a
+			// managed one: traffic_route's ip_addresses and ip_ranges are one
+			// released list over two observed arrays, and target_devices is two
+			// released lists over one.
+			//
+			// The typo guard survives all three, because a name in none of them
+			// still fails.
+			claimed := claimedStructuralNames(t, name)
 			for wire := range got {
-				if _, ok := expected[wire]; !ok {
-					t.Errorf("the descriptor carries wire %q, which is not a managed field of "+
-						"%s.mapping.json; a wire name that matches nothing is sent to the "+
-						"controller and silently ignored", wire, name)
+				if _, ok := expected[wire]; ok {
+					continue
 				}
+				if desc.AlwaysWire[wire] || claimed[wire] {
+					continue
+				}
+				t.Errorf("the descriptor carries wire %q, which is not a managed field of "+
+					"%s.mapping.json, not in AlwaysWire and not named by a claim; a wire "+
+					"name that matches nothing is sent to the controller and silently "+
+					"ignored", wire, name)
 			}
 			// A MANAGED FIELD CAN BE CARRIED BY EITHER MECHANISM, and requiring
 			// a Fields entry was wrong. site_to_site_vpn's x_ipsec_pre_shared_key
@@ -176,6 +220,21 @@ func TestEveryDescriptorAgreesWithItsSources(t *testing.T) {
 			}
 
 			for wire, f := range got {
+				// A SCATTERED FIELD IS CHECKED ON THE ONE THING THAT MEANS
+				// ANYTHING FOR IT: that each name is a real JSON member of the
+				// SDK struct, which is the mask's own requirement. The rest of
+				// this block compares one wire against one mapping row and one
+				// model attribute, and a scattered field has neither -- its
+				// model field is the PARENT object, so destination's five wires
+				// would each be reported as disagreeing with tfsdk:"destination".
+				if f.Kind == "ScatteredObjectField" {
+					if _, ok := sdkMembers[wire]; !ok {
+						t.Errorf("%s: the SDK struct %s has no JSON member of this name, so "+
+							"this scattered entry puts a name on the mask that the controller "+
+							"never reads", wire, desc.SDKType)
+					}
+					continue
+				}
 				want, ok := expected[wire]
 				if !ok {
 					continue
@@ -297,36 +356,38 @@ func TestDescriptorDerivabilityIsReported(t *testing.T) {
 		}
 		members, _ := sdk.Members(desc.SDKType)
 		for _, f := range desc.Fields {
-			total++
-			want, ok := byWire[f.Wire]
-			if !ok {
-				continue
-			}
-			wireOK++
-			if k := derivableKind(want); k != "" && kindAgrees(f.Kind, k) {
-				kindOK++
-			}
-			member, ok := members[f.Wire]
-			if !ok {
-				continue
-			}
-			if member.Pointer {
-				pointerNeedsSDK++
-				needsSDK = append(needsSDK, fmt.Sprintf(
-					"%s.%s is *T in the SDK and %s in the mapping", name, f.Wire, want.StructuralType))
-			}
-			// The Go identifier is a fact about the struct, not a rendering of
-			// the wire name. Count where the two differ by more than case and
-			// underscores, because that is what no generator can infer.
-			// Strip both separators. The wire names use underscores and, for
-			// static_route, hyphens -- "static-route_distance" is StaticRouteDistance
-			// in Go, which is a case-fold once both are gone. Counting it as a
-			// divergence overstated this by five of seventeen on the first run.
-			flattened := strings.NewReplacer("_", "", "-", "").Replace(f.Wire)
-			if !strings.EqualFold(flattened, member.GoName) {
-				identNeedsSDK++
-				needsSDK = append(needsSDK, fmt.Sprintf(
-					"%s.%s is %s in the SDK", name, f.Wire, member.GoName))
+			for _, wire := range f.wires() {
+				total++
+				want, ok := byWire[wire]
+				if !ok {
+					continue
+				}
+				wireOK++
+				if k := derivableKind(want); k != "" && kindAgrees(f.Kind, k) {
+					kindOK++
+				}
+				member, ok := members[wire]
+				if !ok {
+					continue
+				}
+				if member.Pointer {
+					pointerNeedsSDK++
+					needsSDK = append(needsSDK, fmt.Sprintf(
+						"%s.%s is *T in the SDK and %s in the mapping", name, wire, want.StructuralType))
+				}
+				// The Go identifier is a fact about the struct, not a rendering of
+				// the wire name. Count where the two differ by more than case and
+				// underscores, because that is what no generator can infer.
+				// Strip both separators. The wire names use underscores and, for
+				// static_route, hyphens -- "static-route_distance" is StaticRouteDistance
+				// in Go, which is a case-fold once both are gone. Counting it as a
+				// divergence overstated this by five of seventeen on the first run.
+				flattened := strings.NewReplacer("_", "", "-", "").Replace(wire)
+				if !strings.EqualFold(flattened, member.GoName) {
+					identNeedsSDK++
+					needsSDK = append(needsSDK, fmt.Sprintf(
+						"%s.%s is %s in the SDK", name, wire, member.GoName))
+				}
 			}
 		}
 	}
@@ -658,14 +719,29 @@ func parseField(t *testing.T, path string, el ast.Expr, helpers map[string]helpe
 				t.Fatalf("%s: a Wire value is %T, not a string literal", path, kv.Value)
 			}
 			field.Wire, _ = strconv.Unquote(bl.Value)
+		case "Wires":
+			slice, ok := kv.Value.(*ast.CompositeLit)
+			if !ok {
+				t.Fatalf("%s: a Wires value is %T, not a composite literal", path, kv.Value)
+			}
+			for _, item := range slice.Elts {
+				bl, ok := item.(*ast.BasicLit)
+				if !ok {
+					t.Fatalf("%s: a Wires entry is %T, not a string literal; skipping it "+
+						"would let a scattered field's dropped wire read as accounted for",
+						path, item)
+				}
+				wire, _ := strconv.Unquote(bl.Value)
+				field.Wires = append(field.Wires, wire)
+			}
 		case "Model":
 			field.Model = returnedSelector(kv.Value)
 		case "SDK":
 			field.SDK = returnedSelector(kv.Value)
 		}
 	}
-	if field.Wire == "" {
-		t.Fatalf("%s: a %s entry has no Wire", path, field.Kind)
+	if field.Wire == "" && len(field.Wires) == 0 {
+		t.Fatalf("%s: a %s entry names no wire at all", path, field.Kind)
 	}
 	return field
 }
@@ -742,4 +818,37 @@ func kindCarriesAPointer(kind string) bool {
 		return true
 	}
 	return strings.Contains(kind, "Ptr")
+}
+
+// claimedStructuralNames is every SDK attribute a claim in the surface's policy
+// names.
+//
+// A CLAIM IS THE POLICY'S WORD FOR A WIRE THAT IS NOT ONE-TO-ONE with a schema
+// attribute, and the mapping renders one with an empty disposition -- neither
+// managed nor omitted. A checker that only knows the two dispositions reads the
+// blank as "not managed" and reports a correct descriptor as a typo.
+func claimedStructuralNames(t *testing.T, surface string) map[string]bool {
+	t.Helper()
+	path := filepath.Join("..", "provider-codegen", "policy", surface+".json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		// A surface with no policy file has no claims. The policy's existence
+		// is asserted by TestEveryKitSurfaceHasAPolicyEntry, not here.
+		return nil
+	}
+	var policy struct {
+		Claims []struct {
+			StructuralNames []string `json:"structural_names"`
+		} `json:"claims"`
+	}
+	if err := json.Unmarshal(raw, &policy); err != nil {
+		t.Fatalf("parsing %s: %v", path, err)
+	}
+	out := map[string]bool{}
+	for _, claim := range policy.Claims {
+		for _, structural := range claim.StructuralNames {
+			out[structural] = true
+		}
+	}
+	return out
 }
