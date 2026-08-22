@@ -34,7 +34,22 @@ const DefaultTimeout = 20 * time.Minute
 // not -- a field-masked update is a different method from a whole-object one,
 // and choosing it is a decision about what the provider may overwrite.
 type Backend[S any] struct {
-	Create       func(ctx context.Context, site string, in *S) (*S, error)
+	Create func(ctx context.Context, site string, in *S) (*S, error)
+	// CreateFields is the field-masked create, for a surface whose "create" is
+	// a PATCH of an object the controller already holds.
+	//
+	// unifi_device is the case and so far the only one. A device is not made by
+	// the provider, it is ADOPTED: the object exists with its full config
+	// before Terraform ever names it. ToSDK builds the SDK object from the
+	// PLAN, so every attribute the practitioner did not write is elided to its
+	// zero value -- and a whole-object create would assert those zeros over the
+	// config the device already carries. Create-means-make-a-new-object holds
+	// for every other surface here, where an unset field takes a controller
+	// default rather than clobbering a live one.
+	//
+	// The mask is the same one Update uses: WireFields over the plan. Exactly
+	// one of Create and CreateFields must be set.
+	CreateFields func(ctx context.Context, site string, in *S, fields ...string) (*S, error)
 	Read         func(ctx context.Context, site, id string) (*S, error)
 	UpdateFields func(ctx context.Context, site string, in *S, fields ...string) (*S, error)
 	// Update is the whole-object write, for the five SDK types that have no
@@ -351,7 +366,7 @@ func (r *Resource[M, S]) Create(
 			return
 		}
 	}
-	created, err := r.Spec.Backend.Create(ctx, site, sdk)
+	created, err := r.createObject(ctx, site, sdk, &data)
 	if err != nil {
 		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, err.Error())
 		return
@@ -737,4 +752,36 @@ func (r *Resource[M, S]) UpgradeState(ctx context.Context) map[int64]resource.St
 	var built resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &built)
 	return r.SchemaSpec.Upgraders(ctx, built.Schema)
+}
+
+// createObject sends the new object, masked when the surface asked for that.
+//
+// A DESCRIPTOR WITH NEITHER WOULD NIL-PANIC AT THE SEND, which is a stack trace
+// pointing at the kit rather than a diagnostic pointing at the descriptor that
+// is actually wrong. The update path already guards this way; create did not,
+// because until CreateFields existed there was only one field to forget.
+func (r *Resource[M, S]) createObject(
+	ctx context.Context,
+	site string,
+	sdk *S,
+	plan *M,
+) (*S, error) {
+	if r.Spec.Backend.CreateFields == nil {
+		if r.Spec.Backend.Create == nil {
+			return nil, fmt.Errorf(
+				"%s declares neither Backend.Create nor Backend.CreateFields, "+
+					"so there is no way to create it", r.Spec.TypeName)
+		}
+		return r.Spec.Backend.Create(ctx, site, sdk)
+	}
+	if r.Spec.Backend.Create != nil {
+		return nil, fmt.Errorf(
+			"%s declares both Backend.Create and Backend.CreateFields; "+
+				"exactly one of them writes the new object", r.Spec.TypeName)
+	}
+	fields, err := r.Spec.WireFields(plan)
+	if err != nil {
+		return nil, err
+	}
+	return r.Spec.Backend.CreateFields(ctx, site, sdk, fields...)
 }
