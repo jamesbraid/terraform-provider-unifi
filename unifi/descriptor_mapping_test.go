@@ -220,11 +220,23 @@ func TestEveryDescriptorAgreesWithItsSources(t *testing.T) {
 			//
 			// What is still caught is a field carried by neither, which is the
 			// case that actually stops round-tripping.
+			// A CLAIM EXCUSES BOTH DIRECTIONS, and until now it excused only
+			// one. The loop above lets a claim account for a wire the descriptor
+			// CARRIES; this one did not let the same claim account for a managed
+			// field the claim COVERS. A claim says "these structural names are
+			// handled by this dedicated mapping" -- which is exactly the answer
+			// to "no descriptor field carries it".
+			//
+			// unifi_client is where the asymmetry shows. Its qos_rate members
+			// are fields of ClientGroup, a DIFFERENT SDK type, so they cannot go
+			// in AlwaysWire: WireNameProblems checks those against unifi.Client's
+			// own json tags and a ClientGroup name is not one. Neither mechanism
+			// could account for them and the claim was being ignored.
 			for wire, want := range expected {
 				if _, ok := got[wire]; ok {
 					continue
 				}
-				if desc.AlwaysWire[wire] {
+				if desc.AlwaysWire[wire] || claimed[wire] {
 					continue
 				}
 				t.Errorf("%s.mapping.json declares %q managed (terraform name %q) and no "+

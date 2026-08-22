@@ -30,6 +30,9 @@
         ]
       }
     },
+    "unifi_client": {
+      "sdk_type": "Client"
+    },
     "unifi_client_qos_rate": {
       "sdk_type": "ClientGroup",
       "duration_units": {},
