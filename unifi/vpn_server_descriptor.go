@@ -458,29 +458,31 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 			// present the key is either supplied or generated, so the wire is
 			// always written. local_port likewise comes from the block's port.
 			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
-				Wires:     []string{"x_wireguard_private_key", "local_port"},
-				Model:     func(m *vpnServerKitModel) *types.Object { return &m.Wireguard },
-				AttrTypes: vpnServerWireguardModel{}.AttributeTypes(),
-				Elide:     resourcekit.NullZero,
-				Encode:    encodeVPNServerWireguard,
-				Decode:    decodeVPNServerWireguard,
+				Wires: []string{
+					"x_wireguard_private_key",
+					"local_port",
+					// The controller issues wireguard_public_key and accepts
+					// none: marshalUserVPN emits no such wire, so masking it
+					// names a field the encoder cannot write and maskedBody
+					// refuses the whole update. Decode reads it; there is no
+					// write half.
+					//
+					// It is DECLARED rather than omitted so WireNameProblems
+					// still checks the name against the SDK's own tags, where
+					// wireguard_public_key is real. ReadOnlyWires keeps it off
+					// the mask.
+					"wireguard_public_key",
+				},
+				Model:         func(m *vpnServerKitModel) *types.Object { return &m.Wireguard },
+				AttrTypes:     vpnServerWireguardModel{}.AttributeTypes(),
+				Elide:         resourcekit.NullZero,
+				Encode:        encodeVPNServerWireguard,
+				Decode:        decodeVPNServerWireguard,
+				ReadOnlyWires: []string{"wireguard_public_key"},
 				ConditionalWires: map[string]func(types.Object) bool{
 					"x_wireguard_private_key": openVPNMemberSet("private_key"),
 					"local_port":              portSet,
 				},
-				// wireguard_public_key IS DELIBERATELY ABSENT FROM Wires, AND
-				// THE KIT HAS NO WAY TO SAY WHY. The controller issues it and
-				// accepts none -- marshalUserVPN emits no such wire at all --
-				// so masking it names a field the encoder cannot write and
-				// maskedBody refuses the whole update. Decode reads it; there
-				// is no write half to declare.
-				//
-				// A wire is accounted for by a Fields entry, AlwaysWire or a
-				// claim, and read-only is none of the three, so the mapping
-				// check reports it as not round-tripping. ConditionalWires
-				// cannot carry it either: a never-true predicate is reported by
-				// ConditionalWireProblems as a written direction no object
-				// exercised, which is that check working correctly.
 			},
 			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
 				Wires:     []string{"l2tp_allow_weak_ciphers", "x_ipsec_pre_shared_key"},
