@@ -2,10 +2,10 @@ package resourcekit
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -134,22 +134,24 @@ func ConditionalWireProblems[M any, S any](
 					"keeps nothing off the mask", wire))
 			continue
 		}
-		// THE "AND Encode WRITES IT" HALF IS NOT CHECKED HERE, DELIBERATELY, AND
-		// LEAVING IT IN WOULD HAVE BEEN WORSE THAN OMITTING IT.
+		// AND Encode MUST NOT WRITE IT. A wire declared read-only that Encode
+		// assigns is a value the practitioner set and the mask never carries --
+		// the silent drop, pointing the other way from the destruction above.
 		//
-		// sawWritten comes from wiresEncodeWrites, which compares the two runs'
-		// ENCODINGS. A read-only wire is one the encoder never emits, so it is
-		// absent from both -- equal, and therefore "written" by that rule. The
-		// check fired on vpn_server's wireguard_public_key, whose Encode does
-		// not mention it.
-		//
-		// It is the slice conflation again, reached through the discriminator
-		// rather than through a missing Kind: absent-from-both and equal-in-both
-		// are the same string and different facts. Answering it needs a
-		// struct-level comparison rather than an encoded one, which is #240.
-		//
-		// A check that argues for the wrong answer is worse than one that is
-		// silent, so this stays silent until the instrument can tell.
+		// THIS ASSERTION WAS WITHDRAWN ONCE AND THE INSTRUMENT WAS THE REASON.
+		// wiresEncodeWrites compared the two runs' ENCODINGS, and a read-only
+		// wire is one the encoder never emits, so it was absent from both --
+		// equal, and therefore "written" by that rule. It fired on vpn_server's
+		// wireguard_public_key, whose Encode does not mention it. Comparing the
+		// STRUCT FIELDS instead answers the question that was actually being
+		// asked, and the control in wiresEncodeWrites refuses a wire the two
+		// probes cannot distinguish rather than guessing for it.
+		if sawWritten[wire] {
+			problems = append(problems, fmt.Sprintf(
+				"%q is in ReadOnlyWires and Encode writes it, so the value is built and the "+
+					"mask never carries it -- the practitioner sets an attribute and the "+
+					"apply sends nothing", wire))
+		}
 	}
 
 	// AN UNDECLARED WIRE THE OBJECTS SHOW IS CONDITIONAL IS THE DESTRUCTIVE
@@ -200,40 +202,84 @@ func wiresEncodeWrites[M any, S any](
 		return nil, err
 	}
 	// AFTER the sentinel fill, so a discriminator the sentinel clobbered is put
-	// back before either object is marshalled.
+	// back before either object is used.
 	if seed != nil {
 		seed(&zero)
 		seed(&sentinel)
 	}
+
+	before, err := structFieldsByWire(&zero)
+	if err != nil {
+		return nil, err
+	}
+	after, err := structFieldsByWire(&sentinel)
+	if err != nil {
+		return nil, err
+	}
+	// THE CONTROL, AND IT RUNS BEFORE Encode DOES. The whole method rests on the
+	// two objects differing at every wire: where they already agree, "Encode
+	// overwrote both" and "Encode touched neither" produce the same answer and
+	// this cannot tell them apart. A field kind fillSentinel does not reach, or
+	// one the seed sets on both, lands there -- so it is reported rather than
+	// answered.
+	for _, wire := range field.Wires {
+		zeroField, known := before[wire]
+		if !known {
+			return nil, fmt.Errorf(
+				"%q is not a json field of the SDK type, so nothing here can say whether "+
+					"Encode writes it", wire)
+		}
+		if reflect.DeepEqual(zeroField.Interface(), after[wire].Interface()) {
+			return nil, fmt.Errorf(
+				"the two probe objects hold the same value for %q before Encode runs, so a "+
+					"write and a skip are indistinguishable for it", wire)
+		}
+	}
+
 	if diags := field.Encode(ctx, object, &zero); diags.HasError() {
 		return nil, fmt.Errorf("encoding onto a zero struct: %v", diags)
 	}
 	if diags := field.Encode(ctx, object, &sentinel); diags.HasError() {
 		return nil, fmt.Errorf("encoding onto a sentinel struct: %v", diags)
 	}
-	fromZero, err := encodedKeys(&zero)
-	if err != nil {
-		return nil, err
-	}
-	fromSentinel, err := encodedKeys(&sentinel)
-	if err != nil {
-		return nil, err
-	}
+
 	written := make(map[string]bool, len(field.Wires))
 	for _, wire := range field.Wires {
-		written[wire] = string(fromZero[wire]) == string(fromSentinel[wire])
+		written[wire] = reflect.DeepEqual(before[wire].Interface(), after[wire].Interface())
 	}
 	return written, nil
 }
 
-func encodedKeys(v any) (map[string]json.RawMessage, error) {
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return nil, fmt.Errorf("encode: %w", err)
+// structFieldsByWire indexes a struct's fields by their json name.
+//
+// IT READS THE STRUCT AND NOT THE ENCODING, and that is the whole of #240. The
+// encoded form cannot represent "this field was not written": a wire the
+// purpose alias never emits is absent from both runs, absent equals absent, and
+// the rule that agreement means a write calls it written. vpn_server's
+// wireguard_public_key is exactly that -- the controller issues it, marshalUserVPN
+// does not emit it, and Encode does not mention it. Absent-from-both and
+// equal-in-both are the same string and different facts.
+//
+// The struct always has the field, whatever the alias does with it, so the
+// question "did Encode change this" has an answer there and nowhere else.
+func structFieldsByWire(v any) (map[string]reflect.Value, error) {
+	value := reflect.ValueOf(v)
+	if value.Kind() != reflect.Pointer || value.Elem().Kind() != reflect.Struct {
+		return nil, fmt.Errorf("indexing needs a pointer to a struct, got %T", v)
 	}
-	var out map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, fmt.Errorf("decode: %w", err)
+	elem := value.Elem()
+	structType := elem.Type()
+	out := make(map[string]reflect.Value, structType.NumField())
+	for i := range structType.NumField() {
+		tag := structType.Field(i).Tag.Get("json")
+		if tag == "" || tag == "-" {
+			continue
+		}
+		name, _, _ := strings.Cut(tag, ",")
+		if name == "" {
+			continue
+		}
+		out[name] = elem.Field(i)
 	}
 	return out, nil
 }

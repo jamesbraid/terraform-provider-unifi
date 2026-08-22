@@ -213,3 +213,108 @@ func TestReadOnlyWireNotInWiresIsReported(t *testing.T) {
 		t.Errorf("a misspelled read-only wire reported %v", problems)
 	}
 }
+
+// THE OTHER DIRECTION FOR A READ-ONLY WIRE, and the assertion that had to be
+// withdrawn once because the instrument could not tell.
+//
+// A wire declared read-only that Encode assigns is a value the practitioner set
+// and the mask never carries: the silent drop, pointing the other way from the
+// destruction the conditional checks look for. It could not be asserted while
+// wiresEncodeWrites compared ENCODINGS, because a read-only wire is one the
+// encoder never emits -- absent from both runs, equal, and therefore "written".
+// Comparing the struct fields answers the question that was being asked.
+func TestReadOnlyWireThatEncodeWritesIsReported(t *testing.T) {
+	field := condField(nil)
+	field.ConditionalWires = nil
+	field.Wires = []string{"always", "maybe"}
+	field.ReadOnlyWires = []string{"always"} // and Encode writes `always`
+	problems := ConditionalWireProblems(field, condObjects(t), nil)
+	if len(problems) == 0 {
+		t.Fatal("a read-only wire Encode writes reported nothing")
+	}
+	if !strings.Contains(problems[0], "Encode writes it") {
+		t.Errorf("problem = %q, want it to say Encode writes the read-only wire", problems[0])
+	}
+}
+
+// A WIRE WHOSE FIELD THE ENCODER NEVER EMITS STILL HAS AN ANSWER, and getting
+// it wrong is what #240 was. The struct carries the field whatever the alias
+// does with it, so "did Encode change this" is decidable there.
+type hiddenSDK struct {
+	Always string `json:"always"`
+	// Hidden is a real field of the type and the encoder below drops it, which
+	// is vpn_server's wireguard_public_key: the controller issues it and
+	// marshalUserVPN does not emit it.
+	Hidden string `json:"hidden"`
+}
+
+func (h hiddenSDK) MarshalJSON() ([]byte, error) {
+	return []byte(`{"always":` + `"` + h.Always + `"}`), nil
+}
+
+func TestAWireTheEncoderNeverEmitsReadsAsNotWritten(t *testing.T) {
+	field := ScatteredObjectField[condModel, hiddenSDK]{
+		Wires:         []string{"always", "hidden"},
+		ReadOnlyWires: []string{"hidden"},
+		Model:         func(m *condModel) *types.Object { return &m.Object },
+		AttrTypes:     condAttrs,
+		Encode: func(_ context.Context, _ types.Object, sdk *hiddenSDK) diag.Diagnostics {
+			sdk.Always = "written"
+			return nil
+		},
+		Decode: func(context.Context, *hiddenSDK) (types.Object, diag.Diagnostics) {
+			return types.ObjectNull(condAttrs), nil
+		},
+	}
+	if problems := ConditionalWireProblems(field, condObjects(t), nil); problems != nil {
+		t.Errorf("a read-only wire the encoder never emits reported %v; the encoded form "+
+			"cannot represent \"not written\" and the struct can", problems)
+	}
+	// THE CONTROL. The same field with Encode writing it must be reported, or
+	// the pass above is a check that cannot fail rather than a correct answer.
+	field.Encode = func(_ context.Context, _ types.Object, sdk *hiddenSDK) diag.Diagnostics {
+		sdk.Always = "written"
+		sdk.Hidden = "written"
+		return nil
+	}
+	if problems := ConditionalWireProblems(field, condObjects(t), nil); len(problems) == 0 {
+		t.Error("the same wire, now written by Encode, reported nothing")
+	}
+}
+
+// A PROBE THAT CANNOT DISTINGUISH REFUSES RATHER THAN ANSWERS.
+//
+// The method rests on the two objects differing at every wire. Where they
+// already agree -- a field kind fillSentinel does not reach, or one the seed
+// sets on both -- "Encode overwrote both" and "Encode touched neither" produce
+// the same answer, and answering either way is a guess.
+type opaqueSDK struct {
+	Always string    `json:"always"`
+	Opaque *struct{} `json:"opaque"`
+}
+
+func TestAWireTheProbesCannotDistinguishIsRefused(t *testing.T) {
+	field := ScatteredObjectField[condModel, opaqueSDK]{
+		Wires:     []string{"always", "opaque"},
+		Model:     func(m *condModel) *types.Object { return &m.Object },
+		AttrTypes: condAttrs,
+		Encode: func(_ context.Context, _ types.Object, sdk *opaqueSDK) diag.Diagnostics {
+			sdk.Always = "written"
+			return nil
+		},
+		Decode: func(context.Context, *opaqueSDK) (types.Object, diag.Diagnostics) {
+			return types.ObjectNull(condAttrs), nil
+		},
+		ConditionalWires: map[string]func(types.Object) bool{
+			"opaque": func(types.Object) bool { return false },
+		},
+	}
+	problems := ConditionalWireProblems(field, condObjects(t), nil)
+	if len(problems) == 0 {
+		t.Fatal("a wire the probes cannot tell apart reported nothing")
+	}
+	if !strings.Contains(problems[0], "indistinguishable") {
+		t.Errorf("problem = %q, want it to say a write and a skip cannot be told apart",
+			problems[0])
+	}
+}
