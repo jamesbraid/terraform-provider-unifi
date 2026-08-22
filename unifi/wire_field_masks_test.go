@@ -57,14 +57,6 @@ type maskedSurface struct {
 func maskedSurfaces() []maskedSurface {
 	return []maskedSurface{
 		{
-			name: "vpn_client", file: "unifi/vpn_client_resource.go",
-			mapper: "modelToNetwork", encoder: "marshalVPNClient",
-			declared:              vpnClientWireFields,
-			unmanaged:             "dhcpd_dns_enabled",
-			managed:               "wireguard_client_peer_ip",
-			conditionallyAssigned: []string{"dhcpd_dns_1", "dhcpd_dns_2"},
-		},
-		{
 			name: "vpn_server", file: "unifi/vpn_server_resource.go",
 			mapper: "modelToNetwork", encoder: "marshalUserVPN",
 			declared:              vpnServerWireFields,
@@ -355,41 +347,6 @@ func goUnifiSourcePath(t *testing.T, name string) string {
 		cache = filepath.Join(home, "go", "pkg", "mod")
 	}
 	return filepath.Join(cache, "github.com/ubiquiti-community/go-unifi@"+string(m[1]), "unifi", name)
-}
-
-// THE MASK MUST ACTUALLY BE USED, and nothing else checks that.
-//
-// Reverting the resource to UpdateNetwork leaves every test above passing: the
-// declared list still matches the mapper, still names only emitted fields, and
-// still excludes dhcpd_dns_enabled -- it is simply no longer consulted. Go does
-// not complain about an unused package-level function, so the whole fix can be
-// undone in one line with nothing failing.
-//
-// This is the same shape as the ValidateConfig interface assertion: a wiring
-// that can be silently removed needs something asserting the wiring, not just
-// the thing being wired.
-func TestVPNClientUpdateUsesTheMaskedCall(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "unifi", "vpn_client_resource.go"))
-	if err != nil {
-		t.Fatalf("reading the resource: %v", err)
-	}
-	src := string(raw)
-
-	if !maskedUpdateCall.MatchString(src) ||
-		!strings.Contains(src, "vpnClientWireFields()") {
-		t.Error("the update does not call UpdateNetworkFields with vpnClientWireFields; " +
-			"a whole-object write resets every field this resource does not manage")
-	}
-	// The whole-object call must be gone entirely, not merely joined.
-	if regexp.MustCompile(`UpdateNetwork\(ctx`).MatchString(src) {
-		t.Error("a whole-object UpdateNetwork( call remains in vpn_client_resource.go")
-	}
-	// The control: this file really is the one under test, or both assertions
-	// above would pass for an empty read.
-	if !strings.Contains(src, "func (r *vpnClientResource) modelToNetwork(") {
-		t.Fatal("the file read does not contain vpnClientResource.modelToNetwork; " +
-			"the path is wrong and the assertions above prove nothing")
-	}
 }
 
 // unifi_network gets its own tests rather than a row in the table above,

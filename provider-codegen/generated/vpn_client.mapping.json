@@ -1664,13 +1664,6 @@
       "disposition": "omitted"
     },
     {
-      "structural_name": "wireguard_client_mode",
-      "terraform_name": "wireguard_client_mode",
-      "structural_type": "string",
-      "terraform_type": "",
-      "disposition": "omitted"
-    },
-    {
       "structural_name": "wireguard_interface_binding_mode_ip_version",
       "terraform_name": "wireguard_interface_binding_mode_ip_version",
       "structural_type": "string",
@@ -1827,6 +1820,13 @@
     {
       "structural_name": "dhcpd_dns_2",
       "terraform_name": "wireguard.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_client_mode",
+      "terraform_name": "wireguard.peer",
       "structural_type": "string",
       "terraform_type": "",
       "disposition": ""

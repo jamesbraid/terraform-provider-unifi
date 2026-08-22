@@ -387,9 +387,6 @@
     "site": [
       "derived-value"
     ],
-    "vpn_client": [
-      "nested"
-    ],
     "vpn_server": [
       "derived-value",
       "nested"

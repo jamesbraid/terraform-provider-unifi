@@ -24,6 +24,7 @@ import (
 	resource_site_to_site_vpn "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site_to_site_vpn"
 	resource_static_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_static_route"
 	resource_traffic_route "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_traffic_route"
+	resource_vpn_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_client"
 	resource_wlan "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wlan"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
@@ -142,6 +143,16 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				portForwardKitSpec(), resource_port_forward.PortForwardResourceSchema(ctx))
+			for _, problem := range problems {
+				t.Error(problem)
+			}
+		},
+		"vpn_client": func(t *testing.T) {
+			for _, problem := range resourcekit.WireNameProblems(vpnClientKitSpec()) {
+				t.Error(problem)
+			}
+			problems := resourcekit.ElideProblems(
+				vpnClientKitSpec(), resource_vpn_client.VpnClientResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

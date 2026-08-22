@@ -7,22 +7,6 @@
   "claims": [
     {
       "mapping": {
-        "from_api": "wireguardPeerFromNetwork",
-        "kind": "dedicated",
-        "to_api": "wireguardPeerToNetwork"
-      },
-      "reason": "one released peer object over three flat observed fields; the schema groups the endpoint and key that the wire keeps apart",
-      "structural_names": [
-        "wireguard_client_peer_ip",
-        "wireguard_client_peer_port",
-        "wireguard_client_peer_public_key"
-      ],
-      "terraform_members": [
-        "wireguard.peer"
-      ]
-    },
-    {
-      "mapping": {
         "from_api": "wireguardDNSServersFromNetwork",
         "kind": "dedicated",
         "to_api": "wireguardDNSServersToNetwork"
@@ -34,6 +18,23 @@
       ],
       "terraform_members": [
         "wireguard.dns_servers"
+      ]
+    },
+    {
+      "mapping": {
+        "from_api": "wireguardPeerFromNetwork",
+        "kind": "dedicated",
+        "to_api": "wireguardPeerToNetwork"
+      },
+      "reason": "one released peer object over four flat observed fields: the schema groups the endpoint and key that the wire keeps apart, and wireguard_client_mode is \"manual\" exactly when the provider supplies peer details, so it is part of the relation rather than a sibling decision -- the read uses it as the discriminator for whether there is a peer at all",
+      "structural_names": [
+        "wireguard_client_mode",
+        "wireguard_client_peer_ip",
+        "wireguard_client_peer_port",
+        "wireguard_client_peer_public_key"
+      ],
+      "terraform_members": [
+        "wireguard.peer"
       ]
     }
   ],
@@ -1275,11 +1276,6 @@
       "disposition": "omitted",
       "structural_name": "wireguard_client_configuration_filename",
       "terraform_name": "wireguard_client_configuration_filename"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_mode",
-      "terraform_name": "wireguard_client_mode"
     },
     {
       "disposition": "omitted",

@@ -156,6 +156,19 @@ func TestEveryDescriptorAgreesWithItsSources(t *testing.T) {
 				if f.TerraformName == "id" || f.TerraformName == "site" {
 					continue
 				}
+				// A MANAGED ATTRIBUTE WITH NO STRUCTURAL NAME NAMES NO WIRE, so
+				// no descriptor field can carry it and demanding one is a check
+				// that cannot pass.
+				//
+				// vpn_client is the first managed surface to have one:
+				// wireguard.configuration is a file the provider PARSES into
+				// several observed fields and the controller never reports back,
+				// so the policy gives it no single structural name. Every other
+				// instance across the estate is a list resource's filter.name and
+				// filter.value, which this check does not walk.
+				if f.StructuralName == "" {
+					continue
+				}
 				expected[f.StructuralName] = f
 			}
 

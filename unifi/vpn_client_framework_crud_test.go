@@ -45,7 +45,7 @@ type (
 	vpnClientCRUDModel = vpnClientResourceModel
 )
 
-func newVPNClientCRUD() vpnClientCRUD { return &vpnClientResource{} }
+func newVPNClientCRUD() vpnClientCRUD { return newVPNClientKitResource() }
 
 // wireguardConfigFixture is a real WireGuard configuration. The keys are not
 // keys -- they are the right shape and nothing else -- and the file is here in
@@ -521,6 +521,20 @@ func TestVPNClientUpdateMasksOnlyWhatTheObjectCarries(t *testing.T) {
 		if _, sent := body[written]; !sent {
 			t.Errorf("%s did not reach the controller although the plan sets it", written)
 		}
+	}
+	// THE TWO CONSTANTS MUST TRAVEL AND NOTHING IN THE PLAN CAN CARRY THEM.
+	// No attribute holds either, so a masked update that derives its names from
+	// the plan alone omits both -- and purpose is what selects which of
+	// go-unifi's seven alias structs serialises the object. Removing them from
+	// the descriptor's AlwaysWire failed no test until this ran.
+	for _, constant := range []string{"purpose", "vpn_type"} {
+		if _, sent := body[constant]; !sent {
+			t.Errorf("the update did not send %s; no attribute carries it, so it reaches "+
+				"the mask only by being declared", constant)
+		}
+	}
+	if got := server.sent(t, "purpose"); got != "vpn-client" {
+		t.Errorf("purpose = %q, want vpn-client: it selects the encoder", got)
 	}
 	if got := server.sent(t, "name"); got != "tunnel-renamed" {
 		t.Errorf("name = %q, want the planned one", got)
