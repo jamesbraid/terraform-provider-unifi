@@ -78,19 +78,8 @@ func (a *portAction) Configure(
 	req action.ConfigureRequest,
 	resp *action.ConfigureResponse,
 ) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
+	client, ok := actionClient(req.ProviderData, &resp.Diagnostics)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Action Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
 		return
 	}
 
