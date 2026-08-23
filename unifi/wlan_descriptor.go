@@ -147,7 +147,7 @@ func encodeWlanMacFilter(ctx context.Context, object types.Object, sdk *ui.WLAN)
 	return diags
 }
 
-func decodeWlanMacFilter(ctx context.Context, sdk *ui.WLAN) (types.Object, diag.Diagnostics) {
+func decodeWlanMacFilter(ctx context.Context, sdk *ui.WLAN, _ types.Object) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	list := types.SetNull(types.StringType)
 	if len(sdk.MACFilterList) > 0 {

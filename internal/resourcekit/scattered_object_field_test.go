@@ -64,7 +64,7 @@ func scatterField() ScatteredObjectField[scatterModel, scatterSDK] {
 			sdk.WireguardInterface = iface.ValueString()
 			return nil
 		},
-		Decode: func(_ context.Context, sdk *scatterSDK) (types.Object, diag.Diagnostics) {
+		Decode: func(_ context.Context, sdk *scatterSDK, _ types.Object) (types.Object, diag.Diagnostics) {
 			return types.ObjectValue(scatterAttrs, map[string]attr.Value{
 				"private_key":           types.StringValue(sdk.WireguardPrivateKey),
 				"preshared_key_enabled": types.BoolValue(sdk.WireguardPresharedK),
@@ -459,5 +459,95 @@ func TestAConditionOnAnUnknownWireIsRefused(t *testing.T) {
 	}
 	if !strings.Contains(problems[0], "guards nothing") {
 		t.Errorf("problem = %q, want it to say the condition guards nothing", problems[0])
+	}
+}
+
+// Decode's prior parameter is this field's own object as it stood in state when
+// the read began, and the two things that need it are one missing input seen
+// twice.
+//
+// MERGING. A controller that omits a member says nothing about it. wan's read
+// path guards every assignment with `if network.X != nil` for that reason --
+// eight of its ten objects keep the prior value per member -- and a Decode built
+// only from *S has to write the zero instead.
+//
+// ELIDING. An object the controller returned nothing for and the practitioner
+// never set must stay NULL rather than materialise fully zeroed. A null prior
+// with no API data is exactly that case, which is why one parameter answers both.
+func TestScatteredObjectDecodeReceivesThePriorObject(t *testing.T) {
+	ctx := context.Background()
+	field := scatterField()
+	field.Decode = func(
+		_ context.Context, sdk *scatterSDK, prior types.Object,
+	) (types.Object, diag.Diagnostics) {
+		// THE ELIDE CASE: nothing from the controller and nothing held before.
+		if sdk.WireguardInterface == "" && prior.IsNull() {
+			return types.ObjectNull(scatterAttrs), nil
+		}
+		// THE MERGE CASE: keep what the object held for a member the controller
+		// did not return.
+		iface := types.StringValue(sdk.WireguardInterface)
+		key := types.StringNull()
+		if !prior.IsNull() {
+			if held, ok := prior.Attributes()["private_key"].(types.String); ok {
+				key = held
+			}
+		}
+		object, diags := types.ObjectValue(scatterAttrs, map[string]attr.Value{
+			"private_key":           key,
+			"preshared_key_enabled": types.BoolValue(sdk.WireguardPresharedK),
+			"interface":             iface,
+		})
+		return object, diags
+	}
+
+	t.Run("a member the controller omits keeps what state held", func(t *testing.T) {
+		state := &scatterModel{Wireguard: scatterObject(t, "held-secret", "wg-old")}
+		sdk := &scatterSDK{WireguardInterface: "wg-new"}
+		if diags := field.ToModel(ctx, sdk, state); diags.HasError() {
+			t.Fatalf("ToModel: %v", diags)
+		}
+		got := state.Wireguard.Attributes()
+		if v := scatterString(t, got, "private_key"); v != "held-secret" {
+			t.Errorf("the prior value was lost: private_key = %q", v)
+		}
+		// CONTROL: the value the controller DID return must win, or a Decode
+		// that ignored the SDK entirely would satisfy the assertion above.
+		if v := scatterString(t, got, "interface"); v != "wg-new" {
+			t.Errorf("the controller's value did not land: interface = %q", v)
+		}
+	})
+
+	t.Run("nothing held and nothing returned stays null", func(t *testing.T) {
+		state := &scatterModel{Wireguard: types.ObjectNull(scatterAttrs)}
+		if diags := field.ToModel(ctx, &scatterSDK{}, state); diags.HasError() {
+			t.Fatalf("ToModel: %v", diags)
+		}
+		if !state.Wireguard.IsNull() {
+			t.Errorf("an unset object materialised as %v", state.Wireguard)
+		}
+	})
+}
+
+// THE PRIOR MUST BE READ BEFORE IT IS OVERWRITTEN, which is the whole of what
+// makes this possible and is one statement's ordering away from being useless.
+func TestScatteredObjectDecodeSeesTheStateValueNotTheDecodedOne(t *testing.T) {
+	field := scatterField()
+	var seen types.Object
+	field.Decode = func(
+		_ context.Context, _ *scatterSDK, prior types.Object,
+	) (types.Object, diag.Diagnostics) {
+		seen = prior
+		return scatterObject(t, "decoded", "decoded"), nil
+	}
+	state := &scatterModel{Wireguard: scatterObject(t, "from-state", "from-state")}
+	if diags := field.ToModel(context.Background(), &scatterSDK{}, state); diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if seen.IsNull() {
+		t.Fatal("Decode was handed a null prior; the model was overwritten first")
+	}
+	if v := scatterString(t, seen.Attributes(), "private_key"); v != "from-state" {
+		t.Errorf("Decode saw %q, so it was handed the value it had just produced", v)
 	}
 }

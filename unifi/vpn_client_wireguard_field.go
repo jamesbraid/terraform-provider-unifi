@@ -212,6 +212,7 @@ func decodeVPNClientPeer(
 func decodeVPNClientWireguard(
 	ctx context.Context,
 	network *ui.Network,
+	_ types.Object,
 ) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	value := wireguardModel{
