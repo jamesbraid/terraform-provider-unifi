@@ -116,20 +116,26 @@ func vpnServerDNSServerCount(object types.Object) int {
 	return len(servers.Elements())
 }
 
-// encodeVPNServerWAN writes wan.ip and wan.interface into the pair belonging to
-// the configured VPN type. Encode receives the SDK object, so it can read the
-// discriminator; the MASK cannot, which is what
-// vpnServerUnwritableWires is for.
-func encodeVPNServerWAN(ctx context.Context, object types.Object, sdk *ui.Network) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var wan vpnServerWANModel
-	if !vpnServerObjectAs(ctx, object, &wan) {
-		diags.AddError("Invalid WAN block", "could not read the wan block")
-		return diags
-	}
-	vpnServerWANIPToNetwork(wan.IP, sdk)
-	vpnServerWANInterfaceToNetwork(wan.Interface, sdk)
-	return diags
+// encodeVPNServerWAN is a NO-OP, deliberately, and the reason is ordering.
+//
+// wan.ip and wan.interface belong to the pair matching the configured VPN
+// type, and vpnServerWANIPToNetwork / vpnServerWANInterfaceToNetwork read that
+// type off sdk.VPNType to choose it. But this runs during ToSDK's Fields
+// pass, and vpnServerBeforeSend -- the only place that sets sdk.VPNType --
+// runs AFTER every field has been encoded. At this point sdk.VPNType is
+// always nil, so the switch in both helpers matches no case and the wan pair
+// was silently never written: measured live, a wireguard server configured
+// with wan.ip="any", wan.interface="wan2" sent neither to the controller, and
+// the first apply's check only ever passed because ApplyPlanToState overlays
+// the plan's known values over Decode's null -- a refresh has no plan to fall
+// back on and the block emptied on the very next Read.
+//
+// vpnServerBeforeSend does the actual write instead, once its own switch has
+// set sdk.VPNType and the discriminator this needs finally exists. This field
+// stays declared (Wires, AttrTypes, Decode) because those still describe real
+// wire names and a real read; only the write half moved.
+func encodeVPNServerWAN(context.Context, types.Object, *ui.Network) diag.Diagnostics {
+	return nil
 }
 
 func decodeVPNServerWAN(_ context.Context, sdk *ui.Network, _ types.Object) (types.Object, diag.Diagnostics) {
@@ -340,7 +346,7 @@ func vpnServerUnwritableWires(sdk *ui.Network) []string {
 	return unwritable
 }
 
-func vpnServerBeforeSend(_ context.Context, _, effective *vpnServerKitModel, sdk *ui.Network, _ any) diag.Diagnostics {
+func vpnServerBeforeSend(ctx context.Context, _, effective *vpnServerKitModel, sdk *ui.Network, _ any) diag.Diagnostics {
 	var diags diag.Diagnostics
 	sdk.Purpose = ui.PurposeUserVPN
 	sdk.SettingPreference = util.Ptr("manual")
@@ -369,6 +375,23 @@ func vpnServerBeforeSend(_ context.Context, _, effective *vpnServerKitModel, sdk
 			"Missing VPN Type Configuration",
 			"Exactly one of `wireguard`, `l2tp`, or `openvpn` must be specified.",
 		)
+	}
+	if diags.HasError() {
+		return diags
+	}
+
+	// THE WAN PAIR, NOW THAT THE DISCRIMINATOR EXISTS. encodeVPNServerWAN
+	// cannot do this: it runs during ToSDK, before sdk.VPNType above is set,
+	// so vpnServerWANIPToNetwork's switch on it would match nothing. Here it
+	// just set VPNType two lines up, so the same helpers now route correctly.
+	if !effective.WAN.IsNull() && !effective.WAN.IsUnknown() {
+		var wan vpnServerWANModel
+		if !vpnServerObjectAs(ctx, effective.WAN, &wan) {
+			diags.AddError("Invalid WAN block", "could not read the wan block")
+			return diags
+		}
+		vpnServerWANIPToNetwork(wan.IP, sdk)
+		vpnServerWANInterfaceToNetwork(wan.Interface, sdk)
 	}
 	return diags
 }
