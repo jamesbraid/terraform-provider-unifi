@@ -270,8 +270,8 @@ type Int64PtrField[M any, S any] struct {
 
 func (f Int64PtrField[M, S]) WireName() string { return f.Wire }
 
-// ToSDK DOES NOT SKIP AN UNKNOWN, and that is bug-compatibility rather than a
-// design.
+// ToSDK DOES NOT SKIP AN UNKNOWN FOR A PLAIN FIELD, and that is
+// bug-compatibility rather than a design.
 //
 // types.Int64Unknown().ValueInt64Pointer() returns a pointer to ZERO -- measured,
 // not assumed -- so an unknown is indistinguishable from an explicit 0 by the
@@ -279,11 +279,22 @@ func (f Int64PtrField[M, S]) WireName() string { return f.Wire }
 // unconditionally and therefore sends port: 0 for an unknown port. Skipping it
 // here would send nothing, which is arguably right and is a DIFFERENT provider.
 //
-// The difference is believed unreachable for this attribute: port is optional
-// and not computed, so Terraform resolves it to null or to the configured value
-// and never to unknown. That belief is not a measurement and the case is not
-// exercised anywhere, which is why the behaviour is reproduced rather than
-// improved.
+// The difference was believed unreachable for a field with no OmitZero: port
+// is optional and not computed, so Terraform resolves it to null or to the
+// configured value and never to unknown. That belief was not a measurement and
+// the case was not exercised anywhere -- which is why the behaviour is
+// reproduced rather than improved for THOSE fields.
+//
+// AN OmitZero FIELD IS DIFFERENT, and this was found rather than designed.
+// site_to_site_vpn's ike_dh_group is Optional+Computed with no static default,
+// so a create where the practitioner never sets it resolves to Unknown, not to
+// a configured value -- the exact case the paragraph above assumed away.
+// ValueInt64Pointer() on that Unknown is the same pointer-to-zero an explicit 0
+// would produce, so skipping only the known-zero case left the unknown one to
+// reach the wire as ipsec_dh_group: 0, and the controller's "must match
+// 2|5|14|15|16|19|20|21|25|26" validator refused the create outright. A field
+// that opted into OmitZero already declared the controller rejects a zero
+// here; an unknown that resolves to the same zero is not a different fact.
 func (f Int64PtrField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Diagnostics {
 	value := f.Model(model)
 	// OmitZero is a WRITE rule and Elide is a READ one, which is why this
@@ -291,10 +302,10 @@ func (f Int64PtrField[M, S]) ToSDK(_ context.Context, model *M, sdk *S) diag.Dia
 	// this answers "may a zero go to the controller at all", and
 	// site_to_site_vpn is where they differ: its optInt64 helper says the
 	// controller REJECTS 0 for the lifetime, DH-group and route-distance
-	// fields, so a pointer to zero is a failed request rather than a smaller
-	// value. Defaulted off, because the seven existing users send zeroes
-	// legitimately.
-	if f.OmitZero && !value.IsNull() && !value.IsUnknown() && value.ValueInt64() == 0 {
+	// fields, so a pointer to zero -- or to what an unknown collapses to -- is
+	// a failed request rather than a smaller value. Defaulted off, because the
+	// seven existing users send zeroes legitimately.
+	if f.OmitZero && (value.IsUnknown() || (!value.IsNull() && value.ValueInt64() == 0)) {
 		return nil
 	}
 	*f.SDK(sdk) = value.ValueInt64Pointer()
