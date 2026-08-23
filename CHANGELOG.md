@@ -161,12 +161,23 @@ All notable changes to this project will be documented in this file.
   reached the controller as zeros, and the mapper and declarations were fixed before this release
   could ship them.
 
-  The read paths got the same treatment after the first acceptance run over the cutovers caught two
-  defects the unit suite could not see: a `unifi_device` read that crashed the provider on a missing
-  value constructor, and a `unifi_client` with no fixed IP reading back as an empty string its own
-  IPv4 type refuses, which failed every apply touching such a client. Both are fixed, and a
-  zero-read conformance check now runs every surface's read path against an all-unset object without
-  needing a controller, so the class stays shut.
+  **The conversion was then run against a live controller for the first time, and that run is most
+  of what this release fixes.** The full acceptance suite is green at v0.102.0 and failed 38 tests
+  over the migrated surfaces before this release; every failure was a cutover regression, and every
+  fix below carries a test that fails without it. The classes, briefly: a `unifi_device` read
+  crashed the provider on a missing value constructor; a `unifi_client` with no fixed IP read back
+  as an empty string its own IPv4 type refuses; import by name (`unifi_network`'s `name=` handle,
+  `unifi_wlan`'s bare SSID) and `unifi_client`'s import by MAC had been dropped entirely, and an
+  import block carrying an identity was ignored; an update changing only an attribute served by a
+  hook rather than a Field sent the stale value; a controller that echoes nothing back — a
+  vlan-only network omits 54 of the surface's 67 wires — had its silence written over the
+  practitioner's values; `unifi_vpn_server` updates were refused outright over mask names the
+  encoding cannot carry, and its generated WireGuard public key never reached state;
+  `unifi_port_profile` turned an omitted boolean into an explicit `false`; and
+  `unifi_site_to_site_vpn` sent zeros the controller rejects for its DH-group fields. Conformance
+  checks now hold the classes that can be held without a controller: every surface's read path is
+  run against an all-unset object, and the write-path classification pins which writes carry a
+  mask.
 
 - **The tree shed the code nothing calls.** The generated value layer — custom object types and
   constructors emitted beside every generated schema, 1,719 declarations across 39 files — is
