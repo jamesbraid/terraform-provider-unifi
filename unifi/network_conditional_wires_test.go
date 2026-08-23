@@ -225,6 +225,18 @@ func populatedAttr(t *testing.T, typ attr.Type) attr.Value {
 			t.Fatalf("building a probe list: %v", d)
 		}
 		return list
+	case types.SetType:
+		// A single element, not three: a set's members are compared for
+		// equality, and three copies of the one value populatedAttr can build
+		// for a given element type would either collapse to one or fail on
+		// the duplicate, depending on the element. One is enough to make the
+		// member non-null, which is all a probe object needs.
+		element := populatedAttr(t, concrete.ElemType)
+		set, d := types.SetValue(concrete.ElemType, []attr.Value{element})
+		if d.HasError() {
+			t.Fatalf("building a probe set: %v", d)
+		}
+		return set
 	case types.ObjectType:
 		inner := map[string]attr.Value{}
 		for name, attrType := range concrete.AttrTypes {
@@ -261,6 +273,11 @@ func nullAttr(typ attr.Type) attr.Value {
 	switch concrete := typ.(type) {
 	case types.ListType:
 		return types.ListNull(concrete.ElemType)
+	case types.SetType:
+		// Mirrors masked_zero_check.go's own nullAttrValue: falling through to
+		// typ.ValueType below builds an untyped null set, one whose ElemType
+		// is never set, rather than a null of the set's own element type.
+		return types.SetNull(concrete.ElemType)
 	case types.ObjectType:
 		return types.ObjectNull(concrete.AttrTypes)
 	}
