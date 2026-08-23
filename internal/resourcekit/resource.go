@@ -887,8 +887,22 @@ func (r *Resource[M, S]) ImportState(
 	req resource.ImportStateRequest,
 	resp *resource.ImportStateResponse,
 ) {
-	parts := strings.Split(req.ID, ":")
 	handle := req.ID
+	if handle == "" && req.Identity != nil {
+		// AN IMPORT BLOCK'S `identity = {...}` (Terraform 1.12+) LEAVES req.ID
+		// EMPTY -- core hands the handle over in req.Identity instead, per the
+		// one-attribute identity schema every managed surface shares. Reading
+		// only req.ID left this route writing an empty id into state, and the
+		// read that followed found nothing: the practitioner's own object,
+		// reported as "Cannot import non-existent remote object".
+		var identityID types.String
+		resp.Diagnostics.Append(req.Identity.GetAttribute(ctx, path.Root("id"), &identityID)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		handle = identityID.ValueString()
+	}
+	parts := strings.Split(handle, ":")
 	switch len(parts) {
 	case 2:
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), parts[0])...)
