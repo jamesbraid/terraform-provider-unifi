@@ -209,6 +209,23 @@ func decodeVPNClientPeer(
 	return wireguardPeerFromNetwork(ctx, diags, network)
 }
 
+// decodeVPNClientWireguard reads private_key and preshared_key straight off
+// the SDK response. Measured live on 10.4.57: x_wireguard_private_key and
+// wireguard_client_preshared_key both come back at full length for a
+// manual-mode (peer) client, nil rather than "" when no preshared key is set
+// -- the controller echoes both, the same as it does for vpn_server.
+//
+// HARDCODING NULL HERE WAS THE DEFECT this replaces. private_key is Required
+// in the schema -- always a known value in the config -- so a Decode that
+// always returned null for it disagreed with the config on every refresh:
+// "+ private_key" forever. See TestWireguardFieldRoundTripsWhatTheControllerReturns
+// in vpn_client_wireguard_field_test.go, which asserted the null and had to
+// be corrected alongside this.
+//
+// vpnClientAfterReceive's file-mode carry-forward is unrelated and still
+// applies afterward, for the case this cannot: a practitioner who configured
+// a file rather than a peer, where the controller's stored representation of
+// the parsed key need not match the file byte for byte.
 func decodeVPNClientWireguard(
 	ctx context.Context,
 	network *ui.Network,
@@ -216,11 +233,11 @@ func decodeVPNClientWireguard(
 ) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	value := wireguardModel{
-		PrivateKey:          types.StringNull(),
+		PrivateKey:          types.StringPointerValue(network.WireguardPrivateKey),
 		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
 		Peer:                decodeVPNClientPeer(ctx, &diags, network),
 		PresharedKeyEnabled: types.BoolValue(network.WireguardClientPresharedKeyEnabled),
-		PresharedKey:        types.StringNull(),
+		PresharedKey:        types.StringPointerValue(network.WireguardClientPresharedKey),
 		Interface:           types.StringPointerValue(network.WireguardInterface),
 		DnsServers:          wireguardDNSServersFromNetwork(ctx, &diags, network),
 	}
