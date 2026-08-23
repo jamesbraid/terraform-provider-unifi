@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -114,7 +115,8 @@ func (r *clientKitResource) IdentitySchema(
 // kind of handle a practitioner wrote.
 var clientMACPattern = regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$`)
 
-// clientImportHandle decides what ImportState routes on.
+// clientImportHandle decides what ImportState routes on, including the two
+// ways it refuses to.
 //
 // req.ID CARRIES THE HANDLE FOR EVERY IMPORT SHAPE BUT ONE: the CLI's
 // `terraform import <addr> <handle>` and an import block's `id = "<handle>"`
@@ -144,7 +146,43 @@ func clientImportHandle(ctx context.Context, req resource.ImportStateRequest) (s
 			handle = identityMAC.ValueString()
 		}
 	}
-	return handle, clientMACPattern.MatchString(handle), diags
+
+	if handle == "" {
+		// v0.102.0 COULD NOT REACH THIS STATE: its identity schema had one
+		// attribute, mac, RequiredForImport, so core rejected an empty
+		// identity block before the provider ever ran. Making both id and mac
+		// OptionalForImport here -- needed so either alone satisfies the
+		// schema -- opened the door to a block, or a bare CLI string, naming
+		// neither. Left unguarded, the empty handle became id="" in state,
+		// and the read that followed hit GetClient(site, "") -- the LIST
+		// endpoint, which go-unifi answers with the site's one client
+		// whenever there is exactly one: a silent, WRONG import with no
+		// diagnostic at all.
+		diags.AddError("Error Importing Client",
+			"Either id or mac must be supplied to import a client.")
+		return "", false, diags
+	}
+
+	if clientMACPattern.MatchString(handle) {
+		return handle, true, diags
+	}
+
+	if _, rest, ok := strings.Cut(handle, ":"); ok && clientMACPattern.MatchString(rest) {
+		// "site:mac" ISN'T SUPPORTED, MATCHING v0.102.0: mac import there
+		// always used the provider's own site, with no per-import override,
+		// and nothing else in this task asked for that to change. Left to
+		// the kit's generic routing, this handle would fall through to
+		// "Import ID must be in format 'site:id' or 'id'" -- true, but silent
+		// about mac, which is what a practitioner who just typed "site:mac"
+		// needs to hear instead.
+		diags.AddError("Error Importing Client",
+			`A site-prefixed mac ("site:mac") is not supported for import; `+
+				`use a bare mac (its own site is always used), a bare id, `+
+				`or "site:id".`)
+		return "", false, diags
+	}
+
+	return handle, false, diags
 }
 
 // ImportState RESOLVES A MAC-SHAPED HANDLE TO AN ID BEFORE DELEGATING, rather
