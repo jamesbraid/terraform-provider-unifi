@@ -90,14 +90,26 @@ All notable changes to this project will be documented in this file.
   attributes' accepted values — so storing it for "the controller said nothing" recorded a value the
   controller never gave, indistinguishable from one it did.
 
+- **Deleting a resource the controller no longer holds now succeeds, on every surface the shared
+  resource kit serves.** Delete's goal state is already reached once the object is gone, so treating
+  its absence as an error left a practitioner with a resource in state that Terraform would not
+  release and no way to remove it short of an edit by hand — the worst outcome available for
+  something that is already gone. The change lands here for the six surfaces this release moves
+  onto the kit whose hand-written deletes reported the error at v0.102.0: `unifi_dns_record`,
+  `unifi_network`, `unifi_radius_user`, `unifi_vpn_client`, `unifi_vpn_server` and `unifi_wlan`.
+  The surfaces still hand-written — `unifi_site`, `unifi_wan` and `unifi_wireguard_peer` among
+  them — keep their own delete semantics until they migrate.
+
 ### 📋 Known Issues
 
 - **`unifi_vpn_server` still drops the third and fourth DNS servers.** A VPN server configured with
-  four DNS servers writes only two. The cause is in the `go-unifi` SDK rather than in this provider:
-  its marshaller emits two of the four slots. The SDK fix is written and pushed but **not tagged**,
-  so this provider cannot consume it yet, and no amount of provider-side change fixes it. It is
-  listed here rather than left out because this release fixes other things and a note that mentions
-  only what was fixed reads as a clean bill of health.
+  four DNS servers writes only two. Most of the cause is in the `go-unifi` SDK: its marshaller emits
+  two of the four slots, and the fix for that is written and pushed but **not tagged**, so this
+  provider cannot consume it yet. The provider's own mapper and declared wires stop at two slots too
+  — `vpnServerDNSServersToNetwork` in `unifi/vpn_server_resource.go`, and the descriptor's `Wires`
+  for `dhcpd_dns_1`/`dhcpd_dns_2` — so closing this needs an SDK tag *and* a provider change, not the
+  SDK tag alone. It is listed here rather than left out because this release fixes other things and a
+  note that mentions only what was fixed reads as a clean bill of health.
 
 - **Six hand-written resources still update with a whole-object write.** `unifi_bgp`,
   `unifi_dynamic_dns`, `unifi_power_supervisor`, `unifi_setting`, `unifi_site` and
@@ -152,7 +164,11 @@ All notable changes to this project will be documented in this file.
   serve create, read, update, delete, import and list through one engine, bringing the kit to twenty
   surfaces. Each cutover pinned the resource's CRUD behaviour in tests before the switch, and the
   served schema is checked against the released baseline throughout, so the conversion ships no
-  behaviour or schema change beyond the six declared above.
+  behaviour or schema change beyond the six declared above, with one further exception: deleting an
+  already-absent object now succeeds here too. Five of these thirteen — `network`, `radius_user`,
+  `vpn_client`, `vpn_server` and `wlan` — are among the ten hand-written surfaces the delete fix
+  above names as previously erroring, and for those five this is the one behaviour change the
+  conversion carries.
 
   The kit's write paths are now classified and pinned: every kit surface updates through a masked
   field write, and every create sends a whole new object except `unifi_device`, whose create is an
@@ -163,28 +179,40 @@ All notable changes to this project will be documented in this file.
 
   **The conversion was then run against a live controller for the first time, and that run is most
   of what this release fixes.** The full acceptance suite is green at v0.102.0 and failed 38 tests
-  over the migrated surfaces before this release; every failure was a cutover regression, and every
-  fix below carries a test that fails without it. The classes, briefly: a `unifi_device` read
-  crashed the provider on a missing value constructor; a `unifi_client` with no fixed IP read back
-  as an empty string its own IPv4 type refuses; import by name (`unifi_network`'s `name=` handle,
-  `unifi_wlan`'s bare SSID) and `unifi_client`'s import by MAC had been dropped entirely, and an
-  import block carrying an identity was ignored; an update changing only an attribute served by a
-  hook rather than a Field sent the stale value; a controller that echoes nothing back — a
-  vlan-only network omits 54 of the surface's 67 wires — had its silence written over the
-  practitioner's values; `unifi_vpn_server` updates were refused outright over mask names the
-  encoding cannot carry, and its generated WireGuard public key never reached state;
-  `unifi_port_profile` turned an omitted boolean into an explicit `false`; and
-  `unifi_site_to_site_vpn` sent zeros the controller rejects for its DH-group fields. Conformance
-  checks now hold the classes that can be held without a controller: every surface's read path is
-  run against an all-unset object, and the write-path classification pins which writes carry a
-  mask.
+  over the migrated surfaces before this release; every failure was a cutover regression, and each
+  one is backed by a unit or acceptance test that fails without it. The classes, briefly: a
+  `unifi_device` read crashed the provider on a missing value constructor; a `unifi_client` with no
+  fixed IP read back as an empty string its own IPv4 type refuses; import by name (`unifi_network`'s
+  `name=` handle, `unifi_wlan`'s bare SSID) and `unifi_client`'s import by MAC had been dropped
+  entirely, and an import block carrying an identity was ignored; an update changing only an
+  attribute served by a hook rather than a Field sent the stale value; a controller that echoes
+  nothing back — a vlan-only network omits 54 of the surface's 67 wires — had its silence written
+  over the practitioner's values; `unifi_vpn_client`'s read path hardcoded null for the Required,
+  Sensitive `private_key`, so every refresh planned a permanent diff on a secret, and it now reads
+  the value back from the wire in manual and peer mode, with the file-mode carry-forward unchanged;
+  `unifi_client` carried four of its own: groups supplied by name became a hard error instead of
+  auto-creating the network-members group the way v0.102.0 did, `virtual_network_override_enabled`
+  went out as a literal JSON `null` the controller refused, `fixed_ap_mac` was accepted and silently
+  dropped because `fixed_ap_enabled` was never derived from it, and `allow_existing` and
+  `skip_forget_on_destroy` read back null after import and planned a spurious change forever;
+  `unifi_vpn_server` updates were refused outright over mask names the encoding cannot carry, its
+  generated WireGuard public key never reached state, its `wan` block emptied itself on the first
+  refresh after apply — a separate defect from the mask refusal just named — and filtering its list
+  by name was refused as an unknown filter; `unifi_port_profile` turned an omitted boolean into an
+  explicit `false`; and `unifi_site_to_site_vpn` sent zeros the controller rejects for its DH-group
+  fields. Conformance checks now hold the classes that can be held without a controller: every
+  surface's read path is run against an all-unset object, and the write-path classification pins
+  which writes carry a mask.
 
 - **The tree shed the code nothing calls.** The generated value layer — custom object types and
   constructors emitted beside every generated schema, 1,719 declarations across 39 files — is
   stripped at generation time now that the runtime builds plain framework values, and its
-  hand-written twin in `unifi/models` follows it out. Sixty-six scaffolded tests whose tables were
-  empty could never fail and are deleted; the unfailable-test ledger that tracked them shrinks by
-  the same sixty-six lines, which is the fix its own header prescribes.
+  hand-written twin in `unifi/models` follows it out. The unfailable-test ledger shrinks by
+  sixty-seven lines over the same work: sixty-four of those lines were tests whose table was empty
+  and could never run, three were no-assertion bodies that also had an empty table, and sixty-six of
+  the sixty-seven were deleted outright. The sixty-seventh, `Test_clientResource_IdentitySchema`,
+  was not deleted — it was fixed, gaining the assertions it had always lacked — and left the ledger
+  the same way the rest did: by no longer matching a shape the header calls out to remove.
 
 - **The release gate over the migration manifest was missing six classes of defect that another
   check already caught.** Two functions with the same name in different packages validated the same

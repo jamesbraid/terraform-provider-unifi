@@ -840,10 +840,14 @@ func (r *Resource[M, S]) Delete(
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// A NOT-FOUND DELETE SUCCEEDS, ON EVERY RESOURCE. James decided this rather
-	// than it being per-resource, and it is a behaviour CHANGE on the ten that
-	// currently report the error -- dns_record, network, radius_user, setting,
-	// site, vpn_client, vpn_server, wan, wireguard_peer and wlan.
+	// A NOT-FOUND DELETE SUCCEEDS, ON EVERY RESOURCE THE KIT SERVES. James
+	// decided this rather than it being per-resource, and it was a behaviour
+	// CHANGE on the six whose hand-written deletes reported the error when
+	// they migrated -- dns_record, network, radius_user, vpn_client,
+	// vpn_server and wlan. (An earlier version of this comment counted ten,
+	// which folded in surfaces that have not migrated -- site, wan and
+	// wireguard_peer keep their own delete semantics until they do, and
+	// setting's delete never called the backend at all.)
 	//
 	// The reasoning is that delete is the one operation whose goal state is
 	// already reached when the object is absent. Reporting an error there leaves
