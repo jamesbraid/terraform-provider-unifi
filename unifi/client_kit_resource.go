@@ -2,12 +2,17 @@ package unifi
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	listresource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_client"
 	resource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client"
@@ -79,9 +84,14 @@ func (r *clientKitResource) Schema(
 // attribute the schema does not declare is a hard "Resource Identity Write
 // Error", not a diff, which is what an unmodified kit schema gave List here.
 //
-// mac IS OPTIONAL FOR IMPORT, NOT REQUIRED: id alone already resolves every
-// import (Create, Read and Update all set it, never mac), and marking mac
-// required would demand a value those paths do not write.
+// NEITHER ATTRIBUTE IS REQUIRED FOR IMPORT -- both are optional, which is what
+// lets a practitioner supply either alone. v0.102.0 imported a client by mac
+// only, no id in sight; the id-only path every other kit surface gets has to
+// keep working too, since Create/Read/Update never populate a mac identity.
+// Marking one of them RequiredForImport would make the other's import block
+// invalid on its own, which is exactly the gap the reviewer found: an
+// `identity = { mac = "..." }` block failed core's own validation before the
+// provider ever saw it, because id was required and absent.
 func (r *clientKitResource) IdentitySchema(
 	_ context.Context,
 	_ resource.IdentitySchemaRequest,
@@ -89,13 +99,80 @@ func (r *clientKitResource) IdentitySchema(
 ) {
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
-			"id": identityschema.StringAttribute{RequiredForImport: true},
+			"id": identityschema.StringAttribute{OptionalForImport: true},
 			"mac": identityschema.StringAttribute{
 				CustomType:        hwtypes.MACAddressType{},
 				OptionalForImport: true,
 			},
 		},
 	}
+}
+
+// clientMACPattern is the shape of a MAC address, not a controller id: exactly
+// five colon-separated pairs. A "site:id" import handle has at most one colon,
+// and a bare id has none, so this disambiguates without needing to know which
+// kind of handle a practitioner wrote.
+var clientMACPattern = regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$`)
+
+// clientImportHandle decides what ImportState routes on.
+//
+// req.ID CARRIES THE HANDLE FOR EVERY IMPORT SHAPE BUT ONE: the CLI's
+// `terraform import <addr> <handle>` and an import block's `id = "<handle>"`
+// both land in req.ID; only an import block's `identity = {...}` (Terraform
+// 1.12+) leaves req.ID empty and puts the handle in req.Identity instead, per
+// the kit's generic ImportState (which this delegates to once the handle is
+// resolved). That block may carry an id, or -- v0.102.0's only import shape,
+// see git show v0.102.0:unifi/client_resource.go around line 700 -- a mac and
+// no id at all, so id is tried first and mac is the fallback.
+func clientImportHandle(ctx context.Context, req resource.ImportStateRequest) (string, bool, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	handle := req.ID
+	if handle == "" && req.Identity != nil {
+		var identityID types.String
+		diags.Append(req.Identity.GetAttribute(ctx, path.Root("id"), &identityID)...)
+		if diags.HasError() {
+			return "", false, diags
+		}
+		if !identityID.IsNull() && identityID.ValueString() != "" {
+			handle = identityID.ValueString()
+		} else {
+			var identityMAC hwtypes.MACAddress
+			diags.Append(req.Identity.GetAttribute(ctx, path.Root("mac"), &identityMAC)...)
+			if diags.HasError() {
+				return "", false, diags
+			}
+			handle = identityMAC.ValueString()
+		}
+	}
+	return handle, clientMACPattern.MatchString(handle), diags
+}
+
+// ImportState RESOLVES A MAC-SHAPED HANDLE TO AN ID BEFORE DELEGATING, rather
+// than teaching Read a second lookup: the kit's generic Read only ever looks
+// a client up by id (or by name, for surfaces that declare one; client does
+// not), so a mac has to become an id somewhere before Read runs, and here --
+// once, at import -- is the only place that is true for every import shape.
+func (r *clientKitResource) ImportState(
+	ctx context.Context,
+	req resource.ImportStateRequest,
+	resp *resource.ImportStateResponse,
+) {
+	handle, isMAC, diags := clientImportHandle(ctx, req)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if isMAC {
+		existing, err := r.api.GetClientByMAC(ctx, r.DefaultSite, handle)
+		if err != nil {
+			resp.Diagnostics.AddError("Error Importing Client",
+				fmt.Sprintf("Could not find a client with MAC %q: %s", handle, err.Error()))
+			return
+		}
+		handle = existing.ID
+	}
+	req.ID = handle
+	r.Resource.ImportState(ctx, req, resp)
 }
 
 func (r *clientKitResource) Metadata(
