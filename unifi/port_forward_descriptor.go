@@ -130,8 +130,16 @@ func encodePortForwardSourceLimiting(ctx context.Context, object types.Object, s
 	if diags.HasError() {
 		return diags
 	}
-	sdk.Src = source.IP.ValueString()
-	sdk.SrcLimitingEnabled = source.Enabled.ValueBool()
+	// GUARDED, SO THE PREDICATES ABOVE HAVE SOMETHING TO KEY ON. Assigning
+	// unconditionally writes the zero for an unset member, and an assigned zero
+	// is indistinguishable from a real write -- no predicate can take it off
+	// the mask, and the mapper is the only place to fix it.
+	if !source.IP.IsNull() && !source.IP.IsUnknown() {
+		sdk.Src = source.IP.ValueString()
+	}
+	if !source.Enabled.IsNull() && !source.Enabled.IsUnknown() {
+		sdk.SrcLimitingEnabled = source.Enabled.ValueBool()
+	}
 	if !source.FirewallGroupID.IsNull() {
 		sdk.SrcFirewallGroupID = source.FirewallGroupID.ValueString()
 	}
@@ -162,6 +170,24 @@ func decodePortForwardSourceLimiting(ctx context.Context, sdk *ui.PortForward) (
 		Type:            portForwardStringOrNullValue(sdk.SrcLimitingType),
 	}
 	return types.ObjectValueFrom(ctx, attrTypes, value)
+}
+
+// portForwardMemberSet builds the predicate for a wire written only when one
+// member of its block carries a value.
+//
+// A PARTLY FILLED BLOCK IS THE CASE, and it is the one every whole-object check
+// misses. `wan { port = "8080" }` sets the block, so SetInPlan is true and all
+// three of its wires join the mask -- including the two whose members are null
+// and whose Encode therefore left alone. go-unifi sends those zeros over
+// whatever the controller holds. The hand-written whole-object write did not:
+// pfwd_interface and destination_ip carry omitempty, so an empty one simply was
+// not there. The masked update is what put them on the wire, and these
+// predicates are what take them off again.
+func portForwardMemberSet(member string) func(types.Object) bool {
+	return func(object types.Object) bool {
+		value, present := object.Attributes()[member]
+		return present && !value.IsNull() && !value.IsUnknown()
+	}
 }
 
 func portForwardStringOrNullValue(s string) types.String {
@@ -213,16 +239,25 @@ func portForwardKitSpec() resourcekit.Spec[portForwardKitModel, ui.PortForward] 
 				Model:     func(m *portForwardKitModel) *types.Object { return &m.Wan },
 				AttrTypes: portForwardWanModel{}.AttributeTypes(),
 				Elide:     resourcekit.NullZero,
-				Encode:    encodePortForwardWan,
-				Decode:    decodePortForwardWan,
+				ConditionalWires: map[string]func(types.Object) bool{
+					"pfwd_interface": portForwardMemberSet("interface"),
+					"destination_ip": portForwardMemberSet("ip_address"),
+					"dst_port":       portForwardMemberSet("port"),
+				},
+				Encode: encodePortForwardWan,
+				Decode: decodePortForwardWan,
 			},
 			resourcekit.ScatteredObjectField[portForwardKitModel, ui.PortForward]{
 				Wires:     []string{"fwd", "fwd_port"},
 				Model:     func(m *portForwardKitModel) *types.Object { return &m.Forward },
 				AttrTypes: portForwardForwardModel{}.AttributeTypes(),
 				Elide:     resourcekit.NullZero,
-				Encode:    encodePortForwardForward,
-				Decode:    decodePortForwardForward,
+				ConditionalWires: map[string]func(types.Object) bool{
+					"fwd":      portForwardMemberSet("ip"),
+					"fwd_port": portForwardMemberSet("port"),
+				},
+				Encode: encodePortForwardForward,
+				Decode: decodePortForwardForward,
 			},
 			resourcekit.ScatteredObjectField[portForwardKitModel, ui.PortForward]{
 				Wires: []string{
@@ -234,8 +269,13 @@ func portForwardKitSpec() resourcekit.Spec[portForwardKitModel, ui.PortForward] 
 				Model:     func(m *portForwardKitModel) *types.Object { return &m.SourceLimiting },
 				AttrTypes: portForwardSourceLimitingModel{}.AttributeTypes(),
 				Elide:     resourcekit.NullZero,
-				Encode:    encodePortForwardSourceLimiting,
-				Decode:    decodePortForwardSourceLimiting,
+				ConditionalWires: map[string]func(types.Object) bool{
+					"src":                   portForwardMemberSet("ip"),
+					"src_firewall_group_id": portForwardMemberSet("firewall_group_id"),
+					"src_limiting_enabled":  portForwardMemberSet("enabled"),
+				},
+				Encode: encodePortForwardSourceLimiting,
+				Decode: decodePortForwardSourceLimiting,
 			},
 			resourcekit.ObjectListField[portForwardKitModel, ui.PortForward, ui.PortForwardDestinationIPs]{
 				Wire:      "destination_ips",
