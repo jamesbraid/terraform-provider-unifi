@@ -86,18 +86,6 @@ func (m wlanPrivatePresharedKeyModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// wlanListConfigModel describes the list configuration model.
-type wlanListConfigModel struct {
-	Site   types.String `tfsdk:"site"`
-	Filter types.List   `tfsdk:"filter"`
-}
-
-// wlanListFilterModel represents a single name/value filter entry.
-type wlanListFilterModel struct {
-	Name  types.String `tfsdk:"name"`
-	Value types.String `tfsdk:"value"`
-}
-
 func (r *wlanFrameworkResource) Metadata(
 	ctx context.Context,
 	req resource.MetadataRequest,

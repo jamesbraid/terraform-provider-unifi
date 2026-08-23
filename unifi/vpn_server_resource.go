@@ -50,22 +50,6 @@ func NewVPNServerResource() resource.Resource { return newVPNServerKitResource()
 
 func NewVPNServerListResource() list.ListResource { return newVPNServerKitResource() }
 
-type vpnServerIdentityModel struct {
-	ID types.String `tfsdk:"id"`
-}
-
-// vpnServerListConfigModel describes the list configuration model.
-type vpnServerListConfigModel struct {
-	Site   types.String `tfsdk:"site"`
-	Filter types.List   `tfsdk:"filter"`
-}
-
-// vpnServerListFilterModel represents a single name/value filter entry.
-type vpnServerListFilterModel struct {
-	Name  types.String `tfsdk:"name"`
-	Value types.String `tfsdk:"value"`
-}
-
 // vpnServerDNSModel describes the DNS configuration for VPN clients.
 type vpnServerDNSModel struct {
 	Enabled types.Bool `tfsdk:"enabled"`
