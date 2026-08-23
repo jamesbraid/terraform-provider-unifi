@@ -60,6 +60,46 @@ func TestClientToModel_DefaultsWhenAPIOmitsFields(t *testing.T) {
 	}
 }
 
+// TestClientToModel_DefaultsImportOnlyAttributes is the regression test for
+// the import diff: ImportState seeds only id/site (see ImportState in
+// resourcekit's resource.go), so the model Read starts from has
+// allow_existing and skip_forget_on_destroy null -- neither is a Field, so
+// nothing in ToModel touches them, and they stayed null through the rest of
+// Read. The schema's Default() only fires on Create (no prior state); on the
+// plan that follows an import, prior state now genuinely holds null, so
+// Default() applies there too and proposes a change FROM that null, which
+// Terraform reports as a spurious "1 to change". The hand-written Read
+// defaulted both attributes for exactly this reason (v0.102.0
+// clientResource.Read, right before resp.State.Set); AfterReceive is this
+// surface's equivalent hook, run on Read as well as Create.
+func TestClientToModel_DefaultsImportOnlyAttributes(t *testing.T) {
+	r := newClientKitResource()
+	client := &unifi.Client{ID: "61d1...", MAC: "02:00:00:de:ad:04", Name: "tf-test"}
+
+	model := clientModel{
+		AllowExisting:       types.BoolNull(),
+		SkipForgetOnDestroy: types.BoolNull(),
+	}
+	diags := r.clientToModel(context.Background(), client, &model, "default")
+	if diags.HasError() {
+		t.Fatalf("clientToModel returned errors: %v", diags)
+	}
+
+	if model.AllowExisting.IsNull() || model.AllowExisting.IsUnknown() {
+		t.Errorf("allow_existing: want concrete value, got null/unknown (%#v)", model.AllowExisting)
+	}
+	if !model.AllowExisting.ValueBool() {
+		t.Errorf("allow_existing: want true (the schema default), got false")
+	}
+	if model.SkipForgetOnDestroy.IsNull() || model.SkipForgetOnDestroy.IsUnknown() {
+		t.Errorf("skip_forget_on_destroy: want concrete value, got null/unknown (%#v)",
+			model.SkipForgetOnDestroy)
+	}
+	if model.SkipForgetOnDestroy.ValueBool() {
+		t.Errorf("skip_forget_on_destroy: want false (the schema default), got true")
+	}
+}
+
 // TestClientToModel_PreservesBlockedTrue ensures a blocked client still round-trips.
 func TestClientToModel_PreservesBlockedTrue(t *testing.T) {
 	r := newClientKitResource()

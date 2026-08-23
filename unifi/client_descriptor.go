@@ -227,6 +227,25 @@ func clientKitAfterReceive(
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
 
+	// allow_existing AND skip_forget_on_destroy HAVE NO FIELD -- they steer
+	// import/destroy behaviour and the controller has never heard of them --
+	// so ToModel never touches them. On Create that is harmless: they arrive
+	// here already true/false because the schema Default() resolved them at
+	// plan time, before this hook ever runs. Import is the case that bites:
+	// ImportState (resourcekit's, and client's identity-only variant) seeds
+	// only id/site, so the very first Read starts from a model where both are
+	// null, and nothing between here and resp.State.Set was going to set them.
+	// A null survives into state, and the plan that follows treats it as a
+	// fresh Default() application -- a spurious "1 to change" on every import.
+	// The hand-written Read defaulted both for the same reason; this is this
+	// surface's Read-and-Create hook.
+	if model.AllowExisting.IsNull() || model.AllowExisting.IsUnknown() {
+		model.AllowExisting = types.BoolValue(true)
+	}
+	if model.SkipForgetOnDestroy.IsNull() || model.SkipForgetOnDestroy.IsUnknown() {
+		model.SkipForgetOnDestroy = types.BoolValue(false)
+	}
+
 	// BLOCKED READS BACK AS false WHEN THE CONTROLLER OMITS IT, not as null.
 	// The schema documents false as the default and the plan carries it, so a
 	// null here is an inconsistent-result error on an attribute the
