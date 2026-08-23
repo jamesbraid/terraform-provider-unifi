@@ -223,24 +223,24 @@
     },
     {
       "structural_name": "ClientGroup.name",
-      "terraform_name": "qos_rate.name",
+      "terraform_name": "qos_rate.max_down, qos_rate.max_up, qos_rate.name",
       "structural_type": "string",
       "terraform_type": "",
-      "disposition": "managed"
+      "disposition": ""
     },
     {
       "structural_name": "ClientGroup.qos_rate_max_up",
-      "terraform_name": "qos_rate.max_up",
+      "terraform_name": "qos_rate.max_down, qos_rate.max_up, qos_rate.name",
       "structural_type": "int64",
       "terraform_type": "",
-      "disposition": "managed"
+      "disposition": ""
     },
     {
       "structural_name": "ClientGroup.qos_rate_max_down",
-      "terraform_name": "qos_rate.max_down",
+      "terraform_name": "qos_rate.max_down, qos_rate.max_up, qos_rate.name",
       "structural_type": "int64",
       "terraform_type": "",
-      "disposition": "managed"
+      "disposition": ""
     }
   ],
   "provider_owned": [

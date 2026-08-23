@@ -435,9 +435,8 @@
             "description": "The name of the client group. If set, the group is looked up or created by name."
           },
           "disposition": "managed",
-          "structural_name": "name",
-          "structural_source": "ClientGroup",
-          "terraform_name": "name"
+          "terraform_name": "name",
+          "terraform_type": "string"
         },
         {
           "attribute": {
@@ -445,9 +444,8 @@
             "description": "Maximum upload rate in kbps."
           },
           "disposition": "managed",
-          "structural_name": "qos_rate_max_up",
-          "structural_source": "ClientGroup",
-          "terraform_name": "max_up"
+          "terraform_name": "max_up",
+          "terraform_type": "int64"
         },
         {
           "attribute": {
@@ -455,9 +453,8 @@
             "description": "Maximum download rate in kbps."
           },
           "disposition": "managed",
-          "structural_name": "qos_rate_max_down",
-          "structural_source": "ClientGroup",
-          "terraform_name": "max_down"
+          "terraform_name": "max_down",
+          "terraform_type": "int64"
         }
       ],
       "terraform_name": "qos_rate",
@@ -563,18 +560,16 @@
         "kind": "dedicated",
         "to_api": "clientResolveGroup"
       },
-      "reason": "qos_rate is not a shape of unifi.Client at all: it is a view onto a SEPARATE ClientGroup object, and the client carries only the group's id. Reading it turns usergroup_id into the group's name and rates; writing it looks the group up by name, re-rates it if the limits differ, and CREATES it when no group matches -- which is why the write half lives in BeforeSend and not in Prefetch, where it would fire on every refresh.",
+      "reason": "qos_rate is not a shape of unifi.Client: three of its members are fields of a SEPARATE ClientGroup object and the client carries only the group's id. Reading them turns usergroup_id into the group's name and rates; writing them looks the group up by name, re-rates it when the limits differ, and CREATES it when nothing matches -- which is why the write half is in BeforeSend and not in Prefetch, where it would fire on every refresh. qos_rate.id is deliberately NOT claimed: it names usergroup_id, a field of the client itself, through the member's own structural_name, and the descriptor carries it in AlwaysWire. A member cannot be both claimed and self-describing -- that is the contradiction the compiler refuses, and it is right to.",
       "structural_names": [
         "ClientGroup.name",
         "ClientGroup.qos_rate_max_up",
-        "ClientGroup.qos_rate_max_down",
-        "usergroup_id"
+        "ClientGroup.qos_rate_max_down"
       ],
       "terraform_members": [
         "qos_rate.name",
         "qos_rate.max_up",
-        "qos_rate.max_down",
-        "qos_rate.id"
+        "qos_rate.max_down"
       ]
     }
   ]
