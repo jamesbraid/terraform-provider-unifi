@@ -388,6 +388,8 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 		ID:       func(m *wlanKitModel) *types.String { return &m.ID },
 		Site:     func(m *wlanKitModel) *types.String { return &m.Site },
 		Timeouts: func(m *wlanKitModel) *timeouts.Value { return &m.Timeouts },
+		// The documented import handle is the bare SSID; see Spec.Name.
+		Name: func(m *wlanKitModel) *types.String { return &m.Name },
 		IDWire:   "_id",
 		// Five wires no attribute holds. Each is set by wlanBeforeSend, so the
 		// plan never mentions them and nothing else would add them to the mask.
@@ -748,6 +750,9 @@ func wlanKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.WLAN] {
 		},
 		Read: func(ctx context.Context, site, id string) (*ui.WLAN, error) {
 			return client.GetWLAN(ctx, site, id)
+		},
+		ReadByName: func(ctx context.Context, site, name string) (*ui.WLAN, error) {
+			return client.GetWLANByName(ctx, site, name)
 		},
 		UpdateFields: func(ctx context.Context, site string, in *ui.WLAN, fields ...string) (*ui.WLAN, error) {
 			return client.UpdateWLANFields(ctx, site, in, fields...)

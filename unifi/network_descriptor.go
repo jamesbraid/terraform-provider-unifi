@@ -126,6 +126,9 @@ func networkKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Network] {
 		Read: func(ctx context.Context, site, id string) (*ui.Network, error) {
 			return client.GetNetwork(ctx, site, id)
 		},
+		ReadByName: func(ctx context.Context, site, name string) (*ui.Network, error) {
+			return client.GetNetworkByName(ctx, site, name)
+		},
 		UpdateFields: func(
 			ctx context.Context, site string, in *ui.Network, fields ...string,
 		) (*ui.Network, error) {
@@ -271,6 +274,8 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 		ID:       func(m *netModel) *types.String { return &m.ID },
 		Site:     func(m *netModel) *types.String { return &m.Site },
 		Timeouts: func(m *netModel) *timeouts.Value { return &m.Timeouts },
+		// The documented import handle is "name=Test VLAN"; see Spec.Name.
+		Name: func(m *netModel) *types.String { return &m.Name },
 		// ONE LITERAL BECAUSE AN INSTRUMENT READS IT. The descriptor checks
 		// parse this file rather than run it, so a list assembled from helper
 		// calls at run time is invisible to them and every field in it reads
