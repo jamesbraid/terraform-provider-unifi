@@ -393,7 +393,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					return diags
 				},
 				Decode: func(
-					ctx context.Context, sdk *ui.Network,
+					ctx context.Context, sdk *ui.Network, _ types.Object,
 				) (types.Object, diag.Diagnostics) {
 					var diags diag.Diagnostics
 					value := dhcpGuardingModel{
@@ -447,7 +447,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					return diags
 				},
 				Decode: func(
-					ctx context.Context, sdk *ui.Network,
+					ctx context.Context, sdk *ui.Network, _ types.Object,
 				) (types.Object, diag.Diagnostics) {
 					var diags diag.Diagnostics
 					value := dhcpServerModel{
@@ -498,7 +498,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					return diags
 				},
 				Decode: func(
-					ctx context.Context, sdk *ui.Network,
+					ctx context.Context, sdk *ui.Network, _ types.Object,
 				) (types.Object, diag.Diagnostics) {
 					var diags diag.Diagnostics
 					value := dhcpV6ServerModel{
@@ -546,7 +546,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					return diags
 				},
 				Decode: func(
-					ctx context.Context, sdk *ui.Network,
+					ctx context.Context, sdk *ui.Network, _ types.Object,
 				) (types.Object, diag.Diagnostics) {
 					var diags diag.Diagnostics
 					servers := types.ListNull(types.StringType)

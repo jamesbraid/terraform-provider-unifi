@@ -67,7 +67,7 @@ func encodePortForwardWan(ctx context.Context, object types.Object, sdk *ui.Port
 	return diags
 }
 
-func decodePortForwardWan(ctx context.Context, sdk *ui.PortForward) (types.Object, diag.Diagnostics) {
+func decodePortForwardWan(ctx context.Context, sdk *ui.PortForward, _ types.Object) (types.Object, diag.Diagnostics) {
 	attrTypes := portForwardWanModel{}.AttributeTypes()
 	if sdk.PfwdInterface == "" && sdk.DestinationIP == "" && sdk.DstPort == "" {
 		return types.ObjectNull(attrTypes), nil
@@ -96,7 +96,7 @@ func encodePortForwardForward(ctx context.Context, object types.Object, sdk *ui.
 	return diags
 }
 
-func decodePortForwardForward(ctx context.Context, sdk *ui.PortForward) (types.Object, diag.Diagnostics) {
+func decodePortForwardForward(ctx context.Context, sdk *ui.PortForward, _ types.Object) (types.Object, diag.Diagnostics) {
 	attrTypes := portForwardForwardModel{}.AttributeTypes()
 	if sdk.Fwd == "" && sdk.FwdPort == "" {
 		return types.ObjectNull(attrTypes), nil
@@ -150,7 +150,7 @@ func encodePortForwardSourceLimiting(ctx context.Context, object types.Object, s
 	return diags
 }
 
-func decodePortForwardSourceLimiting(ctx context.Context, sdk *ui.PortForward) (types.Object, diag.Diagnostics) {
+func decodePortForwardSourceLimiting(ctx context.Context, sdk *ui.PortForward, _ types.Object) (types.Object, diag.Diagnostics) {
 	attrTypes := portForwardSourceLimitingModel{}.AttributeTypes()
 	if !portForwardSourceLimitingConfigured(sdk) {
 		return types.ObjectNull(attrTypes), nil

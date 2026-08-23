@@ -54,8 +54,38 @@ type ScatteredObjectField[M any, S any] struct {
 	// whatever the caller put there.
 	Encode func(ctx context.Context, object types.Object, sdk *S) diag.Diagnostics
 
-	// Decode builds the model's object from the SDK's flat fields.
-	Decode func(ctx context.Context, sdk *S) (types.Object, diag.Diagnostics)
+	// Decode builds the model's object from the SDK's flat fields AND WHAT THE
+	// OBJECT HELD BEFORE.
+	//
+	// prior is this field's own object as it stood in state when the read began.
+	// It is not the model: passing the whole model would let a decode reach into
+	// a sibling, and whether it should would then be a judgement on every wire.
+	//
+	// TWO THINGS NEED IT AND THEY ARE THE SAME MISSING INPUT SEEN TWICE.
+	//
+	// MERGING. A controller that omits a member says nothing about it, and a
+	// decode built only from *S has to write the zero. wan's read path guards
+	// every one of its assignments with `if network.X != nil` for that reason:
+	// eight of its ten objects keep the prior value per member. Without prior,
+	// transcribing them changes refresh behaviour on every member the controller
+	// does not return, silently and with nothing in the guard set able to see it.
+	//
+	// ELIDING THE WHOLE OBJECT. `if !model.DNS.IsNull() || hasDNSData` keeps an
+	// object NULL when the controller returned nothing for it and the
+	// practitioner never set it. A null prior with no API data IS that case, so
+	// the same parameter answers it -- which is why this is one capability and
+	// not two.
+	//
+	// ElideZero STAYS AND NOW MEANS SOMETHING NARROWER. It answers what an
+	// all-zero READ means for a field the descriptor always populates;
+	// prior answers whether to populate at all. A reader who finds both needs to
+	// know which is which, and the two are not interchangeable: ElideZero cannot
+	// see either input, and prior does not know what the schema declared.
+	//
+	// MOST IMPLEMENTATIONS WILL IGNORE IT. AfterReceive gained a prior parameter
+	// at 03c7eaf4 for this same seam, and both descriptors implementing it left
+	// the parameter unused with no behaviour change. The same is expected here.
+	Decode func(ctx context.Context, sdk *S, prior types.Object) (types.Object, diag.Diagnostics)
 
 	// ConditionalWires names the wires Encode writes only SOMETIMES, each with
 	// the test for whether THIS object will write one.
@@ -220,7 +250,10 @@ func (f ScatteredObjectField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S)
 }
 
 func (f ScatteredObjectField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
-	object, diags := f.Decode(ctx, sdk)
+	// The prior object is read BEFORE it is overwritten, which is the whole of
+	// what makes this possible: Spec.ToModel passes the model loaded from state,
+	// so at this instant *f.Model(model) is still what the last read produced.
+	object, diags := f.Decode(ctx, sdk, *f.Model(model))
 	if diags.HasError() {
 		return diags
 	}

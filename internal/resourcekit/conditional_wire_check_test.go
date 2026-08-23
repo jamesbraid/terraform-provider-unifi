@@ -46,7 +46,7 @@ func condField(predicate func(types.Object) bool) ScatteredObjectField[condModel
 			}
 			return nil
 		},
-		Decode: func(context.Context, *condSDK) (types.Object, diag.Diagnostics) {
+		Decode: func(context.Context, *condSDK, types.Object) (types.Object, diag.Diagnostics) {
 			return types.ObjectNull(condAttrs), nil
 		},
 		ConditionalWires: map[string]func(types.Object) bool{"maybe": predicate},
@@ -262,7 +262,7 @@ func TestAWireTheEncoderNeverEmitsReadsAsNotWritten(t *testing.T) {
 			sdk.Always = "written"
 			return nil
 		},
-		Decode: func(context.Context, *hiddenSDK) (types.Object, diag.Diagnostics) {
+		Decode: func(context.Context, *hiddenSDK, types.Object) (types.Object, diag.Diagnostics) {
 			return types.ObjectNull(condAttrs), nil
 		},
 	}
@@ -302,7 +302,7 @@ func TestAWireTheProbesCannotDistinguishIsRefused(t *testing.T) {
 			sdk.Always = "written"
 			return nil
 		},
-		Decode: func(context.Context, *opaqueSDK) (types.Object, diag.Diagnostics) {
+		Decode: func(context.Context, *opaqueSDK, types.Object) (types.Object, diag.Diagnostics) {
 			return types.ObjectNull(condAttrs), nil
 		},
 		ConditionalWires: map[string]func(types.Object) bool{
