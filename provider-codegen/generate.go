@@ -223,3 +223,13 @@ package providercodegen
 // per surface would make it a line somebody forgets when adding one, and the
 // binding it removes is invisible to every schema referee we own.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated
+
+// AFTER the CustomType strip, because that one removes the only references the
+// schema functions still had to the generated value types -- run first and this
+// would refuse, correctly, rather than break the build three steps later.
+//
+// The value layer it removes was already absent from the shipped binary: the
+// linker had dropped every <X>Value symbol, and the provider's symbol table is
+// identical before and after by name and type. What changes is 52,243 lines of
+// source that nothing calls.
+//go:generate go run ../cmd/generated-value-strip ../internal/generated
