@@ -103,13 +103,11 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "encode resolution: %v\n", err)
 		return 1
 	}
-	// SkipSync PRESERVES AN EXISTING DIVERGENCE AND IS NOT A CHOICE MADE HERE.
-	// This was the only one of nine writers with no Sync() before the rename, and
-	// nothing in the original recorded why. It is kept exactly rather than
-	// silently corrected, because "the other eight fsync" is not a decision about
-	// release evidence durability. Filed as #174 for James; if the answer is that
-	// a copy lost a line, this option comes off in a commit that says so.
-	if err := cmdio.WriteAtomic(*outputPath, append(data, '\n'), cmdio.NoParentDir(), cmdio.SkipSync()); err != nil {
+	// Durable like the other eleven. This was the only writer opting out of the
+	// fsync, the original recorded no reason for it, and James ruled that a few
+	// milliseconds on a one-off is not worth a divergence nobody can justify
+	// from the code. #174.
+	if err := cmdio.WriteAtomic(*outputPath, append(data, '\n'), cmdio.NoParentDir()); err != nil {
 		fmt.Fprintf(stderr, "write resolution: %v\n", err)
 		return 1
 	}
