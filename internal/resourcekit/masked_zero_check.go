@@ -123,6 +123,13 @@ func MaskedZeroProblems[M any, S any](
 			}
 			// A WIRE AT ZERO EVEN WHEN EVERY MEMBER IS SET is not about this
 			// member, and reporting it here would name an unrelated cause.
+			//
+			// A field whose Encode writes nothing at all reads as fullAtZero for
+			// every one of its wires and is therefore invisible to this whole
+			// function, not just to this one branch -- vpn_server's wan pair is
+			// exactly that, since the BeforeSend move left its Encode a no-op.
+			// Its safety lives elsewhere, in vpnServerUnwritableWires' empty-slot
+			// subtraction, not here.
 			if fullAtZero[wire] {
 				continue
 			}

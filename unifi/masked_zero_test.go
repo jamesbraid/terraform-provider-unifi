@@ -31,7 +31,14 @@ package unifi
 // that matter are derived, not chosen.
 
 import (
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -55,6 +62,74 @@ func fullProbeObject(t *testing.T, attrTypes map[string]attr.Type) types.Object 
 	return object
 }
 
+// reportBenignAlwaysAssigned fails on every AlwaysAssigned problem except one
+// naming a wire in benign, which it logs instead and marks seen. A pinned
+// wire's disappearance is left for the caller to check once every field has
+// been walked -- seeing it here would only prove one field didn't produce it,
+// not that none did.
+func reportBenignAlwaysAssigned(
+	t *testing.T,
+	surface string,
+	problems []string,
+	benign map[string]string,
+	seen map[string]bool,
+) {
+	t.Helper()
+	for _, problem := range problems {
+		matched := false
+		for name, reason := range benign {
+			if strings.Contains(problem, fmt.Sprintf("%q is ASSIGNED", name)) {
+				seen[name] = true
+				matched = true
+				t.Logf("%s: %s -- pinned benign: %s", surface, problem, reason)
+				break
+			}
+		}
+		if !matched {
+			t.Errorf("%s: %s", surface, problem)
+		}
+	}
+}
+
+// descriptorsDeclaringScatteredObjectField globs every *_descriptor.go file
+// and returns the base names of the ones declaring at least one
+// ScatteredObjectField literal, so a walk built from a hand-picked list of
+// surfaces has something to check itself against.
+func descriptorsDeclaringScatteredObjectField(t *testing.T) []string {
+	t.Helper()
+	descriptors, err := filepath.Glob(filepath.Join("..", "unifi", "*_descriptor.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(descriptors) == 0 {
+		t.Fatal("no descriptor files found; the glob is wrong and this asserts nothing")
+	}
+	var have []string
+	for _, path := range descriptors {
+		src, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("reading %s: %v", path, err)
+		}
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, path, src, 0)
+		if err != nil {
+			t.Fatalf("parsing %s: %v", path, err)
+		}
+		found := false
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.CompositeLit); ok && isScatteredObjectField(lit) {
+				found = true
+			}
+			return true
+		})
+		if found {
+			have = append(have, filepath.Base(path))
+		}
+	}
+	sort.Strings(have)
+	return have
+}
+
 // TestNoSurfaceMasksAZeroForAPartlyFilledBlock walks the surfaces whose
 // descriptors carry a scattered object.
 //
@@ -63,7 +138,37 @@ func fullProbeObject(t *testing.T, attrTypes map[string]attr.Type) types.Object 
 // run, and that lands in unmeasured below -- which is pinned, so a new one
 // appearing fails rather than joining a silent list. A count of zero problems
 // across four surfaces means nothing if the other two were never asked.
+//
+// THE WALK BELOW IS A HAND-PICKED LIST OF SIX SURFACES, and a hand-picked list
+// cannot notice a seventh. This checks the list against the descriptor files
+// themselves before walking anything, so a new ScatteredObjectField fails
+// here rather than shipping unmeasured.
 func TestNoSurfaceMasksAZeroForAPartlyFilledBlock(t *testing.T) {
+	wantScattered := []string{
+		"network_descriptor.go",
+		"port_forward_descriptor.go",
+		"traffic_route_descriptor.go",
+		"vpn_client_descriptor.go",
+		"vpn_server_descriptor.go",
+		"wlan_descriptor.go",
+	}
+	haveScattered := descriptorsDeclaringScatteredObjectField(t)
+	mismatch := len(haveScattered) != len(wantScattered)
+	if !mismatch {
+		for i, name := range haveScattered {
+			if name != wantScattered[i] {
+				mismatch = true
+				break
+			}
+		}
+	}
+	if mismatch {
+		t.Fatalf("descriptor files declaring a ScatteredObjectField = %v, want %v; the walk "+
+			"below is a hand-picked list built to match this set exactly, and a mismatch "+
+			"means a surface is either walked here without still declaring one, or declares "+
+			"one without being walked", haveScattered, wantScattered)
+	}
+
 	var unmeasured []string
 	note := func(surface string, err error) {
 		unmeasured = append(unmeasured, surface)
@@ -149,6 +254,72 @@ func TestNoSurfaceMasksAZeroForAPartlyFilledBlock(t *testing.T) {
 		}
 		for _, problem := range report.AlwaysAssigned {
 			t.Errorf("traffic_route: %s", problem)
+		}
+	}
+
+	// wlan's mac_filter block has three wires this check would otherwise fail
+	// on, and all three are benign: mac_filter_enabled and mac_filter_policy
+	// carry schema defaults (false and "deny"), so a plan never leaves them
+	// null in the first place, and mac_filter_list is Optional-only, where
+	// sending the zero keeps the apply consistent rather than clearing
+	// something a practitioner asked to keep.
+	wlanBenignAlwaysAssigned := map[string]string{
+		"mac_filter_enabled": `carries the schema default false, so a plan never leaves it null`,
+		"mac_filter_policy":  `carries the schema default "deny", so a plan never leaves it null`,
+		"mac_filter_list":    `Optional-only; sending the zero keeps the apply consistent`,
+	}
+	seenWlanBenign := map[string]bool{}
+	for _, field := range wlanKitSpec().Fields {
+		scattered, ok := field.(resourcekit.ScatteredObjectField[wlanKitModel, ui.WLAN])
+		if !ok {
+			continue
+		}
+		report, err := resourcekit.MaskedZeroProblems(t.Context(), scattered,
+			fullProbeObject(t, scattered.AttrTypes), nil)
+		if err != nil {
+			note("wlan/"+scattered.Wires[0], err)
+			continue
+		}
+		for _, problem := range report.Guarded {
+			t.Errorf("wlan: %s", problem)
+		}
+		reportBenignAlwaysAssigned(t, "wlan", report.AlwaysAssigned, wlanBenignAlwaysAssigned, seenWlanBenign)
+	}
+	for name := range wlanBenignAlwaysAssigned {
+		if !seenWlanBenign[name] {
+			t.Errorf("wlan: %q no longer reports as always-assigned; if it was fixed, remove "+
+				"it from the pinned benign set in the same commit", name)
+		}
+	}
+
+	// vpn_server's l2tp block assigns l2tp_allow_weak_ciphers unconditionally
+	// (unlike its sibling x_ipsec_pre_shared_key, which is guarded), but it is
+	// benign for the same reason as wlan's booleans above: the schema default
+	// is false, so a plan never leaves it null.
+	vpnServerBenignAlwaysAssigned := map[string]string{
+		"l2tp_allow_weak_ciphers": `carries the schema default false, so a plan never leaves it null`,
+	}
+	seenVPNServerBenign := map[string]bool{}
+	for _, field := range vpnServerKitSpec().Fields {
+		scattered, ok := field.(resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network])
+		if !ok {
+			continue
+		}
+		report, err := resourcekit.MaskedZeroProblems(t.Context(), scattered,
+			fullProbeObject(t, scattered.AttrTypes), nil)
+		if err != nil {
+			note("vpn_server/"+scattered.Wires[0], err)
+			continue
+		}
+		for _, problem := range report.Guarded {
+			t.Errorf("vpn_server: %s", problem)
+		}
+		reportBenignAlwaysAssigned(t, "vpn_server", report.AlwaysAssigned, vpnServerBenignAlwaysAssigned, seenVPNServerBenign)
+	}
+	for name := range vpnServerBenignAlwaysAssigned {
+		if !seenVPNServerBenign[name] {
+			t.Errorf("vpn_server: %q no longer reports as always-assigned; if it was fixed, "+
+				"remove it from the pinned benign set in the same commit", name)
 		}
 	}
 
