@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	resource_device "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_device"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util/retry"
@@ -879,6 +880,14 @@ func deviceKitAfterReceive() func(
 	) diag.Diagnostics {
 		var diags diag.Diagnostics
 		if model.PortOverride.IsNull() || model.PortOverride.IsUnknown() {
+			// A LIST HAS NO PRIOR, so its zero model carries an untyped null
+			// here, and the framework refuses to place one into the typed
+			// schema -- the whole list result dies with "MISSING TYPE". Give
+			// the null its element type; a null read out of real state
+			// already carries one and passes through untouched.
+			if model.PortOverride.ElementType(ctx) == nil {
+				model.PortOverride = types.SetNull(devicePortOverrideElementType(ctx))
+			}
 			return diags
 		}
 		reconciled, d := deviceReconcilePortOverrides(ctx, model.PortOverride, sdk.PortOverrides)
@@ -1230,4 +1239,19 @@ func deviceRestoreCreateValues(created, sent *ui.Device) {
 	if sent != nil && sent.Name != "" {
 		created.Name = sent.Name
 	}
+}
+
+// devicePortOverrideElementType reads the element type off the served schema
+// rather than restating it: the generated schema is the one place the shape
+// already lives, and a restatement here would be a second copy that drifts.
+func devicePortOverrideElementType(ctx context.Context) attr.Type {
+	block := resource_device.DeviceResourceSchema(ctx).Blocks["port_override"]
+	if block != nil {
+		if setType, ok := block.Type().(basetypes.SetType); ok {
+			return setType.ElemType
+		}
+	}
+	// Unreachable while the schema declares port_override as a set block; the
+	// test comparing against the served schema fails before this can matter.
+	return types.ObjectType{}
 }
