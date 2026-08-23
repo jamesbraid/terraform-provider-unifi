@@ -15,7 +15,6 @@
 # Removing a line is the fix and needs only UPDATE_TESTAUDIT=1. Adding one
 # needs UPDATE_TESTAUDIT_ALLOW_ADDITION=1 as well, because a new entry here is
 # a new test that cannot fail.
-main_test.go	Test_main	empty-table
 unifi/bgp_resource_test.go	Test_bgpResource_ImportState	skip-stub
 unifi/client_resource_test.go	Test_clientResource_IdentitySchema	no-assertion
 unifi/client_resource_test.go	Test_clientResource_ListResourceConfigSchema	no-assertion
@@ -29,29 +28,6 @@ unifi/port_profile_resource_test.go	Test_portProfileResource_ListResourceConfigS
 unifi/provider_test.go	Test_unifiProvider_EphemeralResources	no-assertion
 unifi/setting_resource_test.go	Test_settingResource_ImportState	skip-stub
 unifi/traffic_route_resource_test.go	Test_trafficRouteResource_ImportState	skip-stub
-unifi/validators/cidr_test.go	TestCIDRValidator	empty-table
-unifi/validators/cidr_test.go	Test_cidrValidator_Description	empty-table
-unifi/validators/cidr_test.go	Test_cidrValidator_MarkdownDescription	empty-table
-unifi/validators/cidr_test.go	Test_cidrValidator_ValidateString	empty-table
-unifi/validators/domain_name_test.go	TestDomainNameValidator	empty-table
-unifi/validators/domain_name_test.go	Test_domainNameValidator_Description	empty-table
-unifi/validators/domain_name_test.go	Test_domainNameValidator_MarkdownDescription	empty-table
-unifi/validators/domain_name_test.go	Test_domainNameValidator_ValidateString	empty-table
-unifi/validators/ipv4_test.go	Test_ipv4Validator_Description	empty-table
-unifi/validators/ipv4_test.go	Test_ipv4Validator_MarkdownDescription	empty-table
-unifi/validators/ipv4_test.go	Test_ipv4Validator_ValidateString	empty-table
-unifi/validators/ipv6_test.go	TestIPv6Validator	empty-table
-unifi/validators/ipv6_test.go	Test_ipv6Validator_Description	empty-table
-unifi/validators/ipv6_test.go	Test_ipv6Validator_MarkdownDescription	empty-table
-unifi/validators/ipv6_test.go	Test_ipv6Validator_ValidateString	empty-table
-unifi/validators/mac_address_test.go	TestMACAddressValidator	empty-table
-unifi/validators/mac_address_test.go	Test_macAddressValidator_Description	empty-table
-unifi/validators/mac_address_test.go	Test_macAddressValidator_MarkdownDescription	empty-table
-unifi/validators/mac_address_test.go	Test_macAddressValidator_ValidateString	empty-table
-unifi/validators/port_number_test.go	TestPortNumberValidator	empty-table
-unifi/validators/port_number_test.go	Test_portValidator_Description	empty-table
-unifi/validators/port_number_test.go	Test_portValidator_MarkdownDescription	empty-table
-unifi/validators/port_number_test.go	Test_portValidator_ValidateInt64	no-assertion
 unifi/vpn_server_resource_test.go	Test_vpnServerResource_ImportState	skip-stub	task 116: vpn_server drops a third DNS server (SDK marshalUserVPN)
 unifi/wan_resource_test.go	Test_wanResource_Create	skip-stub	task 99: unifi_wan cannot create a static WAN at all
 unifi/wan_resource_test.go	Test_wanResource_Delete	skip-stub
