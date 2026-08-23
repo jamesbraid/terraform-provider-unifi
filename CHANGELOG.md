@@ -161,6 +161,13 @@ All notable changes to this project will be documented in this file.
   reached the controller as zeros, and the mapper and declarations were fixed before this release
   could ship them.
 
+  The read paths got the same treatment after the first acceptance run over the cutovers caught two
+  defects the unit suite could not see: a `unifi_device` read that crashed the provider on a missing
+  value constructor, and a `unifi_client` with no fixed IP reading back as an empty string its own
+  IPv4 type refuses, which failed every apply touching such a client. Both are fixed, and a
+  zero-read conformance check now runs every surface's read path against an all-unset object without
+  needing a controller, so the class stays shut.
+
 - **The tree shed the code nothing calls.** The generated value layer — custom object types and
   constructors emitted beside every generated schema, 1,719 declarations across 39 files — is
   stripped at generation time now that the runtime builds plain framework values, and its
