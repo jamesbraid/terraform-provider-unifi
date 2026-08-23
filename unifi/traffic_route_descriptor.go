@@ -266,6 +266,7 @@ func trafficRouteSourceToAPI(
 func trafficRouteSourceDecode(
 	ctx context.Context,
 	sdk *ui.TrafficRoute,
+	_ types.Object,
 ) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	return trafficRouteSourceFromAPI(ctx, &diags, sdk), diags
@@ -458,6 +459,7 @@ func trafficRouteTargetDevicesToAPI(
 func trafficRouteDestinationFromAPI(
 	ctx context.Context,
 	route *ui.TrafficRoute,
+	_ types.Object,
 ) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 

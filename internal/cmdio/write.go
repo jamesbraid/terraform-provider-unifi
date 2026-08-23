@@ -106,11 +106,14 @@ func NoParentDir() WriteOption {
 
 // SkipSync writes without a durability barrier before the rename.
 //
-// EXACTLY ONE CALLER DOES THIS and it is preserved rather than corrected,
-// because "the other eight fsync" is not a decision about whether this one
-// should. A call site using this must say why; if the answer turns out to be
-// that a copy lost a line, that is a defect to fix deliberately and not inside
-// a consolidation.
+// NOTHING CALLS THIS. catalog-pragmatic-evidence was the one caller and James
+// ruled it durable like the rest (#174), so the option survives only as an
+// affordance. It is kept rather than deleted because removing it is a separate
+// decision from making that one writer durable, and because the property it
+// exists for still holds: an opt-out spelled at the call site is one a reviewer
+// can question, where a missing .Sync() inside a helper is not.
+//
+// If it acquires a caller, that call site must say why.
 func SkipSync() WriteOption {
 	return func(s *writeSettings) { s.sync = false }
 }

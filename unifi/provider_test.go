@@ -8,9 +8,7 @@ import (
 	fwprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-log/tflogtest"
 	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
 )
 
 var providerFactories = map[string]func() (tfprotov6.ProviderServer, error){
@@ -33,34 +31,6 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(runAcceptanceTests(m))
-}
-
-func runAcceptanceTests(m *testing.M) int {
-	// The provider's own Compose lifecycle does not want the Testcontainers
-	// reaper. The herder child does, and gets it back: see herderChildEnv.
-	if err := os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true"); err != nil {
-		panic(err)
-	}
-
-	ctx, cancel := context.WithCancel(
-		tflogtest.RootLogger(context.Background(), os.Stdout),
-	)
-	defer cancel()
-
-	logger := NewLogger(ctx)
-
-	controller, err := controllertest.Start(ctx, logger, "../docker-compose.yaml")
-	// Stop unconditionally: Start returns a usable handle even when it fails
-	// partway, and whatever it did bring up still has to come down.
-	defer func() {
-		if stopErr := controller.Stop(logger); stopErr != nil {
-			panic(stopErr)
-		}
-	}()
-	if err != nil {
-		panic(err)
-	}
-	return m.Run()
 }
 
 func preCheck(t *testing.T) {

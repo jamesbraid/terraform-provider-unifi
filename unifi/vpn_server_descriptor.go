@@ -90,7 +90,7 @@ func encodeVPNServerDNS(ctx context.Context, object types.Object, sdk *ui.Networ
 	return diags
 }
 
-func decodeVPNServerDNS(ctx context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+func decodeVPNServerDNS(ctx context.Context, sdk *ui.Network, _ types.Object) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	return types.ObjectValue(vpnServerDNSModel{}.AttributeTypes(), map[string]attr.Value{
 		"enabled": types.BoolValue(sdk.DHCPDDNSEnabled),
@@ -132,7 +132,7 @@ func encodeVPNServerWAN(ctx context.Context, object types.Object, sdk *ui.Networ
 	return diags
 }
 
-func decodeVPNServerWAN(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+func decodeVPNServerWAN(_ context.Context, sdk *ui.Network, _ types.Object) (types.Object, diag.Diagnostics) {
 	return types.ObjectValue(vpnServerWANModel{}.AttributeTypes(), map[string]attr.Value{
 		"ip":        vpnServerWANIPFromNetwork(sdk),
 		"interface": vpnServerWANInterfaceFromNetwork(sdk),
@@ -162,7 +162,7 @@ func encodeVPNServerWireguard(ctx context.Context, object types.Object, sdk *ui.
 	return diags
 }
 
-func decodeVPNServerWireguard(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+func decodeVPNServerWireguard(_ context.Context, sdk *ui.Network, _ types.Object) (types.Object, diag.Diagnostics) {
 	if vpnServerType(sdk) != "wireguard-server" {
 		return types.ObjectNull(vpnServerWireguardModel{}.AttributeTypes()), nil
 	}
@@ -191,7 +191,7 @@ func encodeVPNServerL2TP(ctx context.Context, object types.Object, sdk *ui.Netwo
 // zeros. The three are mutually exclusive, so a wireguard server must not
 // present an empty l2tp block -- that would be a permanent diff against a
 // configuration that never mentioned it.
-func decodeVPNServerL2TP(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+func decodeVPNServerL2TP(_ context.Context, sdk *ui.Network, _ types.Object) (types.Object, diag.Diagnostics) {
 	if vpnServerType(sdk) != "l2tp-server" {
 		return types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes()), nil
 	}
@@ -249,7 +249,7 @@ func encodeVPNServerOpenVPN(ctx context.Context, object types.Object, sdk *ui.Ne
 // zeros. The three are mutually exclusive, so a wireguard server must not
 // present an empty l2tp block -- that would be a permanent diff against a
 // configuration that never mentioned it.
-func decodeVPNServerOpenVPN(_ context.Context, sdk *ui.Network) (types.Object, diag.Diagnostics) {
+func decodeVPNServerOpenVPN(_ context.Context, sdk *ui.Network, _ types.Object) (types.Object, diag.Diagnostics) {
 	if vpnServerType(sdk) != "openvpn-server" {
 		return types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()), nil
 	}

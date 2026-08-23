@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/acctestenv"
 )
 
 func TestAccDeviceList_basic(t *testing.T) {
@@ -108,9 +108,9 @@ func indexOverrides(pos []unifi.DevicePortOverrides) map[int64]unifi.DevicePortO
 // because a literal can only name a controller-simulated demo device, which
 // never informs and so never exercises adoption for real.
 func TestAccDeviceFramework_basic(t *testing.T) {
-	mac := os.Getenv(controllertest.EnvAccDeviceMAC)
+	mac := os.Getenv(acctestenv.EnvAccDeviceMAC)
 	if mac == "" {
-		t.Skipf("%s not set; skipping device acceptance test", controllertest.EnvAccDeviceMAC)
+		t.Skipf("%s not set; skipping device acceptance test", acctestenv.EnvAccDeviceMAC)
 	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },

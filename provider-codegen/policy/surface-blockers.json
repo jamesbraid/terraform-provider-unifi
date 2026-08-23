@@ -370,11 +370,6 @@
     "bgp": [
       "derived-into-blob"
     ],
-    "client": [
-      "derived-value",
-      "identity-key",
-      "nested"
-    ],
     "dynamic_dns": [
       "multi-identity"
     ],
