@@ -185,6 +185,7 @@ func clientKitBeforeSend(
 		// The companions. The practitioner sets the value; the flag follows it,
 		// and the controller ignores the value without the flag.
 		sdk.UseFixedIP = !effective.FixedIP.IsNull() && effective.FixedIP.ValueString() != ""
+		sdk.FixedApEnabled = !effective.FixedApMAC.IsNull() && effective.FixedApMAC.ValueString() != ""
 		sdk.LocalDNSRecordEnabled = !effective.LocalDNSRecord.IsNull() &&
 			effective.LocalDNSRecord.ValueString() != ""
 		// ALWAYS ASSIGNED, NEVER LEFT NIL. virtual_network_override_enabled is
@@ -504,7 +505,8 @@ func clientKitSpec() resourcekit.Spec[clientModel, ui.Client] {
 		// Field, so nothing in the plan can put them in the mask.
 		AlwaysWire: []string{
 			"usergroup_id", "network_members_group_ids",
-			"use_fixedip", "local_dns_record_enabled", "virtual_network_override_enabled",
+			"use_fixedip", "fixed_ap_enabled",
+			"local_dns_record_enabled", "virtual_network_override_enabled",
 		},
 
 		// A client is a record on the controller, and forgetting it is the

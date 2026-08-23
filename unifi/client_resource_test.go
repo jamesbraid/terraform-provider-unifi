@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -453,36 +454,42 @@ func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
 	for _, testCase := range []struct {
 		name         string
 		fixedIP      iptypes.IPv4Address
+		fixedApMAC   hwtypes.MACAddress
 		dnsRecord    types.String
 		networkID    types.String
 		wantFixed    bool
+		wantFixedAp  bool
 		wantDNSFlag  bool
 		wantOverride bool
 	}{
 		{
-			name:      "a set fixed_ip turns the flag on",
-			fixedIP:   iptypes.NewIPv4AddressValue("192.168.1.100"),
-			dnsRecord: types.StringNull(),
-			networkID: types.StringNull(),
-			wantFixed: true,
+			name:       "a set fixed_ip turns the flag on",
+			fixedIP:    iptypes.NewIPv4AddressValue("192.168.1.100"),
+			fixedApMAC: hwtypes.NewMACAddressNull(),
+			dnsRecord:  types.StringNull(),
+			networkID:  types.StringNull(),
+			wantFixed:  true,
 		},
 		{
-			name:      "an emptied fixed_ip turns the flag off",
-			fixedIP:   iptypes.NewIPv4AddressValue(""),
-			dnsRecord: types.StringNull(),
-			networkID: types.StringNull(),
-			wantFixed: false,
+			name:       "an emptied fixed_ip turns the flag off",
+			fixedIP:    iptypes.NewIPv4AddressValue(""),
+			fixedApMAC: hwtypes.NewMACAddressNull(),
+			dnsRecord:  types.StringNull(),
+			networkID:  types.StringNull(),
+			wantFixed:  false,
 		},
 		{
-			name:      "a null fixed_ip turns the flag off",
-			fixedIP:   iptypes.NewIPv4AddressNull(),
-			dnsRecord: types.StringNull(),
-			networkID: types.StringNull(),
-			wantFixed: false,
+			name:       "a null fixed_ip turns the flag off",
+			fixedIP:    iptypes.NewIPv4AddressNull(),
+			fixedApMAC: hwtypes.NewMACAddressNull(),
+			dnsRecord:  types.StringNull(),
+			networkID:  types.StringNull(),
+			wantFixed:  false,
 		},
 		{
 			name:        "local_dns_record carries its own flag",
 			fixedIP:     iptypes.NewIPv4AddressNull(),
+			fixedApMAC:  hwtypes.NewMACAddressNull(),
 			dnsRecord:   types.StringValue("host.example"),
 			networkID:   types.StringNull(),
 			wantDNSFlag: true,
@@ -490,6 +497,7 @@ func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
 		{
 			name:         "a set network_id turns the override flag on",
 			fixedIP:      iptypes.NewIPv4AddressNull(),
+			fixedApMAC:   hwtypes.NewMACAddressNull(),
 			dnsRecord:    types.StringNull(),
 			networkID:    types.StringValue("6a8b3cd94c934471f6b6ff20"),
 			wantOverride: true,
@@ -497,14 +505,32 @@ func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
 		{
 			name:         "a null network_id turns the override flag off, not absent",
 			fixedIP:      iptypes.NewIPv4AddressNull(),
+			fixedApMAC:   hwtypes.NewMACAddressNull(),
 			dnsRecord:    types.StringNull(),
 			networkID:    types.StringNull(),
 			wantOverride: false,
+		},
+		{
+			name:        "a set fixed_ap_mac turns its own flag on",
+			fixedIP:     iptypes.NewIPv4AddressNull(),
+			fixedApMAC:  hwtypes.NewMACAddressValue("02:00:00:de:ad:05"),
+			dnsRecord:   types.StringNull(),
+			networkID:   types.StringNull(),
+			wantFixedAp: true,
+		},
+		{
+			name:        "a null fixed_ap_mac turns its own flag off",
+			fixedIP:     iptypes.NewIPv4AddressNull(),
+			fixedApMAC:  hwtypes.NewMACAddressNull(),
+			dnsRecord:   types.StringNull(),
+			networkID:   types.StringNull(),
+			wantFixedAp: false,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			model := clientModel{
 				FixedIP:        testCase.fixedIP,
+				FixedApMAC:     testCase.fixedApMAC,
 				LocalDNSRecord: testCase.dnsRecord,
 				NetworkID:      testCase.networkID,
 				QOSRate:        types.ObjectNull(qosRateModel{}.AttributeTypes()),
@@ -519,6 +545,9 @@ func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
 			}
 			if sdk.UseFixedIP != testCase.wantFixed {
 				t.Errorf("use_fixedip = %v, want %v", sdk.UseFixedIP, testCase.wantFixed)
+			}
+			if sdk.FixedApEnabled != testCase.wantFixedAp {
+				t.Errorf("fixed_ap_enabled = %v, want %v", sdk.FixedApEnabled, testCase.wantFixedAp)
 			}
 			if sdk.LocalDNSRecordEnabled != testCase.wantDNSFlag {
 				t.Errorf("local_dns_record_enabled = %v, want %v",
