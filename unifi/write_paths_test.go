@@ -14,8 +14,8 @@ package unifi
 //
 // THE PICTURE IT DRAWS:
 //
-//	update   masked on all nineteen kit surfaces
-//	create   unmasked on eighteen -- device alone patches, because a device is
+//	update   masked on all twenty kit surfaces
+//	create   unmasked on nineteen -- device alone patches, because a device is
 //	         ADOPTED rather than made and a whole-object create would assert a
 //	         zero for every attribute the plan did not set
 //
@@ -62,6 +62,11 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 	{
 		backend := apGroupKitBackend(api)
 		record("ap_group", backend.Create != nil, backend.CreateFields != nil,
+			backend.Update != nil, backend.UpdateFields != nil)
+	}
+	{
+		backend := clientKitBackend(api)
+		record("client", backend.Create != nil, backend.CreateFields != nil,
 			backend.Update != nil, backend.UpdateFields != nil)
 	}
 	{
@@ -203,7 +208,6 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 func TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre(t *testing.T) {
 	want := []string{
 		"bgp",
-		"client",
 		"dynamic_dns",
 		"power_supervisor",
 		"setting",

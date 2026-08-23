@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/acctestenv"
 )
 
 // TestAccPortAction_persistsPoeOverride exercises the action through Terraform,
@@ -19,9 +19,9 @@ import (
 // have any). The switch starts pending, so the managed device adopts it before
 // the after-create trigger invokes the action.
 func TestAccPortAction_persistsPoeOverride(t *testing.T) {
-	mac := os.Getenv(controllertest.EnvAccDeviceMAC)
+	mac := os.Getenv(acctestenv.EnvAccDeviceMAC)
 	if mac == "" {
-		t.Skipf("%s not set; skipping port action acceptance test", controllertest.EnvAccDeviceMAC)
+		t.Skipf("%s not set; skipping port action acceptance test", acctestenv.EnvAccDeviceMAC)
 	}
 
 	resource.Test(t, resource.TestCase{

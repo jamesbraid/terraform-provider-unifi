@@ -70,8 +70,8 @@ func TestNoParentDirIsARealDifference(t *testing.T) {
 	}
 }
 
-// TestSkipSyncStillWritesCorrectly covers the one caller that omits the
-// durability barrier.
+// TestSkipSyncStillWritesCorrectly covers the option itself. There is no longer
+// a caller -- see SkipSync -- so this is the only thing exercising it.
 //
 // IT CANNOT OBSERVE THE FSYNC AND DOES NOT PRETEND TO. Whether Sync() was
 // called is not visible to a test on a normal filesystem; what is testable is
