@@ -18,7 +18,7 @@
     "provider_code_spec_sha256": "bcb5a8fa6994d09c5f57fe639b93821325bb95d64801f18481def23ddb40acc4",
     "impact_sha256": "528bfb08dc5584408ed6f6eb36255b45172ca79267c4a1f39d6850503701e43b",
     "mapping_sha256": "3d5cf7475619c7ede7f872a51cd5af197a3dedfdabcda028dd646d8738d72fcb",
-    "generated_go_sha256": "cb5dbae12a5fa1835e9d15a4e38c88f49c071be04552f069ee3e153cbc7c2e5b"
+    "generated_go_sha256": "e1390a6f8131350f272806c5d0a198fb2d259343fcf27279b052cad5c1f76d22"
   },
   "migration_strategy_counts": {
     "identity": 67

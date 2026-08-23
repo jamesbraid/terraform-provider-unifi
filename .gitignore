@@ -126,6 +126,7 @@ build/**/*-ci.json
 /list-policy-scaffold
 /list-resource-gen
 /m3-dns-qualification
+/generated-value-strip
 /nested-custom-type-strip
 /nested-type-dedup
 /policy-scaffold
