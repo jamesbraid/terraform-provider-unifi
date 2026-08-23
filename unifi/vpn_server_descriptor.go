@@ -396,7 +396,8 @@ func vpnServerBeforeSend(ctx context.Context, _, effective *vpnServerKitModel, s
 	return diags
 }
 
-// vpnServerAfterReceive restores the two secrets the controller does not echo.
+// vpnServerAfterReceive restores the two secrets the controller does not echo,
+// then derives the one wire the controller never sends at all.
 //
 // THIS IS WHAT AfterReceive's prior PARAMETER EXISTS FOR. Both members belong to
 // objects a Field decodes, so by the time this runs ToModel has already
@@ -430,6 +431,53 @@ func vpnServerAfterReceive(ctx context.Context, _ *ui.Network, model *vpnServerK
 	}
 	carry(&model.Wireguard, prior.Wireguard, "private_key")
 	carry(&model.L2TP, prior.L2TP, "pre_shared_key")
+	diags.Append(vpnServerDerivePublicKey(ctx, &model.Wireguard)...)
+	return diags
+}
+
+// vpnServerDerivePublicKey fills wireguard.public_key when the controller has
+// not sent one, deriving it from private_key. It runs after carry() above so
+// it sees the private key once any state-preserved value has been restored --
+// the same key this attribute is computed from either way.
+//
+// THE CONTROLLER NEVER RETURNS ONE. Measured on 10.4.57: wireguard_public_key
+// is absent on create, absent after every update, absent on every read, while
+// x_wireguard_private_key comes back at full length each time. decodeVPNServerWireguard
+// reads wireguard_public_key straight off the SDK object, which is why it was
+// null from the first apply and stayed null once the kit cutover dropped this
+// step -- see wireguard_key.go for why deriving it here is not the provider
+// inventing a value.
+func vpnServerDerivePublicKey(ctx context.Context, current *types.Object) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if current.IsNull() || current.IsUnknown() {
+		return diags
+	}
+	attributes := current.Attributes()
+	privateKey, ok := attributes["private_key"].(types.String)
+	if !ok || !knownNonEmptyIn(privateKey) {
+		return diags
+	}
+	if publicKey, ok := attributes["public_key"].(types.String); ok && knownNonEmptyIn(publicKey) {
+		return diags
+	}
+	derived, err := wireguardPublicKey(privateKey.ValueString())
+	if err != nil {
+		// REPORTED, NOT SWALLOWED. Falling back to null here would restore the
+		// defect this replaces, and silently: the practitioner would see the
+		// same empty string and have no way to learn the key was malformed.
+		diags.AddError(
+			"Cannot derive the WireGuard public key",
+			"The controller does not return wireguard_public_key, so the provider "+
+				"derives it from the private key. That failed: "+err.Error(),
+		)
+		return diags
+	}
+	attributes["public_key"] = types.StringValue(derived)
+	rebuilt, d := types.ObjectValue(current.AttributeTypes(ctx), attributes)
+	diags.Append(d...)
+	if !d.HasError() {
+		*current = rebuilt
+	}
 	return diags
 }
 
