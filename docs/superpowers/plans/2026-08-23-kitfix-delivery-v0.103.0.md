@@ -258,3 +258,7 @@ Current blocker: forgejo HTTPS auth fails locally ("could not read Username"); m
 - Spec coverage: every red gate and every verified dead-code candidate from the review has a task; deliberately-kept items are recorded with reasons rather than silently skipped.
 - No placeholders: the one code change (Task 1) is written out; deletion tasks name exact symbols/lines measured this session.
 - Type consistency: `clientKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Client]` matches forgejo/main's `unifi/client_descriptor.go:70`; the two surviving models funcs match the call sites at `client_info_list_data_source.go:120–130`.
+
+## Postscript (2026-08-23)
+
+Task 4 landed as a trim rather than a fold: the single importer's API needs stayed on `unifi/util/retry`, so the deprecated `Retry`/`WaitForState` wrappers and their unfailable empty-table tests were deleted instead of merging the package into `unifi/util`. Task 5's nine orphan `build/` evidence files were deliberately kept, each with its keep-decision recorded rather than deleted, once the consumer check turned up none for the check suite itself. Task 7 grew past its original best-effort acceptance run into the full acceptance-regression campaign the changelog's v0.103.0 section now describes, since the first live run against a controller found 38 failing tests across the migrated surfaces rather than a clean pass.

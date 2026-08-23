@@ -121,12 +121,12 @@ build/**/*-ci.json
 /catalog-pragmatic-evidence
 /catalog-release-ready
 /export-gate
+/generated-value-strip
 /go-unifi-pin
 /go-unifi-proxy
 /list-policy-scaffold
 /list-resource-gen
 /m3-dns-qualification
-/generated-value-strip
 /nested-custom-type-strip
 /nested-type-dedup
 /policy-scaffold
