@@ -116,7 +116,13 @@ func vpnClientAfterReceive(
 	// reports them back, but from the file's ordering rather than the block's,
 	// so prior is the one that matches what the practitioner wrote.
 	after.DnsServers = before.DnsServers
-	// Neither key is ever reported. Prior state is the only place they exist.
+	// THIS BRANCH ONLY, NOT BOTH KEYS EVERYWHERE. For a manual (peer) client
+	// decodeVPNClientWireguard now reads both straight off the controller's
+	// response -- it does return them, measured live -- so this override
+	// would clobber a real value there. It stays here because file mode is
+	// different: the controller's stored representation of a key PARSED FROM
+	// A FILE need not match the file's own bytes, so the practitioner's file
+	// is the only place these two are trustworthy for that path.
 	after.PrivateKey = before.PrivateKey
 	after.PresharedKey = before.PresharedKey
 	after.PresharedKeyEnabled = before.PresharedKeyEnabled

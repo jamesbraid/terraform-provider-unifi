@@ -287,6 +287,18 @@ func TestInt64PtrOmitsZeroOnlyWhenAsked(t *testing.T) {
 		{"zero is omitted when asked", true, types.Int64Value(0), true},
 		{"a real value is always sent", true, types.Int64Value(14), false},
 		{"null is never sent", false, types.Int64Null(), true},
+		// Int64Unknown().ValueInt64Pointer() returns a pointer to zero, same as
+		// an explicit 0 -- so OmitZero has to treat the two the same or an
+		// Optional+Computed field left unset (Unknown on create) sends the
+		// exact zero OmitZero exists to keep off the wire. site_to_site_vpn's
+		// ike_dh_group hit this live: TestAccSiteToSiteVPNFramework_basic
+		// failed with "ipsec_dh_group must match 2|5|14|...", payload
+		// ipsec_dh_group: 0, because this case sent a pointer instead of nil.
+		{"unknown is omitted when asked", true, types.Int64Unknown(), true},
+		// Unchanged by that fix: a field with no OmitZero still reproduces the
+		// hand-written resource's bug-compatible behaviour for Unknown, per
+		// ToSDK's own doc comment.
+		{"unknown is sent as a pointer to zero by default", false, types.Int64Unknown(), false},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var sdk intSDK
