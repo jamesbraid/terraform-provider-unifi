@@ -152,11 +152,25 @@ func portProfileAfterReceive(
 	ctx context.Context,
 	sdk *ui.PortProfile,
 	model *portProfileKitModel,
-	_ portProfileKitModel,
+	prior portProfileKitModel,
 	prefetched any,
 ) diag.Diagnostics {
 	networks, _ := prefetched.([]ui.Network)
 	diags := setPortProfileTaggedNetworkState(ctx, sdk, networks, model)
+
+	// lldpmed_notify_enabled is Optional-only in the schema -- no Computed, no
+	// Default -- which commits the provider to returning exactly what the
+	// config said. BoolField.ToModel already wrote sdk.LldpmedNotifyEnabled
+	// into model unconditionally, above in Spec.ToModel; that is right for
+	// every OTHER bool on this surface, where a false the controller reports
+	// is a real value, but here it turns an omitted config into an explicit
+	// false and Terraform refuses the apply ("was null, but now cty.False").
+	// Restore null unless the prior model already carried a value or the
+	// controller reports true -- the same rule the hand-written v0.102.0
+	// read used, moved onto the hook that can see the prior model.
+	if prior.LLDPMedNotifyEnabled.IsNull() && !sdk.LldpmedNotifyEnabled {
+		model.LLDPMedNotifyEnabled = types.BoolNull()
+	}
 
 	// excluded_networkconf_ids is read back ONLY under the custom mode, which
 	// no field kind expresses, so it is not in Fields and is set here.

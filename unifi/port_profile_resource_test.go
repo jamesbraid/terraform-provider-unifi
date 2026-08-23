@@ -1234,3 +1234,43 @@ func TestPortProfileReadDefaults(t *testing.T) {
 		}
 	}
 }
+
+// lldpmed_notify_enabled is the only Optional-only bool this surface has: no
+// Computed, no Default. BoolField's ToModel writes whatever the controller
+// reports, unconditionally, which is right when a false IS a value -- but an
+// Optional-only attribute commits the schema to returning exactly what the
+// config said, so a config that never mentioned the attribute must come back
+// null. v0.102.0's hand-written read carried the prior value forward for
+// exactly this reason (git show v0.102.0:unifi/port_profile_resource.go, the
+// "Only set lldpmed_notify_enabled if it was in the plan or if it's
+// explicitly true" comment); AfterReceive is where the kit lets a surface do
+// the same thing.
+func TestPortProfileLLDPMedNotifyEnabledPreservesNull(t *testing.T) {
+	ctx := context.Background()
+	for _, tt := range []struct {
+		name     string
+		prior    types.Bool
+		reported bool
+		want     types.Bool
+	}{
+		{"never configured, controller reports false", types.BoolNull(), false, types.BoolNull()},
+		{"never configured, controller reports true", types.BoolNull(), true, types.BoolValue(true)},
+		{"previously true, controller reports false", types.BoolValue(true), false, types.BoolValue(false)},
+		{"previously false, controller reports false", types.BoolValue(false), false, types.BoolValue(false)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			prior := portProfileKitModel{LLDPMedNotifyEnabled: tt.prior}
+			model := portProfileKitModel{LLDPMedNotifyEnabled: tt.prior}
+			api := &unifi.PortProfile{LldpmedNotifyEnabled: tt.reported}
+			if d := portProfileKitSpec().ToModel(ctx, api, &model, "default"); d.HasError() {
+				t.Fatalf("ToModel: %v", d)
+			}
+			if d := portProfileAfterReceive(ctx, api, &model, prior, []unifi.Network(nil)); d.HasError() {
+				t.Fatalf("AfterReceive: %v", d)
+			}
+			if !model.LLDPMedNotifyEnabled.Equal(tt.want) {
+				t.Errorf("LLDPMedNotifyEnabled = %#v, want %#v", model.LLDPMedNotifyEnabled, tt.want)
+			}
+		})
+	}
+}
