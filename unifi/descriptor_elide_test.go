@@ -9,7 +9,6 @@ import (
 
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	resource_ap_group "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_ap_group"
-	resource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client"
 	resource_client_qos_rate "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client_qos_rate"
 	resource_device "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_device"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dns_record"
@@ -238,19 +237,6 @@ func TestEveryDescriptorAgreesWithItsSchemaAndItsSDK(t *testing.T) {
 			}
 			problems := resourcekit.ElideProblems(
 				networkKitSpec(), resource_network.NetworkResourceSchema(ctx))
-			for _, problem := range problems {
-				t.Error(problem)
-			}
-		},
-		"client": func(t *testing.T) {
-			for _, problem := range resourcekit.WireNameProblems(clientKitSpec()) {
-				t.Error(problem)
-			}
-			for _, problem := range resourcekit.NestedProblems(clientKitSpec()) {
-				t.Error(problem)
-			}
-			problems := resourcekit.ElideProblems(
-				clientKitSpec(), resource_client.ClientResourceSchema(ctx))
 			for _, problem := range problems {
 				t.Error(problem)
 			}

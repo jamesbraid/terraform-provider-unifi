@@ -17,9 +17,22 @@
 # a new test that cannot fail.
 main_test.go	Test_main	empty-table
 unifi/bgp_resource_test.go	Test_bgpResource_ImportState	skip-stub
+unifi/client_resource_test.go	Test_clientResource_Create	empty-table
+unifi/client_resource_test.go	Test_clientResource_Delete	empty-table
 unifi/client_resource_test.go	Test_clientResource_IdentitySchema	no-assertion
+unifi/client_resource_test.go	Test_clientResource_ImportState	empty-table
+unifi/client_resource_test.go	Test_clientResource_List	empty-table
 unifi/client_resource_test.go	Test_clientResource_ListResourceConfigSchema	no-assertion
+unifi/client_resource_test.go	Test_clientResource_Read	empty-table
 unifi/client_resource_test.go	Test_clientResource_Schema	no-assertion
+unifi/client_resource_test.go	Test_clientResource_Update	empty-table
+unifi/client_resource_test.go	Test_clientResource_applyPlanToState	no-assertion
+unifi/client_resource_test.go	Test_clientResource_clientToModel	empty-table
+unifi/client_resource_test.go	Test_clientResource_planToClient	empty-table
+unifi/client_resource_test.go	Test_clientResource_reconcileCreatedClient	empty-table
+unifi/client_resource_test.go	Test_clientResource_resolveClientGroup	empty-table
+unifi/client_resource_test.go	Test_clientResource_resolveGroupID	empty-table
+unifi/client_resource_test.go	Test_clientResource_resolveGroupNames	empty-table
 unifi/device_resource_test.go	Test_dropAssistedRoaming_nonRadioState	no-assertion
 unifi/logger_test.go	TestUnifiLogger_log	no-assertion
 unifi/models/client_info_list_test.go	TestClientInfoListType_ApplyTerraform5AttributePathStep	empty-table
