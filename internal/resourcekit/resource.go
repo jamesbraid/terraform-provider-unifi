@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -60,6 +61,10 @@ type Backend[S any] struct {
 	// one of Create and CreateFields must be set.
 	CreateFields func(ctx context.Context, site string, in *S, fields ...string) (*S, error)
 	Read         func(ctx context.Context, site, id string) (*S, error)
+	// ReadByName resolves the human handle an import supplies, for the
+	// surfaces whose documented import id is a name rather than the
+	// controller's 24-hex id. Optional; see Spec.Name.
+	ReadByName   func(ctx context.Context, site, name string) (*S, error)
 	UpdateFields func(ctx context.Context, site string, in *S, fields ...string) (*S, error)
 	// Update is the whole-object write, for the five SDK types that have no
 	// Update<T>Fields: BGPConfig, PowerSupervisor, Setting, Site and
@@ -245,6 +250,14 @@ type Spec[M any, S any] struct {
 	ID       func(*M) *types.String
 	Site     func(*M) *types.String
 	Timeouts func(*M) *timeouts.Value
+
+	// Name opts the surface into import by name, together with
+	// Backend.ReadByName. The hand-written network and wlan resources both
+	// accepted a human handle -- "name=Test VLAN", a bare SSID -- routed it
+	// onto the name attribute, and resolved it on the first read; the kit
+	// dropped that on cutover and every documented import broke. Nil means
+	// the surface imports by id alone.
+	Name func(*M) *types.String
 }
 
 // WireFields lists the SDK names of every attribute the plan set.
@@ -489,19 +502,36 @@ func (r *Resource[M, S]) Read(
 
 	site := r.Site(&data)
 	id := (*r.Spec.ID(&data)).ValueString()
-	found, err := r.Spec.Backend.Read(ctx, site, id)
-	if err != nil {
-		// A DELETED RESOURCE IS NOT AN ERROR, it is a state to record. Removing
-		// it lets the next plan recreate it; reporting it makes the practitioner
-		// remove it by hand.
-		var notFound *ui.NotFoundError
-		if errors.As(err, &notFound) {
-			resp.State.RemoveResource(ctx)
+	var found *S
+	var err error
+	if id == "" && r.Spec.Name != nil && r.Spec.Backend.ReadByName != nil {
+		// NO ID MEANS A NAME IMPORT LANDED HERE -- a created resource always
+		// carries its id -- so resolve the handle. A name that resolves to
+		// nothing is a failed import rather than a deletion to record: the
+		// practitioner typed it moments ago and should be told, not shown a
+		// silently empty state.
+		name := (*r.Spec.Name(&data)).ValueString()
+		found, err = r.Spec.Backend.ReadByName(ctx, site, name)
+		if err != nil {
+			resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject,
+				"Could not read "+r.Spec.Subject+" with name "+name+": "+err.Error())
 			return
 		}
-		resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject,
-			"Could not read "+r.Spec.Subject+" with ID "+id+": "+err.Error())
-		return
+	} else {
+		found, err = r.Spec.Backend.Read(ctx, site, id)
+		if err != nil {
+			// A DELETED RESOURCE IS NOT AN ERROR, it is a state to record.
+			// Removing it lets the next plan recreate it; reporting it makes
+			// the practitioner remove it by hand.
+			var notFound *ui.NotFoundError
+			if errors.As(err, &notFound) {
+				resp.State.RemoveResource(ctx)
+				return
+			}
+			resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject,
+				"Could not read "+r.Spec.Subject+" with ID "+id+": "+err.Error())
+			return
+		}
 	}
 	// AfterReceive runs here for the same reason it runs after Create's write:
 	// a surface whose model carries attributes the field list cannot express
@@ -787,17 +817,48 @@ func (r *Resource[M, S]) ImportState(
 	resp *resource.ImportStateResponse,
 ) {
 	parts := strings.Split(req.ID, ":")
+	handle := req.ID
 	switch len(parts) {
 	case 2:
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("site"), parts[0])...)
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
+		handle = parts[1]
 	case 1:
-		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 	default:
 		resp.Diagnostics.AddError("Invalid Import ID",
 			"Import ID must be in format 'site:id' or 'id'")
+		return
+	}
+
+	// A SURFACE WITH A NAME LOOKUP ACCEPTS A HUMAN HANDLE, with the rule the
+	// hand-written resources shared: an explicit "name=" prefix is a name, a
+	// 24-hex handle is the controller's id, anything else is a name. The
+	// handle lands on the name attribute and the first read resolves it.
+	if r.Spec.Name != nil && r.Spec.Backend.ReadByName != nil {
+		if name, ok := strings.CutPrefix(handle, "name="); ok {
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
+			return
+		}
+		if !controllerID.MatchString(handle) {
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), handle)...)
+			return
+		}
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), handle)...)
+	// THE IDENTITY IS SET HERE AND NOT ONLY IN READ, because of what happens
+	// when the id names nothing. The framework pre-populates the post-import
+	// read's identity from this response; leave it null and a clean not-found
+	// read fails as "Missing Resource Identity After Read" instead of core's
+	// "Cannot import non-existent remote object".
+	if resp.Identity != nil {
+		resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), handle)...)
 	}
 }
+
+// controllerID is the shape of every controller-assigned object id. A handle
+// that does not match it cannot be one, which is what lets a bare name be
+// told apart from an id without asking anyone.
+var controllerID = regexp.MustCompile(`^[0-9a-f]{24}$`)
 
 // prefetch reads whatever the resource needs beyond its own object, or nothing.
 func (r *Resource[M, S]) prefetch(ctx context.Context, site string) (any, diag.Diagnostics) {
