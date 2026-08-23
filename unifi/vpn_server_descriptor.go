@@ -309,6 +309,34 @@ func vpnServerUnwritableWires(sdk *ui.Network) []string {
 			unwritable = append(unwritable, families[family]...)
 		}
 	}
+
+	// THE CONFIGURED FAMILY'S OWN PAIR IS ALSO UNWRITABLE WHEN ITS SLOT IS
+	// EMPTY, and this half is value-based on purpose. The UserVPN alias nils
+	// an empty string before applying omitempty, so an empty slot is a wire
+	// the encoding cannot carry at any value the model can express -- and
+	// go-unifi's masked write refuses a mask naming it. Measured live: every
+	// wireguard update failed with "this type does not write:
+	// wireguard_interface, wireguard_local_wan_ip" once the read path put a
+	// decoded, empty-membered wan object into state. The cannot-clear caution
+	// recorded above does not apply here, because the alias cannot send an
+	// empty value for these six wires at all -- there is nothing to lose.
+	for name, value := range map[string]*string{
+		"wireguard_local_wan_ip": sdk.WireguardLocalWANIP,
+		"wireguard_interface":    sdk.WireguardInterface,
+		"l2tp_local_wan_ip":      sdk.L2TpLocalWANIP,
+		"l2tp_interface":         sdk.L2TpInterface,
+		"openvpn_local_wan_ip":   sdk.OpenVPNLocalWANIP,
+		"openvpn_interface":      sdk.OpenVPNInterface,
+		// AlwaysWire puts the key on every mask so BeforeSend's generated
+		// value travels; on an l2tp or openvpn server nothing generates one,
+		// the slot stays empty, and the alias cannot carry it -- measured
+		// live, every l2tp and openvpn update was refused over it.
+		"x_wireguard_private_key": sdk.WireguardPrivateKey,
+	} {
+		if value == nil || *value == "" {
+			unwritable = append(unwritable, name)
+		}
+	}
 	return unwritable
 }
 
@@ -442,7 +470,9 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 				},
 			},
 			// All six wan wires are declared; vpnServerUnwritableWires drops the
-			// four belonging to the families that are not configured.
+			// four belonging to the families that are not configured, and the
+			// configured family's pair whenever its slot is empty -- see the
+			// measured reason on that function.
 			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
 				Wires: []string{
 					"wireguard_local_wan_ip", "wireguard_interface",
@@ -547,6 +577,14 @@ func vpnServerKitList() resourcekit.ListSpec[ui.Network] {
 				return *s.Name
 			}
 			return s.ID
+		},
+		Filters: map[string]func(*ui.Network) string{
+			"name": func(s *ui.Network) string {
+				if s.Name == nil {
+					return ""
+				}
+				return *s.Name
+			},
 		},
 	}
 }

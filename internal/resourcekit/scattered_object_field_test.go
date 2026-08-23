@@ -551,3 +551,39 @@ func TestScatteredObjectDecodeSeesTheStateValueNotTheDecodedOne(t *testing.T) {
 		t.Errorf("Decode saw %q, so it was handed the value it had just produced", v)
 	}
 }
+
+// A NULL PLAN MEMBER IS AN ABSENCE, NOT AN INSTRUCTION. When a practitioner
+// supplies an object value, every member they omit arrives null in the plan --
+// and the merge below copied those nulls over state, erasing the computed
+// members the controller had just assigned. vpn_server's wireguard.public_key
+// was the measured case: the create's read-back carried the real key and the
+// plan's null wiped it before the state was written.
+func TestScatteredCopyPlanToStateKeepsAComputedMemberThePlanLeftNull(t *testing.T) {
+	attrTypes := map[string]attr.Type{
+		"private_key": types.StringType,
+		"public_key":  types.StringType,
+	}
+	field := ScatteredObjectField[scatterModel, kitSDK]{
+		Wires:     []string{"x_wireguard_private_key"},
+		Model:     func(m *scatterModel) *types.Object { return &m.Wireguard },
+		AttrTypes: attrTypes,
+	}
+	object := func(private, public attr.Value) types.Object {
+		built, diags := types.ObjectValue(attrTypes, map[string]attr.Value{
+			"private_key": private, "public_key": public,
+		})
+		if diags.HasError() {
+			t.Fatalf("building probe object: %v", diags)
+		}
+		return built
+	}
+	state := scatterModel{Wireguard: object(types.StringValue("priv"), types.StringValue("THE-KEY"))}
+	plan := scatterModel{Wireguard: object(types.StringValue("priv"), types.StringNull())}
+	field.CopyPlanToState(&plan, &state)
+
+	public, ok := state.Wireguard.Attributes()["public_key"].(types.String)
+	if !ok || public.ValueString() != "THE-KEY" {
+		t.Errorf("public_key = %v, want THE-KEY; the plan's null erased the computed member",
+			state.Wireguard.Attributes()["public_key"])
+	}
+}
