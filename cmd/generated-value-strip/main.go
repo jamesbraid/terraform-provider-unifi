@@ -40,6 +40,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -50,8 +51,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"bytes"
 
 	"golang.org/x/tools/imports"
 )
