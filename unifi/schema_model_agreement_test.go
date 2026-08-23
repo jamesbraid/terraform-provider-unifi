@@ -277,6 +277,7 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		"unifi_setting.ips.suppression_alerts.tracking": "settingIpsTrackingModel settingIpsWhitelistModel",
 		"unifi_setting.ips.suppression_whitelist":       "settingIpsTrackingModel settingIpsWhitelistModel",
 		"unifi_vpn_server.dns":                          "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"unifi_traffic_route.source.clients":            "clientIdentityModel sourceClientModel",
 		"unifi_traffic_route.source.networks":           "sourceNetworkModel vpnServerIdentityModel",
 		"data.unifi_network.dhcp_guarding":              "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"data.unifi_network.dhcp_relay":                 "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
