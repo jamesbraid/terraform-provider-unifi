@@ -451,48 +451,69 @@ func Test_clientResource_Schema(t *testing.T) {
 // address.
 func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
 	for _, testCase := range []struct {
-		name        string
-		fixedIP     iptypes.IPv4Address
-		dnsRecord   types.String
-		wantFixed   bool
-		wantDNSFlag bool
+		name         string
+		fixedIP      iptypes.IPv4Address
+		dnsRecord    types.String
+		networkID    types.String
+		wantFixed    bool
+		wantDNSFlag  bool
+		wantOverride bool
 	}{
 		{
 			name:      "a set fixed_ip turns the flag on",
 			fixedIP:   iptypes.NewIPv4AddressValue("192.168.1.100"),
 			dnsRecord: types.StringNull(),
+			networkID: types.StringNull(),
 			wantFixed: true,
 		},
 		{
 			name:      "an emptied fixed_ip turns the flag off",
 			fixedIP:   iptypes.NewIPv4AddressValue(""),
 			dnsRecord: types.StringNull(),
+			networkID: types.StringNull(),
 			wantFixed: false,
 		},
 		{
 			name:      "a null fixed_ip turns the flag off",
 			fixedIP:   iptypes.NewIPv4AddressNull(),
 			dnsRecord: types.StringNull(),
+			networkID: types.StringNull(),
 			wantFixed: false,
 		},
 		{
 			name:        "local_dns_record carries its own flag",
 			fixedIP:     iptypes.NewIPv4AddressNull(),
 			dnsRecord:   types.StringValue("host.example"),
+			networkID:   types.StringNull(),
 			wantDNSFlag: true,
+		},
+		{
+			name:         "a set network_id turns the override flag on",
+			fixedIP:      iptypes.NewIPv4AddressNull(),
+			dnsRecord:    types.StringNull(),
+			networkID:    types.StringValue("6a8b3cd94c934471f6b6ff20"),
+			wantOverride: true,
+		},
+		{
+			name:         "a null network_id turns the override flag off, not absent",
+			fixedIP:      iptypes.NewIPv4AddressNull(),
+			dnsRecord:    types.StringNull(),
+			networkID:    types.StringNull(),
+			wantOverride: false,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			model := clientModel{
 				FixedIP:        testCase.fixedIP,
 				LocalDNSRecord: testCase.dnsRecord,
+				NetworkID:      testCase.networkID,
 				QOSRate:        types.ObjectNull(qosRateModel{}.AttributeTypes()),
 				Groups:         types.ListNull(types.StringType),
 			}
 			sdk := &unifi.Client{}
 			// A nil api is safe here: with qos_rate and groups both null there
 			// is nothing for BeforeSend to look up or create.
-			hook := clientKitBeforeSend(nil)
+			hook := clientKitBeforeSend(nil, "default")
 			if diags := hook(t.Context(), &model, &model, sdk, &clientGroups{}); diags.HasError() {
 				t.Fatalf("BeforeSend: %v", diags)
 			}
@@ -502,6 +523,16 @@ func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
 			if sdk.LocalDNSRecordEnabled != testCase.wantDNSFlag {
 				t.Errorf("local_dns_record_enabled = %v, want %v",
 					sdk.LocalDNSRecordEnabled, testCase.wantDNSFlag)
+			}
+			// NEVER NIL: virtual_network_override_enabled is in AlwaysWire, so
+			// every update sends it, and a nil *bool serializes as a literal
+			// JSON null the controller rejects with api.err.InvalidValue.
+			if sdk.VirtualNetworkOverrideEnabled == nil {
+				t.Fatal("virtual_network_override_enabled = nil, want a concrete bool")
+			}
+			if *sdk.VirtualNetworkOverrideEnabled != testCase.wantOverride {
+				t.Errorf("virtual_network_override_enabled = %v, want %v",
+					*sdk.VirtualNetworkOverrideEnabled, testCase.wantOverride)
 			}
 		})
 	}

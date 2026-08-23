@@ -117,7 +117,7 @@ func (r *clientKitResource) Configure(
 	}
 	r.Spec.Backend = clientKitBackend(client.ApiClient)
 	r.Spec.Prefetch = clientKitPrefetch(client.ApiClient)
-	r.Spec.BeforeSend = clientKitBeforeSend(client.ApiClient)
+	r.Spec.BeforeSend = clientKitBeforeSend(client.ApiClient, client.Site)
 	r.api = client.ApiClient
 	r.DefaultSite = client.Site
 }
