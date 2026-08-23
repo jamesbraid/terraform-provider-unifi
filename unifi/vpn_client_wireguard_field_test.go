@@ -156,12 +156,13 @@ func TestWireguardFieldRoundTripsWhatTheControllerReturns(t *testing.T) {
 	if decoded.Interface.ValueString() != "wan" {
 		t.Errorf("interface came back as %q", decoded.Interface.ValueString())
 	}
-	// THE WRITE-ONLY MEMBERS COME BACK NULL, and that is the finding rather than
-	// a defect: the controller never returns them, Decode is given only the SDK
-	// object, and carrying them forward is AfterReceive's job.
-	if !decoded.PrivateKey.IsNull() {
-		t.Errorf("private key came back as %q; the controller does not return it, so a "+
-			"non-null here means Decode invented a value", decoded.PrivateKey.ValueString())
+	// THE ROUND TRIP IS THE POINT, not a null. Measured live on 10.4.57:
+	// x_wireguard_private_key comes back at full length for a manual-mode
+	// client, same as vpn_server's. private_key is Required in the schema, so a
+	// Decode that nulled this disagreed with the config on every refresh --
+	// "+ private_key" forever, which is what shipped before this was corrected.
+	if decoded.PrivateKey.ValueString() != "privkey" {
+		t.Errorf("private key came back as %q, want %q", decoded.PrivateKey.ValueString(), "privkey")
 	}
 }
 
