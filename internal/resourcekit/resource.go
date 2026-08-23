@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -364,6 +365,64 @@ func (s Spec[M, S]) ApplyPlanToState(plan, state *M) {
 	for _, field := range s.Fields {
 		field.CopyPlanToState(plan, state)
 	}
+	s.copyUncoveredPlanValues(plan, state)
+}
+
+// copyUncoveredPlanValues moves every set plan value no Field claims.
+//
+// network's vlan is why this exists: BeforeSend derives two wires from the one
+// released attribute, so no Field carries it -- and the Fields walk above
+// therefore never applied the plan's change. An update whose only change was
+// the vlan sent the state's old number, measured live: the apply planned 81
+// and the controller kept 76. Every hook-served attribute has the same hole.
+//
+// The rule is CopyPlanToState's own: a known, non-null plan value is the
+// practitioner's and wins; null and unknown are absences and touch nothing. A
+// Field-claimed attribute is identified by the pointer its Model accessor
+// returns and left to its Field, which may have a predicate this generic pass
+// must not override.
+func (s Spec[M, S]) copyUncoveredPlanValues(plan, state *M) {
+	covered := map[uintptr]struct{}{}
+	// The kit-owned attributes are not the plan's to assert: the id is the
+	// controller's answer, and site and timeouts have their own handling.
+	if s.ID != nil {
+		covered[reflect.ValueOf(s.ID(state)).Pointer()] = struct{}{}
+	}
+	if s.Site != nil {
+		covered[reflect.ValueOf(s.Site(state)).Pointer()] = struct{}{}
+	}
+	if s.Timeouts != nil {
+		covered[reflect.ValueOf(s.Timeouts(state)).Pointer()] = struct{}{}
+	}
+	for _, field := range s.Fields {
+		if wrapper, ok := field.(interface{ Unwrap() Field[M, S] }); ok {
+			field = wrapper.Unwrap()
+		}
+		accessor := reflect.ValueOf(field).FieldByName("Model")
+		if !accessor.IsValid() || accessor.Kind() != reflect.Func || accessor.IsNil() {
+			continue
+		}
+		results := accessor.Call([]reflect.Value{reflect.ValueOf(state)})
+		if len(results) == 1 && results[0].Kind() == reflect.Ptr {
+			covered[results[0].Pointer()] = struct{}{}
+		}
+	}
+	stateValue := reflect.ValueOf(state).Elem()
+	planValue := reflect.ValueOf(plan).Elem()
+	for i := range stateValue.NumField() {
+		target := stateValue.Field(i)
+		if !target.CanSet() {
+			continue
+		}
+		if _, claimed := covered[target.Addr().Pointer()]; claimed {
+			continue
+		}
+		value, ok := planValue.Field(i).Interface().(attr.Value)
+		if !ok || value.IsNull() || value.IsUnknown() {
+			continue
+		}
+		target.Set(planValue.Field(i))
+	}
 }
 
 // A SURFACE MUST DECLARE AN IDENTITY SCHEMA. Create, Read and Update all call
@@ -477,6 +536,14 @@ func (r *Resource[M, S]) Create(
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// THE RESPONSE DOES NOT OUTRANK THE PLAN FOR A VALUE THE PLAN SET. A
+	// vlan-only network's encoder omits 54 of the surface's 67 wires, so the
+	// controller echoes none of them back -- and letting the response win
+	// recorded null and false over values the practitioner wrote, which
+	// Terraform refuses as an inconsistent result. Set plan values return to
+	// the state; the response keeps every attribute the plan left null or
+	// unknown, which is where computed values arrive.
+	r.Spec.ApplyPlanToState(&prior, &data)
 	resp.Diagnostics.Append(
 		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&data)))...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -674,6 +741,10 @@ func (r *Resource[M, S]) Update(
 	prior := state
 	resp.Diagnostics.Append(r.Spec.ToModel(ctx, updated, &state, site)...)
 	resp.Diagnostics.Append(r.afterReceive(ctx, updated, &state, prior, prefetched)...)
+	// The same plan-over-response rule as Create's tail, with the RAW plan:
+	// an attribute the config omits is unknown or state-valued there, so the
+	// response still decides everything the practitioner did not.
+	r.Spec.ApplyPlanToState(&plan, &state)
 	*r.Spec.Timeouts(&state) = *r.Spec.Timeouts(&plan)
 	resp.Diagnostics.Append(
 		resp.Identity.SetAttribute(ctx, path.Root("id"), (*r.Spec.ID(&state)))...)
