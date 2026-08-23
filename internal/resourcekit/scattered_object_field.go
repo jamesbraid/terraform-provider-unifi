@@ -283,7 +283,12 @@ func (f ScatteredObjectField[M, S]) CopyPlanToState(plan, state *M) {
 		merged[name] = value
 	}
 	for name, value := range planned.Attributes() {
-		if value.IsUnknown() {
+		// An unknown member is a value still arriving, and a NULL one is an
+		// absence: a practitioner who supplies an object leaves every member
+		// they omit null in the plan, and copying those nulls erased the
+		// computed members the controller had just assigned --
+		// wireguard.public_key, measured live.
+		if value.IsUnknown() || value.IsNull() {
 			continue
 		}
 		merged[name] = value
