@@ -3,9 +3,11 @@ package unifi
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	listresource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_client"
 	resource_client "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_client"
@@ -68,6 +70,32 @@ func (r *clientKitResource) Schema(
 		ctx,
 		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
 	)
+}
+
+// IdentitySchema ADDS mac TO THE KIT'S DEFAULT "id"-ONLY SCHEMA, because List
+// (see List in client_resource.go) sets identity by mac rather than id: a
+// listed client's mac is the handle the practitioner already recognizes, an
+// id is an opaque one they have not necessarily seen. Writing to an identity
+// attribute the schema does not declare is a hard "Resource Identity Write
+// Error", not a diff, which is what an unmodified kit schema gave List here.
+//
+// mac IS OPTIONAL FOR IMPORT, NOT REQUIRED: id alone already resolves every
+// import (Create, Read and Update all set it, never mac), and marking mac
+// required would demand a value those paths do not write.
+func (r *clientKitResource) IdentitySchema(
+	_ context.Context,
+	_ resource.IdentitySchemaRequest,
+	resp *resource.IdentitySchemaResponse,
+) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"id": identityschema.StringAttribute{RequiredForImport: true},
+			"mac": identityschema.StringAttribute{
+				CustomType:        hwtypes.MACAddressType{},
+				OptionalForImport: true,
+			},
+		},
+	}
 }
 
 func (r *clientKitResource) Metadata(

@@ -379,6 +379,30 @@ func Test_clientResource_IdentitySchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.r.IdentitySchema(tt.args.in0, tt.args.in1, tt.args.resp)
+
+			// mac MUST be in the identity schema: List (see client_resource.go)
+			// sets identity by mac rather than id, because a listed client's mac
+			// is the handle the practitioner recognizes, and writing to an
+			// attribute the identity schema does not declare is a hard
+			// "Resource Identity Write Error", not a diff.
+			id, ok := tt.args.resp.IdentitySchema.Attributes["id"]
+			if !ok {
+				t.Fatal(`identity schema is missing "id"`)
+			}
+			if !id.IsRequiredForImport() {
+				t.Error(`"id" should be required for import: it is what Create,`+
+					" Read and Update all set")
+			}
+			mac, ok := tt.args.resp.IdentitySchema.Attributes["mac"]
+			if !ok {
+				t.Fatal(`identity schema is missing "mac", which List sets`)
+			}
+			// OptionalForImport, not required: id alone already resolves every
+			// import, and requiring mac too would demand a value the generic
+			// Create/Read/Update path never writes.
+			if !mac.IsOptionalForImport() {
+				t.Error(`"mac" should be optional for import, not required`)
+			}
 		})
 	}
 }
@@ -683,6 +707,7 @@ func TestAccClientList_basic(t *testing.T) {
 					querycheck.ExpectLengthAtLeast("unifi_client.test", 1),
 					querycheck.ExpectIdentity("unifi_client.test", map[string]knownvalue.Check{
 						"mac": knownvalue.StringExact("01:23:45:67:89:ab"),
+						"id":  knownvalue.NotNull(),
 					}),
 				},
 			},

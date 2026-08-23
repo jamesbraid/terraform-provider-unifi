@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
@@ -248,12 +249,20 @@ func (r *clientKitResource) List(
 				result.DisplayName = client.MAC
 			}
 
-			// Set resource identity (MAC address).
+			// Set resource identity: both id and mac, matching every other
+			// operation on this surface. Only mac was set here before mac
+			// joined the identity schema (see IdentitySchema in
+			// client_kit_resource.go); a query check comparing the whole
+			// identity object treats id's absence as a mismatch, not a
+			// don't-care, so a listed client's identity has to carry both or
+			// neither.
+			result.Diagnostics.Append(
+				result.Identity.SetAttribute(ctx, path.Root("id"), types.StringValue(client.ID))...)
 			result.Diagnostics.Append(
 				result.Identity.SetAttribute(
 					ctx,
 					path.Root("mac"),
-					types.StringValue(client.MAC),
+					hwtypes.NewMACAddressValue(client.MAC),
 				)...)
 
 			// THE SAME READ PATH THE KIT USES, rather than a mapper of its
