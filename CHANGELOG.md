@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.103.0] - 2026-08-23
 
 ### 🐛 Bug Fixes
 
@@ -99,6 +99,15 @@ All notable changes to this project will be documented in this file.
   listed here rather than left out because this release fixes other things and a note that mentions
   only what was fixed reads as a clean bill of health.
 
+- **Six hand-written resources still update with a whole-object write.** `unifi_bgp`,
+  `unifi_dynamic_dns`, `unifi_power_supervisor`, `unifi_setting`, `unifi_site` and
+  `unifi_wireguard_peer` send the entire object on every apply, so every field their mappers do not
+  assign travels to the controller as its Go zero. The defect predates this release and nothing here
+  changes it. What this release adds is the measurement: the list is derived from the write paths
+  and pinned by test, so a surface leaving it is a deliberate fix and a surface joining it fails the
+  build. `unifi_wan` is not among them — its update already goes through a masked field write, which
+  is the model the rest should follow.
+
 ### 📖 Documentation
 
 - **`unifi_network`'s `lte_lan` description no longer promises a default it does not have.** The
@@ -136,6 +145,28 @@ All notable changes to this project will be documented in this file.
   it is the one attribute here whose old behaviour nobody has reproduced failing.
 
 ### 🔧 Maintenance
+
+- **Thirteen resources moved from hand-written CRUD onto the shared resource kit.** `client`,
+  `device`, `firewall_rule`, `network`, `port_forward`, `port_profile`, `radius_user`,
+  `site_to_site_vpn`, `static_route`, `traffic_route`, `vpn_client`, `vpn_server` and `wlan` now
+  serve create, read, update, delete, import and list through one engine, bringing the kit to twenty
+  surfaces. Each cutover pinned the resource's CRUD behaviour in tests before the switch, and the
+  served schema is checked against the released baseline throughout, so the conversion ships no
+  behaviour or schema change beyond the six declared above.
+
+  The kit's write paths are now classified and pinned: every kit surface updates through a masked
+  field write, and every create sends a whole new object except `unifi_device`, whose create is an
+  adoption patch. A new check derives, per surface, which wires the encoder leaves at zero when a
+  block is only partly configured; on `unifi_port_forward` it found eight members that would have
+  reached the controller as zeros, and the mapper and declarations were fixed before this release
+  could ship them.
+
+- **The tree shed the code nothing calls.** The generated value layer — custom object types and
+  constructors emitted beside every generated schema, 1,719 declarations across 39 files — is
+  stripped at generation time now that the runtime builds plain framework values, and its
+  hand-written twin in `unifi/models` follows it out. Sixty-six scaffolded tests whose tables were
+  empty could never fail and are deleted; the unfailable-test ledger that tracked them shrinks by
+  the same sixty-six lines, which is the fix its own header prescribes.
 
 - **The release gate over the migration manifest was missing six classes of defect that another
   check already caught.** Two functions with the same name in different packages validated the same
