@@ -16,7 +16,6 @@
 # needs UPDATE_TESTAUDIT_ALLOW_ADDITION=1 as well, because a new entry here is
 # a new test that cannot fail.
 unifi/bgp_resource_test.go	Test_bgpResource_ImportState	skip-stub
-unifi/client_resource_test.go	Test_clientResource_IdentitySchema	no-assertion
 unifi/client_resource_test.go	Test_clientResource_ListResourceConfigSchema	no-assertion
 unifi/client_resource_test.go	Test_clientResource_Schema	no-assertion
 unifi/device_resource_test.go	Test_dropAssistedRoaming_nonRadioState	no-assertion

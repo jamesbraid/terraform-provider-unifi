@@ -11,9 +11,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -143,6 +146,51 @@ func testAccClientFrameworkConfig_basic() string {
 resource "unifi_client" "test" {
 	name = "tfacc-client"
 	mac  = "01:23:45:67:89:ab"
+}
+`
+}
+
+// TestAccClientFramework_importByMAC is the regression test for the parity
+// gap the kit cutover opened: v0.102.0 imported a client by mac alone, both
+// via the CLI's bare `terraform import unifi_client.x <mac>` and an identity
+// block naming only mac -- see git show v0.102.0:unifi/client_resource.go
+// around line 700. The kit's generic ImportState only ever understood id, so
+// a mac handle here used to land straight in the id attribute and fail the
+// read that followed with "Cannot import non-existent remote object". This
+// exercises the CLI/id-argument shape (ImportStateId); TestClientImportHandle
+// covers the identity-block-naming-only-mac shape without a live controller.
+func TestAccClientFramework_importByMAC(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccClientFrameworkConfig_importByMAC(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_client.test",
+						"name",
+						"tfacc-import-by-mac-client",
+					),
+					resource.TestCheckResourceAttr("unifi_client.test", "mac", "01:23:45:67:89:af"),
+				),
+			},
+			{
+				ResourceName:            "unifi_client.test",
+				ImportState:             true,
+				ImportStateId:           "01:23:45:67:89:af",
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"allow_existing", "skip_forget_on_destroy"},
+			},
+		},
+	})
+}
+
+func testAccClientFrameworkConfig_importByMAC() string {
+	return `
+resource "unifi_client" "test" {
+	name = "tfacc-import-by-mac-client"
+	mac  = "01:23:45:67:89:af"
 }
 `
 }
@@ -386,23 +434,151 @@ func Test_clientResource_IdentitySchema(t *testing.T) {
 			// is the handle the practitioner recognizes, and writing to an
 			// attribute the identity schema does not declare is a hard
 			// "Resource Identity Write Error", not a diff.
+			//
+			// NEITHER attribute is RequiredForImport: v0.102.0 imported a client
+			// by mac alone, no id in sight, and every other kit surface imports
+			// by id alone. Marking either required would make an import block
+			// naming only the other one invalid before ImportState ever runs --
+			// exactly the "identity = { mac = ... }" gap this schema exists to
+			// close.
 			id, ok := tt.args.resp.IdentitySchema.Attributes["id"]
 			if !ok {
 				t.Fatal(`identity schema is missing "id"`)
 			}
-			if !id.IsRequiredForImport() {
-				t.Error(`"id" should be required for import: it is what Create,`+
-					" Read and Update all set")
+			if id.IsRequiredForImport() {
+				t.Error(`"id" should not be required for import: a mac-only ` +
+					"identity block must be valid on its own")
+			}
+			if !id.IsOptionalForImport() {
+				t.Error(`"id" should be optional for import`)
 			}
 			mac, ok := tt.args.resp.IdentitySchema.Attributes["mac"]
 			if !ok {
 				t.Fatal(`identity schema is missing "mac", which List sets`)
 			}
-			// OptionalForImport, not required: id alone already resolves every
-			// import, and requiring mac too would demand a value the generic
-			// Create/Read/Update path never writes.
+			if mac.IsRequiredForImport() {
+				t.Error(`"mac" should not be required for import: the generic ` +
+					"Create/Read/Update path never writes it")
+			}
 			if !mac.IsOptionalForImport() {
-				t.Error(`"mac" should be optional for import, not required`)
+				t.Error(`"mac" should be optional for import`)
+			}
+		})
+	}
+}
+
+// clientTestIdentity builds an empty resource identity bound to client's own
+// identity schema (id and mac, both optional-for-import -- see IdentitySchema
+// in client_kit_resource.go), the way a real import block's `identity = {...}`
+// argument would arrive.
+func clientTestIdentity(t *testing.T) tfsdk.ResourceIdentity {
+	t.Helper()
+	ctx := context.Background()
+	r := newClientKitResource()
+	resp := &fwresource.IdentitySchemaResponse{}
+	r.IdentitySchema(ctx, fwresource.IdentitySchemaRequest{}, resp)
+	identity := tfsdk.ResourceIdentity{Schema: resp.IdentitySchema}
+	identity.Raw = tftypes.NewValue(resp.IdentitySchema.Type().TerraformType(ctx), nil)
+	return identity
+}
+
+// TestClientImportHandle is the unit coverage for the routing half of mac
+// import: clientImportHandle decides WHAT to resolve and WHETHER it needs a
+// mac lookup, without making one -- that part needs a live api.ApiClient (see
+// TestAccClientFramework_importByMAC for the API call itself). v0.102.0
+// imported a client by mac two ways -- the CLI's bare
+// `terraform import unifi_client.x <mac>` and an identity block naming only
+// mac (git show v0.102.0:unifi/client_resource.go around line 700) -- and both
+// have to keep working alongside the id-only import every other kit surface
+// gets.
+func TestClientImportHandle(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		req        func(t *testing.T) fwresource.ImportStateRequest
+		wantHandle string
+		wantIsMAC  bool
+	}{
+		{
+			name: "a bare 24-hex id from the CLI is not a mac",
+			req: func(*testing.T) fwresource.ImportStateRequest {
+				return fwresource.ImportStateRequest{ID: "6a8b3cd94c934471f6b6ff20"}
+			},
+			wantHandle: "6a8b3cd94c934471f6b6ff20",
+			wantIsMAC:  false,
+		},
+		{
+			name: "a site:id pair from the CLI is not a mac",
+			req: func(*testing.T) fwresource.ImportStateRequest {
+				return fwresource.ImportStateRequest{ID: "default:6a8b3cd94c934471f6b6ff20"}
+			},
+			wantHandle: "default:6a8b3cd94c934471f6b6ff20",
+			wantIsMAC:  false,
+		},
+		{
+			name: "a bare mac from the CLI routes to resolution",
+			req: func(*testing.T) fwresource.ImportStateRequest {
+				return fwresource.ImportStateRequest{ID: "01:23:45:67:89:ab"}
+			},
+			wantHandle: "01:23:45:67:89:ab",
+			wantIsMAC:  true,
+		},
+		{
+			name: "an identity block naming only id is not a mac",
+			req: func(t *testing.T) fwresource.ImportStateRequest {
+				ctx := context.Background()
+				identity := clientTestIdentity(t)
+				if diags := identity.SetAttribute(ctx, path.Root("id"),
+					"6a8b3cd94c934471f6b6ff20"); diags.HasError() {
+					t.Fatalf("seeding identity: %v", diags)
+				}
+				return fwresource.ImportStateRequest{Identity: &identity}
+			},
+			wantHandle: "6a8b3cd94c934471f6b6ff20",
+			wantIsMAC:  false,
+		},
+		{
+			name: "an identity block naming only mac routes to resolution",
+			req: func(t *testing.T) fwresource.ImportStateRequest {
+				ctx := context.Background()
+				identity := clientTestIdentity(t)
+				if diags := identity.SetAttribute(ctx, path.Root("mac"),
+					hwtypes.NewMACAddressValue("01:23:45:67:89:ab")); diags.HasError() {
+					t.Fatalf("seeding identity: %v", diags)
+				}
+				return fwresource.ImportStateRequest{Identity: &identity}
+			},
+			wantHandle: "01:23:45:67:89:ab",
+			wantIsMAC:  true,
+		},
+		{
+			name: "id wins when an identity block somehow carries both",
+			req: func(t *testing.T) fwresource.ImportStateRequest {
+				ctx := context.Background()
+				identity := clientTestIdentity(t)
+				if diags := identity.SetAttribute(ctx, path.Root("id"),
+					"6a8b3cd94c934471f6b6ff20"); diags.HasError() {
+					t.Fatalf("seeding identity id: %v", diags)
+				}
+				if diags := identity.SetAttribute(ctx, path.Root("mac"),
+					hwtypes.NewMACAddressValue("01:23:45:67:89:ab")); diags.HasError() {
+					t.Fatalf("seeding identity mac: %v", diags)
+				}
+				return fwresource.ImportStateRequest{Identity: &identity}
+			},
+			wantHandle: "6a8b3cd94c934471f6b6ff20",
+			wantIsMAC:  false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			handle, isMAC, diags := clientImportHandle(t.Context(), testCase.req(t))
+			if diags.HasError() {
+				t.Fatalf("clientImportHandle: %v", diags)
+			}
+			if handle != testCase.wantHandle {
+				t.Errorf("handle = %q, want %q", handle, testCase.wantHandle)
+			}
+			if isMAC != testCase.wantIsMAC {
+				t.Errorf("isMAC = %v, want %v", isMAC, testCase.wantIsMAC)
 			}
 		})
 	}
