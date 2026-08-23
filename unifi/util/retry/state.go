@@ -269,12 +269,3 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 		}
 	}
 }
-
-// WaitForState watches an object and waits for it to achieve the state
-// specified in the configuration using the specified Refresh() func,
-// waiting the number of seconds specified in the timeout configuration.
-//
-// Deprecated: Please use WaitForStateContext to ensure proper plugin shutdown.
-func (conf *StateChangeConf) WaitForState() (any, error) {
-	return conf.WaitForStateContext(context.Background())
-}
