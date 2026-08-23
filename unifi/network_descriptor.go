@@ -263,7 +263,103 @@ func networkKitAfterReceive(
 	// starting to is a practitioner-visible change that belongs in its own
 	// commit rather than smuggled into a migration. See #231.
 	model.IPv6Aliases = types.ListNull(types.StringType)
+
+	// A VLAN-ONLY NETWORK DOES NOT STORE MOST OF THIS SURFACE. The controller
+	// accepts the write and then omits the fields from every read, so a
+	// refresh that took the API's answer would replace the practitioner's
+	// subnet, auto_scale and gateway_type with zeros and plan an update
+	// forever. Preserve the prior value -- state on a refresh, the plan on a
+	// create -- and let the API answer only where the prior is unknown.
+	// Ported from the hand-written resource's read, which carried the same
+	// block for the same measured reason.
+	if sdk.Purpose == ui.PurposeVLANOnly {
+		networkPreserveVLANOnly(model, prior, sdk)
+	}
 	return nil
+}
+
+func networkPreserveVLANOnly(model *netModel, prior netModel, sdk *ui.Network) {
+	if !prior.Subnet.IsUnknown() {
+		model.Subnet = prior.Subnet
+	}
+	if !prior.AutoScale.IsUnknown() {
+		model.AutoScale = prior.AutoScale
+	}
+	if !prior.InternetAccess.IsUnknown() {
+		model.InternetAccess = prior.InternetAccess
+	}
+	if !prior.GatewayType.IsUnknown() {
+		model.GatewayType = prior.GatewayType
+	}
+	if !prior.IPv6InterfaceType.IsUnknown() {
+		model.IPv6InterfaceType = prior.IPv6InterfaceType
+	}
+	if !prior.IPv6StaticSubnet.IsUnknown() {
+		model.IPv6StaticSubnet = prior.IPv6StaticSubnet
+	}
+	if !prior.IPv6PDInterface.IsUnknown() {
+		model.IPv6PDInterface = prior.IPv6PDInterface
+	}
+	if !prior.IPv6PDPrefixID.IsUnknown() {
+		model.IPv6PDPrefixID = prior.IPv6PDPrefixID
+	}
+	if !prior.LteLan.IsUnknown() {
+		model.LteLan = prior.LteLan
+	}
+	if !prior.SettingPreference.IsUnknown() {
+		model.SettingPreference = prior.SettingPreference
+	} else {
+		model.SettingPreference = types.StringPointerValue(sdk.SettingPreference)
+	}
+	if !prior.IPv6ClientAddressAssignment.IsUnknown() {
+		model.IPv6ClientAddressAssignment = prior.IPv6ClientAddressAssignment
+	} else {
+		model.IPv6ClientAddressAssignment = types.StringPointerValue(
+			sdk.IPV6ClientAddressAssignment,
+		)
+	}
+	if !prior.IPv6RA.IsUnknown() {
+		model.IPv6RA = prior.IPv6RA
+	} else {
+		model.IPv6RA = types.BoolValue(sdk.IPV6RaEnabled)
+	}
+	if !prior.IPv6RAPriority.IsUnknown() {
+		model.IPv6RAPriority = prior.IPv6RAPriority
+	} else {
+		model.IPv6RAPriority = types.StringPointerValue(sdk.IPV6RaPriority)
+	}
+	if !prior.IPv6RAPreferredLifetime.IsUnknown() {
+		model.IPv6RAPreferredLifetime = prior.IPv6RAPreferredLifetime
+	} else {
+		model.IPv6RAPreferredLifetime = util.DurationPtrValue(
+			sdk.IPV6RaPreferredLifetime, time.Second,
+		)
+	}
+	if !prior.IPv6RAValidLifetime.IsUnknown() {
+		model.IPv6RAValidLifetime = prior.IPv6RAValidLifetime
+	} else {
+		model.IPv6RAValidLifetime = util.DurationPtrValue(sdk.IPV6RaValidLifetime, time.Second)
+	}
+	if !prior.IPv6PDStart.IsUnknown() {
+		model.IPv6PDStart = prior.IPv6PDStart
+	} else {
+		model.IPv6PDStart = types.StringPointerValue(sdk.IPV6PDStart)
+	}
+	if !prior.IPv6PDStop.IsUnknown() {
+		model.IPv6PDStop = prior.IPv6PDStop
+	} else {
+		model.IPv6PDStop = types.StringPointerValue(sdk.IPV6PDStop)
+	}
+	if !prior.IPv6PDAutoPrefixidEnabled.IsUnknown() {
+		model.IPv6PDAutoPrefixidEnabled = prior.IPv6PDAutoPrefixidEnabled
+	} else {
+		model.IPv6PDAutoPrefixidEnabled = types.BoolValue(sdk.IPV6PDAutoPrefixidEnabled)
+	}
+	if !prior.DomainName.IsUnknown() {
+		model.DomainName = prior.DomainName
+	} else {
+		model.DomainName = types.StringNull()
+	}
 }
 
 func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
