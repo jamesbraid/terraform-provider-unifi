@@ -387,6 +387,11 @@ func clientKitSpec() resourcekit.Spec[clientModel, ui.Client] {
 				func(s *ui.Client) *string { return &s.DisplayName }, resourcekit.KeepZero),
 			clientStr("note", func(m *clientModel) *types.String { return &m.Note },
 				func(s *ui.Client) *string { return &s.Note }, resourcekit.KeepZero),
+			// NullZero ON BOTH, MEASURED BEFORE IT WAS WRITTEN: a client with
+			// no fixed IP comes back from the controller as "", and
+			// iptypes.IPv4Address refuses "" in its own ValidateAttribute --
+			// so KeepZero made every read of such a client fail. The MAC twin
+			// has the same shape.
 			resourcekit.StringLikeField[clientModel, ui.Client, iptypes.IPv4Address]{
 				Wire:  "fixed_ip",
 				Model: func(m *clientModel) *iptypes.IPv4Address { return &m.FixedIP },
@@ -394,6 +399,7 @@ func clientKitSpec() resourcekit.Spec[clientModel, ui.Client] {
 				New: func(v basetypes.StringValue) iptypes.IPv4Address {
 					return iptypes.IPv4Address{StringValue: v}
 				},
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.StringLikeField[clientModel, ui.Client, hwtypes.MACAddress]{
 				Wire:  "fixed_ap_mac",
@@ -402,6 +408,7 @@ func clientKitSpec() resourcekit.Spec[clientModel, ui.Client] {
 				New: func(v basetypes.StringValue) hwtypes.MACAddress {
 					return hwtypes.MACAddress{StringValue: v}
 				},
+				Elide: resourcekit.NullZero,
 			},
 			// network_id IS virtual_network_override_id, NOT the SDK's NetworkID.
 			// unifi.Client carries both and they are different things; the

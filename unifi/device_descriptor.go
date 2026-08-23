@@ -987,10 +987,20 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 				Model: func(m *deviceKitModel) *types.Bool { return &m.Locked },
 				SDK:   func(s *ui.Device) *bool { return &s.Locked },
 			},
+			// New WAS MISSING HERE, and the omission was invisible to every
+			// unit check: ToModel calls it on every read and list, so a nil
+			// New made any device read panic the whole provider -- found by
+			// the first acceptance run over the kit-served device, and now
+			// held by ZeroReadProblems, which runs every field's ToModel
+			// against a zero object.
 			resourcekit.StringLikeField[deviceKitModel, ui.Device, hwtypes.MACAddress]{
 				Wire:  "mac",
 				Model: func(m *deviceKitModel) *hwtypes.MACAddress { return &m.MAC },
 				SDK:   func(s *ui.Device) *string { return &s.MAC },
+				New: func(v basetypes.StringValue) hwtypes.MACAddress {
+					return hwtypes.MACAddress{StringValue: v}
+				},
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.BoolField[deviceKitModel, ui.Device]{
 				Wire:  "mesh_sta_vap_enabled",

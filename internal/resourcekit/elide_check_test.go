@@ -1,15 +1,19 @@
 package resourcekit
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 // THE CHECK'S OWN POSITIVE CONTROL.
@@ -372,34 +376,40 @@ func TestZeroIsRejectedAsksTheValidatorsRatherThanGuessing(t *testing.T) {
 		{"a non-string attribute", schema.SetAttribute{ElementType: types.StringType}, false},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			if got := zeroIsRejected(testCase.attribute); got != testCase.want {
+			if got := zeroIsRejected(testCase.attribute, true); got != testCase.want {
 				t.Errorf("zeroIsRejected = %v, want %v", got, testCase.want)
 			}
 		})
 	}
 }
 
-// A custom-typed attribute is not probed with "", because "" is not its zero.
-// The first one the check met -- port_profile's dot1x_idle_timeout, a
-// timetypes.GoDuration -- was reported as wanting NullZero because its duration
-// validators reject "" as unparseable, which would have nulled a legitimate
-// zero duration.
-func TestACustomTypedAttributeIsNotProbedWithTheEmptyString(t *testing.T) {
+// A custom-typed attribute is judged by the FIELD KIND'S zero, which the
+// caller states. For a kind whose elided zero is the number 0 -- a
+// DurationPtrField -- the type is not asked about "" at all: GoDuration's
+// rejection of "" is about parseability, and acting on it would have nulled a
+// legitimate zero duration on port_profile's dot1x_idle_timeout. For a kind
+// whose elided zero IS "" -- a StringLikeField -- the type's own
+// ValidateAttribute governs, and its answer never reaches the attribute's
+// validators.
+func TestACustomTypedAttributeIsJudgedByTheFieldKindsZero(t *testing.T) {
 	custom := schema.StringAttribute{
 		Optional:   true,
 		Computed:   true,
 		CustomType: timetypes.GoDurationType{},
 		Validators: []validator.String{stringvalidator.LengthAtLeast(1)},
 	}
-	if zeroIsRejected(custom) {
-		t.Error("a custom-typed attribute was probed with \"\", so its zero was judged by " +
+	if zeroIsRejected(custom, false) {
+		t.Error("a kind whose zero is not \"\" was probed with it, so its zero was judged by " +
 			"whether the empty string parses rather than whether zero is legal")
 	}
+	if !zeroIsRejected(custom, true) {
+		t.Error("a kind whose zero IS \"\" was not asked the type's own opinion of it")
+	}
 	// The control: the identical attribute WITHOUT a custom type is probed and
-	// rejected, so the case above is not passing because the validator is inert.
+	// rejected, so the flag=false case above is not passing for lack of teeth.
 	plain := custom
 	plain.CustomType = nil
-	if !zeroIsRejected(plain) {
+	if !zeroIsRejected(plain, false) {
 		t.Fatal("the validator does not reject \"\" at all, so the assertion above proves nothing")
 	}
 }
@@ -474,5 +484,111 @@ func TestAZeroDefaultOutranksAValidatorThatRejectsIt(t *testing.T) {
 	}}
 	if problems := ElideProblems(probeSpec(KeepZero, NullZero, NullZero), realDefault); len(problems) != 0 {
 		t.Fatalf("a non-zero default should leave the validator deciding: %v", problems)
+	}
+}
+
+// A CUSTOM TYPE THAT REJECTS THE EMPTY STRING IS NOT EXEMPT FROM THE SPLIT.
+//
+// The blanket skip above zeroIsRejected was written against GoDuration, where
+// probing the VALIDATORS with "" answers the wrong question. But the elide
+// mechanism only ever elides the literal "", and a semantic type like
+// iptypes.IPv4Address rejects that literal in its own ValidateAttribute -- so
+// an Optional+Computed fixed_ip left on KeepZero turns an unset controller
+// value into a state value the type itself refuses, and every read fails.
+// Measured on a live controller before it was written: unifi_client's
+// fixed_ip did exactly that.
+type customProbeModel struct {
+	Addr iptypes.IPv4Address `tfsdk:"addr"`
+}
+
+type customProbeSDK struct{ Addr string }
+
+func customProbeSpec(elide ElideZero) Spec[customProbeModel, customProbeSDK] {
+	return Spec[customProbeModel, customProbeSDK]{
+		TypeName: "probe",
+		Fields: []Field[customProbeModel, customProbeSDK]{
+			StringLikeField[customProbeModel, customProbeSDK, iptypes.IPv4Address]{
+				Wire:  "addr",
+				Model: func(m *customProbeModel) *iptypes.IPv4Address { return &m.Addr },
+				SDK:   func(s *customProbeSDK) *string { return &s.Addr },
+				New: func(v basetypes.StringValue) iptypes.IPv4Address {
+					return iptypes.IPv4Address{StringValue: v}
+				},
+				Elide: elide,
+			},
+		},
+	}
+}
+
+func customProbeSchema(required bool) schema.Schema {
+	attribute := schema.StringAttribute{CustomType: iptypes.IPv4AddressType{}}
+	if required {
+		attribute.Required = true
+	} else {
+		attribute.Optional = true
+		attribute.Computed = true
+	}
+	return schema.Schema{Attributes: map[string]schema.Attribute{"addr": attribute}}
+}
+
+func TestElideProblemsAsksACustomTypeAboutItsOwnZero(t *testing.T) {
+	if problems := ElideProblems(customProbeSpec(NullZero), customProbeSchema(false)); len(problems) != 0 {
+		t.Errorf("NullZero on an optional custom type that rejects \"\" should be clean: %v", problems)
+	}
+	problems := ElideProblems(customProbeSpec(KeepZero), customProbeSchema(false))
+	if len(problems) != 1 {
+		t.Fatalf("KeepZero on an optional custom type that rejects \"\" produced %d problem(s), "+
+			"want 1: it reads an unset value back as one the type refuses", len(problems))
+	}
+
+	// Required stays KeepZero exactly as it does for plain strings: the value
+	// is always present on a real read, and the split deliberately stops
+	// short of Required.
+	if problems := ElideProblems(customProbeSpec(KeepZero), customProbeSchema(true)); len(problems) != 0 {
+		t.Errorf("Required keeps KeepZero even for a rejecting custom type: %v", problems)
+	}
+}
+
+// THE COUNTER-CASE THE OLD SKIP WAS PROTECTING, kept as its own control: a
+// DurationPtrField's elided zero is the NUMBER 0, a value GoDuration holds
+// happily as "0s". Probing GoDurationType with "" gets a rejection -- for
+// being unparseable -- and acting on it would null a legitimate zero
+// duration. The probe therefore applies only to field kinds whose elided
+// zero IS the empty string.
+type durationProbeModel struct {
+	Wait timetypes.GoDuration `tfsdk:"wait"`
+}
+
+type durationProbeSDK struct{ Wait *int64 }
+
+func durationProbeSpec(elide ElideZero) Spec[durationProbeModel, durationProbeSDK] {
+	return Spec[durationProbeModel, durationProbeSDK]{
+		TypeName: "probe",
+		Fields: []Field[durationProbeModel, durationProbeSDK]{
+			DurationPtrField[durationProbeModel, durationProbeSDK]{
+				Wire:  "wait",
+				Model: func(m *durationProbeModel) *timetypes.GoDuration { return &m.Wait },
+				SDK:   func(s *durationProbeSDK) **int64 { return &s.Wait },
+				Units: time.Second,
+				Elide: elide,
+			},
+		},
+	}
+}
+
+func TestElideProblemsDoesNotProbeAKindWhoseZeroIsNotTheEmptyString(t *testing.T) {
+	built := schema.Schema{Attributes: map[string]schema.Attribute{
+		"wait": schema.StringAttribute{
+			CustomType: timetypes.GoDurationType{},
+			Optional:   true, Computed: true,
+		},
+	}}
+	if problems := ElideProblems(durationProbeSpec(KeepZero), built); len(problems) != 0 {
+		t.Errorf("KeepZero on a duration pointer should be clean; its elided zero is 0, "+
+			"which GoDuration accepts: %v", problems)
+	}
+	if problems := ElideProblems(durationProbeSpec(NullZero), built); len(problems) != 1 {
+		t.Errorf("NullZero on a duration pointer should be flagged; nulling a zero "+
+			"turns a real 0s into an absence: got %v", problems)
 	}
 }
