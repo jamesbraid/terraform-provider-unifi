@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
-	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/acctestenv"
 )
 
 // testAccAPGroupCheckDestroy verifies that every unifi_ap_group in state has
@@ -114,9 +114,9 @@ func TestAccAPGroupFramework_basic(t *testing.T) {
 // UNIFI_ACC_AP_MAC names a real adopted access point, since the controller
 // rejects membership of any device it has not adopted.
 func TestAccAPGroupFramework_withDevices(t *testing.T) {
-	mac := os.Getenv(controllertest.EnvAccAPMAC)
+	mac := os.Getenv(acctestenv.EnvAccAPMAC)
 	if mac == "" {
-		t.Skipf("%s not set; skipping adopted-device AP group test", controllertest.EnvAccAPMAC)
+		t.Skipf("%s not set; skipping adopted-device AP group test", acctestenv.EnvAccAPMAC)
 	}
 	upperDashMac := strings.ToUpper(strings.ReplaceAll(mac, ":", "-"))
 	resource.Test(t, resource.TestCase{

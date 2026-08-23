@@ -81,6 +81,33 @@ func PrepareReleasedTree(repository, candidateRoot, tag, root string, sharedOwne
 		filepath.Join(root, "internal", "controllertest")); err != nil {
 		return result, fmt.Errorf("graft the controllertest harness: %w", err)
 	}
+	// acctestenv travels WITH the harness, because it is part of the same
+	// contract: it names the environment variables the fleet publishes, and
+	// both the harness and the scenario owners grafted below read them.
+	//
+	// It is a separate package precisely so an ordinary `go test ./unifi` does
+	// not import the harness to read two strings -- that edge was worth 119
+	// third-party modules. Splitting it created this obligation: a package the
+	// grafted files import has to exist on the released side too, and the
+	// released tag predates it.
+	//
+	// COPIED ONLY IF THE CANDIDATE HAS IT. A candidate predating the split has
+	// no such package and needs none, and a graft that insisted would turn a
+	// missing optional file into a failure that names the wrong thing -- which
+	// is what TestAScenarioOwnerThatDoesNotCompileIsRefused caught when this
+	// was written unconditionally.
+	acctestenvSource := filepath.Join(candidateRoot, "internal", "acctestenv")
+	if _, err := os.Stat(acctestenvSource); err == nil {
+		if err := os.RemoveAll(filepath.Join(root, "internal", "acctestenv")); err != nil {
+			return result, err
+		}
+		if err := copyTree(acctestenvSource,
+			filepath.Join(root, "internal", "acctestenv")); err != nil {
+			return result, fmt.Errorf("graft the acctestenv names: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return result, fmt.Errorf("graft the acctestenv names: %w", err)
+	}
 	if err := copyFile(filepath.Join(candidateRoot, "docker-compose.yaml"),
 		filepath.Join(root, "docker-compose.yaml")); err != nil {
 		return result, fmt.Errorf("graft docker-compose.yaml: %w", err)
