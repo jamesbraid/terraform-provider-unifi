@@ -2,8 +2,6 @@ package unifi
 
 import (
 	"context"
-	"encoding/json"
-	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -185,79 +183,6 @@ func TestNetworkNarrowingStaysSafeWhileWiresAreUnclassified(t *testing.T) {
 			"whatever the controller holds. Classify them first: either sending "+
 			"the zero is the intent, or the wire belongs in ConditionalWires.",
 			len(atRisk), atRisk)
-	}
-}
-
-// wiresWrittenByEncode asks the KIT which wires Encode assigns, rather than
-// deciding here.
-//
-// IT USED TO COMPARE MARSHALLED KEYS AND THAT WAS THE #240 CONFLATION WITH THE
-// OPPOSITE SIGN. A pointer field Encode assigns NIL is absent from both probes'
-// encodings, so "present in both and equal" called it NOT written -- and a
-// field Encode never touched reads the same way. Assigned-nil and untouched are
-// different facts and the encoded form cannot hold the difference, so the 17
-// wires this test reports were a mixture of the two with no way to separate
-// them. resourcekit.WiresEncodeWrites compares the struct fields.
-func wiresWrittenByEncode(
-	t *testing.T,
-	field resourcekit.ScatteredObjectField[netModel, ui.Network],
-	object types.Object,
-) map[string]bool {
-	t.Helper()
-	// The corporate encoder derives DHCP range defaults from the subnet and
-	// logs when it will not parse. A real CIDR keeps the probe quiet without
-	// changing which keys are emitted, and the purpose is not optional: a zero
-	// Network cannot marshal at all.
-	written, err := resourcekit.WiresEncodeWrites(t.Context(), field, object,
-		func(n *ui.Network) {
-			n.Purpose = ui.PurposeCorporate
-			subnet := "10.0.0.0/24"
-			n.IPSubnet = &subnet
-		})
-	if err != nil {
-		t.Fatalf("asking which wires Encode writes: %v", err)
-	}
-	return written
-}
-
-func marshalKeys(t *testing.T, network *ui.Network) map[string]json.RawMessage {
-	t.Helper()
-	raw, err := json.Marshal(network)
-	if err != nil {
-		t.Fatalf("marshalling: %v", err)
-	}
-	var out map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &out); err != nil {
-		t.Fatalf("reading back: %v", err)
-	}
-	return out
-}
-
-// sentinelFill puts a distinguishable non-zero in every settable field, so that
-// a field Encode does not touch differs from the bare run.
-func sentinelFill(v reflect.Value) {
-	switch v.Kind() {
-	case reflect.String:
-		v.SetString("sentinel")
-	case reflect.Bool:
-		v.SetBool(true)
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v.SetInt(9)
-	case reflect.Ptr:
-		if v.IsNil() {
-			v.Set(reflect.New(v.Type().Elem()))
-		}
-		sentinelFill(v.Elem())
-	case reflect.Slice:
-		if v.Type().Elem().Kind() == reflect.String {
-			v.Set(reflect.ValueOf([]string{"sentinel"}))
-		}
-	case reflect.Struct:
-		for i := range v.NumField() {
-			if v.Field(i).CanSet() {
-				sentinelFill(v.Field(i))
-			}
-		}
 	}
 }
 
