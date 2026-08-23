@@ -156,8 +156,17 @@ func clientKitPrefetch(client *ui.ApiClient) func(context.Context, string) (any,
 // groups translates names the practitioner wrote into ids; and use_fixedip and
 // local_dns_record_enabled are companion booleans derived from whether their
 // partner attribute is set at all.
+//
+// defaultSite MIRRORS Resource.Site'S OWN FALLBACK, because BeforeSend has no
+// other way to reach it. sdk carries no site of its own -- no Field maps
+// one, so sdk.SiteID is always "" -- and effective.Site reads that way too on
+// a first Create with no explicit site: ToModel is what normally resolves it
+// onto the model, and ToModel has not run yet at this point in Create. Both
+// the usergroup and the network-members-group creates below need a real site,
+// or the API answers "not found" for the empty path segment.
 func clientKitBeforeSend(
 	client *ui.ApiClient,
+	defaultSite string,
 ) func(context.Context, *clientModel, *clientModel, *ui.Client, any) diag.Diagnostics {
 	return func(
 		ctx context.Context,
@@ -168,14 +177,23 @@ func clientKitBeforeSend(
 		var diags diag.Diagnostics
 		groups, _ := prefetched.(*clientGroups)
 
+		site := effective.Site.ValueString()
+		if site == "" {
+			site = defaultSite
+		}
+
 		// The companions. The practitioner sets the value; the flag follows it,
 		// and the controller ignores the value without the flag.
 		sdk.UseFixedIP = !effective.FixedIP.IsNull() && effective.FixedIP.ValueString() != ""
 		sdk.LocalDNSRecordEnabled = !effective.LocalDNSRecord.IsNull() &&
 			effective.LocalDNSRecord.ValueString() != ""
-		if !effective.NetworkID.IsNull() && effective.NetworkID.ValueString() != "" {
-			sdk.VirtualNetworkOverrideEnabled = util.Ptr(true)
-		}
+		// ALWAYS ASSIGNED, NEVER LEFT NIL. virtual_network_override_enabled is
+		// in AlwaysWire, so every update sends it regardless of what the plan
+		// touched; a nil *bool serializes as a literal JSON null, and the
+		// controller answers that with api.err.InvalidValue rather than
+		// clearing the flag.
+		sdk.VirtualNetworkOverrideEnabled = util.Ptr(
+			!effective.NetworkID.IsNull() && effective.NetworkID.ValueString() != "")
 
 		if !effective.QOSRate.IsNull() && !effective.QOSRate.IsUnknown() {
 			var qos qosRateModel
@@ -183,7 +201,7 @@ func clientKitBeforeSend(
 			if diags.HasError() {
 				return diags
 			}
-			id, d := clientResolveGroup(ctx, client, sdk.SiteID, groups, qos)
+			id, d := clientResolveGroup(ctx, client, site, groups, qos)
 			diags.Append(d...)
 			if diags.HasError() {
 				return diags
@@ -201,10 +219,22 @@ func clientKitBeforeSend(
 			for _, name := range names {
 				id, ok := groups.memberIDByName[name]
 				if !ok {
-					diags.AddError("Unknown Network Members Group",
-						"No network members group on this site is named "+name+
-							". Groups are referenced by name and must already exist.")
-					continue
+					// TRANSCRIBED FROM THE HAND-WRITTEN resolveGroupID: a name
+					// with no network-members group behind it gets one, rather
+					// than erroring. groups is written back so two names in the
+					// same list that collide (same qos-derived default, say)
+					// share the group this operation just made instead of
+					// racing to create it twice.
+					created, err := client.CreateNetworkMembersGroup(ctx, site,
+						&ui.NetworkMembersGroup{Name: name, Members: []string{}, Type: "CLIENTS"})
+					if err != nil {
+						diags.AddError("Error Creating Network Members Group",
+							fmt.Sprintf("Could not create network members group %q: %s",
+								name, err.Error()))
+						continue
+					}
+					groups.memberIDByName[name] = created.ID
+					id = created.ID
 				}
 				ids = append(ids, id)
 			}
