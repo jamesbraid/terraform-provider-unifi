@@ -7,11 +7,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr/xattr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 // elideExempt names the field kinds that deliberately make no elision claim.
@@ -63,6 +65,10 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 			field = wrapper.Unwrap()
 		}
 		value := reflect.ValueOf(field)
+		kind := value.Type().Name()
+		if i := strings.IndexByte(kind, '['); i > 0 {
+			kind = kind[:i] // strip the generic instantiation
+		}
 		elide := value.FieldByName("Elide")
 		if !elide.IsValid() {
 			// A field kind with no Elide makes no claim, so there is nothing to
@@ -72,10 +78,6 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 			// said false". Anything else reaching here is an omission wearing
 			// the same shape, which is how the collection types went unchecked
 			// until a surface needed one.
-			kind := value.Type().Name()
-			if i := strings.IndexByte(kind, '['); i > 0 {
-				kind = kind[:i] // strip the generic instantiation
-			}
 			if _, deliberate := elideExempt[kind]; !deliberate {
 				problems = append(problems, fmt.Sprintf(
 					"%s: field %q is a %s, which carries no Elide; either it should, or "+
@@ -194,13 +196,21 @@ func ElideProblems[M any, S any](spec Spec[M, S], built schema.Schema) []string 
 		// empty string -- dns_record's record_type, firewall_group's type and
 		// static_route's type -- and applying the split to them would demand
 		// NullZero on all three.
+		// WHAT "ZERO" MEANS DEPENDS ON THE FIELD KIND. The string kinds elide
+		// the literal "", so a custom type's opinion of "" is the right
+		// question for them and only them. DurationPtrField elides the NUMBER
+		// 0 -- a value GoDuration holds happily as "0s" -- and asking its
+		// type about "" gets a rejection for unparseability that says nothing
+		// about the zero actually being elided.
+		elidesTheEmptyString := kind == "StringField" || kind == "StringLikeField"
 		want := KeepZero
 		switch {
 		case attribute.IsRequired():
 			want = KeepZero
 		case attribute.IsOptional() && !attribute.IsComputed():
 			want = NullZero
-		case attribute.IsOptional() && attribute.IsComputed() && zeroIsRejected(attribute) &&
+		case attribute.IsOptional() && attribute.IsComputed() &&
+			zeroIsRejected(attribute, elidesTheEmptyString) &&
 			!zeroIsTheDefault(attribute):
 			want = NullZero
 		}
@@ -280,27 +290,27 @@ func requiredness(a schema.Attribute) string {
 // validator that IS promised, and it answers the question directly instead of
 // by proxy -- which also means it catches LengthAtLeast and a regex that
 // excludes the empty string, not only OneOf.
-func zeroIsRejected(attribute schema.Attribute) bool {
+func zeroIsRejected(attribute schema.Attribute, elidedZeroIsTheEmptyString bool) bool {
 	stringAttribute, ok := attribute.(schema.StringAttribute)
 	if !ok {
 		return false
 	}
-	// A CUSTOM TYPE IS NOT PROBED, because "" is not its zero value.
+	// A CUSTOM TYPE IS ASKED ABOUT ITS OWN "" -- its ValidateAttribute, not
+	// the attribute's validators.
 	//
-	// port_profile's dot1x_idle_timeout is a timetypes.GoDuration whose
-	// validators are GoDurationBetween(0, 65535s) and GoDurationMultipleOf.
-	// Feeding them "" gets a rejection -- but for being unparseable as a
-	// duration, not for being an illegal value: "0s" is inside the range and
-	// is exactly what the hand-written mapper produces for a pointer to zero.
-	// So the probe answered a different question from the one asked, and the
-	// answer it gave would have nulled a legitimate zero duration.
-	//
-	// Skipping leaves these on KeepZero, which is the answer the rule gave
-	// before the refinement and the one that matches the code being replaced.
-	// Probing a custom type properly would mean asking it for its own zero,
-	// which basetypes.StringTypable does not offer.
+	// An earlier version skipped custom types entirely, reasoning from
+	// port_profile's dot1x_idle_timeout: probing its GoDurationBetween
+	// validators with "" gets a rejection for being unparseable, not for
+	// being an illegal value, and acting on that would have nulled a
+	// legitimate "0s". But the elide mechanism only ever elides the literal
+	// "", never a semantic zero, so the right question is whether the TYPE
+	// accepts "" as a value -- and the type itself answers that.
+	// unifi_client's fixed_ip is what the skip cost: an iptypes.IPv4Address
+	// left on KeepZero read an unset controller value back as "", which the
+	// type refuses, and every read of a client without a fixed IP failed on
+	// a live controller.
 	if stringAttribute.CustomType != nil {
-		return false
+		return elidedZeroIsTheEmptyString && customTypeRejectsEmpty(stringAttribute.CustomType)
 	}
 	ctx := context.Background()
 	for _, v := range stringAttribute.Validators {
@@ -334,4 +344,33 @@ func zeroIsTheDefault(attribute schema.Attribute) bool {
 		context.Background(), defaults.StringRequest{Path: path.Root("probe")}, response)
 	return !response.PlanValue.IsNull() && !response.PlanValue.IsUnknown() &&
 		response.PlanValue.ValueString() == ""
+}
+
+// customTypeRejectsEmpty asks a custom string type whether "" is a value it
+// accepts, by building that value and running the type's own validation.
+//
+// The type's answer is authoritative in a way the attribute's validators are
+// not: validators judge configuration, and "" may be rejected there for
+// parseability rather than legality. But ToModel writes the constructed VALUE
+// into state, and a value whose own ValidateAttribute refuses it fails every
+// read that carries it -- so if the type refuses "", an SDK zero must become
+// null instead.
+//
+// A type that does not implement xattr.ValidateableAttribute, or whose ""
+// cannot even be constructed, keeps the old answer: not rejected.
+func customTypeRejectsEmpty(customType basetypes.StringTypable) bool {
+	ctx := context.Background()
+	value, diags := customType.ValueFromString(ctx, basetypes.NewStringValue(""))
+	if diags.HasError() {
+		return false
+	}
+	validatable, ok := value.(xattr.ValidateableAttribute)
+	if !ok {
+		return false
+	}
+	response := &xattr.ValidateAttributeResponse{}
+	validatable.ValidateAttribute(ctx, xattr.ValidateAttributeRequest{
+		Path: path.Root("probe"),
+	}, response)
+	return response.Diagnostics.HasError()
 }
