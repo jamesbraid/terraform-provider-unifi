@@ -3,6 +3,7 @@ package unifi
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
@@ -581,6 +582,71 @@ func TestClientImportHandle(t *testing.T) {
 				t.Errorf("isMAC = %v, want %v", isMAC, testCase.wantIsMAC)
 			}
 		})
+	}
+}
+
+// TestClientImportHandleRejectsAnEmptyHandle is the regression test for the
+// review's critical finding: v0.102.0 could not reach an empty handle at all
+// -- its identity schema had one attribute, mac, RequiredForImport, so core
+// rejected an empty identity block before the provider ever ran. Making both
+// id and mac OptionalForImport (necessary so either alone satisfies the
+// schema) reopened that door, and a client-specific ImportState that
+// silently accepted an empty handle would send id="" through to Read, which
+// hits GetClient(site, "") -- the LIST endpoint, which go-unifi answers with
+// the site's one client whenever there is exactly one. That is a silent,
+// WRONG import with no diagnostic, not a missing-argument error, which is
+// why this asserts on Diagnostics rather than on a "not found" message.
+func TestClientImportHandleRejectsAnEmptyHandle(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		req  func(t *testing.T) fwresource.ImportStateRequest
+	}{
+		{
+			name: "empty CLI import string",
+			req: func(*testing.T) fwresource.ImportStateRequest {
+				return fwresource.ImportStateRequest{ID: ""}
+			},
+		},
+		{
+			name: "empty identity block, neither id nor mac set",
+			req: func(t *testing.T) fwresource.ImportStateRequest {
+				identity := clientTestIdentity(t)
+				return fwresource.ImportStateRequest{Identity: &identity}
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			handle, isMAC, diags := clientImportHandle(t.Context(), testCase.req(t))
+			if !diags.HasError() {
+				t.Fatalf("clientImportHandle: want an error for an empty handle, "+
+					"got handle=%q isMAC=%v and no diagnostics", handle, isMAC)
+			}
+		})
+	}
+}
+
+// TestClientImportHandleRejectsSiteMAC covers the review's second finding: a
+// "site:mac" handle is not supported (v0.102.0 parity -- mac import there
+// always used the provider's own site, never a per-import override), but
+// falling through to the kit's generic "Import ID must be in format 'site:id'
+// or 'id'" says nothing about mac, leaving a practitioner who typed
+// "site:mac" no better informed than before. This asserts the client-specific
+// error names mac explicitly instead.
+func TestClientImportHandleRejectsSiteMAC(t *testing.T) {
+	_, _, diags := clientImportHandle(t.Context(), fwresource.ImportStateRequest{
+		ID: "default:01:23:45:67:89:ab",
+	})
+	if !diags.HasError() {
+		t.Fatal(`clientImportHandle: want an error for "site:mac", got none`)
+	}
+	found := false
+	for _, d := range diags.Errors() {
+		if strings.Contains(d.Detail(), "mac") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf(`clientImportHandle: want an error mentioning "mac", got: %v`, diags.Errors())
 	}
 }
 
