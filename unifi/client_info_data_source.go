@@ -8,9 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/models"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_info"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -21,7 +20,7 @@ func NewClientInfoDataSource() datasource.DataSource {
 }
 
 type clientInfoDataSource struct {
-	client *Client
+	dataSourceWithClient
 }
 
 type clientInfoDataSourceModel struct {
@@ -84,38 +83,8 @@ func (d *clientInfoDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	attributes := models.ClientInfoDataSourceSchema()
-	attributes["timeouts"] = timeouts.Attributes(ctx)
-
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Retrieves information about a specific client by MAC address.",
-
-		Attributes: attributes,
-	}
-}
-
-func (d *clientInfoDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-		return
-	}
-
-	d.client = client
+	resp.Schema = datasource_client_info.ClientInfoDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *clientInfoDataSource) Read(

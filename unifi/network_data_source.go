@@ -7,14 +7,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_network"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -27,7 +24,7 @@ func NewNetworkDataSource() datasource.DataSource {
 
 // networkDataSource defines the data source implementation.
 type networkDataSource struct {
-	client *Client
+	dataSourceWithClient
 }
 
 // networkDataSourceModel describes the data source data model.
@@ -105,396 +102,10 @@ func (d *networkDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "`unifi_network` data source can be used to retrieve settings for a network by name or ID.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the network.",
-				Computed:            true,
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.Expressions{
-						path.MatchRoot("name"),
-					}...),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the network with.",
-				Computed:            true,
-				Optional:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the network.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.Expressions{
-						path.MatchRoot("id"),
-					}...),
-				},
-			},
-			// Fields shared with resource (all Computed)
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether the network is enabled.",
-				Computed:            true,
-			},
-			"auto_scale": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether auto-scaling is enabled.",
-				Computed:            true,
-			},
-			"subnet": schema.StringAttribute{
-				MarkdownDescription: "The IP subnet of the network in CIDR notation.",
-				Computed:            true,
-			},
-			"domain_name": schema.StringAttribute{
-				MarkdownDescription: "The domain name for the network.",
-				Computed:            true,
-			},
-			"vlan": schema.Int64Attribute{
-				MarkdownDescription: "The VLAN ID for the network.",
-				Computed:            true,
-			},
-			"network_isolation": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether network isolation is enabled.",
-				Computed:            true,
-			},
-			"setting_preference": schema.StringAttribute{
-				MarkdownDescription: "Setting preference. One of `auto` or `manual`.",
-				Computed:            true,
-			},
-			"internet_access": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether internet access is enabled.",
-				Computed:            true,
-			},
-			"igmp_snooping": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether IGMP snooping is enabled.",
-				Computed:            true,
-			},
-			"multicast_dns": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether mDNS is enabled.",
-				Computed:            true,
-			},
-			"gateway_type": schema.StringAttribute{
-				MarkdownDescription: "The gateway type.",
-				Computed:            true,
-			},
-			"ipv6_interface_type": schema.StringAttribute{
-				MarkdownDescription: "Specifies which type of IPv6 connection to use.",
-				Computed:            true,
-			},
-			"lte_lan": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether LTE LAN is enabled.",
-				Computed:            true,
-			},
-			"ip_aliases": schema.ListAttribute{
-				MarkdownDescription: "List of IP aliases for the network.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"ipv6_aliases": schema.ListAttribute{
-				MarkdownDescription: "List of IPv6 aliases for the network.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"third_party_gateway": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether this network uses a third-party gateway.",
-				Computed:            true,
-			},
-			"nat_outbound_ip_addresses": schema.ListNestedAttribute{
-				MarkdownDescription: "List of NAT outbound IP addresses.",
-				Computed:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"ip_address": schema.StringAttribute{
-							MarkdownDescription: "The IP address.",
-							Computed:            true,
-						},
-						"ip_address_pool": schema.ListAttribute{
-							MarkdownDescription: "The IP address pool.",
-							Computed:            true,
-							ElementType:         types.StringType,
-						},
-						"mode": schema.StringAttribute{
-							MarkdownDescription: "The mode.",
-							Computed:            true,
-						},
-						"wan_network_group": schema.StringAttribute{
-							MarkdownDescription: "The WAN network group.",
-							Computed:            true,
-						},
-					},
-				},
-			},
-			"dhcp_guarding": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCP guarding configuration.",
-				Computed:            true,
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP guarding is enabled.",
-						Computed:            true,
-					},
-					"servers": schema.ListAttribute{
-						MarkdownDescription: "List of allowed DHCP server IP addresses.",
-						Computed:            true,
-						ElementType:         types.StringType,
-					},
-				},
-			},
-			"dhcp_server": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCP server configuration.",
-				Computed:            true,
-				Attributes: map[string]schema.Attribute{
-					"boot": schema.SingleNestedAttribute{
-						MarkdownDescription: "DHCP boot settings.",
-						Computed:            true,
-						Attributes: map[string]schema.Attribute{
-							"enabled": schema.BoolAttribute{
-								MarkdownDescription: "Toggles DHCP boot options.",
-								Computed:            true,
-							},
-							"server": schema.StringAttribute{
-								MarkdownDescription: "TFTP server for boot options.",
-								Computed:            true,
-							},
-							"filename": schema.StringAttribute{
-								MarkdownDescription: "Boot filename.",
-								Computed:            true,
-							},
-						},
-					},
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP server is enabled.",
-						Computed:            true,
-					},
-					"start": schema.StringAttribute{
-						MarkdownDescription: "The IPv4 address where the DHCP range starts.",
-						Computed:            true,
-					},
-					"stop": schema.StringAttribute{
-						MarkdownDescription: "The IPv4 address where the DHCP range stops.",
-						Computed:            true,
-					},
-					"gateway_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP gateway is enabled.",
-						Computed:            true,
-					},
-					"conflict_checking": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP conflict checking is enabled.",
-						Computed:            true,
-					},
-					"ntp_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP NTP is enabled.",
-						Computed:            true,
-					},
-					"time_offset_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP time offset is enabled.",
-						Computed:            true,
-					},
-					"dns_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP DNS is enabled.",
-						Computed:            true,
-					},
-					"leasetime": schema.StringAttribute{
-						MarkdownDescription: "Specifies the DHCP lease time, as a Go duration string.",
-						CustomType:          timetypes.GoDurationType{},
-						Computed:            true,
-					},
-					"wins": schema.SingleNestedAttribute{
-						MarkdownDescription: "WINS server configuration.",
-						Computed:            true,
-						Attributes: map[string]schema.Attribute{
-							"enabled": schema.BoolAttribute{
-								MarkdownDescription: "Specifies whether DHCP WINS is enabled.",
-								Computed:            true,
-							},
-							"addresses": schema.ListAttribute{
-								MarkdownDescription: "List of WINS server addresses.",
-								Computed:            true,
-								ElementType:         types.StringType,
-							},
-						},
-					},
-					"wpad_url": schema.StringAttribute{
-						MarkdownDescription: "WPAD URL for proxy auto-configuration.",
-						Computed:            true,
-					},
-					"tftp_server": schema.StringAttribute{
-						MarkdownDescription: "TFTP server address.",
-						Computed:            true,
-					},
-					"unifi_controller": schema.StringAttribute{
-						MarkdownDescription: "UniFi controller IP address.",
-						Computed:            true,
-					},
-					"dns_servers": schema.ListAttribute{
-						MarkdownDescription: "List of DNS server addresses for DHCP clients.",
-						Computed:            true,
-						ElementType:         types.StringType,
-					},
-				},
-			},
-			"dhcp_relay": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCP relay configuration.",
-				Computed:            true,
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether DHCP relay is enabled.",
-						Computed:            true,
-					},
-					"servers": schema.ListAttribute{
-						MarkdownDescription: "List of DHCP relay server addresses.",
-						Computed:            true,
-						ElementType:         types.StringType,
-					},
-				},
-			},
-			// DS-only fields
-			"purpose": schema.StringAttribute{
-				MarkdownDescription: "The purpose of the network. One of `corporate`, `guest`, `wan`, or `vlan-only`.",
-				Computed:            true,
-			},
-			"network_group": schema.StringAttribute{
-				MarkdownDescription: "The group of the network.",
-				Computed:            true,
-			},
-			"ipv6_static_subnet": schema.StringAttribute{
-				MarkdownDescription: "The static IPv6 subnet (when `ipv6_interface_type` is `static`).",
-				Computed:            true,
-			},
-			"ipv6_pd_interface": schema.StringAttribute{
-				MarkdownDescription: "Specifies which WAN interface to use for IPv6 PD. One of `wan` or `wan2`.",
-				Computed:            true,
-			},
-			"ipv6_pd_prefixid": schema.StringAttribute{
-				MarkdownDescription: "Specifies the IPv6 Prefix ID.",
-				Computed:            true,
-			},
-			"ipv6_pd_start": schema.StringAttribute{
-				MarkdownDescription: "Start address of the DHCPv6 range when `ipv6_interface_type` is `pd`.",
-				Computed:            true,
-			},
-			"ipv6_pd_stop": schema.StringAttribute{
-				MarkdownDescription: "End address of the DHCPv6 range when `ipv6_interface_type` is `pd`.",
-				Computed:            true,
-			},
-			"ipv6_ra": schema.BoolAttribute{
-				MarkdownDescription: "Specifies whether to enable IPv6 router advertisements.",
-				Computed:            true,
-			},
-			"ipv6_ra_preferred_lifetime": schema.StringAttribute{
-				MarkdownDescription: "Preferred lifetime for IPv6 RA, as a Go duration string.",
-				CustomType:          timetypes.GoDurationType{},
-				Computed:            true,
-			},
-			"ipv6_ra_priority": schema.StringAttribute{
-				MarkdownDescription: "IPv6 router advertisement priority. One of `high`, `medium`, or `low`.",
-				Computed:            true,
-			},
-			"ipv6_ra_valid_lifetime": schema.StringAttribute{
-				MarkdownDescription: "Total lifetime for the IPv6 RA address, as a Go duration string.",
-				CustomType:          timetypes.GoDurationType{},
-				Computed:            true,
-			},
-			"dhcp_v6_server": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCPv6 server configuration.",
-				Computed:            true,
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Specifies whether stateful DHCPv6 is enabled.",
-						Computed:            true,
-					},
-					"dns_auto": schema.BoolAttribute{
-						MarkdownDescription: "When true, upstream DNS entries are propagated. When false, `dns_servers` are used.",
-						Computed:            true,
-					},
-					"dns_servers": schema.ListAttribute{
-						MarkdownDescription: "IPv6 DNS server addresses for DHCPv6 clients.",
-						Computed:            true,
-						ElementType:         types.StringType,
-					},
-					"lease": schema.Int64Attribute{
-						MarkdownDescription: "Lease time for DHCPv6 addresses in seconds.",
-						Computed:            true,
-					},
-					"start": schema.StringAttribute{
-						MarkdownDescription: "Start address of the DHCPv6 range.",
-						Computed:            true,
-					},
-					"stop": schema.StringAttribute{
-						MarkdownDescription: "End address of the DHCPv6 range.",
-						Computed:            true,
-					},
-				},
-			},
-			"wan_dns": schema.ListAttribute{
-				MarkdownDescription: "DNS server IPs of the WAN.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"wan_egress_qos": schema.Int64Attribute{
-				MarkdownDescription: "Specifies the WAN egress quality of service.",
-				Computed:            true,
-			},
-			"wan_gateway": schema.StringAttribute{
-				MarkdownDescription: "The IPv4 gateway of the WAN.",
-				Computed:            true,
-			},
-			"wan_gateway_v6": schema.StringAttribute{
-				MarkdownDescription: "The IPv6 gateway of the WAN.",
-				Computed:            true,
-			},
-			"wan_ip": schema.StringAttribute{
-				MarkdownDescription: "The IPv4 address of the WAN.",
-				Computed:            true,
-			},
-			"wan_netmask": schema.StringAttribute{
-				MarkdownDescription: "The IPv4 netmask of the WAN.",
-				Computed:            true,
-			},
-			"wan_network_group": schema.StringAttribute{
-				MarkdownDescription: "Specifies the WAN network group. One of `WAN`, `WAN2` or `WAN_LTE_FAILOVER`.",
-				Computed:            true,
-			},
-			"wan_type": schema.StringAttribute{
-				MarkdownDescription: "Specifies the IPv4 WAN connection type. One of `disabled`, `static`, `dhcp`, or `pppoe`.",
-				Computed:            true,
-			},
-			"wan_type_v6": schema.StringAttribute{
-				MarkdownDescription: "Specifies the IPv6 WAN connection type. One of `disabled`, `static`, or `dhcpv6`.",
-				Computed:            true,
-			},
-			"wan_username": schema.StringAttribute{
-				MarkdownDescription: "Specifies the IPv4 WAN username.",
-				Computed:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
-}
-
-func (d *networkDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-		return
-	}
-
-	d.client = client
+	resp.Schema = datasource_network.NetworkDsDataSourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *networkDataSource) Read(
@@ -575,7 +186,6 @@ func (d *networkDataSource) Read(
 		return
 	}
 
-	// Set attributes from API response
 	d.setDataSourceData(ctx, &resp.Diagnostics, network, &config, site)
 	if resp.Diagnostics.HasError() {
 		return
@@ -585,7 +195,6 @@ func (d *networkDataSource) Read(
 	resp.Diagnostics.Append(diags...)
 }
 
-// Helper method to set data source data from API response.
 func (d *networkDataSource) setDataSourceData(
 	ctx context.Context,
 	diags *diag.Diagnostics,
@@ -596,7 +205,7 @@ func (d *networkDataSource) setDataSourceData(
 	model.ID = types.StringValue(network.ID)
 	model.Site = types.StringValue(site)
 	model.Name = types.StringPointerValue(network.Name)
-	model.Purpose = types.StringValue(network.Purpose)
+	model.Purpose, model.ThirdPartyGateway = networkDataSourcePurposeFromNetwork(network)
 	model.NetworkGroup = types.StringPointerValue(network.NetworkGroup)
 
 	// Shared with resource fields
@@ -609,13 +218,11 @@ func (d *networkDataSource) setDataSourceData(
 	model.SettingPreference = types.StringPointerValue(network.SettingPreference)
 	model.InternetAccess = types.BoolValue(network.InternetAccessEnabled)
 	model.IgmpSnooping = types.BoolValue(network.IGMPSnooping)
-	model.MulticastDNS = types.BoolValue(network.MdnsEnabled)
+	model.MulticastDNS = types.BoolValue(network.MdnsEnabled) //nolint:staticcheck // the only wire for a released attribute
 	model.GatewayType = types.StringPointerValue(network.GatewayType)
 	model.IPv6InterfaceType = types.StringPointerValue(network.IPV6InterfaceType)
 	model.LteLan = types.BoolValue(network.LteLanEnabled)
-	model.ThirdPartyGateway = types.BoolValue(network.Purpose == unifi.PurposeVLANOnly)
 
-	// ip_aliases
 	if len(network.IPAliases) > 0 {
 		ipAliasesList, d := types.ListValueFrom(ctx, types.StringType, network.IPAliases)
 		diags.Append(d...)
@@ -632,20 +239,10 @@ func (d *networkDataSource) setDataSourceData(
 		types.ObjectType{AttrTypes: natOutboundIPAddresses()},
 	)
 
-	// dhcp_guarding
 	{
-		var serversList types.List
-		servers := collectNonEmptyStrings(network.DHCPDIP1, network.DHCPDIP2, network.DHCPDIP3)
-		if len(servers) > 0 {
-			l, d := types.ListValueFrom(ctx, types.StringType, servers)
-			diags.Append(d...)
-			serversList = l
-		} else {
-			serversList = types.ListNull(types.StringType)
-		}
 		dhcpGuardingValue := dhcpGuardingModel{
 			Enabled: types.BoolValue(network.DHCPguardEnabled),
-			Servers: serversList,
+			Servers: networkDataSourceDHCPGuardingServersFromNetwork(ctx, diags, network),
 		}
 		dhcpGuardingObj, d := types.ObjectValueFrom(
 			ctx,
@@ -656,49 +253,10 @@ func (d *networkDataSource) setDataSourceData(
 		model.DhcpGuarding = dhcpGuardingObj
 	}
 
-	// dhcp_server
 	{
-		strPtrToType := func(ptr *string) types.String {
-			if ptr == nil || *ptr == "" {
-				return types.StringNull()
-			}
-			return types.StringValue(*ptr)
-		}
-
-		dhcpBootValue := dhcpBootModel{
-			Enabled:  types.BoolValue(network.DHCPDBootEnabled),
-			Server:   types.StringValue(network.DHCPDBootServer),
-			Filename: strPtrToType(network.DHCPDBootFilename),
-		}
-		dhcpBootObj, d := types.ObjectValueFrom(ctx, dhcpBootValue.AttributeTypes(), dhcpBootValue)
-		diags.Append(d...)
-
-		dnsServers := collectNonEmptyStrings(
-			network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
-		)
-		var dnsServersList types.List
-		if len(dnsServers) > 0 {
-			dnsServersList, d = types.ListValueFrom(ctx, types.StringType, dnsServers)
-			diags.Append(d...)
-		} else {
-			dnsServersList = types.ListNull(types.StringType)
-		}
-
-		winsAddresses := collectNonEmptyStringPointers(network.DHCPDWins1, network.DHCPDWins2)
-		var winsAddressesList types.List
-		if len(winsAddresses) > 0 {
-			winsAddressesList, d = types.ListValueFrom(ctx, types.StringType, winsAddresses)
-			diags.Append(d...)
-		} else {
-			winsAddressesList = types.ListNull(types.StringType)
-		}
-
-		winsValue := winsModel{
-			Enabled:   types.BoolValue(network.DHCPDWinsEnabled),
-			Addresses: winsAddressesList,
-		}
-		winsObj, d := types.ObjectValueFrom(ctx, winsValue.AttributeTypes(), winsValue)
-		diags.Append(d...)
+		dhcpBootObj := networkDataSourceBootFromNetwork(ctx, diags, network)
+		dnsServersList := networkDataSourceDHCPServerDNSFromNetwork(ctx, diags, network)
+		winsObj := networkDataSourceWINSFromNetwork(ctx, diags, network)
 
 		dhcpServerValue := dhcpServerModel{
 			Boot:              dhcpBootObj,
@@ -712,9 +270,9 @@ func (d *networkDataSource) setDataSourceData(
 			DnsEnabled:        types.BoolValue(network.DHCPDDNSEnabled),
 			Leasetime:         util.DurationPtrValue(network.DHCPDLeaseTime, time.Second),
 			Wins:              winsObj,
-			WpadUrl:           strPtrToType(network.DHCPDWPAdUrl),
-			TftpServer:        strPtrToType(network.DHCPDTFTPServer),
-			UnifiController:   strPtrToType(network.DHCPDUnifiController),
+			WpadUrl:           strPtrOrNull(network.DHCPDWPAdUrl),
+			TftpServer:        strPtrOrNull(network.DHCPDTFTPServer),
+			UnifiController:   strPtrOrNull(network.DHCPDUnifiController),
 			DnsServers:        dnsServersList,
 		}
 		dhcpServerObj, d := types.ObjectValueFrom(
@@ -726,7 +284,6 @@ func (d *networkDataSource) setDataSourceData(
 		model.DhcpServer = dhcpServerObj
 	}
 
-	// dhcp_relay
 	{
 		var relayServersVal types.List
 		if len(network.DHCPRelayServers) > 0 {
@@ -767,25 +324,11 @@ func (d *networkDataSource) setDataSourceData(
 	model.IPv6RAPriority = types.StringPointerValue(network.IPV6RaPriority)
 	model.IPv6RAValidLifetime = util.DurationPtrValue(network.IPV6RaValidLifetime, time.Second)
 
-	// dhcp_v6_server
 	{
-		dhcpv6DNS := collectNonEmptyStringPointers(
-			network.DHCPDV6DNS1, network.DHCPDV6DNS2,
-			network.DHCPDV6DNS3, network.DHCPDV6DNS4,
-		)
-		var dhcpv6DNSList types.List
-		if len(dhcpv6DNS) > 0 {
-			l, d := types.ListValueFrom(ctx, types.StringType, dhcpv6DNS)
-			diags.Append(d...)
-			dhcpv6DNSList = l
-		} else {
-			dhcpv6DNSList = types.ListNull(types.StringType)
-		}
-
 		dhcpV6ServerValue := dhcpV6ServerModel{
 			Enabled:    types.BoolValue(network.DHCPDV6Enabled),
 			DNSAuto:    types.BoolValue(network.DHCPDV6DNSAuto),
-			DNSServers: dhcpv6DNSList,
+			DNSServers: networkDataSourceDHCPV6ServerDNSFromNetwork(ctx, diags, network),
 			Lease:      types.Int64PointerValue(network.DHCPDV6LeaseTime),
 			Start:      types.StringPointerValue(network.DHCPDV6Start),
 			Stop:       types.StringPointerValue(network.DHCPDV6Stop),
@@ -799,16 +342,7 @@ func (d *networkDataSource) setDataSourceData(
 		model.DhcpV6Server = dhcpV6ServerObj
 	}
 
-	// WAN DNS
-	wanDNS := collectNonEmptyStringPointers(network.WANDNS1, network.WANDNS2)
-	wanDNS = append(wanDNS, collectNonEmptyStrings(network.WANDNS3, network.WANDNS4)...)
-	if len(wanDNS) > 0 {
-		wanDNSList, d := types.ListValueFrom(ctx, types.StringType, wanDNS)
-		diags.Append(d...)
-		model.WanDNS = wanDNSList
-	} else {
-		model.WanDNS = types.ListNull(types.StringType)
-	}
+	model.WanDNS = networkDataSourceWANDNSFromNetwork(ctx, diags, network)
 
 	model.WanEgressQOS = types.Int64PointerValue(network.WANEgressQOS)
 	model.WanGateway = types.StringPointerValue(network.WANGateway)
@@ -849,4 +383,117 @@ func collectNonEmptyStringPointers(ptrs ...*string) []string {
 		}
 	}
 	return result
+}
+
+// Each function below is the read half of a per-Terraform-member mapping this
+// data source's fact-coverage policy names by function; being read-only, there's no to_api half.
+
+// stringListOrNull renders collected addresses as a list, or null when there
+// are none -- every collection below ends this way, since a sparse none-set means absent, not an empty list.
+func stringListOrNull(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	values []string,
+) types.List {
+	if len(values) == 0 {
+		return types.ListNull(types.StringType)
+	}
+	list, d := types.ListValueFrom(ctx, types.StringType, values)
+	diags.Append(d...)
+	return list
+}
+
+// networkDataSourcePurposeFromNetwork reads purpose and third_party_gateway from
+// the one observed purpose field: third_party_gateway is whether that value is vlan-only.
+func networkDataSourcePurposeFromNetwork(network *unifi.Network) (types.String, types.Bool) {
+	return types.StringValue(network.Purpose),
+		types.BoolValue(network.Purpose == unifi.PurposeVLANOnly)
+}
+
+// networkDataSourceDHCPGuardingServersFromNetwork collects dhcp_guarding.servers
+// from the three observed slots, keeping only the non-empty ones.
+func networkDataSourceDHCPGuardingServersFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
+		network.DHCPDIP1, network.DHCPDIP2, network.DHCPDIP3,
+	))
+}
+
+// networkDataSourceDHCPServerDNSFromNetwork collects dhcp_server.dns_servers
+// from the four observed slots, keeping only the non-empty ones.
+func networkDataSourceDHCPServerDNSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
+		network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
+	))
+}
+
+// networkDataSourceDHCPV6ServerDNSFromNetwork collects dhcp_v6_server.dns_servers
+// from the four observed slots, keeping only the non-empty ones.
+func networkDataSourceDHCPV6ServerDNSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
+		network.DHCPDV6DNS1, network.DHCPDV6DNS2,
+		network.DHCPDV6DNS3, network.DHCPDV6DNS4,
+	))
+}
+
+// networkDataSourceWINSFromNetwork reads dhcp_server.wins from an enable flag
+// and two address slots, the addresses collected non-empty.
+func networkDataSourceWINSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.Object {
+	value := winsModel{
+		Enabled: types.BoolValue(network.DHCPDWinsEnabled),
+		Addresses: stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
+			network.DHCPDWins1, network.DHCPDWins2,
+		)),
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	diags.Append(d...)
+	return object
+}
+
+// networkDataSourceBootFromNetwork reads dhcp_server.boot, which groups three
+// flat observed fields the wire keeps apart.
+func networkDataSourceBootFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.Object {
+	filename := types.StringNull()
+	if network.DHCPDBootFilename != nil && *network.DHCPDBootFilename != "" {
+		filename = types.StringValue(*network.DHCPDBootFilename)
+	}
+	value := dhcpBootModel{
+		Enabled:  types.BoolValue(network.DHCPDBootEnabled),
+		Server:   types.StringValue(network.DHCPDBootServer),
+		Filename: filename,
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	diags.Append(d...)
+	return object
+}
+
+// networkDataSourceWANDNSFromNetwork collects wan_dns from four observed slots
+// (first two pointers, last two strings), the pointer pair first so order is by slot, not representation.
+func networkDataSourceWANDNSFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	servers := collectNonEmptyStringPointers(network.WANDNS1, network.WANDNS2)
+	servers = append(servers, collectNonEmptyStrings(network.WANDNS3, network.WANDNS4)...)
+	return stringListOrNull(ctx, diags, servers)
 }

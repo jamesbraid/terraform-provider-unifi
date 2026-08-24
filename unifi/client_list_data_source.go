@@ -9,10 +9,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	gounifi "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_list"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -23,7 +23,7 @@ func NewClientListDataSource() datasource.DataSource {
 }
 
 type clientListDataSource struct {
-	client *Client
+	dataSourceWithClient
 
 	// Cache group name → ID lookups per site to avoid repeated API calls.
 	groupCacheMu sync.Mutex
@@ -90,183 +90,6 @@ func clientListEntryAttrTypes() map[string]attr.Type {
 	}
 }
 
-func clientListEntrySchemaAttributes() map[string]schema.Attribute {
-	return map[string]schema.Attribute{
-		// From Client (user REST API)
-		"id": schema.StringAttribute{
-			MarkdownDescription: "The ID of the client.",
-			Computed:            true,
-		},
-		"mac": schema.StringAttribute{
-			MarkdownDescription: "The MAC address of the client.",
-			Computed:            true,
-		},
-		"name": schema.StringAttribute{
-			MarkdownDescription: "The name of the client.",
-			Computed:            true,
-		},
-		"display_name": schema.StringAttribute{
-			MarkdownDescription: "The display name of the client.",
-			Computed:            true,
-		},
-		"group_id": schema.StringAttribute{
-			MarkdownDescription: "The user group ID for the client.",
-			Computed:            true,
-		},
-		"note": schema.StringAttribute{
-			MarkdownDescription: "A note with additional information for the client.",
-			Computed:            true,
-		},
-		"fixed_ip": schema.StringAttribute{
-			MarkdownDescription: "A fixed IPv4 address for this client.",
-			Computed:            true,
-		},
-		"fixed_ap_mac": schema.StringAttribute{
-			MarkdownDescription: "The MAC address of the access point to which this client is fixed.",
-			Computed:            true,
-		},
-		"network_id": schema.StringAttribute{
-			MarkdownDescription: "The network ID for this client.",
-			Computed:            true,
-		},
-		"network_members_group_ids": schema.ListAttribute{
-			MarkdownDescription: "List of network member group IDs for this client.",
-			Computed:            true,
-			ElementType:         types.StringType,
-		},
-		"blocked": schema.BoolAttribute{
-			MarkdownDescription: "Whether the client is blocked from the network.",
-			Computed:            true,
-		},
-		"local_dns_record": schema.StringAttribute{
-			MarkdownDescription: "The local DNS record for this client.",
-			Computed:            true,
-		},
-		"hostname": schema.StringAttribute{
-			MarkdownDescription: "The hostname of the client.",
-			Computed:            true,
-		},
-
-		// From ClientInfo (active/history enrichment)
-		"ip": schema.StringAttribute{
-			MarkdownDescription: "The IP address of the client.",
-			Computed:            true,
-		},
-		"status": schema.StringAttribute{
-			MarkdownDescription: "The connection status of the client.",
-			Computed:            true,
-		},
-		"uptime": schema.Int64Attribute{
-			MarkdownDescription: "The uptime of the client in seconds.",
-			Computed:            true,
-		},
-		"first_seen": schema.Int64Attribute{
-			MarkdownDescription: "Unix timestamp when the client was first seen.",
-			Computed:            true,
-		},
-		"last_seen": schema.Int64Attribute{
-			MarkdownDescription: "Unix timestamp when the client was last seen.",
-			Computed:            true,
-		},
-		"is_wired": schema.BoolAttribute{
-			MarkdownDescription: "Whether the client is connected via wired connection.",
-			Computed:            true,
-		},
-		"is_guest": schema.BoolAttribute{
-			MarkdownDescription: "Whether the client is a guest.",
-			Computed:            true,
-		},
-		"authorized": schema.BoolAttribute{
-			MarkdownDescription: "Whether the client is authorized.",
-			Computed:            true,
-		},
-		"oui": schema.StringAttribute{
-			MarkdownDescription: "The OUI (vendor) of the client's MAC address.",
-			Computed:            true,
-		},
-		"ap_mac": schema.StringAttribute{
-			MarkdownDescription: "The MAC address of the access point the client is connected to.",
-			Computed:            true,
-		},
-		"channel": schema.Int64Attribute{
-			MarkdownDescription: "The WiFi channel the client is connected on.",
-			Computed:            true,
-		},
-		"radio": schema.StringAttribute{
-			MarkdownDescription: "The radio type (e.g., na, ng).",
-			Computed:            true,
-		},
-		"radio_name": schema.StringAttribute{
-			MarkdownDescription: "The radio name (e.g., wifi0, wifi1).",
-			Computed:            true,
-		},
-		"essid": schema.StringAttribute{
-			MarkdownDescription: "The ESSID (network name) the client is connected to.",
-			Computed:            true,
-		},
-		"bssid": schema.StringAttribute{
-			MarkdownDescription: "The BSSID of the access point.",
-			Computed:            true,
-		},
-		"signal": schema.Int64Attribute{
-			MarkdownDescription: "The signal strength in dBm.",
-			Computed:            true,
-		},
-		"rssi": schema.Int64Attribute{
-			MarkdownDescription: "The RSSI value.",
-			Computed:            true,
-		},
-		"noise": schema.Int64Attribute{
-			MarkdownDescription: "The noise level in dBm.",
-			Computed:            true,
-		},
-		"tx_rate": schema.Int64Attribute{
-			MarkdownDescription: "The transmit rate in kbps.",
-			Computed:            true,
-		},
-		"rx_rate": schema.Int64Attribute{
-			MarkdownDescription: "The receive rate in kbps.",
-			Computed:            true,
-		},
-		"tx_bytes": schema.Int64Attribute{
-			MarkdownDescription: "Total bytes transmitted.",
-			Computed:            true,
-		},
-		"rx_bytes": schema.Int64Attribute{
-			MarkdownDescription: "Total bytes received.",
-			Computed:            true,
-		},
-		"wired_rate_mbps": schema.Int64Attribute{
-			MarkdownDescription: "The wired connection rate in Mbps.",
-			Computed:            true,
-		},
-		"sw_port": schema.Int64Attribute{
-			MarkdownDescription: "The switch port number the client is connected to.",
-			Computed:            true,
-		},
-		"last_uplink_mac": schema.StringAttribute{
-			MarkdownDescription: "The MAC address of the last uplink device.",
-			Computed:            true,
-		},
-		"last_uplink_name": schema.StringAttribute{
-			MarkdownDescription: "The name of the last uplink device.",
-			Computed:            true,
-		},
-		"network_name": schema.StringAttribute{
-			MarkdownDescription: "The network name for this client.",
-			Computed:            true,
-		},
-		"last_connection_network_id": schema.StringAttribute{
-			MarkdownDescription: "The network ID of the last connection.",
-			Computed:            true,
-		},
-		"last_connection_network_name": schema.StringAttribute{
-			MarkdownDescription: "The network name of the last connection.",
-			Computed:            true,
-		},
-	}
-}
-
 func (d *clientListDataSource) Metadata(
 	ctx context.Context,
 	req datasource.MetadataRequest,
@@ -280,65 +103,10 @@ func (d *clientListDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Retrieves a list of clients (users) on the network with optional filtering. " +
-			"Merges client configuration data with active and historical connection information " +
-			"for network discovery within Terraform.",
-
-		Attributes: map[string]schema.Attribute{
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to retrieve clients from.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"group": schema.StringAttribute{
-				MarkdownDescription: "Filter clients by network members group name.",
-				Optional:            true,
-			},
-			"wired": schema.BoolAttribute{
-				MarkdownDescription: "Filter clients by wired connection status.",
-				Optional:            true,
-			},
-			"blocked": schema.BoolAttribute{
-				MarkdownDescription: "Filter clients by blocked status.",
-				Optional:            true,
-			},
-			"oui": schema.StringAttribute{
-				MarkdownDescription: "Filter clients by OUI (vendor prefix).",
-				Optional:            true,
-			},
-			"clients": schema.ListNestedAttribute{
-				MarkdownDescription: "List of clients matching the specified filters.",
-				Computed:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: clientListEntrySchemaAttributes(),
-				},
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
-}
-
-func (d *clientListDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	if client, ok := req.ProviderData.(*Client); ok {
-		d.client = client
-	} else {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-	}
+	resp.Schema = datasource_client_list.ClientListDsDataSourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 // resolveGroupID looks up a network members group by name and returns its ID.
@@ -360,7 +128,6 @@ func (d *clientListDataSource) resolveGroupID(
 		}
 	}
 
-	// Fetch all groups for this site and populate the cache.
 	groups, err := d.client.ListNetworkMembersGroups(ctx, site)
 	if err != nil {
 		return "", fmt.Errorf("listing network members groups: %w", err)
@@ -404,7 +171,6 @@ func (d *clientListDataSource) Read(
 		site = d.client.Site
 	}
 
-	// Build query parameters from filters.
 	filters := make(map[string]string)
 
 	if !data.Group.IsNull() {
@@ -439,7 +205,6 @@ func (d *clientListDataSource) Read(
 		filters["oui"] = data.OUI.ValueString()
 	}
 
-	// Fetch clients (users) from REST API.
 	clients, err := d.client.ListClientFiltered(ctx, site, filters)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -487,7 +252,6 @@ func (d *clientListDataSource) Read(
 		}
 	}
 
-	// Build result list merging Client + ClientInfo data.
 	clientObjects := make([]basetypes.ObjectValue, 0, len(clients))
 	for _, c := range clients {
 		info := infoByUserID[c.ID]
@@ -535,7 +299,6 @@ func clientListEntryValues(c *gounifi.Client, info *gounifi.ClientInfo) map[stri
 		"local_dns_record": util.StringValueOrNull(c.LocalDNSRecord),
 	}
 
-	// Network members group IDs
 	v["network_members_group_ids"] = stringSliceToList(c.NetworkMembersGroupIDs)
 
 	// ClientInfo enrichment fields — null when no info available

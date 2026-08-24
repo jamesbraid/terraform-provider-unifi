@@ -3,15 +3,14 @@ package unifi
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	gounifi "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_info_list"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/models"
 )
 
@@ -22,7 +21,7 @@ func NewClientInfoListDataSource() datasource.DataSource {
 }
 
 type clientInfoListDataSource struct {
-	client *Client
+	dataSourceWithClient
 }
 
 type clientInfoListDataSourceModel struct {
@@ -44,47 +43,10 @@ func (d *clientInfoListDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Retrieves a list of all active clients on the network.",
-
-		Attributes: map[string]schema.Attribute{
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to retrieve clients from.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"clients": schema.ListNestedAttribute{
-				MarkdownDescription: "List of active clients on the network.",
-				Computed:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: models.Attributes(),
-				},
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
-}
-
-func (d *clientInfoListDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	if client, ok := req.ProviderData.(*Client); ok {
-		d.client = client
-	} else {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-	}
+	resp.Schema = datasource_client_info_list.ClientInfoListDsDataSourceSchema(ctx)
+	// Grafted rather than generated, as everywhere else: timeouts.Attributes
+	// is a call, not a literal, so the code specification cannot carry it.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *clientInfoListDataSource) Read(
@@ -108,10 +70,8 @@ func (d *clientInfoListDataSource) Read(
 	defer cancel()
 
 	site := data.Site.ValueString()
-	// Track whether the site was explicitly set by the user. An explicit site
-	// that results in a 404 is more likely a misconfiguration and should remain
-	// a hard error. A missing site falls back to the provider default, where a
-	// 404 is commonly caused by the endpoint being unsupported on the controller.
+	// Tracks whether the site was explicit: an explicit site's 404 is likely a
+	// misconfiguration and stays a hard error, while the default site's 404 commonly means the endpoint is unsupported on this controller.
 	siteExplicitlySet := !data.Site.IsNull() && !data.Site.IsUnknown()
 	if site == "" {
 		site = d.client.Site
@@ -121,10 +81,6 @@ func (d *clientInfoListDataSource) Read(
 	if err != nil {
 		var notFoundErr *gounifi.NotFoundError
 		if errors.As(err, &notFoundErr) && !siteExplicitlySet {
-			// The active clients endpoint is not available on all UniFi controller
-			// versions or configurations. When the site was not explicitly
-			// configured (using the provider default), return an empty list with a
-			// warning rather than failing the plan entirely.
 			resp.Diagnostics.AddWarning(
 				"Active Clients Endpoint Not Available",
 				"The active clients API endpoint returned 404. This may mean the feature "+

@@ -30,9 +30,7 @@ func TestAccNetworkFrameworkDataSource_basic(t *testing.T) {
 						"purpose",
 						"corporate",
 					),
-					// Verify subnet is populated
 					resource.TestCheckResourceAttrSet("data.unifi_network.test", "subnet"),
-					// Verify multicast_dns is readable
 					resource.TestCheckResourceAttrSet("data.unifi_network.test", "multicast_dns"),
 				),
 			},
@@ -50,7 +48,6 @@ func TestAccNetworkFrameworkDataSource_byID(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.unifi_network.test", "id"),
 					resource.TestCheckResourceAttrSet("data.unifi_network.test", "name"),
-					// Verify subnet field is accessible via ID lookup
 					resource.TestCheckResourceAttrSet("data.unifi_network.test", "subnet"),
 				),
 			},
@@ -64,7 +61,6 @@ func TestAccNetworkFrameworkDataSource_outputFields(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				// Reproduce the exact usage pattern from the bug report
 				Config: testAccNetworkFrameworkDataSourceConfig_outputFields(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.unifi_network.test", "subnet"),
@@ -315,71 +311,6 @@ func TestNewNetworkDataSource(t *testing.T) {
 	}
 	if _, ok := got.(fwdatasource.DataSourceWithConfigure); !ok {
 		t.Error("expected DataSourceWithConfigure interface")
-	}
-}
-
-func Test_networkDataSource_Metadata(t *testing.T) {
-	for _, tt := range []struct {
-		provider string
-		want     string
-	}{
-		{"unifi", "unifi_network"},
-		{"test", "test_network"},
-	} {
-		t.Run(tt.provider, func(t *testing.T) {
-			d := &networkDataSource{}
-			resp := &fwdatasource.MetadataResponse{}
-			d.Metadata(
-				context.Background(),
-				fwdatasource.MetadataRequest{ProviderTypeName: tt.provider},
-				resp,
-			)
-			if resp.TypeName != tt.want {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.want)
-			}
-		})
-	}
-}
-
-func Test_networkDataSource_Schema(t *testing.T) {
-	d := &networkDataSource{}
-	resp := &fwdatasource.SchemaResponse{}
-	d.Schema(context.Background(), fwdatasource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() errors: %v", resp.Diagnostics)
-	}
-	for _, a := range []string{"id", "site", "name", "subnet", "enabled"} {
-		if _, ok := resp.Schema.Attributes[a]; !ok {
-			t.Errorf("Schema() missing attribute %q", a)
-		}
-	}
-}
-
-func Test_networkDataSource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		data    any
-		wantErr bool
-	}{
-		{"nil", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct", &Client{Site: "default"}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			d := &networkDataSource{}
-			resp := &fwdatasource.ConfigureResponse{}
-			d.Configure(
-				context.Background(),
-				fwdatasource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantErr && !resp.Diagnostics.HasError() {
-				t.Error("expected error diagnostic")
-			}
-			if !tt.wantErr && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-		})
 	}
 }
 

@@ -7,9 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_radius_user"
 )
 
 var _ datasource.DataSource = &radiusUserDataSource{}
@@ -19,7 +19,7 @@ func NewRadiusUserDataSource() datasource.DataSource {
 }
 
 type radiusUserDataSource struct {
-	client *Client
+	dataSourceWithClient
 }
 
 type radiusUserDataSourceModel struct {
@@ -47,67 +47,8 @@ func (d *radiusUserDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Data source for RADIUS users.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of this account.",
-				Computed:            true,
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the account is associated with.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the account to look up.",
-				Required:            true,
-			},
-			"password": schema.StringAttribute{
-				MarkdownDescription: "The password of the account.",
-				Computed:            true,
-				Sensitive:           true,
-			},
-			"tunnel_type": schema.Int64Attribute{
-				MarkdownDescription: "See RFC2868 section 3.1.",
-				Computed:            true,
-			},
-			"tunnel_medium_type": schema.Int64Attribute{
-				MarkdownDescription: "See RFC2868 section 3.2.",
-				Computed:            true,
-			},
-			"network_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the network for this account.",
-				Computed:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
-}
-
-func (d *radiusUserDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-		return
-	}
-
-	d.client = client
+	resp.Schema = datasource_radius_user.RadiusUserDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *radiusUserDataSource) Read(

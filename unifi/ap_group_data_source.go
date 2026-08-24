@@ -7,9 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_ap_group"
 )
 
 var _ datasource.DataSource = &apGroupDataSource{}
@@ -19,7 +19,7 @@ func NewAPGroupDataSource() datasource.DataSource {
 }
 
 type apGroupDataSource struct {
-	client *Client
+	dataSourceWithClient
 }
 
 type apGroupDataSourceModel struct {
@@ -43,55 +43,8 @@ func (d *apGroupDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Data source for access point groups.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of this AP group.",
-				Computed:            true,
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the AP group is associated with.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the AP group to look up.",
-				Required:            true,
-			},
-			"device_macs": schema.ListAttribute{
-				MarkdownDescription: "List of device MAC addresses in the AP group.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
-}
-
-func (d *apGroupDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-		return
-	}
-
-	d.client = client
+	resp.Schema = datasource_ap_group.ApGroupDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *apGroupDataSource) Read(

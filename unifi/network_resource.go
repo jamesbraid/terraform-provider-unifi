@@ -168,21 +168,9 @@ func (r *networkKitResource) ConfigValidators(
 	return []resource.ConfigValidator{&networkPurposeAliasConfigValidator{}}
 }
 
-// networkPurposeAliasConfigValidator refuses a configuration that sets
-// third_party_gateway and purpose to disagree.
-//
-// The two are not independent attributes. Both write the controller's single
-// Purpose field -- an explicit purpose is applied first, then a true
-// third_party_gateway overrides it to vlan-only -- and third_party_gateway is
-// read back out of that same field rather than one of its own. So a
-// disagreeing pair cannot be satisfied: whichever side loses the write is
-// rewritten on the read, and the apply fails with "inconsistent result after
-// apply" naming an attribute the practitioner set to exactly the value they
-// asked for. That error blames the provider for the user's contradiction and
-// says nothing about the other half of it.
-//
-// Refusing it here says which two lines conflict, before anything is created.
-// Leaving either side unset is not a conflict: the unset one is derived.
+// networkPurposeAliasConfigValidator refuses a config that sets third_party_gateway
+// and purpose to disagree: both write the controller's single Purpose field, so a
+// disagreeing pair can't be satisfied. Leaving either side unset is not a conflict: the unset one is derived.
 type networkPurposeAliasConfigValidator struct{}
 
 func (v *networkPurposeAliasConfigValidator) Description(_ context.Context) string {
@@ -207,9 +195,8 @@ func (v *networkPurposeAliasConfigValidator) ValidateResource(
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// An unknown value comes from an expression this validator cannot resolve,
-	// so it cannot judge the pair. Null means the practitioner left it to be
-	// derived, which is the whole point of the fix and never a conflict.
+	// Unknown means an expression this validator can't resolve; null means it's
+	// left to be derived -- neither is treated as a conflict.
 	if thirdParty.IsNull() || thirdParty.IsUnknown() ||
 		purpose.IsNull() || purpose.IsUnknown() {
 		return
@@ -232,19 +219,11 @@ func (v *networkPurposeAliasConfigValidator) ValidateResource(
 }
 
 // ModifyPlan forces setting_preference to "manual" when the plan enables a
-// field the controller only honors under "manual".
-//
-// On "auto" the controller manages the advanced block itself and silently
-// discards fields sent in the same payload — dhcpguard_enabled, igmp_snooping,
-// and the dhcpd dns/ntp/time-offset toggles are stored as false however they
-// were sent. It also re-enables its built-in DHCP server, which turns
-// dhcp_relay off, since the two cannot coexist. The write succeeds either way,
-// so without this the setting simply never takes effect and the post-apply read
-// contradicts the plan.
-//
-// Only a true value forces the switch: "auto" storing false for a field the
-// practitioner also set to false is the same outcome, so leave those alone.
-// An explicit user-provided setting_preference is always respected.
+// field the controller only honors under "manual" -- on "auto" it silently
+// discards dhcpguard_enabled, igmp_snooping and the dhcpd dns/ntp/time-offset
+// toggles (and disables dhcp_relay by re-enabling its own DHCP server), so the
+// post-apply read would otherwise contradict the plan. Only a true value forces
+// the switch; an explicit setting_preference is always respected.
 func (r *networkKitResource) ModifyPlan(
 	ctx context.Context,
 	req resource.ModifyPlanRequest,
@@ -285,9 +264,8 @@ func (r *networkKitResource) ModifyPlan(
 		)...)
 }
 
-// networkVLANToNetwork writes the one released vlan number into the observed
-// number AND its enable flag: vlan_enabled is set from whether vlan is
-// configured at all, so neither field alone is the attribute's source.
+// networkVLANToNetwork writes vlan into both the observed number and its enable
+// flag -- vlan_enabled derives from whether vlan is configured, so neither field alone is the attribute's source.
 func networkVLANToNetwork(vlan types.Int64, network *ui.Network) {
 	network.VLAN = vlan.ValueInt64Pointer()
 	network.VLANEnabled = !vlan.IsNull() && !vlan.IsUnknown()
@@ -300,8 +278,7 @@ func networkVLANFromNetwork(network *ui.Network) types.Int64 {
 }
 
 // networkPurposeToNetwork writes two released attributes onto one observed
-// field. purpose is honoured when configured and then OVERWRITTEN to vlan-only
-// when third_party_gateway is true, which is the legacy way to ask for it.
+// field: purpose is honored when configured, then overwritten to vlan-only when third_party_gateway is true (the legacy way to ask for it).
 func networkPurposeToNetwork(
 	purpose types.String,
 	thirdPartyGateway types.Bool,
@@ -316,9 +293,7 @@ func networkPurposeToNetwork(
 }
 
 // networkPurposeFromNetwork computes both released attributes from the one
-// observed field: purpose as the controller reports it, and
-// third_party_gateway as whether that value is vlan-only. A controller that
-// reports no purpose is reported as corporate, which is what it means.
+// observed field; an empty controller purpose reads back as corporate, which is what it means.
 func networkPurposeFromNetwork(network *ui.Network) (types.String, types.Bool) {
 	purpose := types.StringValue(ui.PurposeCorporate)
 	if network.Purpose != "" {
@@ -327,10 +302,8 @@ func networkPurposeFromNetwork(network *ui.Network) (types.String, types.Bool) {
 	return purpose, types.BoolValue(network.Purpose == ui.PurposeVLANOnly)
 }
 
-// networkDHCPGuardingServersToNetwork distributes dhcp_guarding.servers
-// positionally into the three observed slots. It does NOT clear the slots it
-// does not use -- unlike the dhcp_server DNS write below -- so a shorter list
-// leaves whatever was there.
+// networkDHCPGuardingServersToNetwork distributes servers positionally into the
+// three observed slots but does NOT clear unused ones (unlike the DNS write below), so a shorter list leaves whatever was there.
 func networkDHCPGuardingServersToNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
@@ -356,22 +329,6 @@ func networkDHCPGuardingServersToNetwork(
 	}
 }
 
-// stringListOrNull renders collected addresses as a list, or null when there
-// are none. Every collection below ends this way: the observed slots are
-// sparse, and none set is absent rather than an empty list.
-func stringListOrNull(
-	ctx context.Context,
-	diags *diag.Diagnostics,
-	values []string,
-) types.List {
-	if len(values) == 0 {
-		return types.ListNull(types.StringType)
-	}
-	list, d := types.ListValueFrom(ctx, types.StringType, values)
-	diags.Append(d...)
-	return list
-}
-
 // networkDHCPGuardingServersFromNetwork collects the three observed slots back
 // into the one released list, keeping only the non-empty ones.
 func networkDHCPGuardingServersFromNetwork(
@@ -384,18 +341,10 @@ func networkDHCPGuardingServersFromNetwork(
 	))
 }
 
-// networkDHCPServerDNSToNetwork distributes dhcp_server.dns_servers positionally
-// into the four observed slots, clearing the trailing ones it does not use.
-//
-// A fifth server never reaches here: the schema carries
-// listvalidator.SizeAtMost(4), so validation rejects it with a diagnostic and
-// the loop below cannot truncate. The bound is defence in depth, not the
-// behaviour.
-//
-// What IS behaviour is the pairing with networkDHCPServerDNSFromNetwork, which
-// compacts. The write never leaves a gap, but a gap arriving from anywhere else
-// reads back compacted and writes back one slot earlier, so a value moves slot
-// on a read-write round trip.
+// networkDHCPServerDNSToNetwork distributes dns_servers positionally into the
+// four observed slots, clearing unused trailing ones. A fifth server never
+// reaches here (schema validation already rejects it); pairing with the From
+// half below compacts, so a gap arriving from elsewhere shifts a value's slot on a round trip.
 func networkDHCPServerDNSToNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
@@ -425,9 +374,8 @@ func networkDHCPServerDNSToNetwork(
 	}
 }
 
-// networkDHCPServerDNSFromNetwork collects the four observed slots back into the
-// one released list, keeping only the non-empty ones. See the write half for why
-// compacting matters.
+// networkDHCPServerDNSFromNetwork collects the four observed slots back into
+// the one released list, keeping only the non-empty ones (compacted -- see the write half).
 func networkDHCPServerDNSFromNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
@@ -438,9 +386,8 @@ func networkDHCPServerDNSFromNetwork(
 	))
 }
 
-// networkDHCPV6ServerDNSToNetwork distributes dhcp_v6_server.dns_servers
-// positionally into the four observed slots, clearing the trailing ones. The
-// same fifth-server truncation applies as for the v4 slots.
+// networkDHCPV6ServerDNSToNetwork distributes dns_servers positionally into the
+// four observed slots, clearing the trailing ones; the same fifth-server truncation as the v4 slots applies.
 func networkDHCPV6ServerDNSToNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
@@ -484,9 +431,8 @@ func networkDHCPV6ServerDNSFromNetwork(
 	))
 }
 
-// networkWINSToNetwork writes dhcp_server.wins over an enable flag and two
-// address slots, the addresses distributed positionally and the trailing one
-// cleared. An absent wins block disables it and clears both slots.
+// networkWINSToNetwork writes wins over an enable flag and two address slots,
+// positionally, trailing one cleared; an absent block disables it and clears both slots.
 func networkWINSToNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
@@ -546,9 +492,8 @@ func networkWINSFromNetwork(
 	return object
 }
 
-// networkBootToNetwork writes dhcp_server.boot over the three flat observed
-// fields the wire keeps apart. An absent boot block disables it and empties
-// both strings.
+// networkBootToNetwork writes boot over the three flat observed fields the wire
+// keeps apart; an absent block disables it and empties both strings.
 func networkBootToNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
@@ -606,20 +551,10 @@ func networkBootFromNetwork(
 }
 
 // ValidateConfig warns when the configuration sets a value the controller will
-// not receive for this network's purpose.
-//
-// THIS IS THE SURFACE THE MEASUREMENT IS ABOUT. go-unifi serialises a Network
-// through one of seven per-purpose structs, and a vlan-only network discards 44
-// of the 51 attributes this resource exposes -- silently, with a clean plan and
-// a successful apply. Corporate and guest drop 4 each.
-//
-// The subject comes from the built object's own Purpose rather than a constant,
-// because this resource writes three different ones and a warning that said
-// only "network" would not tell a practitioner which rule they had hit.
-//
-// AT PLAN TIME, so it arrives before the apply. An attribute still unknown then
-// reads as unset and goes unreported, which is a miss rather than a false
-// alarm.
+// not receive for this network's purpose: go-unifi serializes a Network through
+// one of seven per-purpose structs, and a vlan-only network silently discards 44
+// of the 51 attributes this resource exposes (corporate and guest drop 4 each).
+// At plan time, so a still-unknown attribute goes unreported -- a miss, not a false alarm.
 func (r *networkKitResource) ValidateConfig(
 	ctx context.Context,
 	req resource.ValidateConfigRequest,
@@ -634,9 +569,8 @@ func (r *networkKitResource) ValidateConfig(
 	if diags.HasError() || network == nil {
 		return
 	}
-	// ToSDK does not derive purpose -- BeforeSend does, and it has not run --
-	// so the same derivation happens here. Without it the warning names
-	// " network" and the practitioner cannot tell which purpose dropped what.
+	// ToSDK doesn't derive purpose (BeforeSend does, and hasn't run yet), so the
+	// same derivation happens here -- otherwise the warning names " network" and hides which purpose dropped what.
 	network.Purpose = ui.PurposeCorporate
 	networkPurposeToNetwork(model.Purpose, model.ThirdPartyGateway, network)
 	resp.Diagnostics.Append(droppedOnWrite(network.Purpose+" network", network)...)

@@ -7,9 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_port_profile"
 )
 
 var _ datasource.DataSource = &portProfileDataSource{}
@@ -19,16 +19,18 @@ func NewPortProfileDataSource() datasource.DataSource {
 }
 
 type portProfileDataSource struct {
-	client *Client
+	dataSourceWithClient
 }
 
 type portProfileDataSourceModel struct {
-	ID                   types.String `tfsdk:"id"`
-	Site                 types.String `tfsdk:"site"`
-	Name                 types.String `tfsdk:"name"`
-	Forward              types.String `tfsdk:"forward"`
-	NativeNetworkconfID  types.String `tfsdk:"native_networkconf_id"`
-	TaggedNetworkconfIDs types.Set    `tfsdk:"tagged_networkconf_ids"`
+	ID                     types.String `tfsdk:"id"`
+	Site                   types.String `tfsdk:"site"`
+	Name                   types.String `tfsdk:"name"`
+	Forward                types.String `tfsdk:"forward"`
+	NativeNetworkconfID    types.String `tfsdk:"native_networkconf_id"`
+	TaggedNetworkconfIDs   types.Set    `tfsdk:"tagged_networkconf_ids"`
+	ExcludedNetworkconfIDs types.Set    `tfsdk:"excluded_networkconf_ids"`
+	TaggedVLANMgmt         types.String `tfsdk:"tagged_vlan_mgmt"`
 
 	Timeouts timeouts.Value `tfsdk:"timeouts"`
 }
@@ -46,63 +48,8 @@ func (d *portProfileDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Data source for port profiles.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of this port profile.",
-				Computed:            true,
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the port profile is associated with.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the port profile to look up.",
-				Required:            true,
-			},
-			"forward": schema.StringAttribute{
-				MarkdownDescription: "The forwarding mode of the port profile. One of `all`, `native`, `customize` or `disabled`.",
-				Computed:            true,
-			},
-			"native_networkconf_id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the native (untagged) network for the port profile.",
-				Computed:            true,
-			},
-			"tagged_networkconf_ids": schema.SetAttribute{
-				MarkdownDescription: "The IDs of the tagged (VLAN) networks for the port profile.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
-}
-
-func (d *portProfileDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-		return
-	}
-
-	d.client = client
+	resp.Schema = datasource_port_profile.PortProfileDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *portProfileDataSource) Read(
@@ -173,9 +120,47 @@ func (d *portProfileDataSource) Read(
 		data.NativeNetworkconfID = types.StringNull()
 	}
 
-	// tagged_networkconf_ids has no corresponding go-unifi field; tagged VLANs are
-	// managed via tagged_vlan_mgmt + excluded_networkconf_ids instead.
-	data.TaggedNetworkconfIDs = types.SetNull(types.StringType)
+	networks, err := d.client.ListNetwork(ctx, site)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Networks for Port Profile",
+			"Could not read the site network inventory: "+err.Error(),
+		)
+		return
+	}
+	universe := portProfileTaggedNetworkUniverse(networks, portProfile.NATiveNetworkID)
+	tagged := portProfileActualTaggedNetworkIDs(
+		portProfile.TaggedVLANMgmt,
+		universe,
+		portProfile.ExcludedNetworkIDs,
+	)
+	if tagged == nil {
+		data.TaggedNetworkconfIDs = types.SetNull(types.StringType)
+	} else {
+		value, d := types.SetValueFrom(ctx, types.StringType, tagged)
+		resp.Diagnostics.Append(d...)
+		data.TaggedNetworkconfIDs = value
+	}
+	if portProfile.TaggedVLANMgmt == "custom" {
+		excluded := portProfile.ExcludedNetworkIDs
+		if excluded == nil {
+			excluded = []string{}
+		}
+		value, d := types.SetValueFrom(
+			ctx,
+			types.StringType,
+			excluded,
+		)
+		resp.Diagnostics.Append(d...)
+		data.ExcludedNetworkconfIDs = value
+	} else {
+		data.ExcludedNetworkconfIDs = types.SetNull(types.StringType)
+	}
+	if portProfile.TaggedVLANMgmt == "" {
+		data.TaggedVLANMgmt = types.StringNull()
+	} else {
+		data.TaggedVLANMgmt = types.StringValue(portProfile.TaggedVLANMgmt)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -7,9 +7,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_qos_rate"
 )
 
 var _ datasource.DataSource = &clientQosRateDataSource{}
@@ -19,7 +19,7 @@ func NewClientQosRateDataSource() datasource.DataSource {
 }
 
 type clientQosRateDataSource struct {
-	client *Client
+	dataSourceWithClient
 }
 
 type clientQosRateDataSourceModel struct {
@@ -44,58 +44,8 @@ func (d *clientQosRateDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Data source for client QOS rates.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of this client QOS rate.",
-				Computed:            true,
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the client QOS rate is associated with.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the client QOS rate to look up.",
-				Required:            true,
-			},
-			"qos_rate_max_down": schema.Int64Attribute{
-				MarkdownDescription: "The maximum download rate.",
-				Computed:            true,
-			},
-			"qos_rate_max_up": schema.Int64Attribute{
-				MarkdownDescription: "The maximum upload rate.",
-				Computed:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
-}
-
-func (d *clientQosRateDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-		return
-	}
-
-	d.client = client
+	resp.Schema = datasource_client_qos_rate.ClientQosRateDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *clientQosRateDataSource) Read(

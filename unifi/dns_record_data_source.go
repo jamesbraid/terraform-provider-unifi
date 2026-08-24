@@ -8,9 +8,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_dns_record"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -21,7 +21,7 @@ func NewDNSRecordDataSource() datasource.DataSource {
 }
 
 type dnsRecordDataSource struct {
-	client *Client
+	dataSourceWithClient
 }
 
 type dnsRecordDataSourceModel struct {
@@ -49,67 +49,8 @@ func (d *dnsRecordDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Data source for DNS records.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of this DNS record.",
-				Computed:            true,
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site the DNS record is associated with.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the DNS record to look up.",
-				Required:            true,
-			},
-			"type": schema.StringAttribute{
-				MarkdownDescription: "The type of the DNS record.",
-				Computed:            true,
-			},
-			"value": schema.StringAttribute{
-				MarkdownDescription: "The value of the DNS record.",
-				Computed:            true,
-			},
-			"ttl": schema.StringAttribute{
-				MarkdownDescription: "The TTL of the DNS record, as a Go duration string.",
-				CustomType:          timetypes.GoDurationType{},
-				Computed:            true,
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the DNS record is enabled.",
-				Computed:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
-}
-
-func (d *dnsRecordDataSource) Configure(
-	ctx context.Context,
-	req datasource.ConfigureRequest,
-	resp *datasource.ConfigureResponse,
-) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
-		return
-	}
-
-	d.client = client
+	resp.Schema = datasource_dns_record.DnsRecordDsDataSourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (d *dnsRecordDataSource) Read(
