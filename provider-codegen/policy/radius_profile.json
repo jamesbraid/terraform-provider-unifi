@@ -1,0 +1,408 @@
+{
+  "description": "Manages RADIUS profiles.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether to use RADIUS accounting."
+      },
+      "disposition": "managed",
+      "structural_name": "accounting_enabled",
+      "terraform_name": "accounting_enabled"
+    },
+    {
+      "attribute": {
+        "description": "RADIUS accounting servers."
+      },
+      "disposition": "managed",
+      "fields": [
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "IP address of the accounting server. Optional: the controller-managed default profile returns a server entry without an IP, so importing it must not force one.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    }
+                  ],
+                  "schema_definition": "validators.IPv4Validator()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "ip",
+          "terraform_name": "ip"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": 1813
+            },
+            "description": "Port of accounting service.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1, 65535)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "port",
+          "terraform_name": "port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "Shared secret for accounting server.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_secret",
+          "terraform_name": "secret"
+        }
+      ],
+      "structural_name": "acct_servers",
+      "terraform_name": "acct_server",
+      "terraform_type": "list_nested_block"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "description": "RADIUS authentication servers."
+      },
+      "disposition": "managed",
+      "fields": [
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "IP address of the authentication server. Optional: the controller-managed default profile (e.g. the one created when a gateway RADIUS/VPN service is enabled, with `use_usg_auth_server = true`) returns a server entry without an IP, so importing it must not force one.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    }
+                  ],
+                  "schema_definition": "validators.IPv4Validator()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "ip",
+          "terraform_name": "ip"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": 1812
+            },
+            "description": "Port of authentication service.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1, 65535)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "port",
+          "terraform_name": "port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "Shared secret for authentication server.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_secret",
+          "terraform_name": "secret"
+        }
+      ],
+      "structural_name": "auth_servers",
+      "terraform_name": "auth_server",
+      "terraform_type": "list_nested_block"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether to use interim_update."
+      },
+      "disposition": "managed",
+      "structural_name": "interim_update_enabled",
+      "terraform_name": "interim_update_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+          },
+          "type": "timetypes.GoDurationType{}",
+          "value_type": "timetypes.GoDuration"
+        },
+        "default": {
+          "static": "1h0m0s"
+        },
+        "description": "Specifies the RADIUS interim update interval, as a Go duration string (e.g. `1h`, `3600s`). Defaults to `1h0m0s`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                },
+                {
+                  "path": "time"
+                }
+              ],
+              "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "interim_update_interval",
+      "terraform_name": "interim_update_interval",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the profile."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "tls_enabled",
+      "terraform_name": "tls_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether to use usg as a RADIUS accounting server."
+      },
+      "disposition": "managed",
+      "structural_name": "use_usg_acct_server",
+      "terraform_name": "use_usg_acct_server"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Specifies whether to use usg as a RADIUS authentication server.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "use_usg_auth_server",
+      "terraform_name": "use_usg_auth_server"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether to use vlan on wired connections."
+      },
+      "disposition": "managed",
+      "structural_name": "vlan_enabled",
+      "terraform_name": "vlan_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Specifies whether to use vlan on wireless connections. Must be one of `disabled`, `optional`, or `required`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"disabled\", \"optional\", \"required\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "vlan_wlan_mode",
+      "terraform_name": "vlan_wlan_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_ca_crts",
+      "terraform_name": "x_ca_crts"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_client_crt",
+      "terraform_name": "x_client_crt"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_client_crt_filename",
+      "terraform_name": "x_client_crt_filename"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_client_private_key",
+      "terraform_name": "x_client_private_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_client_private_key_filename",
+      "terraform_name": "x_client_private_key_filename"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_client_private_key_password",
+      "terraform_name": "x_client_private_key_password"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "radius_profile",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the settings with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_radius_profile",
+  "source_specification_sha256": "92a72eb60cace6022c32bda9c38d149d8c4696496cbe5fabaddb7abc4876a983",
+  "surface_kind": "managed_resource"
+}

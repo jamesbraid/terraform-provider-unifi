@@ -1,0 +1,174 @@
+{
+  "description": "Manages a WireGuard peer (client) of a WireGuard VPN server. The server is a `unifi_vpn_server` resource (or a network with `vpn_type = \"wireguard-server\"`); its network ID is referenced via `network_id`.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the WireGuard peer.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "custom": {
+            "imports": [
+              {
+                "path": "github.com/hashicorp/terraform-plugin-framework/attr"
+              },
+              {
+                "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+              },
+              {
+                "path": "github.com/hashicorp/terraform-plugin-framework/types"
+              }
+            ],
+            "schema_definition": "listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{}))"
+          }
+        },
+        "description": "Additional CIDRs routed to this peer beyond its tunnel IP.",
+        "element_type": {
+          "string": {}
+        },
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                },
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                }
+              ],
+              "schema_definition": "listvalidator.ValueStringsAre(validators.CIDRValidator())"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "allowed_ips",
+      "terraform_name": "allowed_ips",
+      "terraform_type": "list"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The tunnel IP assigned to the peer, without mask (e.g. `192.0.2.10`). Must be within the WireGuard server's subnet.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                }
+              ],
+              "schema_definition": "validators.IPv4Validator()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "interface_ip",
+      "terraform_name": "interface_ip"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the WireGuard peer."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The ID of the WireGuard server network the peer connects to.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "network_id",
+      "terraform_name": "network_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The WireGuard public key of the peer."
+      },
+      "disposition": "managed",
+      "structural_name": "public_key",
+      "terraform_name": "public_key"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "wireguard_peer",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the WireGuard server belongs to.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_wireguard_peer",
+  "source_specification_sha256": "2eb0fe60a1ae7821ab6f7b9b4690bd5cd92d29d8c2a980451ce194f1b5402420",
+  "surface_kind": "managed_resource"
+}

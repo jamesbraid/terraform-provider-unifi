@@ -1,0 +1,84 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "f5c9e67fd2dbd353ab48707009d4e7c83d40e5b99570fd6069c2a4be480bcd65"
+  },
+  "resource": {
+    "name": "unifi_dns_record",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool",
+        "go_name": "Hidden"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string",
+        "go_name": "HiddenID"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool",
+        "go_name": "NoDelete"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool",
+        "go_name": "NoEdit"
+      },
+      {
+        "name": "enabled",
+        "type": "bool",
+        "go_name": "Enabled"
+      },
+      {
+        "name": "key",
+        "type": "string",
+        "go_name": "Key"
+      },
+      {
+        "name": "port",
+        "type": "int64",
+        "go_name": "Port",
+        "pointer": true
+      },
+      {
+        "name": "priority",
+        "type": "int64",
+        "go_name": "Priority"
+      },
+      {
+        "name": "record_type",
+        "type": "string",
+        "go_name": "RecordType"
+      },
+      {
+        "name": "site_id",
+        "type": "string",
+        "go_name": "SiteID"
+      },
+      {
+        "name": "ttl",
+        "type": "int64",
+        "go_name": "Ttl"
+      },
+      {
+        "name": "value",
+        "type": "string",
+        "go_name": "Value"
+      },
+      {
+        "name": "weight",
+        "type": "int64",
+        "go_name": "Weight"
+      }
+    ]
+  }
+}

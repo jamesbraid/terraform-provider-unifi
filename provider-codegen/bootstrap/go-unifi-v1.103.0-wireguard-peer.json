@@ -1,0 +1,43 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "2eb0fe60a1ae7821ab6f7b9b4690bd5cd92d29d8c2a980451ce194f1b5402420"
+  },
+  "resource": {
+    "name": "unifi_wireguard_peer",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "allowed_ips",
+        "type": "array<string>",
+        "go_name": "AllowedIPs"
+      },
+      {
+        "name": "interface_ip",
+        "type": "string",
+        "go_name": "InterfaceIP"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "go_name": "Name"
+      },
+      {
+        "name": "network_id",
+        "type": "string",
+        "go_name": "NetworkID"
+      },
+      {
+        "name": "public_key",
+        "type": "string",
+        "go_name": "PublicKey"
+      }
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "description": "List power supervisors in a site.",
+  "fields": [],
+  "omitted": [
+    "client_mac",
+    "consecutive_failures",
+    "enabled",
+    "id",
+    "power_sources",
+    "settings",
+    "site_id"
+  ],
+  "format_version": 1,
+  "generator_name": "power_supervisor",
+  "groupings": [
+    {
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `device_mac`."
+          },
+          "disposition": "managed",
+          "invented": "The filter KEY: it holds the name of the field to select on, not that field's value. Nothing on the wire carries it.",
+          "terraform_name": "name",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          },
+          "disposition": "managed",
+          "invented": "The filter VALUE: what the key's field is compared against. A term the practitioner writes, carried by no wire field.",
+          "terraform_name": "value",
+          "terraform_type": "string"
+        }
+      ],
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list power supervisors from."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    }
+  ],
+  "resource": "unifi_power_supervisor",
+  "source_specification_sha256": "6e9323970396a327ad963849ca8d896f973317d28bb5b3ab9c245c7d53ae2c7a",
+  "surface_kind": "list_resource"
+}

@@ -1,0 +1,107 @@
+{
+  "description": "Data source for UniFi firewall zones (zone-based firewall, UniFi Network 8.x+). Use this to look up zone IDs by name for use in `unifi_firewall_policy` resources.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the firewall zone."
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "cloud_template",
+      "terraform_name": "cloud_template"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "default_zone",
+      "terraform_name": "default_zone"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "external_id",
+      "terraform_name": "external_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The display name of the firewall zone (e.g. `Internal`, `External`)."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "List of network IDs assigned to this zone.",
+        "element_type": {
+          "string": {}
+        }
+      },
+      "disposition": "managed",
+      "structural_name": "network_ids",
+      "terraform_name": "network_ids",
+      "terraform_type": "list"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The internal key of the zone (e.g. `lan`, `wan`)."
+      },
+      "disposition": "managed",
+      "structural_name": "zone_key",
+      "terraform_name": "zone_key"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "firewall_zone_ds",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the UniFi site."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_firewall_zone",
+  "source_specification_sha256": "9f534c5182ba4b375d85ef11510270a5f0d390f1f377598ce1d80bbad49649de",
+  "surface_kind": "data_source"
+}

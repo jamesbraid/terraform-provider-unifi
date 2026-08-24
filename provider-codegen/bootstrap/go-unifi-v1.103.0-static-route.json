@@ -1,0 +1,94 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "a533020fc64454e2de08317e62b40e0c3e0401410b4d8aa4cef8bd9d5e47cbff"
+  },
+  "resource": {
+    "name": "unifi_static_route",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool",
+        "go_name": "Hidden"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string",
+        "go_name": "HiddenID"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool",
+        "go_name": "NoDelete"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool",
+        "go_name": "NoEdit"
+      },
+      {
+        "name": "enabled",
+        "type": "bool",
+        "go_name": "Enabled"
+      },
+      {
+        "name": "gateway_device",
+        "type": "string",
+        "go_name": "GatewayDevice"
+      },
+      {
+        "name": "gateway_type",
+        "type": "string",
+        "go_name": "GatewayType"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "go_name": "Name"
+      },
+      {
+        "name": "site_id",
+        "type": "string",
+        "go_name": "SiteID"
+      },
+      {
+        "name": "static-route_distance",
+        "type": "int64",
+        "go_name": "StaticRouteDistance",
+        "pointer": true
+      },
+      {
+        "name": "static-route_interface",
+        "type": "string",
+        "go_name": "StaticRouteInterface"
+      },
+      {
+        "name": "static-route_network",
+        "type": "string",
+        "go_name": "StaticRouteNetwork"
+      },
+      {
+        "name": "static-route_nexthop",
+        "type": "string",
+        "go_name": "StaticRouteNexthop"
+      },
+      {
+        "name": "static-route_type",
+        "type": "string",
+        "go_name": "StaticRouteType"
+      },
+      {
+        "name": "type",
+        "type": "string",
+        "go_name": "Type"
+      }
+    ]
+  }
+}

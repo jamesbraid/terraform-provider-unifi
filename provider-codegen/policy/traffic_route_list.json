@@ -1,0 +1,135 @@
+{
+  "description": "List traffic routes in a site.",
+  "fields": [
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "terraform_name": "_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "description",
+      "terraform_name": "description"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "domains",
+      "terraform_name": "domains"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ip_addresses",
+      "terraform_name": "ip_addresses"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ip_ranges",
+      "terraform_name": "ip_ranges"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "kill_switch_enabled",
+      "terraform_name": "kill_switch_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "matching_target",
+      "terraform_name": "matching_target"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "network_id",
+      "terraform_name": "network_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "next_hop",
+      "terraform_name": "next_hop"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "regions",
+      "terraform_name": "regions"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "target_devices",
+      "terraform_name": "target_devices"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "traffic_route",
+  "groupings": [
+    {
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `enabled`, `matching_target`, `network_id`, `description`."
+          },
+          "disposition": "managed",
+          "invented": "The filter KEY: it holds the name of the field to select on, not that field's value. Nothing on the wire carries it.",
+          "terraform_name": "name",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          },
+          "disposition": "managed",
+          "invented": "The filter VALUE: what the key's field is compared against. A term the practitioner writes, carried by no wire field.",
+          "terraform_name": "value",
+          "terraform_type": "string"
+        }
+      ],
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list traffic routes from."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    }
+  ],
+  "resource": "unifi_traffic_route",
+  "source_specification_sha256": "0cd23e3328e13ea0702d323d9816e7d401309359b245bbb26d11e0d7b5c5ffc6",
+  "surface_kind": "list_resource"
+}

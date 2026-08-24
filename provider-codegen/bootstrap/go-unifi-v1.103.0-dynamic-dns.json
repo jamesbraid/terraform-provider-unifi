@@ -1,0 +1,84 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "8138b4cc1fd1eedc3aab8c0144af83f451c00def5a5fa1c8f6e3058b52463152"
+  },
+  "resource": {
+    "name": "unifi_dynamic_dns",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool",
+        "go_name": "Hidden"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string",
+        "go_name": "HiddenID"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool",
+        "go_name": "NoDelete"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool",
+        "go_name": "NoEdit"
+      },
+      {
+        "name": "custom_service",
+        "type": "string",
+        "go_name": "CustomService"
+      },
+      {
+        "name": "host_name",
+        "type": "string",
+        "go_name": "HostName"
+      },
+      {
+        "name": "interface",
+        "type": "string",
+        "go_name": "Interface"
+      },
+      {
+        "name": "login",
+        "type": "string",
+        "go_name": "Login"
+      },
+      {
+        "name": "options",
+        "type": "array<string>",
+        "go_name": "Options"
+      },
+      {
+        "name": "server",
+        "type": "string",
+        "go_name": "Server"
+      },
+      {
+        "name": "service",
+        "type": "string",
+        "go_name": "Service"
+      },
+      {
+        "name": "site_id",
+        "type": "string",
+        "go_name": "SiteID"
+      },
+      {
+        "name": "x_password",
+        "type": "string",
+        "secret_candidate": true,
+        "go_name": "Password"
+      }
+    ]
+  }
+}

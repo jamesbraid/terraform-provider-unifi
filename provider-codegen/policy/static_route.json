@@ -1,0 +1,269 @@
+{
+  "description": "Manages a static route for the USG.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the static route.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Whether the static route is enabled."
+      },
+      "disposition": "managed",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The MAC address of the gateway device, used when `gateway_type` is `switch`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                }
+              ],
+              "schema_definition": "validators.MACAddressValidator()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "gateway_device",
+      "terraform_name": "gateway_device"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "default"
+        },
+        "description": "The type of gateway for the static route. Can be `default` or `switch`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"default\", \"switch\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "gateway_type",
+      "terraform_name": "gateway_type"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the static route."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The distance of the static route.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(1, 255)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "static-route_distance",
+      "terraform_name": "distance"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The interface of the static route (only valid for `interface-route` type). This can be `WAN1`, `WAN2`, or a network ID."
+      },
+      "disposition": "managed",
+      "structural_name": "static-route_interface",
+      "terraform_name": "interface"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The network subnet address.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                }
+              ],
+              "schema_definition": "validators.CIDRValidator()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "static-route_network",
+      "terraform_name": "network"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+          },
+          "type": "iptypes.IPAddressType{}",
+          "value_type": "iptypes.IPAddress"
+        },
+        "description": "The next hop of the static route (only valid for `nexthop-route` type). Accepts IPv4 or IPv6 addresses.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                },
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                }
+              ],
+              "schema_definition": "stringvalidator.Any(validators.IPv4Validator(), validators.IPv6Validator())"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "static-route_nexthop",
+      "terraform_name": "next_hop"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The type of static route. Can be `interface-route`, `nexthop-route`, or `blackhole`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"interface-route\", \"nexthop-route\", \"blackhole\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "static-route_type",
+      "terraform_name": "type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "type",
+      "terraform_name": "type"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "static_route",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the static route with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_static_route",
+  "source_specification_sha256": "a533020fc64454e2de08317e62b40e0c3e0401410b4d8aa4cef8bd9d5e47cbff",
+  "surface_kind": "managed_resource"
+}

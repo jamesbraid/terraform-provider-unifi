@@ -1,0 +1,164 @@
+{
+  "description": "`unifi_ap_group` manages a group of access points, which can be referenced from wireless networks (`unifi_wlan`) to control where an SSID is broadcast. The controller's built-in default group (\"All APs\") is read-only; updating or deleting it through this resource fails with a controller error.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the AP group.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The MAC addresses of the access points that are members of the group. May be empty \u2014 the controller accepts a group with no members. Omit it to leave the membership as the controller has it.",
+        "element_type": {
+          "string": {
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+              },
+              "type": "hwtypes.MACAddressType{}",
+              "value_type": "hwtypes.MACAddress"
+            }
+          }
+        },
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
+                }
+              ],
+              "schema_definition": "planmodifiers.KeepEquivalentMACs{}"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
+                }
+              ],
+              "schema_definition": "setplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "device_macs",
+      "terraform_name": "device_macs",
+      "terraform_type": "set"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "for_wlanconf",
+      "terraform_name": "for_wlanconf"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the AP group.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.LengthAtLeast(1)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "ap_group",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the AP group with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_ap_group",
+  "source_specification_sha256": "9d94efb09cb4d1112a4004ea3659f88921bc71e4781a27565abba694bf0bfa66",
+  "surface_kind": "managed_resource"
+}

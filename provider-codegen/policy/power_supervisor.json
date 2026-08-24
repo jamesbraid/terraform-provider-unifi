@@ -1,0 +1,318 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "resource": "unifi_power_supervisor",
+  "generator_name": "power_supervisor",
+  "source_specification_sha256": "6e9323970396a327ad963849ca8d896f973317d28bb5b3ab9c245c7d53ae2c7a",
+  "description": "Manages a UniFi **Device Supervisor** (UniFi Network 10.2+): heartbeat monitoring of a device plus automatic power-cycling of its upstream PoE source after a silence threshold. The supervised device is referenced by its MAC; the controller resolves the upstream PoE port automatically.",
+  "fields": [
+    {
+      "structural_name": "client_mac",
+      "terraform_name": "device_mac",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "MAC address of the supervised device (the controller keys supervisors per device). Changing it replaces the supervisor.",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+          },
+          "type": "hwtypes.MACAddressType{}",
+          "value_type": "hwtypes.MACAddress"
+        },
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                }
+              ],
+              "schema_definition": "validators.MACAddressValidator()"
+            }
+          }
+        ],
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "consecutive_failures",
+      "terraform_name": "consecutive_failures",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "Number of consecutive heartbeat failures observed by the controller (read-only).",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                }
+              ],
+              "schema_definition": "int64planmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether supervision is enabled. Defaults to `true`.",
+        "default": {
+          "static": true
+        }
+      }
+    },
+    {
+      "structural_name": "id",
+      "terraform_name": "id",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The controller-assigned ID of the power supervisor.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "power_sources",
+      "terraform_name": "power_sources",
+      "terraform_type": "list_nested",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The upstream power source(s) the controller resolved for the device and will cycle on recovery (read-only).",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                }
+              ],
+              "schema_definition": "listplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "fields": [
+        {
+          "structural_name": "client_psu_index",
+          "terraform_name": "client_psu_index",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed",
+            "description": "Index of the supervised device's PSU."
+          }
+        },
+        {
+          "structural_name": "power_source_index",
+          "terraform_name": "power_source_index",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed",
+            "description": "Port/outlet index on the upstream source."
+          }
+        },
+        {
+          "structural_name": "power_source_mac",
+          "terraform_name": "power_source_mac",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed",
+            "description": "MAC of the upstream source (e.g. the PoE switch)."
+          }
+        },
+        {
+          "structural_name": "power_source_type",
+          "terraform_name": "power_source_type",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed",
+            "description": "Type of the upstream source (e.g. `poe_port`)."
+          }
+        }
+      ]
+    }
+  ],
+  "omitted": [
+    "site_id"
+  ],
+  "flattenings": [
+    {
+      "structural_name": "settings",
+      "members": [
+        {
+          "structural_name": "heartbeat_interval",
+          "terraform_name": "heartbeat_interval",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "How often the controller probes the device, as a Go duration string (e.g. `60s`, `1m`). Defaults to `1m0s`.",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "default": {
+              "static": "1m0s"
+            },
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    },
+                    {
+                      "path": "time"
+                    }
+                  ],
+                  "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "power_off_duration",
+          "terraform_name": "power_off_duration",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "How long the upstream PoE source stays off during a power-cycle, as a Go duration string (e.g. `2m`). Defaults to `2m0s`.",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "default": {
+              "static": "2m0s"
+            },
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    },
+                    {
+                      "path": "time"
+                    }
+                  ],
+                  "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "silence_threshold",
+          "terraform_name": "silence_threshold",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "How long the device may be silent before the controller power-cycles its upstream PoE source, as a Go duration string (e.g. `15m`). Defaults to `15m0s`.",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "default": {
+              "static": "15m0s"
+            },
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    },
+                    {
+                      "path": "time"
+                    }
+                  ],
+                  "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the supervisor belongs to.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

@@ -1,0 +1,1569 @@
+{
+  "description": "Manages a WiFi network / SSID in UniFi Controller",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the WLAN.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "advertise_device_name_in_beacon",
+      "terraform_name": "advertise_device_name_in_beacon"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "List of AP group IDs to apply this WLAN to.",
+        "element_type": {
+          "string": {}
+        },
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
+                }
+              ],
+              "schema_definition": "setplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ap_group_ids",
+      "terraform_name": "ap_group_ids",
+      "terraform_type": "set"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "all"
+        },
+        "description": "Access point group mode.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"all\", \"groups\", \"devices\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ap_group_mode",
+      "terraform_name": "ap_group_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "auth_cache",
+      "terraform_name": "auth_cache"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "b_supported",
+      "terraform_name": "b_supported"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "bc_filter_enabled",
+      "terraform_name": "bc_filter_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "List of MAC addresses for the broadcast filter. The controller may populate this on its own, so it is computed when unset.",
+        "element_type": {
+          "string": {}
+        },
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
+                }
+              ],
+              "schema_definition": "setplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+                },
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                }
+              ],
+              "schema_definition": "setvalidator.ValueStringsAre(validators.MACAddressValidator())"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "bc_filter_list",
+      "terraform_name": "bc_filter_list",
+      "terraform_type": "set"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Improves client roaming by providing connection details of nearby APs."
+      },
+      "disposition": "managed",
+      "structural_name": "bss_transition",
+      "terraform_name": "bss_transition"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "country_beacon",
+      "terraform_name": "country_beacon"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dns_assistance_mode",
+      "terraform_name": "dns_assistance_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dns_assistance_servers",
+      "terraform_name": "dns_assistance_servers"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dpi_enabled",
+      "terraform_name": "dpi_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dpigroup_id",
+      "terraform_name": "dpigroup_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "DTIM period for the 6 GHz band (1-255). Only used when `dtim_mode` is `custom`. Computed from the controller when not set.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                }
+              ],
+              "schema_definition": "int64planmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(1, 255)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "dtim_6e",
+      "terraform_name": "dtim_6e"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "default"
+        },
+        "description": "DTIM mode. Can be one of `default` or `custom`. Use `custom` together with `dtim_ng`/`dtim_na`/`dtim_6e`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"default\", \"custom\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "dtim_mode",
+      "terraform_name": "dtim_mode"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "DTIM period for the 5 GHz band (1-255). Only used when `dtim_mode` is `custom`. Computed from the controller when not set.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                }
+              ],
+              "schema_definition": "int64planmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(1, 255)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "dtim_na",
+      "terraform_name": "dtim_na"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "DTIM period for the 2.4 GHz band (1-255). Only used when `dtim_mode` is `custom`. Computed from the controller when not set.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                }
+              ],
+              "schema_definition": "int64planmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(1, 255)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "dtim_ng",
+      "terraform_name": "dtim_ng"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "element_adopt",
+      "terraform_name": "element_adopt"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Enable or disable the WLAN."
+      },
+      "disposition": "managed",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable enhanced IoT connectivity. When `true`, the controller forces `iapp_enabled = true`, `wpa3_support = false`, `wpa3_transition = false`, `pmf_mode = \"disabled\"` and `dtim_ng = 1`; the provider pins those fields to match, so any conflicting values you set for them are ignored (this disables WPA3 on the SSID)."
+      },
+      "disposition": "managed",
+      "structural_name": "enhanced_iot",
+      "terraform_name": "enhanced_iot"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable fast roaming, aka 802.11r."
+      },
+      "disposition": "managed",
+      "structural_name": "fast_roaming_enabled",
+      "terraform_name": "fast_roaming_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": 3600
+        },
+        "description": "Group rekey interval in seconds (0 to disable)."
+      },
+      "disposition": "managed",
+      "structural_name": "group_rekey",
+      "terraform_name": "group_rekey"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Indicates whether or not to hide the SSID from broadcast."
+      },
+      "disposition": "managed",
+      "structural_name": "hide_ssid",
+      "terraform_name": "hide_ssid"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "hotspot2",
+      "terraform_name": "hotspot2"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable Hotspot 2.0 configuration."
+      },
+      "disposition": "managed",
+      "structural_name": "hotspot2conf_enabled",
+      "terraform_name": "hotspot2conf_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Enable Inter-Access Point Protocol (802.11f) for faster roaming. Computed from the controller when not set.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "iapp_enabled",
+      "terraform_name": "iapp_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "iot_channel_lock",
+      "terraform_name": "iot_channel_lock"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "iot_dtim_lock",
+      "terraform_name": "iot_dtim_lock"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Indicates that this is a guest WLAN and should use guest behaviors."
+      },
+      "disposition": "managed",
+      "structural_name": "is_guest",
+      "terraform_name": "is_guest"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Isolates stations on layer 2 (ethernet) level."
+      },
+      "disposition": "managed",
+      "structural_name": "l2_isolation",
+      "terraform_name": "l2_isolation"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "log_level",
+      "terraform_name": "log_level"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Indicates whether or not Multicast Enhance is turned of for the network."
+      },
+      "disposition": "managed",
+      "structural_name": "mcastenhance_enabled",
+      "terraform_name": "multicast_enhance"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mdns_proxy_custom",
+      "terraform_name": "mdns_proxy_custom"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mdns_proxy_mode",
+      "terraform_name": "mdns_proxy_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "minrate_na_advertising_rates",
+      "terraform_name": "minrate_na_advertising_rates"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Minimum data rate for 5G clients in Kbps. When unset, the controller assigns a value (e.g. `6000` in `auto` mode), so this is computed rather than defaulted to `0`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
+                }
+              ],
+              "schema_definition": "planmodifiers.UseStateUnlessSiblingChanges{Sibling: \"minrate_setting_preference\"}"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.OneOf(0, 6000, 9000, 12000, 18000, 24000, 36000, 48000, 54000)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "minrate_na_data_rate_kbps",
+      "terraform_name": "minimum_data_rate_5g_kbps"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "minrate_na_enabled",
+      "terraform_name": "minrate_na_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "minrate_ng_advertising_rates",
+      "terraform_name": "minrate_ng_advertising_rates"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Minimum data rate for 2G clients in Kbps. When unset, the controller assigns a value (e.g. `1000` in `auto` mode), so this is computed rather than defaulted to `0`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
+                }
+              ],
+              "schema_definition": "planmodifiers.UseStateUnlessSiblingChanges{Sibling: \"minrate_setting_preference\"}"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.OneOf(0, 1000, 2000, 5500, 6000, 9000, 11000, 12000, 18000, 24000, 36000, 48000, 54000)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "minrate_ng_data_rate_kbps",
+      "terraform_name": "minimum_data_rate_2g_kbps"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "minrate_ng_enabled",
+      "terraform_name": "minrate_ng_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Minimum rate setting preference.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "minrate_setting_preference",
+      "terraform_name": "minrate_setting_preference"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable Multi-Link Operation (6 GHz)."
+      },
+      "disposition": "managed",
+      "structural_name": "mlo_enabled",
+      "terraform_name": "mlo_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The SSID of the network."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "name_combine_enabled",
+      "terraform_name": "name_combine_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "name_combine_suffix",
+      "terraform_name": "name_combine_suffix"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "nas_identifier",
+      "terraform_name": "nas_identifier"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "bssid"
+        },
+        "description": "NAS identifier type for RADIUS.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"ap_name\", \"ap_mac\", \"bssid\", \"site_name\", \"custom\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "nas_identifier_type",
+      "terraform_name": "nas_identifier_type"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "ID of the network for this WLAN.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "networkconf_id",
+      "terraform_name": "network_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Connect high performance clients to 5 GHz only."
+      },
+      "disposition": "managed",
+      "structural_name": "no2ghz_oui",
+      "terraform_name": "no2ghz_oui"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "optimize_iot_wifi_connectivity",
+      "terraform_name": "optimize_iot_wifi_connectivity"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "p2p",
+      "terraform_name": "p2p"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "p2p_cross_connect",
+      "terraform_name": "p2p_cross_connect"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "pmf_cipher",
+      "terraform_name": "pmf_cipher"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "disabled"
+        },
+        "description": "Enable Protected Management Frames. This cannot be disabled if using WPA 3.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"required\", \"optional\", \"disabled\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "pmf_mode",
+      "terraform_name": "pmf_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "priority",
+      "terraform_name": "priority"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "Private pre-shared keys (PPSK): a list of per-key passphrases, each optionally bound to its own network/VLAN. Only valid when `private_preshared_keys_enabled` is `true`."
+      },
+      "disposition": "managed",
+      "fields": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": ""
+            },
+            "description": "ID of the network/VLAN this key is bound to. Leave unset to use the WLAN's default network."
+          },
+          "disposition": "managed",
+          "structural_name": "networkconf_id",
+          "terraform_name": "network_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The passphrase for this key (8-255 characters).",
+            "sensitive": true,
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.LengthBetween(8, 255)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "password",
+          "terraform_name": "password"
+        }
+      ],
+      "structural_name": "private_preshared_keys",
+      "terraform_name": "private_preshared_keys",
+      "terraform_type": "list_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Whether per-key (PPSK) passphrases are enabled for this WLAN. Requires `security = wpapsk`."
+      },
+      "disposition": "managed",
+      "structural_name": "private_preshared_keys_enabled",
+      "terraform_name": "private_preshared_keys_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Reduces airtime usage by allowing APs to \"proxy\" common broadcast frames as unicast."
+      },
+      "disposition": "managed",
+      "structural_name": "proxy_arp",
+      "terraform_name": "proxy_arp"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "radius_das_enabled",
+      "terraform_name": "radius_das_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable RADIUS MAC authentication."
+      },
+      "disposition": "managed",
+      "structural_name": "radius_mac_auth_enabled",
+      "terraform_name": "radius_mac_auth_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "radius_macacl_empty_password",
+      "terraform_name": "radius_macacl_empty_password"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "radius_macacl_format",
+      "terraform_name": "radius_macacl_format"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "ID of the RADIUS profile to use when security `wpaeap`. The controller may assign a default profile, so this is computed when unset.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "radiusprofile_id",
+      "terraform_name": "radius_profile_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "roam_cluster_id",
+      "terraform_name": "roam_cluster_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Enable the roaming assistant on 6GHz. See `roaming_assistant_na_enabled`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "roaming_assistant_6e_enabled",
+      "terraform_name": "roaming_assistant_6e_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Signal threshold in dBm at which the 6GHz roaming assistant disconnects a client. Between `-90` and `-70` \u2014 note the range differs from the 5GHz one.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                }
+              ],
+              "schema_definition": "int64planmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(-90, -70)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "roaming_assistant_6e_rssi",
+      "terraform_name": "roaming_assistant_6e_rssi"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Enable the roaming assistant on 5GHz, which disconnects clients whose signal drops below `roaming_assistant_na_rssi` so they reassociate with a closer AP. UniFi Network 10.x replaced the per-radio `unifi_device.radio_table.assisted_roaming_enabled` with this per-WLAN setting.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "roaming_assistant_na_enabled",
+      "terraform_name": "roaming_assistant_na_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Signal threshold in dBm at which the 5GHz roaming assistant disconnects a client. Between `-80` and `-60`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                }
+              ],
+              "schema_definition": "int64planmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(-80, -60)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "roaming_assistant_na_rssi",
+      "terraform_name": "roaming_assistant_na_rssi"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "rrm_enabled",
+      "terraform_name": "rrm_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "sae_anti_clogging",
+      "terraform_name": "sae_anti_clogging"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "sae_groups",
+      "terraform_name": "sae_groups"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "sae_psk",
+      "terraform_name": "sae_psk"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "sae_psk_vlan_required",
+      "terraform_name": "sae_psk_vlan_required"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "sae_sync",
+      "terraform_name": "sae_sync"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "schedule",
+      "terraform_name": "schedule"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "schedule_enabled",
+      "terraform_name": "schedule_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "schedule_reversed",
+      "terraform_name": "schedule_reversed"
+    },
+    {
+      "attribute": {
+        "description": "Start and stop schedules for the WLAN"
+      },
+      "disposition": "managed",
+      "fields": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "Day of week for the block.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"sun\", \"mon\", \"tue\", \"wed\", \"thu\", \"fri\", \"sat\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "invented": "The controller stores start_days_of_week as an array; the released schema presents a single day, so the provider selects one and no derivation produces it.",
+          "terraform_name": "day_of_week",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "Length of the block, as a Go duration string. The controller stores this value with one-minute resolution, so the duration must be at least `1m` and a whole multiple of one minute (e.g. `30m`, `2h`).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    },
+                    {
+                      "path": "time"
+                    }
+                  ],
+                  "schema_definition": "validators.GoDurationBetween(time.Minute, 7*24*time.Hour)"
+                }
+              },
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    },
+                    {
+                      "path": "time"
+                    }
+                  ],
+                  "schema_definition": "validators.GoDurationMultipleOf(time.Minute)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "duration_minutes",
+          "terraform_name": "duration",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "Name of the block."
+          },
+          "disposition": "managed",
+          "structural_name": "name",
+          "terraform_name": "name"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "Start hour for the block (0-23).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(0, 23)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "start_hour",
+          "terraform_name": "start_hour"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": 0
+            },
+            "description": "Start minute for the block (0-59).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(0, 59)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "start_minute",
+          "terraform_name": "start_minute"
+        },
+        {
+          "disposition": "omitted",
+          "structural_name": "start_days_of_week",
+          "terraform_name": "start_days_of_week"
+        }
+      ],
+      "structural_name": "schedule_with_duration",
+      "terraform_name": "schedule",
+      "terraform_type": "list_nested_block"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The type of WiFi security for this network.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"wpapsk\", \"wpaeap\", \"open\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "security",
+      "terraform_name": "security"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "tdls_prohibit",
+      "terraform_name": "tdls_prohibit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable Unscheduled Automatic Power Save Delivery."
+      },
+      "disposition": "managed",
+      "structural_name": "uapsd_enabled",
+      "terraform_name": "uapsd"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_workspace_url",
+      "terraform_name": "uid_workspace_url"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "ID of the user group to use for this network."
+      },
+      "disposition": "managed",
+      "structural_name": "usergroup_id",
+      "terraform_name": "user_group_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "VLAN ID.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(2, 4095)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "vlan",
+      "terraform_name": "vlan"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable VLAN tagging."
+      },
+      "disposition": "managed",
+      "structural_name": "vlan_enabled",
+      "terraform_name": "vlan_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wep_idx",
+      "terraform_name": "wep_idx"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "both"
+        },
+        "description": "WLAN band.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"2g\", \"5g\", \"both\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "wlan_band",
+      "terraform_name": "wlan_band"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "List of WLAN bands.",
+        "element_type": {
+          "string": {}
+        },
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+                },
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "setvalidator.ValueStringsAre(stringvalidator.OneOf(\"2g\", \"5g\", \"6g\"))"
+            }
+          }
+        ],
+        "default": {
+          "custom": {
+            "imports": [
+              {
+                "path": "github.com/hashicorp/terraform-plugin-framework/attr"
+              },
+              {
+                "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
+              },
+              {
+                "path": "github.com/hashicorp/terraform-plugin-framework/types"
+              }
+            ],
+            "schema_definition": "setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{types.StringValue(\"2g\"), types.StringValue(\"5g\")}))"
+          }
+        }
+      },
+      "disposition": "managed",
+      "structural_name": "wlan_bands",
+      "terraform_name": "wlan_bands",
+      "terraform_type": "set"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wlangroup_id",
+      "terraform_name": "wlangroup_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable WPA3 Enterprise 192-bit mode."
+      },
+      "disposition": "managed",
+      "structural_name": "wpa3_enhanced_192",
+      "terraform_name": "wpa3_enhanced_192"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable WPA3 fast roaming (802.11r)."
+      },
+      "disposition": "managed",
+      "structural_name": "wpa3_fast_roaming",
+      "terraform_name": "wpa3_fast_roaming"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable WPA 3 support (security must be `wpapsk` and PMF must be turned on)."
+      },
+      "disposition": "managed",
+      "structural_name": "wpa3_support",
+      "terraform_name": "wpa3_support"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable WPA 3 and WPA 2 support (security must be `wpapsk` and `wpa3_support` must be true)."
+      },
+      "disposition": "managed",
+      "structural_name": "wpa3_transition",
+      "terraform_name": "wpa3_transition"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "ccmp"
+        },
+        "description": "WPA encryption. Can be one of `auto`, `ccmp`, `gcmp`, `ccmp-256`, or `gcmp-256`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"auto\", \"ccmp\", \"gcmp\", \"ccmp-256\", \"gcmp-256\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "wpa_enc",
+      "terraform_name": "wpa_enc"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "wpa2"
+        },
+        "description": "WPA mode. Can be one of `auto`, `wpa1`, or `wpa2`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"auto\", \"wpa1\", \"wpa2\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "wpa_mode",
+      "terraform_name": "wpa_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wpa_psk_radius",
+      "terraform_name": "wpa_psk_radius"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_iapp_key",
+      "terraform_name": "x_iapp_key"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The passphrase for the network, only required if `security` is not `open`. Stored in state \u2014 use `passphrase_wo` to avoid persisting the secret.",
+        "sensitive": true
+      },
+      "disposition": "managed",
+      "structural_name": "x_passphrase",
+      "terraform_name": "passphrase"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_wep",
+      "terraform_name": "x_wep"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "wlan",
+  "groupings": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "MAC address filtering configuration.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Indicates whether or not the MAC filter is turned on for the network."
+          },
+          "disposition": "managed",
+          "structural_name": "mac_filter_enabled",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "List of MAC addresses to filter (only valid if `enabled` is `true`).",
+            "element_type": {
+              "string": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "mac_filter_list",
+          "terraform_name": "list",
+          "terraform_type": "set"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": "deny"
+            },
+            "description": "MAC address filter policy (only valid if `enabled` is `true`).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"allow\", \"deny\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "mac_filter_policy",
+          "terraform_name": "policy"
+        }
+      ],
+      "terraform_name": "mac_filter",
+      "terraform_type": "single_nested"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "passphrase_wo",
+      "disposition": "managed",
+      "generated": false
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the WLAN with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_wlan",
+  "source_specification_sha256": "eb794f20398345f9248b35036aaa2075fb210ee9911d0227b1f7c7462d2b3a66",
+  "surface_kind": "managed_resource"
+}

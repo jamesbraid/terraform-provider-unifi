@@ -1,0 +1,60 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "0dcf734f4053f020c987ac2d9b5a82ddb1c0881103778b386f8e4f0ec70d244d"
+  },
+  "resource": {
+    "name": "unifi_client_qos_rate",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool",
+        "go_name": "Hidden"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string",
+        "go_name": "HiddenID"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool",
+        "go_name": "NoDelete"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool",
+        "go_name": "NoEdit"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "go_name": "Name"
+      },
+      {
+        "name": "qos_rate_max_down",
+        "type": "int64",
+        "go_name": "QOSRateMaxDown",
+        "pointer": true
+      },
+      {
+        "name": "qos_rate_max_up",
+        "type": "int64",
+        "go_name": "QOSRateMaxUp",
+        "pointer": true
+      },
+      {
+        "name": "site_id",
+        "type": "string",
+        "go_name": "SiteID"
+      }
+    ]
+  }
+}

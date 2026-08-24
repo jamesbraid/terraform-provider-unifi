@@ -1,0 +1,896 @@
+{
+ "claims": [
+  {
+   "mapping": {
+    "from_api": "networkIDValue",
+    "kind": "dedicated"
+   },
+   "reason": "an ORDERED PREFERENCE over two observed fields of the LEAD struct: networkIDValue reports virtual_network_override_id when it is set and network_id otherwise, so neither alone is the attribute's source",
+   "structural_names": [
+    "virtual_network_override_id",
+    "network_id"
+   ],
+   "terraform_members": [
+    "clients.network_id"
+   ]
+  }
+ ],
+ "description": "Retrieves a list of clients (users) on the network with optional filtering. Merges client configuration data with active and historical connection information for network discovery within Terraform.",
+ "fields": [],
+ "format_version": 1,
+ "generator_name": "client_list_ds",
+ "groupings": [
+  {
+   "attribute": {
+    "computed_optional_required": "computed",
+    "description": "List of clients matching the specified filters."
+   },
+   "members": [
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "Whether the client is blocked from the network."
+     },
+     "disposition": "managed",
+     "structural_name": "blocked",
+     "terraform_name": "blocked"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The display name of the client."
+     },
+     "disposition": "managed",
+     "structural_name": "display_name",
+     "terraform_name": "display_name"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The MAC address of the access point to which this client is fixed."
+     },
+     "disposition": "managed",
+     "structural_name": "fixed_ap_mac",
+     "terraform_name": "fixed_ap_mac"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "A fixed IPv4 address for this client."
+     },
+     "disposition": "managed",
+     "structural_name": "fixed_ip",
+     "terraform_name": "fixed_ip"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The user group ID for the client."
+     },
+     "disposition": "managed",
+     "structural_name": "usergroup_id",
+     "terraform_name": "group_id"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The hostname of the client."
+     },
+     "disposition": "managed",
+     "structural_name": "hostname",
+     "terraform_name": "hostname"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The ID of the client."
+     },
+     "disposition": "managed",
+     "structural_name": "_id",
+     "terraform_name": "id"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The local DNS record for this client."
+     },
+     "disposition": "managed",
+     "structural_name": "local_dns_record",
+     "terraform_name": "local_dns_record"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The MAC address of the client."
+     },
+     "disposition": "managed",
+     "structural_name": "mac",
+     "terraform_name": "mac"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The name of the client."
+     },
+     "disposition": "managed",
+     "structural_name": "name",
+     "terraform_name": "name"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "List of network member group IDs for this client.",
+      "element_type": {
+       "string": {}
+      }
+     },
+     "disposition": "managed",
+     "structural_name": "network_members_group_ids",
+     "terraform_name": "network_members_group_ids",
+     "terraform_type": "list"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "A note with additional information for the client."
+     },
+     "disposition": "managed",
+     "structural_name": "note",
+     "terraform_name": "note"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The MAC address of the access point the client is connected to."
+     },
+     "disposition": "managed",
+     "structural_name": "ap_mac",
+     "structural_source": "ClientInfo",
+     "terraform_name": "ap_mac"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "Whether the client is authorized."
+     },
+     "disposition": "managed",
+     "structural_name": "authorized",
+     "structural_source": "ClientInfo",
+     "terraform_name": "authorized"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The BSSID of the access point."
+     },
+     "disposition": "managed",
+     "structural_name": "bssid",
+     "structural_source": "ClientInfo",
+     "terraform_name": "bssid"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The WiFi channel the client is connected on."
+     },
+     "disposition": "managed",
+     "structural_name": "channel",
+     "structural_source": "ClientInfo",
+     "terraform_name": "channel"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The ESSID (network name) the client is connected to."
+     },
+     "disposition": "managed",
+     "structural_name": "essid",
+     "structural_source": "ClientInfo",
+     "terraform_name": "essid"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "Unix timestamp when the client was first seen."
+     },
+     "disposition": "managed",
+     "structural_name": "first_seen",
+     "structural_source": "ClientInfo",
+     "terraform_name": "first_seen"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The IP address of the client."
+     },
+     "disposition": "managed",
+     "structural_name": "ip",
+     "structural_source": "ClientInfo",
+     "terraform_name": "ip"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "Whether the client is a guest."
+     },
+     "disposition": "managed",
+     "structural_name": "is_guest",
+     "structural_source": "ClientInfo",
+     "terraform_name": "is_guest"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "Whether the client is connected via wired connection."
+     },
+     "disposition": "managed",
+     "structural_name": "is_wired",
+     "structural_source": "ClientInfo",
+     "terraform_name": "is_wired"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The network ID of the last connection."
+     },
+     "disposition": "managed",
+     "structural_name": "last_connection_network_id",
+     "structural_source": "ClientInfo",
+     "terraform_name": "last_connection_network_id"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The network name of the last connection."
+     },
+     "disposition": "managed",
+     "structural_name": "last_connection_network_name",
+     "structural_source": "ClientInfo",
+     "terraform_name": "last_connection_network_name"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "Unix timestamp when the client was last seen."
+     },
+     "disposition": "managed",
+     "structural_name": "last_seen",
+     "structural_source": "ClientInfo",
+     "terraform_name": "last_seen"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The MAC address of the last uplink device."
+     },
+     "disposition": "managed",
+     "structural_name": "last_uplink_mac",
+     "structural_source": "ClientInfo",
+     "terraform_name": "last_uplink_mac"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The name of the last uplink device."
+     },
+     "disposition": "managed",
+     "structural_name": "last_uplink_name",
+     "structural_source": "ClientInfo",
+     "terraform_name": "last_uplink_name"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The network name for this client."
+     },
+     "disposition": "managed",
+     "structural_name": "network_name",
+     "structural_source": "ClientInfo",
+     "terraform_name": "network_name"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The noise level in dBm."
+     },
+     "disposition": "managed",
+     "structural_name": "noise",
+     "structural_source": "ClientInfo",
+     "terraform_name": "noise"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The OUI (vendor) of the client's MAC address."
+     },
+     "disposition": "managed",
+     "structural_name": "oui",
+     "structural_source": "ClientInfo",
+     "terraform_name": "oui"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The radio type (e.g., na, ng)."
+     },
+     "disposition": "managed",
+     "structural_name": "radio",
+     "structural_source": "ClientInfo",
+     "terraform_name": "radio"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The radio name (e.g., wifi0, wifi1)."
+     },
+     "disposition": "managed",
+     "structural_name": "radio_name",
+     "structural_source": "ClientInfo",
+     "terraform_name": "radio_name"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The RSSI value."
+     },
+     "disposition": "managed",
+     "structural_name": "rssi",
+     "structural_source": "ClientInfo",
+     "terraform_name": "rssi"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "Total bytes received."
+     },
+     "disposition": "managed",
+     "structural_name": "rx_bytes",
+     "structural_source": "ClientInfo",
+     "terraform_name": "rx_bytes"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The receive rate in kbps."
+     },
+     "disposition": "managed",
+     "structural_name": "rx_rate",
+     "structural_source": "ClientInfo",
+     "terraform_name": "rx_rate"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The signal strength in dBm."
+     },
+     "disposition": "managed",
+     "structural_name": "signal",
+     "structural_source": "ClientInfo",
+     "terraform_name": "signal"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The connection status of the client."
+     },
+     "disposition": "managed",
+     "structural_name": "status",
+     "structural_source": "ClientInfo",
+     "terraform_name": "status"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The switch port number the client is connected to."
+     },
+     "disposition": "managed",
+     "structural_name": "sw_port",
+     "structural_source": "ClientInfo",
+     "terraform_name": "sw_port"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "Total bytes transmitted."
+     },
+     "disposition": "managed",
+     "structural_name": "tx_bytes",
+     "structural_source": "ClientInfo",
+     "terraform_name": "tx_bytes"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The transmit rate in kbps."
+     },
+     "disposition": "managed",
+     "structural_name": "tx_rate",
+     "structural_source": "ClientInfo",
+     "terraform_name": "tx_rate"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The uptime of the client in seconds."
+     },
+     "disposition": "managed",
+     "structural_name": "uptime",
+     "structural_source": "ClientInfo",
+     "terraform_name": "uptime"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The wired connection rate in Mbps."
+     },
+     "disposition": "managed",
+     "structural_name": "wired_rate_mbps",
+     "structural_source": "ClientInfo",
+     "terraform_name": "wired_rate_mbps"
+    },
+    {
+     "attribute": {
+      "computed_optional_required": "computed",
+      "description": "The network ID for this client."
+     },
+     "disposition": "managed",
+     "terraform_name": "network_id",
+     "terraform_type": "string"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "attr_hidden",
+     "terraform_name": "omitted_attr_hidden"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "attr_hidden_id",
+     "terraform_name": "omitted_attr_hidden_id"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "attr_no_delete",
+     "terraform_name": "omitted_attr_no_delete"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "attr_no_edit",
+     "terraform_name": "omitted_attr_no_edit"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "fixed_ap_enabled",
+     "terraform_name": "omitted_fixed_ap_enabled"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "last_ip",
+     "terraform_name": "omitted_last_ip"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "last_seen",
+     "terraform_name": "omitted_last_seen"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "local_dns_record_enabled",
+     "terraform_name": "omitted_local_dns_record_enabled"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "site_id",
+     "terraform_name": "omitted_site_id"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "use_fixedip",
+     "terraform_name": "omitted_use_fixedip"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "virtual_network_override_enabled",
+     "terraform_name": "omitted_virtual_network_override_enabled"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "anomalies",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_anomalies"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "assoc_time",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_assoc_time"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "blocked",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_blocked"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "ccq",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_ccq"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "channel_width",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_channel_width"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "detailed_states",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_detailed_states"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "dhcpend_time",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_dhcpend_time"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "display_name",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_display_name"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "fingerprint",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_fingerprint"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "fixed_ap_enabled",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_fixed_ap_enabled"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "fixed_ip",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_fixed_ip"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "gw_mac",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_gw_mac"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "hostname",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_hostname"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "id",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_id"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "idletime",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_idletime"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "ipv4_lease_expiration_timestamp_seconds",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_ipv4_lease_expiration_timestamp_seconds"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "ipv6_address",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_ipv6_address"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "is_allowed_in_visual_programming",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_is_allowed_in_visual_programming"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "is_mlo",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_is_mlo"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "last_ip",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_last_ip"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "last_ipv6",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_last_ipv6"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "last_radio",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_last_radio"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "last_uplink_remote_port",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_last_uplink_remote_port"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "latest_assoc_time",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_latest_assoc_time"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "local_dns_record",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_local_dns_record"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "local_dns_record_enabled",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_local_dns_record_enabled"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "mac",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_mac"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "mimo",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_mimo"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "model_name",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_model_name"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "name",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_name"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "network_id",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_network_id"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "noted",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_noted"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "powersave_enabled",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_powersave_enabled"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "radio_proto",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_radio_proto"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "rate_imbalance",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_rate_imbalance"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "rx_bytes-r",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_rx_bytes-r"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "rx_packets",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_rx_packets"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "site_id",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_site_id"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "tags",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_tags"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "tx_bytes-r",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_tx_bytes-r"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "tx_mcs_index",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_tx_mcs_index"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "tx_packets",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_tx_packets"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "type",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_type"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "unifi_device",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_unifi_device"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "unifi_device_info",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_unifi_device_info"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "uplink_mac",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_uplink_mac"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "use_fixedip",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_use_fixedip"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "user_id",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_user_id"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "usergroup_id",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_usergroup_id"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "virtual_network_override_enabled",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_virtual_network_override_enabled"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "virtual_network_override_id",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_virtual_network_override_id"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "wifi_experience_average",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_wifi_experience_average"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "wifi_experience_score",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_wifi_experience_score"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "wifi_tx_attempts",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_wifi_tx_attempts"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "wifi_tx_retries_percentage",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_wifi_tx_retries_percentage"
+    },
+    {
+     "disposition": "omitted",
+     "structural_name": "wlanconf_id",
+     "structural_source": "ClientInfo",
+     "terraform_name": "omitted_info_wlanconf_id"
+    }
+   ],
+   "terraform_name": "clients",
+   "terraform_type": "list_nested"
+  }
+ ],
+ "provider_owned": [
+  {
+   "attribute": {
+    "computed_optional_required": "computed_optional",
+    "description": "The name of the site to retrieve clients from."
+   },
+   "disposition": "managed",
+   "generated": true,
+   "terraform_name": "site",
+   "terraform_type": "string"
+  },
+  {
+   "attribute": {
+    "computed_optional_required": "optional",
+    "description": "Filter clients by network members group name."
+   },
+   "disposition": "managed",
+   "generated": true,
+   "terraform_name": "group",
+   "terraform_type": "string"
+  },
+  {
+   "attribute": {
+    "computed_optional_required": "optional",
+    "description": "Filter clients by wired connection status."
+   },
+   "disposition": "managed",
+   "generated": true,
+   "terraform_name": "wired",
+   "terraform_type": "bool"
+  },
+  {
+   "attribute": {
+    "computed_optional_required": "optional",
+    "description": "Filter clients by blocked status."
+   },
+   "disposition": "managed",
+   "generated": true,
+   "terraform_name": "blocked",
+   "terraform_type": "bool"
+  },
+  {
+   "attribute": {
+    "computed_optional_required": "optional",
+    "description": "Filter clients by OUI (vendor prefix)."
+   },
+   "disposition": "managed",
+   "generated": true,
+   "terraform_name": "oui",
+   "terraform_type": "string"
+  },
+  {
+   "disposition": "managed",
+   "generated": false,
+   "terraform_name": "timeouts"
+  }
+ ],
+ "resource": "unifi_client_list",
+ "source_specification_sha256": "bbacc37db3868379898efc674a4e2c9af35e7e11f48277f7353913a00ef8508f",
+ "surface_kind": "data_source"
+}

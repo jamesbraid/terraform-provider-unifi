@@ -1,0 +1,129 @@
+{
+  "description": "Data source for DNS records.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of this DNS record."
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "Whether the DNS record is enabled."
+      },
+      "disposition": "managed",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the DNS record to look up."
+      },
+      "disposition": "managed",
+      "structural_name": "key",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "port",
+      "terraform_name": "port"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "priority",
+      "terraform_name": "priority"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The type of the DNS record."
+      },
+      "disposition": "managed",
+      "structural_name": "record_type",
+      "terraform_name": "type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+          },
+          "type": "timetypes.GoDurationType{}",
+          "value_type": "timetypes.GoDuration"
+        },
+        "description": "The TTL of the DNS record, as a Go duration string."
+      },
+      "disposition": "managed",
+      "structural_name": "ttl",
+      "terraform_name": "ttl",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The value of the DNS record."
+      },
+      "disposition": "managed",
+      "structural_name": "value",
+      "terraform_name": "value"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "weight",
+      "terraform_name": "weight"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "dns_record_ds",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the DNS record is associated with."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_dns_record",
+  "source_specification_sha256": "f5c9e67fd2dbd353ab48707009d4e7c83d40e5b99570fd6069c2a4be480bcd65",
+  "surface_kind": "data_source"
+}

@@ -1,0 +1,185 @@
+{
+  "description": "List clients in a site, optionally filtered by network, group, connection type, or vendor.",
+  "fields": [
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "terraform_name": "_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "blocked",
+      "terraform_name": "blocked"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "display_name",
+      "terraform_name": "display_name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "fixed_ap_enabled",
+      "terraform_name": "fixed_ap_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "fixed_ap_mac",
+      "terraform_name": "fixed_ap_mac"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "fixed_ip",
+      "terraform_name": "fixed_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "hostname",
+      "terraform_name": "hostname"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "last_ip",
+      "terraform_name": "last_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "last_seen",
+      "terraform_name": "last_seen"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "local_dns_record",
+      "terraform_name": "local_dns_record"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "local_dns_record_enabled",
+      "terraform_name": "local_dns_record_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mac",
+      "terraform_name": "mac"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "network_id",
+      "terraform_name": "network_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "network_members_group_ids",
+      "terraform_name": "network_members_group_ids"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "note",
+      "terraform_name": "note"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "use_fixedip",
+      "terraform_name": "use_fixedip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "usergroup_id",
+      "terraform_name": "usergroup_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "virtual_network_override_enabled",
+      "terraform_name": "virtual_network_override_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "virtual_network_override_id",
+      "terraform_name": "virtual_network_override_id"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "client",
+  "groupings": [
+    {
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `site`, `network_id`, `network_name`, `group`, `wired`, `blocked`, `oui`."
+          },
+          "disposition": "managed",
+          "invented": "The filter KEY: it holds the name of the field to select on, not that field's value. Nothing on the wire carries it. The listed resource has a field of the same name, and this member is still not bound to it -- the key names the field, the sibling value is what gets compared against it.",
+          "terraform_name": "name",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          },
+          "disposition": "managed",
+          "invented": "The filter VALUE: what the key's field is compared against. A term the practitioner writes, carried by no wire field.",
+          "terraform_name": "value",
+          "terraform_type": "string"
+        }
+      ],
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "Filter clients by network members group name."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "group",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list clients from."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    }
+  ],
+  "resource": "unifi_client",
+  "source_specification_sha256": "573638a96c16dea0d2e09044c2891b20cb031d993561b9a51feddb9c433792a3",
+  "surface_kind": "list_resource"
+}

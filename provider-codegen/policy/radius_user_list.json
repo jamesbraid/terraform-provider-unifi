@@ -1,0 +1,130 @@
+{
+  "description": "List RADIUS user accounts in a site.",
+  "fields": [
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "terraform_name": "_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "filter_ids",
+      "terraform_name": "filter_ids"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ip",
+      "terraform_name": "ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "networkconf_id",
+      "terraform_name": "networkconf_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "tunnel_config_type",
+      "terraform_name": "tunnel_config_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "tunnel_medium_type",
+      "terraform_name": "tunnel_medium_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "tunnel_type",
+      "terraform_name": "tunnel_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ulp_user_id",
+      "terraform_name": "ulp_user_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vlan",
+      "terraform_name": "vlan"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_password",
+      "terraform_name": "x_password"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "radius_user",
+  "groupings": [
+    {
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `name`."
+          },
+          "disposition": "managed",
+          "invented": "The filter KEY: it holds the name of the field to select on, not that field's value. Nothing on the wire carries it. The listed resource has a field of the same name, and this member is still not bound to it -- the key names the field, the sibling value is what gets compared against it.",
+          "terraform_name": "name",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          },
+          "disposition": "managed",
+          "invented": "The filter VALUE: what the key's field is compared against. A term the practitioner writes, carried by no wire field.",
+          "terraform_name": "value",
+          "terraform_type": "string"
+        }
+      ],
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list RADIUS users from."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    }
+  ],
+  "resource": "unifi_radius_user",
+  "source_specification_sha256": "ffffa1d603eb9e4e529abb2ed5c0a27420b21a7294984e84db3ed5cdfafedcc0",
+  "surface_kind": "list_resource"
+}

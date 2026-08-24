@@ -1,0 +1,272 @@
+{
+  "description": "Manages BGP configuration for the UniFi Controller. Configuration can be provided either as a raw FRR config string via `config`, or via structured attributes (`asn`, `router_id`, `peers`) which render a config from a template.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the BGP configuration.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "BGP Configuration"
+        },
+        "description": "Description of the BGP configuration."
+      },
+      "disposition": "managed",
+      "structural_name": "description",
+      "terraform_name": "description"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Enable BGP routing."
+      },
+      "disposition": "managed",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The raw FRRouting BGP daemon configuration. Conflicts with `asn`, `router_id`, and `peers`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                },
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                }
+              ],
+              "schema_definition": "stringvalidator.ConflictsWith(path.MatchRoot(\"asn\"), path.MatchRoot(\"router_id\"), path.MatchRoot(\"peers\"))"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "frr_bgpd_config",
+      "terraform_name": "config"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "frr.conf"
+        },
+        "description": "The name of the uploaded configuration file."
+      },
+      "disposition": "managed",
+      "structural_name": "uploaded_file_name",
+      "terraform_name": "upload_file_name"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "bgp",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The BGP Autonomous System Number. Conflicts with `config`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                },
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                }
+              ],
+              "schema_definition": "int64validator.AlsoRequires(path.MatchRoot(\"router_id\"), path.MatchRoot(\"peers\"))"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(1, 4294967295)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "asn",
+      "terraform_type": "int64"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "List of BGP peer groups. Conflicts with `config`.",
+        "nested_object": {
+          "attributes": [
+            {
+              "name": "name",
+              "string": {
+                "computed_optional_required": "required",
+                "description": "The peer group name."
+              }
+            },
+            {
+              "int64": {
+                "computed_optional_required": "required",
+                "description": "The remote Autonomous System Number for this peer group.",
+                "validators": [
+                  {
+                    "custom": {
+                      "imports": [
+                        {
+                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                        }
+                      ],
+                      "schema_definition": "int64validator.Between(1, 4294967295)"
+                    }
+                  }
+                ]
+              },
+              "name": "remote_as"
+            },
+            {
+              "name": "description",
+              "string": {
+                "computed_optional_required": "optional",
+                "description": "Description of this peer group."
+              }
+            },
+            {
+              "list": {
+                "computed_optional_required": "optional",
+                "description": "List of network CIDR ranges to listen on for this peer group.",
+                "element_type": {
+                  "string": {}
+                }
+              },
+              "name": "networks"
+            }
+          ]
+        }
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "peers",
+      "terraform_type": "list_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The BGP router ID (typically an IP address). Conflicts with `config`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                },
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/path"
+                }
+              ],
+              "schema_definition": "stringvalidator.AlsoRequires(path.MatchRoot(\"asn\"), path.MatchRoot(\"peers\"))"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "router_id",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the BGP configuration with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_bgp",
+  "source_specification_sha256": "817a66a4ab764708970b1f8f15e1f051e5433ade63b378be4c0b6199a692b431",
+  "surface_kind": "managed_resource"
+}

@@ -1,0 +1,88 @@
+{
+  "description": "Data source for client QOS rates.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of this client QOS rate."
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the client QOS rate to look up."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The maximum download rate."
+      },
+      "disposition": "managed",
+      "structural_name": "qos_rate_max_down",
+      "terraform_name": "qos_rate_max_down"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The maximum upload rate."
+      },
+      "disposition": "managed",
+      "structural_name": "qos_rate_max_up",
+      "terraform_name": "qos_rate_max_up"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "client_qos_rate_ds",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the client QOS rate is associated with."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_client_qos_rate",
+  "source_specification_sha256": "0dcf734f4053f020c987ac2d9b5a82ddb1c0881103778b386f8e4f0ec70d244d",
+  "surface_kind": "data_source"
+}

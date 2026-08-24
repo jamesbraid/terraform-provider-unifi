@@ -1,0 +1,554 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "4236d72d4a65af052de0100492d37ee96fa7e6b2c19897998815349d8a659e62"
+  },
+  "resource": {
+    "name": "unifi_client_info_list",
+    "fields": [
+      {
+        "name": "anomalies",
+        "type": "int64",
+        "go_name": "Anomalies",
+        "pointer": true
+      },
+      {
+        "name": "ap_mac",
+        "type": "string",
+        "go_name": "ApMac"
+      },
+      {
+        "name": "assoc_time",
+        "type": "int64",
+        "go_name": "AssocTime",
+        "pointer": true
+      },
+      {
+        "name": "authorized",
+        "type": "bool",
+        "go_name": "Authorized"
+      },
+      {
+        "name": "blocked",
+        "type": "bool",
+        "go_name": "Blocked"
+      },
+      {
+        "name": "bssid",
+        "type": "string",
+        "go_name": "Bssid"
+      },
+      {
+        "name": "ccq",
+        "type": "int64",
+        "go_name": "Ccq",
+        "pointer": true
+      },
+      {
+        "name": "channel",
+        "type": "int64",
+        "go_name": "Channel",
+        "pointer": true
+      },
+      {
+        "name": "channel_width",
+        "type": "string",
+        "go_name": "ChannelWidth"
+      },
+      {
+        "name": "detailed_states",
+        "type": "object",
+        "fields": [
+          {
+            "name": "uplink_near_power_limit",
+            "type": "bool",
+            "go_name": "UplinkNearPowerLimit"
+          }
+        ],
+        "go_name": "DetailedStates"
+      },
+      {
+        "name": "dhcpend_time",
+        "type": "int64",
+        "go_name": "DhcpendTime",
+        "pointer": true
+      },
+      {
+        "name": "display_name",
+        "type": "string",
+        "go_name": "DisplayName"
+      },
+      {
+        "name": "essid",
+        "type": "string",
+        "go_name": "Essid"
+      },
+      {
+        "name": "fingerprint",
+        "type": "object",
+        "fields": [
+          {
+            "name": "computed_dev_id",
+            "type": "int64",
+            "go_name": "ComputedDevId",
+            "pointer": true
+          },
+          {
+            "name": "computed_engine",
+            "type": "int64",
+            "go_name": "ComputedEngine",
+            "pointer": true
+          },
+          {
+            "name": "confidence",
+            "type": "int64",
+            "go_name": "Confidence",
+            "pointer": true
+          },
+          {
+            "name": "dev_cat",
+            "type": "int64",
+            "go_name": "DevCat",
+            "pointer": true
+          },
+          {
+            "name": "dev_family",
+            "type": "int64",
+            "go_name": "DevFamily",
+            "pointer": true
+          },
+          {
+            "name": "dev_id",
+            "type": "int64",
+            "go_name": "DevId",
+            "pointer": true
+          },
+          {
+            "name": "dev_id_override",
+            "type": "int64",
+            "go_name": "DevIdOverride",
+            "pointer": true
+          },
+          {
+            "name": "dev_vendor",
+            "type": "int64",
+            "go_name": "DevVendor",
+            "pointer": true
+          },
+          {
+            "name": "has_override",
+            "type": "bool",
+            "go_name": "HasOverride"
+          },
+          {
+            "name": "os_name",
+            "type": "int64",
+            "go_name": "OsName",
+            "pointer": true
+          }
+        ],
+        "go_name": "Fingerprint"
+      },
+      {
+        "name": "first_seen",
+        "type": "int64",
+        "go_name": "FirstSeen",
+        "pointer": true
+      },
+      {
+        "name": "fixed_ap_enabled",
+        "type": "bool",
+        "go_name": "FixedApEnabled"
+      },
+      {
+        "name": "fixed_ip",
+        "type": "string",
+        "go_name": "FixedIP"
+      },
+      {
+        "name": "gw_mac",
+        "type": "string",
+        "go_name": "GwMac"
+      },
+      {
+        "name": "hostname",
+        "type": "string",
+        "go_name": "Hostname"
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "go_name": "Id"
+      },
+      {
+        "name": "idletime",
+        "type": "int64",
+        "go_name": "Idletime",
+        "pointer": true
+      },
+      {
+        "name": "ip",
+        "type": "string",
+        "go_name": "IP"
+      },
+      {
+        "name": "ipv4_lease_expiration_timestamp_seconds",
+        "type": "int64",
+        "go_name": "Ipv4LeaseExpirationTimestampSeconds",
+        "pointer": true
+      },
+      {
+        "name": "ipv6_address",
+        "type": "array<string>",
+        "go_name": "Ipv6Address"
+      },
+      {
+        "name": "is_allowed_in_visual_programming",
+        "type": "bool",
+        "go_name": "IsAllowedInVisualProgramming"
+      },
+      {
+        "name": "is_guest",
+        "type": "bool",
+        "go_name": "IsGuest"
+      },
+      {
+        "name": "is_mlo",
+        "type": "bool",
+        "go_name": "IsMlo"
+      },
+      {
+        "name": "is_wired",
+        "type": "bool",
+        "go_name": "IsWired"
+      },
+      {
+        "name": "last_connection_network_id",
+        "type": "string",
+        "go_name": "LastConnectionNetworkId"
+      },
+      {
+        "name": "last_connection_network_name",
+        "type": "string",
+        "go_name": "LastConnectionNetworkName"
+      },
+      {
+        "name": "last_ip",
+        "type": "string",
+        "go_name": "LastIP"
+      },
+      {
+        "name": "last_ipv6",
+        "type": "array<string>",
+        "go_name": "LastIpv6"
+      },
+      {
+        "name": "last_radio",
+        "type": "string",
+        "go_name": "LastRadio"
+      },
+      {
+        "name": "last_seen",
+        "type": "int64",
+        "go_name": "LastSeen",
+        "pointer": true
+      },
+      {
+        "name": "last_uplink_mac",
+        "type": "string",
+        "go_name": "LastUplinkMac"
+      },
+      {
+        "name": "last_uplink_name",
+        "type": "string",
+        "go_name": "LastUplinkName"
+      },
+      {
+        "name": "last_uplink_remote_port",
+        "type": "int64",
+        "go_name": "LastUplinkRemotePort",
+        "pointer": true
+      },
+      {
+        "name": "latest_assoc_time",
+        "type": "int64",
+        "go_name": "LatestAssocTime",
+        "pointer": true
+      },
+      {
+        "name": "local_dns_record",
+        "type": "string",
+        "go_name": "LocalDNSRecord"
+      },
+      {
+        "name": "local_dns_record_enabled",
+        "type": "bool",
+        "go_name": "LocalDNSRecordEnabled"
+      },
+      {
+        "name": "mac",
+        "type": "string",
+        "go_name": "Mac"
+      },
+      {
+        "name": "mimo",
+        "type": "string",
+        "go_name": "Mimo"
+      },
+      {
+        "name": "model_name",
+        "type": "string",
+        "go_name": "ModelName"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "go_name": "Name"
+      },
+      {
+        "name": "network_id",
+        "type": "string",
+        "go_name": "NetworkId"
+      },
+      {
+        "name": "network_name",
+        "type": "string",
+        "go_name": "NetworkName"
+      },
+      {
+        "name": "noise",
+        "type": "int64",
+        "go_name": "Noise",
+        "pointer": true
+      },
+      {
+        "name": "noted",
+        "type": "bool",
+        "go_name": "Noted"
+      },
+      {
+        "name": "oui",
+        "type": "string",
+        "go_name": "Oui"
+      },
+      {
+        "name": "powersave_enabled",
+        "type": "bool",
+        "go_name": "PowersaveEnabled"
+      },
+      {
+        "name": "radio",
+        "type": "string",
+        "go_name": "Radio"
+      },
+      {
+        "name": "radio_name",
+        "type": "string",
+        "go_name": "RadioName"
+      },
+      {
+        "name": "radio_proto",
+        "type": "string",
+        "go_name": "RadioProto"
+      },
+      {
+        "name": "rate_imbalance",
+        "type": "int64",
+        "go_name": "RateImbalance",
+        "pointer": true
+      },
+      {
+        "name": "rssi",
+        "type": "int64",
+        "go_name": "Rssi",
+        "pointer": true
+      },
+      {
+        "name": "rx_bytes",
+        "type": "int64",
+        "go_name": "RxBytes",
+        "pointer": true
+      },
+      {
+        "name": "rx_bytes-r",
+        "type": "int64",
+        "go_name": "RxBytesR",
+        "pointer": true
+      },
+      {
+        "name": "rx_packets",
+        "type": "int64",
+        "go_name": "RxPackets",
+        "pointer": true
+      },
+      {
+        "name": "rx_rate",
+        "type": "int64",
+        "go_name": "RxRate",
+        "pointer": true
+      },
+      {
+        "name": "signal",
+        "type": "int64",
+        "go_name": "Signal",
+        "pointer": true
+      },
+      {
+        "name": "site_id",
+        "type": "string",
+        "go_name": "SiteId"
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "go_name": "Status"
+      },
+      {
+        "name": "sw_port",
+        "type": "int64",
+        "go_name": "SwPort",
+        "pointer": true
+      },
+      {
+        "name": "tags",
+        "type": "array<string>",
+        "go_name": "Tags"
+      },
+      {
+        "name": "tx_bytes",
+        "type": "int64",
+        "go_name": "TxBytes",
+        "pointer": true
+      },
+      {
+        "name": "tx_bytes-r",
+        "type": "int64",
+        "go_name": "TxBytesR",
+        "pointer": true
+      },
+      {
+        "name": "tx_mcs_index",
+        "type": "int64",
+        "go_name": "TxMcsIndex",
+        "pointer": true
+      },
+      {
+        "name": "tx_packets",
+        "type": "int64",
+        "go_name": "TxPackets",
+        "pointer": true
+      },
+      {
+        "name": "tx_rate",
+        "type": "int64",
+        "go_name": "TxRate",
+        "pointer": true
+      },
+      {
+        "name": "type",
+        "type": "string",
+        "go_name": "Type"
+      },
+      {
+        "name": "unifi_device",
+        "type": "bool",
+        "go_name": "UnifiDevice"
+      },
+      {
+        "name": "unifi_device_info",
+        "type": "object",
+        "fields": [
+          {
+            "name": "icon_filename",
+            "type": "string",
+            "go_name": "IconFilename"
+          },
+          {
+            "name": "icon_resolutions",
+            "type": "array<array<int64>>",
+            "go_name": "IconResolutions"
+          },
+          {
+            "name": "view_in_application",
+            "type": "bool",
+            "go_name": "ViewInApplication"
+          }
+        ],
+        "go_name": "UnifiDeviceInfo",
+        "pointer": true
+      },
+      {
+        "name": "uplink_mac",
+        "type": "string",
+        "go_name": "UplinkMac"
+      },
+      {
+        "name": "uptime",
+        "type": "int64",
+        "go_name": "Uptime",
+        "pointer": true
+      },
+      {
+        "name": "use_fixedip",
+        "type": "bool",
+        "go_name": "UseFixedip"
+      },
+      {
+        "name": "user_id",
+        "type": "string",
+        "go_name": "UserId"
+      },
+      {
+        "name": "usergroup_id",
+        "type": "string",
+        "go_name": "UsergroupId"
+      },
+      {
+        "name": "virtual_network_override_enabled",
+        "type": "bool",
+        "go_name": "VirtualNetworkOverrideEnabled"
+      },
+      {
+        "name": "virtual_network_override_id",
+        "type": "string",
+        "go_name": "VirtualNetworkOverrideId"
+      },
+      {
+        "name": "wifi_experience_average",
+        "type": "int64",
+        "go_name": "WifiExperienceAverage",
+        "pointer": true
+      },
+      {
+        "name": "wifi_experience_score",
+        "type": "int64",
+        "go_name": "WifiExperienceScore",
+        "pointer": true
+      },
+      {
+        "name": "wifi_tx_attempts",
+        "type": "int64",
+        "go_name": "WifiTxAttempts",
+        "pointer": true
+      },
+      {
+        "name": "wifi_tx_retries_percentage",
+        "type": "number",
+        "go_name": "WifiTxRetriesPercentage"
+      },
+      {
+        "name": "wired_rate_mbps",
+        "type": "int64",
+        "go_name": "WiredRateMbps",
+        "pointer": true
+      },
+      {
+        "name": "wlanconf_id",
+        "type": "string",
+        "go_name": "WlanconfId"
+      }
+    ]
+  }
+}

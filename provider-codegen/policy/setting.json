@@ -1,0 +1,2770 @@
+{
+  "description": "Manages settings for a UniFi site. Configure only the settings you need by providing the corresponding nested object.",
+  "fields": [
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "terraform_name": "_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "arp_cache_base_reachable",
+      "terraform_name": "arp_cache_base_reachable"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "arp_cache_timeout",
+      "terraform_name": "arp_cache_timeout"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcp_relay_agents_packets",
+      "terraform_name": "dhcp_relay_agents_packets"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcp_relay_hop_count",
+      "terraform_name": "dhcp_relay_hop_count"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcp_relay_max_size",
+      "terraform_name": "dhcp_relay_max_size"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcp_relay_port",
+      "terraform_name": "dhcp_relay_port"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_hostfile_update",
+      "terraform_name": "dhcpd_hostfile_update"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_use_dnsmasq",
+      "terraform_name": "dhcpd_use_dnsmasq"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dnsmasq_all_servers",
+      "terraform_name": "dnsmasq_all_servers"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "echo_server",
+      "terraform_name": "echo_server"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "terraform_name": "key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "lldp_enable_all",
+      "terraform_name": "lldp_enable_all"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mdns_enabled",
+      "terraform_name": "mdns_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mss_clamp_mss",
+      "terraform_name": "mss_clamp_mss"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "AutoSpeedtest",
+      "terraform_name": "autospeedtest__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "AutoSpeedtest",
+      "terraform_name": "autospeedtest_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "AutoSpeedtest",
+      "terraform_name": "autospeedtest_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "AutoSpeedtest",
+      "terraform_name": "autospeedtest_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "AutoSpeedtest",
+      "terraform_name": "autospeedtest_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "AutoSpeedtest",
+      "terraform_name": "autospeedtest_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "AutoSpeedtest",
+      "terraform_name": "autospeedtest_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Country",
+      "terraform_name": "country__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Country",
+      "terraform_name": "country_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Country",
+      "terraform_name": "country_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Country",
+      "terraform_name": "country_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Country",
+      "terraform_name": "country_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Country",
+      "terraform_name": "country_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Country",
+      "terraform_name": "country_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Doh",
+      "terraform_name": "doh__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Doh",
+      "terraform_name": "doh_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Doh",
+      "terraform_name": "doh_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Doh",
+      "terraform_name": "doh_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Doh",
+      "terraform_name": "doh_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Doh",
+      "terraform_name": "doh_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Doh",
+      "terraform_name": "doh_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Dpi",
+      "terraform_name": "dpi__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Dpi",
+      "terraform_name": "dpi_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Dpi",
+      "terraform_name": "dpi_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Dpi",
+      "terraform_name": "dpi_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Dpi",
+      "terraform_name": "dpi_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Dpi",
+      "terraform_name": "dpi_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Dpi",
+      "terraform_name": "dpi_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "failover_querier",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_failover_querier"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "fastleave_for_network_ids",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_fastleave_for_network_ids"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "flood_known_protocols",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_flood_known_protocols"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "flood_unknown_multicast_for_network_ids",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_flood_unknown_multicast_for_network_ids"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "forward_unknown_mcast_router_ports",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_forward_unknown_mcast_router_ports"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "primary_querier",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_primary_querier"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "querier_addresses",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_querier_addresses"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "querier_mode",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_querier_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "querier_subscription_mode",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_querier_subscription_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "querier_switches",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_querier_switches"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "subscription_mode",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_subscription_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "switches",
+      "structural_source": "IgmpSnooping",
+      "terraform_name": "igmpsnooping_switches"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Ips",
+      "terraform_name": "ips__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Ips",
+      "terraform_name": "ips_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Ips",
+      "terraform_name": "ips_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Ips",
+      "terraform_name": "ips_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Ips",
+      "terraform_name": "ips_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Ips",
+      "terraform_name": "ips_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Ips",
+      "terraform_name": "ips_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "IpsSuppression",
+      "terraform_name": "ipssuppression__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "IpsSuppression",
+      "terraform_name": "ipssuppression_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "IpsSuppression",
+      "terraform_name": "ipssuppression_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "IpsSuppression",
+      "terraform_name": "ipssuppression_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "IpsSuppression",
+      "terraform_name": "ipssuppression_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "IpsSuppression",
+      "terraform_name": "ipssuppression_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "IpsSuppression",
+      "terraform_name": "ipssuppression_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Lcm",
+      "terraform_name": "lcm__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Lcm",
+      "terraform_name": "lcm_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Lcm",
+      "terraform_name": "lcm_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Lcm",
+      "terraform_name": "lcm_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Lcm",
+      "terraform_name": "lcm_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Lcm",
+      "terraform_name": "lcm_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Lcm",
+      "terraform_name": "lcm_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "alert_enabled",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_alert_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "boot_sound",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_boot_sound"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "led_enabled",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_led_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "outdoor_mode_enabled",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_outdoor_mode_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_mgmt_key",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_x_mgmt_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_ssh_bind_wildcard",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_x_ssh_bind_wildcard"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_ssh_md5passwd",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_x_ssh_md5passwd"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_ssh_sha512passwd",
+      "structural_source": "Mgmt",
+      "terraform_name": "mgmt_x_ssh_sha512passwd"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "NetworkOptimization",
+      "terraform_name": "networkoptimization__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "NetworkOptimization",
+      "terraform_name": "networkoptimization_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "NetworkOptimization",
+      "terraform_name": "networkoptimization_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "NetworkOptimization",
+      "terraform_name": "networkoptimization_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "NetworkOptimization",
+      "terraform_name": "networkoptimization_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "NetworkOptimization",
+      "terraform_name": "networkoptimization_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "NetworkOptimization",
+      "terraform_name": "networkoptimization_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Ntp",
+      "terraform_name": "ntp__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Ntp",
+      "terraform_name": "ntp_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Ntp",
+      "terraform_name": "ntp_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Ntp",
+      "terraform_name": "ntp_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Ntp",
+      "terraform_name": "ntp_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Ntp",
+      "terraform_name": "ntp_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Ntp",
+      "terraform_name": "ntp_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Radius",
+      "terraform_name": "radius__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Radius",
+      "terraform_name": "radius_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Radius",
+      "terraform_name": "radius_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Radius",
+      "terraform_name": "radius_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Radius",
+      "terraform_name": "radius_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "configure_whole_network",
+      "structural_source": "Radius",
+      "terraform_name": "radius_configure_whole_network"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Radius",
+      "terraform_name": "radius_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Radius",
+      "terraform_name": "radius_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "tunneled_reply",
+      "structural_source": "Radius",
+      "terraform_name": "radius_tunneled_reply"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "structural_source": "Rsyslogd",
+      "terraform_name": "rsyslogd__id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "structural_source": "Rsyslogd",
+      "terraform_name": "rsyslogd_attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "structural_source": "Rsyslogd",
+      "terraform_name": "rsyslogd_attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "structural_source": "Rsyslogd",
+      "terraform_name": "rsyslogd_attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "structural_source": "Rsyslogd",
+      "terraform_name": "rsyslogd_attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "key",
+      "structural_source": "Rsyslogd",
+      "terraform_name": "rsyslogd_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "structural_source": "Rsyslogd",
+      "terraform_name": "rsyslogd_site_id"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "setting",
+  "groupings": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "USG settings."
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable broadcast ping."
+          },
+          "disposition": "managed",
+          "structural_name": "broadcast_ping",
+          "terraform_name": "broadcast_ping"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "DNS verification settings."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Domain for DNS verification."
+              },
+              "disposition": "managed",
+              "structural_name": "domain",
+              "terraform_name": "domain"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Primary DNS server."
+              },
+              "disposition": "managed",
+              "structural_name": "primary_dns_server",
+              "terraform_name": "primary_dns_server"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Secondary DNS server."
+              },
+              "disposition": "managed",
+              "structural_name": "secondary_dns_server",
+              "terraform_name": "secondary_dns_server"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Setting preference: auto or manual."
+              },
+              "disposition": "managed",
+              "structural_name": "setting_preference",
+              "terraform_name": "setting_preference"
+            }
+          ],
+          "structural_name": "dns_verification",
+          "terraform_name": "dns_verification",
+          "terraform_type": "single_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable FTP module."
+          },
+          "disposition": "managed",
+          "structural_name": "ftp_module",
+          "terraform_name": "ftp_module"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Geo IP filtering action: block or allow."
+          },
+          "disposition": "managed",
+          "structural_name": "action",
+          "structural_source": "SettingUsgGeoIPFiltering",
+          "terraform_name": "geo_ip_filtering_block"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Comma-separated list of country codes for geo IP filtering."
+          },
+          "disposition": "managed",
+          "structural_name": "countries",
+          "structural_source": "SettingUsgGeoIPFiltering",
+          "terraform_name": "geo_ip_filtering_countries"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable geo IP filtering."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "SettingUsgGeoIPFiltering",
+          "terraform_name": "geo_ip_filtering_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Geo IP filtering traffic direction: both, ingress, or egress."
+          },
+          "disposition": "managed",
+          "structural_name": "traffic_direction",
+          "structural_source": "SettingUsgGeoIPFiltering",
+          "terraform_name": "geo_ip_filtering_traffic_direction"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable GRE module."
+          },
+          "disposition": "managed",
+          "structural_name": "gre_module",
+          "terraform_name": "gre_module"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable H.323 module."
+          },
+          "disposition": "managed",
+          "structural_name": "h323_module",
+          "terraform_name": "h323_module"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "ICMP connection timeout, as a Go duration string (e.g. `30s`, `1m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "icmp_timeout",
+          "terraform_name": "icmp_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "MSS clamping mode: auto, custom, or disabled."
+          },
+          "disposition": "managed",
+          "structural_name": "mss_clamp",
+          "terraform_name": "mss_clamp"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable hardware offload for accounting."
+          },
+          "disposition": "managed",
+          "structural_name": "offload_accounting",
+          "terraform_name": "offload_accounting"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable hardware offload for L2 blocking."
+          },
+          "disposition": "managed",
+          "structural_name": "offload_l2_blocking",
+          "terraform_name": "offload_l2_blocking"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable hardware offload for scheduling."
+          },
+          "disposition": "managed",
+          "structural_name": "offload_sch",
+          "terraform_name": "offload_sch"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "Other connections timeout, as a Go duration string (e.g. `600s`, `10m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "other_timeout",
+          "terraform_name": "other_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable PPTP module."
+          },
+          "disposition": "managed",
+          "structural_name": "pptp_module",
+          "terraform_name": "pptp_module"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Accept ICMP redirects."
+          },
+          "disposition": "managed",
+          "structural_name": "receive_redirects",
+          "terraform_name": "receive_redirects"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Send ICMP redirects."
+          },
+          "disposition": "managed",
+          "structural_name": "send_redirects",
+          "terraform_name": "send_redirects"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable SIP module."
+          },
+          "disposition": "managed",
+          "structural_name": "sip_module",
+          "terraform_name": "sip_module"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable SYN cookies."
+          },
+          "disposition": "managed",
+          "structural_name": "syn_cookies",
+          "terraform_name": "syn_cookies"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "TCP close timeout, as a Go duration string (e.g. `10s`)."
+          },
+          "disposition": "managed",
+          "structural_name": "tcp_close_timeout",
+          "terraform_name": "tcp_close_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "TCP close wait timeout, as a Go duration string (e.g. `60s`, `1m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "tcp_close_wait_timeout",
+          "terraform_name": "tcp_close_wait_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "TCP established connection timeout, as a Go duration string (e.g. `7440s`, `2h4m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "tcp_established_timeout",
+          "terraform_name": "tcp_established_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "TCP fin wait timeout, as a Go duration string (e.g. `120s`, `2m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "tcp_fin_wait_timeout",
+          "terraform_name": "tcp_fin_wait_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "TCP last ACK timeout, as a Go duration string (e.g. `30s`)."
+          },
+          "disposition": "managed",
+          "structural_name": "tcp_last_ack_timeout",
+          "terraform_name": "tcp_last_ack_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "TCP SYN received timeout, as a Go duration string (e.g. `60s`, `1m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "tcp_syn_recv_timeout",
+          "terraform_name": "tcp_syn_recv_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "TCP SYN sent timeout, as a Go duration string (e.g. `120s`, `2m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "tcp_syn_sent_timeout",
+          "terraform_name": "tcp_syn_sent_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "TCP time wait timeout, as a Go duration string (e.g. `120s`, `2m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "tcp_time_wait_timeout",
+          "terraform_name": "tcp_time_wait_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable TFTP module."
+          },
+          "disposition": "managed",
+          "structural_name": "tftp_module",
+          "terraform_name": "tftp_module"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Timeout setting preference: auto or manual."
+          },
+          "disposition": "managed",
+          "structural_name": "timeout_setting_preference",
+          "terraform_name": "timeout_setting_preference"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "UDP other timeout, as a Go duration string (e.g. `30s`)."
+          },
+          "disposition": "managed",
+          "structural_name": "udp_other_timeout",
+          "terraform_name": "udp_other_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "UDP stream timeout, as a Go duration string (e.g. `180s`, `3m`)."
+          },
+          "disposition": "managed",
+          "structural_name": "udp_stream_timeout",
+          "terraform_name": "udp_stream_timeout",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Unbind WAN monitors."
+          },
+          "disposition": "managed",
+          "structural_name": "unbind_wan_monitors",
+          "terraform_name": "unbind_wan_monitors"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable UPnP."
+          },
+          "disposition": "managed",
+          "structural_name": "upnp_enabled",
+          "terraform_name": "upnp_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable UPnP NAT-PMP."
+          },
+          "disposition": "managed",
+          "structural_name": "upnp_nat_pmp_enabled",
+          "terraform_name": "upnp_nat_pmp_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable UPnP secure mode."
+          },
+          "disposition": "managed",
+          "structural_name": "upnp_secure_mode",
+          "terraform_name": "upnp_secure_mode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "UPnP WAN interface (e.g., WAN, WAN2)."
+          },
+          "disposition": "managed",
+          "structural_name": "upnp_wan_interface",
+          "terraform_name": "upnp_wan_interface"
+        }
+      ],
+      "terraform_name": "usg",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Remote syslog (rsyslogd) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Logged facilities (e.g. `device`, `client`, `firewall_default_policy`, `triggers`, `updates`, `admin_activity`, `critical`, `security_detections`, `vpn`).",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "contents",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "contents",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Enable debug logging."
+          },
+          "disposition": "managed",
+          "structural_name": "debug",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "debug"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Whether remote syslog is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Remote syslog server IP address."
+          },
+          "disposition": "managed",
+          "structural_name": "ip",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "ip"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Log all available facilities."
+          },
+          "disposition": "managed",
+          "structural_name": "log_all_contents",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "log_all_contents"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Whether netconsole logging is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "netconsole_enabled",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "netconsole_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Netconsole host."
+          },
+          "disposition": "managed",
+          "structural_name": "netconsole_host",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "netconsole_host"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Netconsole port (1-65535).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1, 65535)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "netconsole_port",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "netconsole_port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Remote syslog server port (1-65535).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1, 65535)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "port",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Also log this controller's events."
+          },
+          "disposition": "managed",
+          "structural_name": "this_controller",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "this_controller"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Only send this controller's logs over an encrypted channel."
+          },
+          "disposition": "managed",
+          "structural_name": "this_controller_encrypted_only",
+          "structural_source": "Rsyslogd",
+          "terraform_name": "this_controller_encrypted_only"
+        }
+      ],
+      "terraform_name": "syslog",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Advanced filtering mode: manual or disabled.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"manual\", \"disabled\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "advanced_filtering_preference",
+          "structural_source": "Ips",
+          "terraform_name": "advanced_filtering_preference"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Show a blocking page when content filtering blocks a request."
+          },
+          "disposition": "managed",
+          "structural_name": "content_filtering_blocking_page_enabled",
+          "structural_source": "Ips",
+          "terraform_name": "content_filtering_blocking_page_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Emerging Threats ruleset categories to enable (e.g. \"emerging-malware\", \"tor\", \"phishing\").",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "enabled_categories",
+          "structural_source": "Ips",
+          "terraform_name": "enabled_categories",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Network IDs to apply IPS inspection to.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "enabled_networks",
+          "structural_source": "Ips",
+          "terraform_name": "enabled_networks",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Honeypot IP addresses per network."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "IP address to use as a honeypot."
+              },
+              "disposition": "managed",
+              "structural_name": "ip_address",
+              "terraform_name": "ip_address"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Network ID this honeypot IP belongs to."
+              },
+              "disposition": "managed",
+              "structural_name": "network_id",
+              "terraform_name": "network_id"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "IP version: v4 or v6.",
+                "validators": [
+                  {
+                    "custom": {
+                      "imports": [
+                        {
+                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                        }
+                      ],
+                      "schema_definition": "stringvalidator.OneOf(\"v4\", \"v6\")"
+                    }
+                  }
+                ]
+              },
+              "disposition": "managed",
+              "structural_name": "version",
+              "terraform_name": "version"
+            }
+          ],
+          "structural_name": "honeypot",
+          "structural_source": "Ips",
+          "terraform_name": "honeypot",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable honeypot to detect internal port scans."
+          },
+          "disposition": "managed",
+          "structural_name": "honeypot_enabled",
+          "structural_source": "Ips",
+          "terraform_name": "honeypot_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IPS operating mode: ids (detect only), ips (detect and block), ipsInline, or disabled.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"ids\", \"ips\", \"ipsInline\", \"disabled\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "ips_mode",
+          "structural_source": "Ips",
+          "terraform_name": "ips_mode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use memory-optimized IPS ruleset (reduced rule set for low-memory devices)."
+          },
+          "disposition": "managed",
+          "structural_name": "memory_optimized",
+          "structural_source": "Ips",
+          "terraform_name": "memory_optimized"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Block BitTorrent traffic."
+          },
+          "disposition": "managed",
+          "structural_name": "restrict_torrents",
+          "structural_source": "Ips",
+          "terraform_name": "restrict_torrents"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IPS signature alert suppression entries \u2014 silence specific signatures or categories."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Alert suppression signature category."
+              },
+              "disposition": "managed",
+              "structural_name": "category",
+              "terraform_name": "category"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Signature Generator ID (GID)."
+              },
+              "disposition": "managed",
+              "structural_name": "gid",
+              "terraform_name": "gid"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Signature ID."
+              },
+              "disposition": "managed",
+              "structural_name": "id",
+              "terraform_name": "id"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Suppression signature name."
+              },
+              "disposition": "managed",
+              "structural_name": "signature",
+              "terraform_name": "signature"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Tracking specifications (used when `type` is `track`)."
+              },
+              "disposition": "managed",
+              "fields": [
+                {
+                  "attribute": {
+                    "computed_optional_required": "required",
+                    "description": "Match direction: both, src, or dest.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"both\", \"src\", \"dest\")"
+                        }
+                      }
+                    ]
+                  },
+                  "disposition": "managed",
+                  "structural_name": "direction",
+                  "terraform_name": "direction"
+                },
+                {
+                  "attribute": {
+                    "computed_optional_required": "required",
+                    "description": "Match mode: ip, subnet, or network.",
+                    "validators": [
+                      {
+                        "custom": {
+                          "imports": [
+                            {
+                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                            }
+                          ],
+                          "schema_definition": "stringvalidator.OneOf(\"ip\", \"subnet\", \"network\")"
+                        }
+                      }
+                    ]
+                  },
+                  "disposition": "managed",
+                  "structural_name": "mode",
+                  "terraform_name": "mode"
+                },
+                {
+                  "attribute": {
+                    "computed_optional_required": "required",
+                    "description": "IP address, CIDR subnet, or network ID to match."
+                  },
+                  "disposition": "managed",
+                  "structural_name": "value",
+                  "terraform_name": "value"
+                }
+              ],
+              "structural_name": "tracking",
+              "terraform_name": "tracking",
+              "terraform_type": "list_nested"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Suppression type: `all` (everywhere) or `track` (only the tracked sources/destinations).",
+                "validators": [
+                  {
+                    "custom": {
+                      "imports": [
+                        {
+                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                        }
+                      ],
+                      "schema_definition": "stringvalidator.OneOf(\"all\", \"track\")"
+                    }
+                  }
+                ]
+              },
+              "disposition": "managed",
+              "structural_name": "type",
+              "terraform_name": "type"
+            }
+          ],
+          "structural_name": "alerts",
+          "structural_source": "IpsSuppression",
+          "terraform_name": "suppression_alerts",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IPS suppression whitelist entries \u2014 sources/destinations to exclude from inspection."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Match direction: both, src, or dest.",
+                "validators": [
+                  {
+                    "custom": {
+                      "imports": [
+                        {
+                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                        }
+                      ],
+                      "schema_definition": "stringvalidator.OneOf(\"both\", \"src\", \"dest\")"
+                    }
+                  }
+                ]
+              },
+              "disposition": "managed",
+              "structural_name": "direction",
+              "terraform_name": "direction"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Match mode: ip, subnet, or network.",
+                "validators": [
+                  {
+                    "custom": {
+                      "imports": [
+                        {
+                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                        }
+                      ],
+                      "schema_definition": "stringvalidator.OneOf(\"ip\", \"subnet\", \"network\")"
+                    }
+                  }
+                ]
+              },
+              "disposition": "managed",
+              "structural_name": "mode",
+              "terraform_name": "mode"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "IP address, CIDR subnet, or network ID to whitelist."
+              },
+              "disposition": "managed",
+              "structural_name": "value",
+              "terraform_name": "value"
+            }
+          ],
+          "structural_name": "whitelist",
+          "structural_source": "IpsSuppression",
+          "terraform_name": "suppression_whitelist",
+          "terraform_type": "list_nested"
+        }
+      ],
+      "terraform_name": "ips",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "LCD/display (LCM) settings for devices with a screen.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Display brightness (1-100).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1, 100)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "brightness",
+          "structural_source": "Lcm",
+          "terraform_name": "brightness"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": true
+            },
+            "description": "Whether the device display is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Lcm",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Seconds of inactivity before the display turns off (10-3600).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(10, 3600)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "idle_timeout",
+          "structural_source": "Lcm",
+          "terraform_name": "idle_timeout"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Sync display settings across devices."
+          },
+          "disposition": "managed",
+          "structural_name": "sync",
+          "structural_source": "Lcm",
+          "terraform_name": "sync"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": true
+            },
+            "description": "Whether touch events on the display are enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "touch_event",
+          "structural_source": "Lcm",
+          "terraform_name": "touch_event"
+        }
+      ],
+      "terraform_name": "lcm",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "RADIUS settings."
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable RADIUS accounting."
+          },
+          "disposition": "managed",
+          "structural_name": "accounting_enabled",
+          "structural_source": "Radius",
+          "terraform_name": "accounting_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "RADIUS accounting port.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1, 65535)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "acct_port",
+          "structural_source": "Radius",
+          "terraform_name": "acct_port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "RADIUS authentication port.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1, 65535)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "auth_port",
+          "structural_source": "Radius",
+          "terraform_name": "auth_port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable the site's RADIUS server. A VPN server that authenticates against RADIUS (`unifi_vpn_server` with `openvpn` or `l2tp`) is rejected with `api.err.RadiusServerNotEnabled` while this is off."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Radius",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "description": "Interim update interval, as a Go duration string (e.g. `1h`, `3600s`)."
+          },
+          "disposition": "managed",
+          "structural_name": "interim_update_interval",
+          "structural_source": "Radius",
+          "terraform_name": "interim_update_interval",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "RADIUS shared secret.",
+            "sensitive": true,
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.LengthBetween(1, 48)"
+                }
+              },
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    },
+                    {
+                      "path": "regexp"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^[^\\\\\\ \"']+$`), \"must not contain backslashes, spaces, single quotes, or double quotes\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "x_secret",
+          "structural_source": "Radius",
+          "terraform_name": "secret"
+        }
+      ],
+      "terraform_name": "radius",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Encrypted DNS (DNS-over-HTTPS) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Custom DNS servers specified via DNS stamp."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "default": {
+                  "static": true
+                },
+                "description": "Enable this custom server. Defaults to true."
+              },
+              "disposition": "managed",
+              "structural_name": "enabled",
+              "terraform_name": "enabled"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "DNS stamp (sdns://) for the custom resolver."
+              },
+              "disposition": "managed",
+              "structural_name": "sdns_stamp",
+              "terraform_name": "sdns_stamp"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Human-readable name for this custom server."
+              },
+              "disposition": "managed",
+              "structural_name": "server_name",
+              "terraform_name": "server_name"
+            }
+          ],
+          "structural_name": "custom_servers",
+          "structural_source": "Doh",
+          "terraform_name": "custom_servers",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Predefined DNS provider names (e.g. \"cloudflare\", \"google\").",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "server_names",
+          "structural_source": "Doh",
+          "terraform_name": "server_names",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Encrypted DNS state: off, auto, manual, or custom.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"off\", \"auto\", \"manual\", \"custom\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "state",
+          "structural_source": "Doh",
+          "terraform_name": "state"
+        }
+      ],
+      "terraform_name": "doh",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Deep Packet Inspection (DPI) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Whether DPI is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Dpi",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Whether device fingerprinting is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "fingerprintingEnabled",
+          "structural_source": "Dpi",
+          "terraform_name": "fingerprinting_enabled"
+        }
+      ],
+      "terraform_name": "dpi",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Management settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable advanced features."
+          },
+          "disposition": "managed",
+          "structural_name": "advanced_feature_enabled",
+          "structural_source": "Mgmt",
+          "terraform_name": "advanced_feature_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Automatically upgrade device firmware."
+          },
+          "disposition": "managed",
+          "structural_name": "auto_upgrade",
+          "structural_source": "Mgmt",
+          "terraform_name": "auto_upgrade"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Hour of day (0-23) for automatic firmware upgrades.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(0, 23)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "auto_upgrade_hour",
+          "structural_source": "Mgmt",
+          "terraform_name": "auto_upgrade_hour"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable debug tools."
+          },
+          "disposition": "managed",
+          "structural_name": "debug_tools_enabled",
+          "structural_source": "Mgmt",
+          "terraform_name": "debug_tools_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable Direct Connect (remote access)."
+          },
+          "disposition": "managed",
+          "structural_name": "direct_connect_enabled",
+          "structural_source": "Mgmt",
+          "terraform_name": "direct_connect_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Allow SSH password authentication (in addition to keys)."
+          },
+          "disposition": "managed",
+          "structural_name": "x_ssh_auth_password_enabled",
+          "structural_source": "Mgmt",
+          "terraform_name": "ssh_auth_password_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable SSH authentication."
+          },
+          "disposition": "managed",
+          "structural_name": "x_ssh_enabled",
+          "structural_source": "Mgmt",
+          "terraform_name": "ssh_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "SSH keys."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Comment."
+              },
+              "disposition": "managed",
+              "structural_name": "comment",
+              "terraform_name": "comment"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Public SSH key."
+              },
+              "disposition": "managed",
+              "structural_name": "key",
+              "terraform_name": "key"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Name of SSH key."
+              },
+              "disposition": "managed",
+              "structural_name": "name",
+              "terraform_name": "name"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Type of SSH key, e.g. ssh-rsa."
+              },
+              "disposition": "managed",
+              "structural_name": "type",
+              "terraform_name": "type"
+            },
+            {
+              "disposition": "omitted",
+              "structural_name": "date",
+              "terraform_name": "date"
+            },
+            {
+              "disposition": "omitted",
+              "structural_name": "fingerprint",
+              "terraform_name": "fingerprint"
+            }
+          ],
+          "structural_name": "x_ssh_keys",
+          "structural_source": "Mgmt",
+          "terraform_name": "ssh_keys",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "SSH password for device access. Sensitive \u2014 the controller stores only a hash, so this value is kept from configuration and not read back.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_ssh_password",
+          "structural_source": "Mgmt",
+          "terraform_name": "ssh_password"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "SSH username for device access."
+          },
+          "disposition": "managed",
+          "structural_name": "x_ssh_username",
+          "structural_source": "Mgmt",
+          "terraform_name": "ssh_username"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable the UniFi Identity Provider."
+          },
+          "disposition": "managed",
+          "structural_name": "unifi_idp_enabled",
+          "structural_source": "Mgmt",
+          "terraform_name": "unifi_idp_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable WiFiman."
+          },
+          "disposition": "managed",
+          "structural_name": "wifiman_enabled",
+          "structural_source": "Mgmt",
+          "terraform_name": "wifiman_enabled"
+        }
+      ],
+      "terraform_name": "mgmt",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "NTP (time server) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Primary NTP server."
+          },
+          "disposition": "managed",
+          "structural_name": "ntp_server_1",
+          "structural_source": "Ntp",
+          "terraform_name": "ntp_server_1"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Second NTP server."
+          },
+          "disposition": "managed",
+          "structural_name": "ntp_server_2",
+          "structural_source": "Ntp",
+          "terraform_name": "ntp_server_2"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Third NTP server."
+          },
+          "disposition": "managed",
+          "structural_name": "ntp_server_3",
+          "structural_source": "Ntp",
+          "terraform_name": "ntp_server_3"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Fourth NTP server."
+          },
+          "disposition": "managed",
+          "structural_name": "ntp_server_4",
+          "structural_source": "Ntp",
+          "terraform_name": "ntp_server_4"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Configuration mode: `auto` or `manual`.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "setting_preference",
+          "structural_source": "Ntp",
+          "terraform_name": "setting_preference"
+        }
+      ],
+      "terraform_name": "ntp",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Regulatory country settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "Regulatory country code (ISO 3166-1 numeric)."
+          },
+          "disposition": "managed",
+          "structural_name": "code",
+          "structural_source": "Country",
+          "terraform_name": "code"
+        }
+      ],
+      "terraform_name": "country",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Periodic automated internet speed test settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Cron expression controlling when the speed test runs (e.g. `0 * * * *`)."
+          },
+          "disposition": "managed",
+          "structural_name": "cron_expr",
+          "structural_source": "AutoSpeedtest",
+          "terraform_name": "cron_expr"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Whether periodic automated speed tests are enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "AutoSpeedtest",
+          "terraform_name": "enabled"
+        }
+      ],
+      "terraform_name": "auto_speedtest",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates."
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Whether IGMP snooping is enabled for the site."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "IgmpSnooping",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IDs of the networks IGMP snooping applies to.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "network_ids",
+          "structural_source": "IgmpSnooping",
+          "terraform_name": "network_ids",
+          "terraform_type": "list"
+        }
+      ],
+      "terraform_name": "igmp_snooping",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Automated network optimization settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Whether automated network optimization is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "NetworkOptimization",
+          "terraform_name": "enabled"
+        }
+      ],
+      "terraform_name": "network_optimization",
+      "terraform_type": "single_nested"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "computed",
+      "generated": true,
+      "terraform_name": "id",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the settings with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_setting",
+  "source_specification_sha256": "2852da3cd988db70403be8a7539e9b26bfbf65a0f5171cacbd9f4fbdb46ce93e",
+  "surface_kind": "managed_resource"
+}

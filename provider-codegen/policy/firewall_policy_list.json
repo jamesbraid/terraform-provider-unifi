@@ -1,0 +1,175 @@
+{
+  "description": "List firewall policies in a site.",
+  "fields": [
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "terraform_name": "_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "action",
+      "terraform_name": "action"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "connection_state_type",
+      "terraform_name": "connection_state_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "connection_states",
+      "terraform_name": "connection_states"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "create_allow_respond",
+      "terraform_name": "create_allow_respond"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "description",
+      "terraform_name": "description"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "destination",
+      "terraform_name": "destination"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "icmp_typename",
+      "terraform_name": "icmp_typename"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "icmp_v6_typename",
+      "terraform_name": "icmp_v6_typename"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "index",
+      "terraform_name": "index"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ip_version",
+      "terraform_name": "ip_version"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "logging",
+      "terraform_name": "logging"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "match_ip_sec",
+      "terraform_name": "match_ip_sec"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "match_opposite_protocol",
+      "terraform_name": "match_opposite_protocol"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "predefined",
+      "terraform_name": "predefined"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "protocol",
+      "terraform_name": "protocol"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "schedule",
+      "terraform_name": "schedule"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "source",
+      "terraform_name": "source"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "firewall_policy",
+  "groupings": [
+    {
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `name`, `action`, `enabled`."
+          },
+          "disposition": "managed",
+          "invented": "The filter KEY: it holds the name of the field to select on, not that field's value. Nothing on the wire carries it. The listed resource has a field of the same name, and this member is still not bound to it -- the key names the field, the sibling value is what gets compared against it.",
+          "terraform_name": "name",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          },
+          "disposition": "managed",
+          "invented": "The filter VALUE: what the key's field is compared against. A term the practitioner writes, carried by no wire field.",
+          "terraform_name": "value",
+          "terraform_type": "string"
+        }
+      ],
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list firewall policies from."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    }
+  ],
+  "resource": "unifi_firewall_policy",
+  "source_specification_sha256": "1cb710f191516240f339f94e66e5b250ee80585bbe795c982cdedcc52d7ed722",
+  "surface_kind": "list_resource"
+}

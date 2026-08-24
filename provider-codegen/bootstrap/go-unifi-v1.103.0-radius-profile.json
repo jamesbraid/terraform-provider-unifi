@@ -1,0 +1,186 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "92a72eb60cace6022c32bda9c38d149d8c4696496cbe5fabaddb7abc4876a983"
+  },
+  "resource": {
+    "name": "unifi_radius_profile",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "accounting_enabled",
+        "type": "bool",
+        "go_name": "AccountingEnabled"
+      },
+      {
+        "name": "acct_servers",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "ip",
+            "type": "string",
+            "go_name": "IP"
+          },
+          {
+            "name": "port",
+            "type": "int64",
+            "go_name": "Port",
+            "pointer": true
+          },
+          {
+            "name": "x_secret",
+            "type": "string",
+            "secret_candidate": true,
+            "go_name": "Secret"
+          }
+        ],
+        "go_name": "AcctServers"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool",
+        "go_name": "Hidden"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string",
+        "go_name": "HiddenID"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool",
+        "go_name": "NoDelete"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool",
+        "go_name": "NoEdit"
+      },
+      {
+        "name": "auth_servers",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "ip",
+            "type": "string",
+            "go_name": "IP"
+          },
+          {
+            "name": "port",
+            "type": "int64",
+            "go_name": "Port",
+            "pointer": true
+          },
+          {
+            "name": "x_secret",
+            "type": "string",
+            "secret_candidate": true,
+            "go_name": "Secret"
+          }
+        ],
+        "go_name": "AuthServers"
+      },
+      {
+        "name": "interim_update_enabled",
+        "type": "bool",
+        "go_name": "InterimUpdateEnabled"
+      },
+      {
+        "name": "interim_update_interval",
+        "type": "int64",
+        "go_name": "InterimUpdateInterval",
+        "pointer": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "go_name": "Name"
+      },
+      {
+        "name": "site_id",
+        "type": "string",
+        "go_name": "SiteID"
+      },
+      {
+        "name": "tls_enabled",
+        "type": "bool",
+        "go_name": "TlsEnabled"
+      },
+      {
+        "name": "use_usg_acct_server",
+        "type": "bool",
+        "go_name": "UseUsgAcctServer"
+      },
+      {
+        "name": "use_usg_auth_server",
+        "type": "bool",
+        "go_name": "UseUsgAuthServer"
+      },
+      {
+        "name": "vlan_enabled",
+        "type": "bool",
+        "go_name": "VLANEnabled"
+      },
+      {
+        "name": "vlan_wlan_mode",
+        "type": "string",
+        "go_name": "VLANWLANMode"
+      },
+      {
+        "name": "x_ca_crts",
+        "type": "array<object>",
+        "fields": [
+          {
+            "name": "filename",
+            "type": "string",
+            "go_name": "Filename"
+          },
+          {
+            "name": "x_ca_crt",
+            "type": "string",
+            "secret_candidate": true,
+            "go_name": "CaCrt"
+          }
+        ],
+        "secret_candidate": true,
+        "go_name": "CaCrts"
+      },
+      {
+        "name": "x_client_crt",
+        "type": "string",
+        "secret_candidate": true,
+        "go_name": "ClientCrt"
+      },
+      {
+        "name": "x_client_crt_filename",
+        "type": "string",
+        "secret_candidate": true,
+        "go_name": "ClientCrtFilename"
+      },
+      {
+        "name": "x_client_private_key",
+        "type": "string",
+        "secret_candidate": true,
+        "go_name": "ClientPrivateKey"
+      },
+      {
+        "name": "x_client_private_key_filename",
+        "type": "string",
+        "secret_candidate": true,
+        "go_name": "ClientPrivateKeyFilename"
+      },
+      {
+        "name": "x_client_private_key_password",
+        "type": "string",
+        "secret_candidate": true,
+        "go_name": "ClientPrivateKeyPassword"
+      }
+    ]
+  }
+}

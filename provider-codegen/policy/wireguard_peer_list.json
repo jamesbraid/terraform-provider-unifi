@@ -1,0 +1,67 @@
+{
+  "description": "List WireGuard peers of a WireGuard server network.",
+  "fields": [],
+  "omitted": [
+    "_id",
+    "allowed_ips",
+    "interface_ip",
+    "name",
+    "network_id",
+    "public_key"
+  ],
+  "format_version": 1,
+  "generator_name": "wireguard_peer",
+  "groupings": [
+    {
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `name`."
+          },
+          "disposition": "managed",
+          "invented": "The filter KEY: it holds the name of the field to select on, not that field's value. Nothing on the wire carries it. The listed resource has a field of the same name, and this member is still not bound to it -- the key names the field, the sibling value is what gets compared against it.",
+          "terraform_name": "name",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          },
+          "disposition": "managed",
+          "invented": "The filter VALUE: what the key's field is compared against. A term the practitioner writes, carried by no wire field.",
+          "terraform_name": "value",
+          "terraform_type": "string"
+        }
+      ],
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The ID of the WireGuard server network to list peers from."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "network_id",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site the WireGuard server belongs to."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    }
+  ],
+  "resource": "unifi_wireguard_peer",
+  "source_specification_sha256": "2eb0fe60a1ae7821ab6f7b9b4690bd5cd92d29d8c2a980451ce194f1b5402420",
+  "surface_kind": "list_resource"
+}

@@ -1,0 +1,28 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "182e17fe96d0cbdeaf16ee5ad39844ad89d746dee867919f5a1e40070e90a293"
+  },
+  "resource": {
+    "name": "unifi_site",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "desc",
+        "type": "string",
+        "go_name": "Description"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "go_name": "Name"
+      }
+    ]
+  }
+}

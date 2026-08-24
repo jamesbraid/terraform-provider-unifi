@@ -1,0 +1,88 @@
+{
+  "description": "Data source for access point groups.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of this AP group."
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "List of device MAC addresses in the AP group.",
+        "element_type": {
+          "string": {}
+        }
+      },
+      "disposition": "managed",
+      "structural_name": "device_macs",
+      "terraform_name": "device_macs",
+      "terraform_type": "list"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "for_wlanconf",
+      "terraform_name": "for_wlanconf"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the AP group to look up."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "ap_group_ds",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the AP group is associated with."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_ap_group",
+  "source_specification_sha256": "9d94efb09cb4d1112a4004ea3659f88921bc71e4781a27565abba694bf0bfa66",
+  "surface_kind": "data_source"
+}

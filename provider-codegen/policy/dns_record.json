@@ -1,0 +1,250 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "resource": "unifi_dns_record",
+  "generator_name": "dns_record",
+  "source_specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad",
+  "description": "Manages DNS record settings for different providers.",
+  "fields": [
+    {
+      "structural_name": "enabled",
+      "semantic_id": "unifi.network.dns_record.field.enabled",
+      "terraform_name": "enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Whether the DNS record is enabled."
+      }
+    },
+    {
+      "structural_name": "key",
+      "semantic_id": "unifi.network.dns_record.field.key",
+      "terraform_name": "name",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The key of the DNS record.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "port",
+      "semantic_id": "unifi.network.dns_record.field.port",
+      "terraform_name": "port",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The port of the DNS record.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(0, 65535)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "priority",
+      "semantic_id": "unifi.network.dns_record.field.priority",
+      "terraform_name": "priority",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The priority of the DNS record.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.AtLeast(0)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "record_type",
+      "semantic_id": "unifi.network.dns_record.field.record_type",
+      "terraform_name": "record_type",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"A\", \"AAAA\", \"CNAME\", \"MX\", \"TXT\", \"SRV\", \"PTR\", \"NS\")"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "ttl",
+      "semantic_id": "unifi.network.dns_record.field.ttl",
+      "terraform_name": "ttl",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+          },
+          "type": "timetypes.GoDurationType{}",
+          "value_type": "timetypes.GoDuration"
+        },
+        "description": "The TTL of the DNS record, as a Go duration string (e.g. `1h`, `300s`). The controller stores this value as whole seconds in the range 0–65535s (≈18h12m15s).",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                },
+                {
+                  "path": "time"
+                }
+              ],
+              "schema_definition": "validators.GoDurationBetween(0, 65535*time.Second)"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                },
+                {
+                  "path": "time"
+                }
+              ],
+              "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "value",
+      "semantic_id": "unifi.network.dns_record.field.value",
+      "terraform_name": "value",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The value of the DNS record."
+      }
+    },
+    {
+      "structural_name": "weight",
+      "semantic_id": "unifi.network.dns_record.field.weight",
+      "terraform_name": "weight",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The weight of the DNS record.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.AtLeast(0)"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "id",
+      "terraform_type": "string",
+      "disposition": "computed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the DNS record.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the DNS record with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

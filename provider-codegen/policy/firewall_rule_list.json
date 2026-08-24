@@ -1,0 +1,230 @@
+{
+  "description": "List firewall rules in a site.",
+  "fields": [
+    {
+      "disposition": "omitted",
+      "structural_name": "_id",
+      "terraform_name": "_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "action",
+      "terraform_name": "action"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dst_address",
+      "terraform_name": "dst_address"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dst_address_ipv6",
+      "terraform_name": "dst_address_ipv6"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dst_firewallgroup_ids",
+      "terraform_name": "dst_firewallgroup_ids"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dst_networkconf_id",
+      "terraform_name": "dst_networkconf_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dst_networkconf_type",
+      "terraform_name": "dst_networkconf_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dst_port",
+      "terraform_name": "dst_port"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "icmp_typename",
+      "terraform_name": "icmp_typename"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "icmpv6_typename",
+      "terraform_name": "icmpv6_typename"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec",
+      "terraform_name": "ipsec"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "logging",
+      "terraform_name": "logging"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "protocol",
+      "terraform_name": "protocol"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "protocol_match_excepted",
+      "terraform_name": "protocol_match_excepted"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "protocol_v6",
+      "terraform_name": "protocol_v6"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "rule_index",
+      "terraform_name": "rule_index"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ruleset",
+      "terraform_name": "ruleset"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "src_address",
+      "terraform_name": "src_address"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "src_address_ipv6",
+      "terraform_name": "src_address_ipv6"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "src_firewallgroup_ids",
+      "terraform_name": "src_firewallgroup_ids"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "src_mac_address",
+      "terraform_name": "src_mac_address"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "src_networkconf_id",
+      "terraform_name": "src_networkconf_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "src_networkconf_type",
+      "terraform_name": "src_networkconf_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "src_port",
+      "terraform_name": "src_port"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "state_established",
+      "terraform_name": "state_established"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "state_invalid",
+      "terraform_name": "state_invalid"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "state_new",
+      "terraform_name": "state_new"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "state_related",
+      "terraform_name": "state_related"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "firewall_rule",
+  "groupings": [
+    {
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `name`, `ruleset`, `action`, `enabled`."
+          },
+          "disposition": "managed",
+          "invented": "The filter KEY: it holds the name of the field to select on, not that field's value. Nothing on the wire carries it. The listed resource has a field of the same name, and this member is still not bound to it -- the key names the field, the sibling value is what gets compared against it.",
+          "terraform_name": "name",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          },
+          "disposition": "managed",
+          "invented": "The filter VALUE: what the key's field is compared against. A term the practitioner writes, carried by no wire field.",
+          "terraform_name": "value",
+          "terraform_type": "string"
+        }
+      ],
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list firewall rules from."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    }
+  ],
+  "resource": "unifi_firewall_rule",
+  "source_specification_sha256": "c17e65d7f2af345c7c25855b9c8bd891a3728631902462f15bcd4301a4a669e1",
+  "surface_kind": "list_resource"
+}

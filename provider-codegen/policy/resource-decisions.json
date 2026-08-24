@@ -1,0 +1,256 @@
+{
+  "_comment": [
+    "HAND-WRITTEN. Every value here is a decision no generated artifact carries.",
+    "Not under provider-codegen/generated/, which is machine output nobody edits.",
+    "",
+    "A key is a Terraform type name as the provider registers it. An entry is",
+    "required for every surface served by internal/resourcekit and forbidden for",
+    "every surface that is not -- both directions, because data cannot fail to",
+    "compile the way a missing closure would. It can only fail to be there, and a",
+    "one-directional check lets a surface drop out of generation while everything",
+    "reports green.",
+    "",
+    "sdk_type is the go-unifi struct. It derives the method names too:",
+    "Create<T>, Get<T>, Update<T>Fields, Delete<T>, List<T>. What it cannot",
+    "derive is WHETHER a masked update exists -- BGPConfig, Site and",
+    "WireGuardPeer have only a whole-object Update, and a surface on those is",
+    "not representable here yet.",
+    "",
+    "duration_units keys a wire field to its unit. 74 conversions in the tree use",
+    "seconds and 3 use minutes, all three on wlan, so a default would be silently",
+    "wrong on exactly one surface."
+  ],
+  "surfaces": {
+    "unifi_ap_group": {
+      "sdk_type": "APGroup",
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      }
+    },
+    "unifi_client": {
+      "sdk_type": "Client"
+    },
+    "unifi_client_qos_rate": {
+      "sdk_type": "ClientGroup",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_device": {
+      "sdk_type": "Device",
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "mac",
+          "model",
+          "type"
+        ]
+      }
+    },
+    "unifi_dns_record": {
+      "sdk_type": "DNSRecord",
+      "duration_units": {
+        "ttl": "time.Second"
+      },
+      "list": {
+        "display_field": "Key",
+        "filters": [
+          "name",
+          "record_type",
+          "enabled"
+        ]
+      },
+      "schema_version": 1
+    },
+    "unifi_firewall_group": {
+      "sdk_type": "FirewallGroup",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "type"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_firewall_policy": {
+      "sdk_type": "FirewallPolicy",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "action",
+          "enabled"
+        ]
+      },
+      "schema_version": 1
+    },
+    "unifi_firewall_rule": {
+      "sdk_type": "FirewallRule",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "ruleset",
+          "action",
+          "enabled"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_firewall_zone": {
+      "sdk_type": "FirewallZone",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_network": {
+      "sdk_type": "Network",
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "purpose"
+        ]
+      }
+    },
+    "unifi_port_forward": {
+      "sdk_type": "PortForward",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "enabled"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_port_profile": {
+      "sdk_type": "PortProfile",
+      "duration_units": {
+        "dot1x_idle_timeout": "time.Second"
+      },
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 1
+    },
+    "unifi_radius_profile": {
+      "sdk_type": "RADIUSProfile",
+      "duration_units": {
+        "interim_update_interval": "time.Second"
+      },
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 1
+    },
+    "unifi_radius_user": {
+      "sdk_type": "Account",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_site_to_site_vpn": {
+      "sdk_type": "Network",
+      "duration_units": {
+        "ipsec_ike_lifetime": "time.Second",
+        "ipsec_esp_lifetime": "time.Second"
+      },
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 1
+    },
+    "unifi_static_route": {
+      "sdk_type": "Routing",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "type"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_traffic_route": {
+      "sdk_type": "TrafficRoute",
+      "duration_units": {},
+      "list": {
+        "display_field": "Description",
+        "filters": [
+          "description",
+          "enabled",
+          "matching_target",
+          "network_id"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_vpn_client": {
+      "sdk_type": "Network",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
+    "unifi_vpn_server": {
+      "sdk_type": "Network",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": []
+      },
+      "schema_version": 0
+    },
+    "unifi_wlan": {
+      "sdk_type": "WLAN",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name",
+          "enabled"
+        ]
+      },
+      "schema_version": 1
+    }
+  }
+}

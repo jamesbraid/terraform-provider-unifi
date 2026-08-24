@@ -1,0 +1,110 @@
+{
+  "format_version": 1,
+  "surface_kind": "list_resource",
+  "resource": "unifi_firewall_zone",
+  "generator_name": "firewall_zone",
+  "source_specification_sha256": "9f534c5182ba4b375d85ef11510270a5f0d390f1f377598ce1d80bbad49649de",
+  "description": "List firewall zones in a site.",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "_id",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "cloud_template",
+      "terraform_name": "cloud_template",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "default_zone",
+      "terraform_name": "default_zone",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "external_id",
+      "terraform_name": "external_id",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "network_ids",
+      "terraform_name": "network_ids",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "site_id",
+      "terraform_name": "site_id",
+      "disposition": "omitted"
+    },
+    {
+      "structural_name": "zone_key",
+      "terraform_name": "zone_key",
+      "disposition": "omitted"
+    }
+  ],
+  "groupings": [
+    {
+      "terraform_name": "filter",
+      "terraform_type": "list_nested_block",
+      "members": [
+        {
+          "terraform_name": "name",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "invented": "A filter key is a query term the practitioner writes; no controller field corresponds to it.",
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The name of the filter to apply. Supported values are: `name`."
+          }
+        },
+        {
+          "terraform_name": "value",
+          "terraform_type": "string",
+          "disposition": "managed",
+          "invented": "The value half of a query term, likewise invented by the provider.",
+          "attribute": {
+            "computed_optional_required": "required",
+            "description": "The value to filter by."
+          }
+        }
+      ]
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The name of the site to list firewall zones from."
+      }
+    }
+  ]
+}

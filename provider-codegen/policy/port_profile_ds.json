@@ -1,0 +1,348 @@
+{
+  "description": "Data source for port profiles.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of this port profile."
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "autoneg",
+      "terraform_name": "autoneg"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dot1x_ctrl",
+      "terraform_name": "dot1x_ctrl"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dot1x_idle_timeout",
+      "terraform_name": "dot1x_idle_timeout"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "eee_enabled",
+      "terraform_name": "eee_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "egress_rate_limit_kbps",
+      "terraform_name": "egress_rate_limit_kbps"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "egress_rate_limit_kbps_enabled",
+      "terraform_name": "egress_rate_limit_kbps_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The controller-facing network exclusion set used by Custom mode.",
+        "element_type": {
+          "string": {}
+        }
+      },
+      "disposition": "managed",
+      "structural_name": "excluded_networkconf_ids",
+      "terraform_name": "excluded_networkconf_ids",
+      "terraform_type": "set"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "fec_mode",
+      "terraform_name": "fec_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "flow_control_enabled",
+      "terraform_name": "flow_control_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The forwarding mode of the port profile. One of `all`, `native`, `customize` or `disabled`."
+      },
+      "disposition": "managed",
+      "structural_name": "forward",
+      "terraform_name": "forward"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "full_duplex",
+      "terraform_name": "full_duplex"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "isolation",
+      "terraform_name": "isolation"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "link_debounce",
+      "terraform_name": "link_debounce"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "link_debounce_auto",
+      "terraform_name": "link_debounce_auto"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "lldpmed_enabled",
+      "terraform_name": "lldpmed_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "lldpmed_notify_enabled",
+      "terraform_name": "lldpmed_notify_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "multicast_router_mode",
+      "terraform_name": "multicast_router_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "multicast_router_networkconf_ids",
+      "terraform_name": "multicast_router_networkconf_ids"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the port profile to look up."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the native (untagged) network for the port profile."
+      },
+      "disposition": "managed",
+      "structural_name": "native_networkconf_id",
+      "terraform_name": "native_networkconf_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "op_mode",
+      "terraform_name": "op_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "poe_mode",
+      "terraform_name": "poe_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "port_keepalive_enabled",
+      "terraform_name": "port_keepalive_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "port_security_enabled",
+      "terraform_name": "port_security_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "port_security_mac_address",
+      "terraform_name": "port_security_mac_address"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "precision_time_protocol_enabled",
+      "terraform_name": "precision_time_protocol_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "priority_queue1_level",
+      "terraform_name": "priority_queue1_level"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "priority_queue2_level",
+      "terraform_name": "priority_queue2_level"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "priority_queue3_level",
+      "terraform_name": "priority_queue3_level"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "priority_queue4_level",
+      "terraform_name": "priority_queue4_level"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "qos_profile",
+      "terraform_name": "qos_profile"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "speed",
+      "terraform_name": "speed"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stable_port_enabled",
+      "terraform_name": "stable_port_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_bcast_enabled",
+      "terraform_name": "stormctrl_bcast_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_bcast_level",
+      "terraform_name": "stormctrl_bcast_level"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_bcast_rate",
+      "terraform_name": "stormctrl_bcast_rate"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_mcast_enabled",
+      "terraform_name": "stormctrl_mcast_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_mcast_level",
+      "terraform_name": "stormctrl_mcast_level"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_mcast_rate",
+      "terraform_name": "stormctrl_mcast_rate"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_type",
+      "terraform_name": "stormctrl_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_ucast_enabled",
+      "terraform_name": "stormctrl_ucast_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_ucast_level",
+      "terraform_name": "stormctrl_ucast_level"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stormctrl_ucast_rate",
+      "terraform_name": "stormctrl_ucast_rate"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stp_bpdu_guard_enabled",
+      "terraform_name": "stp_bpdu_guard_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stp_edge_state",
+      "terraform_name": "stp_edge_state"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stp_port_mode",
+      "terraform_name": "stp_port_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "stp_uplink",
+      "terraform_name": "stp_uplink"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom)."
+      },
+      "disposition": "managed",
+      "structural_name": "tagged_vlan_mgmt",
+      "terraform_name": "tagged_vlan_mgmt"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "voice_networkconf_id",
+      "terraform_name": "voice_networkconf_id"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "port_profile_ds",
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the port profile is associated with."
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The actual set of tagged VLAN network IDs after applying the controller mode and exclusions.",
+        "element_type": {
+          "string": {}
+        }
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "tagged_networkconf_ids",
+      "terraform_type": "set"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_port_profile",
+  "source_specification_sha256": "a6b5f260c00d3f2cf636bf72a8d7d7a0d29ff5973d3a06fe9fd93a638288a85b",
+  "surface_kind": "data_source"
+}

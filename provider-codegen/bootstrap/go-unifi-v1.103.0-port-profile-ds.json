@@ -1,0 +1,397 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/ubiquiti-community/go-unifi",
+    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
+    "specification_sha256": "a6b5f260c00d3f2cf636bf72a8d7d7a0d29ff5973d3a06fe9fd93a638288a85b"
+  },
+  "resource": {
+    "name": "unifi_port_profile",
+    "fields": [
+      {
+        "name": "_id",
+        "type": "string",
+        "go_name": "ID"
+      },
+      {
+        "name": "attr_hidden",
+        "type": "bool",
+        "go_name": "Hidden"
+      },
+      {
+        "name": "attr_hidden_id",
+        "type": "string",
+        "go_name": "HiddenID"
+      },
+      {
+        "name": "attr_no_delete",
+        "type": "bool",
+        "go_name": "NoDelete"
+      },
+      {
+        "name": "attr_no_edit",
+        "type": "bool",
+        "go_name": "NoEdit"
+      },
+      {
+        "name": "autoneg",
+        "type": "bool",
+        "go_name": "Autoneg"
+      },
+      {
+        "name": "dot1x_ctrl",
+        "type": "string",
+        "go_name": "Dot1XCtrl"
+      },
+      {
+        "name": "dot1x_idle_timeout",
+        "type": "int64",
+        "go_name": "Dot1XIDleTimeout",
+        "pointer": true
+      },
+      {
+        "name": "eee_enabled",
+        "type": "bool",
+        "go_name": "EeeEnabled"
+      },
+      {
+        "name": "egress_rate_limit_kbps",
+        "type": "int64",
+        "go_name": "EgressRateLimitKbps",
+        "pointer": true
+      },
+      {
+        "name": "egress_rate_limit_kbps_enabled",
+        "type": "bool",
+        "go_name": "EgressRateLimitKbpsEnabled"
+      },
+      {
+        "name": "excluded_networkconf_ids",
+        "type": "array<string>",
+        "go_name": "ExcludedNetworkIDs"
+      },
+      {
+        "name": "fec_mode",
+        "type": "string",
+        "go_name": "FecMode"
+      },
+      {
+        "name": "flow_control_enabled",
+        "type": "bool",
+        "go_name": "FlowControlEnabled"
+      },
+      {
+        "name": "forward",
+        "type": "string",
+        "go_name": "Forward"
+      },
+      {
+        "name": "full_duplex",
+        "type": "bool",
+        "go_name": "FullDuplex"
+      },
+      {
+        "name": "isolation",
+        "type": "bool",
+        "go_name": "Isolation"
+      },
+      {
+        "name": "link_debounce",
+        "type": "int64",
+        "go_name": "LinkDebounce",
+        "pointer": true
+      },
+      {
+        "name": "link_debounce_auto",
+        "type": "bool",
+        "go_name": "LinkDebounceAuto"
+      },
+      {
+        "name": "lldpmed_enabled",
+        "type": "bool",
+        "go_name": "LldpmedEnabled"
+      },
+      {
+        "name": "lldpmed_notify_enabled",
+        "type": "bool",
+        "go_name": "LldpmedNotifyEnabled"
+      },
+      {
+        "name": "multicast_router_mode",
+        "type": "string",
+        "go_name": "MulticastRouterMode"
+      },
+      {
+        "name": "multicast_router_networkconf_ids",
+        "type": "array<string>",
+        "go_name": "MulticastRouterNetworkIDs"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "go_name": "Name"
+      },
+      {
+        "name": "native_networkconf_id",
+        "type": "string",
+        "go_name": "NATiveNetworkID"
+      },
+      {
+        "name": "op_mode",
+        "type": "string",
+        "go_name": "OpMode"
+      },
+      {
+        "name": "poe_mode",
+        "type": "string",
+        "go_name": "PoeMode"
+      },
+      {
+        "name": "port_keepalive_enabled",
+        "type": "bool",
+        "go_name": "PortKeepaliveEnabled"
+      },
+      {
+        "name": "port_security_enabled",
+        "type": "bool",
+        "go_name": "PortSecurityEnabled"
+      },
+      {
+        "name": "port_security_mac_address",
+        "type": "array<string>",
+        "go_name": "PortSecurityMACAddress"
+      },
+      {
+        "name": "precision_time_protocol_enabled",
+        "type": "bool",
+        "go_name": "PrecisionTimeProtocolEnabled"
+      },
+      {
+        "name": "priority_queue1_level",
+        "type": "int64",
+        "go_name": "PriorityQueue1Level",
+        "pointer": true
+      },
+      {
+        "name": "priority_queue2_level",
+        "type": "int64",
+        "go_name": "PriorityQueue2Level",
+        "pointer": true
+      },
+      {
+        "name": "priority_queue3_level",
+        "type": "int64",
+        "go_name": "PriorityQueue3Level",
+        "pointer": true
+      },
+      {
+        "name": "priority_queue4_level",
+        "type": "int64",
+        "go_name": "PriorityQueue4Level",
+        "pointer": true
+      },
+      {
+        "name": "qos_profile",
+        "type": "object",
+        "fields": [
+          {
+            "name": "qos_policies",
+            "type": "array<object>",
+            "fields": [
+              {
+                "name": "qos_marking",
+                "type": "object",
+                "fields": [
+                  {
+                    "name": "cos_code",
+                    "type": "int64",
+                    "go_name": "CosCode",
+                    "pointer": true
+                  },
+                  {
+                    "name": "dscp_code",
+                    "type": "int64",
+                    "go_name": "DscpCode",
+                    "pointer": true
+                  },
+                  {
+                    "name": "ip_precedence_code",
+                    "type": "int64",
+                    "go_name": "IPPrecedenceCode",
+                    "pointer": true
+                  },
+                  {
+                    "name": "queue",
+                    "type": "int64",
+                    "go_name": "Queue",
+                    "pointer": true
+                  }
+                ],
+                "go_name": "QOSMarking",
+                "pointer": true
+              },
+              {
+                "name": "qos_matching",
+                "type": "object",
+                "fields": [
+                  {
+                    "name": "cos_code",
+                    "type": "int64",
+                    "go_name": "CosCode",
+                    "pointer": true
+                  },
+                  {
+                    "name": "dscp_code",
+                    "type": "int64",
+                    "go_name": "DscpCode",
+                    "pointer": true
+                  },
+                  {
+                    "name": "dst_port",
+                    "type": "int64",
+                    "go_name": "DstPort",
+                    "pointer": true
+                  },
+                  {
+                    "name": "ip_precedence_code",
+                    "type": "int64",
+                    "go_name": "IPPrecedenceCode",
+                    "pointer": true
+                  },
+                  {
+                    "name": "protocol",
+                    "type": "string",
+                    "go_name": "Protocol"
+                  },
+                  {
+                    "name": "src_port",
+                    "type": "int64",
+                    "go_name": "SrcPort",
+                    "pointer": true
+                  }
+                ],
+                "go_name": "QOSMatching",
+                "pointer": true
+              }
+            ],
+            "go_name": "QOSPolicies"
+          },
+          {
+            "name": "qos_profile_mode",
+            "type": "string",
+            "go_name": "QOSProfileMode"
+          }
+        ],
+        "go_name": "QOSProfile",
+        "pointer": true
+      },
+      {
+        "name": "setting_preference",
+        "type": "string",
+        "go_name": "SettingPreference"
+      },
+      {
+        "name": "site_id",
+        "type": "string",
+        "go_name": "SiteID"
+      },
+      {
+        "name": "speed",
+        "type": "int64",
+        "go_name": "Speed",
+        "pointer": true
+      },
+      {
+        "name": "stable_port_enabled",
+        "type": "bool",
+        "go_name": "StablePortEnabled"
+      },
+      {
+        "name": "stormctrl_bcast_enabled",
+        "type": "bool",
+        "go_name": "StormctrlBroadcastastEnabled"
+      },
+      {
+        "name": "stormctrl_bcast_level",
+        "type": "int64",
+        "go_name": "StormctrlBroadcastastLevel",
+        "pointer": true
+      },
+      {
+        "name": "stormctrl_bcast_rate",
+        "type": "int64",
+        "go_name": "StormctrlBroadcastastRate",
+        "pointer": true
+      },
+      {
+        "name": "stormctrl_mcast_enabled",
+        "type": "bool",
+        "go_name": "StormctrlMcastEnabled"
+      },
+      {
+        "name": "stormctrl_mcast_level",
+        "type": "int64",
+        "go_name": "StormctrlMcastLevel",
+        "pointer": true
+      },
+      {
+        "name": "stormctrl_mcast_rate",
+        "type": "int64",
+        "go_name": "StormctrlMcastRate",
+        "pointer": true
+      },
+      {
+        "name": "stormctrl_type",
+        "type": "string",
+        "go_name": "StormctrlType"
+      },
+      {
+        "name": "stormctrl_ucast_enabled",
+        "type": "bool",
+        "go_name": "StormctrlUcastEnabled"
+      },
+      {
+        "name": "stormctrl_ucast_level",
+        "type": "int64",
+        "go_name": "StormctrlUcastLevel",
+        "pointer": true
+      },
+      {
+        "name": "stormctrl_ucast_rate",
+        "type": "int64",
+        "go_name": "StormctrlUcastRate",
+        "pointer": true
+      },
+      {
+        "name": "stp_bpdu_guard_enabled",
+        "type": "bool",
+        "go_name": "StpBpduGuardEnabled"
+      },
+      {
+        "name": "stp_edge_state",
+        "type": "string",
+        "go_name": "StpEdgeState"
+      },
+      {
+        "name": "stp_port_mode",
+        "type": "bool",
+        "go_name": "StpPortMode"
+      },
+      {
+        "name": "stp_uplink",
+        "type": "bool",
+        "go_name": "StpUplink"
+      },
+      {
+        "name": "tagged_vlan_mgmt",
+        "type": "string",
+        "go_name": "TaggedVLANMgmt"
+      },
+      {
+        "name": "voice_networkconf_id",
+        "type": "string",
+        "go_name": "VoiceNetworkID"
+      }
+    ]
+  }
+}

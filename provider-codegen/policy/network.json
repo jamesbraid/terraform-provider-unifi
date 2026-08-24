@@ -1,0 +1,2532 @@
+{
+  "claims": [
+    {
+      "mapping": {
+        "from_api": "networkVLANFromNetwork",
+        "kind": "dedicated",
+        "to_api": "networkVLANToNetwork"
+      },
+      "reason": "one released vlan number over the observed number AND its enable flag: vlan_enabled is set from whether vlan is configured at all, so neither field alone is the attribute's source",
+      "structural_names": [
+        "vlan",
+        "vlan_enabled"
+      ],
+      "terraform_members": [
+        "vlan"
+      ]
+    },
+    {
+      "mapping": {
+        "from_api": "networkPurposeFromNetwork",
+        "kind": "dedicated",
+        "to_api": "networkPurposeToNetwork"
+      },
+      "reason": "two released attributes over one observed field: purpose is honoured when configured and then OVERWRITTEN to vlan-only when third_party_gateway is true, and on read both are computed from the one field",
+      "structural_names": [
+        "purpose"
+      ],
+      "terraform_members": [
+        "purpose",
+        "third_party_gateway"
+      ]
+    },
+    {
+      "mapping": {
+        "from_api": "networkDHCPGuardingServersFromNetwork",
+        "kind": "dedicated",
+        "to_api": "networkDHCPGuardingServersToNetwork"
+      },
+      "reason": "one released list distributed positionally into three observed slots, and read back by collecting the non-empty ones; the write does not clear the slots it does not use",
+      "structural_names": [
+        "dhcpd_ip_1",
+        "dhcpd_ip_2",
+        "dhcpd_ip_3"
+      ],
+      "terraform_members": [
+        "dhcp_guarding.servers"
+      ]
+    },
+    {
+      "mapping": {
+        "from_api": "networkDHCPServerDNSFromNetwork",
+        "kind": "dedicated",
+        "to_api": "networkDHCPServerDNSToNetwork"
+      },
+      "reason": "one released list distributed positionally into four observed slots, clearing the trailing ones it does not use and truncating a fifth value, and read back by collecting the non-empty ones",
+      "structural_names": [
+        "dhcpd_dns_1",
+        "dhcpd_dns_2",
+        "dhcpd_dns_3",
+        "dhcpd_dns_4"
+      ],
+      "terraform_members": [
+        "dhcp_server.dns_servers"
+      ]
+    },
+    {
+      "mapping": {
+        "from_api": "networkDHCPV6ServerDNSFromNetwork",
+        "kind": "dedicated",
+        "to_api": "networkDHCPV6ServerDNSToNetwork"
+      },
+      "reason": "one released list distributed positionally into four observed slots and read back by collecting the non-empty ones",
+      "structural_names": [
+        "dhcpdv6_dns_1",
+        "dhcpdv6_dns_2",
+        "dhcpdv6_dns_3",
+        "dhcpdv6_dns_4"
+      ],
+      "terraform_members": [
+        "dhcp_v6_server.dns_servers"
+      ]
+    },
+    {
+      "mapping": {
+        "from_api": "networkWINSFromNetwork",
+        "kind": "dedicated",
+        "to_api": "networkWINSToNetwork"
+      },
+      "reason": "one released object over an enable flag and two address slots, the addresses distributed positionally and read back compacted",
+      "structural_names": [
+        "dhcpd_wins_enabled",
+        "dhcpd_wins_1",
+        "dhcpd_wins_2"
+      ],
+      "terraform_members": [
+        "dhcp_server.wins"
+      ]
+    },
+    {
+      "mapping": {
+        "from_api": "networkBootFromNetwork",
+        "kind": "dedicated",
+        "to_api": "networkBootToNetwork"
+      },
+      "reason": "one released object grouping three flat observed fields the wire keeps apart",
+      "structural_names": [
+        "dhcpd_boot_enabled",
+        "dhcpd_boot_server",
+        "dhcpd_boot_filename"
+      ],
+      "terraform_members": [
+        "dhcp_server.boot"
+      ]
+    }
+  ],
+  "description": "`unifi_network` manages networks (VLANs) in the UniFi controller.",
+  "fields": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the network.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "_id",
+      "terraform_name": "id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden",
+      "terraform_name": "attr_hidden"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_hidden_id",
+      "terraform_name": "attr_hidden_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_delete",
+      "terraform_name": "attr_no_delete"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "attr_no_edit",
+      "terraform_name": "attr_no_edit"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Specifies whether auto-scaling is enabled."
+      },
+      "disposition": "managed",
+      "structural_name": "auto_scale_enabled",
+      "terraform_name": "auto_scale"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_gateway",
+      "terraform_name": "dhcpd_gateway"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_mac_1",
+      "terraform_name": "dhcpd_mac_1"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_mac_2",
+      "terraform_name": "dhcpd_mac_2"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_mac_3",
+      "terraform_name": "dhcpd_mac_3"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_ntp_1",
+      "terraform_name": "dhcpd_ntp_1"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_ntp_2",
+      "terraform_name": "dhcpd_ntp_2"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpd_time_offset",
+      "terraform_name": "dhcpd_time_offset"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dhcpdv6_allow_slaac",
+      "terraform_name": "dhcpdv6_allow_slaac"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The domain name for the network.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                }
+              ],
+              "schema_definition": "validators.DomainNameValidator()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "domain_name",
+      "terraform_name": "domain_name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dpi_enabled",
+      "terraform_name": "dpi_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "dpigroup_id",
+      "terraform_name": "dpigroup_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Specifies whether the network is enabled."
+      },
+      "disposition": "managed",
+      "structural_name": "enabled",
+      "terraform_name": "enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "exposed_to_site_vpn",
+      "terraform_name": "exposed_to_site_vpn"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "firewall_zone_id",
+      "terraform_name": "firewall_zone_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "gateway_device",
+      "terraform_name": "gateway_device"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "default"
+        },
+        "description": "The gateway type. Must be one of `default` or `switch`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"default\", \"switch\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "gateway_type",
+      "terraform_name": "gateway_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_fastleave",
+      "terraform_name": "igmp_fastleave"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_flood_unknown_multicast",
+      "terraform_name": "igmp_flood_unknown_multicast"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_groupmembership",
+      "terraform_name": "igmp_groupmembership"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_maxresponse",
+      "terraform_name": "igmp_maxresponse"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_mcrtrexpiretime",
+      "terraform_name": "igmp_mcrtrexpiretime"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_proxy_downstream_networkconf_ids",
+      "terraform_name": "igmp_proxy_downstream_networkconf_ids"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_proxy_for",
+      "terraform_name": "igmp_proxy_for"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_proxy_upstream",
+      "terraform_name": "igmp_proxy_upstream"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_querier_switches",
+      "terraform_name": "igmp_querier_switches"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether IGMP snooping is enabled."
+      },
+      "disposition": "managed",
+      "structural_name": "igmp_snooping",
+      "terraform_name": "igmp_snooping"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "igmp_supression",
+      "terraform_name": "igmp_supression"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "interface_mtu",
+      "terraform_name": "interface_mtu"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "interface_mtu_enabled",
+      "terraform_name": "interface_mtu_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Specifies whether internet access is enabled."
+      },
+      "disposition": "managed",
+      "structural_name": "internet_access_enabled",
+      "terraform_name": "internet_access"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "List of IP aliases for the network.",
+        "element_type": {
+          "string": {}
+        },
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                }
+              ],
+              "schema_definition": "listplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ip_aliases",
+      "terraform_name": "ip_aliases",
+      "terraform_type": "list"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
+          },
+          "type": "cidrtypes.IPv4PrefixType{}",
+          "value_type": "cidrtypes.IPv4Prefix"
+        },
+        "description": "The network's gateway IP and prefix in CIDR notation. The host portion is the gateway address the controller assigns \u2014 it need not be the first usable address: `10.0.10.1/24` uses gateway `10.0.10.1`, while `10.0.10.254/24` uses gateway `10.0.10.254` on the same subnet. Optional: it is not required for `vlan_only` networks (`third_party_gateway = true`), where the UniFi controller does not manage the subnet."
+      },
+      "disposition": "managed",
+      "structural_name": "ip_subnet",
+      "terraform_name": "subnet"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_dh_group",
+      "terraform_name": "ipsec_dh_group"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_dynamic_routing",
+      "terraform_name": "ipsec_dynamic_routing"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_encryption",
+      "terraform_name": "ipsec_encryption"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_esp_dh_group",
+      "terraform_name": "ipsec_esp_dh_group"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_esp_encryption",
+      "terraform_name": "ipsec_esp_encryption"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_esp_hash",
+      "terraform_name": "ipsec_esp_hash"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_esp_lifetime",
+      "terraform_name": "ipsec_esp_lifetime"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_hash",
+      "terraform_name": "ipsec_hash"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_ike_dh_group",
+      "terraform_name": "ipsec_ike_dh_group"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_ike_encryption",
+      "terraform_name": "ipsec_ike_encryption"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_ike_hash",
+      "terraform_name": "ipsec_ike_hash"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_ike_lifetime",
+      "terraform_name": "ipsec_ike_lifetime"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_interface",
+      "terraform_name": "ipsec_interface"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_key_exchange",
+      "terraform_name": "ipsec_key_exchange"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_local_identifier",
+      "terraform_name": "ipsec_local_identifier"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_local_identifier_enabled",
+      "terraform_name": "ipsec_local_identifier_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_local_ip",
+      "terraform_name": "ipsec_local_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_peer_ip",
+      "terraform_name": "ipsec_peer_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_pfs",
+      "terraform_name": "ipsec_pfs"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_profile",
+      "terraform_name": "ipsec_profile"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_remote_identifier",
+      "terraform_name": "ipsec_remote_identifier"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_remote_identifier_enabled",
+      "terraform_name": "ipsec_remote_identifier_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_separate_ikev2_networks",
+      "terraform_name": "ipsec_separate_ikev2_networks"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_tunnel_ip",
+      "terraform_name": "ipsec_tunnel_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipsec_tunnel_ip_enabled",
+      "terraform_name": "ipsec_tunnel_ip_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipv6_aliases",
+      "terraform_name": "ipv6_aliases_unused",
+      "terraform_type": "list"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "How clients on this network obtain an IPv6 address (UI: Networks \u2192 IPv6 \u2192 Client Address Assignment). One of `slaac` (SLAAC only), `dhcpv6` (DHCPv6 only), or `slaac-dhcpv6` (both). Computed from the controller when not set.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"slaac\", \"dhcpv6\", \"slaac-dhcpv6\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_client_address_assignment",
+      "terraform_name": "ipv6_client_address_assignment"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"none\", \"pd\", \"static\")"
+            }
+          }
+        ],
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_interface_type",
+      "terraform_name": "ipv6_interface_type"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Specifies whether automatic prefix ID assignment is enabled for IPv6 Prefix Delegation.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_pd_auto_prefixid_enabled",
+      "terraform_name": "ipv6_pd_auto_prefixid_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The IPv6 Prefix Delegation WAN interface (e.g., `wan`, `wan2`)."
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_pd_interface",
+      "terraform_name": "ipv6_pd_interface"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The IPv6 Prefix Delegation prefix ID (hex string, e.g., `0`, `1a`).",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_pd_prefixid",
+      "terraform_name": "ipv6_pd_prefixid"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The start of the IPv6 Prefix Delegation range (e.g. `::2`). Required together with `ipv6_pd_stop` when `ipv6_interface_type` is `pd`, otherwise the controller rejects the network with `api.err.InvalidIpv6Addr`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_pd_start",
+      "terraform_name": "ipv6_pd_start"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The end of the IPv6 Prefix Delegation range (e.g. `::7d1`). Required together with `ipv6_pd_start` when `ipv6_interface_type` is `pd`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_pd_stop",
+      "terraform_name": "ipv6_pd_stop"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Specifies whether IPv6 Router Advertisement (RA) is enabled.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_ra_enabled",
+      "terraform_name": "ipv6_ra"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+          },
+          "type": "timetypes.GoDurationType{}",
+          "value_type": "timetypes.GoDuration"
+        },
+        "description": "The IPv6 Router Advertisement preferred lifetime, as a Go duration string (e.g. `14400s`, `4h`). Must be a whole number of seconds between `0s` and `31536000s` (1 year).",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                },
+                {
+                  "path": "time"
+                }
+              ],
+              "schema_definition": "validators.GoDurationBetween(0, 31536000*time.Second)"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                },
+                {
+                  "path": "time"
+                }
+              ],
+              "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_ra_preferred_lifetime",
+      "terraform_name": "ipv6_ra_preferred_lifetime",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The IPv6 Router Advertisement priority. Must be one of `high`, `medium`, or `low`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"high\", \"medium\", \"low\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_ra_priority",
+      "terraform_name": "ipv6_ra_priority"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "custom_type": {
+          "import": {
+            "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+          },
+          "type": "timetypes.GoDurationType{}",
+          "value_type": "timetypes.GoDuration"
+        },
+        "description": "The IPv6 Router Advertisement valid lifetime, as a Go duration string (e.g. `86400s`, `24h`). Must be a whole number of seconds between `0s` and `31536000s` (1 year).",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                },
+                {
+                  "path": "time"
+                }
+              ],
+              "schema_definition": "validators.GoDurationBetween(0, 31536000*time.Second)"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                },
+                {
+                  "path": "time"
+                }
+              ],
+              "schema_definition": "validators.GoDurationMultipleOf(time.Second)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_ra_valid_lifetime",
+      "terraform_name": "ipv6_ra_valid_lifetime",
+      "terraform_type": "string"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipv6_setting_preference",
+      "terraform_name": "ipv6_setting_preference"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipv6_single_network_interface",
+      "terraform_name": "ipv6_single_network_interface"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "ipv6_subnet",
+      "terraform_name": "ipv6_static_subnet"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "ipv6_wan_delegation_type",
+      "terraform_name": "ipv6_wan_delegation_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "is_nat",
+      "terraform_name": "is_nat"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "l2tp_allow_weak_ciphers",
+      "terraform_name": "l2tp_allow_weak_ciphers"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "l2tp_interface",
+      "terraform_name": "l2tp_interface"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "l2tp_local_wan_ip",
+      "terraform_name": "l2tp_local_wan_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "l3_interface_type",
+      "terraform_name": "l3_interface_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "local_port",
+      "terraform_name": "local_port"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Set `false` to take the network off the LTE backup link. This is read back from the controller rather than defaulted: the controller sets it automatically, and a static `true` default stamped a network the controller held as `false` back to `true` on any plan that omitted the attribute.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "lte_lan_enabled",
+      "terraform_name": "lte_lan"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mac_override",
+      "terraform_name": "mac_override"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mac_override_enabled",
+      "terraform_name": "mac_override_enabled"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Specifies whether mDNS is enabled. This is read back from the controller rather than defaulted: some controllers (notably UniFi OS gateways) ignore `mdns_enabled` at create/update time and always store `false`, so forcing a `true` default produced a \"provider produced inconsistent result after apply\" error.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "mdns_enabled",
+      "terraform_name": "multicast_dns"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mss_clamp",
+      "terraform_name": "mss_clamp"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mss_clamp_ipv6",
+      "terraform_name": "mss_clamp_ipv6"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mss_clamp_mss",
+      "terraform_name": "mss_clamp_mss"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "mss_clamp_mss_ipv6",
+      "terraform_name": "mss_clamp_mss_ipv6"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The name of the network."
+      },
+      "disposition": "managed",
+      "structural_name": "name",
+      "terraform_name": "name"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "List of NAT outbound IP addresses.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                }
+              ],
+              "schema_definition": "listplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "fields": [
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "The IP address."
+          },
+          "disposition": "managed",
+          "structural_name": "ip_address",
+          "terraform_name": "ip_address"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "The IP address pool.",
+            "element_type": {
+              "string": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "ip_address_pool",
+          "terraform_name": "ip_address_pool",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "The mode."
+          },
+          "disposition": "managed",
+          "structural_name": "mode",
+          "terraform_name": "mode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "The WAN network group."
+          },
+          "disposition": "managed",
+          "structural_name": "wan_network_group",
+          "terraform_name": "wan_network_group"
+        }
+      ],
+      "structural_name": "nat_outbound_ip_addresses",
+      "terraform_name": "nat_outbound_ip_addresses",
+      "terraform_type": "list_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Specifies whether network isolation is enabled."
+      },
+      "disposition": "managed",
+      "structural_name": "network_isolation_enabled",
+      "terraform_name": "network_isolation"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "networkgroup",
+      "terraform_name": "networkgroup"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_configuration",
+      "terraform_name": "openvpn_configuration"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_configuration_filename",
+      "terraform_name": "openvpn_configuration_filename"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_encryption_cipher",
+      "terraform_name": "openvpn_encryption_cipher"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_interface",
+      "terraform_name": "openvpn_interface"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_local_address",
+      "terraform_name": "openvpn_local_address"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_local_port",
+      "terraform_name": "openvpn_local_port"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_local_wan_ip",
+      "terraform_name": "openvpn_local_wan_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_mode",
+      "terraform_name": "openvpn_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_remote_address",
+      "terraform_name": "openvpn_remote_address"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_remote_host",
+      "terraform_name": "openvpn_remote_host"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_remote_port",
+      "terraform_name": "openvpn_remote_port"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "openvpn_username",
+      "terraform_name": "openvpn_username"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "pptpc_require_mppe",
+      "terraform_name": "pptpc_require_mppe"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "pptpc_route_distance",
+      "terraform_name": "pptpc_route_distance"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "pptpc_server_ip",
+      "terraform_name": "pptpc_server_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "pptpc_username",
+      "terraform_name": "pptpc_username"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "priority",
+      "terraform_name": "priority"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "radiusprofile_id",
+      "terraform_name": "radiusprofile_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "remote_site_id",
+      "terraform_name": "remote_site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "remote_site_subnets",
+      "terraform_name": "remote_site_subnets"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "remote_vpn_dynamic_subnets_enabled",
+      "terraform_name": "remote_vpn_dynamic_subnets_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "remote_vpn_subnets",
+      "terraform_name": "remote_vpn_subnets"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "report_wan_event",
+      "terraform_name": "report_wan_event"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "require_mschapv2",
+      "terraform_name": "require_mschapv2"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "route_distance",
+      "terraform_name": "route_distance"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "routed_lag_idx",
+      "terraform_name": "routed_lag_idx"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "routed_port_idx",
+      "terraform_name": "routed_port_idx"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "sdwan_remote_site_id",
+      "terraform_name": "sdwan_remote_site_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Setting preference. Must be one of `auto` or `manual`.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "single_network_lan",
+      "terraform_name": "single_network_lan"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "site_id",
+      "terraform_name": "site_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_policy_enabled",
+      "terraform_name": "uid_policy_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_policy_name",
+      "terraform_name": "uid_policy_name"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_public_gateway_port",
+      "terraform_name": "uid_public_gateway_port"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_traffic_rules_allowed_ips_and_hostnames",
+      "terraform_name": "uid_traffic_rules_allowed_ips_and_hostnames"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_traffic_rules_enabled",
+      "terraform_name": "uid_traffic_rules_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_vpn_custom_routing",
+      "terraform_name": "uid_vpn_custom_routing"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_vpn_default_dns_suffix",
+      "terraform_name": "uid_vpn_default_dns_suffix"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_vpn_masquerade_enabled",
+      "terraform_name": "uid_vpn_masquerade_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_vpn_max_connection_time_seconds",
+      "terraform_name": "uid_vpn_max_connection_time_seconds"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_vpn_sync_public_ip",
+      "terraform_name": "uid_vpn_sync_public_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_vpn_type",
+      "terraform_name": "uid_vpn_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "uid_workspace_url",
+      "terraform_name": "uid_workspace_url"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "upnp_enabled",
+      "terraform_name": "upnp_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "upnp_lan_enabled",
+      "terraform_name": "upnp_lan_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "upnp_nat_pmp_enabled",
+      "terraform_name": "upnp_nat_pmp_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "upnp_secure_mode",
+      "terraform_name": "upnp_secure_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "upnp_wan_interface",
+      "terraform_name": "upnp_wan_interface"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "usergroup_id",
+      "terraform_name": "usergroup_id"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vpn_binding_mode",
+      "terraform_name": "vpn_binding_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vpn_client_configuration_remote_ip_override",
+      "terraform_name": "vpn_client_configuration_remote_ip_override"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vpn_client_configuration_remote_ip_override_enabled",
+      "terraform_name": "vpn_client_configuration_remote_ip_override_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vpn_client_default_route",
+      "terraform_name": "vpn_client_default_route"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vpn_client_pull_dns",
+      "terraform_name": "vpn_client_pull_dns"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vpn_protocol",
+      "terraform_name": "vpn_protocol"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vpn_type",
+      "terraform_name": "vpn_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vrrp_ip_subnet_gw1",
+      "terraform_name": "vrrp_ip_subnet_gw1"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vrrp_ip_subnet_gw2",
+      "terraform_name": "vrrp_ip_subnet_gw2"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "vrrp_vrid",
+      "terraform_name": "vrrp_vrid"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dhcp_cos",
+      "terraform_name": "wan_dhcp_cos"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dhcp_options",
+      "terraform_name": "wan_dhcp_options"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dhcpv6_cos",
+      "terraform_name": "wan_dhcpv6_cos"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dhcpv6_options",
+      "terraform_name": "wan_dhcpv6_options"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dhcpv6_pd_size",
+      "terraform_name": "wan_dhcpv6_pd_size"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dhcpv6_pd_size_auto",
+      "terraform_name": "wan_dhcpv6_pd_size_auto"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dns1",
+      "terraform_name": "wan_dns1"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dns2",
+      "terraform_name": "wan_dns2"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dns3",
+      "terraform_name": "wan_dns3"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dns4",
+      "terraform_name": "wan_dns4"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dns_preference",
+      "terraform_name": "wan_dns_preference"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dslite_remote_host",
+      "terraform_name": "wan_dslite_remote_host"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_dslite_remote_host_auto",
+      "terraform_name": "wan_dslite_remote_host_auto"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_egress_qos",
+      "terraform_name": "wan_egress_qos"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_egress_qos_enabled",
+      "terraform_name": "wan_egress_qos_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_failover_priority",
+      "terraform_name": "wan_failover_priority"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_gateway",
+      "terraform_name": "wan_gateway"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_gateway_v6",
+      "terraform_name": "wan_gateway_v6"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_ip",
+      "terraform_name": "wan_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_ip_aliases",
+      "terraform_name": "wan_ip_aliases"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_ipv6",
+      "terraform_name": "wan_ipv6"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_ipv6_dns1",
+      "terraform_name": "wan_ipv6_dns1"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_ipv6_dns2",
+      "terraform_name": "wan_ipv6_dns2"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_ipv6_dns_preference",
+      "terraform_name": "wan_ipv6_dns_preference"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_load_balance_type",
+      "terraform_name": "wan_load_balance_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_load_balance_weight",
+      "terraform_name": "wan_load_balance_weight"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_netmask",
+      "terraform_name": "wan_netmask"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_networkgroup",
+      "terraform_name": "wan_networkgroup"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_pppoe_password_enabled",
+      "terraform_name": "wan_pppoe_password_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_pppoe_username_enabled",
+      "terraform_name": "wan_pppoe_username_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_prefixlen",
+      "terraform_name": "wan_prefixlen"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_provider_capabilities",
+      "terraform_name": "wan_provider_capabilities"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_sla",
+      "terraform_name": "wan_sla"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_smartq_down_rate",
+      "terraform_name": "wan_smartq_down_rate"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_smartq_enabled",
+      "terraform_name": "wan_smartq_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_smartq_up_rate",
+      "terraform_name": "wan_smartq_up_rate"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_type",
+      "terraform_name": "wan_type"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_type_v6",
+      "terraform_name": "wan_type_v6"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_username",
+      "terraform_name": "wan_username"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_vlan",
+      "terraform_name": "wan_vlan"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wan_vlan_enabled",
+      "terraform_name": "wan_vlan_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_client_configuration_file",
+      "terraform_name": "wireguard_client_configuration_file"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_client_configuration_filename",
+      "terraform_name": "wireguard_client_configuration_filename"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_client_mode",
+      "terraform_name": "wireguard_client_mode"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_client_peer_ip",
+      "terraform_name": "wireguard_client_peer_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_client_peer_port",
+      "terraform_name": "wireguard_client_peer_port"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_client_peer_public_key",
+      "terraform_name": "wireguard_client_peer_public_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_client_preshared_key",
+      "terraform_name": "wireguard_client_preshared_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_client_preshared_key_enabled",
+      "terraform_name": "wireguard_client_preshared_key_enabled"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_interface",
+      "terraform_name": "wireguard_interface"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_interface_binding_mode_ip_version",
+      "terraform_name": "wireguard_interface_binding_mode_ip_version"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_local_wan_ip",
+      "terraform_name": "wireguard_local_wan_ip"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "wireguard_public_key",
+      "terraform_name": "wireguard_public_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_auth_key",
+      "terraform_name": "x_auth_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_ca_crt",
+      "terraform_name": "x_ca_crt"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_ca_key",
+      "terraform_name": "x_ca_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_dh_key",
+      "terraform_name": "x_dh_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_ipsec_pre_shared_key",
+      "terraform_name": "x_ipsec_pre_shared_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_openvpn_password",
+      "terraform_name": "x_openvpn_password"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_openvpn_shared_secret_key",
+      "terraform_name": "x_openvpn_shared_secret_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_pptpc_password",
+      "terraform_name": "x_pptpc_password"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_server_crt",
+      "terraform_name": "x_server_crt"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_server_key",
+      "terraform_name": "x_server_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_shared_client_crt",
+      "terraform_name": "x_shared_client_crt"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_shared_client_key",
+      "terraform_name": "x_shared_client_key"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_wan_password",
+      "terraform_name": "x_wan_password"
+    },
+    {
+      "disposition": "omitted",
+      "structural_name": "x_wireguard_private_key",
+      "terraform_name": "x_wireguard_private_key"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The VLAN ID for the network.",
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                }
+              ],
+              "schema_definition": "int64validator.Between(1, 4094)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "terraform_name": "vlan",
+      "terraform_type": "int64"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The network purpose: `corporate` (default), `guest`, or `vlan-only`. Leave unset to let the controller manage it (a `third_party_gateway` network is always `vlan-only`). **Note:** on Zone-Based-Firewall controllers the purpose is coupled to the firewall zone \u2014 a `guest` network only keeps `purpose = \"guest\"` while it belongs to the guest/Hotspot zone (assign it there via `unifi_firewall_zone`), otherwise the controller rewrites it back to `corporate` and the apply fails with an inconsistent-result error.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ],
+        "validators": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                },
+                {
+                  "path": "github.com/ubiquiti-community/go-unifi/unifi"
+                }
+              ],
+              "schema_definition": "stringvalidator.OneOf(unifi.PurposeCorporate, unifi.PurposeGuest, unifi.PurposeVLANOnly)"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "terraform_name": "purpose",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Specifies whether this network uses a third-party gateway. When enabled, the network purpose is set to `vlan-only` and only VLAN ID, DHCP guarding, and basic network settings are configured.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "terraform_name": "third_party_gateway",
+      "terraform_type": "bool"
+    }
+  ],
+  "format_version": 1,
+  "generator_name": "network",
+  "groupings": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Specifies whether DHCP guarding is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpguard_enabled",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "List of allowed DHCP server IP addresses (maximum 3).",
+            "element_type": {
+              "string": {}
+            },
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                    }
+                  ],
+                  "schema_definition": "listvalidator.SizeAtMost(3)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "terraform_name": "servers",
+          "terraform_type": "list"
+        }
+      ],
+      "terraform_name": "dhcp_guarding",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "DHCP relay configuration.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Specifies whether DHCP relay is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcp_relay_enabled",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "List of DHCP relay server addresses.",
+            "element_type": {
+              "string": {}
+            },
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                    }
+                  ],
+                  "schema_definition": "listvalidator.SizeAtMost(4)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "dhcp_relay_servers",
+          "terraform_name": "servers",
+          "terraform_type": "list"
+        }
+      ],
+      "terraform_name": "dhcp_relay",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "DHCP server configuration.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": true
+            },
+            "description": "Specifies whether DHCP server is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_enabled",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The IPv4 address where the DHCP range starts.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ],
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    }
+                  ],
+                  "schema_definition": "validators.IPv4Validator()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_start",
+          "terraform_name": "start"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The IPv4 address where the DHCP range stops.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ],
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    }
+                  ],
+                  "schema_definition": "validators.IPv4Validator()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_stop",
+          "terraform_name": "stop"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Specifies whether DHCP gateway is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_gateway_enabled",
+          "terraform_name": "gateway_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": true
+            },
+            "description": "Specifies whether DHCP conflict checking is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_conflict_checking",
+          "terraform_name": "conflict_checking"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Specifies whether DHCP NTP is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_ntp_enabled",
+          "terraform_name": "ntp_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Specifies whether DHCP time offset is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_time_offset_enabled",
+          "terraform_name": "time_offset_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Specifies whether DHCP DNS is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_dns_enabled",
+          "terraform_name": "dns_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "custom_type": {
+              "import": {
+                "path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+              },
+              "type": "timetypes.GoDurationType{}",
+              "value_type": "timetypes.GoDuration"
+            },
+            "default": {
+              "static": "24h0m0s"
+            },
+            "description": "Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Defaults to `24h0m0s`."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_leasetime",
+          "terraform_name": "leasetime",
+          "terraform_type": "string"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "WPAD URL for proxy auto-configuration."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_wpad_url",
+          "terraform_name": "wpad_url"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "TFTP server address."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_tftp_server",
+          "terraform_name": "tftp_server"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "UniFi controller IP address.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
+                    }
+                  ],
+                  "schema_definition": "validators.IPv4Validator()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpd_unifi_controller",
+          "terraform_name": "unifi_controller"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "List of DNS server addresses for DHCP clients.",
+            "element_type": {
+              "string": {}
+            },
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                    }
+                  ],
+                  "schema_definition": "listvalidator.SizeAtMost(4)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "terraform_name": "dns_servers",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "attributes": [
+              {
+                "bool": {
+                  "computed_optional_required": "computed_optional",
+                  "default": {
+                    "static": false
+                  },
+                  "description": "Toggles DHCP boot options."
+                },
+                "name": "enabled"
+              },
+              {
+                "name": "server",
+                "string": {
+                  "computed_optional_required": "computed_optional",
+                  "description": "TFTP server for boot options.",
+                  "plan_modifiers": [
+                    {
+                      "custom": {
+                        "imports": [
+                          {
+                            "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                          }
+                        ],
+                        "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "filename",
+                "string": {
+                  "computed_optional_required": "computed_optional",
+                  "description": "Boot filename.",
+                  "plan_modifiers": [
+                    {
+                      "custom": {
+                        "imports": [
+                          {
+                            "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                          }
+                        ],
+                        "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "computed_optional_required": "computed_optional",
+            "description": "DHCP boot settings.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "terraform_name": "boot",
+          "terraform_type": "single_nested"
+        },
+        {
+          "attribute": {
+            "attributes": [
+              {
+                "bool": {
+                  "computed_optional_required": "computed_optional",
+                  "default": {
+                    "static": false
+                  },
+                  "description": "Specifies whether DHCP WINS is enabled."
+                },
+                "name": "enabled"
+              },
+              {
+                "list": {
+                  "computed_optional_required": "optional",
+                  "description": "List of WINS server addresses (maximum 2).",
+                  "element_type": {
+                    "string": {}
+                  },
+                  "validators": [
+                    {
+                      "custom": {
+                        "imports": [
+                          {
+                            "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                          }
+                        ],
+                        "schema_definition": "listvalidator.SizeAtMost(2)"
+                      }
+                    }
+                  ]
+                },
+                "name": "addresses"
+              }
+            ],
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "custom": {
+                "imports": [
+                  {
+                    "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
+                  },
+                  {
+                    "path": "github.com/hashicorp/terraform-plugin-framework/types"
+                  },
+                  {
+                    "path": "github.com/hashicorp/terraform-plugin-framework/attr"
+                  }
+                ],
+                "schema_definition": "objectdefault.StaticValue(types.ObjectValueMust(map[string]attr.Type{\"enabled\": types.BoolType, \"addresses\": types.ListType{ElemType: types.StringType}}, map[string]attr.Value{\"enabled\": types.BoolValue(false), \"addresses\": types.ListNull(types.StringType)}))"
+              }
+            },
+            "description": "WINS server configuration."
+          },
+          "disposition": "managed",
+          "terraform_name": "wins",
+          "terraform_type": "single_nested"
+        }
+      ],
+      "terraform_name": "dhcp_server",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "DHCPv6 server configuration.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Specifies whether the DHCPv6 server is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpdv6_enabled",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpdv6_dns_auto",
+          "terraform_name": "dns_auto"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "The lease time for DHCPv6 addresses in seconds."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpdv6_leasetime",
+          "terraform_name": "lease"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The start of the DHCPv6 address range.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpdv6_start",
+          "terraform_name": "start"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "The end of the DHCPv6 address range.",
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "dhcpdv6_stop",
+          "terraform_name": "stop"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "List of DNS server addresses for DHCPv6 clients (maximum 4).",
+            "element_type": {
+              "string": {}
+            },
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                    }
+                  ],
+                  "schema_definition": "listvalidator.SizeAtMost(4)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "terraform_name": "dns_servers",
+          "terraform_type": "list"
+        }
+      ],
+      "terraform_name": "dhcp_v6_server",
+      "terraform_type": "single_nested"
+    }
+  ],
+  "provider_owned": [
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site to associate the network with.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "site",
+      "terraform_type": "string"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "List of IPv6 aliases for the network.",
+        "element_type": {
+          "string": {}
+        }
+      },
+      "disposition": "managed",
+      "generated": true,
+      "terraform_name": "ipv6_aliases",
+      "terraform_type": "list"
+    },
+    {
+      "disposition": "managed",
+      "generated": false,
+      "terraform_name": "timeouts"
+    }
+  ],
+  "resource": "unifi_network",
+  "source_specification_sha256": "1f972a84a31cf15751fa0eaa2ff2394a0251fe8fe85cb80f415f961d2c33df1c",
+  "surface_kind": "managed_resource"
+}
