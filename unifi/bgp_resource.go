@@ -3,26 +3,19 @@ package unifi
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_bgp"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // frrConfigTemplate is the Go template used to render FRR config from structured attributes.
@@ -157,113 +150,11 @@ func (r *bgpResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages BGP configuration for the UniFi Controller. " +
-			"Configuration can be provided either as a raw FRR config string via `config`, " +
-			"or via structured attributes (`asn`, `router_id`, `peers`) which render a config from a template.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the BGP configuration.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the BGP configuration with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable BGP routing.",
-				Optional:            true,
-				Computed:            true,
-				Default:             booldefault.StaticBool(false),
-			},
-			"config": schema.StringAttribute{
-				MarkdownDescription: "The raw FRRouting BGP daemon configuration. Conflicts with `asn`, `router_id`, and `peers`.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(
-						path.MatchRoot("asn"),
-						path.MatchRoot("router_id"),
-						path.MatchRoot("peers"),
-					),
-				},
-			},
-			"asn": schema.Int64Attribute{
-				MarkdownDescription: "The BGP Autonomous System Number. Conflicts with `config`.",
-				Optional:            true,
-				Validators: []validator.Int64{
-					int64validator.Between(1, 4294967295),
-					int64validator.AlsoRequires(
-						path.MatchRoot("router_id"),
-						path.MatchRoot("peers"),
-					),
-				},
-			},
-			"router_id": schema.StringAttribute{
-				MarkdownDescription: "The BGP router ID (typically an IP address). Conflicts with `config`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.AlsoRequires(
-						path.MatchRoot("asn"),
-						path.MatchRoot("peers"),
-					),
-				},
-			},
-			"peers": schema.ListNestedAttribute{
-				MarkdownDescription: "List of BGP peer groups. Conflicts with `config`.",
-				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
-							MarkdownDescription: "The peer group name.",
-							Required:            true,
-						},
-						"remote_as": schema.Int64Attribute{
-							MarkdownDescription: "The remote Autonomous System Number for this peer group.",
-							Required:            true,
-							Validators: []validator.Int64{
-								int64validator.Between(1, 4294967295),
-							},
-						},
-						"description": schema.StringAttribute{
-							MarkdownDescription: "Description of this peer group.",
-							Optional:            true,
-						},
-						"networks": schema.ListAttribute{
-							MarkdownDescription: "List of network CIDR ranges to listen on for this peer group.",
-							Optional:            true,
-							ElementType:         types.StringType,
-						},
-					},
-				},
-			},
-			"upload_file_name": schema.StringAttribute{
-				MarkdownDescription: "The name of the uploaded configuration file.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("frr.conf"),
-			},
-			"description": schema.StringAttribute{
-				MarkdownDescription: "Description of the BGP configuration.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("BGP Configuration"),
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_bgp.BgpResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *bgpResource) Configure(
@@ -271,19 +162,8 @@ func (r *bgpResource) Configure(
 	req resource.ConfigureRequest,
 	resp *resource.ConfigureResponse,
 ) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
+	client, ok := resourceClient(req.ProviderData, &resp.Diagnostics)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
 		return
 	}
 
@@ -297,7 +177,6 @@ func (r *bgpResource) Create(
 ) {
 	var data bgpResourceModel
 
-	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -311,7 +190,6 @@ func (r *bgpResource) Create(
 	ctx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	// Convert to unifi.BGPConfig
 	bgpConfig, d := r.modelToBGP(ctx, &data)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
@@ -323,8 +201,7 @@ func (r *bgpResource) Create(
 		site = r.client.Site
 	}
 
-	// Create the BGP configuration
-	// Create the BGP configuration with retry for "not found" errors
+	// Retries on "not found" errors; other failures return immediately.
 	var createdBGPConfig *unifi.BGPConfig
 	var err error
 
@@ -335,7 +212,6 @@ func (r *bgpResource) Create(
 			break
 		}
 
-		// Retry only on "not found" errors
 		if _, ok := err.(*unifi.NotFoundError); ok && attempt < maxRetries {
 			continue
 		}
@@ -347,10 +223,8 @@ func (r *bgpResource) Create(
 		return
 	}
 
-	// Convert back to model
 	r.bgpToModel(ctx, createdBGPConfig, &data, site)
 
-	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -361,7 +235,6 @@ func (r *bgpResource) Read(
 ) {
 	var data bgpResourceModel
 
-	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -380,7 +253,6 @@ func (r *bgpResource) Read(
 		site = r.client.Site
 	}
 
-	// Get the BGP configuration from the API
 	bgpConfig, err := r.client.GetBGPConfig(ctx, site)
 	if err != nil {
 		if _, ok := err.(*unifi.NotFoundError); ok {
@@ -394,10 +266,8 @@ func (r *bgpResource) Read(
 		return
 	}
 
-	// Convert to model
 	r.bgpToModel(ctx, bgpConfig, &data, site)
 
-	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -409,13 +279,11 @@ func (r *bgpResource) Update(
 	var state bgpResourceModel
 	var plan bgpResourceModel
 
-	// Read the current state
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Read the plan data
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -429,7 +297,6 @@ func (r *bgpResource) Update(
 	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	// Apply the plan changes to the state object
 	r.applyPlanToState(ctx, &plan, &state)
 
 	site := state.Site.ValueString()
@@ -437,7 +304,6 @@ func (r *bgpResource) Update(
 		site = r.client.Site
 	}
 
-	// Convert the updated state to API format
 	bgpConfig, d := r.modelToBGP(ctx, &state)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
@@ -445,7 +311,6 @@ func (r *bgpResource) Update(
 	}
 	bgpConfig.ID = state.ID.ValueString()
 
-	// Send to API
 	updatedBGPConfig, err := r.client.UpdateBGPConfig(ctx, site, bgpConfig)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -455,12 +320,10 @@ func (r *bgpResource) Update(
 		return
 	}
 
-	// Update state with API response
 	r.bgpToModel(ctx, updatedBGPConfig, &state, site)
 
 	state.Timeouts = plan.Timeouts
 
-	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -471,7 +334,6 @@ func (r *bgpResource) Delete(
 ) {
 	var data bgpResourceModel
 
-	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -490,7 +352,6 @@ func (r *bgpResource) Delete(
 		site = r.client.Site
 	}
 
-	// Delete the BGP configuration
 	err := r.client.DeleteBGPConfig(ctx, site)
 	if err != nil {
 		if _, ok := err.(*unifi.NotFoundError); ok {
@@ -622,8 +483,6 @@ func (r *bgpResource) modelToBGP(
 }
 
 // bgpToModel converts the API struct to the Terraform model.
-// Structured attributes (asn, router_id, peers) are preserved from current state
-// since the API only stores the rendered config string.
 func (r *bgpResource) bgpToModel(
 	_ context.Context,
 	bgpConfig *unifi.BGPConfig,
@@ -633,25 +492,11 @@ func (r *bgpResource) bgpToModel(
 	model.ID = types.StringValue(bgpConfig.ID)
 	model.Site = types.StringValue(site)
 	model.Enabled = types.BoolValue(bgpConfig.Enabled)
-
-	if bgpConfig.Config != "" {
-		model.Config = types.StringValue(bgpConfig.Config)
-	} else {
-		model.Config = types.StringNull()
-	}
+	model.Config = util.StringValueOrNull(bgpConfig.Config)
 
 	// ASN, RouterID, and Peers are preserved from state — the API only stores
 	// the rendered config, so we don't attempt to parse it back.
 
-	if bgpConfig.UploadedFileName != "" {
-		model.UploadFileName = types.StringValue(bgpConfig.UploadedFileName)
-	} else {
-		model.UploadFileName = types.StringNull()
-	}
-
-	if bgpConfig.Description != "" {
-		model.Description = types.StringValue(bgpConfig.Description)
-	} else {
-		model.Description = types.StringNull()
-	}
+	model.UploadFileName = util.StringValueOrNull(bgpConfig.UploadedFileName)
+	model.Description = util.StringValueOrNull(bgpConfig.Description)
 }

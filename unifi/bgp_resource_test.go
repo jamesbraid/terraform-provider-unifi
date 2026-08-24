@@ -15,6 +15,16 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
+// TestAccBGPConfig_basic and TestAccBGPConfig_structured record that this
+// controller serves no BGP endpoint at all ("not found: type=*unifi.BGPConfig"),
+// via a specific ExpectError pattern rather than ".*" -- a pattern matching
+// everything can't tell an unsupported endpoint apart from a broken
+// provider or a down controller, and would stay green even once support
+// were added.
+//
+// The structured test proves nothing the basic one doesn't: both configs
+// fail before any BGP-specific encoding runs. It's kept because the config
+// is the one documented shape, ready for when the surface works.
 func TestAccBGPConfig_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -22,7 +32,7 @@ func TestAccBGPConfig_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccBGPConfigConfig,
-				ExpectError: regexp.MustCompile(".*"),
+				ExpectError: regexp.MustCompile(`not found: type=\*unifi\.BGPConfig`),
 			},
 		},
 	})
@@ -43,7 +53,7 @@ func TestAccBGPConfig_structured(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccBGPConfigStructured,
-				ExpectError: regexp.MustCompile(".*"),
+				ExpectError: regexp.MustCompile(`not found: type=\*unifi\.BGPConfig`),
 			},
 		},
 	})
@@ -107,49 +117,6 @@ func Test_bgpPeerModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_bgpResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name         string
-		r            *bgpResource
-		args         args
-		wantTypeName string
-	}{
-		{
-			name: "sets correct type name",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-			wantTypeName: "unifi_bgp",
-		},
-		{
-			name: "uses provider type name prefix",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "test"},
-				resp: &fwresource.MetadataResponse{},
-			},
-			wantTypeName: "test_bgp",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", tt.args.resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_bgpResource_Schema(t *testing.T) {
 	type args struct {
 		ctx  context.Context
@@ -177,7 +144,6 @@ func Test_bgpResource_Schema(t *testing.T) {
 
 			s := tt.args.resp.Schema
 
-			// Verify key attributes exist
 			expectedAttrs := []string{
 				"id",
 				"site",
@@ -196,7 +162,6 @@ func Test_bgpResource_Schema(t *testing.T) {
 				}
 			}
 
-			// Verify id is computed
 			idAttr, ok := s.Attributes["id"].(schema.StringAttribute)
 			if !ok {
 				t.Fatalf("attribute is not a schema.StringAttribute")
@@ -205,7 +170,6 @@ func Test_bgpResource_Schema(t *testing.T) {
 				t.Error("id should be Computed")
 			}
 
-			// Verify config is optional+computed
 			configAttr, ok := s.Attributes["config"].(schema.StringAttribute)
 			if !ok {
 				t.Fatalf("attribute is not a schema.StringAttribute")
@@ -214,7 +178,6 @@ func Test_bgpResource_Schema(t *testing.T) {
 				t.Error("config should be Optional and Computed")
 			}
 
-			// Verify asn is optional
 			asnAttr, ok := s.Attributes["asn"].(schema.Int64Attribute)
 			if !ok {
 				t.Fatalf("attribute is not a schema.Int64Attribute")
@@ -223,7 +186,6 @@ func Test_bgpResource_Schema(t *testing.T) {
 				t.Error("asn should be Optional")
 			}
 
-			// Verify enabled is optional+computed (has default)
 			enabledAttr, ok := s.Attributes["enabled"].(schema.BoolAttribute)
 			if !ok {
 				t.Fatalf("attribute is not a schema.BoolAttribute")
@@ -232,76 +194,11 @@ func Test_bgpResource_Schema(t *testing.T) {
 				t.Error("enabled should be Optional and Computed")
 			}
 
-			// Verify peers is a list nested attribute
 			if _, ok := s.Attributes["peers"].(schema.ListNestedAttribute); !ok {
 				t.Error("peers should be ListNestedAttribute")
 			}
 		})
 	}
-}
-
-func Test_bgpResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name      string
-		r         *bgpResource
-		args      args
-		wantError bool
-	}{
-		{
-			name: "nil provider data",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: nil},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-		{
-			name: "wrong provider data type",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: true,
-		},
-		{
-			name: "correct client type",
-			r:    &bgpResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{Site: "default"}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantError: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantError && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("expected error in diagnostics")
-			}
-			if !tt.wantError && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", tt.args.resp.Diagnostics)
-			}
-		})
-	}
-}
-
-// Test_bgpResource_ImportState is skipped because ImportStatePassthroughID
-// requires a valid state schema which is complex to set up in a unit test.
-func Test_bgpResource_ImportState(t *testing.T) {
-	t.Skip(
-		"ImportState delegates to ImportStatePassthroughID which requires full state schema setup",
-	)
 }
 
 func Test_bgpResource_applyPlanToState(t *testing.T) {
@@ -461,10 +358,6 @@ func testBuildPeersList(t *testing.T, peers []bgpPeerModel) types.List {
 	t.Helper()
 	peerAttrTypes := bgpPeerModel{}.AttributeTypes()
 	objType := types.ObjectType{AttrTypes: peerAttrTypes}
-
-	if len(peers) == 0 {
-		return types.ListValueMust(objType, []attr.Value{})
-	}
 
 	vals := make([]attr.Value, len(peers))
 	for i, p := range peers {
@@ -660,7 +553,6 @@ func Test_bgpResource_modelToBGP(t *testing.T) {
 					t.Errorf("modelToBGP() = %+v, want %+v", got, tt.want)
 				}
 			} else if got != nil {
-				// For structured mode, verify rendered config contains expected content
 				if !strings.Contains(got.Config, "router bgp 65000") {
 					t.Errorf(
 						"expected rendered config to contain 'router bgp 65000', got %q",

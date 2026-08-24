@@ -2,24 +2,19 @@ package unifi
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_dynamic_dns"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dynamic_dns"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -92,68 +87,11 @@ func (r *dynamicDNSResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages dynamic DNS settings for different providers.",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the dynamic DNS.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate with the dynamic DNS resource.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseNonNullStateForUnknown(),
-				},
-			},
-			"interface": schema.StringAttribute{
-				MarkdownDescription: "The interface for the dynamic DNS. Can be `wan` or `wan2`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("wan"),
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-				Validators: []validator.String{
-					stringvalidator.OneOf("wan", "wan2"),
-				},
-			},
-			"service": schema.StringAttribute{
-				MarkdownDescription: "The Dynamic DNS service provider, various values are supported (for example `dyndns`, etc.).",
-				Required:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"host_name": schema.StringAttribute{
-				MarkdownDescription: "The host name to update in the dynamic DNS service.",
-				Required:            true,
-			},
-			"server": schema.StringAttribute{
-				MarkdownDescription: "The server for the dynamic DNS service.",
-				Optional:            true,
-			},
-			"login": schema.StringAttribute{
-				MarkdownDescription: "The login for the dynamic DNS service.",
-				Optional:            true,
-			},
-			"password": schema.StringAttribute{
-				MarkdownDescription: "The password for the dynamic DNS service.",
-				Optional:            true,
-				Sensitive:           true,
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_dynamic_dns.DynamicDnsResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *dynamicDNSResource) IdentitySchema(
@@ -178,19 +116,8 @@ func (r *dynamicDNSResource) Configure(
 	req resource.ConfigureRequest,
 	resp *resource.ConfigureResponse,
 ) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
+	client, ok := resourceClient(req.ProviderData, &resp.Diagnostics)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
 		return
 	}
 
@@ -204,7 +131,6 @@ func (r *dynamicDNSResource) Create(
 ) {
 	var data dynamicDNSResourceModel
 
-	// Read Terraform plan data into the model
 	if resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...); resp.Diagnostics.HasError() {
 		return
 	}
@@ -217,16 +143,13 @@ func (r *dynamicDNSResource) Create(
 	ctx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	// Get site from request identity if provided, otherwise use provider default
 	site := r.client.Site
 	if !data.Site.IsNull() && !data.Site.IsUnknown() {
 		site = data.Site.ValueString()
 	}
 
-	// Convert to unifi.DynamicDNS
 	dynamicDNS := r.modelToDynamicDNS(ctx, &data)
 
-	// Create the dynamic DNS
 	createdDynamicDNS, err := r.client.CreateDynamicDNS(ctx, site, dynamicDNS)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -236,13 +159,10 @@ func (r *dynamicDNSResource) Create(
 		return
 	}
 
-	// Convert back to model
 	r.dynamicDNSToModel(ctx, createdDynamicDNS, &data, site)
 
-	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
-	// Set identity
 	identity := dynamicDNSResourceIdentityModel{
 		ID:   types.StringValue(createdDynamicDNS.ID),
 		Site: types.StringValue(site),
@@ -257,7 +177,6 @@ func (r *dynamicDNSResource) Read(
 ) {
 	var data dynamicDNSResourceModel
 
-	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -289,7 +208,6 @@ func (r *dynamicDNSResource) Read(
 		site = r.client.Site
 	}
 
-	// Get the dynamic DNS from the API
 	dynamicDNS, err := r.client.GetDynamicDNS(ctx, site, id)
 	if err != nil {
 		if _, ok := err.(*unifi.NotFoundError); ok {
@@ -303,13 +221,11 @@ func (r *dynamicDNSResource) Read(
 		return
 	}
 
-	// Convert to model
 	r.dynamicDNSToModel(ctx, dynamicDNS, &data, site)
 
-	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
-	// Re-set identity (should be unchanged)
+	// Re-set identity (should be unchanged).
 	resp.Diagnostics.Append(resp.Identity.Set(ctx, identity)...)
 }
 
@@ -321,13 +237,11 @@ func (r *dynamicDNSResource) Update(
 	var state dynamicDNSResourceModel
 	var plan dynamicDNSResourceModel
 
-	// Read the current state
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Read the plan data
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -353,7 +267,6 @@ func (r *dynamicDNSResource) Update(
 		identity.Site = state.Site
 	}
 
-	// Apply the plan changes to the state object
 	r.applyPlanToState(ctx, &plan, &state)
 
 	id := identity.ID.ValueString()
@@ -362,12 +275,10 @@ func (r *dynamicDNSResource) Update(
 		site = r.client.Site
 	}
 
-	// Convert the updated state to API format
 	dynamicDNS := r.modelToDynamicDNS(ctx, &state)
 	dynamicDNS.ID = id
 	dynamicDNS.SiteID = site
 
-	// Send to API
 	updatedDynamicDNS, err := r.client.UpdateDynamicDNS(ctx, site, dynamicDNS)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -377,15 +288,13 @@ func (r *dynamicDNSResource) Update(
 		return
 	}
 
-	// Update state with API response
 	r.dynamicDNSToModel(ctx, updatedDynamicDNS, &state, site)
 
 	state.Timeouts = plan.Timeouts
 
-	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 
-	// Identity should not change during update
+	// Identity should not change during update.
 	resp.Diagnostics.Append(resp.Identity.Set(ctx, identity)...)
 }
 
@@ -396,7 +305,6 @@ func (r *dynamicDNSResource) Delete(
 ) {
 	var data dynamicDNSResourceModel
 
-	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -428,7 +336,6 @@ func (r *dynamicDNSResource) Delete(
 		site = r.client.Site
 	}
 
-	// Delete the dynamic DNS
 	err := r.client.DeleteDynamicDNS(ctx, site, id)
 	if err != nil {
 		if _, ok := err.(*unifi.NotFoundError); ok {
@@ -520,62 +427,19 @@ func (r *dynamicDNSResource) dynamicDNSToModel(
 	model.Service = types.StringValue(dynamicDNS.Service)
 	model.HostName = types.StringValue(dynamicDNS.HostName)
 
-	if site != "" {
-		model.Site = types.StringValue(site)
-	} else {
-		model.Site = types.StringNull()
-	}
-
-	if dynamicDNS.Server != "" {
-		model.Server = types.StringValue(dynamicDNS.Server)
-	} else {
-		model.Server = types.StringNull()
-	}
-
-	if dynamicDNS.Login != "" {
-		model.Login = types.StringValue(dynamicDNS.Login)
-	} else {
-		model.Login = types.StringNull()
-	}
-
-	if dynamicDNS.Password != "" {
-		model.Password = types.StringValue(dynamicDNS.Password)
-	} else {
-		model.Password = types.StringNull()
-	}
+	model.Site = util.StringValueOrNull(site)
+	model.Server = util.StringValueOrNull(dynamicDNS.Server)
+	model.Login = util.StringValueOrNull(dynamicDNS.Login)
+	model.Password = util.StringValueOrNull(dynamicDNS.Password)
 }
 
 // ListResourceConfigSchema implements [list.ListResource].
 func (r *dynamicDNSResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List dynamic DNS configurations in a site.",
-		Attributes: map[string]listschema.Attribute{
-			"site": listschema.StringAttribute{
-				MarkdownDescription: "The name of the site to list dynamic DNS configurations from.",
-				Optional:            true,
-			},
-		},
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `host_name`, `service`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_dynamic_dns.DynamicDnsListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].
@@ -597,7 +461,6 @@ func (r *dynamicDNSResource) List(
 		site = r.client.Site
 	}
 
-	// Process filter blocks.
 	var filters []dynamicDNSListFilterModel
 	if !config.Filter.IsNull() && !config.Filter.IsUnknown() {
 		config.Filter.ElementsAs(ctx, &filters, false)
@@ -621,14 +484,12 @@ func (r *dynamicDNSResource) List(
 
 	stream.Results = func(push func(list.ListResult) bool) {
 		for _, entry := range entries {
-			// Apply host_name filter.
 			if val, ok := postFilters["host_name"]; ok {
 				if entry.HostName != val {
 					continue
 				}
 			}
 
-			// Apply service filter.
 			if val, ok := postFilters["service"]; ok {
 				if entry.Service != val {
 					continue
@@ -637,14 +498,12 @@ func (r *dynamicDNSResource) List(
 
 			result := req.NewListResult(ctx)
 
-			// Display name: prefer host name, fall back to ID.
 			if entry.HostName != "" {
 				result.DisplayName = entry.HostName
 			} else {
 				result.DisplayName = entry.ID
 			}
 
-			// Set identity.
 			result.Diagnostics.Append(
 				result.Identity.SetAttribute(
 					ctx,
@@ -660,7 +519,6 @@ func (r *dynamicDNSResource) List(
 				)...,
 			)
 
-			// Convert to model.
 			var model dynamicDNSResourceModel
 			r.dynamicDNSToModel(ctx, &entry, &model, site)
 			model.Timeouts = timeoutsNullValue()

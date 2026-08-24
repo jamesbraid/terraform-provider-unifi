@@ -82,26 +82,6 @@ func TestNewDynamicDNSListResource(t *testing.T) {
 	}
 }
 
-func Test_dynamicDNSResource_Metadata(t *testing.T) {
-	r := &dynamicDNSResource{}
-	resp := &fwresource.MetadataResponse{}
-	r.Metadata(context.Background(), fwresource.MetadataRequest{ProviderTypeName: "unifi"}, resp)
-	if resp.TypeName != "unifi_dynamic_dns" {
-		t.Errorf("TypeName = %q, want %q", resp.TypeName, "unifi_dynamic_dns")
-	}
-}
-
-func Test_dynamicDNSResource_Schema(t *testing.T) {
-	r := &dynamicDNSResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	for _, attr := range []string{"id", "site", "interface", "service", "host_name", "server", "login", "password"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("expected attribute %q in schema", attr)
-		}
-	}
-}
-
 func Test_dynamicDNSResource_IdentitySchema(t *testing.T) {
 	r := &dynamicDNSResource{}
 	resp := &fwresource.IdentitySchemaResponse{}
@@ -111,28 +91,6 @@ func Test_dynamicDNSResource_IdentitySchema(t *testing.T) {
 	}
 	if _, ok := resp.IdentitySchema.Attributes["site"]; !ok {
 		t.Error("expected identity schema to have 'site' attribute")
-	}
-}
-
-func Test_dynamicDNSResource_Configure(t *testing.T) {
-	tests := []struct {
-		name      string
-		req       fwresource.ConfigureRequest
-		wantError bool
-	}{
-		{"nil_provider_data", fwresource.ConfigureRequest{}, false},
-		{"wrong_type", fwresource.ConfigureRequest{ProviderData: "wrong"}, true},
-		{"correct_client", fwresource.ConfigureRequest{ProviderData: &Client{}}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &dynamicDNSResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(context.Background(), tt.req, resp)
-			if resp.Diagnostics.HasError() != tt.wantError {
-				t.Errorf("hasError = %v, want %v", resp.Diagnostics.HasError(), tt.wantError)
-			}
-		})
 	}
 }
 

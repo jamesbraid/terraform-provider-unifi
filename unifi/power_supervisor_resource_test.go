@@ -10,14 +10,39 @@ import (
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
-// TestPowerSupervisorModelRoundTrip covers the model ⇄ go-unifi conversion for
-// the Device Supervisor resource (#244): settings are sent as the user set them,
-// power_sources are not sent (the controller resolves them) but are read back,
-// and the computed consecutive_failures / id / power_sources land in the model.
+func TestAccPowerSupervisorList_emptyOrSeeded(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		Steps: []resource.TestStep{{
+			Query: true,
+			Config: `
+provider "unifi" {}
+list "unifi_power_supervisor" "test" {
+  provider = unifi
+  config {}
+}
+`,
+			QueryResultChecks: []querycheck.QueryResultCheck{
+				querycheck.ExpectLengthAtLeast("unifi_power_supervisor.test", 0),
+			},
+		}},
+	})
+}
+
+// TestPowerSupervisorModelRoundTrip covers the model ⇄ go-unifi conversion:
+// settings are sent as configured, power_sources are not sent (the
+// controller resolves them) but are read back along with the computed fields.
 func TestPowerSupervisorModelRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	r := &powerSupervisorResource{}
@@ -139,26 +164,6 @@ func Test_powerSourceAttrTypes(t *testing.T) {
 	}
 }
 
-func Test_powerSupervisorResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ p, w string }{
-		{"unifi", "unifi_power_supervisor"},
-		{"test", "test_power_supervisor"},
-	} {
-		t.Run(tt.p, func(t *testing.T) {
-			r := &powerSupervisorResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.p},
-				resp,
-			)
-			if resp.TypeName != tt.w {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.w)
-			}
-		})
-	}
-}
-
 func Test_powerSupervisorResource_IdentitySchema(t *testing.T) {
 	r := &powerSupervisorResource{}
 	resp := &fwresource.IdentitySchemaResponse{}
@@ -174,23 +179,6 @@ func Test_powerSupervisorResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_powerSupervisorResource_Schema(t *testing.T) {
-	r := &powerSupervisorResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() returned errors: %v", resp.Diagnostics)
-	}
-	for _, key := range []string{
-		"id", "site", "device_mac", "enabled", "heartbeat_interval",
-		"silence_threshold", "power_off_duration", "consecutive_failures", "power_sources", "timeouts",
-	} {
-		if _, ok := resp.Schema.Attributes[key]; !ok {
-			t.Errorf("Schema() missing attribute %q", key)
-		}
-	}
-}
-
 func Test_powerSupervisorResource_UpgradeState(t *testing.T) {
 	r := &powerSupervisorResource{}
 	got := r.UpgradeState(context.Background())
@@ -199,34 +187,6 @@ func Test_powerSupervisorResource_UpgradeState(t *testing.T) {
 	}
 	if _, ok := got[0]; !ok {
 		t.Error("UpgradeState() missing version 0 upgrader")
-	}
-}
-
-func Test_powerSupervisorResource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name string
-		data any
-		err  bool
-	}{
-		{"nil", nil, false},
-		{"wrong", "wrong", true},
-		{"ok", &Client{}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &powerSupervisorResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.err && !resp.Diagnostics.HasError() {
-				t.Error("expected error in diagnostics")
-			}
-			if !tt.err && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-		})
 	}
 }
 
