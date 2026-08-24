@@ -10,8 +10,33 @@ import (
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
+
+func TestAccWANList_basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		Steps: []resource.TestStep{{
+			Query: true,
+			Config: `
+provider "unifi" {}
+list "unifi_wan" "test" {
+  provider = unifi
+  config {}
+}
+`,
+			QueryResultChecks: []querycheck.QueryResultCheck{
+				querycheck.ExpectLengthAtLeast("unifi_wan.test", 1),
+			},
+		}},
+	})
+}
 
 func TestAccWANFramework_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
@@ -183,11 +208,9 @@ func TestAccWANFramework_additionalFields(t *testing.T) {
 }
 
 func testAccWANFrameworkConfig_additionalFields() string {
-	// Note: setting_preference is intentionally NOT pinned here. The controller
-	// treats it as a managed/derived field on WAN networks and reverts it to
-	// "auto" for a dhcp WAN regardless of what we send (even with manual DNS),
-	// which makes "manual" produce perpetual auto->manual plan drift. The other
-	// newly exposed top-level fields below do round-trip cleanly.
+	// setting_preference is intentionally not pinned: the controller reverts
+	// it to "auto" for a dhcp WAN regardless of what's sent, causing
+	// perpetual auto->manual plan drift if asserted here.
 	return `
 resource "unifi_wan" "extra" {
 	name    = "test-wan-extra"
@@ -336,10 +359,10 @@ func Test_dhcpOptionModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-// Test_wanResource_networkGroup guards #334: the WAN network group must be
-// preserved in the update PUT (and attr_hidden_id mirror it), instead of being
-// hard-coded to "WAN" — otherwise a secondary uplink (WAN2) collides with the
-// primary and the controller rejects it.
+// Test_wanResource_networkGroup checks the WAN network group is preserved in
+// the update PUT (and HiddenID mirrors it) instead of being hard-coded to
+// "WAN" -- otherwise a secondary uplink (WAN2) collides with the primary and
+// the controller rejects it.
 func Test_wanResource_networkGroup(t *testing.T) {
 	r := &wanResource{}
 	ctx := context.Background()
@@ -381,11 +404,10 @@ func Test_wanResource_networkGroup(t *testing.T) {
 	})
 }
 
-// Test_wanResource_overlayConfig_dslite guards #281: the controller forces
-// wan_dslite_remote_host_auto back to true server-side, so the API value in
-// state would conflict with a user-configured false. overlayConfig must keep the
-// user's planned value when it was set in config, and leave the controller value
-// when it wasn't.
+// Test_wanResource_overlayConfig_dslite checks that overlayConfig keeps the
+// user's planned value for wan_dslite_remote_host_auto when it was set in
+// config, and the controller's value when it wasn't -- the controller
+// otherwise forces this back to true server-side.
 func Test_wanResource_overlayConfig_dslite(t *testing.T) {
 	r := &wanResource{}
 
@@ -410,10 +432,9 @@ func Test_wanResource_overlayConfig_dslite(t *testing.T) {
 	})
 }
 
-// Test_dnsAddrValue guards #333: the controller persists an unset WAN DNS
-// address as "" and returns it, but the Optional address fields plan as null.
-// "" (and a nil pointer) must map to null so the post-apply read matches the
-// plan; a real address must round-trip.
+// Test_dnsAddrValue checks that "" and a nil pointer both map to null, since
+// the controller persists an unset WAN DNS address as "" while the Optional
+// address fields plan as null -- a real address must still round-trip.
 func Test_dnsAddrValue(t *testing.T) {
 	empty := ""
 	addr := "2001:4860:4860::8888"
@@ -595,34 +616,6 @@ func Test_dhcpWanModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_wanResource_Metadata(t *testing.T) {
-	tests := []struct {
-		name             string
-		providerTypeName string
-		wantTypeName     string
-	}{
-		{
-			name:             "type name includes provider prefix",
-			providerTypeName: "unifi",
-			wantTypeName:     "unifi_wan",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &wanResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.providerTypeName},
-				resp,
-			)
-			if resp.TypeName != tt.wantTypeName {
-				t.Errorf("Metadata() TypeName = %v, want %v", resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_wanResource_IdentitySchema(t *testing.T) {
 	t.Run("does not panic and returns identity attributes", func(t *testing.T) {
 		r := &wanResource{}
@@ -635,90 +628,6 @@ func Test_wanResource_IdentitySchema(t *testing.T) {
 			t.Error("IdentitySchema() returned no attributes")
 		}
 	})
-}
-
-func Test_wanResource_Schema(t *testing.T) {
-	t.Run("returns schema with key attributes", func(t *testing.T) {
-		r := &wanResource{}
-		resp := &fwresource.SchemaResponse{}
-		r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Fatalf("Schema() returned errors: %v", resp.Diagnostics)
-		}
-		for _, key := range []string{"id", "name", "type"} {
-			if _, ok := resp.Schema.Attributes[key]; !ok {
-				t.Errorf("Schema() missing attribute %q", key)
-			}
-		}
-	})
-}
-
-func Test_wanResource_Configure(t *testing.T) {
-	t.Run("nil provider data is not an error", func(t *testing.T) {
-		r := &wanResource{}
-		resp := &fwresource.ConfigureResponse{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: nil}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Errorf(
-				"Configure() with nil provider data should not error, got: %v",
-				resp.Diagnostics,
-			)
-		}
-	})
-
-	t.Run("wrong type produces error", func(t *testing.T) {
-		r := &wanResource{}
-		resp := &fwresource.ConfigureResponse{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: "wrong"}, resp)
-		if !resp.Diagnostics.HasError() {
-			t.Error("Configure() with wrong type should produce an error")
-		}
-	})
-
-	t.Run("correct Client type", func(t *testing.T) {
-		r := &wanResource{}
-		resp := &fwresource.ConfigureResponse{}
-		client := &Client{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: client}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Errorf("Configure() with *Client should not error, got: %v", resp.Diagnostics)
-		}
-		if r.client != client {
-			t.Error("Configure() did not set client")
-		}
-	})
-}
-
-func Test_wanResource_Create(t *testing.T) {
-	t.Skip("requires terraform state machinery")
-}
-
-func Test_wanResource_adoptExistingWAN(t *testing.T) {
-	t.Skip("requires configured client")
-}
-
-func Test_wanResource_overlayConfig(t *testing.T) {
-	t.Skip("requires complex state setup")
-}
-
-func Test_wanResource_Read(t *testing.T) {
-	t.Skip("requires terraform state machinery")
-}
-
-func Test_wanResource_Update(t *testing.T) {
-	t.Skip("requires terraform state machinery")
-}
-
-func Test_wanResource_applyPlanToState(t *testing.T) {
-	t.Skip("requires complex state setup")
-}
-
-func Test_wanResource_Delete(t *testing.T) {
-	t.Skip("requires terraform state machinery")
-}
-
-func Test_wanResource_ImportState(t *testing.T) {
-	t.Skip("requires terraform state machinery")
 }
 
 func Test_wanResource_modelToNetwork(t *testing.T) {
@@ -836,8 +745,4 @@ func Test_wanResource_ListResourceConfigSchema(t *testing.T) {
 			t.Fatalf("ListResourceConfigSchema() returned errors: %v", resp.Diagnostics)
 		}
 	})
-}
-
-func Test_wanResource_List(t *testing.T) {
-	t.Skip("requires configured client")
 }

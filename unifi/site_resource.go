@@ -2,7 +2,6 @@ package unifi
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -10,15 +9,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
-	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_site"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -95,34 +92,11 @@ func (r *siteFrameworkResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages Unifi sites",
-
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the site.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the site.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"description": schema.StringAttribute{
-				MarkdownDescription: "The description of the site.",
-				Required:            true,
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
-	}
+	resp.Schema = resource_site.SiteResourceSchema(ctx)
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 }
 
 func (r *siteFrameworkResource) Configure(
@@ -130,19 +104,8 @@ func (r *siteFrameworkResource) Configure(
 	req resource.ConfigureRequest,
 	resp *resource.ConfigureResponse,
 ) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
+	client, ok := resourceClient(req.ProviderData, &resp.Diagnostics)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
 		return
 	}
 
@@ -172,7 +135,6 @@ func (r *siteFrameworkResource) Create(
 
 	description := plan.Description.ValueString()
 
-	// Create the Site
 	sites, err := r.client.CreateSite(ctx, description)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -192,7 +154,6 @@ func (r *siteFrameworkResource) Create(
 
 	createdSite := sites[0]
 
-	// Convert response back to model
 	diags = r.siteToModel(ctx, &createdSite, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -229,7 +190,6 @@ func (r *siteFrameworkResource) Read(
 	var site *unifi.Site
 
 	if !state.ID.IsNull() && !state.ID.IsUnknown() {
-		// Get the Site from the API
 		site, err = r.client.GetSite(ctx, state.ID.ValueString())
 		if err != nil {
 			if _, ok := err.(*unifi.NotFoundError); ok {
@@ -258,7 +218,6 @@ func (r *siteFrameworkResource) Read(
 		}
 	}
 
-	// Convert API response to model
 	diags = r.siteToModel(ctx, site, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -278,13 +237,11 @@ func (r *siteFrameworkResource) Update(
 	var state siteFrameworkResourceModel
 	var plan siteFrameworkResourceModel
 
-	// Step 1: Read the current state (which already contains API values from previous reads)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Read the plan data
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -298,17 +255,13 @@ func (r *siteFrameworkResource) Update(
 	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	// Step 2: Apply the plan changes to the state object
 	r.applyPlanToState(ctx, &plan, &state)
 	state.Timeouts = plan.Timeouts
 
-	// Step 3: Convert the updated state to API format
-	// Note: Site name cannot be changed after creation, only description
 	id := state.ID.ValueString()
 	name := state.Name.ValueString()
 	description := state.Description.ValueString()
 
-	// Step 4: Send to API
 	updatedSites, err := r.client.UpdateSite(ctx, name, description)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -328,7 +281,6 @@ func (r *siteFrameworkResource) Update(
 
 	updatedSite := updatedSites[0]
 
-	// Step 5: Update state with API response
 	diags := r.siteToModel(ctx, &updatedSite, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -345,8 +297,7 @@ func (r *siteFrameworkResource) applyPlanToState(
 	plan *siteFrameworkResourceModel,
 	state *siteFrameworkResourceModel,
 ) {
-	// Apply plan values to state, but only if plan value is not null/unknown
-	// Note: Name cannot be changed after creation, so we don't apply it from plan
+	// Name cannot be changed after creation, so it is not applied from plan.
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		state.Description = plan.Description
 	}
@@ -400,8 +351,6 @@ func (r *siteFrameworkResource) ImportState(
 	resource.ImportStatePassthroughID(ctx, path.Root(rootAttributeName), req, resp)
 }
 
-// Helper functions for conversion and merging
-
 func (r *siteFrameworkResource) siteToModel(
 	_ context.Context,
 	site *unifi.Site,
@@ -410,10 +359,8 @@ func (r *siteFrameworkResource) siteToModel(
 	var diags diag.Diagnostics
 
 	if site == nil {
-		// Defensive: the read paths now return before reaching here on a
-		// not-found, but never dereference a nil site (it previously panicked —
-		// #261, e.g. importing with an identifier that is neither a 24-hex id
-		// nor a known site name).
+		// Defensive: read paths already return before reaching here on a not-found,
+		// but this must never dereference a nil site -- it previously panicked on import with an unrecognized identifier (#261).
 		diags.AddError(
 			"Site Not Found",
 			"No site matched the given identifier. Import a site by its 24-hex "+
@@ -423,7 +370,6 @@ func (r *siteFrameworkResource) siteToModel(
 	}
 
 	if site.ID == "" && site.Name == "" {
-		// If both ID and Name are empty, we can't import this site
 		diags.AddError(
 			"Invalid Site",
 			"Site must have either an ID or Name to be imported",
@@ -441,29 +387,11 @@ func (r *siteFrameworkResource) siteToModel(
 // ListResourceConfigSchema implements [list.ListResource]. Sites are global, so
 // the config has no `site` attribute.
 func (r *siteFrameworkResource) ListResourceConfigSchema(
-	_ context.Context,
+	ctx context.Context,
 	_ list.ListResourceSchemaRequest,
 	resp *list.ListResourceSchemaResponse,
 ) {
-	resp.Schema = listschema.Schema{
-		MarkdownDescription: "List sites in the UniFi controller.",
-		Blocks: map[string]listschema.Block{
-			"filter": listschema.ListNestedBlock{
-				NestedObject: listschema.NestedBlockObject{
-					Attributes: map[string]listschema.Attribute{
-						"name": listschema.StringAttribute{
-							MarkdownDescription: "The name of the filter to apply. Supported values are: `name`, `description`.",
-							Required:            true,
-						},
-						"value": listschema.StringAttribute{
-							MarkdownDescription: "The value to filter by.",
-							Required:            true,
-						},
-					},
-				},
-			},
-		},
-	}
+	resp.Schema = listresource_site.SiteListResourceSchema(ctx)
 }
 
 // List implements [list.ListResource].
@@ -480,7 +408,6 @@ func (r *siteFrameworkResource) List(
 		return
 	}
 
-	// Process filter blocks.
 	var filters []siteListFilterModel
 	if !config.Filter.IsNull() && !config.Filter.IsUnknown() {
 		config.Filter.ElementsAs(ctx, &filters, false)
@@ -507,14 +434,12 @@ func (r *siteFrameworkResource) List(
 		for i := range sites {
 			site := sites[i]
 
-			// Apply name filter.
 			if val, ok := postFilters["name"]; ok {
 				if site.Name != val {
 					continue
 				}
 			}
 
-			// Apply description filter.
 			if val, ok := postFilters["description"]; ok {
 				if site.Description != val {
 					continue
@@ -533,7 +458,6 @@ func (r *siteFrameworkResource) List(
 				result.DisplayName = site.ID
 			}
 
-			// Set identity.
 			result.Diagnostics.Append(
 				result.Identity.SetAttribute(
 					ctx,
@@ -542,7 +466,6 @@ func (r *siteFrameworkResource) List(
 				)...,
 			)
 
-			// Convert to model.
 			var model siteFrameworkResourceModel
 			result.Diagnostics.Append(r.siteToModel(ctx, &site, &model)...)
 			if !result.Diagnostics.HasError() {

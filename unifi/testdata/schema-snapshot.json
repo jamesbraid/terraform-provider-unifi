@@ -7641,7 +7641,9 @@
           "computed": true,
           "description": "The WAN type (dhcp, static, pppoe)",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to dhcp"
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "type_v6": {
           "kind": "attribute",

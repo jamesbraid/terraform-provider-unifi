@@ -176,26 +176,6 @@ func TestNewWireguardPeerListResource(t *testing.T) {
 	}
 }
 
-func Test_wireguardPeerResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ p, w string }{
-		{"unifi", "unifi_wireguard_peer"},
-		{"test", "test_wireguard_peer"},
-	} {
-		t.Run(tt.p, func(t *testing.T) {
-			r := &wireguardPeerResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.p},
-				resp,
-			)
-			if resp.TypeName != tt.w {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.w)
-			}
-		})
-	}
-}
-
 func Test_wireguardPeerResource_IdentitySchema(t *testing.T) {
 	r := &wireguardPeerResource{}
 	resp := &fwresource.IdentitySchemaResponse{}
@@ -208,48 +188,6 @@ func Test_wireguardPeerResource_IdentitySchema(t *testing.T) {
 	}
 	if _, ok := resp.IdentitySchema.Attributes["id"]; !ok {
 		t.Error("IdentitySchema() missing 'id' attribute")
-	}
-}
-
-func Test_wireguardPeerResource_Schema(t *testing.T) {
-	r := &wireguardPeerResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() returned errors: %v", resp.Diagnostics)
-	}
-	for _, key := range []string{"id", "site", "network_id", "name", "interface_ip", "public_key", "allowed_ips", "timeouts"} {
-		if _, ok := resp.Schema.Attributes[key]; !ok {
-			t.Errorf("Schema() missing attribute %q", key)
-		}
-	}
-}
-
-func Test_wireguardPeerResource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name string
-		data any
-		err  bool
-	}{
-		{"nil", nil, false},
-		{"wrong", "wrong", true},
-		{"ok", &Client{}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &wireguardPeerResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.err && !resp.Diagnostics.HasError() {
-				t.Error("expected error in diagnostics")
-			}
-			if !tt.err && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-		})
 	}
 }
 
@@ -392,10 +330,9 @@ func Test_wireguardPeerResource_ListResourceConfigSchema(t *testing.T) {
 	}
 }
 
-// lazyStringVariable implements config.Variable by reading a *string at JSON
-// marshal time. The testing framework marshals ConfigVariables when each step
-// runs, so this lets a query step reference a value captured by an earlier
-// step (e.g. a resource ID) that is not yet known when the steps are built.
+// lazyStringVariable implements config.Variable, reading a *string at JSON
+// marshal time, so a query step can reference a value (e.g. a resource ID)
+// captured by an earlier step but not yet known when the steps are built.
 type lazyStringVariable struct {
 	value *string
 }
@@ -418,10 +355,9 @@ func TestAccWireguardPeerList_basic(t *testing.T) {
 				Check:  testAccCaptureResourceID("unifi_vpn_server.test", &serverID),
 			},
 			{
-				// Query steps only honor the inline Config (Raw) field;
-				// ConfigFile/ConfigDirectory are ignored by the query runner.
-				// The network_id is injected via an auto-loaded tfvars file so
-				// the value captured in the previous step can be referenced.
+				// Query steps only honor the inline Config field;
+				// ConfigFile/ConfigDirectory are ignored by the query runner,
+				// so network_id is injected via ConfigVariables instead.
 				Query: true,
 				Config: `
 provider "unifi" {}

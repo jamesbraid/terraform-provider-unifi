@@ -137,7 +137,6 @@ unifi_wan.egress_qos.enabled
 unifi_wan.egress_qos.priority
 unifi_wan.enabled
 unifi_wan.smartq.enabled
-unifi_wan.type
 unifi_wan.vlan.enabled
 unifi_wan.vlan.id
 unifi_wireguard_peer.allowed_ips
