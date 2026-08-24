@@ -2,17 +2,13 @@ package unifi
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
-	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
-	"github.com/ubiquiti-community/go-unifi/unifi"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 func TestAccFirewallGroupFramework_basic(t *testing.T) {
@@ -99,430 +95,6 @@ resource "unifi_firewall_group" "test" {
 `
 }
 
-func TestNewFirewallGroupFrameworkResource(t *testing.T) {
-	got := NewFirewallGroupFrameworkResource()
-	if got == nil {
-		t.Fatal("NewFirewallGroupFrameworkResource() returned nil")
-	}
-	_ = got
-	if _, ok := got.(fwresource.ResourceWithImportState); !ok {
-		t.Errorf("does not implement fwresource.ResourceWithImportState")
-	}
-	if _, ok := got.(fwresource.ResourceWithIdentity); !ok {
-		t.Errorf("does not implement fwresource.ResourceWithIdentity")
-	}
-}
-
-func TestNewFirewallGroupListResource(t *testing.T) {
-	got := NewFirewallGroupListResource()
-	if got == nil {
-		t.Fatal("NewFirewallGroupListResource() returned nil")
-	}
-	_ = got
-}
-
-func Test_firewallGroupResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallGroupResource
-		args args
-	}{
-		{
-			name: "returns correct type name",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != "unifi_firewall_group" {
-				t.Errorf("TypeName = %q, want %q", tt.args.resp.TypeName, "unifi_firewall_group")
-			}
-		})
-	}
-}
-
-func Test_firewallGroupResource_IdentitySchema(t *testing.T) {
-	type args struct {
-		in0  context.Context
-		in1  fwresource.IdentitySchemaRequest
-		resp *fwresource.IdentitySchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallGroupResource
-		args args
-	}{
-		{
-			name: "has id attribute",
-			r:    &firewallGroupResource{},
-			args: args{
-				in0:  context.Background(),
-				in1:  fwresource.IdentitySchemaRequest{},
-				resp: &fwresource.IdentitySchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.IdentitySchema(tt.args.in0, tt.args.in1, tt.args.resp)
-			if _, ok := tt.args.resp.IdentitySchema.Attributes["id"]; !ok {
-				t.Error("IdentitySchema missing 'id' attribute")
-			}
-		})
-	}
-}
-
-func Test_firewallGroupResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallGroupResource
-		args args
-	}{
-		{
-			name: "has expected attributes",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			s := tt.args.resp.Schema
-			for _, key := range []string{"id", "site", "name", "type", "members"} {
-				if _, ok := s.Attributes[key]; !ok {
-					t.Errorf("Schema missing attribute %q", key)
-				}
-			}
-		})
-	}
-}
-
-func Test_firewallGroupResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name       string
-		r          *firewallGroupResource
-		args       args
-		wantErr    bool
-		wantClient bool
-	}{
-		{
-			name: "nil provider data",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "wrong type",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: "wrong",
-				},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantErr: true,
-		},
-		{
-			name: "correct client",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: &Client{},
-				},
-				resp: &fwresource.ConfigureResponse{},
-			},
-			wantClient: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantErr && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("expected error diagnostic")
-			}
-			if !tt.wantErr && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", tt.args.resp.Diagnostics)
-			}
-			if tt.wantClient && tt.r.client == nil {
-				t.Error("expected client to be set")
-			}
-		})
-	}
-}
-
-func Test_firewallGroupResource_modelToAPIFirewallGroup(t *testing.T) {
-	type args struct {
-		ctx   context.Context
-		model *firewallGroupResourceModel
-	}
-	ctx := context.Background()
-	membersSet, _ := types.SetValueFrom(ctx, types.StringType, []string{"10.0.0.1", "10.0.0.2"})
-	portMembersSet, _ := types.SetValueFrom(ctx, types.StringType, []string{"80", "443"})
-
-	tests := []struct {
-		name    string
-		r       *firewallGroupResource
-		args    args
-		want    *unifi.FirewallGroup
-		wantErr bool
-	}{
-		{
-			name: "basic address group",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: ctx,
-				model: &firewallGroupResourceModel{
-					Name:    types.StringValue("Test Group"),
-					Type:    types.StringValue("address-group"),
-					Members: membersSet,
-				},
-			},
-			want: &unifi.FirewallGroup{
-				Name:         "Test Group",
-				GroupType:    "address-group",
-				GroupMembers: []string{"10.0.0.1", "10.0.0.2"},
-			},
-		},
-		{
-			name: "empty members",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: ctx,
-				model: &firewallGroupResourceModel{
-					Name:    types.StringValue("Empty Group"),
-					Type:    types.StringValue("address-group"),
-					Members: types.SetNull(types.StringType),
-				},
-			},
-			want: &unifi.FirewallGroup{
-				Name:         "Empty Group",
-				GroupType:    "address-group",
-				GroupMembers: nil,
-			},
-		},
-		{
-			name: "port group",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: ctx,
-				model: &firewallGroupResourceModel{
-					Name:    types.StringValue("Port Group"),
-					Type:    types.StringValue("port-group"),
-					Members: portMembersSet,
-				},
-			},
-			want: &unifi.FirewallGroup{
-				Name:         "Port Group",
-				GroupType:    "port-group",
-				GroupMembers: []string{"80", "443"},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.r.modelToAPIFirewallGroup(tt.args.ctx, tt.args.model)
-			if (err != nil) != tt.wantErr {
-				t.Errorf(
-					"firewallGroupResource.modelToAPIFirewallGroup() error = %v, wantErr %v",
-					err,
-					tt.wantErr,
-				)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf(
-					"firewallGroupResource.modelToAPIFirewallGroup() = %v, want %v",
-					got,
-					tt.want,
-				)
-			}
-		})
-	}
-}
-
-func Test_firewallGroupResource_setResourceData(t *testing.T) {
-	type args struct {
-		ctx           context.Context
-		firewallGroup *unifi.FirewallGroup
-		model         *firewallGroupResourceModel
-		site          string
-	}
-	tests := []struct {
-		name string
-		r    *firewallGroupResource
-		args args
-	}{
-		{
-			name: "populates model from API",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: context.Background(),
-				firewallGroup: &unifi.FirewallGroup{
-					ID:           "fg1",
-					Name:         "Test",
-					GroupType:    "address-group",
-					GroupMembers: []string{"10.0.0.1"},
-				},
-				model: &firewallGroupResourceModel{},
-				site:  "default",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.setResourceData(tt.args.ctx, tt.args.firewallGroup, tt.args.model, tt.args.site)
-			if tt.args.model.ID.ValueString() != "fg1" {
-				t.Errorf("ID = %q, want %q", tt.args.model.ID.ValueString(), "fg1")
-			}
-			if tt.args.model.Name.ValueString() != "Test" {
-				t.Errorf("Name = %q, want %q", tt.args.model.Name.ValueString(), "Test")
-			}
-		})
-	}
-}
-
-func Test_firewallGroupResource_firewallGroupToModel(t *testing.T) {
-	type args struct {
-		ctx   context.Context
-		api   *unifi.FirewallGroup
-		model *firewallGroupResourceModel
-		site  string
-	}
-	tests := []struct {
-		name string
-		r    *firewallGroupResource
-		args args
-		want diag.Diagnostics
-	}{
-		{
-			name: "basic API to model",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: context.Background(),
-				api: &unifi.FirewallGroup{
-					ID:           "fg1",
-					Name:         "Test",
-					GroupType:    "address-group",
-					GroupMembers: []string{"10.0.0.1"},
-				},
-				model: &firewallGroupResourceModel{},
-				site:  "default",
-			},
-			want: nil,
-		},
-		{
-			name: "empty members produces null set",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: context.Background(),
-				api: &unifi.FirewallGroup{
-					ID:           "fg2",
-					Name:         "Empty",
-					GroupType:    "address-group",
-					GroupMembers: []string{},
-				},
-				model: &firewallGroupResourceModel{},
-				site:  "default",
-			},
-			want: nil,
-		},
-		{
-			name: "empty name produces null",
-			r:    &firewallGroupResource{},
-			args: args{
-				ctx: context.Background(),
-				api: &unifi.FirewallGroup{
-					ID:           "fg3",
-					Name:         "",
-					GroupType:    "address-group",
-					GroupMembers: []string{},
-				},
-				model: &firewallGroupResourceModel{},
-				site:  "default",
-			},
-			want: nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.r.firewallGroupToModel(tt.args.ctx, tt.args.api, tt.args.model, tt.args.site)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("firewallGroupResource.firewallGroupToModel() = %v, want %v", got, tt.want)
-			}
-			if tt.args.api.ID != "" && tt.args.model.ID.ValueString() != tt.args.api.ID {
-				t.Errorf("ID = %q, want %q", tt.args.model.ID.ValueString(), tt.args.api.ID)
-			}
-			if tt.args.api.Name == "" && !tt.args.model.Name.IsNull() {
-				t.Error("expected Name to be null for empty API name")
-			}
-			if len(tt.args.api.GroupMembers) == 0 && !tt.args.model.Members.IsNull() {
-				t.Error("expected Members to be null for empty GroupMembers")
-			}
-		})
-	}
-}
-
-func Test_firewallGroupResource_ListResourceConfigSchema(t *testing.T) {
-	type args struct {
-		in0  context.Context
-		in1  fwlist.ListResourceSchemaRequest
-		resp *fwlist.ListResourceSchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallGroupResource
-		args args
-	}{
-		{
-			name: "has site attribute",
-			r:    &firewallGroupResource{},
-			args: args{
-				in0:  context.Background(),
-				in1:  fwlist.ListResourceSchemaRequest{},
-				resp: &fwlist.ListResourceSchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.ListResourceConfigSchema(tt.args.in0, tt.args.in1, tt.args.resp)
-			if _, ok := tt.args.resp.Schema.Attributes["site"]; !ok {
-				t.Error("ListResourceConfigSchema missing 'site' attribute")
-			}
-		})
-	}
-}
-
 func TestAccFirewallGroupList_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -554,4 +126,115 @@ func TestAccFirewallGroupList_basic(t *testing.T) {
 			},
 		},
 	})
+}
+
+// modelToAPIFirewallGroup, setResourceData and firewallGroupToModel are
+// gone; the descriptor's Fields do that work, and their assertions are
+// re-expressed here against the descriptor rather than deleted.
+//
+// One case changed on purpose: the old firewallGroupToModel nulled
+// `members` when the API returned none, but members is Required in the
+// generated schema, so a null state against a config holding a value is an
+// inconsistent-result-after-apply -- and `members = []` is a legal
+// configuration, so the trigger is reachable. The descriptor keeps the
+// empty set instead; TestFirewallGroupEmptyMembersStaysEmpty asserts the
+// new behaviour.
+func TestFirewallGroupDescriptorRoundTripsEveryField(t *testing.T) {
+	ctx := context.Background()
+	spec := firewallGroupKitSpec()
+
+	members, diags := types.SetValueFrom(ctx, types.StringType, []string{"10.0.0.1", "10.0.0.2"})
+	if diags.HasError() {
+		t.Fatal(diags)
+	}
+	model := firewallGroupKitModel{
+		ID:      types.StringValue("fg1"),
+		Name:    types.StringValue("Test"),
+		Type:    types.StringValue("address-group"),
+		Members: members,
+	}
+
+	var sdk ui.FirewallGroup
+	for _, field := range spec.Fields {
+		if d := field.ToSDK(ctx, &model, &sdk); d.HasError() {
+			t.Fatalf("ToSDK(%s): %v", field.WireName(), d)
+		}
+	}
+	if sdk.Name != "Test" {
+		t.Errorf("name did not reach the SDK struct: %q", sdk.Name)
+	}
+	if sdk.GroupType != "address-group" {
+		t.Errorf("group_type did not reach the SDK struct: %q", sdk.GroupType)
+	}
+	if len(sdk.GroupMembers) != 2 {
+		t.Errorf("group_members reached the SDK struct as %v", sdk.GroupMembers)
+	}
+
+	var back firewallGroupKitModel
+	for _, field := range spec.Fields {
+		if d := field.ToModel(ctx, &sdk, &back); d.HasError() {
+			t.Fatalf("ToModel(%s): %v", field.WireName(), d)
+		}
+	}
+	if back.Name != model.Name || back.Type != model.Type {
+		t.Errorf("scalar round trip: %v/%v want %v/%v", back.Name, back.Type, model.Name, model.Type)
+	}
+	if !back.Members.Equal(model.Members) {
+		t.Errorf("members round trip: %v want %v", back.Members, model.Members)
+	}
+}
+
+// TestFirewallGroupEmptyMembersStaysEmpty replaces "empty members produces null
+// set". members is Required, so its zero must survive rather than becoming
+// null: the practitioner may write `members = []`, and nulling that makes state
+// disagree with config.
+func TestFirewallGroupEmptyMembersStaysEmpty(t *testing.T) {
+	ctx := context.Background()
+	spec := firewallGroupKitSpec()
+	api := ui.FirewallGroup{ID: "fg2", Name: "Empty", GroupType: "address-group", GroupMembers: []string{}}
+
+	var model firewallGroupKitModel
+	for _, field := range spec.Fields {
+		if d := field.ToModel(ctx, &api, &model); d.HasError() {
+			t.Fatalf("ToModel(%s): %v", field.WireName(), d)
+		}
+	}
+	if model.Members.IsNull() {
+		t.Error("members went null on an empty API list; it is Required, so the empty must survive")
+	}
+	if n := len(model.Members.Elements()); n != 0 {
+		t.Errorf("members holds %d element(s), want an empty set", n)
+	}
+}
+
+// TestFirewallGroupDescriptorCoversEveryManagedField stops the round trip above
+// passing because a field is absent from the descriptor entirely.
+func TestFirewallGroupDescriptorCoversEveryManagedField(t *testing.T) {
+	got := map[string]bool{}
+	for _, f := range firewallGroupKitSpec().Fields {
+		got[f.WireName()] = true
+	}
+	for _, want := range []string{"name", "group_type", "group_members"} {
+		if !got[want] {
+			t.Errorf("the descriptor does not carry managed field %q", want)
+		}
+	}
+	if len(got) != 3 {
+		t.Errorf("descriptor carries %d fields, want 3: %v", len(got), got)
+	}
+}
+
+// TestFirewallGroupConstructorsServeBothSurfaces replaces the two constructor
+// tests, which asserted the old concrete type.
+func TestFirewallGroupConstructorsServeBothSurfaces(t *testing.T) {
+	if NewFirewallGroupFrameworkResource() == nil {
+		t.Error("NewFirewallGroupFrameworkResource returned nil")
+	}
+	if NewFirewallGroupListResource() == nil {
+		t.Error("NewFirewallGroupListResource returned nil")
+	}
+	r := newFirewallGroupKitResource()
+	if r.Spec.TypeName != "firewall_group" {
+		t.Errorf("spec TypeName = %q", r.Spec.TypeName)
+	}
 }
