@@ -7870,8 +7870,12 @@
           "kind": "attribute",
           "type": "[\"set\",\"string\"]",
           "optional": true,
+          "computed": true,
           "description": "List of AP group IDs to apply this WLAN to.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "setplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "ap_group_mode": {
           "kind": "attribute",
@@ -8081,7 +8085,7 @@
           "description": "Minimum data rate for 2G clients in Kbps. When unset, the controller assigns a value (e.g. `1000` in `auto` mode), so this is computed rather than defaulted to `0`.",
           "description_kind": "markdown",
           "plan_modifiers": [
-            "int64planmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+            "planmodifiers.UseStateUnlessSiblingChanges: Once set, this value is kept in the plan unless \"minrate_setting_preference\" is changing, in which case the controller supplies it."
           ]
         },
         "minimum_data_rate_5g_kbps": {
@@ -8092,7 +8096,7 @@
           "description": "Minimum data rate for 5G clients in Kbps. When unset, the controller assigns a value (e.g. `6000` in `auto` mode), so this is computed rather than defaulted to `0`.",
           "description_kind": "markdown",
           "plan_modifiers": [
-            "int64planmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+            "planmodifiers.UseStateUnlessSiblingChanges: Once set, this value is kept in the plan unless \"minrate_setting_preference\" is changing, in which case the controller supplies it."
           ]
         },
         "minrate_setting_preference": {
@@ -8102,7 +8106,9 @@
           "computed": true,
           "description": "Minimum rate setting preference.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to auto"
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "mlo_enabled": {
           "kind": "attribute",
@@ -8142,8 +8148,12 @@
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
+          "computed": true,
           "description": "ID of the network for this WLAN.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "no2ghz_oui": {
           "kind": "attribute",
@@ -8240,6 +8250,50 @@
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "roaming_assistant_6e_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable the roaming assistant on 6GHz. See `roaming_assistant_na_enabled`.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "roaming_assistant_6e_rssi": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Signal threshold in dBm at which the 6GHz roaming assistant disconnects a client. Between `-90` and `-70` — note the range differs from the 5GHz one.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "int64planmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "roaming_assistant_na_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable the roaming assistant on 5GHz, which disconnects clients whose signal drops below `roaming_assistant_na_rssi` so they reassociate with a closer AP. UniFi Network 10.x replaced the per-radio `unifi_device.radio_table.assisted_roaming_enabled` with this per-WLAN setting.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "roaming_assistant_na_rssi": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Signal threshold in dBm at which the 5GHz roaming assistant disconnects a client. Between `-80` and `-60`.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "int64planmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ]
         },
         "schedule": {

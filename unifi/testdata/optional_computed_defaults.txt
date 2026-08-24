@@ -154,7 +154,6 @@ unifi_wlan.is_guest
 unifi_wlan.l2_isolation
 unifi_wlan.mac_filter.enabled
 unifi_wlan.mac_filter.policy
-unifi_wlan.minrate_setting_preference
 unifi_wlan.mlo_enabled
 unifi_wlan.multicast_enhance
 unifi_wlan.nas_identifier_type

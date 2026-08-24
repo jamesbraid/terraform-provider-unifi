@@ -72,19 +72,22 @@ func TestAccWLANFramework_additionalFields(t *testing.T) {
 					resource.TestCheckResourceAttrSet("unifi_wlan.test", "group_rekey"),
 					resource.TestCheckResourceAttrSet("unifi_wlan.test", "iapp_enabled"),
 					resource.TestCheckResourceAttrSet("unifi_wlan.test", "mlo_enabled"),
-					// Issue #176 (secondary): the API omits minimum_data_rate_*
-					// from GET responses, so the read path must surface them as 0
-					// (the schema default), not null, to avoid perpetual plan
-					// drift after import.
-					resource.TestCheckResourceAttr(
+					// No default here deliberately: the controller overrides
+					// this in auto mode (why it's Computed), and 0 is a rate a
+					// practitioner may legitimately request, so asserting "0"
+					// for "the controller said nothing" would assert
+					// something the controller never said.
+					//
+					// The absence of drift is inferred from the schema and has
+					// not been observed. This step is what would show it, so a
+					// failure here is a finding, not a stale expectation.
+					resource.TestCheckNoResourceAttr(
 						"unifi_wlan.test",
 						"minimum_data_rate_2g_kbps",
-						"0",
 					),
-					resource.TestCheckResourceAttr(
+					resource.TestCheckNoResourceAttr(
 						"unifi_wlan.test",
 						"minimum_data_rate_5g_kbps",
-						"0",
 					),
 				),
 				ResourceName:  "unifi_wlan.test",
@@ -152,39 +155,6 @@ func Test_wlanPrivatePresharedKeyModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_wlanFrameworkResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name         string
-		r            *wlanFrameworkResource
-		args         args
-		wantTypeName string
-	}{
-		{
-			name: "sets type name",
-			r:    &wlanFrameworkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-			wantTypeName: "unifi_wlan",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", tt.args.resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_wlanFrameworkResource_IdentitySchema(t *testing.T) {
 	type args struct {
 		in0  context.Context
@@ -209,49 +179,18 @@ func Test_wlanFrameworkResource_IdentitySchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.r.IdentitySchema(tt.args.in0, tt.args.in1, tt.args.resp)
-		})
-	}
-}
-
-func Test_wlanFrameworkResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *wlanFrameworkResource
-		args args
-	}{
-		{
-			name: "contains key attributes",
-			r:    &wlanFrameworkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			for _, key := range []string{"id", "name", "security"} {
-				if _, ok := tt.args.resp.Schema.Attributes[key]; !ok {
-					t.Errorf("Schema missing attribute %q", key)
-				}
+			if tt.args.resp.Diagnostics.HasError() {
+				t.Fatalf("IdentitySchema() diagnostics: %v", tt.args.resp.Diagnostics.Errors())
+			}
+			if len(tt.args.resp.IdentitySchema.Attributes) == 0 {
+				t.Fatal("IdentitySchema() returned no attributes")
 			}
 		})
 	}
 }
 
-// Test_wlanFrameworkResource_Schema_computedControllerFields guards #323: fields
-// the controller assigns on its own must be Computed so a controller-supplied
-// value doesn't trip "inconsistent result after apply". minimum_data_rate_*_kbps
-// previously defaulted to 0 (rejected/overridden by the controller in auto mode);
-// radius_profile_id and bc_filter_list were Optional-only and got populated by
-// the controller.
+// Fields the controller assigns on its own must be Computed so a
+// controller-supplied value doesn't trip "inconsistent result after apply".
 func Test_wlanFrameworkResource_Schema_computedControllerFields(t *testing.T) {
 	resp := &fwresource.SchemaResponse{}
 	(&wlanFrameworkResource{}).Schema(context.Background(), fwresource.SchemaRequest{}, resp)
@@ -261,6 +200,12 @@ func Test_wlanFrameworkResource_Schema_computedControllerFields(t *testing.T) {
 		"minimum_data_rate_5g_kbps",
 		"radius_profile_id",
 		"bc_filter_list",
+		// UniFi Network 10.x replaced unifi_device.radio_table.assisted_roaming_*
+		// with these per-WLAN attributes.
+		"roaming_assistant_na_enabled",
+		"roaming_assistant_na_rssi",
+		"roaming_assistant_6e_enabled",
+		"roaming_assistant_6e_rssi",
 	} {
 		attr, ok := resp.Schema.Attributes[key]
 		if !ok {
@@ -268,13 +213,27 @@ func Test_wlanFrameworkResource_Schema_computedControllerFields(t *testing.T) {
 			continue
 		}
 		if !attr.IsComputed() {
-			t.Errorf("attribute %q must be Computed (controller-managed, #323)", key)
+			t.Errorf("attribute %q must be Computed (controller-managed)", key)
+		}
+	}
+}
+
+// Test_wlanFrameworkResource_Schema_noAssistedRoaming guards against the
+// removed unifi_device attributes being reintroduced here under their old
+// names. The per-WLAN replacements are spelled roaming_assistant_*.
+func Test_wlanFrameworkResource_Schema_noAssistedRoaming(t *testing.T) {
+	resp := &fwresource.SchemaResponse{}
+	(&wlanFrameworkResource{}).Schema(context.Background(), fwresource.SchemaRequest{}, resp)
+
+	for _, key := range []string{"assisted_roaming_enabled", "assisted_roaming_rssi"} {
+		if _, ok := resp.Schema.Attributes[key]; ok {
+			t.Errorf("attribute %q should not exist; use roaming_assistant_* instead", key)
 		}
 	}
 }
 
 func Test_wlanFrameworkResource_UpgradeState(t *testing.T) {
-	r := &wlanFrameworkResource{}
+	r := newWLANKitResource()
 	got := r.UpgradeState(context.Background())
 	if got == nil {
 		t.Fatal("UpgradeState() returned nil")
@@ -284,76 +243,11 @@ func Test_wlanFrameworkResource_UpgradeState(t *testing.T) {
 	}
 }
 
-func Test_wlanFrameworkResource_Configure(t *testing.T) {
-	t.Run("nil provider data", func(t *testing.T) {
-		r := &wlanFrameworkResource{}
-		resp := &fwresource.ConfigureResponse{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: nil}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Errorf("expected no error for nil provider data, got %v", resp.Diagnostics)
-		}
-	})
-
-	t.Run("wrong type", func(t *testing.T) {
-		r := &wlanFrameworkResource{}
-		resp := &fwresource.ConfigureResponse{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: "wrong"}, resp)
-		if !resp.Diagnostics.HasError() {
-			t.Error("expected error for wrong type")
-		}
-	})
-
-	t.Run("correct client", func(t *testing.T) {
-		r := &wlanFrameworkResource{}
-		resp := &fwresource.ConfigureResponse{}
-		client := &Client{}
-		r.Configure(context.Background(), fwresource.ConfigureRequest{ProviderData: client}, resp)
-		if resp.Diagnostics.HasError() {
-			t.Errorf("unexpected error: %v", resp.Diagnostics)
-		}
-		if r.client != client {
-			t.Error("client not set")
-		}
-	})
-}
-
-func Test_wlanFrameworkResource_setDefaultWLANGroupID(t *testing.T) {
-	t.Skip("requires configured client")
-}
-
-func Test_wlanFrameworkResource_Create(t *testing.T) {
-	t.Skip("requires terraform state and configured client")
-}
-
-func Test_wlanFrameworkResource_Read(t *testing.T) {
-	t.Skip("requires terraform state and configured client")
-}
-
-func Test_wlanFrameworkResource_Update(t *testing.T) {
-	t.Skip("requires terraform state and configured client")
-}
-
-func Test_wlanFrameworkResource_readPassphraseWO(t *testing.T) {
-	t.Skip("requires terraform state")
-}
-
-func Test_wlanFrameworkResource_applyPlanToState(t *testing.T) {
-	t.Skip("requires terraform state")
-}
-
-func Test_wlanFrameworkResource_Delete(t *testing.T) {
-	t.Skip("requires terraform state and configured client")
-}
-
-func Test_wlanFrameworkResource_ImportState(t *testing.T) {
-	t.Skip("requires terraform state and configured client")
-}
-
 func Test_wlanFrameworkResource_planToWLAN(t *testing.T) {
 	ctx := context.Background()
-	r := &wlanFrameworkResource{}
+	spec := wlanKitSpec()
 
-	plan := wlanFrameworkResourceModel{
+	plan := wlanKitModel{
 		Name:     types.StringValue("test"),
 		Security: types.StringValue("wpapsk"),
 		MacFilter: types.ObjectNull(map[string]attr.Type{
@@ -370,9 +264,9 @@ func Test_wlanFrameworkResource_planToWLAN(t *testing.T) {
 		BroadcastFilterList: types.SetNull(types.StringType),
 	}
 
-	got, diags := r.planToWLAN(ctx, plan)
+	got, diags := spec.ToSDK(ctx, &plan)
 	if diags.HasError() {
-		t.Fatalf("planToWLAN() diagnostics: %v", diags)
+		t.Fatalf("ToSDK() diagnostics: %v", diags)
 	}
 	if got.Name != "test" {
 		t.Errorf("Name = %q, want %q", got.Name, "test")
@@ -380,24 +274,27 @@ func Test_wlanFrameworkResource_planToWLAN(t *testing.T) {
 	if got.Security != "wpapsk" {
 		t.Errorf("Security = %q, want %q", got.Security, "wpapsk")
 	}
-	if got.ScheduleWithDuration == nil {
-		t.Error("ScheduleWithDuration should not be nil (empty slice expected)")
+	// nil is correct here: the guard that used to force an empty slice (so
+	// planToWLAN wouldn't marshal null) isn't carried into the descriptor,
+	// since go-unifi's omitempty tag now drops a zero-length slice either way.
+	if got.ScheduleWithDuration != nil {
+		t.Errorf("ScheduleWithDuration = %v, want nil for an absent schedule", got.ScheduleWithDuration)
 	}
 }
 
 func Test_wlanFrameworkResource_wlanToModel(t *testing.T) {
 	ctx := context.Background()
-	r := &wlanFrameworkResource{}
+	spec := wlanKitSpec()
 
 	wlan := &unifi.WLAN{
 		ID:       "wlan-123",
 		Name:     "test-wlan",
 		Security: "wpapsk",
 	}
-	var model wlanFrameworkResourceModel
-	diags := r.wlanToModel(ctx, wlan, &model, "default")
+	var model wlanKitModel
+	diags := spec.ToModel(ctx, wlan, &model, "default")
 	if diags.HasError() {
-		t.Fatalf("wlanToModel() diagnostics: %v", diags)
+		t.Fatalf("ToModel() diagnostics: %v", diags)
 	}
 	if model.ID.ValueString() != "wlan-123" {
 		t.Errorf("ID = %q, want %q", model.ID.ValueString(), "wlan-123")
@@ -414,23 +311,80 @@ func Test_wlanFrameworkResource_wlanToModel(t *testing.T) {
 }
 
 func Test_wlanFrameworkResource_ListResourceConfigSchema(t *testing.T) {
-	r := &wlanFrameworkResource{}
+	r := newWLANKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("ListResourceConfigSchema() diagnostics: %v", resp.Diagnostics.Errors())
+	}
+	if len(resp.Schema.Attributes) == 0 {
+		t.Fatal("ListResourceConfigSchema() returned no attributes")
+	}
 }
 
-func Test_wlanFrameworkResource_List(t *testing.T) {
-	t.Skip("requires configured client")
+// A WLAN whose secret is managed by passphrase_wo must never let the
+// controller's echo land in the (non-write-only) passphrase attribute --
+// neither in the apply that used passphrase_wo, nor in a later bare refresh.
+// wlanBeforeSend's stash (model.PassphraseWO) answers the question for the
+// first case; prior's own nullness, which is all a refresh has since Read
+// never calls BeforeSend, answers it for the second.
+func TestWLANAfterReceive_passphraseWriteOnly(t *testing.T) {
+	sdk := &unifi.WLAN{Passphrase: "controller-echo"}
+
+	t.Run("this apply used passphrase_wo", func(t *testing.T) {
+		model := &wlanKitModel{
+			Passphrase:   types.StringValue("controller-echo"),
+			PassphraseWO: types.StringValue("configured-secret"), // wlanBeforeSend's stash
+		}
+		prior := wlanKitModel{} // create: nothing persisted yet
+		if diags := wlanAfterReceive(context.Background(), sdk, model, prior, nil); diags.HasError() {
+			t.Fatalf("wlanAfterReceive: %v", diags)
+		}
+		if !model.Passphrase.IsNull() {
+			t.Errorf("Passphrase = %v, want null", model.Passphrase)
+		}
+		if !model.PassphraseWO.IsNull() {
+			t.Errorf("PassphraseWO = %v, want null (never persisted)", model.PassphraseWO)
+		}
+	})
+
+	t.Run("bare refresh of a passphrase_wo-managed WLAN", func(t *testing.T) {
+		model := &wlanKitModel{
+			Passphrase: types.StringValue("controller-echo"), // what ToModel just wrote
+		}
+		prior := wlanKitModel{Passphrase: types.StringNull()} // last apply's state
+		if diags := wlanAfterReceive(context.Background(), sdk, model, prior, nil); diags.HasError() {
+			t.Fatalf("wlanAfterReceive: %v", diags)
+		}
+		if !model.Passphrase.IsNull() {
+			t.Errorf(
+				"Passphrase = %v, want null (a refresh must not resurrect the echo)",
+				model.Passphrase,
+			)
+		}
+	})
+
+	t.Run("config-managed passphrase keeps round-tripping", func(t *testing.T) {
+		model := &wlanKitModel{
+			Passphrase: types.StringValue("controller-echo"),
+		}
+		prior := wlanKitModel{Passphrase: types.StringValue("previous-secret")}
+		if diags := wlanAfterReceive(context.Background(), sdk, model, prior, nil); diags.HasError() {
+			t.Fatalf("wlanAfterReceive: %v", diags)
+		}
+		if model.Passphrase.ValueString() != "controller-echo" {
+			t.Errorf("Passphrase = %v, want the echoed value unchanged", model.Passphrase)
+		}
+	})
 }
 
-// TestWLANPrivatePresharedKeys_roundTrip exercises the private pre-shared key
-// (PPSK) mapping added for issue #47: a plan carrying PPSK entries must be
-// translated to the go-unifi WLAN struct (planToWLAN) and back into the
-// resource model (wlanToModel) without losing the per-key network binding or
-// password.
+// TestWLANPrivatePresharedKeys_roundTrip exercises the private pre-shared
+// key (PPSK) mapping: a plan carrying PPSK entries must be translated to
+// the go-unifi WLAN struct (Spec.ToSDK) and back into the resource model
+// (Spec.ToModel) without losing the per-key network binding or password.
 func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 	ctx := context.Background()
-	r := &wlanFrameworkResource{}
+	spec := wlanKitSpec()
 
 	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()}
 	ppskList, d := types.ListValueFrom(ctx, ppskType, []wlanPrivatePresharedKeyModel{
@@ -441,7 +395,7 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 		t.Fatalf("building PPSK list: %v", d)
 	}
 
-	plan := wlanFrameworkResourceModel{
+	plan := wlanKitModel{
 		Name:                        types.StringValue("ppsk-wlan"),
 		Security:                    types.StringValue("wpapsk"),
 		PrivatePresharedKeysEnabled: types.BoolValue(true),
@@ -449,9 +403,9 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 	}
 
 	// plan -> API
-	wlan, diags := r.planToWLAN(ctx, plan)
+	wlan, diags := spec.ToSDK(ctx, &plan)
 	if diags.HasError() {
-		t.Fatalf("planToWLAN: %v", diags)
+		t.Fatalf("ToSDK: %v", diags)
 	}
 	if !wlan.PrivatePresharedKeysEnabled {
 		t.Errorf("PrivatePresharedKeysEnabled = false, want true")
@@ -469,8 +423,8 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 	}
 
 	// API -> model
-	var model wlanFrameworkResourceModel
-	if diags := r.wlanToModel(ctx, wlan, &model, "default"); diags.HasError() {
+	var model wlanKitModel
+	if diags := spec.ToModel(ctx, wlan, &model, "default"); diags.HasError() {
 		t.Fatalf("wlanToModel: %v", diags)
 	}
 	if !model.PrivatePresharedKeysEnabled.ValueBool() {
@@ -497,10 +451,10 @@ func TestWLANPrivatePresharedKeys_roundTrip(t *testing.T) {
 // plan drift for WLANs that don't use private pre-shared keys.
 func TestWLANPrivatePresharedKeys_emptyIsNull(t *testing.T) {
 	ctx := context.Background()
-	r := &wlanFrameworkResource{}
+	spec := wlanKitSpec()
 
-	var model wlanFrameworkResourceModel
-	if diags := r.wlanToModel(ctx, &unifi.WLAN{}, &model, "default"); diags.HasError() {
+	var model wlanKitModel
+	if diags := spec.ToModel(ctx, &unifi.WLAN{}, &model, "default"); diags.HasError() {
 		t.Fatalf("wlanToModel: %v", diags)
 	}
 	if model.PrivatePresharedKeysEnabled.ValueBool() {
@@ -511,6 +465,12 @@ func TestWLANPrivatePresharedKeys_emptyIsNull(t *testing.T) {
 	}
 }
 
+// A refresh has no plan to fall back on the way Create and Update do: if
+// UniFi returns the same PPSK bindings in another order, or omits a
+// password UniFi is redacting rather than clearing, ToModel's plain decode
+// would replace the configured state and manufacture drift.
+// wlanPrivatePresharedKeysState is called from wlanAfterReceive rather than
+// from ToModel because ToModel has no argument for what state used to hold.
 func TestWLANPrivatePresharedKeys_preservesStateForPartialResponse(t *testing.T) {
 	ctx := context.Background()
 	ppskType := types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()}
@@ -529,22 +489,16 @@ func TestWLANPrivatePresharedKeys_preservesStateForPartialResponse(t *testing.T)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			model := wlanFrameworkResourceModel{PrivatePresharedKeys: prior}
 			wlan := &unifi.WLAN{
 				PrivatePresharedKeysEnabled: true,
 				PrivatePresharedKeys:        keys,
 			}
-
-			if diags := (&wlanFrameworkResource{}).wlanToModel(
-				ctx,
-				wlan,
-				&model,
-				"default",
-			); diags.HasError() {
-				t.Fatalf("wlanToModel: %v", diags)
+			got, diags := wlanPrivatePresharedKeysState(ctx, wlan, prior)
+			if diags.HasError() {
+				t.Fatalf("wlanPrivatePresharedKeysState: %v", diags)
 			}
-			if !model.PrivatePresharedKeys.Equal(prior) {
-				t.Fatalf("PrivatePresharedKeys = %v, want %v", model.PrivatePresharedKeys, prior)
+			if !got.Equal(prior) {
+				t.Fatalf("PrivatePresharedKeys = %v, want %v", got, prior)
 			}
 		})
 	}
@@ -605,6 +559,9 @@ func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 			want:  types.ListNull(ppskType),
 		},
 		{
+			// prior is null (nothing persisted yet), so the response is taken
+			// as-is; it happens to carry the same values as the "prior"
+			// fixture above, which is what "want" is compared against.
 			name: "import",
 			wlan: &unifi.WLAN{
 				PrivatePresharedKeysEnabled: true,
@@ -726,19 +683,19 @@ func TestWLANPrivatePresharedKeys_usesControllerChanges(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, diags := privatePresharedKeysState(ctx, test.wlan, test.prior)
+			got, diags := wlanPrivatePresharedKeysState(ctx, test.wlan, test.prior)
 			if diags.HasError() {
-				t.Fatalf("privatePresharedKeysState: %v", diags)
+				t.Fatalf("wlanPrivatePresharedKeysState: %v", diags)
 			}
 			if !got.Equal(test.want) {
-				t.Fatalf("privatePresharedKeysState = %v, want %v", got, test.want)
+				t.Fatalf("wlanPrivatePresharedKeysState = %v, want %v", got, test.want)
 			}
 		})
 	}
 }
 
 func TestWLANPrivatePresharedKeys_rejectsInvalidPriorState(t *testing.T) {
-	_, diags := privatePresharedKeysState(
+	_, diags := wlanPrivatePresharedKeysState(
 		context.Background(),
 		&unifi.WLAN{
 			PrivatePresharedKeysEnabled: true,
@@ -749,17 +706,17 @@ func TestWLANPrivatePresharedKeys_rejectsInvalidPriorState(t *testing.T) {
 		types.ListValueMust(types.StringType, []attr.Value{types.StringValue("invalid")}),
 	)
 	if !diags.HasError() {
-		t.Fatal("privatePresharedKeysState accepted invalid prior state")
+		t.Fatal("wlanPrivatePresharedKeysState accepted invalid prior state")
 	}
 }
 
-// TestApplyEnhancedIotOverrides guards #283: when enhanced_iot is enabled the
-// controller forces iapp_enabled, wpa3_support, wpa3_transition, pmf_mode and
-// dtim_ng, so the provider pins them in the plan to avoid an inconsistent-result
-// error. When enhanced_iot is false it must be a no-op.
+// When enhanced_iot is enabled the controller forces iapp_enabled,
+// wpa3_support, wpa3_transition, pmf_mode and dtim_ng, so the provider pins
+// them in the plan to avoid an inconsistent-result error. When enhanced_iot
+// is false it must be a no-op.
 func TestApplyEnhancedIotOverrides(t *testing.T) {
 	t.Run("enhanced_iot true forces the controller-managed fields", func(t *testing.T) {
-		m := &wlanFrameworkResourceModel{
+		m := &wlanKitModel{
 			EnhancedIot:    types.BoolValue(true),
 			IappEnabled:    types.BoolValue(false),
 			WPA3Support:    types.BoolValue(true),
@@ -788,7 +745,7 @@ func TestApplyEnhancedIotOverrides(t *testing.T) {
 	})
 
 	t.Run("enhanced_iot false is a no-op", func(t *testing.T) {
-		m := &wlanFrameworkResourceModel{
+		m := &wlanKitModel{
 			EnhancedIot: types.BoolValue(false),
 			WPA3Support: types.BoolValue(true),
 			PMFMode:     types.StringValue("optional"),
@@ -801,10 +758,4 @@ func TestApplyEnhancedIotOverrides(t *testing.T) {
 				m.WPA3Support.ValueBool(), m.PMFMode.ValueString())
 		}
 	})
-}
-
-func TestAccWLANList_basic(t *testing.T) {
-	// WLAN creation requires user_group_id which cannot be reliably resolved in
-	// the dockerized test environment; skip until the basic create path works.
-	t.Skip("WLAN creation requires user_group_id; skipping list acceptance test")
 }
