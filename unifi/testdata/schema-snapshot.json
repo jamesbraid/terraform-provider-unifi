@@ -4562,7 +4562,9 @@
           "computed": true,
           "description": "Specifies whether to use usg as a RADIUS authentication server.",
           "description_kind": "markdown",
-          "default": "booldefault.staticBoolDefault: value defaults to false"
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "vlan_enabled": {
           "kind": "attribute",
@@ -4580,7 +4582,9 @@
           "computed": true,
           "description": "Specifies whether to use vlan on wireless connections. Must be one of `disabled`, `optional`, or `required`.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to "
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         }
       }
     },

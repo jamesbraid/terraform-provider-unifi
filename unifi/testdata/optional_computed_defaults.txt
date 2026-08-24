@@ -96,9 +96,7 @@ unifi_radius_profile.accounting_enabled
 unifi_radius_profile.interim_update_enabled
 unifi_radius_profile.interim_update_interval
 unifi_radius_profile.use_usg_acct_server
-unifi_radius_profile.use_usg_auth_server
 unifi_radius_profile.vlan_enabled
-unifi_radius_profile.vlan_wlan_mode
 unifi_radius_user.tunnel_medium_type
 unifi_radius_user.tunnel_type
 unifi_setting.auto_speedtest.enabled
