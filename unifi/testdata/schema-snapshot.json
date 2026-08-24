@@ -6936,9 +6936,9 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "Encryption cipher for OpenVPN.",
+          "description": "Encryption cipher for OpenVPN. One of `AES_256_CBC` or `BF_CBC`.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to AES_256_GCM"
+          "default": "stringdefault.staticStringDefault: value defaults to AES_256_CBC"
         },
         "openvpn.mode": {
           "kind": "attribute",

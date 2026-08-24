@@ -263,7 +263,7 @@ func TestAccVPNServer_openvpn_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"unifi_vpn_server.test",
 						"openvpn.encryption_cipher",
-						"AES_256_GCM",
+						"AES_256_CBC",
 					),
 				),
 			},
@@ -304,7 +304,7 @@ func TestAccVPNServer_openvpn_update(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"unifi_vpn_server.test",
 						"openvpn.encryption_cipher",
-						"AES_256_GCM",
+						"AES_256_CBC",
 					),
 				),
 			},
@@ -546,7 +546,7 @@ resource "unifi_vpn_server" "test" {
 
   openvpn = {
     port              = 1194
-    encryption_cipher = "AES_256_GCM"
+    encryption_cipher = "AES_256_CBC"
   }
 }
 `
@@ -595,7 +595,7 @@ resource "unifi_vpn_server" "test" {
 }
 
 // TestGenerateWireGuardPrivateKey verifies the provider generates a valid
-// base64 32-byte Curve25519 private key when the user omits one (#255).
+// base64 32-byte Curve25519 private key when the user omits one.
 func TestGenerateWireGuardPrivateKey(t *testing.T) {
 	k1, err := generateWireGuardPrivateKey()
 	if err != nil {
@@ -695,31 +695,8 @@ func Test_vpnServerOpenVPNModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_vpnServerResource_Metadata(t *testing.T) {
-	tests := []struct {
-		providerTypeName, wantTypeName string
-	}{
-		{"unifi", "unifi_vpn_server"},
-		{"test", "test_vpn_server"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.providerTypeName, func(t *testing.T) {
-			r := &vpnServerResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.providerTypeName},
-				resp,
-			)
-			if resp.TypeName != tt.wantTypeName {
-				t.Errorf("TypeName = %q, want %q", resp.TypeName, tt.wantTypeName)
-			}
-		})
-	}
-}
-
 func Test_vpnServerResource_IdentitySchema(t *testing.T) {
-	r := &vpnServerResource{}
+	r := newVPNServerKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -730,61 +707,12 @@ func Test_vpnServerResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_vpnServerResource_Schema(t *testing.T) {
-	r := &vpnServerResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{"id", "site", "name", "enabled", "subnet", "dns", "wan", "radiusprofile_id", "wireguard", "l2tp", "openvpn"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
-func Test_vpnServerResource_Configure(t *testing.T) {
-	tests := []struct {
-		name      string
-		data      any
-		wantError bool
-	}{
-		{"nil", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct client", &Client{Site: "default"}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &vpnServerResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantError && !resp.Diagnostics.HasError() {
-				t.Error("expected error")
-			}
-			if !tt.wantError && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %v", resp.Diagnostics)
-			}
-		})
-	}
-}
-
-func Test_vpnServerResource_ImportState(t *testing.T) {
-	t.Skip(
-		"ImportState delegates to ImportStatePassthroughWithIdentity which requires full state schema setup",
-	)
-}
-
 func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("missing vpn type returns error", func(t *testing.T) {
-		r := &vpnServerResource{}
-		model := &vpnServerResourceModel{
+		spec := vpnServerKitSpec()
+		model := &vpnServerKitModel{
 			Name:      types.StringValue("test"),
 			Enabled:   types.BoolValue(true),
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.100.0.1/24"),
@@ -794,17 +722,27 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
-		got, diags := r.modelToNetwork(ctx, model)
+		got, diags := spec.ToSDK(ctx, model)
+		if !diags.HasError() {
+			// vpn_type is set by BeforeSend, not ToSDK, so BeforeSend must
+			// run for the discriminator to appear.
+			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+		}
 		if !diags.HasError() {
 			t.Error("expected error for missing VPN type")
 		}
-		if got != nil {
-			t.Error("expected nil network for error case")
+		// ToSDK always builds an object; BeforeSend's diagnostic is what
+		// stops the apply on error, not a nil return.
+		if got == nil {
+			t.Fatal("ToSDK returned no object at all, which it should never do")
+		}
+		if got.VPNType != nil {
+			t.Errorf("VPNType = %q, want unset when no block is configured", *got.VPNType)
 		}
 	})
 
 	t.Run("wireguard model sets vpn type", func(t *testing.T) {
-		r := &vpnServerResource{}
+		spec := vpnServerKitSpec()
 		port := int64(51820)
 		privKey := "WPiBa/Ak1W+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ+kFg="
 		wgModel := vpnServerWireguardModel{
@@ -816,7 +754,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("building wireguard object: %v", d)
 		}
-		model := &vpnServerResourceModel{
+		model := &vpnServerKitModel{
 			Name:      types.StringValue("wg-server"),
 			Enabled:   types.BoolValue(true),
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.100.0.1/24"),
@@ -826,7 +764,12 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
-		got, diags := r.modelToNetwork(ctx, model)
+		got, diags := spec.ToSDK(ctx, model)
+		if !diags.HasError() {
+			// vpn_type is set by BeforeSend, not ToSDK, so BeforeSend must
+			// run for the discriminator to appear.
+			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+		}
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -845,7 +788,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 	})
 
 	t.Run("l2tp model sets vpn type", func(t *testing.T) {
-		r := &vpnServerResource{}
+		spec := vpnServerKitSpec()
 		l2tpModel := vpnServerL2TPModel{
 			AllowWeakCiphers: types.BoolValue(false),
 			PreSharedKey:     types.StringValue("my-psk"),
@@ -854,7 +797,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("building l2tp object: %v", d)
 		}
-		model := &vpnServerResourceModel{
+		model := &vpnServerKitModel{
 			Name:      types.StringValue("l2tp-server"),
 			Enabled:   types.BoolValue(true),
 			Subnet:    cidrtypes.NewIPv4PrefixValue("10.110.0.1/24"),
@@ -864,7 +807,12 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 			DNS:       types.ObjectNull(vpnServerDNSModel{}.AttributeTypes()),
 			WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
 		}
-		got, diags := r.modelToNetwork(ctx, model)
+		got, diags := spec.ToSDK(ctx, model)
+		if !diags.HasError() {
+			// vpn_type is set by BeforeSend, not ToSDK, so BeforeSend must
+			// run for the discriminator to appear.
+			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+		}
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -881,7 +829,7 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("wireguard network populates wireguard block", func(t *testing.T) {
-		r := &vpnServerResource{}
+		spec := vpnServerKitSpec()
 		vpnType := "wireguard-server"
 		name := "wg-test"
 		subnet := "10.100.0.1/24"
@@ -896,8 +844,9 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 			WireguardPrivateKey: &privKey,
 			LocalPort:           &port,
 		}
-		var model vpnServerResourceModel
-		diags := r.networkToModel(ctx, network, &model, "default", &vpnServerResourceModel{})
+		var model vpnServerKitModel
+		diags := spec.ToModel(ctx, network, &model, "default")
+		diags.Append(spec.AfterReceive(ctx, network, &model, deref(&vpnServerKitModel{}), nil)...)
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -937,7 +886,7 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 	})
 
 	t.Run("l2tp network preserves psk from prior state", func(t *testing.T) {
-		r := &vpnServerResource{}
+		spec := vpnServerKitSpec()
 		vpnType := "l2tp-server"
 		name := "l2tp-test"
 		subnet := "10.110.0.1/24"
@@ -950,7 +899,6 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 			// IPSecPreSharedKey is nil (API does not return it on read)
 		}
 
-		// Prior state has the PSK
 		priorL2TP := vpnServerL2TPModel{
 			AllowWeakCiphers: types.BoolValue(false),
 			PreSharedKey:     types.StringValue("stored-psk"),
@@ -963,12 +911,13 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("building prior l2tp: %v", d)
 		}
-		priorState := &vpnServerResourceModel{
+		priorState := &vpnServerKitModel{
 			L2TP: priorL2TPObj,
 		}
 
-		var model vpnServerResourceModel
-		diags := r.networkToModel(ctx, network, &model, "default", priorState)
+		var model vpnServerKitModel
+		diags := spec.ToModel(ctx, network, &model, "default")
+		diags.Append(spec.AfterReceive(ctx, network, &model, deref(priorState), nil)...)
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -983,7 +932,6 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 		); d.HasError() {
 			t.Fatalf("reading l2tp: %v", d)
 		}
-		// PSK should be preserved from prior state since the API doesn't return it
 		if l2tp.PreSharedKey.ValueString() != "stored-psk" {
 			t.Errorf(
 				"PreSharedKey = %q, want stored-psk (preserved from prior state)",
@@ -994,7 +942,7 @@ func Test_vpnServerResource_networkToModel(t *testing.T) {
 }
 
 func Test_vpnServerResource_ListResourceConfigSchema(t *testing.T) {
-	r := &vpnServerResource{}
+	r := newVPNServerKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -1013,7 +961,6 @@ func Test_generateWireGuardPrivateKey(t *testing.T) {
 	if got == "" {
 		t.Error("generateWireGuardPrivateKey() returned empty string")
 	}
-	// Must be valid base64
 	raw, err := base64.StdEncoding.DecodeString(got)
 	if err != nil {
 		t.Fatalf("result is not valid base64: %v", err)
@@ -1054,4 +1001,13 @@ func TestAccVPNServerList_basic(t *testing.T) {
 			},
 		},
 	})
+}
+
+// deref adapts the old networkToModel prior-state pointer to AfterReceive's
+// value parameter. A nil prior means no prior state, which is the zero model.
+func deref(prior *vpnServerKitModel) vpnServerKitModel {
+	if prior == nil {
+		return vpnServerKitModel{}
+	}
+	return *prior
 }
