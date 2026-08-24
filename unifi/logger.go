@@ -32,7 +32,6 @@ func NewLogger(ctx context.Context) *UnifiLogger {
 	return &UnifiLogger{ctx: ctx}
 }
 
-// Factor the lock boilerplate into one place.
 func (l *UnifiLogger) log(fn func()) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

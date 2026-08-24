@@ -361,40 +361,20 @@ func TestUnifiLogger_ConcurrentMixedLevels(t *testing.T) {
 	}
 }
 
+// TestUnifiLogger_log asserts log's whole contract: acquire the mutex, call
+// fn exactly once, release the mutex. A double-lock of the non-reentrant
+// mutex would hang the test rather than fail it, so the assertion that
+// actually matters here is the call count.
 func TestUnifiLogger_log(t *testing.T) {
-	type args struct {
-		fn func()
-	}
-	tests := []struct {
-		name string
-		l    *UnifiLogger
-		args args
-	}{
-		{
-			name: "executes_fn",
-			l: func() *UnifiLogger {
-				var buf bytes.Buffer
-				ctx := tflogtest.RootLogger(context.Background(), &buf)
-				return NewLogger(ctx)
-			}(),
-			args: args{fn: func() {}},
-		},
-		{
-			name: "fn_called_once",
-			l: func() *UnifiLogger {
-				var buf bytes.Buffer
-				ctx := tflogtest.RootLogger(context.Background(), &buf)
-				return NewLogger(ctx)
-			}(),
-			args: args{fn: func() {
-				// side-effect-free no-op; just confirms no panic
-			}},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.l.log(tt.args.fn)
-		})
+	var buf bytes.Buffer
+	ctx := tflogtest.RootLogger(context.Background(), &buf)
+	l := NewLogger(ctx)
+
+	calls := 0
+	l.log(func() { calls++ })
+
+	if calls != 1 {
+		t.Errorf("log() invoked fn %d times, want exactly 1", calls)
 	}
 }
 

@@ -11,14 +11,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
-// This file bridges the UniFi API (which stores time values as integer counts of
-// a fixed unit — almost always seconds, occasionally minutes) and the
-// string-backed timetypes.GoDuration custom type used in the schema.
-//
-// It also provides the generic state-migration machinery used by resources that
-// changed a numeric attribute (e.g. Int64 seconds) into a GoDuration string:
-// the wire/state type changed from number to string, so prior state must be
-// rewritten during a schema-version upgrade.
+// This file bridges the UniFi API's integer duration fields (seconds, or
+// occasionally minutes) and the schema's timetypes.GoDuration string type, and
+// provides the state-migration machinery for resources whose duration
+// attribute changed from a number to a GoDuration string.
 
 // DurationValue converts an integer count of unit into a GoDuration value
 // (e.g. DurationValue(86400, time.Second) -> "24h0m0s").
