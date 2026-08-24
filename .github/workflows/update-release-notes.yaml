@@ -1,13 +1,5 @@
 name: Update Release Notes
 
-# This workflow syncs GitHub release descriptions with CHANGELOG.md.
-# It fetches all releases dynamically, checks whether each release's
-# current description already matches the CHANGELOG entry, and only
-# calls `gh release edit` when an update is actually needed.
-#
-# Trigger manually from the Actions tab, or it runs automatically when
-# CHANGELOG.md is updated on the main branch.
-
 on:
   workflow_dispatch:
   push:
@@ -31,29 +23,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          # ---------------------------------------------------------------------------
-          # extract_changelog_section <tag>
-          #   Prints the body of the CHANGELOG.md section for <tag>, or nothing if
-          #   the tag has no entry.  Each section begins with "## [<tag>]" and ends
-          #   at the next "---" separator (or EOF).
-          # ---------------------------------------------------------------------------
+          # extract_changelog_section <tag>: prints the body between "## [<tag>]"
+          # and whichever comes first: a line that is exactly "---", the next
+          # "## [" heading, or EOF. The heading also ending a section means a
+          # missing "---" can no longer bleed one release's notes into another's.
           extract_changelog_section() {
             local tag="$1"
             # Escape characters that are special in awk regex (e.g. "." in version tags)
             local escaped_tag
             escaped_tag=$(printf '%s\n' "$tag" | sed 's/[[\.*^$()+?{|]/\\&/g')
-            awk "/^## \[${escaped_tag}\]/{found=1; next} found && /^---$/{exit} found{print}" CHANGELOG.md \
+            awk "/^## \[${escaped_tag}\]/{found=1; next} found && (/^---\$/ || /^## \[/){exit} found{print}" CHANGELOG.md \
               | sed -e 's/[[:space:]]*$//' \
               | awk 'BEGIN{started=0} { if (!started && NF==0) next; started=1; print }'
           }
 
-          # ---------------------------------------------------------------------------
-          # Fetch every release tag from GitHub (up to 200).
-          # gh returns them newest-first by default.
-          # ---------------------------------------------------------------------------
           echo "Fetching release list..."
           tags=$(gh release list \
-            --repo ubiquiti-community/terraform-provider-unifi \
+            --repo "$GITHUB_REPOSITORY" \
             --limit 200 \
             --json tagName \
             --jq '.[].tagName')
@@ -64,10 +50,6 @@ jobs:
           failed=0
 
           for tag in $tags; do
-            # -----------------------------------------------------------------------
-            # 1. Extract the CHANGELOG section for this tag.
-            #    If there's no entry, leave the release untouched.
-            # -----------------------------------------------------------------------
             changelog_body=$(extract_changelog_section "$tag")
 
             if [ -z "$changelog_body" ]; then
@@ -76,27 +58,16 @@ jobs:
               continue
             fi
 
-            # -----------------------------------------------------------------------
-            # 2. Fetch the current release body from GitHub.
-            #    Normalise line-endings, strip leading blank lines, and strip
-            #    trailing whitespace — the same transformations applied to
-            #    changelog_body — so that minor formatting differences (CRLF vs LF,
-            #    leading/trailing blank lines, trailing spaces) don't trigger
-            #    spurious updates.
-            # -----------------------------------------------------------------------
+            # Same normalization as changelog_body (CRLF, leading/trailing blank
+            # lines, trailing whitespace) so formatting alone doesn't trigger a spurious update.
             current_body=$(gh release view "$tag" \
-              --repo ubiquiti-community/terraform-provider-unifi \
+              --repo "$GITHUB_REPOSITORY" \
               --json body \
               --jq '.body' \
               | tr -d '\r' \
               | sed -e 's/[[:space:]]*$//' \
               | awk 'NF{p=1}p')
 
-            # -----------------------------------------------------------------------
-            # 3. Compare checksums (normalization above makes both strings
-            #    comparable: same CRLF handling, same leading/trailing blank-line
-            #    treatment, same trailing-whitespace stripping).
-            # -----------------------------------------------------------------------
             changelog_sum=$(printf '%s' "$changelog_body" | md5sum | awk '{print $1}')
             current_sum=$(printf '%s' "$current_body"   | md5sum | awk '{print $1}')
 
@@ -106,15 +77,12 @@ jobs:
               continue
             fi
 
-            # -----------------------------------------------------------------------
-            # 4. Descriptions differ — apply the CHANGELOG content.
-            # -----------------------------------------------------------------------
             notes_file="/tmp/${tag//\//_}.md"
             printf '%s\n' "$changelog_body" > "$notes_file"
 
             echo "  ↑  $tag: updating..."
             if gh release edit "$tag" \
-              --repo ubiquiti-community/terraform-provider-unifi \
+              --repo "$GITHUB_REPOSITORY" \
               --notes-file "$notes_file"; then
               echo "     ✓ $tag updated"
               updated=$((updated + 1))

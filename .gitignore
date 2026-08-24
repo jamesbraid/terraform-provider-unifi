@@ -73,3 +73,38 @@ __debug_bin*
 .github/.bak
 
 .test
+
+# Executables left at the repository root by `go build ./cmd/<name>`.
+#
+# Without an -o, go build writes the binary into the working directory named
+# after the command's directory. Run from the root -- which is where every
+# other go command here is run -- that leaves a multi-megabyte executable
+# beside the source, untracked and easy to sweep into a `git add`. One such
+# commit added five of them, 19 MB, and they reached a shared branch.
+#
+# THE FIRST ATTEMPT AT THIS RULE SAT DEAD IN THIS FILE FOR ITS ENTIRE LIFE:
+# a missing newline joined this rule's ignore pattern to an unrelated entry
+# above it, producing one path that matched nothing rather than two that
+# matched something. It was split and repaired in 9c654f56. This list is the
+# complete set of cmd/ names, kept in sync so a partial one never reads as
+# an omission.
+/action-gen
+/generated-value-strip
+/list-resource-gen
+/metadata-contract-gen
+/nested-custom-type-strip
+/nested-type-dedup
+/provider-spec-compiler
+/schema-behaviour
+/sdk-bootstrap
+
+# provider-codegen's compiler intermediates. *.provider-code-spec.json is the
+# hand-off between provider-spec-compiler and tfplugingen-framework/
+# list-resource-gen/action-gen -- go generate writes and reads it within the
+# same run, so it never needs to survive between them. *.impact.json is
+# retired: nothing in this tree has emitted or read one for a while: the
+# compiler's Result no longer has the field. Neither belongs in the diff a
+# reviewer reads; *.mapping.json is not here because descriptor_mapping_test.go
+# reads the committed copy directly, as its own independent record.
+provider-codegen/generated/*.impact.json
+*.provider-code-spec.json
