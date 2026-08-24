@@ -2,11 +2,10 @@ package unifi
 
 import (
 	"context"
-	"reflect"
+	"encoding/json"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -699,37 +698,6 @@ func TestNewFirewallRuleListResource(t *testing.T) {
 	}
 }
 
-func Test_firewallRuleResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallRuleResource
-		args args
-	}{
-		{
-			name: "type name is unifi_firewall_rule",
-			r:    &firewallRuleResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != "unifi_firewall_rule" {
-				t.Errorf("TypeName = %q, want %q", tt.args.resp.TypeName, "unifi_firewall_rule")
-			}
-		})
-	}
-}
-
 func Test_firewallRuleResource_IdentitySchema(t *testing.T) {
 	type args struct {
 		in0  context.Context
@@ -738,12 +706,12 @@ func Test_firewallRuleResource_IdentitySchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *firewallRuleResource
+		r    *firewallRuleKitResource
 		args args
 	}{
 		{
 			name: "id attribute exists",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwresource.IdentitySchemaRequest{},
@@ -769,12 +737,12 @@ func Test_firewallRuleResource_Schema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *firewallRuleResource
+		r    *firewallRuleKitResource
 		args args
 	}{
 		{
 			name: "key attributes exist with correct configurability",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				ctx:  context.Background(),
 				req:  fwresource.SchemaRequest{},
@@ -820,87 +788,27 @@ func Test_firewallRuleResource_Schema(t *testing.T) {
 	}
 }
 
-func Test_firewallRuleResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name      string
-		r         *firewallRuleResource
-		args      args
-		wantError bool
-	}{
-		{
-			name: "nil provider data",
-			r:    &firewallRuleResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{},
-				resp: &fwresource.ConfigureResponse{Diagnostics: diag.Diagnostics{}},
-			},
-			wantError: false,
-		},
-		{
-			name: "wrong type",
-			r:    &firewallRuleResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: "not-a-client",
-				},
-				resp: &fwresource.ConfigureResponse{Diagnostics: diag.Diagnostics{}},
-			},
-			wantError: true,
-		},
-		{
-			name: "correct client type",
-			r:    &firewallRuleResource{},
-			args: args{
-				ctx: context.Background(),
-				req: fwresource.ConfigureRequest{
-					ProviderData: &Client{},
-				},
-				resp: &fwresource.ConfigureResponse{Diagnostics: diag.Diagnostics{}},
-			},
-			wantError: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.wantError && !tt.args.resp.Diagnostics.HasError() {
-				t.Error("expected error but got none")
-			}
-			if !tt.wantError && tt.args.resp.Diagnostics.HasError() {
-				t.Errorf("unexpected error: %s", tt.args.resp.Diagnostics.Errors())
-			}
-		})
-	}
-}
-
-func Test_firewallRuleResource_applyPlanToState(t *testing.T) {
+func Test_firewallRule_specApplyPlanToState(t *testing.T) {
 	type args struct {
 		in0   context.Context
-		plan  *firewallRuleResourceModel
-		state *firewallRuleResourceModel
+		plan  *firewallRuleKitModel
+		state *firewallRuleKitModel
 	}
 	tests := []struct {
 		name string
-		r    *firewallRuleResource
+		r    *firewallRuleKitResource
 		args args
 	}{
 		{
 			name: "non-null plan fields overwrite state, null fields preserve state",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				in0: context.Background(),
-				plan: &firewallRuleResourceModel{
+				plan: &firewallRuleKitModel{
 					Name:     types.StringValue("new"),
 					Protocol: types.StringNull(),
 				},
-				state: &firewallRuleResourceModel{
+				state: &firewallRuleKitModel{
 					Name:     types.StringValue("old"),
 					Protocol: types.StringValue("tcp"),
 				},
@@ -909,7 +817,7 @@ func Test_firewallRuleResource_applyPlanToState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.r.applyPlanToState(tt.args.in0, tt.args.plan, tt.args.state)
+			firewallRuleKitSpec().ApplyPlanToState(tt.args.plan, tt.args.state)
 			if tt.args.state.Name.ValueString() != "new" {
 				t.Errorf("Name = %q, want %q", tt.args.state.Name.ValueString(), "new")
 			}
@@ -924,25 +832,25 @@ func Test_firewallRuleResource_applyPlanToState(t *testing.T) {
 	}
 }
 
-func Test_firewallRuleResource_modelToFirewallRule(t *testing.T) {
+func Test_firewallRule_specToSDK(t *testing.T) {
 	type args struct {
 		ctx   context.Context
-		model *firewallRuleResourceModel
+		model *firewallRuleKitModel
 	}
 	ruleIndex2000 := int64(2000)
 	ruleIndex3000 := int64(3000)
 	tests := []struct {
 		name string
-		r    *firewallRuleResource
+		r    *firewallRuleKitResource
 		args args
 		want *unifi.FirewallRule
 	}{
 		{
 			name: "basic fields",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				ctx: context.Background(),
-				model: &firewallRuleResourceModel{
+				model: &firewallRuleKitModel{
 					Name:                types.StringValue("drop-rule"),
 					Action:              types.StringValue("drop"),
 					Ruleset:             types.StringValue("LAN_IN"),
@@ -985,10 +893,10 @@ func Test_firewallRuleResource_modelToFirewallRule(t *testing.T) {
 		},
 		{
 			name: "with protocol src dst",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				ctx: context.Background(),
-				model: &firewallRuleResourceModel{
+				model: &firewallRuleKitModel{
 					Name:                types.StringValue("allow-https"),
 					Action:              types.StringValue("accept"),
 					Ruleset:             types.StringValue("WAN_IN"),
@@ -1034,10 +942,10 @@ func Test_firewallRuleResource_modelToFirewallRule(t *testing.T) {
 		},
 		{
 			name: "minimal required fields only",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				ctx: context.Background(),
-				model: &firewallRuleResourceModel{
+				model: &firewallRuleKitModel{
 					Name:                types.StringValue("min"),
 					Action:              types.StringValue("drop"),
 					Ruleset:             types.StringValue("LAN_IN"),
@@ -1081,37 +989,51 @@ func Test_firewallRuleResource_modelToFirewallRule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.modelToFirewallRule(
-				tt.args.ctx,
-				tt.args.model,
-			); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("firewallRuleResource.modelToFirewallRule() = %v, want %v", got, tt.want)
+			got, diags := firewallRuleKitSpec().ToSDK(tt.args.ctx, tt.args.model)
+			if diags.HasError() {
+				t.Fatalf("ToSDK: %v", diags)
+			}
+			// Compared as the JSON the controller receives, not as Go
+			// structs: reflect.DeepEqual separates a nil slice from an
+			// empty one, and both firewall group fields are tagged
+			// omitempty so the two produce identical requests -- while it
+			// also prints *int64 fields as addresses, so a genuine
+			// rule_index mismatch and an irrelevant one look the same in
+			// the failure. Marshalling asserts what the controller is
+			// actually told.
+			gotJSON, err := json.Marshal(got)
+			if err != nil {
+				t.Fatalf("marshalling the built object: %v", err)
+			}
+			wantJSON, err := json.Marshal(tt.want)
+			if err != nil {
+				t.Fatalf("marshalling the expectation: %v", err)
+			}
+			if string(gotJSON) != string(wantJSON) {
+				t.Errorf("ToSDK() sends\n  %s\nwant\n  %s", gotJSON, wantJSON)
 			}
 		})
 	}
 }
 
-func Test_firewallRuleResource_firewallRuleToModel(t *testing.T) {
+func Test_firewallRule_specToModel(t *testing.T) {
 	type args struct {
 		ctx          context.Context
 		firewallRule *unifi.FirewallRule
-		model        *firewallRuleResourceModel
+		model        *firewallRuleKitModel
 		site         string
 	}
 	ruleIndex3000 := int64(3000)
 	ruleIndex2000 := int64(2000)
 	tests := []struct {
 		name      string
-		r         *firewallRuleResource
+		r         *firewallRuleKitResource
 		args      args
-		checkFunc func(t *testing.T, model *firewallRuleResourceModel)
+		checkFunc func(t *testing.T, model *firewallRuleKitModel)
 	}{
 		{
 			name: "basic API struct to model",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				ctx: context.Background(),
 				firewallRule: &unifi.FirewallRule{
@@ -1122,10 +1044,10 @@ func Test_firewallRuleResource_firewallRuleToModel(t *testing.T) {
 					RuleIndex: &ruleIndex3000,
 					Enabled:   true,
 				},
-				model: &firewallRuleResourceModel{},
+				model: &firewallRuleKitModel{},
 				site:  "default",
 			},
-			checkFunc: func(t *testing.T, m *firewallRuleResourceModel) {
+			checkFunc: func(t *testing.T, m *firewallRuleKitModel) {
 				if m.ID.ValueString() != "r1" {
 					t.Errorf("ID = %q, want %q", m.ID.ValueString(), "r1")
 				}
@@ -1151,7 +1073,7 @@ func Test_firewallRuleResource_firewallRuleToModel(t *testing.T) {
 		},
 		{
 			name: "empty optional fields become null",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				ctx: context.Background(),
 				firewallRule: &unifi.FirewallRule{
@@ -1161,10 +1083,10 @@ func Test_firewallRuleResource_firewallRuleToModel(t *testing.T) {
 					Ruleset:   "LAN_IN",
 					RuleIndex: &ruleIndex2000,
 				},
-				model: &firewallRuleResourceModel{},
+				model: &firewallRuleKitModel{},
 				site:  "default",
 			},
-			checkFunc: func(t *testing.T, m *firewallRuleResourceModel) {
+			checkFunc: func(t *testing.T, m *firewallRuleKitModel) {
 				if !m.Protocol.IsNull() {
 					t.Error("Protocol should be null")
 				}
@@ -1184,7 +1106,7 @@ func Test_firewallRuleResource_firewallRuleToModel(t *testing.T) {
 		},
 		{
 			name: "SrcNetworkType defaults to NETv4 when empty",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				ctx: context.Background(),
 				firewallRule: &unifi.FirewallRule{
@@ -1195,10 +1117,10 @@ func Test_firewallRuleResource_firewallRuleToModel(t *testing.T) {
 					RuleIndex:      &ruleIndex2000,
 					SrcNetworkType: "",
 				},
-				model: &firewallRuleResourceModel{},
+				model: &firewallRuleKitModel{},
 				site:  "default",
 			},
-			checkFunc: func(t *testing.T, m *firewallRuleResourceModel) {
+			checkFunc: func(t *testing.T, m *firewallRuleKitModel) {
 				if m.SrcNetworkType.ValueString() != "NETv4" {
 					t.Errorf(
 						"SrcNetworkType = %q, want %q",
@@ -1211,7 +1133,10 @@ func Test_firewallRuleResource_firewallRuleToModel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.r.firewallRuleToModel(tt.args.ctx, tt.args.firewallRule, tt.args.model, tt.args.site)
+			if diags := firewallRuleKitSpec().ToModel(
+				tt.args.ctx, tt.args.firewallRule, tt.args.model, tt.args.site); diags.HasError() {
+				t.Fatalf("ToModel: %v", diags)
+			}
 			if tt.checkFunc != nil {
 				tt.checkFunc(t, tt.args.model)
 			}
@@ -1227,12 +1152,12 @@ func Test_firewallRuleResource_ListResourceConfigSchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *firewallRuleResource
+		r    *firewallRuleKitResource
 		args args
 	}{
 		{
 			name: "schema has site attribute",
-			r:    &firewallRuleResource{},
+			r:    newFirewallRuleKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwlist.ListResourceSchemaRequest{},
