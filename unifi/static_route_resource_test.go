@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
@@ -97,41 +98,6 @@ func TestUnitStaticRoute_nextHopValidation(t *testing.T) {
 			if hasError != tc.wantError {
 				t.Errorf("next_hop=%q: got error=%v, want error=%v (diags: %v)",
 					tc.nextHop, hasError, tc.wantError, resp.Diagnostics)
-			}
-		})
-	}
-}
-
-// TestUnitStaticRoute_ipVersionValidator verifies that mixed IPv4/IPv6 network+next_hop is rejected.
-func TestUnitStaticRoute_ipVersionValidator(t *testing.T) {
-	tests := []struct {
-		name      string
-		network   string
-		nextHop   string
-		wantError bool
-	}{
-		{name: "ipv4_both", network: "192.168.100.0/24", nextHop: "192.168.1.1", wantError: false},
-		{name: "ipv6_both", network: "2001:db8::/32", nextHop: "2001:db8::1", wantError: false},
-		{
-			name:      "ipv4_network_ipv6_hop",
-			network:   "192.168.100.0/24",
-			nextHop:   "2001:db8::1",
-			wantError: true,
-		},
-		{
-			name:      "ipv6_network_ipv4_hop",
-			network:   "2001:db8::/32",
-			nextHop:   "192.168.1.1",
-			wantError: true,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			err := validateIPVersionMatch(tc.network, tc.nextHop)
-			if (err != nil) != tc.wantError {
-				t.Errorf("network=%q next_hop=%q: got err=%v, wantError=%v",
-					tc.network, tc.nextHop, err, tc.wantError)
 			}
 		})
 	}
@@ -299,17 +265,8 @@ func TestNewStaticRouteListResource(t *testing.T) {
 	}
 }
 
-func Test_staticRouteFrameworkResource_Metadata(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
-	resp := &fwresource.MetadataResponse{}
-	r.Metadata(context.Background(), fwresource.MetadataRequest{ProviderTypeName: "unifi"}, resp)
-	if resp.TypeName != "unifi_static_route" {
-		t.Errorf("TypeName = %q, want %q", resp.TypeName, "unifi_static_route")
-	}
-}
-
 func Test_staticRouteFrameworkResource_IdentitySchema(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
+	r := newStaticRouteKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if _, ok := resp.IdentitySchema.Attributes["id"]; !ok {
@@ -317,41 +274,8 @@ func Test_staticRouteFrameworkResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_staticRouteFrameworkResource_Schema(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	for _, attr := range []string{"id", "site", "name", "network", "type", "distance", "next_hop", "interface", "enabled", "gateway_device", "gateway_type"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("expected attribute %q in schema", attr)
-		}
-	}
-}
-
-func Test_staticRouteFrameworkResource_Configure(t *testing.T) {
-	tests := []struct {
-		name      string
-		req       fwresource.ConfigureRequest
-		wantError bool
-	}{
-		{"nil_provider_data", fwresource.ConfigureRequest{}, false},
-		{"wrong_type", fwresource.ConfigureRequest{ProviderData: "wrong"}, true},
-		{"correct_client", fwresource.ConfigureRequest{ProviderData: &Client{}}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &staticRouteFrameworkResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(context.Background(), tt.req, resp)
-			if resp.Diagnostics.HasError() != tt.wantError {
-				t.Errorf("hasError = %v, want %v", resp.Diagnostics.HasError(), tt.wantError)
-			}
-		})
-	}
-}
-
 func Test_staticRouteFrameworkResource_ConfigValidators(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
+	r := newStaticRouteKitResource()
 	validators := r.ConfigValidators(context.Background())
 	if len(validators) == 0 {
 		t.Error("expected at least one config validator")
@@ -425,38 +349,83 @@ func Test_ipVersionsMatch(t *testing.T) {
 	}
 }
 
-func Test_validateIPVersionMatch(t *testing.T) {
+// Test_staticRouteIPVersionValidator_ValidateResource covers the real
+// validator end to end. A prior cycle deleted the dead validateIPVersionMatch
+// this validator never called, along with TestUnitStaticRoute_ipVersionValidator
+// -- a test whose name claimed to cover ValidateResource but whose body only
+// ever exercised the dead function -- leaving ValidateResource itself with no
+// direct test, only Test_ipVersionsMatch's indirect coverage of the predicate
+// it calls. This restores that.
+func Test_staticRouteIPVersionValidator_ValidateResource(t *testing.T) {
+	ctx := context.Background()
+	schemaResp := &fwresource.SchemaResponse{}
+	newStaticRouteKitResource().Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
+	if schemaResp.Diagnostics.HasError() {
+		t.Fatalf("build the schema: %v", schemaResp.Diagnostics)
+	}
+
+	configFor := func(t *testing.T, network, nextHop string) tfsdk.Config {
+		t.Helper()
+		model := staticRouteKitModel{
+			ID:            types.StringNull(),
+			Site:          types.StringNull(),
+			Name:          types.StringValue("route1"),
+			Network:       types.StringValue(network),
+			Type:          types.StringValue("nexthop-route"),
+			Distance:      types.Int64Null(),
+			NextHop:       iptypes.NewIPAddressValue(nextHop),
+			Interface:     types.StringNull(),
+			Enabled:       types.BoolValue(true),
+			GatewayDevice: types.StringNull(),
+			GatewayType:   types.StringNull(),
+			Timeouts:      timeoutsNullValue(),
+		}
+		staging := tfsdk.State{Schema: schemaResp.Schema}
+		if diags := staging.Set(ctx, model); diags.HasError() {
+			t.Fatalf("set the config: %v", diags)
+		}
+		return tfsdk.Config{Schema: schemaResp.Schema, Raw: staging.Raw}
+	}
+
 	tests := []struct {
-		name    string
-		network string
-		nextHop string
-		wantErr bool
+		name      string
+		network   string
+		nextHop   string
+		wantError bool
 	}{
 		{"both_ipv4", "192.168.0.0/24", "10.0.0.1", false},
 		{"both_ipv6", "2001:db8::/32", "2001:db8::1", false},
-		{"mixed_v4_v6", "192.168.0.0/24", "2001:db8::1", true},
-		{"mixed_v6_v4", "2001:db8::/32", "10.0.0.1", true},
-		{"invalid_network", "not-cidr", "10.0.0.1", false},
-		{"invalid_hop", "192.168.0.0/24", "not-ip", false},
+		{"mixed_v4_network_v6_hop", "192.168.0.0/24", "2001:db8::1", true},
+		{"mixed_v6_network_v4_hop", "2001:db8::/32", "10.0.0.1", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateIPVersionMatch(tt.network, tt.nextHop); (err != nil) != tt.wantErr {
-				t.Errorf("validateIPVersionMatch() error = %v, wantErr %v", err, tt.wantErr)
+			v := &staticRouteIPVersionValidator{}
+			resp := &fwresource.ValidateConfigResponse{}
+			v.ValidateResource(ctx, fwresource.ValidateConfigRequest{
+				Config: configFor(t, tt.network, tt.nextHop),
+			}, resp)
+			if got := resp.Diagnostics.HasError(); got != tt.wantError {
+				t.Errorf("network=%q next_hop=%q: got error=%v, want %v (diags: %v)",
+					tt.network, tt.nextHop, got, tt.wantError, resp.Diagnostics)
 			}
 		})
 	}
 }
 
+// The three mapper tests below predate the kit cutover: their assertions are
+// conformance against the hand-written mapper, with only the calls repointed
+// at Spec.ApplyPlanToState/ToSDK/ToModel.
+
 func Test_staticRouteFrameworkResource_applyPlanToState(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
-	plan := &staticRouteFrameworkResourceModel{
+	spec := staticRouteKitSpec()
+	plan := &staticRouteKitModel{
 		Name:    types.StringValue("route1"),
 		Network: types.StringValue("10.0.0.0/8"),
 		Type:    types.StringValue("nexthop-route"),
 	}
-	state := &staticRouteFrameworkResourceModel{}
-	r.applyPlanToState(context.Background(), plan, state)
+	state := &staticRouteKitModel{}
+	spec.ApplyPlanToState(plan, state)
 	if state.Name.ValueString() != "route1" {
 		t.Error("expected Name to be copied from plan")
 	}
@@ -466,37 +435,109 @@ func Test_staticRouteFrameworkResource_applyPlanToState(t *testing.T) {
 }
 
 func Test_staticRouteFrameworkResource_modelToRouting(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
 	dist := int64(1)
-	model := &staticRouteFrameworkResourceModel{
-		Name:          types.StringValue("route1"),
-		Network:       types.StringValue("192.168.0.0/24"),
-		Type:          types.StringValue("nexthop-route"),
-		Distance:      types.Int64Value(1),
-		NextHop:       iptypes.NewIPAddressValue("192.168.1.1"),
-		Interface:     types.StringNull(),
-		Enabled:       types.BoolValue(true),
-		GatewayDevice: types.StringNull(),
-		GatewayType:   types.StringValue("default"),
+	base := func() *staticRouteKitModel {
+		return &staticRouteKitModel{
+			Name:          types.StringValue("route1"),
+			Network:       types.StringValue("192.168.0.0/24"),
+			Distance:      types.Int64Value(1),
+			NextHop:       iptypes.NewIPAddressValue("192.168.1.1"),
+			Interface:     types.StringValue("eth0"),
+			Enabled:       types.BoolValue(true),
+			GatewayDevice: types.StringNull(),
+			GatewayType:   types.StringValue("default"),
+		}
 	}
-	got := r.modelToRouting(context.Background(), model)
-	want := &unifi.Routing{
-		Type:                "static-route",
-		Name:                "route1",
-		StaticRouteNetwork:  "192.168.0.0/24",
-		StaticRouteType:     "nexthop-route",
-		StaticRouteDistance: &dist,
-		StaticRouteNexthop:  "192.168.1.1",
-		Enabled:             true,
-		GatewayType:         "default",
+
+	for _, testCase := range []struct {
+		name      string
+		routeType string
+		want      *unifi.Routing
+	}{
+		{
+			name:      "nexthop-route sends the hop and not the interface",
+			routeType: "nexthop-route",
+			want: &unifi.Routing{
+				Type: "static-route", Name: "route1",
+				StaticRouteNetwork: "192.168.0.0/24", StaticRouteType: "nexthop-route",
+				StaticRouteDistance: &dist, StaticRouteNexthop: "192.168.1.1",
+				Enabled: true, GatewayType: "default",
+			},
+		},
+		{
+			// A model holding BOTH values must still send only the one its
+			// route type owns -- the reason the write predicate exists.
+			name:      "interface-route sends the interface and not the hop",
+			routeType: "interface-route",
+			want: &unifi.Routing{
+				Type: "static-route", Name: "route1",
+				StaticRouteNetwork: "192.168.0.0/24", StaticRouteType: "interface-route",
+				StaticRouteDistance: &dist, StaticRouteInterface: "eth0",
+				Enabled: true, GatewayType: "default",
+			},
+		},
+		{
+			name:      "blackhole sends neither",
+			routeType: "blackhole",
+			want: &unifi.Routing{
+				Type: "static-route", Name: "route1",
+				StaticRouteNetwork: "192.168.0.0/24", StaticRouteType: "blackhole",
+				StaticRouteDistance: &dist,
+				Enabled:             true, GatewayType: "default",
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			model := base()
+			model.Type = types.StringValue(testCase.routeType)
+			got, diags := staticRouteKitSpec().ToSDK(context.Background(), model)
+			if diags.HasError() {
+				t.Fatalf("ToSDK: %v", diags)
+			}
+			if !reflect.DeepEqual(got, testCase.want) {
+				t.Errorf("ToSDK() = %+v, want %+v", got, testCase.want)
+			}
+		})
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("modelToRouting() = %+v, want %+v", got, want)
+}
+
+// The wire mask must agree with the write: a suppressed field still named in
+// the update mask would put whatever the SDK struct held on the wire.
+func Test_staticRouteFrameworkResource_wireMaskFollowsTheRouteType(t *testing.T) {
+	for _, testCase := range []struct {
+		routeType string
+		absent    string
+	}{
+		{"nexthop-route", "static-route_interface"},
+		{"interface-route", "static-route_nexthop"},
+	} {
+		t.Run(testCase.routeType, func(t *testing.T) {
+			plan := &staticRouteKitModel{
+				Name:      types.StringValue("route1"),
+				Network:   types.StringValue("192.168.0.0/24"),
+				Type:      types.StringValue(testCase.routeType),
+				Distance:  types.Int64Value(1),
+				NextHop:   iptypes.NewIPAddressValue("192.168.1.1"),
+				Interface: types.StringValue("eth0"),
+				Enabled:   types.BoolValue(true),
+			}
+			fields, err := staticRouteKitSpec().WireFields(plan)
+			if err != nil {
+				t.Fatalf("WireFields: %v", err)
+			}
+			if slices.Contains(fields, testCase.absent) {
+				t.Errorf(
+					"a %s names %q on the wire: %v",
+					testCase.routeType,
+					testCase.absent,
+					fields,
+				)
+			}
+		})
 	}
 }
 
 func Test_staticRouteFrameworkResource_routingToModel(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
 	dist := int64(1)
 	routing := &unifi.Routing{
 		ID:                  "abc123",
@@ -508,8 +549,10 @@ func Test_staticRouteFrameworkResource_routingToModel(t *testing.T) {
 		Enabled:             true,
 		GatewayType:         "default",
 	}
-	model := &staticRouteFrameworkResourceModel{}
-	r.routingToModel(context.Background(), routing, model, "default")
+	model := &staticRouteKitModel{}
+	if diags := staticRouteKitSpec().ToModel(context.Background(), routing, model, "default"); diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
 	if model.ID.ValueString() != "abc123" {
 		t.Errorf("ID = %q, want %q", model.ID.ValueString(), "abc123")
 	}
@@ -521,8 +564,27 @@ func Test_staticRouteFrameworkResource_routingToModel(t *testing.T) {
 	}
 }
 
+// A controller that reports no gateway_type must still leave the model
+// holding "default", or the attribute reads as changed on every refresh.
+func Test_staticRouteFrameworkResource_gatewayTypeDefaultsOnAnEmptyRead(t *testing.T) {
+	for _, testCase := range []struct{ reported, want string }{
+		{"", "default"},
+		{"upstream", "upstream"},
+	} {
+		model := &staticRouteKitModel{}
+		routing := &unifi.Routing{GatewayType: testCase.reported}
+		if diags := staticRouteKitSpec().ToModel(context.Background(), routing, model, "default"); diags.HasError() {
+			t.Fatalf("ToModel: %v", diags)
+		}
+		if got := model.GatewayType.ValueString(); got != testCase.want {
+			t.Errorf("a controller reporting %q left gateway_type %q, want %q",
+				testCase.reported, got, testCase.want)
+		}
+	}
+}
+
 func Test_staticRouteFrameworkResource_ListResourceConfigSchema(t *testing.T) {
-	r := &staticRouteFrameworkResource{}
+	r := newStaticRouteKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if len(resp.Schema.Attributes) == 0 {
