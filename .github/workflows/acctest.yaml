@@ -12,34 +12,40 @@ permissions:
 
 jobs:
   test:
-    name: Matrix Test
+    name: Acceptance Test
     runs-on: ubuntu-latest
     timeout-minutes: 75
-    strategy:
-      fail-fast: false
-      matrix:
-        unifi_version:
-          - "latest"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@v5
         with:
           go-version-file: "go.mod"
           cache: true
 
-      # Pre-install Teraform, so that test cases don't try installing their temporary copy
-      # See https://github.com/hashicorp/terraform-plugin-testing/issues/429
+      # Pre-installs Terraform so tests don't each install their own temporary
+      # copy (hashicorp/terraform-plugin-testing#429).
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_wrapper: false
 
+      # Starts the fake devices device acceptance tests need; without it they
+      # skip. The action reads its installed version from a VERSION file beside
+      # it, not from this ref, so pinning by digest alone doesn't fix which image version installs.
+      - name: Install unifi-emu-herder
+        id: herder
+        uses: jamesbraid/unifi-emu/.github/actions/install-herder@0e4fc0e83dc418f3196ec5ecb580cc6085354cb1 # v0.5.1
+
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
         uses: "nick-fields/retry@v4"
+        # The harness takes the herder from this variable, not from PATH.
+        # It shares go-unifi's name: both suites drive the same process.
+        env:
+          UNIFI_TEST_HERDER_BIN: ${{ steps.herder.outputs.path }}
         with:
           timeout_minutes: 20
           max_attempts: 3
-          command: make testacc TEST_TIMEOUT=1h UNIFI_STDOUT=true UNIFI_VERSION=${{ matrix.unifi_download_url && 'beta' || matrix.unifi_version }} UNIFI_DOWNLOAD_URL=${{ matrix.unifi_download_url }}
+          command: make testacc TEST_TIMEOUT=1h
           retry_on: "timeout"
 
       - name: Upload test results to Codecov

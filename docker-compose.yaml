@@ -1,31 +1,29 @@
 ---
 services:
   unifi:
-    image: jacobalberty/unifi:latest
+    # A controller that seeds its own admin account and starts no devices of
+    # its own. Every device the acceptance tests see is started by
+    # unifi-emu-herder and informs for real, so nothing here needs simulation
+    # mode, an init script or a package download. The image declares its own
+    # healthcheck, which is what compose.Wait waits on.
+    # Pinned, and pinned to the same tag go-unifi's controllertest uses, so a
+    # controller change is one deliberate bump in both repositories rather than
+    # a nightly that quietly moved underneath one of them.
+    image: ${UNIFI_TEST_CONTROLLER_IMAGE:-ghcr.io/jamesbraid/unifi-network:10.4.57-sim}
+    # Promotion jobs set this to "never" after inspecting the expected local
+    # manifest. Developer runs retain Compose's ordinary pull-if-missing
+    # behaviour.
+    pull_policy: ${UNIFI_TEST_CONTROLLER_PULL_POLICY:-missing}
     init: true
-    container_name: unifi
     environment:
-      PKGURL: ""
-      UNIFI_STDOUT: "true"
       TZ: Etc/UTC
-    user: unifi
-    healthcheck:
-      test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/manage/account/login"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 90s
-    # Bind-mount the init script instead of a compose `configs:` entry: the
-    # testcontainers compose-go runtime does not materialize inline config
-    # content under Podman, which left the controller out of simulation mode
-    # (no seeded admin account -> login 400). A bind mount is portable across
-    # Docker and Podman. The :Z suffix relabels for SELinux and is a no-op on
-    # hosts without it.
-    volumes:
-      - ./scripts/init.d/demo-mode:/unifi/init.d/demo-mode:Z
+    # Only the API port is published, on an ephemeral host port so concurrent
+    # or abruptly cancelled acceptance runs cannot reserve 8443 globally.
+    # Devices reach the inform port over the Compose network, by the
+    # controller's address on it, never through the host.
     ports:
-      - 8443:8443
-      - 3478:3478/udp
-      - 10001:10001/udp
-      - 8080:8080
-    restart: unless-stopped
+      - "0:8443"
+    # No container_name and no restart policy on purpose. A fixed name lets one
+    # leftover container block every later run, and an ephemeral test
+    # controller that restarts itself turns that leftover into a permanent one.
+    # The harness looks the container up by service name.
