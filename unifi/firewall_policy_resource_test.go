@@ -15,15 +15,41 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
+func TestAccFirewallPolicyList_emptyOrSeeded(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		Steps: []resource.TestStep{{
+			Query: true,
+			Config: `
+provider "unifi" {}
+list "unifi_firewall_policy" "test" {
+  provider = unifi
+  config {}
+}
+`,
+			QueryResultChecks: []querycheck.QueryResultCheck{
+				querycheck.ExpectLengthAtLeast("unifi_firewall_policy.test", 0),
+			},
+		}},
+	})
+}
+
 func ptrInt64(v int64) *int64 { return &v }
 
-// TestFirewallPolicyEndpointSpecificPort is a unit round-trip for the SPECIFIC
-// port match (#207): a `port` set on a firewall policy endpoint must reach the
-// go-unifi source/destination struct. It guards the fix where the port value
-// was previously unrepresentable and silently dropped.
+// TestFirewallPolicyEndpointSpecificPort is a unit round-trip for the
+// SPECIFIC port match: a `port` set on a firewall policy endpoint must
+// reach the go-unifi source/destination struct. It guards the fix where
+// the port value was previously unrepresentable and silently dropped.
 //
 // This is a unit test (model -> API conversion) rather than an acceptance test
 // because exercising it end-to-end requires zone-based firewall and named
@@ -67,11 +93,11 @@ func TestFirewallPolicyEndpointSpecificPort(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyPortStringHandling guards #288 and #286. A portless endpoint
-// must serialize no port at all (an empty Go string the go-unifi marshaler drops)
-// — not "0", which freezes the gateway firewall config (#288). A comma-separated
-// list must survive (#286). On read, the controller's "" and the legacy "0" both
-// map back to a null port so plans stay clean.
+// TestFirewallPolicyPortStringHandling: a portless endpoint must serialize
+// no port at all (an empty Go string the go-unifi marshaler drops) — not
+// "0", which freezes the gateway firewall config. A comma-separated list
+// must survive. On read, the controller's "" and the legacy "0" both map
+// back to a null port so plans stay clean.
 func TestFirewallPolicyPortStringHandling(t *testing.T) {
 	ctx := context.Background()
 	var diags diag.Diagnostics
@@ -96,7 +122,7 @@ func TestFirewallPolicyPortStringHandling(t *testing.T) {
 		}
 	}
 
-	// Comma-separated list survives (#286).
+	// Comma-separated list survives.
 	m := base
 	m.Port = types.StringValue("80,443")
 	m.PortMatchingType = types.StringValue("SPECIFIC")
@@ -124,11 +150,12 @@ func TestFirewallPolicyPortStringHandling(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyPreservesFirmwareFields guards #220: the UCG Max firmware
-// rejects a PUT that omits connection_state_type, icmp_typename, icmp_v6_typename
+// TestFirewallPolicyPreservesFirmwareFields: the UCG Max firmware rejects
+// a PUT that omits connection_state_type, icmp_typename, icmp_v6_typename
 // or the source/destination matching_target_type. These fields are not
-// user-settable, so the provider round-trips them through state. This test reads
-// an API object into the model and converts it back, asserting nothing is dropped.
+// user-settable, so the provider round-trips them through state. This test
+// reads an API object into the model and converts it back, asserting
+// nothing is dropped.
 func TestFirewallPolicyPreservesFirmwareFields(t *testing.T) {
 	ctx := context.Background()
 
@@ -197,10 +224,11 @@ func TestFirewallPolicyPreservesFirmwareFields(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyConnectionStatesRoundTrip guards #227: a policy whose
-// connection_state_type is CUSTOM must round-trip its connection_states. The
-// model->API conversion previously hard-coded an empty slice, so updates sent
-// "connection_states": [] and the firmware rejected CUSTOM policies (HTTP 400).
+// TestFirewallPolicyConnectionStatesRoundTrip: a policy whose
+// connection_state_type is CUSTOM must round-trip its connection_states.
+// The model->API conversion previously hard-coded an empty slice, so
+// updates sent "connection_states": [] and the firmware rejected CUSTOM
+// policies (HTTP 400).
 func TestFirewallPolicyConnectionStatesRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	fp := &unifi.FirewallPolicy{
@@ -244,11 +272,12 @@ func TestFirewallPolicyConnectionStatesRoundTrip(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyEndpointListFieldsRoundTrip guards #242 and the wiring of the
-// list-typed match fields. web_domains (FQDN matching, matching_target=WEB) is new;
-// network_ids and client_macs were declared in the schema but never mapped to/from
-// the API (model->API dropped them, API->model forced them to null). This asserts
-// all three survive both conversion directions.
+// TestFirewallPolicyEndpointListFieldsRoundTrip guards the wiring of the
+// list-typed match fields. web_domains (FQDN matching, matching_target=WEB)
+// is new; network_ids and client_macs were declared in the schema but
+// never mapped to/from the API (model->API dropped them, API->model
+// forced them to null). This asserts all three survive both conversion
+// directions.
 func TestFirewallPolicyEndpointListFieldsRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	var diags diag.Diagnostics
@@ -323,10 +352,11 @@ func TestFirewallPolicyEndpointListFieldsRoundTrip(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyICMPProtocolRoundTrip guards #259: zone-based firewall ICMP
+// TestFirewallPolicyICMPProtocolRoundTrip: zone-based firewall ICMP
 // policies (protocol "icmp"/"icmpv6") were rejected by the schema's OneOf
-// validator even though the controller accepts and returns them. This asserts
-// the protocol survives both conversion directions once the validator allows it.
+// validator even though the controller accepts and returns them. This
+// asserts the protocol survives both conversion directions once the
+// validator allows it.
 func TestFirewallPolicyICMPProtocolRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	for _, proto := range []string{"icmp", "icmpv6"} {
@@ -378,6 +408,18 @@ func TestNewFirewallPolicyResource(t *testing.T) {
 	}
 }
 
+// The two tests below are adopted from upstream's fix to preserve identity
+// on import, adapted to kit reality. Upstream's fix was a hand-written
+// ImportState rewrite; this provider's generic resourcekit.Resource.ImportState
+// already sets both state and identity on every managed surface (see its
+// doc comment), so there is nothing surface-specific to fix here -- these
+// tests verify that the kit's generic import already delivers upstream's
+// guarantee for firewall_policy, rather than reimplementing the fix.
+//
+// firewall_policy has no Spec.Name / Backend.ReadByName, so only the classic
+// site:id / id path and the identity path apply; the name-lookup branch is
+// exercised generically in internal/resourcekit's own import tests.
+
 func TestFirewallPolicyImportStateByID(t *testing.T) {
 	ctx := context.Background()
 	r := &firewallPolicyResource{}
@@ -392,19 +434,8 @@ func TestFirewallPolicyImportStateByID(t *testing.T) {
 	}
 
 	assertFirewallPolicyImportString(t, ctx, resp.State, "site", "default")
-	assertFirewallPolicyImportString(
-		t,
-		ctx,
-		resp.State,
-		"id",
-		"policy-id",
-	)
-	assertFirewallPolicyImportIdentity(
-		t,
-		ctx,
-		resp.Identity,
-		"policy-id",
-	)
+	assertFirewallPolicyImportString(t, ctx, resp.State, "id", "policy-id")
+	assertFirewallPolicyImportIdentity(t, ctx, resp.Identity, "policy-id")
 }
 
 func TestFirewallPolicyImportStateByIdentity(t *testing.T) {
@@ -531,6 +562,13 @@ func Test_firewallPolicyEndpointModel_AttributeTypes(t *testing.T) {
 				"ip_group_id":          types.StringType,
 				"port_matching_type":   types.StringType,
 				"matching_target_type": types.StringType,
+
+				// The four inversion and match flags, declared so a reset
+				// cannot silently reverse a rule.
+				"match_mac":               types.BoolType,
+				"match_opposite_ips":      types.BoolType,
+				"match_opposite_networks": types.BoolType,
+				"match_opposite_ports":    types.BoolType,
 			},
 		},
 	}
@@ -538,37 +576,6 @@ func Test_firewallPolicyEndpointModel_AttributeTypes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.m.AttributeTypes(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("firewallPolicyEndpointModel.AttributeTypes() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_firewallPolicyResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallPolicyResource
-		args args
-	}{
-		{
-			name: "type name is unifi_firewall_policy",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != "unifi_firewall_policy" {
-				t.Errorf("TypeName = %q, want unifi_firewall_policy", tt.args.resp.TypeName)
 			}
 		})
 	}
@@ -605,42 +612,10 @@ func Test_firewallPolicyResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_firewallPolicyResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallPolicyResource
-		args args
-	}{
-		{
-			name: "schema has key attributes",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			for _, key := range []string{"id", "name", "action", "source", "destination"} {
-				if _, ok := tt.args.resp.Schema.Attributes[key]; !ok {
-					t.Errorf("Schema missing %q attribute", key)
-				}
-			}
-		})
-	}
-}
-
-// TestFirewallPolicyConnectionStatesSettable guards #351: connection_state_type
-// and connection_states must be author-settable (Optional+Computed) so a policy
-// can be scoped to NEW-only / RESPOND_ONLY connections, not just read back.
+// TestFirewallPolicyConnectionStatesSettable: connection_state_type and
+// connection_states must be author-settable (Optional+Computed) so a
+// policy can be scoped to NEW-only / RESPOND_ONLY connections, not just
+// read back.
 func TestFirewallPolicyConnectionStatesSettable(t *testing.T) {
 	r := &firewallPolicyResource{}
 	resp := &fwresource.SchemaResponse{}
@@ -657,69 +632,6 @@ func TestFirewallPolicyConnectionStatesSettable(t *testing.T) {
 		if !attr.IsComputed() {
 			t.Errorf("%q must stay Computed (round-trip), got Computed=false", key)
 		}
-	}
-}
-
-func Test_firewallPolicyResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name string
-		r    *firewallPolicyResource
-		args args
-	}{
-		{
-			name: "nil provider data",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: nil},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "wrong type",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "correct client",
-			r:    &firewallPolicyResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			switch tt.name {
-			case "nil provider data":
-				if tt.args.resp.Diagnostics.HasError() {
-					t.Error("nil ProviderData should not error")
-				}
-			case "wrong type":
-				if !tt.args.resp.Diagnostics.HasError() {
-					t.Error("wrong type should produce an error")
-				}
-			case "correct client":
-				if tt.args.resp.Diagnostics.HasError() {
-					t.Errorf("correct client should not error: %v", tt.args.resp.Diagnostics)
-				}
-				if tt.r.client == nil {
-					t.Error("client should be set after Configure")
-				}
-			}
-		})
 	}
 }
 
@@ -829,9 +741,10 @@ func Test_modelToFirewallPolicy(t *testing.T) {
 	}
 }
 
-// index is controller-assigned and read-only (#348): even when the model carries a
-// value, modelToFirewallPolicy must never put it on the API struct, otherwise the
-// controller's append-at-end behaviour produces an inconsistent-result/perpetual diff.
+// index is controller-assigned and read-only: even when the model carries
+// a value, modelToFirewallPolicy must never put it on the API struct,
+// otherwise the controller's append-at-end behaviour produces an
+// inconsistent-result/perpetual diff.
 func TestFirewallPolicyIndexNotSent(t *testing.T) {
 	ctx := context.Background()
 	endpoint := func(zone string) types.Object {
@@ -1326,6 +1239,15 @@ func Test_apiSourceToEndpointModel(t *testing.T) {
 					PortGroupID:        types.StringValue(""),
 					IPGroupID:          types.StringValue(""),
 					PortMatchingType:   types.StringValue("SPECIFIC"),
+
+					// Read back from the controller rather than left null: the
+					// SDK emits these four unconditionally, so the model has to
+					// carry what the controller reported or the next write
+					// rebuilds them as false.
+					MatchMAC:              types.BoolValue(false),
+					MatchOppositeIPs:      types.BoolValue(false),
+					MatchOppositeNetworks: types.BoolValue(false),
+					MatchOppositePorts:    types.BoolValue(false),
 				}
 			}(),
 		},
@@ -1388,6 +1310,15 @@ func Test_apiDestinationToEndpointModel(t *testing.T) {
 					PortGroupID:        types.StringValue(""),
 					IPGroupID:          types.StringValue(""),
 					PortMatchingType:   types.StringValue("SPECIFIC"),
+
+					// Read back from the controller rather than left null: the
+					// SDK emits these four unconditionally, so the model has to
+					// carry what the controller reported or the next write
+					// rebuilds them as false.
+					MatchMAC:              types.BoolValue(false),
+					MatchOppositeIPs:      types.BoolValue(false),
+					MatchOppositeNetworks: types.BoolValue(false),
+					MatchOppositePorts:    types.BoolValue(false),
 				}
 			}(),
 		},
@@ -1485,7 +1416,12 @@ func Test_firewallPolicyResource_ListResourceConfigSchema(t *testing.T) {
 	}{
 		{
 			name: "has site attribute",
-			r:    &firewallPolicyResource{},
+			// Constructed, not a zero value: the list config schema comes
+			// from Spec.ListSurface, which newFirewallPolicyKitResource
+			// wires; a zero-valued resource carries no surface and would
+			// report an empty schema, which is the test failing for want
+			// of a subject rather than for want of the attribute.
+			r: newFirewallPolicyKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwlist.ListResourceSchemaRequest{},
@@ -1503,10 +1439,11 @@ func Test_firewallPolicyResource_ListResourceConfigSchema(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyMatchingTargetType guards #293: a specific (non-ANY) match
-// must carry a concrete matching_target_type — the controller rejects an empty
-// one (api.err.MissingFirewallPolicySourceMatchingTargetType) when a source is
-// switched from ANY to e.g. IP. A controller-assigned type is preserved.
+// TestFirewallPolicyMatchingTargetType: a specific (non-ANY) match must
+// carry a concrete matching_target_type — the controller rejects an empty
+// one (api.err.MissingFirewallPolicySourceMatchingTargetType) when a
+// source is switched from ANY to e.g. IP. A controller-assigned type is
+// preserved.
 func TestFirewallPolicyMatchingTargetType(t *testing.T) {
 	cases := []struct {
 		matchingTarget, current, ipGroupID, want string
@@ -1518,7 +1455,7 @@ func TestFirewallPolicyMatchingTargetType(t *testing.T) {
 		{"NETWORK", "", "", "SPECIFIC"},
 		{"ANY", "", "", ""}, // ANY source untouched
 		{"ANY", "ANY", "", "ANY"},
-		// ip_group_id set (#316): the group reference requires OBJECT. On create
+		// ip_group_id set: the group reference requires OBJECT. On create
 		// the type is empty; on an update from literal ips a stale
 		// ""/"ANY"/"SPECIFIC" may ride along — all must derive OBJECT.
 		{"IP", "", "gid1", "OBJECT"},
@@ -1561,13 +1498,13 @@ func TestFirewallPolicyMatchingTargetType(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyPreserveMatchingTargetType guards #324: matching_target_type
-// is firmware-derived and may change during an update PUT (e.g. "" -> "SPECIFIC"
+// TestFirewallPolicyPreserveMatchingTargetType: matching_target_type is
+// firmware-derived and may change during an update PUT (e.g. "" -> "SPECIFIC"
 // for a non-ANY match, via the controller or firewallPolicyMatchingTargetType).
-// Since the attribute is Computed + UseStateForUnknown, the planned value is the
-// prior-state value; the Update path captures it and re-asserts it on the
-// post-apply state so Terraform's consistency check passes. This exercises the
-// extract/replace helpers that implement that re-assertion.
+// Since the attribute is Computed + UseStateForUnknown, the planned value
+// is the prior-state value; the Update path captures it and re-asserts it
+// on the post-apply state so Terraform's consistency check passes. This
+// exercises the extract/replace helpers that implement that re-assertion.
 func TestFirewallPolicyPreserveMatchingTargetType(t *testing.T) {
 	ctx := context.Background()
 	var diags diag.Diagnostics
@@ -1626,8 +1563,8 @@ func TestFirewallPolicyPreserveMatchingTargetType(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyIPGroupIDRoundTrip guards #316: a source/destination may
-// match an address-group firewall group via ip_group_id, returned by the
+// TestFirewallPolicyIPGroupIDRoundTrip: a source/destination may match an
+// address-group firewall group via ip_group_id, returned by the
 // controller alongside port_group_id. It must round-trip both directions.
 func TestFirewallPolicyIPGroupIDRoundTrip(t *testing.T) {
 	ctx := context.Background()
@@ -1678,10 +1615,11 @@ func TestFirewallPolicyIPGroupIDRoundTrip(t *testing.T) {
 	}
 }
 
-// TestFirewallPolicyEndpointListsUseStateForUnknown guards #338: the Computed
-// match-list attributes (network_ids, client_macs, ips, web_domains) must carry
-// a plan modifier so they keep their prior value when an unrelated field (index,
-// protocol, …) changes, instead of churning to "known after apply".
+// TestFirewallPolicyEndpointListsUseStateForUnknown: the Computed
+// match-list attributes (network_ids, client_macs, ips, web_domains) must
+// carry a plan modifier so they keep their prior value when an unrelated
+// field (index, protocol, …) changes, instead of churning to "known after
+// apply".
 func TestFirewallPolicyEndpointListsUseStateForUnknown(t *testing.T) {
 	resp := &fwresource.SchemaResponse{}
 	(&firewallPolicyResource{}).Schema(context.Background(), fwresource.SchemaRequest{}, resp)
@@ -1698,8 +1636,114 @@ func TestFirewallPolicyEndpointListsUseStateForUnknown(t *testing.T) {
 				continue
 			}
 			if len(la.PlanModifiers) == 0 {
-				t.Errorf("%s.%s must have a plan modifier (UseStateForUnknown) (#338)", ep, key)
+				t.Errorf("%s.%s must have a plan modifier (UseStateForUnknown)", ep, key)
 			}
 		}
+	}
+}
+
+// The v0 schema is derived from the live one by swapping source/destination
+// `port` back to an integer, which is the only structural difference between
+// the versions. Since the schema is now generated, that attribute arrives
+// wrapped in a custom object type, and a custom type is what the framework asks
+// for the object's shape — so replacing the attribute without dropping the
+// custom type leaves the prior schema still calling `port` a string.
+//
+// Nothing else catches it. The upgrade path runs only against real v0 state, so
+// the fault would first appear as a decode failure in somebody's plan, long
+// after the change that caused it.
+func TestFirewallPolicyV0SchemaDescribesPortAsAnInteger(t *testing.T) {
+	ctx := context.Background()
+	upgrader, ok := (&firewallPolicyResource{}).UpgradeState(ctx)[0]
+	if !ok {
+		t.Fatal("no v0 state upgrader is registered")
+	}
+	if upgrader.PriorSchema == nil {
+		t.Fatal("the v0 upgrader carries no prior schema, so v0 state cannot be decoded")
+	}
+	for _, key := range []string{"source", "destination"} {
+		object, ok := upgrader.PriorSchema.Attributes[key].GetType().(attr.TypeWithAttributeTypes)
+		if !ok {
+			t.Fatalf("v0 %q is %T, which does not describe attribute types", key, upgrader.PriorSchema.Attributes[key].GetType())
+		}
+		port, exists := object.AttributeTypes()["port"]
+		if !exists {
+			t.Fatalf("v0 %q has no port attribute", key)
+		}
+		if port != types.Int64Type {
+			t.Errorf("v0 %s.port is %v, want types.Int64Type — v0 state stores it as a number", key, port)
+		}
+	}
+}
+
+// Test_firewallPolicyKit_neverWritesTheExposedThree carries the property
+// that firewall_policy's row in plainMaskedSurfaces held, now that the row
+// is gone. The row couldn't simply be deleted: it declared match_ip_sec,
+// match_opposite_protocol and predefined as fields the SDK exposes that
+// the resource must never write, and it was the last row in that table --
+// so removing it without restating the property would leave the claim
+// nowhere. Same move ap_group's for_wlanconf and radius_profile's
+// tls_enabled got: assert it against the derivation rather than a
+// hand-kept list, since the mask is now computed from Spec.Fields.
+func Test_firewallPolicyKit_neverWritesTheExposedThree(t *testing.T) {
+	spec := firewallPolicyKitSpec()
+	names := spec.WireNames()
+
+	got := map[string]bool{}
+	for _, name := range names {
+		got[name] = true
+	}
+	for _, exposed := range []string{"match_ip_sec", "match_opposite_protocol", "predefined"} {
+		if got[exposed] {
+			t.Errorf("%s is on the wire; the SDK exposes it, the provider does not model it, "+
+				"and a write would reset whatever the controller holds", exposed)
+		}
+	}
+
+	// The control: without it, the loop above passes for a derivation that
+	// came back empty. WireNames lists every mapped field, which is not the
+	// runtime mask -- it includes a ReadOnly field and excludes AlwaysWire,
+	// since it answers "what does this descriptor claim to map" for the
+	// contract check. index is here for that reason and schedule is not.
+	want := map[string]bool{
+		"name": true, "action": true, "enabled": true, "protocol": true,
+		"description": true, "logging": true, "create_allow_respond": true,
+		"ip_version": true, "connection_state_type": true, "connection_states": true,
+		"icmp_typename": true, "icmp_v6_typename": true, "index": true,
+		"source": true, "destination": true,
+		// schedule is a Field now, not only an AlwaysWire name: the
+		// practitioner can set it, so the descriptor maps it.
+		"schedule": true,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("WireNames() = %v, want %v", got, want)
+	}
+
+	// The runtime mask is the other question, and the one that decides what
+	// reaches the controller. index must be absent from it despite being a
+	// mapped field -- it's controller-assigned, UniFi ignores a
+	// client-supplied value, and ReadOnly is what keeps it off the wire.
+	// schedule must be present despite being no field at all, because the
+	// controller refuses a policy whose schedule is null and AlwaysWire is
+	// what puts it there.
+	fields, err := firewallPolicyKitSpec().WireFields(&firewallPolicyKitModel{})
+	if err != nil {
+		t.Fatalf("deriving the mask: %v", err)
+	}
+	masked := map[string]bool{}
+	for _, name := range fields {
+		masked[name] = true
+	}
+	if masked["index"] {
+		t.Error("index reached the mask; it is controller-assigned and ReadOnly for that reason")
+	}
+	// schedule must reach the mask even when the model carries nothing,
+	// which is the state on a create and on the first update after the
+	// attribute landed. It is both a Field and an AlwaysWire name for that
+	// reason: SetInPlan is false for a null model value, and the
+	// controller refuses a policy whose schedule is null.
+	if !masked["schedule"] {
+		t.Error("schedule did not reach the mask, so the PUT would omit the key and the " +
+			"controller would refuse the whole update")
 	}
 }

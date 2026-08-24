@@ -2051,6 +2051,50 @@
             "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ]
         },
+        "destination.match_mac": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "destination.match_opposite_ips": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "destination.match_opposite_networks": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "destination.match_opposite_ports": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
         "destination.matching_target": {
           "kind": "attribute",
           "type": "\"string\"",
@@ -2212,8 +2256,9 @@
         "schedule": {
           "kind": "attribute",
           "nesting_mode": "single",
+          "optional": true,
           "computed": true,
-          "description": "Schedule returned by the UniFi controller. It is preserved in state so importing a scheduled policy or updating another field does not replace the existing schedule.",
+          "description": "When the policy is in force. Omit it to leave the controller's schedule alone; a policy created without one is always in force.",
           "description_kind": "markdown",
           "plan_modifiers": [
             "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
@@ -2222,50 +2267,90 @@
         "schedule.date": {
           "kind": "attribute",
           "type": "\"string\"",
+          "optional": true,
           "computed": true,
-          "description_kind": "plain"
+          "description": "The single date a `ONE_TIME_ONLY` schedule runs on.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "schedule.date_end": {
           "kind": "attribute",
           "type": "\"string\"",
+          "optional": true,
           "computed": true,
-          "description_kind": "plain"
+          "description": "Last date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "schedule.date_start": {
           "kind": "attribute",
           "type": "\"string\"",
+          "optional": true,
           "computed": true,
-          "description_kind": "plain"
+          "description": "First date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "schedule.mode": {
           "kind": "attribute",
           "type": "\"string\"",
+          "optional": true,
           "computed": true,
-          "description_kind": "plain"
+          "description": "How the schedule repeats. `ALWAYS` is always in force. `CUSTOM` appears in the SDK's own enumeration and is not measured against a controller.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "schedule.repeat_on_days": {
           "kind": "attribute",
-          "type": "[\"set\",\"string\"]",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
           "computed": true,
-          "description_kind": "plain"
+          "description": "Days an `EVERY_WEEK` schedule runs on, as `mon` through `sun`.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "schedule.time_all_day": {
           "kind": "attribute",
           "type": "\"bool\"",
+          "optional": true,
           "computed": true,
-          "description_kind": "plain"
+          "description": "Whether the schedule covers the whole day rather than a time range.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "schedule.time_range_end": {
           "kind": "attribute",
           "type": "\"string\"",
+          "optional": true,
           "computed": true,
-          "description_kind": "plain"
+          "description": "End of the daily time range, as `HH:MM`.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "schedule.time_range_start": {
           "kind": "attribute",
           "type": "\"string\"",
+          "optional": true,
           "computed": true,
-          "description_kind": "plain"
+          "description": "Start of the daily time range, as `HH:MM`.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "site": {
           "kind": "attribute",
@@ -2314,6 +2399,50 @@
           "description_kind": "markdown",
           "plan_modifiers": [
             "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "source.match_mac": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "source.match_opposite_ips": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "source.match_opposite_networks": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "source.match_opposite_ports": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ]
         },
         "source.matching_target": {
