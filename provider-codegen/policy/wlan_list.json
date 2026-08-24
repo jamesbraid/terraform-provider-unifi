@@ -1,551 +1,116 @@
 {
   "description": "List WLANs in a site.",
-  "fields": [
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "terraform_name": "_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "advertise_device_name_in_beacon",
-      "terraform_name": "advertise_device_name_in_beacon"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ap_group_ids",
-      "terraform_name": "ap_group_ids"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ap_group_mode",
-      "terraform_name": "ap_group_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "auth_cache",
-      "terraform_name": "auth_cache"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "b_supported",
-      "terraform_name": "b_supported"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "bc_filter_enabled",
-      "terraform_name": "bc_filter_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "bc_filter_list",
-      "terraform_name": "bc_filter_list"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "bss_transition",
-      "terraform_name": "bss_transition"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "country_beacon",
-      "terraform_name": "country_beacon"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dns_assistance_mode",
-      "terraform_name": "dns_assistance_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dns_assistance_servers",
-      "terraform_name": "dns_assistance_servers"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dpi_enabled",
-      "terraform_name": "dpi_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dpigroup_id",
-      "terraform_name": "dpigroup_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dtim_6e",
-      "terraform_name": "dtim_6e"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dtim_mode",
-      "terraform_name": "dtim_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dtim_na",
-      "terraform_name": "dtim_na"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dtim_ng",
-      "terraform_name": "dtim_ng"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "element_adopt",
-      "terraform_name": "element_adopt"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "enabled",
-      "terraform_name": "enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "enhanced_iot",
-      "terraform_name": "enhanced_iot"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "fast_roaming_enabled",
-      "terraform_name": "fast_roaming_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "group_rekey",
-      "terraform_name": "group_rekey"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "hide_ssid",
-      "terraform_name": "hide_ssid"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "hotspot2",
-      "terraform_name": "hotspot2"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "hotspot2conf_enabled",
-      "terraform_name": "hotspot2conf_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "iapp_enabled",
-      "terraform_name": "iapp_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "iot_channel_lock",
-      "terraform_name": "iot_channel_lock"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "iot_dtim_lock",
-      "terraform_name": "iot_dtim_lock"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "is_guest",
-      "terraform_name": "is_guest"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "l2_isolation",
-      "terraform_name": "l2_isolation"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "log_level",
-      "terraform_name": "log_level"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mac_filter_enabled",
-      "terraform_name": "mac_filter_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mac_filter_list",
-      "terraform_name": "mac_filter_list"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mac_filter_policy",
-      "terraform_name": "mac_filter_policy"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mcastenhance_enabled",
-      "terraform_name": "mcastenhance_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mdns_proxy_custom",
-      "terraform_name": "mdns_proxy_custom"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mdns_proxy_mode",
-      "terraform_name": "mdns_proxy_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "minrate_na_advertising_rates",
-      "terraform_name": "minrate_na_advertising_rates"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "minrate_na_data_rate_kbps",
-      "terraform_name": "minrate_na_data_rate_kbps"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "minrate_na_enabled",
-      "terraform_name": "minrate_na_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "minrate_ng_advertising_rates",
-      "terraform_name": "minrate_ng_advertising_rates"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "minrate_ng_data_rate_kbps",
-      "terraform_name": "minrate_ng_data_rate_kbps"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "minrate_ng_enabled",
-      "terraform_name": "minrate_ng_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "minrate_setting_preference",
-      "terraform_name": "minrate_setting_preference"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mlo_enabled",
-      "terraform_name": "mlo_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "name",
-      "terraform_name": "name"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "name_combine_enabled",
-      "terraform_name": "name_combine_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "name_combine_suffix",
-      "terraform_name": "name_combine_suffix"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "nas_identifier",
-      "terraform_name": "nas_identifier"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "nas_identifier_type",
-      "terraform_name": "nas_identifier_type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "networkconf_id",
-      "terraform_name": "networkconf_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "no2ghz_oui",
-      "terraform_name": "no2ghz_oui"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "optimize_iot_wifi_connectivity",
-      "terraform_name": "optimize_iot_wifi_connectivity"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "p2p",
-      "terraform_name": "p2p"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "p2p_cross_connect",
-      "terraform_name": "p2p_cross_connect"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "pmf_cipher",
-      "terraform_name": "pmf_cipher"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "pmf_mode",
-      "terraform_name": "pmf_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "priority",
-      "terraform_name": "priority"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "private_preshared_keys",
-      "terraform_name": "private_preshared_keys"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "private_preshared_keys_enabled",
-      "terraform_name": "private_preshared_keys_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "proxy_arp",
-      "terraform_name": "proxy_arp"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "radius_das_enabled",
-      "terraform_name": "radius_das_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "radius_mac_auth_enabled",
-      "terraform_name": "radius_mac_auth_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "radius_macacl_empty_password",
-      "terraform_name": "radius_macacl_empty_password"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "radius_macacl_format",
-      "terraform_name": "radius_macacl_format"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "radiusprofile_id",
-      "terraform_name": "radiusprofile_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "roam_cluster_id",
-      "terraform_name": "roam_cluster_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "roaming_assistant_6e_enabled",
-      "terraform_name": "roaming_assistant_6e_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "roaming_assistant_6e_rssi",
-      "terraform_name": "roaming_assistant_6e_rssi"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "roaming_assistant_na_enabled",
-      "terraform_name": "roaming_assistant_na_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "roaming_assistant_na_rssi",
-      "terraform_name": "roaming_assistant_na_rssi"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "rrm_enabled",
-      "terraform_name": "rrm_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "sae_anti_clogging",
-      "terraform_name": "sae_anti_clogging"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "sae_groups",
-      "terraform_name": "sae_groups"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "sae_psk",
-      "terraform_name": "sae_psk"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "sae_psk_vlan_required",
-      "terraform_name": "sae_psk_vlan_required"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "sae_sync",
-      "terraform_name": "sae_sync"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "schedule",
-      "terraform_name": "schedule"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "schedule_enabled",
-      "terraform_name": "schedule_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "schedule_reversed",
-      "terraform_name": "schedule_reversed"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "schedule_with_duration",
-      "terraform_name": "schedule_with_duration"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "security",
-      "terraform_name": "security"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "setting_preference",
-      "terraform_name": "setting_preference"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "tdls_prohibit",
-      "terraform_name": "tdls_prohibit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uapsd_enabled",
-      "terraform_name": "uapsd_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_workspace_url",
-      "terraform_name": "uid_workspace_url"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "usergroup_id",
-      "terraform_name": "usergroup_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vlan",
-      "terraform_name": "vlan"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vlan_enabled",
-      "terraform_name": "vlan_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wep_idx",
-      "terraform_name": "wep_idx"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wlan_band",
-      "terraform_name": "wlan_band"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wlan_bands",
-      "terraform_name": "wlan_bands"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wlangroup_id",
-      "terraform_name": "wlangroup_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wpa3_enhanced_192",
-      "terraform_name": "wpa3_enhanced_192"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wpa3_fast_roaming",
-      "terraform_name": "wpa3_fast_roaming"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wpa3_support",
-      "terraform_name": "wpa3_support"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wpa3_transition",
-      "terraform_name": "wpa3_transition"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wpa_enc",
-      "terraform_name": "wpa_enc"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wpa_mode",
-      "terraform_name": "wpa_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wpa_psk_radius",
-      "terraform_name": "wpa_psk_radius"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_iapp_key",
-      "terraform_name": "x_iapp_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_passphrase",
-      "terraform_name": "x_passphrase"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_wep",
-      "terraform_name": "x_wep"
-    }
+  "fields": [],
+  "omitted": [
+    "_id",
+    "advertise_device_name_in_beacon",
+    "ap_group_ids",
+    "ap_group_mode",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "auth_cache",
+    "b_supported",
+    "bc_filter_enabled",
+    "bc_filter_list",
+    "bss_transition",
+    "country_beacon",
+    "dns_assistance_mode",
+    "dns_assistance_servers",
+    "dpi_enabled",
+    "dpigroup_id",
+    "dtim_6e",
+    "dtim_mode",
+    "dtim_na",
+    "dtim_ng",
+    "element_adopt",
+    "enabled",
+    "enhanced_iot",
+    "fast_roaming_enabled",
+    "group_rekey",
+    "hide_ssid",
+    "hotspot2",
+    "hotspot2conf_enabled",
+    "iapp_enabled",
+    "iot_channel_lock",
+    "iot_dtim_lock",
+    "is_guest",
+    "l2_isolation",
+    "log_level",
+    "mac_filter_enabled",
+    "mac_filter_list",
+    "mac_filter_policy",
+    "mcastenhance_enabled",
+    "mdns_proxy_custom",
+    "mdns_proxy_mode",
+    "minrate_na_advertising_rates",
+    "minrate_na_data_rate_kbps",
+    "minrate_na_enabled",
+    "minrate_ng_advertising_rates",
+    "minrate_ng_data_rate_kbps",
+    "minrate_ng_enabled",
+    "minrate_setting_preference",
+    "mlo_enabled",
+    "name",
+    "name_combine_enabled",
+    "name_combine_suffix",
+    "nas_identifier",
+    "nas_identifier_type",
+    "networkconf_id",
+    "no2ghz_oui",
+    "optimize_iot_wifi_connectivity",
+    "p2p",
+    "p2p_cross_connect",
+    "pmf_cipher",
+    "pmf_mode",
+    "priority",
+    "private_preshared_keys",
+    "private_preshared_keys_enabled",
+    "proxy_arp",
+    "radius_das_enabled",
+    "radius_mac_auth_enabled",
+    "radius_macacl_empty_password",
+    "radius_macacl_format",
+    "radiusprofile_id",
+    "roam_cluster_id",
+    "roaming_assistant_6e_enabled",
+    "roaming_assistant_6e_rssi",
+    "roaming_assistant_na_enabled",
+    "roaming_assistant_na_rssi",
+    "rrm_enabled",
+    "sae_anti_clogging",
+    "sae_groups",
+    "sae_psk",
+    "sae_psk_vlan_required",
+    "sae_sync",
+    "schedule",
+    "schedule_enabled",
+    "schedule_reversed",
+    "schedule_with_duration",
+    "security",
+    "setting_preference",
+    "site_id",
+    "tdls_prohibit",
+    "uapsd_enabled",
+    "uid_workspace_url",
+    "usergroup_id",
+    "vlan",
+    "vlan_enabled",
+    "wep_idx",
+    "wlan_band",
+    "wlan_bands",
+    "wlangroup_id",
+    "wpa3_enhanced_192",
+    "wpa3_fast_roaming",
+    "wpa3_support",
+    "wpa3_transition",
+    "wpa_enc",
+    "wpa_mode",
+    "wpa_psk_radius",
+    "x_iapp_key",
+    "x_passphrase",
+    "x_wep"
   ],
   "format_version": 1,
   "generator_name": "wlan",
@@ -590,6 +155,6 @@
     }
   ],
   "resource": "unifi_wlan",
-  "source_specification_sha256": "eb794f20398345f9248b35036aaa2075fb210ee9911d0227b1f7c7462d2b3a66",
+  "source_specification_sha256": "fe96f8747c30171625706e538062cc45c090d1ac78e411469f6607a4e61e6ccd",
   "surface_kind": "list_resource"
 }

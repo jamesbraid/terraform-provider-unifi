@@ -55,26 +55,6 @@
       "terraform_name": "id"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
       "attribute": {
         "computed_optional_required": "optional",
         "description": "A description of the traffic route (max 128 characters)."
@@ -106,11 +86,6 @@
       "disposition": "managed",
       "structural_name": "kill_switch_enabled",
       "terraform_name": "kill_switch_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "matching_target",
-      "terraform_name": "matching_target"
     },
     {
       "attribute": {
@@ -148,12 +123,15 @@
       "disposition": "managed",
       "structural_name": "next_hop",
       "terraform_name": "next_hop"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
     }
+  ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "matching_target",
+    "site_id"
   ],
   "format_version": 1,
   "generator_name": "traffic_route",
@@ -382,6 +360,6 @@
     }
   ],
   "resource": "unifi_traffic_route",
-  "source_specification_sha256": "0cd23e3328e13ea0702d323d9816e7d401309359b245bbb26d11e0d7b5c5ffc6",
+  "source_specification_sha256": "619a39dcd6efb333fc488e6f67298a309122148f916bfafdb1f2dae284edc1ce",
   "surface_kind": "managed_resource"
 }

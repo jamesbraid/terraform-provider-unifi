@@ -9,19 +9,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	listresource_firewall_policy "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_firewall_policy"
 	resource_firewall_policy "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_firewall_policy"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
-// firewallPolicyScheduleAlways is the schedule a NEW policy gets.
-//
-// It is a literal because nothing models a schedule: the field has no tfsdk
-// tag and no schema attribute, so there is nothing for a practitioner to set.
-// See firewallPolicyCarrySchedule for why an update must not use it.
+// firewallPolicyScheduleAlways is the schedule a new policy gets.
 const firewallPolicyScheduleAlways = "ALWAYS"
+
+// app_ids/app_category_ids (go-unifi v1.105.0's application-based firewall
+// matching) are deliberately unmodeled here: matching_target's validator
+// still rejects APP/APP_CATEGORY, since there's no catalog attribute to
+// populate them from.
 
 type firewallPolicyKitModel struct {
 	ID                  types.String   `tfsdk:"id"`
@@ -46,15 +46,8 @@ type firewallPolicyKitModel struct {
 }
 
 // firewallPolicyEndpointValues is the shape FirewallPolicySource and
-// FirewallPolicyDestination BOTH have -- field for field, json tag for json
-// tag, because the generator emitted them separately from one definition.
-//
-// IT EXISTS TO BE CONVERTED TWICE RATHER THAN TO ABSTRACT THE TWO. Go cannot
-// reach a field generically, so the copy has to be written per type either way;
-// what this removes is the second copy of the LIST DECODING and the
-// matching_target_type derivation, which is where the logic is. The remaining
-// duplication is fifteen assignments each, and it is inherent to two SDK
-// structs the codegen produced independently.
+// FirewallPolicyDestination both have, converted separately since Go can't
+// reach a struct field generically.
 type firewallPolicyEndpointValues struct {
 	ZoneID                string
 	MatchingTarget        string
@@ -78,14 +71,9 @@ func firewallPolicyEndpointAttrTypes() map[string]attr.Type {
 }
 
 // firewallPolicyEndpointValuesFrom reads an endpoint object and derives
-// matching_target_type on the way out.
-//
-// THE DERIVATION BELONGS ON THE WRITE SIDE. matching_target_type is
-// Computed-only, so the practitioner cannot set it and the plan carries no
-// value to honour; the controller rejects a specific match whose type is empty
-// and rejects a group reference sent as SPECIFIC. So the value has to be
-// computed from what the practitioner DID write, and here is where the object
-// being sent is built.
+// matching_target_type on the way out: it's Computed-only, and the controller
+// rejects a specific match with an empty type, or a group reference sent as
+// SPECIFIC.
 func firewallPolicyEndpointValuesFrom(
 	ctx context.Context,
 	object types.Object,
@@ -171,38 +159,15 @@ func firewallPolicyEndpointObjectFrom(
 	return object, diags
 }
 
-// firewallPolicyCarrySchedule is the create/update asymmetry, and it is here
-// rather than in ToSDK because the two writes need different values.
-//
-// THE CONTROLLER REQUIRES THE FIELD ON EVERY WRITE. A PUT whose schedule is
-// null is refused -- `on field 'schedule': rejected value [null] ... must not
-// be null` (400) -- and so is one with the key absent, which is what dropping
-// it from the mask produces. Measured against firmware 10.4.57.
-//
-// THAT IS WHY NONE OF THE USUAL PROTECTIONS REACH IT. A mask, an omitempty and
-// Computed+UseStateForUnknown all work by NOT SENDING something, and not
-// sending is exactly what the controller refuses. State cannot carry it either:
-// the field has no schema attribute, so state holds nothing to preserve. The
-// only fix available is to send the right value.
-//
-// So: a literal on create, because a new policy has no schedule to keep; the
-// controller's own schedule on update, because a policy the practitioner
-// scheduled in the UI has one and the literal would reset it. An apply that
-// changed only the description turned a rule running 09:00-17:00 into one
-// running permanently, with no diff shown, because terraform shows no diff for
-// a field the schema does not declare.
-//
-// If the read fails the literal stands. That is the behaviour before this
-// change rather than a new failure mode, and it keeps a transient controller
-// error from failing an apply that would otherwise succeed.
-//
-// THE ATTRIBUTE NOW EXISTS, so this hook is the fallback rather than the whole
-// story. A declared schedule is encoded by its ObjectField and returned above
-// untouched. What is left here is the two cases where the model carries
-// nothing: a create, which gets the literal, and an update whose state predates
-// the attribute, which gets the controller's own. Once a read has populated
-// state, the schema's Computed and UseStateForUnknown carry it and this hook
-// stops mattering.
+// firewallPolicyCarrySchedule handles the create/update asymmetry: the
+// controller rejects a null or absent schedule on every write, so a value
+// must always be sent. schedule is a real ObjectField now, so this hook is
+// only the fallback for the two cases the model carries nothing for -- a
+// create (gets the always-on literal) and an update whose state predates the
+// attribute (re-reads the controller's own schedule). Once state holds it,
+// Computed+UseStateForUnknown take over and this hook stops mattering. If the
+// read fails, the literal stands rather than failing an otherwise-successful
+// apply.
 func firewallPolicyCarrySchedule(
 	read func(context.Context, string, string) (*ui.FirewallPolicy, error),
 	defaultSite string,
@@ -213,31 +178,24 @@ func firewallPolicyCarrySchedule(
 		sdk *ui.FirewallPolicy,
 		_ any,
 	) diag.Diagnostics {
-		// THE PRACTITIONER'S SCHEDULE WINS, and this clause is what makes the
-		// attribute worth having. ToSDK runs before this hook, so a declared
-		// block is already encoded here; carrying the controller's forward on
-		// top of it would make the attribute unsettable, which is the defect
-		// this closes wearing the shape of the fix for the previous one.
+		// ToSDK already encoded a declared schedule; only fill in when nothing
+		// did, or this would make the attribute unsettable.
 		if sdk.Schedule != nil {
 			return nil
 		}
 
 		sdk.Schedule = &ui.FirewallPolicySchedule{Mode: firewallPolicyScheduleAlways}
 
-		// An empty id is a create: the kit passes the plan there, whose
-		// Computed id is unknown, and it passes state on an update after
-		// refusing an empty id outright. Pinned by
-		// TestBeforeSendSeesAnEmptyIDOnCreateAndTheRealOneOnUpdate, because
-		// taking the wrong branch here is destructive and silent.
+		// An empty id means create (Computed id is unknown in the plan);
+		// getting this branch wrong is destructive and silent, which is what
+		// TestBeforeSendSeesAnEmptyIDOnCreateAndTheRealOneOnUpdate pins.
 		id := effective.ID.ValueString()
 		if id == "" || read == nil {
 			return nil
 		}
-		// THE SITE FALLS BACK, and the reason is that getting it wrong fails
-		// SILENTLY into the defect. A read against the wrong site errors, the
-		// literal stands, and the practitioner's schedule is reset with nothing
-		// to show for it -- so this resolves the site the way the kit does
-		// rather than trusting the model to carry one.
+		// Falls back to defaultSite: getting the site wrong makes the read
+		// fail silently, leaving the literal in place and resetting the
+		// practitioner's schedule with no diff shown.
 		site := effective.Site.ValueString()
 		if site == "" {
 			site = defaultSite
@@ -336,10 +294,10 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 				SDK:   func(s *ui.FirewallPolicy) *string { return &s.Version },
 				Elide: resourcekit.NullZero,
 			},
-			// FIRMWARE-MANAGED, ROUND-TRIPPED. The controller requires these
-			// back on every PUT: an omitted connection_state_type or
-			// icmp_typename makes the write fail with HTTP 400. They are
-			// Computed-only, so nothing a practitioner writes reaches them.
+			// The controller requires these back on every PUT: an omitted
+			// connection_state_type or icmp_typename fails the write with
+			// HTTP 400. They are Computed-only, so nothing a practitioner
+			// writes reaches them.
 			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
 				Wire:  "connection_state_type",
 				Model: func(m *firewallPolicyKitModel) *types.String { return &m.ConnectionStateType },
@@ -364,9 +322,8 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 				SDK:   func(s *ui.FirewallPolicy) *string { return &s.ICMPV6Typename },
 				Elide: resourcekit.KeepZero,
 			},
-			// READ-ONLY, so it never joins the mask. index is
-			// controller-assigned: UniFi ignores a client-supplied value and the
-			// supported API exposes no reorder, so sending it is at best inert.
+			// Read-only, so it never joins the mask: index is
+			// controller-assigned, and UniFi ignores a client-supplied value.
 			resourcekit.ReadOnly[firewallPolicyKitModel, ui.FirewallPolicy](
 				resourcekit.Int64PtrField[firewallPolicyKitModel, ui.FirewallPolicy]{
 					Wire:  "index",
@@ -400,10 +357,8 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 					if !m.RepeatOnDays.IsNull() && !m.RepeatOnDays.IsUnknown() {
 						diags.Append(m.RepeatOnDays.ElementsAs(ctx, &out.RepeatOnDays, false)...)
 					}
-					// A schedule with no mode is one the practitioner declared
-					// without saying when. The controller refuses it, and
-					// defaulting here would silently make it always-on -- the
-					// defect this attribute exists to end.
+					// An undeclared mode would be refused by the controller as
+					// null; default to always-on rather than leave it invalid.
 					if out.Mode == "" {
 						out.Mode = firewallPolicyScheduleAlways
 					}
@@ -508,11 +463,6 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 				Elide: resourcekit.KeepZero,
 			},
 		},
-
-		Backend: resourcekit.Backend[ui.FirewallPolicy]{
-			GetID: func(s *ui.FirewallPolicy) string { return s.ID },
-			SetID: func(s *ui.FirewallPolicy, id string) { s.ID = id },
-		},
 	}
 }
 
@@ -554,8 +504,6 @@ func firewallPolicyKitList() resourcekit.ListSpec[ui.FirewallPolicy] {
 			}
 			return s.ID
 		},
-		// The three the hand-written List supported, with the same comparisons:
-		// enabled was formatted with %t, which is what FormatBool produces.
 		Filters: map[string]func(*ui.FirewallPolicy) string{
 			"name":    func(s *ui.FirewallPolicy) string { return s.Name },
 			"action":  func(s *ui.FirewallPolicy) string { return s.Action },

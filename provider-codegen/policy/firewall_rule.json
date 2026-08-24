@@ -44,26 +44,6 @@
       "terraform_name": "action"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
       "attribute": {
         "computed_optional_required": "optional",
         "description": "The destination address of the firewall rule."
@@ -302,11 +282,6 @@
       "terraform_name": "setting_preference"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
-    },
-    {
       "attribute": {
         "computed_optional_required": "optional",
         "description": "The source address for the firewall rule."
@@ -444,6 +419,13 @@
       "terraform_name": "state_related"
     }
   ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "site_id"
+  ],
   "format_version": 1,
   "generator_name": "firewall_rule",
   "provider_owned": [
@@ -486,6 +468,6 @@
     }
   ],
   "resource": "unifi_firewall_rule",
-  "source_specification_sha256": "c17e65d7f2af345c7c25855b9c8bd891a3728631902462f15bcd4301a4a669e1",
+  "source_specification_sha256": "6202360e85cb5ee0bae33d5629269273c58051cec97dafae23c1db3bb37dfc9e",
   "surface_kind": "managed_resource"
 }

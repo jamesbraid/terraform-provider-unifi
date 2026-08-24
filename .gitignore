@@ -95,7 +95,6 @@ __debug_bin*
 /nested-custom-type-strip
 /nested-type-dedup
 /provider-spec-compiler
-/schema-behaviour
 /sdk-bootstrap
 
 # provider-codegen's compiler intermediates. *.provider-code-spec.json is the
@@ -108,3 +107,21 @@ __debug_bin*
 # reads the committed copy directly, as its own independent record.
 provider-codegen/generated/*.impact.json
 *.provider-code-spec.json
+
+# provider-codegen/bootstrap's structural projections of the pinned go-unifi
+# SDK. sdk-bootstrap derives these fresh from the pinned commit at the head
+# of every go generate run, so committing them duplicated what regeneration
+# already reproduces deterministically -- the real drift gate is each
+# policy file's own source_specification_sha256 pin, checked against a
+# freshly-derived digest every run; a stale checked-in bootstrap sat next to
+# that gate without strengthening it. Three files stay committed anyway:
+# go-unifi-v1.102.0-dns-record.json has no go:generate line that reproduces
+# it -- it is a frozen snapshot from a go-unifi commit nothing else in this
+# tree still imports; go-unifi-v1.103.0-vpn-server.json and
+# go-unifi-v1.103.0-firewall-zone.json are read directly by
+# secret_candidate_test.go and resourcekit_contract_test.go, the same reason
+# *.mapping.json above stays committed rather than gitignored.
+provider-codegen/bootstrap/*.json
+!provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json
+!provider-codegen/bootstrap/go-unifi-v1.103.0-vpn-server.json
+!provider-codegen/bootstrap/go-unifi-v1.103.0-firewall-zone.json

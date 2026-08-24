@@ -1,131 +1,32 @@
 {
   "description": "List clients in a site, optionally filtered by network, group, connection type, or vendor.",
-  "fields": [
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "terraform_name": "_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "blocked",
-      "terraform_name": "blocked"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "display_name",
-      "terraform_name": "display_name"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "fixed_ap_enabled",
-      "terraform_name": "fixed_ap_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "fixed_ap_mac",
-      "terraform_name": "fixed_ap_mac"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "fixed_ip",
-      "terraform_name": "fixed_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "hostname",
-      "terraform_name": "hostname"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "last_ip",
-      "terraform_name": "last_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "last_seen",
-      "terraform_name": "last_seen"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "local_dns_record",
-      "terraform_name": "local_dns_record"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "local_dns_record_enabled",
-      "terraform_name": "local_dns_record_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mac",
-      "terraform_name": "mac"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "name",
-      "terraform_name": "name"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "network_id",
-      "terraform_name": "network_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "network_members_group_ids",
-      "terraform_name": "network_members_group_ids"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "note",
-      "terraform_name": "note"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "use_fixedip",
-      "terraform_name": "use_fixedip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "usergroup_id",
-      "terraform_name": "usergroup_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "virtual_network_override_enabled",
-      "terraform_name": "virtual_network_override_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "virtual_network_override_id",
-      "terraform_name": "virtual_network_override_id"
-    }
+  "fields": [],
+  "omitted": [
+    "_id",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "blocked",
+    "display_name",
+    "fixed_ap_enabled",
+    "fixed_ap_mac",
+    "fixed_ip",
+    "hostname",
+    "last_ip",
+    "last_seen",
+    "local_dns_record",
+    "local_dns_record_enabled",
+    "mac",
+    "name",
+    "network_id",
+    "network_members_group_ids",
+    "note",
+    "site_id",
+    "use_fixedip",
+    "usergroup_id",
+    "virtual_network_override_enabled",
+    "virtual_network_override_id"
   ],
   "format_version": 1,
   "generator_name": "client",
@@ -180,6 +81,6 @@
     }
   ],
   "resource": "unifi_client",
-  "source_specification_sha256": "573638a96c16dea0d2e09044c2891b20cb031d993561b9a51feddb9c433792a3",
+  "source_specification_sha256": "f95896aed1de5f4df7510e3d1d69bf3812eb1b23eb00227d1c0c02b9cb410214",
   "surface_kind": "list_resource"
 }

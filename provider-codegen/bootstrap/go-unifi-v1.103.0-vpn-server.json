@@ -2,8 +2,8 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/ubiquiti-community/go-unifi",
-    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
-    "specification_sha256": "1f972a84a31cf15751fa0eaa2ff2394a0251fe8fe85cb80f415f961d2c33df1c"
+    "commit": "d20e126f0e2321727a66d5faeffeb434c215c455",
+    "specification_sha256": "3da8f8999c4727f8811ddd28717c8a19ca576531cc0d1c03469dbbeb1d3eb014"
   },
   "resource": {
     "name": "unifi_vpn_server",

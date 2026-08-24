@@ -1,121 +1,30 @@
 {
   "description": "List RADIUS profiles in a site.",
-  "fields": [
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "terraform_name": "_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "accounting_enabled",
-      "terraform_name": "accounting_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "acct_servers",
-      "terraform_name": "acct_servers"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "auth_servers",
-      "terraform_name": "auth_servers"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "interim_update_enabled",
-      "terraform_name": "interim_update_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "interim_update_interval",
-      "terraform_name": "interim_update_interval"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "name",
-      "terraform_name": "name"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "tls_enabled",
-      "terraform_name": "tls_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "use_usg_acct_server",
-      "terraform_name": "use_usg_acct_server"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "use_usg_auth_server",
-      "terraform_name": "use_usg_auth_server"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vlan_enabled",
-      "terraform_name": "vlan_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vlan_wlan_mode",
-      "terraform_name": "vlan_wlan_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_ca_crts",
-      "terraform_name": "x_ca_crts"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_client_crt",
-      "terraform_name": "x_client_crt"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_client_crt_filename",
-      "terraform_name": "x_client_crt_filename"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_client_private_key",
-      "terraform_name": "x_client_private_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_client_private_key_filename",
-      "terraform_name": "x_client_private_key_filename"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_client_private_key_password",
-      "terraform_name": "x_client_private_key_password"
-    }
+  "fields": [],
+  "omitted": [
+    "_id",
+    "accounting_enabled",
+    "acct_servers",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "auth_servers",
+    "interim_update_enabled",
+    "interim_update_interval",
+    "name",
+    "site_id",
+    "tls_enabled",
+    "use_usg_acct_server",
+    "use_usg_auth_server",
+    "vlan_enabled",
+    "vlan_wlan_mode",
+    "x_ca_crts",
+    "x_client_crt",
+    "x_client_crt_filename",
+    "x_client_private_key",
+    "x_client_private_key_filename",
+    "x_client_private_key_password"
   ],
   "format_version": 1,
   "generator_name": "radius_profile",
@@ -160,6 +69,6 @@
     }
   ],
   "resource": "unifi_radius_profile",
-  "source_specification_sha256": "92a72eb60cace6022c32bda9c38d149d8c4696496cbe5fabaddb7abc4876a983",
+  "source_specification_sha256": "0b560d27f0691adea8c20168e45455939bc7bd435a1f961b47f90c599d4dbf78",
   "surface_kind": "list_resource"
 }

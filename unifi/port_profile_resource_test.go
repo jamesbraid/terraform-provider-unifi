@@ -65,7 +65,6 @@ func TestAccPortProfileFramework_vlanFields(t *testing.T) {
 				Config: testAccPortProfileFrameworkConfig_vlanFields(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_port_profile.vlan", "id"),
-					// native_networkconf_id is now persisted/computed (was previously a no-op).
 					resource.TestCheckResourceAttrSet(
 						"unifi_port_profile.vlan",
 						"native_networkconf_id",
@@ -185,9 +184,9 @@ func TestAccPortProfileFramework_exactTaggedNetworks(t *testing.T) {
 				ExpectNonEmptyPlan: true,
 			},
 			{
-				// The prior step creates the new VLAN. On this next refresh/apply,
-				// the configured include and exclusion sets reconcile the
-				// controller's automatic treatment of that VLAN.
+				// The prior step created the new VLAN; this refresh reconciles the
+				// configured include/exclusion sets against the controller's
+				// automatic treatment of it.
 				Config: testAccPortProfileFrameworkConfig_exactTaggedNetworks(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
@@ -381,6 +380,12 @@ func Test_portProfileResource_IdentitySchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.r.IdentitySchema(tt.args.in0, tt.args.in1, tt.args.resp)
+			if tt.args.resp.Diagnostics.HasError() {
+				t.Fatalf("IdentitySchema() diagnostics: %v", tt.args.resp.Diagnostics.Errors())
+			}
+			if len(tt.args.resp.IdentitySchema.Attributes) == 0 {
+				t.Fatal("IdentitySchema() returned no attributes")
+			}
 		})
 	}
 }
@@ -545,15 +550,9 @@ func Test_portProfileResource_modelToAPIPortProfile(t *testing.T) {
 			if diags.HasError() != (tt.want1 != nil) {
 				t.Errorf("ToSDK() diagnostics = %v, want error: %v", diags, tt.want1 != nil)
 			}
-			// COMPARED AS THE JSON THE CONTROLLER RECEIVES. The expectations
-			// are unchanged; only the notion of equality is. DeepEqual
-			// separates a nil slice from an empty one, and all three slice
-			// fields here -- excluded_networkconf_ids,
-			// multicast_router_networkconf_ids and port_security_mac_address --
-			// are tagged omitempty, so the two produce identical requests.
-			// Checked against the SDK's tags rather than assumed: FirewallZone
-			// has a collection that is NOT tagged, where the distinction is
-			// real.
+			// Compared as the JSON the controller receives, not by DeepEqual:
+			// the three slice fields here are all tagged omitempty, so a nil
+			// and an empty slice produce identical requests.
 			gotJSON, err := json.Marshal(got)
 			if err != nil {
 				t.Fatalf("marshalling the built object: %v", err)
@@ -998,16 +997,12 @@ func TestApplyPortProfileVLANConfig(t *testing.T) {
 	}
 }
 
-// TestApplyPortProfileVLANConfig_UnconfiguredLeavesTaggedStateAlone guards the
-// clobber the native_networkconf_id acceptance test below exposed. When
-// nothing about tagged-VLAN management is configured, config.Mode is "" --
-// not a value the controller accepts for tagged_vlan_mgmt -- and
-// applyPortProfileVLANConfig must leave the SDK object's existing
-// TaggedVLANMgmt/ExcludedNetworkIDs alone rather than overwrite them with the
-// empty/nil zero. Unlike TestApplyPortProfileVLANConfig's cases, api here
-// starts non-empty, the way ToSDK leaves it when state already carries a mode
-// forward from a prior read -- an api that starts empty cannot distinguish a
-// preserved value from a clobbered one.
+// When nothing about tagged-VLAN management is configured, config.Mode is ""
+// -- not a value the controller accepts -- so applyPortProfileVLANConfig
+// must leave the SDK object's existing TaggedVLANMgmt/ExcludedNetworkIDs
+// alone rather than overwrite them with the zero value. api starts non-empty
+// here (unlike TestApplyPortProfileVLANConfig's cases) since an empty api
+// couldn't distinguish a preserved value from a clobbered one.
 func TestApplyPortProfileVLANConfig_UnconfiguredLeavesTaggedStateAlone(t *testing.T) {
 	api := &unifi.PortProfile{
 		TaggedVLANMgmt:     "auto",
@@ -1118,6 +1113,12 @@ func Test_portProfileResource_ListResourceConfigSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.r.ListResourceConfigSchema(tt.args.in0, tt.args.in1, tt.args.resp)
+			if tt.args.resp.Diagnostics.HasError() {
+				t.Fatalf("ListResourceConfigSchema() diagnostics: %v", tt.args.resp.Diagnostics.Errors())
+			}
+			if len(tt.args.resp.Schema.Attributes) == 0 {
+				t.Fatal("ListResourceConfigSchema() returned no attributes")
+			}
 		})
 	}
 }
@@ -1173,13 +1174,10 @@ func portProfileToModelWithHooks(
 	return diags
 }
 
-// THE DERIVED VLAN FIELDS MUST BE IN THE UPDATE MASK, and nothing asserted it
-// until removing AlwaysWire from the descriptor left the whole suite green.
-//
-// The practitioner writes tagged_networkconf_ids, which is not a Field and so
-// cannot put anything in the mask. The three attributes that carry the change
-// are computed by BeforeSend. Without AlwaysWire the mask names none of them
-// and the update is accepted having changed nothing.
+// tagged_networkconf_ids is not a Field and so cannot put anything in the
+// mask itself; the three attributes that carry the change are computed by
+// BeforeSend and must reach the mask via AlwaysWire, or the update is
+// accepted having changed nothing.
 func TestPortProfileWireMaskCarriesTheDerivedVLANFields(t *testing.T) {
 	ctx := context.Background()
 	tagged, diags := types.SetValueFrom(ctx, types.StringType, []string{"net-a"})
@@ -1214,9 +1212,8 @@ func TestPortProfileWireMaskCarriesTheDerivedVLANFields(t *testing.T) {
 	}
 }
 
-// The three read defaults, none of which had a test. Each is a value the
-// hand-written mapper substituted when the controller reported nothing, and
-// removing any of them from the descriptor left the suite green.
+// Each of these is a value the hand-written mapper substituted when the
+// controller reported nothing.
 func TestPortProfileReadDefaults(t *testing.T) {
 	ctx := context.Background()
 	for _, testCase := range []struct {
@@ -1267,13 +1264,9 @@ func TestPortProfileReadDefaults(t *testing.T) {
 
 // lldpmed_notify_enabled is the only Optional-only bool this surface has: no
 // Computed, no Default. BoolField's ToModel writes whatever the controller
-// reports, unconditionally, which is right when a false IS a value -- but an
-// Optional-only attribute commits the schema to returning exactly what the
-// config said, so a config that never mentioned the attribute must come back
-// null. The earlier hand-written read carried the prior value forward for
-// exactly this reason (its "Only set lldpmed_notify_enabled if it was in the
-// plan or if it's explicitly true" comment); AfterReceive is where the kit
-// lets a surface do the same thing.
+// reports unconditionally, but an Optional-only attribute must come back
+// null when the config never mentioned it, so AfterReceive carries the
+// prior value forward for this one.
 func TestPortProfileLLDPMedNotifyEnabledPreservesNull(t *testing.T) {
 	ctx := context.Background()
 	for _, tt := range []struct {
@@ -1304,16 +1297,8 @@ func TestPortProfileLLDPMedNotifyEnabledPreservesNull(t *testing.T) {
 	}
 }
 
-// TestPortProfileToModel_NativeNetworkClearedRoundTrips and
-// TestPortProfileToModel_NativeNetworkAssignedKept are adapted from upstream's
-// #383 fix (allow clearing native_networkconf_id to None). Upstream's tests
-// called the hand-written portProfileResource.portProfileToModel directly;
-// the kit has no such method, so the equivalent boundary is Spec.ToModel --
-// which already surfaces the controller's "" as a known empty string rather
-// than null, because the descriptor declares native_networkconf_id KeepZero
-// (the pre-fix, hand-written behavior used NullZero's rule by hand instead:
-// `if != "" {Value} else {Null}`). Kept as regression tests: the kit already
-// had this fix, and nothing had pinned it.
+// Spec.ToModel surfaces the controller's "" as a known empty string rather
+// than null, because the descriptor declares native_networkconf_id KeepZero.
 func TestPortProfileToModel_NativeNetworkClearedRoundTrips(t *testing.T) {
 	ctx := context.Background()
 	var model portProfileKitModel
@@ -1342,15 +1327,12 @@ func TestPortProfileToModel_NativeNetworkAssignedKept(t *testing.T) {
 	}
 }
 
-// TestPortProfileWireMaskCarriesExplicitNativeNetworkClear guards the write
-// half of #383: an explicit native_networkconf_id = "" is a known, non-null
-// plan value like any other, so it must join the update mask. Without it, the
-// controller never sees the clear at all -- go-unifi's maskedBody only
-// substitutes the field's zero value onto the wire for a NAMED field the
-// normal encoding dropped at its zero value (native_networkconf_id still
-// carries `omitempty`); a mask that omitted the name would omit the field
-// outright and the clear would silently no-op, which is the exact failure
-// #383 reported.
+// An explicit native_networkconf_id = "" is a known, non-null plan value
+// like any other, so it must join the update mask, or the clear silently
+// no-ops. This is independent of the field's own omitempty tag: go-unifi's
+// maskedBody substitutes a masked field's zero value regardless of what the
+// tag says (unlike CREATE's whole-object write -- see
+// TestPortProfileWholeObjectWriteOmitsAnUnsetNativeNetwork).
 func TestPortProfileWireMaskCarriesExplicitNativeNetworkClear(t *testing.T) {
 	plan := &portProfileKitModel{
 		Name:                types.StringValue("uplink"),
@@ -1365,17 +1347,42 @@ func TestPortProfileWireMaskCarriesExplicitNativeNetworkClear(t *testing.T) {
 	}
 }
 
-// TestAccPortProfileFramework_nativeNetworkClear is #383's live end-to-end
-// case: an explicit native_networkconf_id = "" must clear the native network
-// on the controller, not merely disappear from Terraform state.
-//
-// State alone cannot tell the two apart. Update overlays a known plan value
-// onto state unconditionally (internal/resourcekit/resource.go's
-// ApplyPlanToState, "a set plan value always survives"), so even a write that
-// silently failed to clear the controller's value would still show "" in
-// state right after the apply that set it. The PlanOnly step re-reads the
-// controller independently of that overlay -- Resource.Read never calls
-// ApplyPlanToState -- and would produce a nonempty plan if the clear had not
+// TestPortProfileWholeObjectWriteOmitsAnUnsetNativeNetwork pins
+// native_networkconf_id's omitempty tag on the CREATE path: port_profile's
+// CREATE is a whole-object write (Backend.Create, not CreateFields), so the
+// tag alone decides whether an unset field reaches the controller as "",
+// which would suppress its native-network auto-assignment. json.Marshal's
+// omitempty can't distinguish "explicitly cleared" from "never configured"
+// (both are the Go zero value), so this also covers the unconfigured case.
+func TestPortProfileWholeObjectWriteOmitsAnUnsetNativeNetwork(t *testing.T) {
+	ctx := context.Background()
+	model := &portProfileKitModel{
+		Name:                types.StringValue("uplink"),
+		NativeNetworkConfID: types.StringValue(""),
+	}
+	built, diags := portProfileKitSpec().ToSDK(ctx, model)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+	encoded, err := json.Marshal(built)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var emitted map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &emitted); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if raw, ok := emitted["native_networkconf_id"]; ok {
+		t.Errorf("native_networkconf_id = %s in the whole-object create payload; "+
+			"want it omitted so the controller can auto-assign a native network", raw)
+	}
+}
+
+// An explicit native_networkconf_id = "" must clear the native network on
+// the controller, not merely disappear from state -- state alone can't tell
+// the two apart, since Update overlays a known plan value onto state
+// unconditionally. The final PlanOnly step re-reads the controller
+// independently and would produce a nonempty plan if the clear had not
 // actually taken effect.
 func TestAccPortProfileFramework_nativeNetworkClear(t *testing.T) {
 	resource.Test(t, resource.TestCase{

@@ -137,26 +137,6 @@
       "terraform_name": "id"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "default": {
@@ -167,46 +147,6 @@
       "disposition": "managed",
       "structural_name": "auto_scale_enabled",
       "terraform_name": "auto_scale"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_gateway",
-      "terraform_name": "dhcpd_gateway"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_mac_1",
-      "terraform_name": "dhcpd_mac_1"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_mac_2",
-      "terraform_name": "dhcpd_mac_2"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_mac_3",
-      "terraform_name": "dhcpd_mac_3"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_ntp_1",
-      "terraform_name": "dhcpd_ntp_1"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_ntp_2",
-      "terraform_name": "dhcpd_ntp_2"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_time_offset",
-      "terraform_name": "dhcpd_time_offset"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpdv6_allow_slaac",
-      "terraform_name": "dhcpdv6_allow_slaac"
     },
     {
       "attribute": {
@@ -242,16 +182,6 @@
       "terraform_name": "domain_name"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "dpi_enabled",
-      "terraform_name": "dpi_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dpigroup_id",
-      "terraform_name": "dpigroup_id"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "default": {
@@ -262,21 +192,6 @@
       "disposition": "managed",
       "structural_name": "enabled",
       "terraform_name": "enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "exposed_to_site_vpn",
-      "terraform_name": "exposed_to_site_vpn"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "firewall_zone_id",
-      "terraform_name": "firewall_zone_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "gateway_device",
-      "terraform_name": "gateway_device"
     },
     {
       "attribute": {
@@ -303,51 +218,6 @@
       "terraform_name": "gateway_type"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "igmp_fastleave",
-      "terraform_name": "igmp_fastleave"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_flood_unknown_multicast",
-      "terraform_name": "igmp_flood_unknown_multicast"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_groupmembership",
-      "terraform_name": "igmp_groupmembership"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_maxresponse",
-      "terraform_name": "igmp_maxresponse"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_mcrtrexpiretime",
-      "terraform_name": "igmp_mcrtrexpiretime"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_proxy_downstream_networkconf_ids",
-      "terraform_name": "igmp_proxy_downstream_networkconf_ids"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_proxy_for",
-      "terraform_name": "igmp_proxy_for"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_proxy_upstream",
-      "terraform_name": "igmp_proxy_upstream"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_querier_switches",
-      "terraform_name": "igmp_querier_switches"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "default": {
@@ -358,21 +228,6 @@
       "disposition": "managed",
       "structural_name": "igmp_snooping",
       "terraform_name": "igmp_snooping"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "igmp_supression",
-      "terraform_name": "igmp_supression"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "interface_mtu",
-      "terraform_name": "interface_mtu"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "interface_mtu_enabled",
-      "terraform_name": "interface_mtu_enabled"
     },
     {
       "attribute": {
@@ -426,131 +281,6 @@
       "disposition": "managed",
       "structural_name": "ip_subnet",
       "terraform_name": "subnet"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_dh_group",
-      "terraform_name": "ipsec_dh_group"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_dynamic_routing",
-      "terraform_name": "ipsec_dynamic_routing"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_encryption",
-      "terraform_name": "ipsec_encryption"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_esp_dh_group",
-      "terraform_name": "ipsec_esp_dh_group"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_esp_encryption",
-      "terraform_name": "ipsec_esp_encryption"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_esp_hash",
-      "terraform_name": "ipsec_esp_hash"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_esp_lifetime",
-      "terraform_name": "ipsec_esp_lifetime"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_hash",
-      "terraform_name": "ipsec_hash"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_ike_dh_group",
-      "terraform_name": "ipsec_ike_dh_group"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_ike_encryption",
-      "terraform_name": "ipsec_ike_encryption"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_ike_hash",
-      "terraform_name": "ipsec_ike_hash"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_ike_lifetime",
-      "terraform_name": "ipsec_ike_lifetime"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_interface",
-      "terraform_name": "ipsec_interface"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_key_exchange",
-      "terraform_name": "ipsec_key_exchange"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_local_identifier",
-      "terraform_name": "ipsec_local_identifier"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_local_identifier_enabled",
-      "terraform_name": "ipsec_local_identifier_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_local_ip",
-      "terraform_name": "ipsec_local_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_peer_ip",
-      "terraform_name": "ipsec_peer_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_pfs",
-      "terraform_name": "ipsec_pfs"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_profile",
-      "terraform_name": "ipsec_profile"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_remote_identifier",
-      "terraform_name": "ipsec_remote_identifier"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_remote_identifier_enabled",
-      "terraform_name": "ipsec_remote_identifier_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_separate_ikev2_networks",
-      "terraform_name": "ipsec_separate_ikev2_networks"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_tunnel_ip",
-      "terraform_name": "ipsec_tunnel_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipsec_tunnel_ip_enabled",
-      "terraform_name": "ipsec_tunnel_ip_enabled"
     },
     {
       "disposition": "omitted",
@@ -886,16 +616,6 @@
       "terraform_type": "string"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "ipv6_setting_preference",
-      "terraform_name": "ipv6_setting_preference"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipv6_single_network_interface",
-      "terraform_name": "ipv6_single_network_interface"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
@@ -915,41 +635,6 @@
       "disposition": "managed",
       "structural_name": "ipv6_subnet",
       "terraform_name": "ipv6_static_subnet"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ipv6_wan_delegation_type",
-      "terraform_name": "ipv6_wan_delegation_type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "is_nat",
-      "terraform_name": "is_nat"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "l2tp_allow_weak_ciphers",
-      "terraform_name": "l2tp_allow_weak_ciphers"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "l2tp_interface",
-      "terraform_name": "l2tp_interface"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "l2tp_local_wan_ip",
-      "terraform_name": "l2tp_local_wan_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "l3_interface_type",
-      "terraform_name": "l3_interface_type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "local_port",
-      "terraform_name": "local_port"
     },
     {
       "attribute": {
@@ -973,16 +658,6 @@
       "terraform_name": "lte_lan"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "mac_override",
-      "terraform_name": "mac_override"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mac_override_enabled",
-      "terraform_name": "mac_override_enabled"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "Specifies whether mDNS is enabled. This is read back from the controller rather than defaulted: some controllers (notably UniFi OS gateways) ignore `mdns_enabled` at create/update time and always store `false`, so forcing a `true` default produced a \"provider produced inconsistent result after apply\" error.",
@@ -1002,26 +677,6 @@
       "disposition": "managed",
       "structural_name": "mdns_enabled",
       "terraform_name": "multicast_dns"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mss_clamp",
-      "terraform_name": "mss_clamp"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mss_clamp_ipv6",
-      "terraform_name": "mss_clamp_ipv6"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mss_clamp_mss",
-      "terraform_name": "mss_clamp_mss"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mss_clamp_mss_ipv6",
-      "terraform_name": "mss_clamp_mss_ipv6"
     },
     {
       "attribute": {
@@ -1109,151 +764,6 @@
       "terraform_name": "network_isolation"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "networkgroup",
-      "terraform_name": "networkgroup"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_configuration",
-      "terraform_name": "openvpn_configuration"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_configuration_filename",
-      "terraform_name": "openvpn_configuration_filename"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_encryption_cipher",
-      "terraform_name": "openvpn_encryption_cipher"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_interface",
-      "terraform_name": "openvpn_interface"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_local_address",
-      "terraform_name": "openvpn_local_address"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_local_port",
-      "terraform_name": "openvpn_local_port"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_local_wan_ip",
-      "terraform_name": "openvpn_local_wan_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_mode",
-      "terraform_name": "openvpn_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_remote_address",
-      "terraform_name": "openvpn_remote_address"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_remote_host",
-      "terraform_name": "openvpn_remote_host"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_remote_port",
-      "terraform_name": "openvpn_remote_port"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "openvpn_username",
-      "terraform_name": "openvpn_username"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "pptpc_require_mppe",
-      "terraform_name": "pptpc_require_mppe"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "pptpc_route_distance",
-      "terraform_name": "pptpc_route_distance"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "pptpc_server_ip",
-      "terraform_name": "pptpc_server_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "pptpc_username",
-      "terraform_name": "pptpc_username"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "priority",
-      "terraform_name": "priority"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "radiusprofile_id",
-      "terraform_name": "radiusprofile_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "remote_site_id",
-      "terraform_name": "remote_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "remote_site_subnets",
-      "terraform_name": "remote_site_subnets"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "remote_vpn_dynamic_subnets_enabled",
-      "terraform_name": "remote_vpn_dynamic_subnets_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "remote_vpn_subnets",
-      "terraform_name": "remote_vpn_subnets"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "report_wan_event",
-      "terraform_name": "report_wan_event"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "require_mschapv2",
-      "terraform_name": "require_mschapv2"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "route_distance",
-      "terraform_name": "route_distance"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "routed_lag_idx",
-      "terraform_name": "routed_lag_idx"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "routed_port_idx",
-      "terraform_name": "routed_port_idx"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "sdwan_remote_site_id",
-      "terraform_name": "sdwan_remote_site_id"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "Setting preference. Must be one of `auto` or `manual`.",
@@ -1285,491 +795,6 @@
       "disposition": "managed",
       "structural_name": "setting_preference",
       "terraform_name": "setting_preference"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "single_network_lan",
-      "terraform_name": "single_network_lan"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_policy_enabled",
-      "terraform_name": "uid_policy_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_policy_name",
-      "terraform_name": "uid_policy_name"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_public_gateway_port",
-      "terraform_name": "uid_public_gateway_port"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_traffic_rules_allowed_ips_and_hostnames",
-      "terraform_name": "uid_traffic_rules_allowed_ips_and_hostnames"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_traffic_rules_enabled",
-      "terraform_name": "uid_traffic_rules_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_vpn_custom_routing",
-      "terraform_name": "uid_vpn_custom_routing"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_vpn_default_dns_suffix",
-      "terraform_name": "uid_vpn_default_dns_suffix"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_vpn_masquerade_enabled",
-      "terraform_name": "uid_vpn_masquerade_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_vpn_max_connection_time_seconds",
-      "terraform_name": "uid_vpn_max_connection_time_seconds"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_vpn_sync_public_ip",
-      "terraform_name": "uid_vpn_sync_public_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_vpn_type",
-      "terraform_name": "uid_vpn_type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "uid_workspace_url",
-      "terraform_name": "uid_workspace_url"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "upnp_enabled",
-      "terraform_name": "upnp_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "upnp_lan_enabled",
-      "terraform_name": "upnp_lan_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "upnp_nat_pmp_enabled",
-      "terraform_name": "upnp_nat_pmp_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "upnp_secure_mode",
-      "terraform_name": "upnp_secure_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "upnp_wan_interface",
-      "terraform_name": "upnp_wan_interface"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "usergroup_id",
-      "terraform_name": "usergroup_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vpn_binding_mode",
-      "terraform_name": "vpn_binding_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vpn_client_configuration_remote_ip_override",
-      "terraform_name": "vpn_client_configuration_remote_ip_override"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vpn_client_configuration_remote_ip_override_enabled",
-      "terraform_name": "vpn_client_configuration_remote_ip_override_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vpn_client_default_route",
-      "terraform_name": "vpn_client_default_route"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vpn_client_pull_dns",
-      "terraform_name": "vpn_client_pull_dns"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vpn_protocol",
-      "terraform_name": "vpn_protocol"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vpn_type",
-      "terraform_name": "vpn_type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vrrp_ip_subnet_gw1",
-      "terraform_name": "vrrp_ip_subnet_gw1"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vrrp_ip_subnet_gw2",
-      "terraform_name": "vrrp_ip_subnet_gw2"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "vrrp_vrid",
-      "terraform_name": "vrrp_vrid"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dhcp_cos",
-      "terraform_name": "wan_dhcp_cos"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dhcp_options",
-      "terraform_name": "wan_dhcp_options"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dhcpv6_cos",
-      "terraform_name": "wan_dhcpv6_cos"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dhcpv6_options",
-      "terraform_name": "wan_dhcpv6_options"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dhcpv6_pd_size",
-      "terraform_name": "wan_dhcpv6_pd_size"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dhcpv6_pd_size_auto",
-      "terraform_name": "wan_dhcpv6_pd_size_auto"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dns1",
-      "terraform_name": "wan_dns1"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dns2",
-      "terraform_name": "wan_dns2"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dns3",
-      "terraform_name": "wan_dns3"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dns4",
-      "terraform_name": "wan_dns4"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dns_preference",
-      "terraform_name": "wan_dns_preference"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dslite_remote_host",
-      "terraform_name": "wan_dslite_remote_host"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_dslite_remote_host_auto",
-      "terraform_name": "wan_dslite_remote_host_auto"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_egress_qos",
-      "terraform_name": "wan_egress_qos"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_egress_qos_enabled",
-      "terraform_name": "wan_egress_qos_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_failover_priority",
-      "terraform_name": "wan_failover_priority"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_gateway",
-      "terraform_name": "wan_gateway"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_gateway_v6",
-      "terraform_name": "wan_gateway_v6"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_ip",
-      "terraform_name": "wan_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_ip_aliases",
-      "terraform_name": "wan_ip_aliases"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_ipv6",
-      "terraform_name": "wan_ipv6"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_ipv6_dns1",
-      "terraform_name": "wan_ipv6_dns1"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_ipv6_dns2",
-      "terraform_name": "wan_ipv6_dns2"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_ipv6_dns_preference",
-      "terraform_name": "wan_ipv6_dns_preference"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_load_balance_type",
-      "terraform_name": "wan_load_balance_type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_load_balance_weight",
-      "terraform_name": "wan_load_balance_weight"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_netmask",
-      "terraform_name": "wan_netmask"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_networkgroup",
-      "terraform_name": "wan_networkgroup"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_pppoe_password_enabled",
-      "terraform_name": "wan_pppoe_password_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_pppoe_username_enabled",
-      "terraform_name": "wan_pppoe_username_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_prefixlen",
-      "terraform_name": "wan_prefixlen"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_provider_capabilities",
-      "terraform_name": "wan_provider_capabilities"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_sla",
-      "terraform_name": "wan_sla"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_smartq_down_rate",
-      "terraform_name": "wan_smartq_down_rate"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_smartq_enabled",
-      "terraform_name": "wan_smartq_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_smartq_up_rate",
-      "terraform_name": "wan_smartq_up_rate"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_type",
-      "terraform_name": "wan_type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_type_v6",
-      "terraform_name": "wan_type_v6"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_username",
-      "terraform_name": "wan_username"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_vlan",
-      "terraform_name": "wan_vlan"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wan_vlan_enabled",
-      "terraform_name": "wan_vlan_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_configuration_file",
-      "terraform_name": "wireguard_client_configuration_file"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_configuration_filename",
-      "terraform_name": "wireguard_client_configuration_filename"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_mode",
-      "terraform_name": "wireguard_client_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_peer_ip",
-      "terraform_name": "wireguard_client_peer_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_peer_port",
-      "terraform_name": "wireguard_client_peer_port"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_peer_public_key",
-      "terraform_name": "wireguard_client_peer_public_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_preshared_key",
-      "terraform_name": "wireguard_client_preshared_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_client_preshared_key_enabled",
-      "terraform_name": "wireguard_client_preshared_key_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_interface",
-      "terraform_name": "wireguard_interface"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_interface_binding_mode_ip_version",
-      "terraform_name": "wireguard_interface_binding_mode_ip_version"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_local_wan_ip",
-      "terraform_name": "wireguard_local_wan_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "wireguard_public_key",
-      "terraform_name": "wireguard_public_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_auth_key",
-      "terraform_name": "x_auth_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_ca_crt",
-      "terraform_name": "x_ca_crt"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_ca_key",
-      "terraform_name": "x_ca_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_dh_key",
-      "terraform_name": "x_dh_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_ipsec_pre_shared_key",
-      "terraform_name": "x_ipsec_pre_shared_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_openvpn_password",
-      "terraform_name": "x_openvpn_password"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_openvpn_shared_secret_key",
-      "terraform_name": "x_openvpn_shared_secret_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_pptpc_password",
-      "terraform_name": "x_pptpc_password"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_server_crt",
-      "terraform_name": "x_server_crt"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_server_key",
-      "terraform_name": "x_server_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_shared_client_crt",
-      "terraform_name": "x_shared_client_crt"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_shared_client_key",
-      "terraform_name": "x_shared_client_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_wan_password",
-      "terraform_name": "x_wan_password"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_wireguard_private_key",
-      "terraform_name": "x_wireguard_private_key"
     },
     {
       "attribute": {
@@ -1849,6 +874,203 @@
       "terraform_name": "third_party_gateway",
       "terraform_type": "bool"
     }
+  ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "dhcpd_gateway",
+    "dhcpd_mac_1",
+    "dhcpd_mac_2",
+    "dhcpd_mac_3",
+    "dhcpd_ntp_1",
+    "dhcpd_ntp_2",
+    "dhcpd_time_offset",
+    "dhcpdv6_allow_slaac",
+    "dpi_enabled",
+    "dpigroup_id",
+    "exposed_to_site_vpn",
+    "firewall_zone_id",
+    "gateway_device",
+    "igmp_fastleave",
+    "igmp_flood_unknown_multicast",
+    "igmp_groupmembership",
+    "igmp_maxresponse",
+    "igmp_mcrtrexpiretime",
+    "igmp_proxy_downstream_networkconf_ids",
+    "igmp_proxy_for",
+    "igmp_proxy_upstream",
+    "igmp_querier_switches",
+    "igmp_supression",
+    "interface_mtu",
+    "interface_mtu_enabled",
+    "ipsec_dh_group",
+    "ipsec_dynamic_routing",
+    "ipsec_encryption",
+    "ipsec_esp_dh_group",
+    "ipsec_esp_encryption",
+    "ipsec_esp_hash",
+    "ipsec_esp_lifetime",
+    "ipsec_hash",
+    "ipsec_ike_dh_group",
+    "ipsec_ike_encryption",
+    "ipsec_ike_hash",
+    "ipsec_ike_lifetime",
+    "ipsec_interface",
+    "ipsec_key_exchange",
+    "ipsec_local_identifier",
+    "ipsec_local_identifier_enabled",
+    "ipsec_local_ip",
+    "ipsec_peer_ip",
+    "ipsec_pfs",
+    "ipsec_profile",
+    "ipsec_remote_identifier",
+    "ipsec_remote_identifier_enabled",
+    "ipsec_separate_ikev2_networks",
+    "ipsec_tunnel_ip",
+    "ipsec_tunnel_ip_enabled",
+    "ipv6_setting_preference",
+    "ipv6_single_network_interface",
+    "ipv6_wan_delegation_type",
+    "is_nat",
+    "l2tp_allow_weak_ciphers",
+    "l2tp_interface",
+    "l2tp_local_wan_ip",
+    "l3_interface_type",
+    "local_port",
+    "mac_override",
+    "mac_override_enabled",
+    "mss_clamp",
+    "mss_clamp_ipv6",
+    "mss_clamp_mss",
+    "mss_clamp_mss_ipv6",
+    "networkgroup",
+    "openvpn_configuration",
+    "openvpn_configuration_filename",
+    "openvpn_encryption_cipher",
+    "openvpn_interface",
+    "openvpn_local_address",
+    "openvpn_local_port",
+    "openvpn_local_wan_ip",
+    "openvpn_mode",
+    "openvpn_remote_address",
+    "openvpn_remote_host",
+    "openvpn_remote_port",
+    "openvpn_username",
+    "pptpc_require_mppe",
+    "pptpc_route_distance",
+    "pptpc_server_ip",
+    "pptpc_username",
+    "priority",
+    "radiusprofile_id",
+    "remote_site_id",
+    "remote_site_subnets",
+    "remote_vpn_dynamic_subnets_enabled",
+    "remote_vpn_subnets",
+    "report_wan_event",
+    "require_mschapv2",
+    "route_distance",
+    "routed_lag_idx",
+    "routed_port_idx",
+    "sdwan_remote_site_id",
+    "single_network_lan",
+    "site_id",
+    "uid_policy_enabled",
+    "uid_policy_name",
+    "uid_public_gateway_port",
+    "uid_traffic_rules_allowed_ips_and_hostnames",
+    "uid_traffic_rules_enabled",
+    "uid_vpn_custom_routing",
+    "uid_vpn_default_dns_suffix",
+    "uid_vpn_masquerade_enabled",
+    "uid_vpn_max_connection_time_seconds",
+    "uid_vpn_sync_public_ip",
+    "uid_vpn_type",
+    "uid_workspace_url",
+    "upnp_enabled",
+    "upnp_lan_enabled",
+    "upnp_nat_pmp_enabled",
+    "upnp_secure_mode",
+    "upnp_wan_interface",
+    "usergroup_id",
+    "vpn_binding_mode",
+    "vpn_client_configuration_remote_ip_override",
+    "vpn_client_configuration_remote_ip_override_enabled",
+    "vpn_client_default_route",
+    "vpn_client_pull_dns",
+    "vpn_protocol",
+    "vpn_type",
+    "vrrp_ip_subnet_gw1",
+    "vrrp_ip_subnet_gw2",
+    "vrrp_vrid",
+    "wan_dhcp_cos",
+    "wan_dhcp_options",
+    "wan_dhcpv6_cos",
+    "wan_dhcpv6_options",
+    "wan_dhcpv6_pd_size",
+    "wan_dhcpv6_pd_size_auto",
+    "wan_dns1",
+    "wan_dns2",
+    "wan_dns3",
+    "wan_dns4",
+    "wan_dns_preference",
+    "wan_dslite_remote_host",
+    "wan_dslite_remote_host_auto",
+    "wan_egress_qos",
+    "wan_egress_qos_enabled",
+    "wan_failover_priority",
+    "wan_gateway",
+    "wan_gateway_v6",
+    "wan_ip",
+    "wan_ip_aliases",
+    "wan_ipv6",
+    "wan_ipv6_dns1",
+    "wan_ipv6_dns2",
+    "wan_ipv6_dns_preference",
+    "wan_load_balance_type",
+    "wan_load_balance_weight",
+    "wan_netmask",
+    "wan_networkgroup",
+    "wan_pppoe_password_enabled",
+    "wan_pppoe_username_enabled",
+    "wan_prefixlen",
+    "wan_provider_capabilities",
+    "wan_sla",
+    "wan_smartq_down_rate",
+    "wan_smartq_enabled",
+    "wan_smartq_up_rate",
+    "wan_type",
+    "wan_type_v6",
+    "wan_username",
+    "wan_vlan",
+    "wan_vlan_enabled",
+    "wireguard_client_configuration_file",
+    "wireguard_client_configuration_filename",
+    "wireguard_client_mode",
+    "wireguard_client_peer_ip",
+    "wireguard_client_peer_port",
+    "wireguard_client_peer_public_key",
+    "wireguard_client_preshared_key",
+    "wireguard_client_preshared_key_enabled",
+    "wireguard_interface",
+    "wireguard_interface_binding_mode_ip_version",
+    "wireguard_local_wan_ip",
+    "wireguard_public_key",
+    "x_auth_key",
+    "x_ca_crt",
+    "x_ca_key",
+    "x_dh_key",
+    "x_ipsec_pre_shared_key",
+    "x_openvpn_password",
+    "x_openvpn_shared_secret_key",
+    "x_pptpc_password",
+    "x_server_crt",
+    "x_server_key",
+    "x_shared_client_crt",
+    "x_shared_client_key",
+    "x_wan_password",
+    "x_wireguard_private_key"
   ],
   "format_version": 1,
   "generator_name": "network",
@@ -2527,6 +1749,6 @@
     }
   ],
   "resource": "unifi_network",
-  "source_specification_sha256": "1f972a84a31cf15751fa0eaa2ff2394a0251fe8fe85cb80f415f961d2c33df1c",
+  "source_specification_sha256": "3da8f8999c4727f8811ddd28717c8a19ca576531cc0d1c03469dbbeb1d3eb014",
   "surface_kind": "managed_resource"
 }

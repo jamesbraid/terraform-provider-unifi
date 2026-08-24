@@ -1,784 +1,140 @@
 {
   "description": "Manages settings for a UniFi site. Configure only the settings you need by providing the corresponding nested object.",
-  "fields": [
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "terraform_name": "_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "arp_cache_base_reachable",
-      "terraform_name": "arp_cache_base_reachable"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "arp_cache_timeout",
-      "terraform_name": "arp_cache_timeout"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcp_relay_agents_packets",
-      "terraform_name": "dhcp_relay_agents_packets"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcp_relay_hop_count",
-      "terraform_name": "dhcp_relay_hop_count"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcp_relay_max_size",
-      "terraform_name": "dhcp_relay_max_size"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcp_relay_port",
-      "terraform_name": "dhcp_relay_port"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_hostfile_update",
-      "terraform_name": "dhcpd_hostfile_update"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dhcpd_use_dnsmasq",
-      "terraform_name": "dhcpd_use_dnsmasq"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dnsmasq_all_servers",
-      "terraform_name": "dnsmasq_all_servers"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "echo_server",
-      "terraform_name": "echo_server"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "terraform_name": "key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lldp_enable_all",
-      "terraform_name": "lldp_enable_all"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mdns_enabled",
-      "terraform_name": "mdns_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mss_clamp_mss",
-      "terraform_name": "mss_clamp_mss"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "AutoSpeedtest",
-      "terraform_name": "autospeedtest__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "AutoSpeedtest",
-      "terraform_name": "autospeedtest_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "AutoSpeedtest",
-      "terraform_name": "autospeedtest_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "AutoSpeedtest",
-      "terraform_name": "autospeedtest_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "AutoSpeedtest",
-      "terraform_name": "autospeedtest_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "AutoSpeedtest",
-      "terraform_name": "autospeedtest_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "AutoSpeedtest",
-      "terraform_name": "autospeedtest_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Country",
-      "terraform_name": "country__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Country",
-      "terraform_name": "country_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Country",
-      "terraform_name": "country_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Country",
-      "terraform_name": "country_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Country",
-      "terraform_name": "country_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Country",
-      "terraform_name": "country_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Country",
-      "terraform_name": "country_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Doh",
-      "terraform_name": "doh__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Doh",
-      "terraform_name": "doh_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Doh",
-      "terraform_name": "doh_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Doh",
-      "terraform_name": "doh_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Doh",
-      "terraform_name": "doh_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Doh",
-      "terraform_name": "doh_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Doh",
-      "terraform_name": "doh_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Dpi",
-      "terraform_name": "dpi__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Dpi",
-      "terraform_name": "dpi_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Dpi",
-      "terraform_name": "dpi_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Dpi",
-      "terraform_name": "dpi_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Dpi",
-      "terraform_name": "dpi_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Dpi",
-      "terraform_name": "dpi_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Dpi",
-      "terraform_name": "dpi_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "failover_querier",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_failover_querier"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "fastleave_for_network_ids",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_fastleave_for_network_ids"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "flood_known_protocols",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_flood_known_protocols"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "flood_unknown_multicast_for_network_ids",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_flood_unknown_multicast_for_network_ids"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "forward_unknown_mcast_router_ports",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_forward_unknown_mcast_router_ports"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "primary_querier",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_primary_querier"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "querier_addresses",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_querier_addresses"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "querier_mode",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_querier_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "querier_subscription_mode",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_querier_subscription_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "querier_switches",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_querier_switches"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "subscription_mode",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_subscription_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "switches",
-      "structural_source": "IgmpSnooping",
-      "terraform_name": "igmpsnooping_switches"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Ips",
-      "terraform_name": "ips__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Ips",
-      "terraform_name": "ips_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Ips",
-      "terraform_name": "ips_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Ips",
-      "terraform_name": "ips_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Ips",
-      "terraform_name": "ips_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Ips",
-      "terraform_name": "ips_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Ips",
-      "terraform_name": "ips_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "IpsSuppression",
-      "terraform_name": "ipssuppression__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "IpsSuppression",
-      "terraform_name": "ipssuppression_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "IpsSuppression",
-      "terraform_name": "ipssuppression_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "IpsSuppression",
-      "terraform_name": "ipssuppression_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "IpsSuppression",
-      "terraform_name": "ipssuppression_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "IpsSuppression",
-      "terraform_name": "ipssuppression_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "IpsSuppression",
-      "terraform_name": "ipssuppression_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Lcm",
-      "terraform_name": "lcm__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Lcm",
-      "terraform_name": "lcm_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Lcm",
-      "terraform_name": "lcm_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Lcm",
-      "terraform_name": "lcm_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Lcm",
-      "terraform_name": "lcm_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Lcm",
-      "terraform_name": "lcm_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Lcm",
-      "terraform_name": "lcm_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "alert_enabled",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_alert_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "boot_sound",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_boot_sound"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "led_enabled",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_led_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "outdoor_mode_enabled",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_outdoor_mode_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_mgmt_key",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_x_mgmt_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_ssh_bind_wildcard",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_x_ssh_bind_wildcard"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_ssh_md5passwd",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_x_ssh_md5passwd"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x_ssh_sha512passwd",
-      "structural_source": "Mgmt",
-      "terraform_name": "mgmt_x_ssh_sha512passwd"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "NetworkOptimization",
-      "terraform_name": "networkoptimization__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "NetworkOptimization",
-      "terraform_name": "networkoptimization_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "NetworkOptimization",
-      "terraform_name": "networkoptimization_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "NetworkOptimization",
-      "terraform_name": "networkoptimization_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "NetworkOptimization",
-      "terraform_name": "networkoptimization_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "NetworkOptimization",
-      "terraform_name": "networkoptimization_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "NetworkOptimization",
-      "terraform_name": "networkoptimization_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Ntp",
-      "terraform_name": "ntp__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Ntp",
-      "terraform_name": "ntp_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Ntp",
-      "terraform_name": "ntp_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Ntp",
-      "terraform_name": "ntp_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Ntp",
-      "terraform_name": "ntp_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Ntp",
-      "terraform_name": "ntp_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Ntp",
-      "terraform_name": "ntp_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Radius",
-      "terraform_name": "radius__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Radius",
-      "terraform_name": "radius_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Radius",
-      "terraform_name": "radius_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Radius",
-      "terraform_name": "radius_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Radius",
-      "terraform_name": "radius_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "configure_whole_network",
-      "structural_source": "Radius",
-      "terraform_name": "radius_configure_whole_network"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Radius",
-      "terraform_name": "radius_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Radius",
-      "terraform_name": "radius_site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "tunneled_reply",
-      "structural_source": "Radius",
-      "terraform_name": "radius_tunneled_reply"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "Rsyslogd",
-      "terraform_name": "rsyslogd__id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "Rsyslogd",
-      "terraform_name": "rsyslogd_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "Rsyslogd",
-      "terraform_name": "rsyslogd_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "Rsyslogd",
-      "terraform_name": "rsyslogd_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "Rsyslogd",
-      "terraform_name": "rsyslogd_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "key",
-      "structural_source": "Rsyslogd",
-      "terraform_name": "rsyslogd_key"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "Rsyslogd",
-      "terraform_name": "rsyslogd_site_id"
-    }
+  "fields": [],
+  "omitted": [
+    "AutoSpeedtest._id",
+    "AutoSpeedtest.attr_hidden",
+    "AutoSpeedtest.attr_hidden_id",
+    "AutoSpeedtest.attr_no_delete",
+    "AutoSpeedtest.attr_no_edit",
+    "AutoSpeedtest.key",
+    "AutoSpeedtest.site_id",
+    "Country._id",
+    "Country.attr_hidden",
+    "Country.attr_hidden_id",
+    "Country.attr_no_delete",
+    "Country.attr_no_edit",
+    "Country.key",
+    "Country.site_id",
+    "Doh._id",
+    "Doh.attr_hidden",
+    "Doh.attr_hidden_id",
+    "Doh.attr_no_delete",
+    "Doh.attr_no_edit",
+    "Doh.key",
+    "Doh.site_id",
+    "Dpi._id",
+    "Dpi.attr_hidden",
+    "Dpi.attr_hidden_id",
+    "Dpi.attr_no_delete",
+    "Dpi.attr_no_edit",
+    "Dpi.key",
+    "Dpi.site_id",
+    "IgmpSnooping._id",
+    "IgmpSnooping.attr_hidden",
+    "IgmpSnooping.attr_hidden_id",
+    "IgmpSnooping.attr_no_delete",
+    "IgmpSnooping.attr_no_edit",
+    "IgmpSnooping.failover_querier",
+    "IgmpSnooping.fastleave_for_network_ids",
+    "IgmpSnooping.flood_known_protocols",
+    "IgmpSnooping.flood_unknown_multicast_for_network_ids",
+    "IgmpSnooping.forward_unknown_mcast_router_ports",
+    "IgmpSnooping.key",
+    "IgmpSnooping.primary_querier",
+    "IgmpSnooping.querier_addresses",
+    "IgmpSnooping.querier_mode",
+    "IgmpSnooping.querier_subscription_mode",
+    "IgmpSnooping.querier_switches",
+    "IgmpSnooping.site_id",
+    "IgmpSnooping.subscription_mode",
+    "IgmpSnooping.switches",
+    "Ips._id",
+    "Ips.attr_hidden",
+    "Ips.attr_hidden_id",
+    "Ips.attr_no_delete",
+    "Ips.attr_no_edit",
+    "Ips.key",
+    "Ips.site_id",
+    "IpsSuppression._id",
+    "IpsSuppression.attr_hidden",
+    "IpsSuppression.attr_hidden_id",
+    "IpsSuppression.attr_no_delete",
+    "IpsSuppression.attr_no_edit",
+    "IpsSuppression.key",
+    "IpsSuppression.site_id",
+    "Lcm._id",
+    "Lcm.attr_hidden",
+    "Lcm.attr_hidden_id",
+    "Lcm.attr_no_delete",
+    "Lcm.attr_no_edit",
+    "Lcm.key",
+    "Lcm.site_id",
+    "Mgmt._id",
+    "Mgmt.alert_enabled",
+    "Mgmt.attr_hidden",
+    "Mgmt.attr_hidden_id",
+    "Mgmt.attr_no_delete",
+    "Mgmt.attr_no_edit",
+    "Mgmt.boot_sound",
+    "Mgmt.key",
+    "Mgmt.led_enabled",
+    "Mgmt.outdoor_mode_enabled",
+    "Mgmt.site_id",
+    "Mgmt.x_mgmt_key",
+    "Mgmt.x_ssh_bind_wildcard",
+    "Mgmt.x_ssh_md5passwd",
+    "Mgmt.x_ssh_sha512passwd",
+    "NetworkOptimization._id",
+    "NetworkOptimization.attr_hidden",
+    "NetworkOptimization.attr_hidden_id",
+    "NetworkOptimization.attr_no_delete",
+    "NetworkOptimization.attr_no_edit",
+    "NetworkOptimization.key",
+    "NetworkOptimization.site_id",
+    "Ntp._id",
+    "Ntp.attr_hidden",
+    "Ntp.attr_hidden_id",
+    "Ntp.attr_no_delete",
+    "Ntp.attr_no_edit",
+    "Ntp.key",
+    "Ntp.site_id",
+    "Radius._id",
+    "Radius.attr_hidden",
+    "Radius.attr_hidden_id",
+    "Radius.attr_no_delete",
+    "Radius.attr_no_edit",
+    "Radius.configure_whole_network",
+    "Radius.key",
+    "Radius.site_id",
+    "Radius.tunneled_reply",
+    "Rsyslogd._id",
+    "Rsyslogd.attr_hidden",
+    "Rsyslogd.attr_hidden_id",
+    "Rsyslogd.attr_no_delete",
+    "Rsyslogd.attr_no_edit",
+    "Rsyslogd.key",
+    "Rsyslogd.site_id",
+    "_id",
+    "arp_cache_base_reachable",
+    "arp_cache_timeout",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "dhcp_relay_agents_packets",
+    "dhcp_relay_hop_count",
+    "dhcp_relay_max_size",
+    "dhcp_relay_port",
+    "dhcpd_hostfile_update",
+    "dhcpd_use_dnsmasq",
+    "dnsmasq_all_servers",
+    "echo_server",
+    "key",
+    "lldp_enable_all",
+    "mdns_enabled",
+    "mss_clamp_mss",
+    "site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2765,6 +2121,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "2852da3cd988db70403be8a7539e9b26bfbf65a0f5171cacbd9f4fbdb46ce93e",
+  "source_specification_sha256": "e79e391df3a028f482e4fc48b76a250fc2c2cf1b8a5d8b3cfeb06feff80cb50a",
   "surface_kind": "managed_resource"
 }

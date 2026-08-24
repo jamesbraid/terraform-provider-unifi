@@ -11,26 +11,6 @@
       "terraform_name": "id"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed",
         "description": "Whether the DNS record is enabled."
@@ -49,16 +29,6 @@
       "terraform_name": "name"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "port",
-      "terraform_name": "port"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "priority",
-      "terraform_name": "priority"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed",
         "description": "The type of the DNS record."
@@ -66,11 +36,6 @@
       "disposition": "managed",
       "structural_name": "record_type",
       "terraform_name": "type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
     },
     {
       "attribute": {
@@ -97,12 +62,17 @@
       "disposition": "managed",
       "structural_name": "value",
       "terraform_name": "value"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "weight",
-      "terraform_name": "weight"
     }
+  ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "port",
+    "priority",
+    "site_id",
+    "weight"
   ],
   "format_version": 1,
   "generator_name": "dns_record_ds",
@@ -124,6 +94,6 @@
     }
   ],
   "resource": "unifi_dns_record",
-  "source_specification_sha256": "f5c9e67fd2dbd353ab48707009d4e7c83d40e5b99570fd6069c2a4be480bcd65",
+  "source_specification_sha256": "f3e47334a5b23b7dde8040a691725b431c5b292a116c917628d873c583adea17",
   "surface_kind": "data_source"
 }

@@ -23,26 +23,6 @@
       "terraform_name": "id"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "default": {
@@ -86,11 +66,6 @@
       "disposition": "managed",
       "structural_name": "display_name",
       "terraform_name": "display_name"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "fixed_ap_enabled",
-      "terraform_name": "fixed_ap_enabled"
     },
     {
       "attribute": {
@@ -199,11 +174,6 @@
       "terraform_name": "last_ip"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "last_seen",
-      "terraform_name": "last_seen"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "Specifies the local DNS record for this client.",
@@ -223,11 +193,6 @@
       "disposition": "managed",
       "structural_name": "local_dns_record",
       "terraform_name": "local_dns_record"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "local_dns_record_enabled",
-      "terraform_name": "local_dns_record_enabled"
     },
     {
       "attribute": {
@@ -279,11 +244,6 @@
       "terraform_name": "name"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "network_id",
-      "terraform_name": "network_id_unused"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "List of network members group names for this client.",
@@ -330,21 +290,6 @@
       "terraform_name": "note"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "use_fixedip",
-      "terraform_name": "use_fixedip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "virtual_network_override_enabled",
-      "terraform_name": "virtual_network_override_enabled"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "The network ID for this client.",
@@ -364,43 +309,26 @@
       "disposition": "managed",
       "structural_name": "virtual_network_override_id",
       "terraform_name": "network_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "structural_source": "ClientGroup",
-      "terraform_name": "clientgroup_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "structural_source": "ClientGroup",
-      "terraform_name": "clientgroup_attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "structural_source": "ClientGroup",
-      "terraform_name": "clientgroup_attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "structural_source": "ClientGroup",
-      "terraform_name": "clientgroup_attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "structural_source": "ClientGroup",
-      "terraform_name": "clientgroup_attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "structural_source": "ClientGroup",
-      "terraform_name": "clientgroup_site_id"
     }
+  ],
+  "omitted": [
+    "ClientGroup._id",
+    "ClientGroup.attr_hidden",
+    "ClientGroup.attr_hidden_id",
+    "ClientGroup.attr_no_delete",
+    "ClientGroup.attr_no_edit",
+    "ClientGroup.site_id",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "fixed_ap_enabled",
+    "last_seen",
+    "local_dns_record_enabled",
+    "network_id",
+    "site_id",
+    "use_fixedip",
+    "virtual_network_override_enabled"
   ],
   "format_version": 1,
   "generator_name": "client",
@@ -554,7 +482,7 @@
     }
   ],
   "resource": "unifi_client",
-  "source_specification_sha256": "e5954987b39335314530ab83fea2273eedce75dc442339e7626a9602c2e3aee7",
+  "source_specification_sha256": "49c90827b3d8c69e0e238d4becf43763ae5b22bd8583ec7dd59bc469241a1a10",
   "surface_kind": "managed_resource",
   "claims": [
     {

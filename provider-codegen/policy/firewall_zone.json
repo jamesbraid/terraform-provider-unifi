@@ -3,7 +3,7 @@
   "surface_kind": "managed_resource",
   "resource": "unifi_firewall_zone",
   "generator_name": "firewall_zone",
-  "source_specification_sha256": "9f534c5182ba4b375d85ef11510270a5f0d390f1f377598ce1d80bbad49649de",
+  "source_specification_sha256": "87f566f1b227520831a1dbd31e421cf8a543da872a90b9ad601c3b03b8560e75",
   "description": "Manages a zone-based firewall zone (UniFi OS 8.x+). Create a zone and attach networks to it, then reference its `id` from `unifi_firewall_policy`.",
   "fields": [
     {
@@ -28,31 +28,6 @@
       }
     },
     {
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden",
-      "disposition": "omitted"
-    },
-    {
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id",
-      "disposition": "omitted"
-    },
-    {
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete",
-      "disposition": "omitted"
-    },
-    {
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit",
-      "disposition": "omitted"
-    },
-    {
-      "structural_name": "cloud_template",
-      "terraform_name": "cloud_template",
-      "disposition": "omitted"
-    },
-    {
       "structural_name": "default_zone",
       "terraform_name": "default_zone",
       "disposition": "managed",
@@ -60,11 +35,6 @@
         "computed_optional_required": "computed",
         "description": "Whether this is a controller default zone."
       }
-    },
-    {
-      "structural_name": "external_id",
-      "terraform_name": "external_id",
-      "disposition": "omitted"
     },
     {
       "structural_name": "name",
@@ -89,11 +59,6 @@
       }
     },
     {
-      "structural_name": "site_id",
-      "terraform_name": "site_id",
-      "disposition": "omitted"
-    },
-    {
       "structural_name": "zone_key",
       "terraform_name": "zone_key",
       "disposition": "managed",
@@ -114,6 +79,15 @@
         ]
       }
     }
+  ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "cloud_template",
+    "external_id",
+    "site_id"
   ],
   "provider_owned": [
     {

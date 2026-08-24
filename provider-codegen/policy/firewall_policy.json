@@ -3,14 +3,9 @@
   "surface_kind": "managed_resource",
   "resource": "unifi_firewall_policy",
   "generator_name": "firewall_policy",
-  "source_specification_sha256": "1cb710f191516240f339f94e66e5b250ee80585bbe795c982cdedcc52d7ed722",
+  "source_specification_sha256": "cd75c947cc3c150c41b45ea8f1d12f0790715a89dc193d7fe7fc8bae41ba18da",
   "description": "Manages a UniFi zone-based firewall policy (UniFi Network 8.x+). Zone-based firewall policies replace the legacy firewall rules and are displayed under Settings \u2192 Security \u2192 Firewall Policies in the UniFi UI.",
   "fields": [
-    {
-      "structural_name": "_id",
-      "terraform_name": "_id",
-      "disposition": "omitted"
-    },
     {
       "structural_name": "action",
       "terraform_name": "action",
@@ -31,26 +26,6 @@
           }
         ]
       }
-    },
-    {
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden",
-      "disposition": "omitted"
-    },
-    {
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id",
-      "disposition": "omitted"
-    },
-    {
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete",
-      "disposition": "omitted"
-    },
-    {
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit",
-      "disposition": "omitted"
     },
     {
       "structural_name": "connection_state_type",
@@ -159,6 +134,16 @@
         "description": "The destination endpoint of the policy."
       },
       "fields": [
+        {
+          "structural_name": "app_category_ids",
+          "terraform_name": "app_category_ids",
+          "disposition": "omitted"
+        },
+        {
+          "structural_name": "app_ids",
+          "terraform_name": "app_ids",
+          "disposition": "omitted"
+        },
         {
           "structural_name": "client_macs",
           "terraform_name": "client_macs",
@@ -596,16 +581,6 @@
       }
     },
     {
-      "structural_name": "match_ip_sec",
-      "terraform_name": "match_ip_sec",
-      "disposition": "omitted"
-    },
-    {
-      "structural_name": "match_opposite_protocol",
-      "terraform_name": "match_opposite_protocol",
-      "disposition": "omitted"
-    },
-    {
       "structural_name": "name",
       "terraform_name": "name",
       "disposition": "managed",
@@ -613,11 +588,6 @@
         "computed_optional_required": "required",
         "description": "The name of the firewall policy."
       }
-    },
-    {
-      "structural_name": "predefined",
-      "terraform_name": "predefined",
-      "disposition": "omitted"
     },
     {
       "structural_name": "protocol",
@@ -852,11 +822,6 @@
       ]
     },
     {
-      "structural_name": "site_id",
-      "terraform_name": "site_id",
-      "disposition": "omitted"
-    },
-    {
       "structural_name": "source",
       "terraform_name": "source",
       "terraform_type": "single_nested",
@@ -866,6 +831,16 @@
         "description": "The source endpoint of the policy."
       },
       "fields": [
+        {
+          "structural_name": "app_category_ids",
+          "terraform_name": "app_category_ids",
+          "disposition": "omitted"
+        },
+        {
+          "structural_name": "app_ids",
+          "terraform_name": "app_ids",
+          "disposition": "omitted"
+        },
         {
           "structural_name": "client_macs",
           "terraform_name": "client_macs",
@@ -1191,6 +1166,17 @@
         }
       ]
     }
+  ],
+  "omitted": [
+    "_id",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "match_ip_sec",
+    "match_opposite_protocol",
+    "predefined",
+    "site_id"
   ],
   "provider_owned": [
     {

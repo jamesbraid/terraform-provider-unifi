@@ -1,13 +1,8 @@
 package providercodegen
 
-// sdkbootstrap fixes the two facts every bootstrap shares -- the module path and the
-// reviewed commit -- in ONE place. go:generate expands the alias into each call below,
-// so the pin has a single home here instead of thirty-nine. That home is still a
-// copy of the commit go.mod already pins as the real dependency version; keeping
-// them in agreement is a discipline this file does not enforce on its own.
-// Everything that VARIES per bootstrap stays on its own line, including the
-// three calls that pass two -struct flags.
-//go:generate -command sdkbootstrap go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -commit a58839fe296859bbb0e91bd57efe54f9e954fe4e
+// sdkbootstrap pins the go-unifi module path and commit once for all calls below;
+// keep it in sync with the version go.mod pins -- nothing else enforces that.
+//go:generate -command sdkbootstrap go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -commit d20e126f0e2321727a66d5faeffeb434c215c455
 //go:generate sdkbootstrap -struct FirewallPolicy -resource unifi_firewall_policy -output bootstrap/go-unifi-v1.103.0-firewall-policy.json
 //go:generate sdkbootstrap -struct FirewallZone -resource unifi_firewall_zone -output bootstrap/go-unifi-v1.103.0-firewall-zone.json
 //go:generate sdkbootstrap -struct PowerSupervisor -resource unifi_power_supervisor -output bootstrap/go-unifi-v1.103.0-power-supervisor.json
@@ -79,6 +74,7 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-site-to-site-vpn.json -policy policy/site_to_site_vpn.json -artifact-prefix site_to_site_vpn -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/site_to_site_vpn.provider-code-spec.json --output ../internal/generated/resource_site_to_site_vpn --package resource_site_to_site_vpn
 //go:generate gofmt -w ../internal/generated/resource_site_to_site_vpn/site_to_site_vpn_resource_gen.go
+//go:generate sdkbootstrap -struct Network -resource unifi_wan -output bootstrap/go-unifi-v1.103.0-wan.json
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-wan.json -policy policy/wan.json -artifact-prefix wan -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/wan.provider-code-spec.json --output ../internal/generated/resource_wan --package resource_wan
 //go:generate go run ../cmd/nested-type-dedup ../internal/generated/resource_wan/wan_resource_gen.go
@@ -111,7 +107,6 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-traffic-route.json -policy policy/traffic_route.json -artifact-prefix traffic_route -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/traffic_route.provider-code-spec.json --output ../internal/generated/resource_traffic_route --package resource_traffic_route
 //go:generate gofmt -w ../internal/generated/resource_traffic_route/traffic_route_resource_gen.go
-//go:generate sdkbootstrap -struct Network -resource unifi_wan -output bootstrap/go-unifi-v1.103.0-wan.json
 //go:generate sdkbootstrap -struct Network -resource unifi_vpn_client -output bootstrap/go-unifi-v1.103.0-vpn-client.json
 //go:generate sdkbootstrap -struct Network -resource unifi_vpn_server -output bootstrap/go-unifi-v1.103.0-vpn-server.json
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-vpn-server.json -policy policy/vpn_server.json -artifact-prefix vpn_server -output-dir generated
@@ -219,17 +214,10 @@ package providercodegen
 //go:generate go tool tfplugingen-framework generate data-sources --input generated/client_info_ds.provider-code-spec.json --output ../internal/generated/datasource_client_info --package datasource_client_info
 //go:generate gofmt -w ../internal/generated/datasource_client_info/client_info_ds_data_source_gen.go
 
-// Every generated package, in one sweep, AFTER all of them exist. Wiring this
-// per surface would make it a line somebody forgets when adding one, and the
-// binding it removes is invisible to every schema referee we own.
+// Runs once, after every generated package above exists -- new sdkbootstrap/generate
+// lines must go before this.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated
 
-// AFTER the CustomType strip, because that one removes the only references the
-// schema functions still had to the generated value types -- run first and this
-// would refuse, correctly, rather than break the build three steps later.
-//
-// The value layer it removes was already absent from the shipped binary: the
-// linker had dropped every <X>Value symbol, and the provider's symbol table is
-// identical before and after by name and type. What changes is 52,243 lines of
-// source that nothing calls.
+// Must run after nested-custom-type-strip: that pass removes the only remaining
+// references to the generated value types, so running this first would break the build.
 //go:generate go run ../cmd/generated-value-strip ../internal/generated

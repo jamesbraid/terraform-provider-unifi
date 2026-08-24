@@ -2,11 +2,6 @@
   "description": "`unifi_device` manages a device of the network.\n\nDevices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.",
   "fields": [
     {
-      "disposition": "omitted",
-      "structural_name": "_id",
-      "terraform_name": "_id"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed",
         "description": "Whether the device is adopted."
@@ -14,41 +9,6 @@
       "disposition": "managed",
       "structural_name": "adopted",
       "terraform_name": "adopted"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "afc_enabled",
-      "terraform_name": "afc_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "atf_enabled",
-      "terraform_name": "atf_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "audio_info",
-      "terraform_name": "audio_info"
     },
     {
       "attribute": {
@@ -70,26 +30,6 @@
       "disposition": "managed",
       "structural_name": "bandsteering_mode",
       "terraform_name": "bandsteering_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "baresip_auth_user",
-      "terraform_name": "baresip_auth_user"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "baresip_enabled",
-      "terraform_name": "baresip_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "baresip_extension",
-      "terraform_name": "baresip_extension"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "beep_enabled",
-      "terraform_name": "beep_enabled"
     },
     {
       "attribute": {
@@ -197,41 +137,6 @@
       "terraform_name": "disabled"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "dot1x_fallback_networkconf_id",
-      "terraform_name": "dot1x_fallback_networkconf_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dot1x_portctrl_enabled",
-      "terraform_name": "dot1x_portctrl_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "dpi_enabled",
-      "terraform_name": "dpi_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "eav_bridge_role",
-      "terraform_name": "eav_bridge_role"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ether_lighting",
-      "terraform_name": "ether_lighting"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ethernet_overrides",
-      "terraform_name": "ethernet_overrides"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "fan_mode_override",
-      "terraform_name": "fan_mode_override"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "Enable flow control."
@@ -239,51 +144,6 @@
       "disposition": "managed",
       "structural_name": "flowctrl_enabled",
       "terraform_name": "flowctrl_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "gateway_vrrp_mode",
-      "terraform_name": "gateway_vrrp_mode"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "gateway_vrrp_priority",
-      "terraform_name": "gateway_vrrp_priority"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "green_ap_enabled",
-      "terraform_name": "green_ap_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "hardware_offload",
-      "terraform_name": "hardware_offload"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "hdmi_ports",
-      "terraform_name": "hdmi_ports"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "heightInMeters",
-      "terraform_name": "heightInMeters"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "hostname",
-      "terraform_name": "hostname"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "inform_ip",
-      "terraform_name": "inform_ip"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ip",
-      "terraform_name": "ip"
     },
     {
       "attribute": {
@@ -385,26 +245,6 @@
       "terraform_name": "lcm_night_mode_ends"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "lcm_orientation_override",
-      "terraform_name": "lcm_orientation_override"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lcm_settings_restricted_access",
-      "terraform_name": "lcm_settings_restricted_access"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lcm_tracker_enabled",
-      "terraform_name": "lcm_tracker_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lcm_tracker_seed",
-      "terraform_name": "lcm_tracker_seed"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "LED override setting; valid values are `default`, `on`, and `off`.",
@@ -489,76 +329,6 @@
       "terraform_name": "locked"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "loopback_override",
-      "terraform_name": "loopback_override"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lowpfmode_override",
-      "terraform_name": "lowpfmode_override"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_apn",
-      "terraform_name": "lte_apn"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_auth_type",
-      "terraform_name": "lte_auth_type"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_data_limit_enabled",
-      "terraform_name": "lte_data_limit_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_data_warning_enabled",
-      "terraform_name": "lte_data_warning_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_ext_ant",
-      "terraform_name": "lte_ext_ant"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_hard_limit",
-      "terraform_name": "lte_hard_limit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_password",
-      "terraform_name": "lte_password"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_poe",
-      "terraform_name": "lte_poe"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_roaming_allowed",
-      "terraform_name": "lte_roaming_allowed"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_sim_pin",
-      "terraform_name": "lte_sim_pin"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_soft_limit",
-      "terraform_name": "lte_soft_limit"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "lte_username",
-      "terraform_name": "lte_username"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "custom_type": {
@@ -595,21 +365,6 @@
       "disposition": "managed",
       "structural_name": "mac",
       "terraform_name": "mac"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "map_id",
-      "terraform_name": "map_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mbb_overrides",
-      "terraform_name": "mbb_overrides"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "mesh_mlo_enabled",
-      "terraform_name": "mesh_mlo_enabled"
     },
     {
       "attribute": {
@@ -658,16 +413,6 @@
       "disposition": "managed",
       "structural_name": "name",
       "terraform_name": "name"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "nut_server",
-      "terraform_name": "nut_server"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "oob_port_config",
-      "terraform_name": "oob_port_config"
     },
     {
       "attribute": {
@@ -758,26 +503,6 @@
       "structural_name": "outlet_overrides",
       "terraform_name": "outlet_overrides",
       "terraform_type": "list_nested"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "outlet_power_cycle_enabled",
-      "terraform_name": "outlet_power_cycle_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "outlet_power_cycle_on_ac_recovery_enabled",
-      "terraform_name": "outlet_power_cycle_on_ac_recovery_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "outlet_power_cycle_on_ac_recovery_seconds",
-      "terraform_name": "outlet_power_cycle_on_ac_recovery_seconds"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "peer_to_peer_mode",
-      "terraform_name": "peer_to_peer_mode"
     },
     {
       "attribute": {
@@ -1355,41 +1080,6 @@
       "terraform_type": "set_nested_block"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "port_table",
-      "terraform_name": "port_table"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "power_source_ctrl",
-      "terraform_name": "power_source_ctrl"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "power_source_ctrl_budget",
-      "terraform_name": "power_source_ctrl_budget"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "power_source_ctrl_enabled",
-      "terraform_name": "power_source_ctrl_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "precision_time_protocol_config",
-      "terraform_name": "precision_time_protocol_config"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ptmp_ap_mac",
-      "terraform_name": "ptmp_ap_mac"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ptp_ap_mac",
-      "terraform_name": "ptp_ap_mac"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "Radio configuration table.",
@@ -1572,41 +1262,6 @@
       "terraform_type": "list_nested"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "radiusprofile_id",
-      "terraform_name": "radiusprofile_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "resetbtn_enabled",
-      "terraform_name": "resetbtn_enabled"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "rps_override",
-      "terraform_name": "rps_override"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "sma_port_config",
-      "terraform_name": "sma_port_config"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "snmp_contact",
-      "terraform_name": "snmp_contact"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "snmp_location",
-      "terraform_name": "snmp_location"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed",
         "description": "Device state."
@@ -1614,11 +1269,6 @@
       "disposition": "managed",
       "structural_name": "state",
       "terraform_name": "state"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "station_mode",
-      "terraform_name": "station_mode"
     },
     {
       "attribute": {
@@ -1693,21 +1343,6 @@
       "terraform_name": "type"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "ubb_pair_name",
-      "terraform_name": "ubb_pair_name"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "ups_shutdown_remaining_minutes",
-      "terraform_name": "ups_shutdown_remaining_minutes"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "video_info",
-      "terraform_name": "video_info"
-    },
-    {
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "Volume level (0-100)."
@@ -1715,11 +1350,6 @@
       "disposition": "managed",
       "structural_name": "volume",
       "terraform_name": "volume"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "x",
-      "terraform_name": "x"
     },
     {
       "attribute": {
@@ -1730,12 +1360,84 @@
       "disposition": "managed",
       "structural_name": "x_baresip_password",
       "terraform_name": "x_baresip_password"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "y",
-      "terraform_name": "y"
     }
+  ],
+  "omitted": [
+    "_id",
+    "afc_enabled",
+    "atf_enabled",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "audio_info",
+    "baresip_auth_user",
+    "baresip_enabled",
+    "baresip_extension",
+    "beep_enabled",
+    "dot1x_fallback_networkconf_id",
+    "dot1x_portctrl_enabled",
+    "dpi_enabled",
+    "eav_bridge_role",
+    "ether_lighting",
+    "ethernet_overrides",
+    "fan_mode_override",
+    "gateway_vrrp_mode",
+    "gateway_vrrp_priority",
+    "green_ap_enabled",
+    "hardware_offload",
+    "hdmi_ports",
+    "heightInMeters",
+    "hostname",
+    "inform_ip",
+    "ip",
+    "lcm_orientation_override",
+    "lcm_settings_restricted_access",
+    "lcm_tracker_enabled",
+    "lcm_tracker_seed",
+    "loopback_override",
+    "lowpfmode_override",
+    "lte_apn",
+    "lte_auth_type",
+    "lte_data_limit_enabled",
+    "lte_data_warning_enabled",
+    "lte_ext_ant",
+    "lte_hard_limit",
+    "lte_password",
+    "lte_poe",
+    "lte_roaming_allowed",
+    "lte_sim_pin",
+    "lte_soft_limit",
+    "lte_username",
+    "map_id",
+    "mbb_overrides",
+    "mesh_mlo_enabled",
+    "nut_server",
+    "oob_port_config",
+    "outlet_power_cycle_enabled",
+    "outlet_power_cycle_on_ac_recovery_enabled",
+    "outlet_power_cycle_on_ac_recovery_seconds",
+    "peer_to_peer_mode",
+    "port_table",
+    "power_source_ctrl",
+    "power_source_ctrl_budget",
+    "power_source_ctrl_enabled",
+    "precision_time_protocol_config",
+    "ptmp_ap_mac",
+    "ptp_ap_mac",
+    "radiusprofile_id",
+    "resetbtn_enabled",
+    "rps_override",
+    "site_id",
+    "sma_port_config",
+    "snmp_contact",
+    "snmp_location",
+    "station_mode",
+    "ubb_pair_name",
+    "ups_shutdown_remaining_minutes",
+    "video_info",
+    "x",
+    "y"
   ],
   "format_version": 1,
   "generator_name": "device",
@@ -1851,6 +1553,6 @@
     }
   ],
   "resource": "unifi_device",
-  "source_specification_sha256": "94d1da57d4d875127b29d16787ec56a3aea46ae407966dc8816719c3b353be21",
+  "source_specification_sha256": "d1b25952207a78ffd67453b86ebfbb7fcfb361a5b35059a0ca2303876af25fe0",
   "surface_kind": "managed_resource"
 }

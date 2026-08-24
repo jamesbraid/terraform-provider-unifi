@@ -11,26 +11,6 @@
       "terraform_name": "id"
     },
     {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden",
-      "terraform_name": "attr_hidden"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_hidden_id",
-      "terraform_name": "attr_hidden_id"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_delete",
-      "terraform_name": "attr_no_delete"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "attr_no_edit",
-      "terraform_name": "attr_no_edit"
-    },
-    {
       "attribute": {
         "computed_optional_required": "required",
         "description": "The name of the client QOS rate to look up."
@@ -56,12 +36,14 @@
       "disposition": "managed",
       "structural_name": "qos_rate_max_up",
       "terraform_name": "qos_rate_max_up"
-    },
-    {
-      "disposition": "omitted",
-      "structural_name": "site_id",
-      "terraform_name": "site_id"
     }
+  ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "site_id"
   ],
   "format_version": 1,
   "generator_name": "client_qos_rate_ds",
@@ -83,6 +65,6 @@
     }
   ],
   "resource": "unifi_client_qos_rate",
-  "source_specification_sha256": "0dcf734f4053f020c987ac2d9b5a82ddb1c0881103778b386f8e4f0ec70d244d",
+  "source_specification_sha256": "60e37f634f7495451528a0241e3646e308c71ba087af24b42f80357fbfbf8ab7",
   "surface_kind": "data_source"
 }

@@ -2,8 +2,8 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/ubiquiti-community/go-unifi",
-    "commit": "a58839fe296859bbb0e91bd57efe54f9e954fe4e",
-    "specification_sha256": "9f534c5182ba4b375d85ef11510270a5f0d390f1f377598ce1d80bbad49649de"
+    "commit": "d20e126f0e2321727a66d5faeffeb434c215c455",
+    "specification_sha256": "87f566f1b227520831a1dbd31e421cf8a543da872a90b9ad601c3b03b8560e75"
   },
   "resource": {
     "name": "unifi_firewall_zone",
