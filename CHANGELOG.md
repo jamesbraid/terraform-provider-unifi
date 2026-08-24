@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.104.0] - DRAFT, unreleased
+## [v0.105.0] - DRAFT, unreleased
 
 **This section is a draft.** v0.101.2 is this provider's last released
 version; v0.102.0 and v0.103.0 were never published as releases of their
@@ -102,6 +102,14 @@ will actually ship.
   its own successful adoption. A later refresh still picks up whatever the
   controller settles on.
 
+- **`unifi_site_to_site_vpn`: `pfs = false` and `dynamic_routing = false` now
+  reach the controller.** The go-unifi SDK bump below fixed a defect where a
+  `false` for `ipsec_pfs`/`ipsec_dynamic_routing` was silently dropped from
+  the wire, so either setting could be turned on but never off through this
+  provider. If your configuration already sets `pfs` or `dynamic_routing` to
+  `false`, the next apply now actually disables it on the controller —
+  previously that was a no-op the provider couldn't detect.
+
 ### 📋 Known Issues
 
 - **`unifi_vpn_server` still drops the third and fourth DNS servers.** Most
@@ -144,6 +152,16 @@ will actually ship.
 
 - **`unifi_firewall_policy` and `unifi_site_to_site_vpn` have acceptance
   tests for the first time.**
+
+- **The provider now builds against go-unifi v1.105.1** (up from v1.103.0).
+  Additive-only for every surface this provider maps: no exported field,
+  method, or wire behaviour this provider relies on was removed or changed
+  shape, beyond the `unifi_site_to_site_vpn` fix above. go-unifi's
+  `FirewallPolicy` gained `app_ids`/`app_category_ids` and two new
+  `matching_target` values (`APP`, `APP_CATEGORY`) — application-based
+  firewall matching — which this provider does not expose yet. That's a
+  reviewed decision to defer, not an oversight; it stays on the list for a
+  future release.
 
 **Reconciled from upstream:** write-only attribute support lands as a
 capability of the shared resource engine. `unifi_wlan`'s `passphrase_wo`
