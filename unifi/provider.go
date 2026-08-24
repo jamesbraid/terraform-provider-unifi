@@ -43,13 +43,10 @@ type Client struct {
 	*ui.ApiClient
 	Site string
 
-	// groupCache memoizes network members group name<->ID lookups per site. It lives
-	// on the shared *Client (one per provider configuration) rather than on the
-	// resource because the framework builds a fresh clientResource per RPC: keeping it
-	// here serializes concurrent group resolution across parallel unifi_client creates
-	// so they stop each creating a duplicate group with the same name (#389).
-	groupCacheMu sync.Mutex
-	groupCache   map[string]map[string]string // site -> (name -> id)
+	// clientGroupMu serializes network-members-group create-on-miss across
+	// concurrent unifi_client writes. It lives here rather than on
+	// clientKitResource because the framework builds a fresh one per RPC.
+	clientGroupMu sync.Mutex
 }
 
 // GetSiteName returns the site name for this client.
@@ -144,7 +141,6 @@ func (p *unifiProvider) Configure(
 		return
 	}
 
-	// Get values from configuration or environment variables
 	apiUrl := config.ApiUrl.ValueString()
 	if apiUrl == "" {
 		if v := os.Getenv("UNIFI_API"); v != "" {
@@ -216,9 +212,7 @@ func (p *unifiProvider) Configure(
 
 	tflog.Debug(ctx, "Creating Unifi client")
 
-	// Validate required fields
 	if cloudConnector {
-		// Cloud Connector requires API key only
 		if apiKey == "" {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("api_key"),
@@ -226,10 +220,8 @@ func (p *unifiProvider) Configure(
 				"Cloud Connector mode requires an API key. Username/password authentication is not supported.",
 			)
 		}
-		// Force secure connections for cloud
 		allowInsecure = false
 	} else {
-		// Direct connection validation
 		if apiUrl == "" {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("api_url"),
@@ -251,7 +243,6 @@ func (p *unifiProvider) Configure(
 		return
 	}
 
-	// Create UniFi client
 	client, err := ui.New(ctx, &ui.Config{
 		BaseURL:        apiUrl,
 		AllowInsecure:  allowInsecure,
@@ -275,7 +266,6 @@ func (p *unifiProvider) Configure(
 		return
 	}
 
-	// Create wrapper client with site info
 	configuredClient := &Client{
 		ApiClient: client,
 		Site:      site,

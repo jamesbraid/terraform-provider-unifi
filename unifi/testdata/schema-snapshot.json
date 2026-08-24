@@ -695,7 +695,7 @@
       }
     },
     "unifi_device": {
-      "version": 2,
+      "version": 3,
       "description": "`unifi_device` manages a device of the network.\n\nDevices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.",
       "description_kind": "plain",
       "attributes": {
@@ -1406,22 +1406,6 @@
           "optional": true,
           "computed": true,
           "description": "Antenna ID.",
-          "description_kind": "plain"
-        },
-        "radio_table.assisted_roaming_enabled": {
-          "kind": "attribute",
-          "type": "\"bool\"",
-          "optional": true,
-          "computed": true,
-          "description": "Enable assisted roaming.",
-          "description_kind": "plain"
-        },
-        "radio_table.assisted_roaming_rssi": {
-          "kind": "attribute",
-          "type": "\"number\"",
-          "optional": true,
-          "computed": true,
-          "description": "Assisted roaming RSSI threshold.",
           "description_kind": "plain"
         },
         "radio_table.channel": {
@@ -5237,6 +5221,14 @@
           "optional": true,
           "computed": true,
           "description": "RADIUS authentication port.",
+          "description_kind": "markdown"
+        },
+        "radius.enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable the site's RADIUS server. A VPN server that authenticates against RADIUS (`unifi_vpn_server` with `openvpn` or `l2tp`) is rejected with `api.err.RadiusServerNotEnabled` while this is off.",
           "description_kind": "markdown"
         },
         "radius.interim_update_interval": {

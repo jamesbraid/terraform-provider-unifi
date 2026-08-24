@@ -12,16 +12,9 @@ import (
 
 var refreshGracePeriod = 30 * time.Second
 
-// StateRefreshFunc is a function type used for StateChangeConf that is
-// responsible for refreshing the item being watched for a state change.
-//
-// It returns three results. `result` is any object that will be returned
-// as the final object after waiting for state change. This allows you to
-// return the final updated object, for example an EC2 instance after refreshing
-// it. A nil result represents not found.
-//
-// `state` is the latest state of that object. And `err` is any error that
-// may have happened while refreshing the state.
+// StateRefreshFunc refreshes the item being watched for a state change. It
+// returns the current result and state, and any error encountered; a nil
+// result means not found.
 type StateRefreshFunc func() (result any, state string, err error)
 
 // StateChangeConf is the configuration struct used for `WaitForState`.
@@ -35,32 +28,20 @@ type StateChangeConf struct {
 	PollInterval   time.Duration    // Override MinTimeout/backoff and only poll this often
 	NotFoundChecks int64            // Number of times to allow not found (nil result from Refresh)
 
-	// This is to work around inconsistent APIs
 	ContinuousTargetOccurence int64 // Number of times the Target state has to occur continuously
 }
 
-// WaitForStateContext watches an object and waits for it to achieve the state
-// specified in the configuration using the specified Refresh() func,
-// waiting the number of seconds specified in the timeout configuration.
+// WaitForStateContext watches an object and waits for it to reach the Target
+// state using the configured Refresh func.
 //
-// If the Refresh function returns an error, exit immediately with that error.
-//
-// If the Refresh function returns a state other than the Target state or one
-// listed in Pending, return immediately with an error.
-//
-// If the Timeout is exceeded before reaching the Target state, return an
-// error.
-//
-// Otherwise, the result is the result of the first call to the Refresh function to
-// reach the target state.
-//
-// Cancellation from the passed in context will cancel the refresh loop.
+// It returns an error immediately if Refresh errors or reports a state that
+// is neither Target nor Pending, and a *TimeoutError if Timeout elapses first.
+// Canceling ctx cancels the refresh loop.
 func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, error) {
 	log.Printf("[DEBUG] Waiting for state to become: %s", conf.Target)
 
 	var targetOccurence, notfoundTick int64 = 0, 0
 
-	// Set a default for times to check for not found
 	if conf.NotFoundChecks == 0 {
 		conf.NotFoundChecks = 20
 	}
@@ -76,9 +57,7 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 		Done   bool
 	}
 
-	// Read every result from the refresh loop, waiting for a positive result.Done.
 	resCh := make(chan Result, 1)
-	// cancellation channel for the refresh loop
 	cancelCh := make(chan struct{})
 
 	result := Result{}
@@ -92,19 +71,15 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 			return
 		}
 
-		// start with 0 delay for the first loop
 		var wait time.Duration
 
 		for {
-			// store the last result
 			resCh <- result
 
-			// wait and watch for cancellation
 			select {
 			case <-cancelCh:
 				return
 			case <-time.After(wait):
-				// first round had no wait
 				if wait == 0 {
 					wait = 100 * time.Millisecond
 				}
@@ -134,8 +109,6 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 			}
 
 			if res == nil {
-				// If we didn't find the resource, check if we have been
-				// not finding it for awhile, and if so, report an error.
 				notfoundTick++
 				if notfoundTick > conf.NotFoundChecks {
 					result.Error = &NotFoundError{
@@ -146,7 +119,6 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 					return
 				}
 			} else {
-				// Reset the counter for when a resource isn't found
 				notfoundTick = 0
 				found := false
 
@@ -185,8 +157,6 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 				wait *= 2
 			}
 
-			// If a poll interval has been specified, choose that interval.
-			// Otherwise bound the default value.
 			if conf.PollInterval > 0 && conf.PollInterval < 180*time.Second {
 				wait = conf.PollInterval
 			} else {
@@ -201,24 +171,20 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 		}
 	}()
 
-	// store the last value result from the refresh loop
 	lastResult := Result{}
 
 	timeout := time.After(conf.Timeout)
 	for {
 		select {
 		case r, ok := <-resCh:
-			// channel closed, so return the last result
 			if !ok {
 				return lastResult.Result, lastResult.Error
 			}
 
-			// we reached the intended state
 			if r.Done {
 				return r.Result, r.Error
 			}
 
-			// still waiting, store the last result
 			lastResult = r
 		case <-ctx.Done():
 			close(cancelCh)
@@ -227,29 +193,23 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 			log.Printf("[WARN] WaitForState timeout after %s", conf.Timeout)
 			log.Printf("[WARN] WaitForState starting %s refresh grace period", refreshGracePeriod)
 
-			// cancel the goroutine and start our grace period timer
 			close(cancelCh)
 			timeout := time.After(refreshGracePeriod)
 
-			// we need a for loop and a label to break on, because we may have
-			// an extra response value to read, but still want to wait for the
-			// channel to close.
+			// The label lets a still-pending response be read before the
+			// channel closes, rather than abandoning it on the first case.
 		forSelect:
 			for {
 				select {
 				case r, ok := <-resCh:
 					if r.Done {
-						// the last refresh loop reached the desired state
 						return r.Result, r.Error
 					}
 
 					if !ok {
-						// the goroutine returned
 						break forSelect
 					}
 
-					// target state not reached, save the result for the
-					// TimeoutError and wait for the channel to close
 					lastResult = r
 				case <-ctx.Done():
 					log.Println("[ERROR] Context cancelation detected, abandoning grace period")
@@ -268,13 +228,4 @@ func (conf *StateChangeConf) WaitForStateContext(ctx context.Context) (any, erro
 			}
 		}
 	}
-}
-
-// WaitForState watches an object and waits for it to achieve the state
-// specified in the configuration using the specified Refresh() func,
-// waiting the number of seconds specified in the timeout configuration.
-//
-// Deprecated: Please use WaitForStateContext to ensure proper plugin shutdown.
-func (conf *StateChangeConf) WaitForState() (any, error) {
-	return conf.WaitForStateContext(context.Background())
 }

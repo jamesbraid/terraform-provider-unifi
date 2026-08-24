@@ -48,8 +48,6 @@ func RetryContext(ctx context.Context, timeout time.Duration, f RetryFunc) error
 
 	_, waitErr := c.WaitForStateContext(ctx)
 
-	// Need to acquire the lock here to be able to avoid race using resultErr as
-	// the return value
 	resultErrMu.Lock()
 	defer resultErrMu.Unlock()
 
@@ -58,17 +56,7 @@ func RetryContext(ctx context.Context, timeout time.Duration, f RetryFunc) error
 	if resultErr == nil {
 		return waitErr
 	}
-	// resultErr takes precedence over waitErr if both are set because it is
-	// more likely to be useful
 	return resultErr
-}
-
-// Retry is a basic wrapper around StateChangeConf that will just retry
-// a function until it no longer returns an error.
-//
-// Deprecated: Please use RetryContext to ensure proper plugin shutdown.
-func Retry(timeout time.Duration, f RetryFunc) error {
-	return RetryContext(context.Background(), timeout, f)
 }
 
 // RetryFunc is the function retried until it succeeds.
@@ -98,19 +86,4 @@ func RetryableError(err error) *RetryError {
 		}
 	}
 	return &RetryError{Err: err, Retryable: true}
-}
-
-// NonRetryableError is a helper to create a RetryError that's _not_ retryable
-// from a given error. To prevent logic errors, will return an error when
-// passed a nil error.
-func NonRetryableError(err error) *RetryError {
-	if err == nil {
-		return &RetryError{
-			Err: errors.New(
-				"empty non-retryable error received - this is a bug with the Terraform provider and should be reported as a GitHub issue in the provider repository",
-			),
-			Retryable: false,
-		}
-	}
-	return &RetryError{Err: err, Retryable: false}
 }

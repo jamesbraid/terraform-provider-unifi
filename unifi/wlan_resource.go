@@ -906,7 +906,7 @@ func (r *wlanFrameworkResource) Create(
 		}
 		// Find the default AP group (attr_hidden_id == "default")
 		for _, group := range apGroups {
-			if group.HiddenId == "default" {
+			if group.HiddenID == "default" {
 				wlan.ApGroupIDs = []string{group.ID}
 				break
 			}

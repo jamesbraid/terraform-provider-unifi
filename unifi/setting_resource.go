@@ -3,29 +3,22 @@ package unifi
 import (
 	"context"
 	"errors"
-	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
+	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -67,6 +60,7 @@ type settingMgmtModel struct {
 
 type settingRadiusModel struct {
 	AccountingEnabled     types.Bool           `tfsdk:"accounting_enabled"`
+	Enabled               types.Bool           `tfsdk:"enabled"`
 	AcctPort              types.Int64          `tfsdk:"acct_port"`
 	AuthPort              types.Int64          `tfsdk:"auth_port"`
 	InterimUpdateInterval timetypes.GoDuration `tfsdk:"interim_update_interval"`
@@ -240,18 +234,15 @@ type settingResourceModel struct {
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
-// settingIgmpSnoopingModel is the nested igmp_snooping block. On UniFi 10.3.x the
-// effective IGMP snooping toggle moved from the per-network object to this site
-// setting (#164). Only the common fields are exposed; advanced querier/flood
-// fields are preserved across updates via a read-modify-write merge.
+// settingIgmpSnoopingModel is the nested igmp_snooping block: on UniFi 10.3.x the
+// effective toggle moved here from the per-network object (#164); advanced querier/flood fields are preserved via read-modify-write.
 type settingIgmpSnoopingModel struct {
 	Enabled    types.Bool `tfsdk:"enabled"`
 	NetworkIDs types.List `tfsdk:"network_ids"`
 }
 
-// Shared attribute-type maps for the doh/ips nested objects and lists. These
-// are referenced from both readSettings and the *SettingToModel conversion
-// helpers, so they live at package level to avoid drift between the two.
+// Shared attribute-type maps for the doh/ips nested objects, referenced from
+// both readSettings and the *SettingToModel helpers -- package level to avoid drift between the two.
 var (
 	autoSpeedtestAttrTypes = map[string]attr.Type{
 		"enabled":   types.BoolType,
@@ -386,898 +377,35 @@ func (r *settingResource) Metadata(
 
 func (r *settingResource) Schema(
 	ctx context.Context,
-	req resource.SchemaRequest,
+	_ resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		// v1: radius.interim_update_interval and the usg conntrack timeouts
-		// changed from Int64 (seconds) to GoDuration strings. See UpgradeState.
-		Version:             1,
-		MarkdownDescription: "Manages settings for a UniFi site. Configure only the settings you need by providing the corresponding nested object.",
+	resp.Schema = resource_setting.SettingResourceSchema(ctx)
+	// v1: radius.interim_update_interval and the usg conntrack timeouts
+	// changed from Int64 (seconds) to GoDuration strings. See UpgradeState.
+	//
+	// Re-set by hand: a generated schema can't carry a version; left at zero,
+	// Terraform never runs the upgrader and prior state silently stops migrating.
+	resp.Schema.Version = 1
+	// Load-bearing for the upgrade path too: UpgradeState derives its prior type
+	// from this schema and decodes twelve conntrack durations through it; without this graft that type differs and prior-version state stops decoding.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
+		ctx,
+		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
+	)
 
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The ID of the settings.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
+	// Re-set by hand: the generator can't express a PlanModifier, so an omitted
+	// ntp slot would replan as unknown on every change despite the controller still reporting its prior value; UseStateForUnknown pins it (#382).
+	if ntp, ok := resp.Schema.Attributes["ntp"].(schema.SingleNestedAttribute); ok {
+		for _, key := range []string{"ntp_server_1", "ntp_server_2", "ntp_server_3", "ntp_server_4"} {
+			if server, ok := ntp.Attributes[key].(schema.StringAttribute); ok {
+				server.PlanModifiers = []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"site": schema.StringAttribute{
-				MarkdownDescription: "The name of the site to associate the settings with.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"auto_speedtest": schema.SingleNestedAttribute{
-				MarkdownDescription: "Periodic automated internet speed test settings.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Whether periodic automated speed tests are enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"cron_expr": schema.StringAttribute{
-						MarkdownDescription: "Cron expression controlling when the speed test runs (e.g. `0 * * * *`).",
-						Optional:            true,
-						Computed:            true,
-					},
-				},
-			},
-			"country": schema.SingleNestedAttribute{
-				MarkdownDescription: "Regulatory country settings.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"code": schema.Int64Attribute{
-						MarkdownDescription: "Regulatory country code (ISO 3166-1 numeric).",
-						Required:            true,
-					},
-				},
-			},
-			"dpi": schema.SingleNestedAttribute{
-				MarkdownDescription: "Deep Packet Inspection (DPI) settings.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Whether DPI is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"fingerprinting_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Whether device fingerprinting is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-				},
-			},
-			"lcm": schema.SingleNestedAttribute{
-				MarkdownDescription: "LCD/display (LCM) settings for devices with a screen.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Whether the device display is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(true),
-					},
-					"brightness": schema.Int64Attribute{
-						MarkdownDescription: "Display brightness (1-100).",
-						Optional:            true,
-						Computed:            true,
-						Validators:          []validator.Int64{int64validator.Between(1, 100)},
-					},
-					"idle_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Seconds of inactivity before the display turns off (10-3600).",
-						Optional:            true,
-						Computed:            true,
-						Validators:          []validator.Int64{int64validator.Between(10, 3600)},
-					},
-					"sync": schema.BoolAttribute{
-						MarkdownDescription: "Sync display settings across devices.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"touch_event": schema.BoolAttribute{
-						MarkdownDescription: "Whether touch events on the display are enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(true),
-					},
-				},
-			},
-			"network_optimization": schema.SingleNestedAttribute{
-				MarkdownDescription: "Automated network optimization settings.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Whether automated network optimization is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-				},
-			},
-			"ntp": schema.SingleNestedAttribute{
-				MarkdownDescription: "NTP (time server) settings.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"setting_preference": schema.StringAttribute{
-						MarkdownDescription: "Configuration mode: `auto` or `manual`.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("auto", "manual"),
-						},
-					},
-					"ntp_server_1": schema.StringAttribute{
-						MarkdownDescription: "Primary NTP server.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"ntp_server_2": schema.StringAttribute{
-						MarkdownDescription: "Second NTP server.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"ntp_server_3": schema.StringAttribute{
-						MarkdownDescription: "Third NTP server.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"ntp_server_4": schema.StringAttribute{
-						MarkdownDescription: "Fourth NTP server.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
-				},
-			},
-			"syslog": schema.SingleNestedAttribute{
-				MarkdownDescription: "Remote syslog (rsyslogd) settings.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Whether remote syslog is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"ip": schema.StringAttribute{
-						MarkdownDescription: "Remote syslog server IP address.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"port": schema.Int64Attribute{
-						MarkdownDescription: "Remote syslog server port (1-65535).",
-						Optional:            true,
-						Computed:            true,
-						Validators:          []validator.Int64{int64validator.Between(1, 65535)},
-					},
-					"contents": schema.ListAttribute{
-						MarkdownDescription: "Logged facilities (e.g. `device`, `client`, `firewall_default_policy`, `triggers`, `updates`, `admin_activity`, `critical`, `security_detections`, `vpn`).",
-						Optional:            true,
-						Computed:            true,
-						ElementType:         types.StringType,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"log_all_contents": schema.BoolAttribute{
-						MarkdownDescription: "Log all available facilities.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"debug": schema.BoolAttribute{
-						MarkdownDescription: "Enable debug logging.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"this_controller": schema.BoolAttribute{
-						MarkdownDescription: "Also log this controller's events.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"this_controller_encrypted_only": schema.BoolAttribute{
-						MarkdownDescription: "Only send this controller's logs over an encrypted channel.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"netconsole_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Whether netconsole logging is enabled.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-					},
-					"netconsole_host": schema.StringAttribute{
-						MarkdownDescription: "Netconsole host.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"netconsole_port": schema.Int64Attribute{
-						MarkdownDescription: "Netconsole port (1-65535).",
-						Optional:            true,
-						Computed:            true,
-						Validators:          []validator.Int64{int64validator.Between(1, 65535)},
-					},
-				},
-			},
-			"doh": schema.SingleNestedAttribute{
-				MarkdownDescription: "Encrypted DNS (DNS-over-HTTPS) settings.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"state": schema.StringAttribute{
-						MarkdownDescription: "Encrypted DNS state: off, auto, manual, or custom.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("off", "auto", "manual", "custom"),
-						},
-					},
-					"server_names": schema.ListAttribute{
-						MarkdownDescription: "Predefined DNS provider names (e.g. \"cloudflare\", \"google\").",
-						Optional:            true,
-						Computed:            true,
-						ElementType:         types.StringType,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"custom_servers": schema.ListNestedAttribute{
-						MarkdownDescription: "Custom DNS servers specified via DNS stamp.",
-						Optional:            true,
-						Computed:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"enabled": schema.BoolAttribute{
-									MarkdownDescription: "Enable this custom server. Defaults to true.",
-									Optional:            true,
-									Computed:            true,
-									Default:             booldefault.StaticBool(true),
-								},
-								"sdns_stamp": schema.StringAttribute{
-									MarkdownDescription: "DNS stamp (sdns://) for the custom resolver.",
-									Required:            true,
-								},
-								"server_name": schema.StringAttribute{
-									MarkdownDescription: "Human-readable name for this custom server.",
-									Required:            true,
-								},
-							},
-						},
-					},
-				},
-			},
-			"ips": schema.SingleNestedAttribute{
-				MarkdownDescription: "Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"ips_mode": schema.StringAttribute{
-						MarkdownDescription: "IPS operating mode: ids (detect only), ips (detect and block), ipsInline, or disabled.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("ids", "ips", "ipsInline", "disabled"),
-						},
-					},
-					"enabled_categories": schema.ListAttribute{
-						MarkdownDescription: "Emerging Threats ruleset categories to enable (e.g. \"emerging-malware\", \"tor\", \"phishing\").",
-						Optional:            true,
-						Computed:            true,
-						ElementType:         types.StringType,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"enabled_networks": schema.ListAttribute{
-						MarkdownDescription: "Network IDs to apply IPS inspection to.",
-						Optional:            true,
-						Computed:            true,
-						ElementType:         types.StringType,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.UseStateForUnknown(),
-						},
-					},
-					"honeypot_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable honeypot to detect internal port scans.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"honeypot": schema.ListNestedAttribute{
-						MarkdownDescription: "Honeypot IP addresses per network.",
-						Optional:            true,
-						Computed:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"ip_address": schema.StringAttribute{
-									MarkdownDescription: "IP address to use as a honeypot.",
-									Required:            true,
-								},
-								"network_id": schema.StringAttribute{
-									MarkdownDescription: "Network ID this honeypot IP belongs to.",
-									Required:            true,
-								},
-								"version": schema.StringAttribute{
-									MarkdownDescription: "IP version: v4 or v6.",
-									Required:            true,
-									Validators: []validator.String{
-										stringvalidator.OneOf("v4", "v6"),
-									},
-								},
-							},
-						},
-					},
-					"restrict_torrents": schema.BoolAttribute{
-						MarkdownDescription: "Block BitTorrent traffic.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"content_filtering_blocking_page_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Show a blocking page when content filtering blocks a request.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"memory_optimized": schema.BoolAttribute{
-						MarkdownDescription: "Use memory-optimized IPS ruleset (reduced rule set for low-memory devices).",
-						Optional:            true,
-						Computed:            true,
-					},
-					"advanced_filtering_preference": schema.StringAttribute{
-						MarkdownDescription: "Advanced filtering mode: manual or disabled.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.String{
-							stringvalidator.OneOf("manual", "disabled"),
-						},
-					},
-					"suppression_alerts": schema.ListNestedAttribute{
-						MarkdownDescription: "IPS signature alert suppression entries — silence specific signatures or categories.",
-						Optional:            true,
-						Computed:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"category": schema.StringAttribute{
-									MarkdownDescription: "Alert suppression signature category.",
-									Optional:            true,
-									Computed:            true,
-								},
-								"gid": schema.Int64Attribute{
-									MarkdownDescription: "Signature Generator ID (GID).",
-									Optional:            true,
-									Computed:            true,
-								},
-								"id": schema.Int64Attribute{
-									MarkdownDescription: "Signature ID.",
-									Optional:            true,
-									Computed:            true,
-								},
-								"signature": schema.StringAttribute{
-									MarkdownDescription: "Suppression signature name.",
-									Optional:            true,
-									Computed:            true,
-								},
-								"type": schema.StringAttribute{
-									MarkdownDescription: "Suppression type: `all` (everywhere) or `track` (only the tracked sources/destinations).",
-									Optional:            true,
-									Computed:            true,
-									Validators: []validator.String{
-										stringvalidator.OneOf("all", "track"),
-									},
-								},
-								"tracking": schema.ListNestedAttribute{
-									MarkdownDescription: "Tracking specifications (used when `type` is `track`).",
-									Optional:            true,
-									Computed:            true,
-									NestedObject: schema.NestedAttributeObject{
-										Attributes: map[string]schema.Attribute{
-											"direction": schema.StringAttribute{
-												MarkdownDescription: "Match direction: both, src, or dest.",
-												Required:            true,
-												Validators: []validator.String{
-													stringvalidator.OneOf("both", "src", "dest"),
-												},
-											},
-											"mode": schema.StringAttribute{
-												MarkdownDescription: "Match mode: ip, subnet, or network.",
-												Required:            true,
-												Validators: []validator.String{
-													stringvalidator.OneOf(
-														"ip",
-														"subnet",
-														"network",
-													),
-												},
-											},
-											"value": schema.StringAttribute{
-												MarkdownDescription: "IP address, CIDR subnet, or network ID to match.",
-												Required:            true,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					"suppression_whitelist": schema.ListNestedAttribute{
-						MarkdownDescription: "IPS suppression whitelist entries — sources/destinations to exclude from inspection.",
-						Optional:            true,
-						Computed:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"direction": schema.StringAttribute{
-									MarkdownDescription: "Match direction: both, src, or dest.",
-									Required:            true,
-									Validators: []validator.String{
-										stringvalidator.OneOf("both", "src", "dest"),
-									},
-								},
-								"mode": schema.StringAttribute{
-									MarkdownDescription: "Match mode: ip, subnet, or network.",
-									Required:            true,
-									Validators: []validator.String{
-										stringvalidator.OneOf("ip", "subnet", "network"),
-									},
-								},
-								"value": schema.StringAttribute{
-									MarkdownDescription: "IP address, CIDR subnet, or network ID to whitelist.",
-									Required:            true,
-								},
-							},
-						},
-					},
-				},
-			},
-			"mgmt": schema.SingleNestedAttribute{
-				MarkdownDescription: "Management settings.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"auto_upgrade": schema.BoolAttribute{
-						MarkdownDescription: "Automatically upgrade device firmware.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"ssh_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable SSH authentication.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"auto_upgrade_hour": schema.Int64Attribute{
-						MarkdownDescription: "Hour of day (0-23) for automatic firmware upgrades.",
-						Optional:            true,
-						Computed:            true,
-						Validators:          []validator.Int64{int64validator.Between(0, 23)},
-					},
-					"advanced_feature_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable advanced features.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"debug_tools_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable debug tools.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"direct_connect_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable Direct Connect (remote access).",
-						Optional:            true,
-						Computed:            true,
-					},
-					"unifi_idp_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable the UniFi Identity Provider.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"wifiman_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable WiFiman.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"ssh_username": schema.StringAttribute{
-						MarkdownDescription: "SSH username for device access.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"ssh_password": schema.StringAttribute{
-						MarkdownDescription: "SSH password for device access. Sensitive — the controller " +
-							"stores only a hash, so this value is kept from configuration and not read back.",
-						Optional:  true,
-						Sensitive: true,
-					},
-					"ssh_auth_password_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Allow SSH password authentication (in addition to keys).",
-						Optional:            true,
-						Computed:            true,
-					},
-					"ssh_keys": schema.ListNestedAttribute{
-						MarkdownDescription: "SSH keys.",
-						Optional:            true,
-						Computed:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"name": schema.StringAttribute{
-									MarkdownDescription: "Name of SSH key.",
-									Required:            true,
-								},
-								"type": schema.StringAttribute{
-									MarkdownDescription: "Type of SSH key, e.g. ssh-rsa.",
-									Required:            true,
-								},
-								"key": schema.StringAttribute{
-									MarkdownDescription: "Public SSH key.",
-									Optional:            true,
-									Computed:            true,
-								},
-								"comment": schema.StringAttribute{
-									MarkdownDescription: "Comment.",
-									Optional:            true,
-									Computed:            true,
-								},
-							},
-						},
-					},
-				},
-			},
-			"radius": schema.SingleNestedAttribute{
-				MarkdownDescription: "RADIUS settings.",
-				Optional:            true,
-				Computed:            true,
-				Attributes: map[string]schema.Attribute{
-					"accounting_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable RADIUS accounting.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"acct_port": schema.Int64Attribute{
-						MarkdownDescription: "RADIUS accounting port.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.Int64{
-							int64validator.Between(1, 65535),
-						},
-					},
-					"auth_port": schema.Int64Attribute{
-						MarkdownDescription: "RADIUS authentication port.",
-						Optional:            true,
-						Computed:            true,
-						Validators: []validator.Int64{
-							int64validator.Between(1, 65535),
-						},
-					},
-					"interim_update_interval": schema.StringAttribute{
-						MarkdownDescription: "Interim update interval, as a Go duration string " +
-							"(e.g. `1h`, `3600s`).",
-						CustomType: timetypes.GoDurationType{},
-						Optional:   true,
-						Computed:   true,
-					},
-					"secret": schema.StringAttribute{
-						MarkdownDescription: "RADIUS shared secret.",
-						Optional:            true,
-						Computed:            true,
-						Sensitive:           true,
-						Validators: []validator.String{
-							stringvalidator.LengthBetween(1, 48),
-							stringvalidator.RegexMatches(
-								regexp.MustCompile(`^[^\\\ "']+$`),
-								"must not contain backslashes, spaces, single quotes, or double quotes",
-							),
-						},
-					},
-				},
-			},
-			"usg": schema.SingleNestedAttribute{
-				MarkdownDescription: "USG settings.",
-				Optional:            true,
-				Computed:            true,
-				Attributes: map[string]schema.Attribute{
-					"broadcast_ping": schema.BoolAttribute{
-						MarkdownDescription: "Enable broadcast ping.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"dns_verification": schema.SingleNestedAttribute{
-						MarkdownDescription: "DNS verification settings.",
-						Optional:            true,
-						Computed:            true,
-						Attributes: map[string]schema.Attribute{
-							"domain": schema.StringAttribute{
-								MarkdownDescription: "Domain for DNS verification.",
-								Optional:            true,
-								Computed:            true,
-							},
-							"primary_dns_server": schema.StringAttribute{
-								MarkdownDescription: "Primary DNS server.",
-								Optional:            true,
-								Computed:            true,
-							},
-							"secondary_dns_server": schema.StringAttribute{
-								MarkdownDescription: "Secondary DNS server.",
-								Optional:            true,
-								Computed:            true,
-							},
-							"setting_preference": schema.StringAttribute{
-								MarkdownDescription: "Setting preference: auto or manual.",
-								Optional:            true,
-								Computed:            true,
-							},
-						},
-					},
-					"ftp_module": schema.BoolAttribute{
-						MarkdownDescription: "Enable FTP module.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"geo_ip_filtering_block": schema.StringAttribute{
-						MarkdownDescription: "Geo IP filtering action: block or allow.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"geo_ip_filtering_countries": schema.StringAttribute{
-						MarkdownDescription: "Comma-separated list of country codes for geo IP filtering.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"geo_ip_filtering_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable geo IP filtering.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"geo_ip_filtering_traffic_direction": schema.StringAttribute{
-						MarkdownDescription: "Geo IP filtering traffic direction: both, ingress, or egress.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"gre_module": schema.BoolAttribute{
-						MarkdownDescription: "Enable GRE module.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"h323_module": schema.BoolAttribute{
-						MarkdownDescription: "Enable H.323 module.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"icmp_timeout": schema.StringAttribute{
-						MarkdownDescription: "ICMP connection timeout, as a Go duration string (e.g. `30s`, `1m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"mss_clamp": schema.StringAttribute{
-						MarkdownDescription: "MSS clamping mode: auto, custom, or disabled.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"offload_accounting": schema.BoolAttribute{
-						MarkdownDescription: "Enable hardware offload for accounting.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"offload_l2_blocking": schema.BoolAttribute{
-						MarkdownDescription: "Enable hardware offload for L2 blocking.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"offload_sch": schema.BoolAttribute{
-						MarkdownDescription: "Enable hardware offload for scheduling.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"other_timeout": schema.StringAttribute{
-						MarkdownDescription: "Other connections timeout, as a Go duration string (e.g. `600s`, `10m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"pptp_module": schema.BoolAttribute{
-						MarkdownDescription: "Enable PPTP module.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"receive_redirects": schema.BoolAttribute{
-						MarkdownDescription: "Accept ICMP redirects.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"send_redirects": schema.BoolAttribute{
-						MarkdownDescription: "Send ICMP redirects.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"sip_module": schema.BoolAttribute{
-						MarkdownDescription: "Enable SIP module.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"syn_cookies": schema.BoolAttribute{
-						MarkdownDescription: "Enable SYN cookies.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"tcp_close_timeout": schema.StringAttribute{
-						MarkdownDescription: "TCP close timeout, as a Go duration string (e.g. `10s`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"tcp_close_wait_timeout": schema.StringAttribute{
-						MarkdownDescription: "TCP close wait timeout, as a Go duration string (e.g. `60s`, `1m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"tcp_established_timeout": schema.StringAttribute{
-						MarkdownDescription: "TCP established connection timeout, as a Go duration string (e.g. `7440s`, `2h4m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"tcp_fin_wait_timeout": schema.StringAttribute{
-						MarkdownDescription: "TCP fin wait timeout, as a Go duration string (e.g. `120s`, `2m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"tcp_last_ack_timeout": schema.StringAttribute{
-						MarkdownDescription: "TCP last ACK timeout, as a Go duration string (e.g. `30s`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"tcp_syn_recv_timeout": schema.StringAttribute{
-						MarkdownDescription: "TCP SYN received timeout, as a Go duration string (e.g. `60s`, `1m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"tcp_syn_sent_timeout": schema.StringAttribute{
-						MarkdownDescription: "TCP SYN sent timeout, as a Go duration string (e.g. `120s`, `2m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"tcp_time_wait_timeout": schema.StringAttribute{
-						MarkdownDescription: "TCP time wait timeout, as a Go duration string (e.g. `120s`, `2m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"tftp_module": schema.BoolAttribute{
-						MarkdownDescription: "Enable TFTP module.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"timeout_setting_preference": schema.StringAttribute{
-						MarkdownDescription: "Timeout setting preference: auto or manual.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"udp_other_timeout": schema.StringAttribute{
-						MarkdownDescription: "UDP other timeout, as a Go duration string (e.g. `30s`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"udp_stream_timeout": schema.StringAttribute{
-						MarkdownDescription: "UDP stream timeout, as a Go duration string (e.g. `180s`, `3m`).",
-						CustomType:          timetypes.GoDurationType{},
-						Optional:            true,
-						Computed:            true,
-					},
-					"unbind_wan_monitors": schema.BoolAttribute{
-						MarkdownDescription: "Unbind WAN monitors.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"upnp_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable UPnP.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"upnp_nat_pmp_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable UPnP NAT-PMP.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"upnp_secure_mode": schema.BoolAttribute{
-						MarkdownDescription: "Enable UPnP secure mode.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"upnp_wan_interface": schema.StringAttribute{
-						MarkdownDescription: "UPnP WAN interface (e.g., WAN, WAN2).",
-						Optional:            true,
-						Computed:            true,
-					},
-				},
-			},
-			"igmp_snooping": schema.SingleNestedAttribute{
-				MarkdownDescription: "Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Whether IGMP snooping is enabled for the site.",
-						Optional:            true,
-						Computed:            true,
-					},
-					"network_ids": schema.ListAttribute{
-						MarkdownDescription: "IDs of the networks IGMP snooping applies to.",
-						ElementType:         types.StringType,
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.UseStateForUnknown(),
-						},
-					},
-				},
-			},
-			"timeouts": timeouts.Attributes(
-				ctx,
-				timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
-			),
-		},
+				}
+				ntp.Attributes[key] = server
+			}
+		}
+		resp.Schema.Attributes["ntp"] = ntp
 	}
 }
 
@@ -1337,192 +465,180 @@ func (r *settingResource) Configure(
 	req resource.ConfigureRequest,
 	resp *resource.ConfigureResponse,
 ) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
+	client, ok := resourceClient(req.ProviderData, &resp.Diagnostics)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
 		return
 	}
 
 	r.client = client
 }
 
-func (r *settingResource) Create(
+// writeSettings applies every setting document the model names, shared by Create
+// and Update since unifi_setting has no create -- every document PUTs to a fixed,
+// always-existing endpoint. verb ("Creating"/"Updating") is a parameter because it
+// reaches the practitioner in the diagnostic message (same as writeIpsSuppression, writeUsgGeo).
+func (r *settingResource) writeSettings(
 	ctx context.Context,
-	req resource.CreateRequest,
-	resp *resource.CreateResponse,
+	site string,
+	plan *settingResourceModel,
+	verb string,
+	diags *diag.Diagnostics,
 ) {
-	var data settingResourceModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	createTimeout, timeoutDiags := data.Timeouts.Create(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, createTimeout)
-	defer cancel()
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	// Update each configured setting type
-	if !data.AutoSpeedtest.IsNull() && !data.AutoSpeedtest.IsUnknown() {
+	if !plan.AutoSpeedtest.IsNull() && !plan.AutoSpeedtest.IsUnknown() {
 		var as settingAutoSpeedtestModel
-		resp.Diagnostics.Append(data.AutoSpeedtest.As(ctx, &as, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.AutoSpeedtest.As(ctx, &as, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.autoSpeedtestModelToSetting(&as)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Auto Speedtest Setting", err.Error())
+			diags.AddError("Error "+verb+" Auto Speedtest Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Country.IsNull() && !data.Country.IsUnknown() {
+	if !plan.Country.IsNull() && !plan.Country.IsUnknown() {
 		var m settingCountryModel
-		resp.Diagnostics.Append(data.Country.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Country.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.countryModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Country Setting", err.Error())
+			diags.AddError("Error "+verb+" Country Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Dpi.IsNull() && !data.Dpi.IsUnknown() {
+	if !plan.Dpi.IsNull() && !plan.Dpi.IsUnknown() {
 		var m settingDpiModel
-		resp.Diagnostics.Append(data.Dpi.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Dpi.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.dpiModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating DPI Setting", err.Error())
+			diags.AddError("Error "+verb+" DPI Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Lcm.IsNull() && !data.Lcm.IsUnknown() {
+	if !plan.Lcm.IsNull() && !plan.Lcm.IsUnknown() {
 		var m settingLcmModel
-		resp.Diagnostics.Append(data.Lcm.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Lcm.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.lcmModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating LCM Setting", err.Error())
+			diags.AddError("Error "+verb+" LCM Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.NetworkOpt.IsNull() && !data.NetworkOpt.IsUnknown() {
+	if !plan.NetworkOpt.IsNull() && !plan.NetworkOpt.IsUnknown() {
 		var m settingNetworkOptimizationModel
-		resp.Diagnostics.Append(data.NetworkOpt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.NetworkOpt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.networkOptimizationModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Network Optimization Setting", err.Error())
+			diags.AddError("Error "+verb+" Network Optimization Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Ntp.IsNull() && !data.Ntp.IsUnknown() {
+	if !plan.Ntp.IsNull() && !plan.Ntp.IsUnknown() {
 		var m settingNtpModel
-		resp.Diagnostics.Append(data.Ntp.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Ntp.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 		setting := r.ntpModelToSetting(&m)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating NTP Setting", err.Error())
+			diags.AddError("Error "+verb+" NTP Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Syslog.IsNull() && !data.Syslog.IsUnknown() {
+	if !plan.Syslog.IsNull() && !plan.Syslog.IsUnknown() {
 		var m settingSyslogModel
-		resp.Diagnostics.Append(data.Syslog.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Syslog.As(ctx, &m, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
-		setting := r.syslogModelToSetting(ctx, &m, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		setting := r.syslogModelToSetting(ctx, &m, diags)
+		if diags.HasError() {
 			return
 		}
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Syslog Setting", err.Error())
+			diags.AddError("Error "+verb+" Syslog Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Doh.IsNull() && !data.Doh.IsUnknown() {
+	if !plan.Doh.IsNull() && !plan.Doh.IsUnknown() {
 		var doh settingDohModel
-		resp.Diagnostics.Append(data.Doh.As(ctx, &doh, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Doh.As(ctx, &doh, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
-		setting := r.dohModelToSetting(ctx, &doh, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		setting := r.dohModelToSetting(ctx, &doh, diags)
+		if diags.HasError() {
 			return
 		}
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating DoH Setting", err.Error())
+			diags.AddError("Error "+verb+" DoH Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Ips.IsNull() && !data.Ips.IsUnknown() {
+	if !plan.Ips.IsNull() && !plan.Ips.IsUnknown() {
 		var ips settingIpsModel
-		resp.Diagnostics.Append(data.Ips.As(ctx, &ips, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Ips.As(ctx, &ips, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
-		setting := r.ipsModelToSetting(ctx, &ips, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		_, currentIps, err := ui.GetSetting[*settings.Ips](r.client.ApiClient, ctx, site)
+		if err != nil {
+			var notFound *ui.NotFoundError
+			if !errors.As(err, &notFound) {
+				diags.AddError("Error Reading IPS Setting", err.Error())
+				return
+			}
+			currentIps = &settings.Ips{}
+		}
+
+		setting := r.ipsModelToSetting(ctx, &ips, currentIps, diags)
+		if diags.HasError() {
 			return
 		}
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating IPS Setting", err.Error())
+			diags.AddError("Error "+verb+" IPS Setting", err.Error())
+			return
+		}
+
+		r.writeIpsSuppression(ctx, site, &ips, "Creating", diags)
+		if diags.HasError() {
 			return
 		}
 	}
 
-	if !data.Mgmt.IsNull() && !data.Mgmt.IsUnknown() {
+	if !plan.Mgmt.IsNull() && !plan.Mgmt.IsUnknown() {
 		var mgmt settingMgmtModel
-		resp.Diagnostics.Append(data.Mgmt.As(ctx, &mgmt, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Mgmt.As(ctx, &mgmt, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
-		// Read current remote settings as the base so unset fields keep their values.
 		_, currentMgmt, err := ui.GetSetting[*settings.Mgmt](r.client.ApiClient, ctx, site)
 		if err != nil {
 			var notFound *ui.NotFoundError
 			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading Mgmt Setting", err.Error())
+				diags.AddError("Error Reading Mgmt Setting", err.Error())
 				return
 			}
 			currentMgmt = &settings.Mgmt{}
@@ -1530,24 +646,23 @@ func (r *settingResource) Create(
 
 		setting := r.mgmtModelToSetting(ctx, &mgmt, currentMgmt)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Mgmt Setting", err.Error())
+			diags.AddError("Error "+verb+" Mgmt Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.Radius.IsNull() && !data.Radius.IsUnknown() {
+	if !plan.Radius.IsNull() && !plan.Radius.IsUnknown() {
 		var radius settingRadiusModel
-		resp.Diagnostics.Append(data.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
-		// Read current remote settings as the base so unset fields keep their remote values
 		_, currentRadius, err := ui.GetSetting[*settings.Radius](r.client.ApiClient, ctx, site)
 		if err != nil {
 			var notFound *ui.NotFoundError
 			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading Radius Setting", err.Error())
+				diags.AddError("Error Reading Radius Setting", err.Error())
 				return
 			}
 			currentRadius = &settings.Radius{}
@@ -1555,61 +670,145 @@ func (r *settingResource) Create(
 
 		setting := r.radiusModelToSetting(ctx, &radius, currentRadius)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating Radius Setting", err.Error())
+			diags.AddError("Error "+verb+" Radius Setting", err.Error())
 			return
 		}
 	}
 
-	if !data.USG.IsNull() && !data.USG.IsUnknown() {
+	if !plan.USG.IsNull() && !plan.USG.IsUnknown() {
 		var usg settingUSGModel
-		resp.Diagnostics.Append(data.USG.As(ctx, &usg, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.USG.As(ctx, &usg, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
-		setting := r.usgModelToSetting(ctx, &usg)
+		_, currentUsg, err := ui.GetSetting[*settings.Usg](r.client.ApiClient, ctx, site)
+		if err != nil {
+			var notFound *ui.NotFoundError
+			if !errors.As(err, &notFound) {
+				diags.AddError("Error Reading USG Setting", err.Error())
+				return
+			}
+			currentUsg = &settings.Usg{}
+		}
+
+		setting := r.usgModelToSetting(ctx, &usg, currentUsg)
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating USG Setting", err.Error())
+			diags.AddError("Error "+verb+" USG Setting", err.Error())
+			return
+		}
+
+		r.writeUsgGeo(ctx, site, &usg, "Creating", diags)
+		if diags.HasError() {
 			return
 		}
 	}
 
-	if !data.IgmpSnooping.IsNull() && !data.IgmpSnooping.IsUnknown() {
+	if !plan.IgmpSnooping.IsNull() && !plan.IgmpSnooping.IsUnknown() {
 		var igmp settingIgmpSnoopingModel
-		resp.Diagnostics.Append(data.IgmpSnooping.As(ctx, &igmp, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
+		diags.Append(plan.IgmpSnooping.As(ctx, &igmp, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
 			return
 		}
 
-		// Read current remote setting as the base so advanced querier/flood
-		// fields keep their remote values across the update.
 		_, currentIgmp, err := ui.GetSetting[*settings.IgmpSnooping](r.client.ApiClient, ctx, site)
 		if err != nil {
 			var notFound *ui.NotFoundError
 			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading IGMP Snooping Setting", err.Error())
+				diags.AddError("Error Reading IGMP Snooping Setting", err.Error())
 				return
 			}
 			currentIgmp = &settings.IgmpSnooping{}
 		}
 
-		setting := r.igmpSnoopingModelToSetting(ctx, &igmp, currentIgmp, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
+		setting := r.igmpSnoopingModelToSetting(ctx, &igmp, currentIgmp, diags)
+		if diags.HasError() {
 			return
 		}
 		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Creating IGMP Snooping Setting", err.Error())
+			diags.AddError("Error "+verb+" IGMP Snooping Setting", err.Error())
 			return
 		}
 	}
+}
 
-	// Read back the settings
-	r.readSettings(ctx, site, &data, &resp.Diagnostics)
+func (r *settingResource) Create(
+	ctx context.Context,
+	req resource.CreateRequest,
+	resp *resource.CreateResponse,
+) {
+	var plan settingResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	createTimeout, timeoutDiags := plan.Timeouts.Create(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	site := plan.Site.ValueString()
+	if site == "" {
+		site = r.client.Site
+	}
+
+	r.writeSettings(ctx, site, &plan, "Creating", &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	r.readSettings(ctx, site, &plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *settingResource) Update(
+	ctx context.Context,
+	req resource.UpdateRequest,
+	resp *resource.UpdateResponse,
+) {
+	var state settingResourceModel
+	var plan settingResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, 20*time.Minute)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	// Site comes from state, not the plan -- the one asymmetry between the two
+	// callers: site has UseStateForUnknown, so the plan can carry unknown where state carries the real name.
+	site := state.Site.ValueString()
+	if site == "" {
+		site = r.client.Site
+	}
+
+	r.writeSettings(ctx, site, &plan, "Updating", &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	r.readSettings(ctx, site, &plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *settingResource) Read(
@@ -1643,262 +842,6 @@ func (r *settingResource) Read(
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *settingResource) Update(
-	ctx context.Context,
-	req resource.UpdateRequest,
-	resp *resource.UpdateResponse,
-) {
-	var state settingResourceModel
-	var plan settingResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
-	defer cancel()
-
-	site := state.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	// Update each configured setting type
-	if !plan.AutoSpeedtest.IsNull() && !plan.AutoSpeedtest.IsUnknown() {
-		var as settingAutoSpeedtestModel
-		resp.Diagnostics.Append(plan.AutoSpeedtest.As(ctx, &as, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.autoSpeedtestModelToSetting(&as)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Auto Speedtest Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Country.IsNull() && !plan.Country.IsUnknown() {
-		var m settingCountryModel
-		resp.Diagnostics.Append(plan.Country.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.countryModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Country Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Dpi.IsNull() && !plan.Dpi.IsUnknown() {
-		var m settingDpiModel
-		resp.Diagnostics.Append(plan.Dpi.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.dpiModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating DPI Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Lcm.IsNull() && !plan.Lcm.IsUnknown() {
-		var m settingLcmModel
-		resp.Diagnostics.Append(plan.Lcm.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.lcmModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating LCM Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.NetworkOpt.IsNull() && !plan.NetworkOpt.IsUnknown() {
-		var m settingNetworkOptimizationModel
-		resp.Diagnostics.Append(plan.NetworkOpt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.networkOptimizationModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Network Optimization Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Ntp.IsNull() && !plan.Ntp.IsUnknown() {
-		var m settingNtpModel
-		resp.Diagnostics.Append(plan.Ntp.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.ntpModelToSetting(&m)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating NTP Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Syslog.IsNull() && !plan.Syslog.IsUnknown() {
-		var m settingSyslogModel
-		resp.Diagnostics.Append(plan.Syslog.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		setting := r.syslogModelToSetting(ctx, &m, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Syslog Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Doh.IsNull() && !plan.Doh.IsUnknown() {
-		var doh settingDohModel
-		resp.Diagnostics.Append(plan.Doh.As(ctx, &doh, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		setting := r.dohModelToSetting(ctx, &doh, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating DoH Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Ips.IsNull() && !plan.Ips.IsUnknown() {
-		var ips settingIpsModel
-		resp.Diagnostics.Append(plan.Ips.As(ctx, &ips, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		setting := r.ipsModelToSetting(ctx, &ips, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating IPS Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Mgmt.IsNull() && !plan.Mgmt.IsUnknown() {
-		var mgmt settingMgmtModel
-		resp.Diagnostics.Append(plan.Mgmt.As(ctx, &mgmt, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		// Read current remote settings as the base so unset fields keep their values.
-		_, currentMgmt, err := ui.GetSetting[*settings.Mgmt](r.client.ApiClient, ctx, site)
-		if err != nil {
-			var notFound *ui.NotFoundError
-			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading Mgmt Setting", err.Error())
-				return
-			}
-			currentMgmt = &settings.Mgmt{}
-		}
-
-		setting := r.mgmtModelToSetting(ctx, &mgmt, currentMgmt)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Mgmt Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.Radius.IsNull() && !plan.Radius.IsUnknown() {
-		var radius settingRadiusModel
-		resp.Diagnostics.Append(plan.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		// Read current remote settings as the base so unset fields keep their remote values
-		_, currentRadius, err := ui.GetSetting[*settings.Radius](r.client.ApiClient, ctx, site)
-		if err != nil {
-			var notFound *ui.NotFoundError
-			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading Radius Setting", err.Error())
-				return
-			}
-			currentRadius = &settings.Radius{}
-		}
-
-		setting := r.radiusModelToSetting(ctx, &radius, currentRadius)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating Radius Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.USG.IsNull() && !plan.USG.IsUnknown() {
-		var usg settingUSGModel
-		resp.Diagnostics.Append(plan.USG.As(ctx, &usg, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		setting := r.usgModelToSetting(ctx, &usg)
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating USG Setting", err.Error())
-			return
-		}
-	}
-
-	if !plan.IgmpSnooping.IsNull() && !plan.IgmpSnooping.IsUnknown() {
-		var igmp settingIgmpSnoopingModel
-		resp.Diagnostics.Append(plan.IgmpSnooping.As(ctx, &igmp, basetypes.ObjectAsOptions{})...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		_, currentIgmp, err := ui.GetSetting[*settings.IgmpSnooping](r.client.ApiClient, ctx, site)
-		if err != nil {
-			var notFound *ui.NotFoundError
-			if !errors.As(err, &notFound) {
-				resp.Diagnostics.AddError("Error Reading IGMP Snooping Setting", err.Error())
-				return
-			}
-			currentIgmp = &settings.IgmpSnooping{}
-		}
-
-		setting := r.igmpSnoopingModelToSetting(ctx, &igmp, currentIgmp, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-			resp.Diagnostics.AddError("Error Updating IGMP Snooping Setting", err.Error())
-			return
-		}
-	}
-
-	// Read back the settings
-	r.readSettings(ctx, site, &plan, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *settingResource) Delete(
@@ -2099,7 +1042,21 @@ func (r *settingResource) readSettings(
 			return
 		}
 
-		ipsModel := r.ipsSettingToModel(ctx, ipsSetting, &planIps, diags)
+		// Suppression lives in its own setting since UniFi Network 10.x; a site
+		// that never configured it has no object, which reads back as null rather than an error.
+		_, ipsSuppression, err := ui.GetSetting[*settings.IpsSuppression](
+			r.client.ApiClient, ctx, site,
+		)
+		if err != nil {
+			var notFound *ui.NotFoundError
+			if !errors.As(err, &notFound) {
+				diags.AddError("Error Reading IPS Suppression Setting", err.Error())
+				return
+			}
+			ipsSuppression = nil
+		}
+
+		ipsModel := r.ipsSettingToModel(ctx, ipsSetting, ipsSuppression, &planIps, diags)
 		objValue, d := types.ObjectValueFrom(ctx, ipsAttrTypes, ipsModel)
 		diags.Append(d...)
 		if diags.HasError() {
@@ -2112,7 +1069,6 @@ func (r *settingResource) readSettings(
 
 	// Mgmt settings
 	if !data.Mgmt.IsNull() && !data.Mgmt.IsUnknown() {
-		// Get the current plan/state values
 		var planMgmt settingMgmtModel
 		diags.Append(data.Mgmt.As(ctx, &planMgmt, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -2138,7 +1094,6 @@ func (r *settingResource) readSettings(
 
 	// Radius settings
 	if !data.Radius.IsNull() && !data.Radius.IsUnknown() {
-		// Get the current plan/state values
 		var planRadius settingRadiusModel
 		diags.Append(data.Radius.As(ctx, &planRadius, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -2154,6 +1109,7 @@ func (r *settingResource) readSettings(
 		radiusModel := r.radiusSettingToModel(ctx, radiusSetting, &planRadius)
 		objValue, d := types.ObjectValueFrom(ctx, map[string]attr.Type{
 			"accounting_enabled":      types.BoolType,
+			"enabled":                 types.BoolType,
 			"acct_port":               types.Int64Type,
 			"auth_port":               types.Int64Type,
 			"interim_update_interval": timetypes.GoDurationType{},
@@ -2167,6 +1123,7 @@ func (r *settingResource) readSettings(
 	} else {
 		data.Radius = types.ObjectNull(map[string]attr.Type{
 			"accounting_enabled":      types.BoolType,
+			"enabled":                 types.BoolType,
 			"acct_port":               types.Int64Type,
 			"auth_port":               types.Int64Type,
 			"interim_update_interval": timetypes.GoDurationType{},
@@ -2176,7 +1133,6 @@ func (r *settingResource) readSettings(
 
 	// USG settings
 	if !data.USG.IsNull() && !data.USG.IsUnknown() {
-		// Get the current plan/state values
 		var planUSG settingUSGModel
 		diags.Append(data.USG.As(ctx, &planUSG, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -2189,7 +1145,19 @@ func (r *settingResource) readSettings(
 			return
 		}
 
-		usgModel := r.usgSettingToModel(ctx, usgSetting, &planUSG)
+		// Geo IP filtering lives in its own setting since UniFi Network 10.x; a site
+		// that never configured it has no object, which reads back as null rather than an error.
+		_, usgGeoSetting, err := ui.GetSetting[*settings.UsgGeo](r.client.ApiClient, ctx, site)
+		if err != nil {
+			var notFound *ui.NotFoundError
+			if !errors.As(err, &notFound) {
+				diags.AddError("Error Reading USG Geo Setting", err.Error())
+				return
+			}
+			usgGeoSetting = nil
+		}
+
+		usgModel := r.usgSettingToModel(ctx, usgSetting, usgGeoSetting, &planUSG)
 		objValue, d := types.ObjectValueFrom(ctx, map[string]attr.Type{
 			"broadcast_ping": types.BoolType,
 			"dns_verification": types.ObjectType{
@@ -2449,6 +1417,9 @@ func (r *settingResource) radiusModelToSetting(
 	if !model.AccountingEnabled.IsNull() && !model.AccountingEnabled.IsUnknown() {
 		setting.AccountingEnabled = model.AccountingEnabled.ValueBool()
 	}
+	if !model.Enabled.IsNull() && !model.Enabled.IsUnknown() {
+		setting.Enabled = model.Enabled.ValueBool()
+	}
 	if !model.AcctPort.IsNull() && !model.AcctPort.IsUnknown() {
 		setting.AcctPort = model.AcctPort.ValueInt64Pointer()
 	}
@@ -2475,8 +1446,9 @@ func (r *settingResource) radiusSettingToModel(
 ) *settingRadiusModel {
 	model := &settingRadiusModel{}
 
-	// Only populate fields that were explicitly configured in the plan
 	model.AccountingEnabled = types.BoolValue(setting.AccountingEnabled)
+
+	model.Enabled = types.BoolValue(setting.Enabled)
 
 	model.AcctPort = types.Int64PointerValue(setting.AcctPort)
 
@@ -2485,11 +1457,7 @@ func (r *settingResource) radiusSettingToModel(
 	model.InterimUpdateInterval = util.DurationPtrValue(setting.InterimUpdateInterval, time.Second)
 
 	if !plan.Secret.IsNull() && !plan.Secret.IsUnknown() {
-		if setting.Secret != "" {
-			model.Secret = types.StringValue(setting.Secret)
-		} else {
-			model.Secret = types.StringNull()
-		}
+		model.Secret = util.StringValueOrNull(setting.Secret)
 	} else {
 		model.Secret = types.StringNull()
 	}
@@ -2498,11 +1466,109 @@ func (r *settingResource) radiusSettingToModel(
 }
 
 // USG conversion functions.
+// usgGeoConfigured reports whether the practitioner manages any geo IP filtering
+// attribute; these moved off `usg` onto a separate `usg_geo` object in UniFi
+// Network 10.x, written only when configured so an unconditional write can't clobber an out-of-Terraform geo config.
+func usgGeoConfigured(model *settingUSGModel) bool {
+	for _, v := range []attr.Value{
+		model.GeoIPFilteringBlock,
+		model.GeoIPFilteringCountries,
+		model.GeoIPFilteringEnabled,
+		model.GeoIPFilteringTrafficDirection,
+	} {
+		if !v.IsNull() && !v.IsUnknown() {
+			return true
+		}
+	}
+	return false
+}
+
+// usgGeoModelToSetting overlays configured geo IP filtering attributes onto what
+// the controller stores; usg_geo's `enabled` has no omitempty, so unconfigured fields are carried over rather than reset to zero.
+func (r *settingResource) usgGeoModelToSetting(
+	model *settingUSGModel,
+	current *settings.UsgGeo,
+) *settings.UsgGeo {
+	setting := current
+	if setting == nil {
+		setting = &settings.UsgGeo{}
+	}
+	if setting.IPFiltering == nil {
+		setting.IPFiltering = &settings.SettingUsgGeoIPFiltering{}
+	}
+
+	if !model.GeoIPFilteringBlock.IsNull() {
+		setting.IPFiltering.Action = model.GeoIPFilteringBlock.ValueString()
+	}
+	if !model.GeoIPFilteringCountries.IsNull() {
+		setting.IPFiltering.Countries = model.GeoIPFilteringCountries.ValueString()
+	}
+	if !model.GeoIPFilteringEnabled.IsNull() {
+		setting.IPFiltering.Enabled = model.GeoIPFilteringEnabled.ValueBool()
+	}
+	if !model.GeoIPFilteringTrafficDirection.IsNull() {
+		setting.IPFiltering.TrafficDirection = model.GeoIPFilteringTrafficDirection.ValueString()
+	}
+
+	return setting
+}
+
+// writeUsgGeo writes the usg_geo setting, but only when the practitioner manages
+// at least one geo IP filtering attribute; verb ("Creating"/"Updating") is for the error message.
+func (r *settingResource) writeUsgGeo(
+	ctx context.Context,
+	site string,
+	model *settingUSGModel,
+	verb string,
+	diags *diag.Diagnostics,
+) {
+	if !usgGeoConfigured(model) {
+		return
+	}
+
+	// Reads the stored object as the base so unmanaged fields survive the write;
+	// absent is normal pre-configuration, so start from empty here -- if the controller truly lacks the endpoint, the write below says so.
+	_, current, err := ui.GetSetting[*settings.UsgGeo](r.client.ApiClient, ctx, site)
+	if err != nil {
+		var notFound *ui.NotFoundError
+		if !errors.As(err, &notFound) {
+			diags.AddError("Error Reading USG Geo Setting", err.Error())
+			return
+		}
+		current = &settings.UsgGeo{}
+	}
+
+	if err := r.client.UpdateSetting(
+		ctx,
+		site,
+		r.usgGeoModelToSetting(model, current),
+	); err != nil {
+		var notFound *ui.NotFoundError
+		if errors.As(err, &notFound) {
+			diags.AddError(
+				"Geo IP Filtering Not Supported By This Controller",
+				"The `geo_ip_filtering_*` attributes are stored in the `usg_geo` setting, which "+
+					"this controller does not expose. UniFi Network 10.x moved them out of the "+
+					"`usg` setting. Remove them from the `usg` block, or upgrade the controller.",
+			)
+			return
+		}
+		diags.AddError("Error "+verb+" USG Geo Setting", err.Error())
+	}
+}
+
+// usgModelToSetting overlays the model onto the setting the controller already
+// holds, for the same reason mgmt, radius and igmpSnooping take a base: 23 of
+// settings.Usg's 46 fields carry no omitempty, so a freshly built struct force-emits
+// a Go zero for every field the schema doesn't declare. No mask is available (the
+// SDK's UpdateSetting takes a settings.Setting interface, not per-field updates), so
+// every assignment below is guarded on the model declaring a value, changing nothing for unmanaged fields.
 func (r *settingResource) usgModelToSetting(
 	ctx context.Context,
 	model *settingUSGModel,
+	base *settings.Usg,
 ) *settings.Usg {
-	setting := &settings.Usg{}
+	setting := base
 
 	if !model.BroadcastPing.IsNull() {
 		setting.BroadcastPing = model.BroadcastPing.ValueBool()
@@ -2519,18 +1585,6 @@ func (r *settingResource) usgModelToSetting(
 	}
 	if !model.FtpModule.IsNull() {
 		setting.FtpModule = model.FtpModule.ValueBool()
-	}
-	if !model.GeoIPFilteringBlock.IsNull() {
-		setting.GeoIPFilteringBlock = model.GeoIPFilteringBlock.ValueString()
-	}
-	if !model.GeoIPFilteringCountries.IsNull() {
-		setting.GeoIPFilteringCountries = model.GeoIPFilteringCountries.ValueString()
-	}
-	if !model.GeoIPFilteringEnabled.IsNull() {
-		setting.GeoIPFilteringEnabled = model.GeoIPFilteringEnabled.ValueBool()
-	}
-	if !model.GeoIPFilteringTrafficDirection.IsNull() {
-		setting.GeoIPFilteringTrafficDirection = model.GeoIPFilteringTrafficDirection.ValueString()
 	}
 	if !model.GreModule.IsNull() {
 		setting.GreModule = model.GreModule.ValueBool()
@@ -2629,9 +1683,17 @@ func (r *settingResource) usgModelToSetting(
 func (r *settingResource) usgSettingToModel(
 	ctx context.Context,
 	setting *settings.Usg,
+	geo *settings.UsgGeo,
 	plan *settingUSGModel,
 ) *settingUSGModel {
 	model := &settingUSGModel{}
+
+	// usg_geo may be absent on controllers that predate the split, and its
+	// IPFiltering object is only present once geo filtering has been touched.
+	var geoFilter settings.SettingUsgGeoIPFiltering
+	if geo != nil && geo.IPFiltering != nil {
+		geoFilter = *geo.IPFiltering
+	}
 
 	// Only populate fields that were explicitly configured in the plan
 	if !plan.BroadcastPing.IsNull() && !plan.BroadcastPing.IsUnknown() {
@@ -2670,40 +1732,26 @@ func (r *settingResource) usgSettingToModel(
 	}
 
 	if !plan.GeoIPFilteringBlock.IsNull() && !plan.GeoIPFilteringBlock.IsUnknown() {
-		if setting.GeoIPFilteringBlock != "" {
-			model.GeoIPFilteringBlock = types.StringValue(setting.GeoIPFilteringBlock)
-		} else {
-			model.GeoIPFilteringBlock = types.StringNull()
-		}
+		model.GeoIPFilteringBlock = util.StringValueOrNull(geoFilter.Action)
 	} else {
 		model.GeoIPFilteringBlock = types.StringNull()
 	}
 
 	if !plan.GeoIPFilteringCountries.IsNull() && !plan.GeoIPFilteringCountries.IsUnknown() {
-		if setting.GeoIPFilteringCountries != "" {
-			model.GeoIPFilteringCountries = types.StringValue(setting.GeoIPFilteringCountries)
-		} else {
-			model.GeoIPFilteringCountries = types.StringNull()
-		}
+		model.GeoIPFilteringCountries = util.StringValueOrNull(geoFilter.Countries)
 	} else {
 		model.GeoIPFilteringCountries = types.StringNull()
 	}
 
 	if !plan.GeoIPFilteringEnabled.IsNull() && !plan.GeoIPFilteringEnabled.IsUnknown() {
-		model.GeoIPFilteringEnabled = types.BoolValue(setting.GeoIPFilteringEnabled)
+		model.GeoIPFilteringEnabled = types.BoolValue(geoFilter.Enabled)
 	} else {
 		model.GeoIPFilteringEnabled = types.BoolNull()
 	}
 
 	if !plan.GeoIPFilteringTrafficDirection.IsNull() &&
 		!plan.GeoIPFilteringTrafficDirection.IsUnknown() {
-		if setting.GeoIPFilteringTrafficDirection != "" {
-			model.GeoIPFilteringTrafficDirection = types.StringValue(
-				setting.GeoIPFilteringTrafficDirection,
-			)
-		} else {
-			model.GeoIPFilteringTrafficDirection = types.StringNull()
-		}
+		model.GeoIPFilteringTrafficDirection = util.StringValueOrNull(geoFilter.TrafficDirection)
 	} else {
 		model.GeoIPFilteringTrafficDirection = types.StringNull()
 	}
@@ -2727,11 +1775,7 @@ func (r *settingResource) usgSettingToModel(
 	}
 
 	if !plan.MssClamp.IsNull() && !plan.MssClamp.IsUnknown() {
-		if setting.MssClamp != "" {
-			model.MssClamp = types.StringValue(setting.MssClamp)
-		} else {
-			model.MssClamp = types.StringNull()
-		}
+		model.MssClamp = util.StringValueOrNull(setting.MssClamp)
 	} else {
 		model.MssClamp = types.StringNull()
 	}
@@ -2845,11 +1889,7 @@ func (r *settingResource) usgSettingToModel(
 	}
 
 	if !plan.TimeoutSettingPreference.IsNull() && !plan.TimeoutSettingPreference.IsUnknown() {
-		if setting.TimeoutSettingPreference != "" {
-			model.TimeoutSettingPreference = types.StringValue(setting.TimeoutSettingPreference)
-		} else {
-			model.TimeoutSettingPreference = types.StringNull()
-		}
+		model.TimeoutSettingPreference = util.StringValueOrNull(setting.TimeoutSettingPreference)
 	} else {
 		model.TimeoutSettingPreference = types.StringNull()
 	}
@@ -2891,11 +1931,7 @@ func (r *settingResource) usgSettingToModel(
 	}
 
 	if !plan.UPnPWANInterface.IsNull() && !plan.UPnPWANInterface.IsUnknown() {
-		if setting.UPnPWANInterface != "" {
-			model.UPnPWANInterface = types.StringValue(setting.UPnPWANInterface)
-		} else {
-			model.UPnPWANInterface = types.StringNull()
-		}
+		model.UPnPWANInterface = util.StringValueOrNull(setting.UPnPWANInterface)
 	} else {
 		model.UPnPWANInterface = types.StringNull()
 	}
@@ -2940,7 +1976,8 @@ func (r *settingResource) igmpSnoopingSettingToModel(
 	return model
 }
 
-// DoH conversion functions.
+// Simple 1:1 conversion functions: auto-speedtest, country, DPI, LCM,
+// network-optimization, NTP and syslog.
 func (r *settingResource) autoSpeedtestModelToSetting(
 	model *settingAutoSpeedtestModel,
 ) *settings.AutoSpeedtest {
@@ -3035,6 +2072,8 @@ func (r *settingResource) ntpModelToSetting(m *settingNtpModel) *settings.Ntp {
 }
 
 func (r *settingResource) ntpSettingToModel(s *settings.Ntp) settingNtpModel {
+	// The controller persists unused server slots as "", a valid configured value
+	// distinct from unset; rewriting it to null (as StringValueOrNull did) collided with an explicit "" and destabilized state.
 	return settingNtpModel{
 		NtpServer1:        types.StringValue(s.NtpServer1),
 		NtpServer2:        types.StringValue(s.NtpServer2),
@@ -3095,6 +2134,7 @@ func (r *settingResource) syslogSettingToModel(
 	}
 }
 
+// DoH conversion functions.
 func (r *settingResource) dohModelToSetting(
 	ctx context.Context,
 	model *settingDohModel,
@@ -3142,20 +2182,14 @@ func (r *settingResource) dohSettingToModel(
 	model := &settingDohModel{}
 
 	if !plan.State.IsNull() && !plan.State.IsUnknown() {
-		if setting.State != "" {
-			model.State = types.StringValue(setting.State)
-		} else {
-			model.State = types.StringNull()
-		}
+		model.State = util.StringValueOrNull(setting.State)
 	} else {
 		model.State = types.StringNull()
 	}
 
-	// When the attribute was configured (plan is known), mirror the remote
-	// value as a list — including an empty list when the controller returns
-	// none. Returning ListNull for a configured-but-empty list would differ
-	// from the planned []value and trip the "inconsistent result after apply"
-	// check. ListNull is reserved for the not-configured / unknown case.
+	// Configured (plan known) mirrors the remote value as a list, empty list
+	// included; ListNull here would differ from a planned []value and trip
+	// "inconsistent result after apply" -- it's reserved for not-configured/unknown.
 	if !plan.ServerNames.IsNull() && !plan.ServerNames.IsUnknown() {
 		listVal, d := types.ListValueFrom(ctx, types.StringType, setting.ServerNames)
 		diags.Append(d...)
@@ -3185,12 +2219,17 @@ func (r *settingResource) dohSettingToModel(
 }
 
 // IPS conversion functions.
+// ipsModelToSetting overlays the user-set fields onto the current remote setting,
+// as mgmt, radius, usg and igmp_snooping already do: four fields carry no omitempty,
+// so a partial config force-emitted false over the controller's value. A mask
+// wouldn't catch this (it only asks whether a field is assigned, not on every path), so a base fixes the whole class.
 func (r *settingResource) ipsModelToSetting(
 	ctx context.Context,
 	model *settingIpsModel,
+	base *settings.Ips,
 	diags *diag.Diagnostics,
 ) *settings.Ips {
-	setting := &settings.Ips{}
+	setting := base
 
 	if !model.IPSMode.IsNull() && !model.IPSMode.IsUnknown() {
 		setting.IPsMode = model.IPSMode.ValueString()
@@ -3230,6 +2269,9 @@ func (r *settingResource) ipsModelToSetting(
 		if diags.HasError() {
 			return setting
 		}
+		// Replace rather than extend: the loop appends, and base now carries the
+		// controller's list, so without nilling first a configured list would double up with the remote one on every apply.
+		setting.Honeypot = nil
 		for _, h := range honeypots {
 			setting.Honeypot = append(setting.Honeypot, settings.SettingIpsHoneypot{
 				IPAddress: h.IPAddress.ValueString(),
@@ -3238,19 +2280,39 @@ func (r *settingResource) ipsModelToSetting(
 			})
 		}
 	}
+	return setting
+}
+
+// ipsSuppressionConfigured reports whether the practitioner manages either
+// suppression list; UniFi Network 10.x promoted this off `ips` into its own `ips_suppression` object, written separately and only when configured.
+func ipsSuppressionConfigured(model *settingIpsModel) bool {
+	for _, v := range []attr.Value{model.SuppressionWhitelist, model.SuppressionAlerts} {
+		if !v.IsNull() && !v.IsUnknown() {
+			return true
+		}
+	}
+	return false
+}
+
+// ipsSuppressionModelToSetting builds the ips_suppression object; only configured
+// lists are populated, the rest stay nil so omitempty keeps them off the wire (matching the nested object's behavior before the split).
+func (r *settingResource) ipsSuppressionModelToSetting(
+	ctx context.Context,
+	model *settingIpsModel,
+	diags *diag.Diagnostics,
+) *settings.IpsSuppression {
+	setting := &settings.IpsSuppression{}
+
 	if !model.SuppressionWhitelist.IsNull() && !model.SuppressionWhitelist.IsUnknown() {
 		var whitelist []settingIpsWhitelistModel
 		diags.Append(model.SuppressionWhitelist.ElementsAs(ctx, &whitelist, false)...)
 		if diags.HasError() {
 			return setting
 		}
-		if setting.Suppression == nil {
-			setting.Suppression = &settings.SettingIpsSuppression{}
-		}
 		for _, w := range whitelist {
-			setting.Suppression.Whitelist = append(
-				setting.Suppression.Whitelist,
-				settings.SettingIpsWhitelist{
+			setting.Whitelist = append(
+				setting.Whitelist,
+				settings.SettingIpsSuppressionWhitelist{
 					Direction: w.Direction.ValueString(),
 					Mode:      w.Mode.ValueString(),
 					Value:     w.Value.ValueString(),
@@ -3264,11 +2326,8 @@ func (r *settingResource) ipsModelToSetting(
 		if diags.HasError() {
 			return setting
 		}
-		if setting.Suppression == nil {
-			setting.Suppression = &settings.SettingIpsSuppression{}
-		}
 		for _, a := range alerts {
-			alert := settings.SettingIpsAlerts{
+			alert := settings.SettingIpsSuppressionAlerts{
 				Category:  a.Category.ValueString(),
 				Signature: a.Signature.ValueString(),
 				Type:      a.Type.ValueString(),
@@ -3284,34 +2343,65 @@ func (r *settingResource) ipsModelToSetting(
 				var tracking []settingIpsTrackingModel
 				diags.Append(a.Tracking.ElementsAs(ctx, &tracking, false)...)
 				for _, t := range tracking {
-					alert.Tracking = append(alert.Tracking, settings.SettingIpsTracking{
+					alert.Tracking = append(alert.Tracking, settings.SettingIpsSuppressionTracking{
 						Direction: t.Direction.ValueString(),
 						Mode:      t.Mode.ValueString(),
 						Value:     t.Value.ValueString(),
 					})
 				}
 			}
-			setting.Suppression.Alerts = append(setting.Suppression.Alerts, alert)
+			setting.Alerts = append(setting.Alerts, alert)
 		}
 	}
 
 	return setting
 }
 
+// writeIpsSuppression writes the ips_suppression setting, but only when the
+// practitioner manages at least one suppression list; verb ("Creating"/"Updating") is for the error message.
+func (r *settingResource) writeIpsSuppression(
+	ctx context.Context,
+	site string,
+	model *settingIpsModel,
+	verb string,
+	diags *diag.Diagnostics,
+) {
+	if !ipsSuppressionConfigured(model) {
+		return
+	}
+
+	setting := r.ipsSuppressionModelToSetting(ctx, model, diags)
+	if diags.HasError() {
+		return
+	}
+
+	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
+		var notFound *ui.NotFoundError
+		if errors.As(err, &notFound) {
+			diags.AddError(
+				"IPS Suppression Not Supported By This Controller",
+				"The `suppression_alerts` and `suppression_whitelist` attributes are stored in "+
+					"the `ips_suppression` setting, which this controller does not expose. UniFi "+
+					"Network 10.x moved them out of the `ips` setting. Remove them from the `ips` "+
+					"block, or upgrade the controller.",
+			)
+			return
+		}
+		diags.AddError("Error "+verb+" IPS Suppression Setting", err.Error())
+	}
+}
+
 func (r *settingResource) ipsSettingToModel(
 	ctx context.Context,
 	setting *settings.Ips,
+	suppression *settings.IpsSuppression,
 	plan *settingIpsModel,
 	diags *diag.Diagnostics,
 ) *settingIpsModel {
 	model := &settingIpsModel{}
 
 	if !plan.IPSMode.IsNull() && !plan.IPSMode.IsUnknown() {
-		if setting.IPsMode != "" {
-			model.IPSMode = types.StringValue(setting.IPsMode)
-		} else {
-			model.IPSMode = types.StringNull()
-		}
+		model.IPSMode = util.StringValueOrNull(setting.IPsMode)
 	} else {
 		model.IPSMode = types.StringNull()
 	}
@@ -3344,20 +2434,13 @@ func (r *settingResource) ipsSettingToModel(
 	}
 
 	if !plan.AdvancedFilteringPreference.IsNull() && !plan.AdvancedFilteringPreference.IsUnknown() {
-		if setting.AdvancedFilteringPreference != "" {
-			model.AdvancedFilteringPreference = types.StringValue(
-				setting.AdvancedFilteringPreference,
-			)
-		} else {
-			model.AdvancedFilteringPreference = types.StringNull()
-		}
+		model.AdvancedFilteringPreference = util.StringValueOrNull(setting.AdvancedFilteringPreference)
 	} else {
 		model.AdvancedFilteringPreference = types.StringNull()
 	}
 
-	// Configured lists mirror the remote value (empty list included); ListNull
-	// is reserved for the not-configured / unknown case. See dohSettingToModel
-	// for why a configured-but-empty list must not become ListNull.
+	// Configured lists mirror the remote value (empty list included); ListNull is
+	// reserved for the not-configured/unknown case (see dohSettingToModel for why a configured-but-empty list must not become ListNull).
 	if !plan.EnabledCategories.IsNull() && !plan.EnabledCategories.IsUnknown() {
 		listVal, d := types.ListValueFrom(ctx, types.StringType, setting.EnabledCategories)
 		diags.Append(d...)
@@ -3393,9 +2476,9 @@ func (r *settingResource) ipsSettingToModel(
 
 	whitelistType := types.ObjectType{AttrTypes: ipsWhitelistAttrTypes}
 	if !plan.SuppressionWhitelist.IsNull() && !plan.SuppressionWhitelist.IsUnknown() {
-		var whitelist []settings.SettingIpsWhitelist
-		if setting.Suppression != nil {
-			whitelist = setting.Suppression.Whitelist
+		var whitelist []settings.SettingIpsSuppressionWhitelist
+		if suppression != nil {
+			whitelist = suppression.Whitelist
 		}
 		entries := make([]settingIpsWhitelistModel, 0, len(whitelist))
 		for _, w := range whitelist {
@@ -3415,9 +2498,9 @@ func (r *settingResource) ipsSettingToModel(
 	trackingType := types.ObjectType{AttrTypes: ipsTrackingAttrTypes}
 	alertType := types.ObjectType{AttrTypes: ipsAlertAttrTypes}
 	if !plan.SuppressionAlerts.IsNull() && !plan.SuppressionAlerts.IsUnknown() {
-		var alerts []settings.SettingIpsAlerts
-		if setting.Suppression != nil {
-			alerts = setting.Suppression.Alerts
+		var alerts []settings.SettingIpsSuppressionAlerts
+		if suppression != nil {
+			alerts = suppression.Alerts
 		}
 		entries := make([]settingIpsAlertModel, 0, len(alerts))
 		for _, a := range alerts {
