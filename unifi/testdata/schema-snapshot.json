@@ -130,9 +130,14 @@
         "device_macs": {
           "kind": "attribute",
           "type": "[\"set\",\"string\"]",
-          "required": true,
-          "description": "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members.",
-          "description_kind": "plain"
+          "optional": true,
+          "computed": true,
+          "description": "The MAC addresses of the access points that are members of the group. May be empty — the controller accepts a group with no members. Omit it to leave the membership as the controller has it.",
+          "description_kind": "plain",
+          "plan_modifiers": [
+            "planmodifiers.KeepEquivalentMACs: Keeps the stored MAC addresses when the configuration writes the same ones differently.",
+            "setplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "id": {
           "kind": "attribute",

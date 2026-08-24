@@ -86,6 +86,8 @@ unifi_account.tunnel_type	default	int64default.staticInt64Default	"value default
 unifi_account.tunnel_type	validator	int64validator.betweenValidator	"value must be between 1 and 13"
 unifi_account.vlan	plan_modifier	int64planmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_account.vlan	validator	int64validator.betweenValidator	"value must be between 2 and 4009"
+unifi_ap_group.device_macs	plan_modifier	planmodifiers.KeepEquivalentMACs	"Keeps the stored MAC addresses when the configuration writes the same ones differently."
+unifi_ap_group.device_macs	plan_modifier	setplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_ap_group.id	plan_modifier	stringplanmodifier.useStateForUnknownModifier	"Once set, the value of this attribute in state will not change."
 unifi_ap_group.name	validator	stringvalidator.lengthAtLeastValidator	"string length must be at least 1"
 unifi_ap_group.site	plan_modifier	stringplanmodifier.requiresReplaceIfModifier	"If the value of this attribute changes, Terraform will destroy and recreate the resource."
