@@ -2961,8 +2961,12 @@
           "kind": "attribute",
           "nesting_mode": "single",
           "optional": true,
+          "computed": true,
           "description": "DHCP guarding configuration. Specifies allowed DHCP server IPs to prevent rogue DHCP servers on the network.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "dhcp_guarding.enabled": {
           "kind": "attribute",
@@ -2984,8 +2988,12 @@
           "kind": "attribute",
           "nesting_mode": "single",
           "optional": true,
+          "computed": true,
           "description": "DHCP relay configuration.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "dhcp_relay.enabled": {
           "kind": "attribute",
@@ -3007,8 +3015,12 @@
           "kind": "attribute",
           "nesting_mode": "single",
           "optional": true,
+          "computed": true,
           "description": "DHCP server configuration.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "dhcp_server.boot": {
           "kind": "attribute",
@@ -3194,8 +3206,12 @@
           "kind": "attribute",
           "nesting_mode": "single",
           "optional": true,
+          "computed": true,
           "description": "DHCPv6 server configuration.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "dhcp_v6_server.dns_auto": {
           "kind": "attribute",
@@ -3204,7 +3220,9 @@
           "computed": true,
           "description": "Specifies whether DNS auto-discovery is enabled for DHCPv6.",
           "description_kind": "markdown",
-          "default": "booldefault.staticBoolDefault: value defaults to false"
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "dhcp_v6_server.dns_servers": {
           "kind": "attribute",
@@ -3233,15 +3251,23 @@
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
+          "computed": true,
           "description": "The start of the DHCPv6 address range.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "dhcp_v6_server.stop": {
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
+          "computed": true,
           "description": "The end of the DHCPv6 address range.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "domain_name": {
           "kind": "attribute",
@@ -3304,8 +3330,12 @@
           "kind": "attribute",
           "type": "[\"list\",\"string\"]",
           "optional": true,
+          "computed": true,
           "description": "List of IP aliases for the network.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "ipv6_aliases": {
           "kind": "attribute",
@@ -3332,7 +3362,9 @@
           "computed": true,
           "description": "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to none"
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "ipv6_pd_auto_prefixid_enabled": {
           "kind": "attribute",
@@ -3356,8 +3388,12 @@
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
+          "computed": true,
           "description": "The IPv6 Prefix Delegation prefix ID (hex string, e.g., `0`, `1a`).",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "ipv6_pd_start": {
           "kind": "attribute",
@@ -3429,17 +3465,23 @@
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
+          "computed": true,
           "description": "The IPv6 static subnet of the network. Only used when `ipv6_interface_type` is `static`.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "lte_lan": {
           "kind": "attribute",
           "type": "\"bool\"",
           "optional": true,
           "computed": true,
-          "description": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Defaults to `true` (network stays available during LTE failover); set to `false` to disable it while on the LTE backup link. The controller may set this automatically, which is why existing networks can show differing values.",
+          "description": "Whether this network/VLAN stays active when the gateway fails over to a UniFi LTE (cellular) backup WAN. Maps to the controller's `lte_lan_enabled` flag and only matters when a UniFi LTE failover device is in use; otherwise it is cosmetic. Set `false` to take the network off the LTE backup link. This is read back from the controller rather than defaulted: the controller sets it automatically, and a static `true` default stamped a network the controller held as `false` back to `true` on any plan that omitted the attribute.",
           "description_kind": "markdown",
-          "default": "booldefault.staticBoolDefault: value defaults to true"
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "multicast_dns": {
           "kind": "attribute",
@@ -3463,8 +3505,12 @@
           "kind": "attribute",
           "nesting_mode": "list",
           "optional": true,
+          "computed": true,
           "description": "List of NAT outbound IP addresses.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "nat_outbound_ip_addresses.ip_address": {
           "kind": "attribute",
@@ -3521,7 +3567,9 @@
           "computed": true,
           "description": "Setting preference. Must be one of `auto` or `manual`.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to auto"
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "site": {
           "kind": "attribute",
@@ -3549,7 +3597,9 @@
           "computed": true,
           "description": "Specifies whether this network uses a third-party gateway. When enabled, the network purpose is set to `vlan-only` and only VLAN ID, DHCP guarding, and basic network settings are configured.",
           "description_kind": "markdown",
-          "default": "booldefault.staticBoolDefault: value defaults to false"
+          "plan_modifiers": [
+            "boolplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "timeouts": {
           "kind": "attribute",

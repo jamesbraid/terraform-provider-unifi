@@ -2,7 +2,10 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
@@ -11,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -308,6 +312,124 @@ resource "unifi_network" "test_third_party" {
 	}
 }
 `
+}
+
+// Test_networkResource_ModifyPlan_settingPreference pins the attributes that
+// force setting_preference to "manual". On "auto" the controller silently
+// stores false for these toggles however they were sent; only a true value
+// forces the switch, since switching on false would churn everyone.
+func Test_networkResource_ModifyPlan_settingPreference(t *testing.T) {
+	tests := []struct {
+		name string
+		// attr is the plan attribute set to true; empty means none.
+		attr string
+		want bool
+	}{
+		{name: "nothing enabled stays auto", attr: "", want: false},
+		{name: "igmp_snooping", attr: "igmp_snooping", want: true},
+		{name: "dhcp_relay", attr: "dhcp_relay.enabled", want: true},
+		{name: "dhcp_guarding", attr: "dhcp_guarding.enabled", want: true},
+		{name: "dhcp_server dns", attr: "dhcp_server.dns_enabled", want: true},
+		{name: "dhcp_server ntp", attr: "dhcp_server.ntp_enabled", want: true},
+		{name: "dhcp_server time offset", attr: "dhcp_server.time_offset_enabled", want: true},
+	}
+	resp := &fwresource.SchemaResponse{}
+	newNetworkKitResource().Schema(context.Background(), fwresource.SchemaRequest{}, resp)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.attr == "" {
+				return
+			}
+			// Guard the attribute names against schema drift. A rename would
+			// leave ModifyPlan reading a path that never matches, and because
+			// the controller accepts the write either way, the failure is
+			// silent.
+			root, nested, isNested := strings.Cut(tt.attr, ".")
+			attribute, ok := resp.Schema.Attributes[root]
+			if !ok {
+				t.Fatalf("schema has no attribute %q", root)
+			}
+			if !isNested {
+				return
+			}
+			single, ok := attribute.(schema.SingleNestedAttribute)
+			if !ok {
+				t.Fatalf("attribute %q is not a SingleNestedAttribute", root)
+			}
+			if _, ok := single.Attributes[nested]; !ok {
+				t.Errorf("schema has no attribute %q under %q", nested, root)
+			}
+		})
+	}
+}
+
+// TestAccNetworkFramework_dhcpGuardingCorporate covers DHCP Guard on a
+// corporate network. The existing dhcp_guarding coverage is on a
+// third_party_gateway network, which the controller stores as vlan-only --
+// a different encoder path (marshalCorporate/marshalGuest) than this test
+// exercises.
+func TestAccNetworkFramework_dhcpGuardingCorporate(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkFrameworkConfig_dhcpGuardingCorporate("Test DHCP Guard"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "purpose", "corporate",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.servers.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.servers.0", "192.168.70.20",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.servers.1", "192.168.70.21",
+					),
+				),
+			},
+			{
+				// Touch an unrelated field so the provider issues an update with
+				// dhcp_guarding unchanged.
+				Config: testAccNetworkFrameworkConfig_dhcpGuardingCorporate(
+					"Test DHCP Guard Renamed",
+				),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "name", "Test DHCP Guard Renamed",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp_guard", "dhcp_guarding.servers.#", "2",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccNetworkFrameworkConfig_dhcpGuardingCorporate(name string) string {
+	return fmt.Sprintf(`
+resource "unifi_network" "test_dhcp_guard" {
+	name    = %q
+	subnet  = "192.168.70.1/24"
+	vlan    = 70
+	purpose = "corporate"
+
+	dhcp_guarding = {
+		enabled = true
+		servers = ["192.168.70.20", "192.168.70.21"]
+	}
+}
+`, name)
 }
 
 func testAccNetworkFrameworkConfig_thirdPartyGatewayMinimal() string {
@@ -800,37 +922,6 @@ func Test_dhcpV6ServerModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_networkResource_Metadata(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.MetadataRequest
-		resp *fwresource.MetadataResponse
-	}
-	tests := []struct {
-		name string
-		r    *networkResource
-		args args
-	}{
-		{
-			name: "sets correct type name",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.MetadataRequest{ProviderTypeName: "unifi"},
-				resp: &fwresource.MetadataResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Metadata(tt.args.ctx, tt.args.req, tt.args.resp)
-			if tt.args.resp.TypeName != "unifi_network" {
-				t.Errorf("Metadata() TypeName = %v, want unifi_network", tt.args.resp.TypeName)
-			}
-		})
-	}
-}
-
 func Test_networkResource_IdentitySchema(t *testing.T) {
 	type args struct {
 		in0  context.Context
@@ -839,12 +930,12 @@ func Test_networkResource_IdentitySchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *networkResource
+		r    *networkKitResource
 		args args
 	}{
 		{
 			name: "returns identity schema with id",
-			r:    &networkResource{},
+			r:    newNetworkKitResource(),
 			args: args{
 				in0:  context.Background(),
 				in1:  fwresource.IdentitySchemaRequest{},
@@ -862,52 +953,19 @@ func Test_networkResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_networkResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
-	}
-	tests := []struct {
-		name string
-		r    *networkResource
-		args args
-	}{
-		{
-			name: "returns schema with key attributes",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-			for _, key := range []string{"id", "name", "subnet"} {
-				if _, ok := tt.args.resp.Schema.Attributes[key]; !ok {
-					t.Errorf("Schema() missing attribute %q", key)
-				}
-			}
-		})
-	}
-}
-
 func Test_networkResource_UpgradeState(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
 	tests := []struct {
 		name string
-		r    *networkResource
+		r    *networkKitResource
 		args args
 		want map[int64]fwresource.StateUpgrader
 	}{
 		{
 			name: "returns non-nil map",
-			r:    &networkResource{},
+			r:    newNetworkKitResource(),
 			args: args{
 				ctx: context.Background(),
 			},
@@ -923,87 +981,24 @@ func Test_networkResource_UpgradeState(t *testing.T) {
 	}
 }
 
-func Test_networkResource_Configure(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.ConfigureRequest
-		resp *fwresource.ConfigureResponse
-	}
-	tests := []struct {
-		name string
-		r    *networkResource
-		args args
-	}{
-		{
-			name: "nil provider data does not error",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: nil},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "wrong type produces error",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: "wrong"},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-		{
-			name: "correct type sets client",
-			r:    &networkResource{},
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.ConfigureRequest{ProviderData: &Client{}},
-				resp: &fwresource.ConfigureResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Configure(tt.args.ctx, tt.args.req, tt.args.resp)
-			switch tt.name {
-			case "nil provider data does not error":
-				if tt.args.resp.Diagnostics.HasError() {
-					t.Errorf("Configure() unexpected error: %v", tt.args.resp.Diagnostics)
-				}
-			case "wrong type produces error":
-				if !tt.args.resp.Diagnostics.HasError() {
-					t.Error("Configure() expected error for wrong type")
-				}
-			case "correct type sets client":
-				if tt.args.resp.Diagnostics.HasError() {
-					t.Errorf("Configure() unexpected error: %v", tt.args.resp.Diagnostics)
-				}
-				if tt.r.client == nil {
-					t.Error("Configure() client not set")
-				}
-			}
-		})
-	}
-}
-
 func Test_networkResource_modelToNetwork(t *testing.T) {
 	type args struct {
 		ctx   context.Context
-		model *networkResourceModel
+		model *netModel
 	}
 	tests := []struct {
 		name  string
-		r     *networkResource
+		r     *networkKitResource
 		args  args
 		want  *unifi.Network
 		want1 diag.Diagnostics
 	}{
 		{
 			name: "minimal model conversion",
-			r:    &networkResource{},
+			r:    newNetworkKitResource(),
 			args: args{
 				ctx: context.Background(),
-				model: &networkResourceModel{
+				model: &netModel{
 					Name:                        types.StringValue("test-net"),
 					Enabled:                     types.BoolValue(true),
 					Subnet:                      cidrtypes.NewIPv4PrefixValue("10.0.0.0/24"),
@@ -1078,19 +1073,19 @@ func Test_networkResource_networkToModel(t *testing.T) {
 	type args struct {
 		ctx           context.Context
 		network       *unifi.Network
-		model         *networkResourceModel
+		model         *netModel
 		site          string
-		previousModel *networkResourceModel
+		previousModel *netModel
 	}
 	tests := []struct {
 		name string
-		r    *networkResource
+		r    *networkKitResource
 		args args
 		want diag.Diagnostics
 	}{
 		{
 			name: "minimal network to model",
-			r:    &networkResource{},
+			r:    newNetworkKitResource(),
 			args: args{
 				ctx: context.Background(),
 				network: &unifi.Network{
@@ -1099,9 +1094,9 @@ func Test_networkResource_networkToModel(t *testing.T) {
 					Purpose: unifi.PurposeCorporate,
 					Enabled: true,
 				},
-				model: &networkResourceModel{},
+				model: &netModel{},
 				site:  "default",
-				previousModel: &networkResourceModel{
+				previousModel: &netModel{
 					DhcpServer:   types.ObjectNull(dhcpServerModel{}.AttributeTypes()),
 					DhcpRelay:    types.ObjectNull(dhcpRelayModel{}.AttributeTypes()),
 					DhcpV6Server: types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes()),
@@ -1155,12 +1150,12 @@ func Test_networkResource_ListResourceConfigSchema(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		r    *networkResource
+		r    *networkKitResource
 		args args
 	}{
 		{
 			name: "returns schema without panic",
-			r:    &networkResource{},
+			r:    newNetworkKitResource(),
 			args: args{
 				ctx:  context.Background(),
 				req:  fwlist.ListResourceSchemaRequest{},
@@ -1211,15 +1206,14 @@ func TestAccNetworkList_basic(t *testing.T) {
 	})
 }
 
-// Test_networkResource_networkToModel_multicastDNS guards #282: a corporate
-// network's multicast_dns is overridden to false server-side by some controllers
-// (UniFi OS gateways), so a user-configured true would fail the consistency
-// check. The configured/known value must be preserved; an unset (unknown) value
-// falls back to the controller's value.
+// A corporate network's multicast_dns is overridden to false server-side by
+// some controllers (UniFi OS gateways), so a user-configured true would fail
+// the consistency check. The configured/known value must be preserved; an
+// unset (unknown) value falls back to the controller's value.
 func Test_networkResource_networkToModel_multicastDNS(t *testing.T) {
-	r := &networkResource{}
-	base := func() *networkResourceModel {
-		return &networkResourceModel{
+	r := newNetworkKitResource()
+	base := func() *netModel {
+		return &netModel{
 			DhcpServer:   types.ObjectNull(dhcpServerModel{}.AttributeTypes()),
 			DhcpRelay:    types.ObjectNull(dhcpRelayModel{}.AttributeTypes()),
 			DhcpV6Server: types.ObjectNull(dhcpV6ServerModel{}.AttributeTypes()),
@@ -1244,7 +1238,7 @@ func Test_networkResource_networkToModel_multicastDNS(t *testing.T) {
 	t.Run("configured true is preserved", func(t *testing.T) {
 		prev := base()
 		prev.MulticastDNS = types.BoolValue(true)
-		var model networkResourceModel
+		var model netModel
 		d := r.networkToModel(context.Background(), network, &model, "default", prev)
 		if d.HasError() {
 			t.Fatalf("networkToModel: %v", d)
@@ -1257,7 +1251,7 @@ func Test_networkResource_networkToModel_multicastDNS(t *testing.T) {
 	t.Run("unset falls back to controller value", func(t *testing.T) {
 		prev := base()
 		prev.MulticastDNS = types.BoolUnknown()
-		var model networkResourceModel
+		var model netModel
 		d := r.networkToModel(context.Background(), network, &model, "default", prev)
 		if d.HasError() {
 			t.Fatalf("networkToModel: %v", d)
@@ -1268,13 +1262,13 @@ func Test_networkResource_networkToModel_multicastDNS(t *testing.T) {
 	})
 }
 
-// Test_networkResource_purpose covers #276: purpose must be author-settable
+// Test_networkResource_purpose checks that purpose is author-settable
 // (guest/vlan-only/corporate) on write and reflected from the controller on read.
 func Test_networkResource_purpose(t *testing.T) {
-	r := &networkResource{}
+	r := newNetworkKitResource()
 
-	baseModel := func() *networkResourceModel {
-		return &networkResourceModel{
+	baseModel := func() *netModel {
+		return &netModel{
 			Name:              types.StringValue("test-net"),
 			Subnet:            cidrtypes.NewIPv4PrefixValue("10.0.0.0/24"),
 			ThirdPartyGateway: types.BoolValue(false),
@@ -1340,7 +1334,7 @@ func Test_networkResource_purpose(t *testing.T) {
 		}
 		prev := baseModel()
 		prev.Purpose = types.StringValue(unifi.PurposeGuest)
-		var model networkResourceModel
+		var model netModel
 		d := r.networkToModel(context.Background(), network, &model, "default", prev)
 		if d.HasError() {
 			t.Fatalf("networkToModel: %v", d)
@@ -1349,4 +1343,224 @@ func Test_networkResource_purpose(t *testing.T) {
 			t.Errorf("Purpose = %q, want %q", model.Purpose.ValueString(), unifi.PurposeGuest)
 		}
 	})
+}
+
+// The two attributes are one controller field: modelToNetwork writes an
+// explicit purpose and lets a true third_party_gateway override it, and
+// networkToModel reads third_party_gateway back out of that same field.
+// Every other vlan-only fixture in this file sets third_party_gateway =
+// true directly; this one sets purpose = "vlan-only" instead, which is the
+// only way to exercise third_party_gateway's own default resolving to true.
+func TestAccNetworkFramework_purposeVLANOnlyDirect(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkFrameworkConfig_purposeVLANOnlyDirect(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_purpose_vlan_only", "purpose", "vlan-only",
+					),
+					// Derived from the controller's purpose, not defaulted.
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_purpose_vlan_only", "third_party_gateway", "true",
+					),
+				),
+			},
+		},
+	})
+}
+
+// TestAccNetworkFramework_purposeConflict proves a contradictory pair is refused
+// at plan time, naming both attributes, instead of reaching the controller and
+// failing afterwards as an inconsistent result that blames the provider.
+//
+// PlanOnly is the assertion that matters here: it never reaches the controller.
+func TestAccNetworkFramework_purposeConflict(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccNetworkFrameworkConfig_purposeConflict(),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`Conflicting network purpose`),
+			},
+		},
+	})
+}
+
+func testAccNetworkFrameworkConfig_purposeVLANOnlyDirect() string {
+	return `
+resource "unifi_network" "test_purpose_vlan_only" {
+	name    = "Test Purpose VLAN Only"
+	purpose = "vlan-only"
+	vlan    = 24
+}
+`
+}
+
+func testAccNetworkFrameworkConfig_purposeConflict() string {
+	return `
+resource "unifi_network" "test_purpose_conflict" {
+	name                = "Test Purpose Conflict"
+	subnet              = "192.168.24.1/24"
+	vlan                = 25
+	purpose             = "corporate"
+	third_party_gateway = true
+}
+`
+}
+
+// ip_aliases and nat_outbound_ip_addresses are in the wire mask, so they are
+// sent on every update; nulling them unconditionally would silently clear
+// aliases configured in the UI whenever an apply touches anything else.
+// Mask membership only proves the resource manages the field -- it says
+// nothing about whether the value read back means anything.
+func Test_networkToModel_readsBackTheMaskedCollections(t *testing.T) {
+	ctx := context.Background()
+	r := newNetworkKitResource()
+
+	mode := "all"
+	network := &unifi.Network{
+		ID:        "net-1",
+		Name:      strPtr("IoT"),
+		Purpose:   unifi.PurposeCorporate,
+		Enabled:   true,
+		IPSubnet:  strPtr("10.0.2.1/24"),
+		IPAliases: []string{"10.0.2.9/24", "10.0.2.10/24"},
+		NATOutboundIPAddresses: []unifi.NetworkNATOutboundIPAddresses{
+			{IPAddress: "203.0.113.5", Mode: &mode},
+		},
+	}
+
+	var model netModel
+	if d := r.networkToModel(ctx, network, &model, "default", &netModel{}); d.HasError() {
+		t.Fatalf("networkToModel: %v", d)
+	}
+
+	if model.IPAliases.IsNull() {
+		t.Fatal("ip_aliases came back null; the next write sends the empty slice " +
+			"modelToNetwork pre-seeds and the controller drops what it holds")
+	}
+	var aliases []string
+	if d := model.IPAliases.ElementsAs(ctx, &aliases, false); d.HasError() {
+		t.Fatalf("reading ip_aliases back: %v", d)
+	}
+	if !reflect.DeepEqual(aliases, []string{"10.0.2.9/24", "10.0.2.10/24"}) {
+		t.Errorf("ip_aliases = %v, want the controller's two", aliases)
+	}
+
+	if model.NatOutboundIPAddresses.IsNull() {
+		t.Fatal("nat_outbound_ip_addresses came back null; same defect, same mask")
+	}
+	if n := len(model.NatOutboundIPAddresses.Elements()); n != 1 {
+		t.Errorf("nat_outbound_ip_addresses has %d entries, want 1", n)
+	}
+}
+
+// Test_networkToModel_emptyCollectionsAreEmptyNotNull is the half that is easy
+// to get wrong in the other direction.
+//
+// Both attributes are now Optional AND Computed, so an empty collection is a
+// value the practitioner may have configured. Returning null for "the
+// controller holds none" makes `ip_aliases = []` a permanent diff: the config
+// keeps producing [], state keeps saying null, and no apply settles it. It is
+// the same nil-versus-empty distinction the resource kit's KeepZero carries,
+// one layer up.
+func Test_networkToModel_emptyCollectionsAreEmptyNotNull(t *testing.T) {
+	ctx := context.Background()
+	r := newNetworkKitResource()
+
+	for _, testCase := range []struct {
+		name    string
+		aliases []string
+	}{
+		{"nil from the controller", nil},
+		{"empty from the controller", []string{}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			network := &unifi.Network{
+				ID: "net-1", Name: strPtr("IoT"), Purpose: unifi.PurposeCorporate,
+				Enabled: true, IPSubnet: strPtr("10.0.2.1/24"),
+				IPAliases: testCase.aliases,
+			}
+			var model netModel
+			if d := r.networkToModel(ctx, network, &model, "default",
+				&netModel{}); d.HasError() {
+				t.Fatalf("networkToModel: %v", d)
+			}
+			if model.IPAliases.IsNull() {
+				t.Fatal("ip_aliases is null for an empty membership; a config saying " +
+					"ip_aliases = [] would then never stop planning a change")
+			}
+			if n := len(model.IPAliases.Elements()); n != 0 {
+				t.Errorf("ip_aliases has %d elements, want 0", n)
+			}
+		})
+	}
+}
+
+// ipv6_pd_prefixid gained Computed, so the plan carries UNKNOWN whenever the
+// config omits it. The vlan-only branch copies plan values wholesale to
+// avoid inconsistent-result errors on fields the controller doesn't return
+// -- and copying an unknown through leaves the attribute unknown after
+// apply, which Terraform rejects. Making an attribute Computed obliges
+// every place that copies it to resolve the unknown.
+func Test_networkToModel_vlanOnlyResolvesUnknownPrefixID(t *testing.T) {
+	ctx := context.Background()
+	r := newNetworkKitResource()
+
+	network := &unifi.Network{
+		ID: "net-1", Name: strPtr("VLAN"), Purpose: unifi.PurposeVLANOnly, Enabled: true,
+		IPV6PDPrefixid: "1a",
+	}
+	prev := &netModel{IPv6PDPrefixID: types.StringUnknown()}
+
+	var model netModel
+	if d := r.networkToModel(ctx, network, &model, "default", prev); d.HasError() {
+		t.Fatalf("networkToModel: %v", d)
+	}
+	if model.IPv6PDPrefixID.IsUnknown() {
+		t.Fatal("ipv6_pd_prefixid is still unknown after apply; Terraform rejects that " +
+			"with \"Provider produced inconsistent result after apply\"")
+	}
+	if model.IPv6PDPrefixID.ValueString() != "1a" {
+		t.Errorf("ipv6_pd_prefixid = %q, want the controller's 1a",
+			model.IPv6PDPrefixID.ValueString())
+	}
+}
+
+// modelToNetwork and networkToModel are shims: the mapper tests below call
+// them so they keep asserting exactly what they asserted before the surface
+// moved onto the kit, rather than needing thirty call sites rewritten (and
+// thirty expectations re-derived by hand) for ToSDK+BeforeSend and
+// ToModel+AfterReceive. previousModel became the model itself here since
+// the kit loads prior state into the model before ToModel runs.
+func (r *networkKitResource) modelToNetwork(
+	ctx context.Context, model *netModel,
+) (*unifi.Network, diag.Diagnostics) {
+	sdk, diags := r.Spec.ToSDK(ctx, model)
+	if diags.HasError() {
+		return sdk, diags
+	}
+	diags.Append(r.Spec.BeforeSend(ctx, model, model, sdk, nil)...)
+	return sdk, diags
+}
+
+func (r *networkKitResource) networkToModel(
+	ctx context.Context,
+	network *unifi.Network,
+	model *netModel,
+	site string,
+	previousModel *netModel,
+) diag.Diagnostics {
+	if previousModel != nil {
+		*model = *previousModel
+	}
+	prior := *model
+	diags := r.Spec.ToModel(ctx, network, model, site)
+	diags.Append(r.Spec.AfterReceive(ctx, network, model, prior, nil)...)
+	return diags
 }

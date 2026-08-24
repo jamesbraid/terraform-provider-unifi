@@ -64,17 +64,12 @@ unifi_network.dhcp_server.ntp_enabled
 unifi_network.dhcp_server.time_offset_enabled
 unifi_network.dhcp_server.wins
 unifi_network.dhcp_server.wins.enabled
-unifi_network.dhcp_v6_server.dns_auto
 unifi_network.dhcp_v6_server.enabled
 unifi_network.enabled
 unifi_network.gateway_type
 unifi_network.igmp_snooping
 unifi_network.internet_access
-unifi_network.ipv6_interface_type
-unifi_network.lte_lan
 unifi_network.network_isolation
-unifi_network.setting_preference
-unifi_network.third_party_gateway
 unifi_port_forward.enabled
 unifi_port_forward.logging
 unifi_port_forward.protocol
