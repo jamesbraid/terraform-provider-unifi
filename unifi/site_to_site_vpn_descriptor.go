@@ -1,24 +1,5 @@
 package unifi
 
-// The site_to_site_vpn descriptor.
-//
-// A NETWORK WEARING A PURPOSE, which is what makes it different from the other
-// four. The SDK type is Network and the controller distinguishes the seven
-// kinds by a purpose discriminator, so New seeds Purpose and VPNType the way
-// static_route seeds its Type.
-//
-// THE MASKED UPDATE DEPENDS ON THAT SEED. go-unifi's Network encodes a
-// different field set per purpose, and maskedBody marshals the object BEFORE
-// filtering -- so a masked write with no Purpose cannot encode at all, and one
-// naming a field the site-vpn encoder drops is refused. Both are loud rather
-// than silent, which is why this surface is safe to mask, but neither is
-// obvious from the struct.
-//
-// AND THE OBVIOUS SDK FIELD IS THE WRONG ONE, twice over. ike_encryption maps
-// to IPSecEncryption (ipsec_encryption), not IPSecIkeEncryption
-// (ipsec_ike_encryption); the same for ike_hash and ike_dh_group. Both pairs
-// exist on the struct and only the first is emitted for site-vpn.
-
 import (
 	"context"
 	"time"
@@ -81,13 +62,12 @@ func s2sInt(
 	sdk func(*ui.Network) **int64,
 ) resourcekit.Int64PtrField[s2sModel, ui.Network] {
 	// OmitZero: the controller rejects 0 for the DH-group and route-distance
-	// fields, which is what the hand-written optInt64 helper existed to honour.
+	// fields.
 	return resourcekit.Int64PtrField[s2sModel, ui.Network]{
 		Wire: wire, Model: model, SDK: sdk,
-		// KeepZero on the READ and OmitZero on the WRITE, which is not a
-		// contradiction: we never send a zero, but a zero the controller
-		// reports is recorded faithfully -- which is what
-		// types.Int64PointerValue did in the mapper this replaces.
+		// KeepZero on the read and OmitZero on the write is not a
+		// contradiction: we never send a zero, but one the controller reports
+		// is recorded faithfully.
 		Elide: resourcekit.KeepZero, OmitZero: true,
 	}
 }
@@ -182,43 +162,25 @@ func siteToSiteVPNKitSpec() resourcekit.Spec[s2sModel, ui.Network] {
 				// util.DurationPtrValue produced.
 				Elide: resourcekit.KeepZero,
 			},
-			// A MEASURED go-unifi DEFECT FORCES THE PREDICATE ON THESE TWO,
-			// and it is not this cutover's doing.
-			//
-			// Network tags ipsec_pfs and ipsec_dynamic_routing WITHOUT
-			// omitempty, but marshalSiteVPN's alias struct adds it. Measured:
-			// a site-vpn network with pfs=true emits ipsec_pfs and one with
-			// pfs=false does not. So these two settings can be turned on and
-			// never off, through this provider or any other caller -- the
-			// controller simply never receives the false.
-			//
-			// That is already true on the hand-written resource, which sends
-			// the whole object. What the field mask changes is the FAILURE
-			// MODE: a mask naming a field the encoder dropped is refused by
-			// go-unifi, so without this predicate `pfs = false` would turn a
-			// silent no-op into a failed apply. Louder, but a regression for
-			// a configuration that plans clean today.
-			//
-			// So the write is suppressed exactly where the encoder would drop
-			// it, preserving current behaviour rather than shipping an error.
-			// REMOVE BOTH PREDICATES once go-unifi's alias tags match the
-			// struct's; the test below will start failing when it is fixed,
-			// which is the reminder.
+			// ipsec_pfs and ipsec_dynamic_routing are emitted unconditionally by
+			// the encoder (go-unifi v1.105.0); no suppression predicate needed
+			// here. See TestPFSAndDynamicRoutingAreEmittedUnconditionally.
 			resourcekit.BoolField[s2sModel, ui.Network]{
-				Wire:      "ipsec_pfs",
-				Model:     func(m *s2sModel) *types.Bool { return &m.PFS },
-				SDK:       func(s *ui.Network) *bool { return &s.IPSecPfs },
-				WriteWhen: func(m *s2sModel) bool { return m.PFS.ValueBool() },
+				Wire:  "ipsec_pfs",
+				Model: func(m *s2sModel) *types.Bool { return &m.PFS },
+				SDK:   func(s *ui.Network) *bool { return &s.IPSecPfs },
 			},
 			resourcekit.BoolField[s2sModel, ui.Network]{
-				Wire:      "ipsec_dynamic_routing",
-				Model:     func(m *s2sModel) *types.Bool { return &m.DynamicRouting },
-				SDK:       func(s *ui.Network) *bool { return &s.IPSecDynamicRouting },
-				WriteWhen: func(m *s2sModel) bool { return m.DynamicRouting.ValueBool() },
+				Wire:  "ipsec_dynamic_routing",
+				Model: func(m *s2sModel) *types.Bool { return &m.DynamicRouting },
+				SDK:   func(s *ui.Network) *bool { return &s.IPSecDynamicRouting },
 			},
 			s2sInt("route_distance", func(m *s2sModel) *types.Int64 { return &m.RouteDistance },
 				func(s *ui.Network) **int64 { return &s.RouteDistance }),
 		},
+		// Seeded here as well as in siteToSiteVPNKitBackend, because Configure binds
+		// the real Backend and a unit test calling ToModel on an unconfigured
+		// spec would otherwise dereference nil.
 		Backend: resourcekit.Backend[ui.Network]{
 			GetID: func(s *ui.Network) string { return s.ID },
 			SetID: func(s *ui.Network, id string) { s.ID = id },
@@ -265,14 +227,11 @@ func siteToSiteVPNKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Networ
 		UpdateFields: func(ctx context.Context, site string, in *ui.Network, fields ...string) (*ui.Network, error) {
 			return client.UpdateNetworkFields(ctx, site, in, fields...)
 		},
-		// DELETE CARRIES THE NAME IN ITS BODY, which the kit's Delete
-		// signature does not pass, so the object is read for it.
-		//
-		// The extra request is deliberate. Whether the controller actually
-		// requires that name is not knowable here -- it is a field in the
-		// DELETE body, not the path -- and dropping it to save a round trip
-		// would be changing a request shape on a guess, on the one operation
-		// with no way back.
+		// Delete's body carries the name, which the kit's Delete signature
+		// doesn't pass, so this reads the object for it. Whether the
+		// controller truly requires the name isn't verifiable from code, so
+		// it isn't dropped to save a round trip on the one operation with no
+		// way back.
 		Delete: func(ctx context.Context, site, id string) error {
 			existing, err := client.GetNetwork(ctx, site, id)
 			if err != nil {
@@ -284,7 +243,7 @@ func siteToSiteVPNKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Networ
 			}
 			return client.DeleteNetwork(ctx, site, id, name)
 		},
-		// LISTS EVERY NETWORK AND NARROWS TO THIS PURPOSE. The controller has
+		// Lists every network and narrows to this purpose: the controller has
 		// one networkconf endpoint for all seven kinds, so without the filter
 		// a site-to-site VPN list would return corporate LANs as well.
 		List: func(ctx context.Context, site string) ([]ui.Network, error) {
@@ -305,18 +264,12 @@ func siteToSiteVPNKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Networ
 	}
 }
 
-// siteToSiteVPNPreSharedKey sets the IPsec secret from whichever attribute the
-// practitioner used.
-//
-// NEITHER IS A FIELD, and that is not an oversight. pre_shared_key_wo is a
-// write-only argument: it never enters state, so it has no model value to read
-// on the way back. pre_shared_key is stored, but the read mapper deliberately
-// does not repopulate it -- the controller echoes the secret, and writing it
-// back would give write-only users a perpetual diff. A Field's ToModel always
-// writes, so neither can be one.
-//
-// THE WRITE-ONLY VALUE WINS when both are set, matching the hand-written
-// resource: a practitioner who supplies the ephemeral form means it.
+// siteToSiteVPNPreSharedKey sets the IPsec secret from whichever attribute
+// the practitioner used. Neither is a Field: pre_shared_key_wo is write-only
+// and never enters state, and pre_shared_key's read deliberately doesn't
+// repopulate from the controller's echo (that would give write-only users a
+// perpetual diff) -- a Field's ToModel always writes, so neither can be one.
+// The write-only value wins when both are set.
 func siteToSiteVPNPreSharedKey(
 	_ context.Context,
 	config, effective *s2sModel,

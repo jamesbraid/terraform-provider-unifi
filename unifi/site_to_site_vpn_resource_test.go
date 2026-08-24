@@ -42,10 +42,8 @@ list "unifi_site_to_site_vpn" "test" {
 }
 
 // TestSiteToSiteVPNModelRoundTrip validates the model <-> go-unifi Network
-// conversion for the unifi_site_to_site_vpn resource (#78). It is a unit test
-// rather than an acceptance test because the dockerized acceptance controller
-// has no WAN/peer to establish an IPsec tunnel; the live round-trip is exercised
-// against a real controller during development.
+// conversion. A unit test because the dockerized acceptance controller has
+// no WAN/peer to establish an IPsec tunnel.
 func TestSiteToSiteVPNModelRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
@@ -323,33 +321,6 @@ func Test_siteToSiteVPNResource_networkToModel(t *testing.T) {
 	})
 }
 
-func Test_optStr(t *testing.T) {
-	t.Run("null returns nil", func(t *testing.T) {
-		if got := optStr(types.StringNull()); got != nil {
-			t.Errorf("optStr(null) = %v, want nil", got)
-		}
-	})
-	t.Run("unknown returns nil", func(t *testing.T) {
-		if got := optStr(types.StringUnknown()); got != nil {
-			t.Errorf("optStr(unknown) = %v, want nil", got)
-		}
-	})
-	t.Run("empty string returns nil", func(t *testing.T) {
-		if got := optStr(types.StringValue("")); got != nil {
-			t.Errorf("optStr(\"\") = %v, want nil", got)
-		}
-	})
-	t.Run("non-empty string returns pointer", func(t *testing.T) {
-		got := optStr(types.StringValue("ikev2"))
-		if got == nil {
-			t.Fatal("optStr(\"ikev2\") returned nil")
-		}
-		if *got != "ikev2" {
-			t.Errorf("*got = %q, want ikev2", *got)
-		}
-	})
-}
-
 func Test_siteToSiteVPNResource_ListResourceConfigSchema(t *testing.T) {
 	r := newSiteToSiteVPNKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
@@ -377,23 +348,14 @@ func siteToSiteVPNToSDKWithHooks(
 	return sdk, diags
 }
 
-// EVERY WIRE NAME MUST BE ONE THE SITE-VPN ENCODER ACTUALLY EMITS, which the
-// wire-name check cannot tell you.
-//
-// go-unifi's Network encodes a different field set per purpose. The wire-name
-// check confirms a field's Wire matches the json tag on the struct member it
-// reaches -- and both ipsec_encryption and ipsec_ike_encryption are real tags,
-// so pointing ike_encryption at the wrong one satisfies it completely. Only
-// this test notices: marshalSiteVPN emits the first and not the second, and
-// maskedBody refuses a mask naming a field the encoder drops, so the mistake
-// surfaces as a failing update against a live controller and nowhere earlier.
-//
-// Asking the encoder is the whole method. A hand-kept list of the site-vpn
-// field set would be a second copy of something go-unifi already knows.
+// TestEveryWireNameIsEmittedBySiteVPNEncoding: go-unifi's Network encodes a
+// different field set per purpose, and both ipsec_encryption and
+// ipsec_ike_encryption are real json tags -- so a Wire pointing at the wrong
+// one passes the wire-name check and only fails here, where the encoder is
+// asked directly. maskedBody refuses a mask naming a field the encoder drops.
 func TestEveryWireNameIsEmittedBySiteVPNEncoding(t *testing.T) {
-	// A FULLY POPULATED OBJECT, because nearly every field is tagged omitempty:
-	// encoding an empty network emits almost nothing and would report every
-	// wire name as missing, which is what the first version of this test did.
+	// Fully populated because nearly every field is tagged omitempty; an
+	// empty network emits almost nothing.
 	ctx := context.Background()
 	subnets, d := types.ListValueFrom(ctx, types.StringType, []string{"10.0.0.0/24"})
 	if d.HasError() {
@@ -439,9 +401,8 @@ func TestEveryWireNameIsEmittedBySiteVPNEncoding(t *testing.T) {
 		)
 	}
 
-	// THE MASK, NOT EVERY FIELD. What must be emitted is what a write would
-	// actually name, and two fields are deliberately suppressed when false --
-	// see the descriptor's note on the go-unifi omitempty defect.
+	// The mask, not every field: what must be emitted is what a write would
+	// actually name.
 	spec := siteToSiteVPNKitSpec()
 	mask, err := spec.WireFields(populated)
 	if err != nil {
@@ -460,16 +421,11 @@ func TestEveryWireNameIsEmittedBySiteVPNEncoding(t *testing.T) {
 	}
 }
 
-// THE TWO SUPPRESSED BOOLEANS, asserted from both sides.
-//
-// go-unifi's marshalSiteVPN tags ipsec_pfs and ipsec_dynamic_routing omitempty
-// while the Network struct does not, so a false is dropped and the settings can
-// be turned on but never off. The descriptor keeps them out of the mask when
-// false to preserve that behaviour rather than turn it into a failed apply.
-//
-// WHEN go-unifi IS FIXED THIS TEST FAILS, which is the intended reminder to
-// delete both predicates: the false case will start being emitted.
-func TestPFSAndDynamicRoutingAreSuppressedExactlyWhereTheEncoderDropsThem(t *testing.T) {
+// Since go-unifi v1.105.0 the encoder emits ipsec_pfs and
+// ipsec_dynamic_routing unconditionally, so the mask must name them
+// unconditionally too -- omitting them when false silently drops the value,
+// making the setting one that can be turned on but never off.
+func TestPFSAndDynamicRoutingAreEmittedUnconditionally(t *testing.T) {
 	ctx := context.Background()
 	for _, on := range []bool{true, false} {
 		model := &siteToSiteVPNKitModel{
@@ -496,14 +452,19 @@ func TestPFSAndDynamicRoutingAreSuppressedExactlyWhereTheEncoderDropsThem(t *tes
 		for _, name := range []string{"ipsec_pfs", "ipsec_dynamic_routing"} {
 			inMask := slices.Contains(mask, name)
 			_, isEmitted := emitted[name]
+			if !inMask {
+				t.Errorf("with the value %v, %q is not in the mask; "+
+					"the encoder emits it unconditionally now, so the mask must name it "+
+					"unconditionally too or a false is silently dropped by this provider", on, name)
+			}
+			if !isEmitted {
+				t.Errorf("with the value %v, %q was not emitted by the encoder; "+
+					"go-unifi v1.105.0 was supposed to have fixed that", on, name)
+			}
 			if inMask != isEmitted {
 				t.Errorf("with the value %v, %q is in the mask=%v but emitted=%v; "+
 					"the mask and the encoder must agree or the write is refused",
 					on, name, inMask, isEmitted)
-			}
-			if inMask != on {
-				t.Errorf("with the value %v, %q in mask=%v; want it masked only when true",
-					on, name, inMask)
 			}
 		}
 	}
