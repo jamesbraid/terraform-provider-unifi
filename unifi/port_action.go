@@ -9,9 +9,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/action/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/action"
-	"github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/action_port"
 )
 
 // Ensure the implementation satisfies framework interfaces.
@@ -37,6 +37,22 @@ type portActionModel struct {
 	Timeouts   timeouts.Value     `tfsdk:"timeouts"`
 }
 
+func mergePortOverride(
+	existing []ui.DevicePortOverrides,
+	portNumber int64,
+	poeMode string,
+) []ui.DevicePortOverrides {
+	merged := slices.Clone(existing)
+	for i := range merged {
+		if merged[i].PortIDX != nil && *merged[i].PortIDX == portNumber {
+			merged[i].PoeMode = poeMode
+			return merged
+		}
+	}
+	port := portNumber
+	return append(merged, ui.DevicePortOverrides{PortIDX: &port, PoeMode: poeMode})
+}
+
 func (a *portAction) Metadata(
 	ctx context.Context,
 	req action.MetadataRequest,
@@ -50,26 +66,11 @@ func (a *portAction) Schema(
 	req action.SchemaRequest,
 	resp *action.SchemaResponse,
 ) {
-	resp.Schema = schema.Schema{
-		MarkdownDescription: "Performs an action on a UniFi device port, allowing configuration of PoE state and other port settings.",
-
-		Attributes: map[string]schema.Attribute{
-			"device_mac": schema.StringAttribute{
-				MarkdownDescription: "MAC address of the device containing the port to configure.",
-				CustomType:          hwtypes.MACAddressType{},
-				Required:            true,
-			},
-			"port_number": schema.Int64Attribute{
-				MarkdownDescription: "Port number (index) on the device to configure. Typically starts at 1.",
-				Required:            true,
-			},
-			"poe_mode": schema.StringAttribute{
-				MarkdownDescription: "PoE mode to set for the port. Valid values are `auto`, `pasv24`, `passthrough`, and `off`.",
-				Required:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-	}
+	resp.Schema = action_port.PortActionSchema(ctx)
+	// timeouts is provider-owned and declared "generated": false, exactly as on
+	// every managed surface: it comes from the framework's timeouts package
+	// rather than from the specification, so the kernel grafts it here.
+	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(ctx)
 }
 
 func (a *portAction) Configure(
@@ -77,19 +78,8 @@ func (a *portAction) Configure(
 	req action.ConfigureRequest,
 	resp *action.ConfigureResponse,
 ) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	client, ok := req.ProviderData.(*Client)
+	client, ok := actionClient(req.ProviderData, &resp.Diagnostics)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Action Configure Type",
-			fmt.Sprintf(
-				"Expected *Client, got: %T. Please report this issue to the provider developers.",
-				req.ProviderData,
-			),
-		)
 		return
 	}
 
@@ -103,7 +93,6 @@ func (a *portAction) Invoke(
 ) {
 	var config portActionModel
 
-	// Read the action configuration
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -118,7 +107,6 @@ func (a *portAction) Invoke(
 	ctx, cancel := context.WithTimeout(ctx, invokeTimeout)
 	defer cancel()
 
-	// Validate PoE mode
 	poeMode := config.PoeMode.ValueString()
 	validPoeModes := []string{"auto", "pasv24", "passthrough", "off"}
 	isValidPoeMode := slices.Contains(validPoeModes, poeMode)
@@ -136,7 +124,6 @@ func (a *portAction) Invoke(
 	deviceMAC := config.DeviceMAC.ValueString()
 	portNumber := config.PortNumber.ValueInt64()
 
-	// Get the device first to retrieve its ID
 	device, err := a.client.GetDeviceByMAC(ctx, a.client.Site, deviceMAC)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -146,36 +133,12 @@ func (a *portAction) Invoke(
 		return
 	}
 
-	// Update the device with port override for PoE configuration
-	portOverride := ui.DevicePortOverrides{
-		PortIDX: config.PortNumber.ValueInt64Pointer(),
-		PoeMode: poeMode,
-	}
-
-	// Check if the device already has port overrides
 	existingOverrides := device.PortOverrides
 	if existingOverrides == nil {
 		existingOverrides = []ui.DevicePortOverrides{}
 	}
 
-	// Find and update existing override or add new one
-	found := false
-	for i, override := range existingOverrides {
-		if override.PortIDX == config.PortNumber.ValueInt64Pointer() {
-			// Update existing override
-			existingOverrides[i].PoeMode = poeMode
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		// Add new override
-		existingOverrides = append(existingOverrides, portOverride)
-	}
-
-	// Update the device
-	device.PortOverrides = existingOverrides
+	device.PortOverrides = mergePortOverride(existingOverrides, portNumber, poeMode)
 	_, err = a.client.UpdateDevice(ctx, a.client.Site, device)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -189,6 +152,4 @@ func (a *portAction) Invoke(
 		)
 		return
 	}
-
-	// Action completed successfully - no result data to return for actions
 }
