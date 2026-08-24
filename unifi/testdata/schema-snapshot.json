@@ -6784,14 +6784,14 @@
           "optional": true,
           "sensitive": true,
           "write_only": true,
-          "description": "Write-only equivalent of `private_key` (Terraform 1.11+). Used at apply time but never written to state. Mutually exclusive with `private_key`.",
+          "description": "Write-only equivalent of `private_key` (Terraform 1.11+). Used at apply time but never written to state, so it can be sourced from an ephemeral resource (e.g. a Vault secret). Mutually exclusive with `private_key`; pair with `private_key_wo_version` to rotate it.",
           "description_kind": "markdown"
         },
         "wireguard.private_key_wo_version": {
           "kind": "attribute",
           "type": "\"number\"",
           "optional": true,
-          "description": "Version counter for `private_key_wo`. Increment this value to trigger a private key update.",
+          "description": "Version counter for `private_key_wo`. Terraform cannot compare a write-only value between applies, so a rotation has nothing else to notice; increment this to trigger one.",
           "description_kind": "markdown"
         }
       }

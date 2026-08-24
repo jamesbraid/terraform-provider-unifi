@@ -5,17 +5,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
-	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 func TestAccVPNClient_file_mode(t *testing.T) {
@@ -152,6 +149,9 @@ func TestAccVPNClient_with_preshared_key(t *testing.T) {
 	})
 }
 
+// TestAccVPNClient_write_only_private_key creates with private_key_wo,
+// confirms neither key attribute is in state, then rotates to a different
+// key by bumping private_key_wo_version and confirms state again.
 func TestAccVPNClient_write_only_private_key(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -202,6 +202,31 @@ func TestAccVPNClient_write_only_private_key(t *testing.T) {
 			},
 		},
 	})
+}
+
+func testAccVPNClientConfig_write_only_private_key(version int, privateKey string) string {
+	return fmt.Sprintf(`
+resource "unifi_vpn_client" "test" {
+  name          = "test-wireguard-write-only"
+  enabled       = false
+  subnet        = "10.0.3.2/24"
+  default_route = false
+  pull_dns      = false
+
+  wireguard = {
+    private_key_wo         = %q
+    private_key_wo_version = %d
+    interface              = "wan"
+    dns_servers            = ["8.8.8.8"]
+
+    peer = {
+      ip         = "192.0.2.1"
+      port       = 51820
+      public_key = "7B+2Z3odPbDNsfVr+F8invj6/mBKLVaolOHXZoCaBA0="
+    }
+  }
+}
+`, privateKey, version)
 }
 
 func testAccVPNClientConfig_file_mode() string {
@@ -276,31 +301,6 @@ resource "unifi_vpn_client" "test" {
 `
 }
 
-func testAccVPNClientConfig_write_only_private_key(version int, privateKey string) string {
-	return fmt.Sprintf(`
-resource "unifi_vpn_client" "test" {
-  name          = "test-wireguard-write-only"
-  enabled       = false
-  subnet        = "10.0.3.2/24"
-  default_route = false
-  pull_dns      = false
-
-  wireguard = {
-    private_key_wo         = %q
-    private_key_wo_version = %d
-    interface              = "wan"
-    dns_servers            = ["8.8.8.8"]
-
-    peer = {
-      ip         = "192.0.2.1"
-      port       = 51820
-      public_key = "7B+2Z3odPbDNsfVr+F8invj6/mBKLVaolOHXZoCaBA0="
-    }
-  }
-}
-`, privateKey, version)
-}
-
 func TestNewVPNClientResource(t *testing.T) {
 	r := NewVPNClientResource()
 	if r == nil {
@@ -373,28 +373,47 @@ func Test_wireguardModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_vpnClientResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ provider, want string }{
-		{"unifi", "unifi_vpn_client"},
-		{"test", "test_vpn_client"},
-	} {
-		t.Run(tt.provider, func(t *testing.T) {
-			r := &vpnClientResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.provider},
-				resp,
-			)
-			if resp.TypeName != tt.want {
-				t.Errorf("got %q, want %q", resp.TypeName, tt.want)
-			}
-		})
+// Test_vpnClientResource_privateKeyWriteOnlySchema pins the schema graft:
+// private_key_wo is write-only, sensitive and optional; private_key_wo_version
+// is an optional int64; and private_key itself is Optional (not Required),
+// since private_key_wo is now a second way to supply it.
+func Test_vpnClientResource_privateKeyWriteOnlySchema(t *testing.T) {
+	ctx := context.Background()
+	r := &vpnClientResource{}
+	resp := &fwresource.SchemaResponse{}
+	r.Schema(ctx, fwresource.SchemaRequest{}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("schema diagnostics: %v", resp.Diagnostics)
+	}
+
+	wireguard, ok := resp.Schema.Attributes["wireguard"].(rschema.SingleNestedAttribute)
+	if !ok {
+		t.Fatal("wireguard is not a single nested attribute")
+	}
+	privateKeyWO, ok := wireguard.Attributes["private_key_wo"].(rschema.StringAttribute)
+	if !ok {
+		t.Fatal("wireguard.private_key_wo is not a string attribute")
+	}
+	if !privateKeyWO.WriteOnly || !privateKeyWO.Sensitive || !privateKeyWO.Optional {
+		t.Fatalf("private_key_wo flags = write-only:%t sensitive:%t optional:%t",
+			privateKeyWO.WriteOnly, privateKeyWO.Sensitive, privateKeyWO.Optional)
+	}
+	privateKeyWOVersion, ok := wireguard.Attributes["private_key_wo_version"].(rschema.Int64Attribute)
+	if !ok || !privateKeyWOVersion.Optional {
+		t.Fatal("wireguard.private_key_wo_version is not an optional int64 attribute")
+	}
+	privateKey, ok := wireguard.Attributes["private_key"].(rschema.StringAttribute)
+	if !ok {
+		t.Fatal("wireguard.private_key is not a string attribute")
+	}
+	if privateKey.Required || !privateKey.Optional {
+		t.Error("wireguard.private_key is still Required; private_key_wo has no other way in " +
+			"to supply the key")
 	}
 }
 
 func Test_vpnClientResource_IdentitySchema(t *testing.T) {
-	r := &vpnClientResource{}
+	r := newVPNClientKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -405,268 +424,8 @@ func Test_vpnClientResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_vpnClientResource_Schema(t *testing.T) {
-	r := &vpnClientResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{"id", "site", "name", "enabled", "subnet", "default_route", "pull_dns", "wireguard", "timeouts"} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
-func Test_vpnClientResource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		data    any
-		wantErr bool
-	}{
-		{"nil", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct", &Client{Site: "default"}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &vpnClientResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantErr && !resp.Diagnostics.HasError() {
-				t.Error("expected error")
-			}
-			if !tt.wantErr && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected: %v", resp.Diagnostics)
-			}
-		})
-	}
-}
-
-func Test_vpnClientResource_modelToNetwork(t *testing.T) {
-	ctx := context.Background()
-	r := &vpnClientResource{}
-
-	t.Run("basic manual mode fields", func(t *testing.T) {
-		peerObj, d := types.ObjectValueFrom(
-			ctx,
-			wireguardPeerModel{}.AttributeTypes(),
-			wireguardPeerModel{
-				IP:        types.StringValue("1.2.3.4"),
-				Port:      types.Int64Value(51820),
-				PublicKey: types.StringValue("pubkey=="),
-			},
-		)
-		if d.HasError() {
-			t.Fatalf("building peer: %v", d)
-		}
-		wg := wireguardModel{
-			PrivateKey:          types.StringValue("privkey=="),
-			Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
-			Peer:                peerObj,
-			PresharedKeyEnabled: types.BoolValue(false),
-			PresharedKey:        types.StringNull(),
-			Interface:           types.StringValue("wan"),
-			DnsServers:          types.ListNull(types.StringType),
-		}
-		wgObj, d := types.ObjectValueFrom(ctx, wg.AttributeTypes(), wg)
-		if d.HasError() {
-			t.Fatalf("building wireguard: %v", d)
-		}
-
-		from := cidrtypes.NewIPv4PrefixValue("10.0.0.2/24")
-		model := &vpnClientResourceModel{
-			Name:         types.StringValue("test-vpn"),
-			Enabled:      types.BoolValue(true),
-			Subnet:       from,
-			DefaultRoute: types.BoolValue(false),
-			PullDNS:      types.BoolValue(false),
-			Wireguard:    wgObj,
-		}
-		network, diags := r.modelToNetwork(ctx, model)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if network.Purpose != unifi.PurposeVPNClient {
-			t.Errorf("Purpose = %q, want vpn-client", network.Purpose)
-		}
-		if network.VPNType == nil || *network.VPNType != "wireguard-client" {
-			t.Errorf("VPNType = %v, want wireguard-client", network.VPNType)
-		}
-		if network.WireguardClientMode == nil || *network.WireguardClientMode != "manual" {
-			t.Errorf("WireguardClientMode = %v, want manual", network.WireguardClientMode)
-		}
-	})
-
-	t.Run("null wireguard produces basic network", func(t *testing.T) {
-		from := cidrtypes.NewIPv4PrefixValue("10.0.0.1/24")
-		model := &vpnClientResourceModel{
-			Name:      types.StringValue("min-vpn"),
-			Enabled:   types.BoolValue(true),
-			Subnet:    from,
-			Wireguard: types.ObjectNull(wireguardModel{}.AttributeTypes()),
-		}
-		network, diags := r.modelToNetwork(ctx, model)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if network == nil {
-			t.Fatal("expected non-nil network")
-		}
-		if network.Purpose != unifi.PurposeVPNClient {
-			t.Errorf("Purpose = %q, want vpn-client", network.Purpose)
-		}
-	})
-}
-
-func Test_vpnClientResource_privateKeyWriteOnlySchema(t *testing.T) {
-	ctx := context.Background()
-	r := &vpnClientResource{}
-	var resp fwresource.SchemaResponse
-	r.Schema(ctx, fwresource.SchemaRequest{}, &resp)
-	if resp.Diagnostics.HasError() {
-		t.Fatalf("schema diagnostics: %v", resp.Diagnostics)
-	}
-
-	wg, ok := resp.Schema.Attributes["wireguard"].(schema.SingleNestedAttribute)
-	if !ok {
-		t.Fatal("wireguard is not a single nested attribute")
-	}
-	privateKeyWO, ok := wg.Attributes["private_key_wo"].(schema.StringAttribute)
-	if !ok {
-		t.Fatal("wireguard.private_key_wo is not a string attribute")
-	}
-	privateKeyWOVersion, ok := wg.Attributes["private_key_wo_version"].(schema.Int64Attribute)
-	if !ok || !privateKeyWOVersion.Optional {
-		t.Fatal("wireguard.private_key_wo_version is not an optional int64 attribute")
-	}
-	if !privateKeyWO.WriteOnly || !privateKeyWO.Sensitive || !privateKeyWO.Optional {
-		t.Fatalf(
-			"private_key_wo flags = write-only:%t sensitive:%t optional:%t",
-			privateKeyWO.WriteOnly,
-			privateKeyWO.Sensitive,
-			privateKeyWO.Optional,
-		)
-	}
-}
-
-func Test_vpnClientResource_networkToModel(t *testing.T) {
-	ctx := context.Background()
-	r := &vpnClientResource{}
-
-	t.Run("manual mode populates peer", func(t *testing.T) {
-		mode := "manual"
-		ip := "1.2.3.4"
-		port := int64(51820)
-		pubKey := "pubkey=="
-		subnet := "10.0.0.2/24"
-		name := "test-vpn"
-		network := &unifi.Network{
-			ID:                           "net-1",
-			Name:                         &name,
-			Enabled:                      true,
-			IPSubnet:                     &subnet,
-			WireguardClientMode:          &mode,
-			WireguardClientPeerIP:        &ip,
-			WireguardClientPeerPort:      &port,
-			WireguardClientPeerPublicKey: &pubKey,
-		}
-		model := &vpnClientResourceModel{}
-		priorState := &vpnClientResourceModel{}
-		diags := r.networkToModel(ctx, network, model, "default", priorState)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if model.ID.ValueString() != "net-1" {
-			t.Errorf("ID = %q, want net-1", model.ID.ValueString())
-		}
-		if model.Site.ValueString() != "default" {
-			t.Errorf("Site = %q, want default", model.Site.ValueString())
-		}
-		if model.Wireguard.IsNull() {
-			t.Error("Wireguard should not be null")
-		}
-	})
-
-	t.Run("write-only private key is not copied from API into state", func(t *testing.T) {
-		mode := "manual"
-		ip := "1.2.3.4"
-		port := int64(51820)
-		pubKey := "pubkey=="
-		apiPrivateKey := "must-not-enter-state=="
-		subnet := "10.0.0.2/24"
-		name := "write-only-vpn"
-		network := &unifi.Network{
-			ID:                           "net-wo",
-			Name:                         &name,
-			Enabled:                      true,
-			IPSubnet:                     &subnet,
-			WireguardClientMode:          &mode,
-			WireguardClientPeerIP:        &ip,
-			WireguardClientPeerPort:      &port,
-			WireguardClientPeerPublicKey: &pubKey,
-			WireguardPrivateKey:          &apiPrivateKey,
-		}
-
-		priorWG := wireguardModel{
-			PrivateKey:          types.StringNull(),
-			PrivateKeyWO:        types.StringNull(),
-			PrivateKeyWOVersion: types.Int64Value(7),
-			Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
-			Peer:                types.ObjectNull(wireguardPeerModel{}.AttributeTypes()),
-			PresharedKeyEnabled: types.BoolValue(false),
-			PresharedKey:        types.StringNull(),
-			Interface:           types.StringValue("wan"),
-			DnsServers:          types.ListNull(types.StringType),
-		}
-		priorWGObj, d := types.ObjectValueFrom(ctx, priorWG.AttributeTypes(), priorWG)
-		if d.HasError() {
-			t.Fatalf("building prior wireguard state: %v", d)
-		}
-		prior := &vpnClientResourceModel{Wireguard: priorWGObj}
-
-		var model vpnClientResourceModel
-		diags := r.networkToModel(ctx, network, &model, "default", prior)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		var gotWG wireguardModel
-		diags = model.Wireguard.As(ctx, &gotWG, basetypes.ObjectAsOptions{})
-		if diags.HasError() {
-			t.Fatalf("reading wireguard state: %v", diags)
-		}
-		if !gotWG.PrivateKey.IsNull() {
-			t.Fatalf("private key entered state: %q", gotWG.PrivateKey.ValueString())
-		}
-		if gotWG.PrivateKeyWOVersion.ValueInt64() != 7 {
-			t.Fatalf("private key version = %d, want 7", gotWG.PrivateKeyWOVersion.ValueInt64())
-		}
-	})
-
-	t.Run("no mode produces null peer and null configuration", func(t *testing.T) {
-		name := "no-mode-vpn"
-		network := &unifi.Network{
-			ID:   "net-2",
-			Name: &name,
-		}
-		model := &vpnClientResourceModel{}
-		priorState := &vpnClientResourceModel{}
-		diags := r.networkToModel(ctx, network, model, "default", priorState)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if model.Wireguard.IsNull() {
-			t.Error("Wireguard object should not be null even with no mode")
-		}
-	})
-}
-
 func Test_vpnClientResource_ListResourceConfigSchema(t *testing.T) {
-	r := &vpnClientResource{}
+	r := newVPNClientKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
