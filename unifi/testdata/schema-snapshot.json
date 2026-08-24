@@ -3905,11 +3905,8 @@
           "type": "[\"set\",\"string\"]",
           "optional": true,
           "computed": true,
-          "description": "The IDs of networks excluded from the port profile (used when `tagged_vlan_mgmt` is `custom`). Computed from the controller when not set.",
-          "description_kind": "plain",
-          "plan_modifiers": [
-            "setplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
-          ]
+          "description": "The controller-facing set of networks excluded from the port profile when `tagged_vlan_mgmt` is `custom`. This advanced interface conflicts with `tagged_networkconf_ids`; prefer the exact tagged-network set.",
+          "description_kind": "plain"
         },
         "fec_mode": {
           "kind": "attribute",
@@ -3923,9 +3920,8 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "The type forwarding to use for the port profile. Can be `all`, `native`, `customize` or `disabled`.",
-          "description_kind": "plain",
-          "default": "stringdefault.staticStringDefault: value defaults to all"
+          "description": "The forwarding mode. Can be `all`, `native`, `customize`, or `disabled`; tagged VLAN configuration derives the matching value when omitted.",
+          "description_kind": "plain"
         },
         "full_duplex": {
           "kind": "attribute",
@@ -4183,7 +4179,8 @@
           "kind": "attribute",
           "type": "[\"set\",\"string\"]",
           "optional": true,
-          "description": "The IDs of networks to tag traffic with for the port profile.",
+          "computed": true,
+          "description": "The exact set of VLAN network IDs to carry tagged. The provider translates this to the controller's exclusion list and keeps it exact as site networks change. Conflicts with `excluded_networkconf_ids`.",
           "description_kind": "plain"
         },
         "tagged_vlan_mgmt": {
@@ -4191,7 +4188,7 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "How tagged VLANs are managed on the port. Can be `auto`, `block_all`, or `custom`.",
+          "description": "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom). An exact tagged or excluded set derives the matching mode when omitted.",
           "description_kind": "plain"
         },
         "timeouts": {
