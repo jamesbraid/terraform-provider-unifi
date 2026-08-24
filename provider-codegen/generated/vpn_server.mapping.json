@@ -1,0 +1,224 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_vpn_server",
+  "resource": "unifi_vpn_server",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip_subnet",
+      "terraform_name": "subnet",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "radiusprofile_id",
+      "terraform_name": "radiusprofile_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_dns_enabled",
+      "terraform_name": "dns.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "l2tp_allow_weak_ciphers",
+      "terraform_name": "l2tp.allow_weak_ciphers",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ipsec_pre_shared_key",
+      "terraform_name": "l2tp.pre_shared_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "openvpn_mode",
+      "terraform_name": "openvpn.mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "openvpn_encryption_cipher",
+      "terraform_name": "openvpn.encryption_cipher",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_auth_key",
+      "terraform_name": "openvpn.auth_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ca_crt",
+      "terraform_name": "openvpn.ca_crt",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ca_key",
+      "terraform_name": "openvpn.ca_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_dh_key",
+      "terraform_name": "openvpn.dh_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_server_crt",
+      "terraform_name": "openvpn.server_crt",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_server_key",
+      "terraform_name": "openvpn.server_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_shared_client_crt",
+      "terraform_name": "openvpn.shared_client_crt",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_shared_client_key",
+      "terraform_name": "openvpn.shared_client_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_wireguard_private_key",
+      "terraform_name": "wireguard.private_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wireguard_public_key",
+      "terraform_name": "wireguard.public_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_dns_1",
+      "terraform_name": "dns.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_dns_2",
+      "terraform_name": "dns.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "l2tp_interface",
+      "terraform_name": "wan.interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "openvpn_interface",
+      "terraform_name": "wan.interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_interface",
+      "terraform_name": "wan.interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "l2tp_local_wan_ip",
+      "terraform_name": "wan.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "openvpn_local_wan_ip",
+      "terraform_name": "wan.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_local_wan_ip",
+      "terraform_name": "wan.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "local_port",
+      "terraform_name": "openvpn.port, wireguard.port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": ""
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

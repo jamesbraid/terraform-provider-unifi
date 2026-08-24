@@ -1,0 +1,713 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_setting",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "AutoSpeedtest.cron_expr",
+      "terraform_name": "auto_speedtest.cron_expr",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "AutoSpeedtest.enabled",
+      "terraform_name": "auto_speedtest.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Country.code",
+      "terraform_name": "country.code",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Doh.custom_servers",
+      "terraform_name": "doh.custom_servers",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Doh.server_names",
+      "terraform_name": "doh.server_names",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Doh.state",
+      "terraform_name": "doh.state",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Dpi.enabled",
+      "terraform_name": "dpi.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Dpi.fingerprintingEnabled",
+      "terraform_name": "dpi.fingerprinting_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "IgmpSnooping.enabled",
+      "terraform_name": "igmp_snooping.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "IgmpSnooping.network_ids",
+      "terraform_name": "igmp_snooping.network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.advanced_filtering_preference",
+      "terraform_name": "ips.advanced_filtering_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.content_filtering_blocking_page_enabled",
+      "terraform_name": "ips.content_filtering_blocking_page_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.enabled_categories",
+      "terraform_name": "ips.enabled_categories",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.enabled_networks",
+      "terraform_name": "ips.enabled_networks",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.honeypot",
+      "terraform_name": "ips.honeypot",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.honeypot_enabled",
+      "terraform_name": "ips.honeypot_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.ips_mode",
+      "terraform_name": "ips.ips_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.memory_optimized",
+      "terraform_name": "ips.memory_optimized",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ips.restrict_torrents",
+      "terraform_name": "ips.restrict_torrents",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "IpsSuppression.alerts",
+      "terraform_name": "ips.suppression_alerts",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "IpsSuppression.whitelist",
+      "terraform_name": "ips.suppression_whitelist",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.brightness",
+      "terraform_name": "lcm.brightness",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.enabled",
+      "terraform_name": "lcm.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.idle_timeout",
+      "terraform_name": "lcm.idle_timeout",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.sync",
+      "terraform_name": "lcm.sync",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Lcm.touch_event",
+      "terraform_name": "lcm.touch_event",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.advanced_feature_enabled",
+      "terraform_name": "mgmt.advanced_feature_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.auto_upgrade",
+      "terraform_name": "mgmt.auto_upgrade",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.auto_upgrade_hour",
+      "terraform_name": "mgmt.auto_upgrade_hour",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.debug_tools_enabled",
+      "terraform_name": "mgmt.debug_tools_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.direct_connect_enabled",
+      "terraform_name": "mgmt.direct_connect_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_auth_password_enabled",
+      "terraform_name": "mgmt.ssh_auth_password_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_enabled",
+      "terraform_name": "mgmt.ssh_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_keys",
+      "terraform_name": "mgmt.ssh_keys",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_password",
+      "terraform_name": "mgmt.ssh_password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.x_ssh_username",
+      "terraform_name": "mgmt.ssh_username",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.unifi_idp_enabled",
+      "terraform_name": "mgmt.unifi_idp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mgmt.wifiman_enabled",
+      "terraform_name": "mgmt.wifiman_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "NetworkOptimization.enabled",
+      "terraform_name": "network_optimization.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.ntp_server_1",
+      "terraform_name": "ntp.ntp_server_1",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.ntp_server_2",
+      "terraform_name": "ntp.ntp_server_2",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.ntp_server_3",
+      "terraform_name": "ntp.ntp_server_3",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.ntp_server_4",
+      "terraform_name": "ntp.ntp_server_4",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Ntp.setting_preference",
+      "terraform_name": "ntp.setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.accounting_enabled",
+      "terraform_name": "radius.accounting_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.acct_port",
+      "terraform_name": "radius.acct_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.auth_port",
+      "terraform_name": "radius.auth_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.enabled",
+      "terraform_name": "radius.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.interim_update_interval",
+      "terraform_name": "radius.interim_update_interval",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Radius.x_secret",
+      "terraform_name": "radius.secret",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.contents",
+      "terraform_name": "syslog.contents",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.debug",
+      "terraform_name": "syslog.debug",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.enabled",
+      "terraform_name": "syslog.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.ip",
+      "terraform_name": "syslog.ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.log_all_contents",
+      "terraform_name": "syslog.log_all_contents",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.netconsole_enabled",
+      "terraform_name": "syslog.netconsole_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.netconsole_host",
+      "terraform_name": "syslog.netconsole_host",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.netconsole_port",
+      "terraform_name": "syslog.netconsole_port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.port",
+      "terraform_name": "syslog.port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.this_controller",
+      "terraform_name": "syslog.this_controller",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Rsyslogd.this_controller_encrypted_only",
+      "terraform_name": "syslog.this_controller_encrypted_only",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "broadcast_ping",
+      "terraform_name": "usg.broadcast_ping",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dns_verification",
+      "terraform_name": "usg.dns_verification",
+      "structural_type": "object",
+      "terraform_type": "single_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ftp_module",
+      "terraform_name": "usg.ftp_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "SettingUsgGeoIPFiltering.action",
+      "terraform_name": "usg.geo_ip_filtering_block",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "SettingUsgGeoIPFiltering.countries",
+      "terraform_name": "usg.geo_ip_filtering_countries",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "SettingUsgGeoIPFiltering.enabled",
+      "terraform_name": "usg.geo_ip_filtering_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "SettingUsgGeoIPFiltering.traffic_direction",
+      "terraform_name": "usg.geo_ip_filtering_traffic_direction",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "gre_module",
+      "terraform_name": "usg.gre_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "h323_module",
+      "terraform_name": "usg.h323_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "icmp_timeout",
+      "terraform_name": "usg.icmp_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mss_clamp",
+      "terraform_name": "usg.mss_clamp",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_accounting",
+      "terraform_name": "usg.offload_accounting",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_l2_blocking",
+      "terraform_name": "usg.offload_l2_blocking",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_sch",
+      "terraform_name": "usg.offload_sch",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "other_timeout",
+      "terraform_name": "usg.other_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "pptp_module",
+      "terraform_name": "usg.pptp_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "receive_redirects",
+      "terraform_name": "usg.receive_redirects",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "send_redirects",
+      "terraform_name": "usg.send_redirects",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "sip_module",
+      "terraform_name": "usg.sip_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "syn_cookies",
+      "terraform_name": "usg.syn_cookies",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_close_timeout",
+      "terraform_name": "usg.tcp_close_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_close_wait_timeout",
+      "terraform_name": "usg.tcp_close_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_established_timeout",
+      "terraform_name": "usg.tcp_established_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_fin_wait_timeout",
+      "terraform_name": "usg.tcp_fin_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_last_ack_timeout",
+      "terraform_name": "usg.tcp_last_ack_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_syn_recv_timeout",
+      "terraform_name": "usg.tcp_syn_recv_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_syn_sent_timeout",
+      "terraform_name": "usg.tcp_syn_sent_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_time_wait_timeout",
+      "terraform_name": "usg.tcp_time_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tftp_module",
+      "terraform_name": "usg.tftp_module",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "timeout_setting_preference",
+      "terraform_name": "usg.timeout_setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "udp_other_timeout",
+      "terraform_name": "usg.udp_other_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "udp_stream_timeout",
+      "terraform_name": "usg.udp_stream_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "unbind_wan_monitors",
+      "terraform_name": "usg.unbind_wan_monitors",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_enabled",
+      "terraform_name": "usg.upnp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_nat_pmp_enabled",
+      "terraform_name": "usg.upnp_nat_pmp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_secure_mode",
+      "terraform_name": "usg.upnp_secure_mode",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_wan_interface",
+      "terraform_name": "usg.upnp_wan_interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "id",
+      "terraform_type": "string",
+      "disposition": "computed",
+      "generated": true
+    },
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

@@ -1,0 +1,496 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_network",
+  "resource": "unifi_network",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "auto_scale_enabled",
+      "terraform_name": "auto_scale",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "domain_name",
+      "terraform_name": "domain_name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "gateway_type",
+      "terraform_name": "gateway_type",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "igmp_snooping",
+      "terraform_name": "igmp_snooping",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "internet_access_enabled",
+      "terraform_name": "internet_access",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip_aliases",
+      "terraform_name": "ip_aliases",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip_subnet",
+      "terraform_name": "subnet",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_client_address_assignment",
+      "terraform_name": "ipv6_client_address_assignment",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_interface_type",
+      "terraform_name": "ipv6_interface_type",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_pd_auto_prefixid_enabled",
+      "terraform_name": "ipv6_pd_auto_prefixid_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_pd_interface",
+      "terraform_name": "ipv6_pd_interface",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_pd_prefixid",
+      "terraform_name": "ipv6_pd_prefixid",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_pd_start",
+      "terraform_name": "ipv6_pd_start",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_pd_stop",
+      "terraform_name": "ipv6_pd_stop",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_ra_enabled",
+      "terraform_name": "ipv6_ra",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_ra_preferred_lifetime",
+      "terraform_name": "ipv6_ra_preferred_lifetime",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_ra_priority",
+      "terraform_name": "ipv6_ra_priority",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_ra_valid_lifetime",
+      "terraform_name": "ipv6_ra_valid_lifetime",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_subnet",
+      "terraform_name": "ipv6_static_subnet",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "lte_lan_enabled",
+      "terraform_name": "lte_lan",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mdns_enabled",
+      "terraform_name": "multicast_dns",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "nat_outbound_ip_addresses",
+      "terraform_name": "nat_outbound_ip_addresses",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "network_isolation_enabled",
+      "terraform_name": "network_isolation",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpguard_enabled",
+      "terraform_name": "dhcp_guarding.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcp_relay_enabled",
+      "terraform_name": "dhcp_relay.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcp_relay_servers",
+      "terraform_name": "dhcp_relay.servers",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_enabled",
+      "terraform_name": "dhcp_server.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_start",
+      "terraform_name": "dhcp_server.start",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_stop",
+      "terraform_name": "dhcp_server.stop",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_gateway_enabled",
+      "terraform_name": "dhcp_server.gateway_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_conflict_checking",
+      "terraform_name": "dhcp_server.conflict_checking",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_ntp_enabled",
+      "terraform_name": "dhcp_server.ntp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_time_offset_enabled",
+      "terraform_name": "dhcp_server.time_offset_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_dns_enabled",
+      "terraform_name": "dhcp_server.dns_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_leasetime",
+      "terraform_name": "dhcp_server.leasetime",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_wpad_url",
+      "terraform_name": "dhcp_server.wpad_url",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_tftp_server",
+      "terraform_name": "dhcp_server.tftp_server",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_unifi_controller",
+      "terraform_name": "dhcp_server.unifi_controller",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpdv6_enabled",
+      "terraform_name": "dhcp_v6_server.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpdv6_dns_auto",
+      "terraform_name": "dhcp_v6_server.dns_auto",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpdv6_leasetime",
+      "terraform_name": "dhcp_v6_server.lease",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpdv6_start",
+      "terraform_name": "dhcp_v6_server.start",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpdv6_stop",
+      "terraform_name": "dhcp_v6_server.stop",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_boot_enabled",
+      "terraform_name": "dhcp_server.boot",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_boot_server",
+      "terraform_name": "dhcp_server.boot",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_boot_filename",
+      "terraform_name": "dhcp_server.boot",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_dns_1",
+      "terraform_name": "dhcp_server.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_dns_2",
+      "terraform_name": "dhcp_server.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_dns_3",
+      "terraform_name": "dhcp_server.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_dns_4",
+      "terraform_name": "dhcp_server.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_ip_1",
+      "terraform_name": "dhcp_guarding.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_ip_2",
+      "terraform_name": "dhcp_guarding.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_ip_3",
+      "terraform_name": "dhcp_guarding.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_wins_enabled",
+      "terraform_name": "dhcp_server.wins",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_wins_1",
+      "terraform_name": "dhcp_server.wins",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_wins_2",
+      "terraform_name": "dhcp_server.wins",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpdv6_dns_1",
+      "terraform_name": "dhcp_v6_server.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpdv6_dns_2",
+      "terraform_name": "dhcp_v6_server.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpdv6_dns_3",
+      "terraform_name": "dhcp_v6_server.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpdv6_dns_4",
+      "terraform_name": "dhcp_v6_server.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "purpose",
+      "terraform_name": "purpose, third_party_gateway",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "vlan",
+      "terraform_name": "vlan",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "vlan_enabled",
+      "terraform_name": "vlan",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": ""
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "ipv6_aliases",
+      "terraform_type": "list",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

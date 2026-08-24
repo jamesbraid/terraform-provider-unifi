@@ -1,0 +1,411 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_wlan",
+  "resource": "unifi_wlan",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ap_group_ids",
+      "terraform_name": "ap_group_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "set",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ap_group_mode",
+      "terraform_name": "ap_group_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "bc_filter_list",
+      "terraform_name": "bc_filter_list",
+      "structural_type": "array<string>",
+      "terraform_type": "set",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "bss_transition",
+      "terraform_name": "bss_transition",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dtim_6e",
+      "terraform_name": "dtim_6e",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dtim_mode",
+      "terraform_name": "dtim_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dtim_na",
+      "terraform_name": "dtim_na",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dtim_ng",
+      "terraform_name": "dtim_ng",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enhanced_iot",
+      "terraform_name": "enhanced_iot",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "fast_roaming_enabled",
+      "terraform_name": "fast_roaming_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "group_rekey",
+      "terraform_name": "group_rekey",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "hide_ssid",
+      "terraform_name": "hide_ssid",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "hotspot2conf_enabled",
+      "terraform_name": "hotspot2conf_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "iapp_enabled",
+      "terraform_name": "iapp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "is_guest",
+      "terraform_name": "is_guest",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "l2_isolation",
+      "terraform_name": "l2_isolation",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mcastenhance_enabled",
+      "terraform_name": "multicast_enhance",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "minrate_na_data_rate_kbps",
+      "terraform_name": "minimum_data_rate_5g_kbps",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "minrate_ng_data_rate_kbps",
+      "terraform_name": "minimum_data_rate_2g_kbps",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "minrate_setting_preference",
+      "terraform_name": "minrate_setting_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mlo_enabled",
+      "terraform_name": "mlo_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "nas_identifier_type",
+      "terraform_name": "nas_identifier_type",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "networkconf_id",
+      "terraform_name": "network_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "no2ghz_oui",
+      "terraform_name": "no2ghz_oui",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "pmf_mode",
+      "terraform_name": "pmf_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "private_preshared_keys",
+      "terraform_name": "private_preshared_keys",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "private_preshared_keys_enabled",
+      "terraform_name": "private_preshared_keys_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "proxy_arp",
+      "terraform_name": "proxy_arp",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "radius_mac_auth_enabled",
+      "terraform_name": "radius_mac_auth_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "radiusprofile_id",
+      "terraform_name": "radius_profile_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "roaming_assistant_6e_enabled",
+      "terraform_name": "roaming_assistant_6e_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "roaming_assistant_6e_rssi",
+      "terraform_name": "roaming_assistant_6e_rssi",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "roaming_assistant_na_enabled",
+      "terraform_name": "roaming_assistant_na_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "roaming_assistant_na_rssi",
+      "terraform_name": "roaming_assistant_na_rssi",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "schedule_with_duration",
+      "terraform_name": "schedule",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "security",
+      "terraform_name": "security",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "uapsd_enabled",
+      "terraform_name": "uapsd",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "usergroup_id",
+      "terraform_name": "user_group_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "vlan",
+      "terraform_name": "vlan",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "vlan_enabled",
+      "terraform_name": "vlan_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wlan_band",
+      "terraform_name": "wlan_band",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wlan_bands",
+      "terraform_name": "wlan_bands",
+      "structural_type": "array<string>",
+      "terraform_type": "set",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wpa3_enhanced_192",
+      "terraform_name": "wpa3_enhanced_192",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wpa3_fast_roaming",
+      "terraform_name": "wpa3_fast_roaming",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wpa3_support",
+      "terraform_name": "wpa3_support",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wpa3_transition",
+      "terraform_name": "wpa3_transition",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wpa_enc",
+      "terraform_name": "wpa_enc",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wpa_mode",
+      "terraform_name": "wpa_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_passphrase",
+      "terraform_name": "passphrase",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mac_filter_enabled",
+      "terraform_name": "mac_filter.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mac_filter_list",
+      "terraform_name": "mac_filter.list",
+      "structural_type": "array<string>",
+      "terraform_type": "set",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mac_filter_policy",
+      "terraform_name": "mac_filter.policy",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "passphrase_wo",
+      "disposition": "managed",
+      "generated": false
+    },
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

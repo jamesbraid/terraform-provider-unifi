@@ -1,0 +1,69 @@
+{
+  "format_version": 1,
+  "surface_kind": "data_source",
+  "surface_name": "unifi_port_profile",
+  "resource": "unifi_port_profile",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "excluded_networkconf_ids",
+      "terraform_name": "excluded_networkconf_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "set",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "forward",
+      "terraform_name": "forward",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "native_networkconf_id",
+      "terraform_name": "native_networkconf_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tagged_vlan_mgmt",
+      "terraform_name": "tagged_vlan_mgmt",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "tagged_networkconf_ids",
+      "terraform_type": "set",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

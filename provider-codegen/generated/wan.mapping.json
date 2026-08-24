@@ -1,0 +1,329 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_wan",
+  "resource": "unifi_wan",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip_aliases",
+      "terraform_name": "ip_aliases",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_setting_preference",
+      "terraform_name": "ipv6_setting_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mac_override_enabled",
+      "terraform_name": "mac_override_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "report_wan_event",
+      "terraform_name": "report_wan_event",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "single_network_lan",
+      "terraform_name": "single_network_lan",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dslite_remote_host",
+      "terraform_name": "wan_dslite_remote_host",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dslite_remote_host_auto",
+      "terraform_name": "wan_dslite_remote_host_auto",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_networkgroup",
+      "terraform_name": "networkgroup",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_provider_capabilities",
+      "terraform_name": "provider_capabilities",
+      "structural_type": "object",
+      "terraform_type": "single_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_type",
+      "terraform_name": "type",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_type_v6",
+      "terraform_name": "type_v6",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dhcp_cos",
+      "terraform_name": "dhcp.cos",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dhcp_options",
+      "terraform_name": "dhcp.options",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dhcpv6_cos",
+      "terraform_name": "dhcpv6.cos",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dhcpv6_pd_size",
+      "terraform_name": "dhcpv6.pd_size",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dhcpv6_pd_size_auto",
+      "terraform_name": "dhcpv6.pd_size_auto",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dhcpv6_options",
+      "terraform_name": "dhcpv6.options",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ipv6_wan_delegation_type",
+      "terraform_name": "dhcpv6.wan_delegation_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dns1",
+      "terraform_name": "dns.primary",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dns2",
+      "terraform_name": "dns.secondary",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_ipv6_dns1",
+      "terraform_name": "dns.ipv6_primary",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_ipv6_dns2",
+      "terraform_name": "dns.ipv6_secondary",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_dns_preference",
+      "terraform_name": "dns.preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_ipv6_dns_preference",
+      "terraform_name": "dns.ipv6_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_egress_qos_enabled",
+      "terraform_name": "egress_qos.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_egress_qos",
+      "terraform_name": "egress_qos.priority",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "igmp_proxy_for",
+      "terraform_name": "igmp_proxy.downstream",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "igmp_proxy_upstream",
+      "terraform_name": "igmp_proxy.upstream",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_load_balance_type",
+      "terraform_name": "load_balance.type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_load_balance_weight",
+      "terraform_name": "load_balance.weight",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_failover_priority",
+      "terraform_name": "load_balance.failover_priority",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_smartq_enabled",
+      "terraform_name": "smartq.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_smartq_up_rate",
+      "terraform_name": "smartq.up_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_smartq_down_rate",
+      "terraform_name": "smartq.down_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_enabled",
+      "terraform_name": "upnp.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_wan_interface",
+      "terraform_name": "upnp.wan_interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_nat_pmp_enabled",
+      "terraform_name": "upnp.nat_pmp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_secure_mode",
+      "terraform_name": "upnp.secure_mode",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_vlan_enabled",
+      "terraform_name": "vlan.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wan_vlan",
+      "terraform_name": "vlan.id",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

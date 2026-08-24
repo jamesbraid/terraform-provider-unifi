@@ -62,6 +62,7 @@ func New() provider.Provider {
 	return &unifiProvider{}
 }
 
+//go:generate go run ../cmd/metadata-contract-gen -dir . -output ../internal/generated/metadatacontract/contract_gen.go
 func (p *unifiProvider) Metadata(
 	ctx context.Context,
 	req provider.MetadataRequest,

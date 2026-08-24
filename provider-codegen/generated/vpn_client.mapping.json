@@ -1,0 +1,140 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_vpn_client",
+  "resource": "unifi_vpn_client",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip_subnet",
+      "terraform_name": "subnet",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "vpn_client_default_route",
+      "terraform_name": "default_route",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "vpn_client_pull_dns",
+      "terraform_name": "pull_dns",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_wireguard_private_key",
+      "terraform_name": "wireguard.private_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wireguard_interface",
+      "terraform_name": "wireguard.interface",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wireguard_client_preshared_key",
+      "terraform_name": "wireguard.preshared_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wireguard_client_preshared_key_enabled",
+      "terraform_name": "wireguard.preshared_key_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "",
+      "terraform_name": "wireguard.configuration",
+      "structural_type": "invented",
+      "terraform_type": "single_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcpd_dns_1",
+      "terraform_name": "wireguard.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_dns_2",
+      "terraform_name": "wireguard.dns_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_client_mode",
+      "terraform_name": "wireguard.peer",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_client_peer_ip",
+      "terraform_name": "wireguard.peer",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_client_peer_port",
+      "terraform_name": "wireguard.peer",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "wireguard_client_peer_public_key",
+      "terraform_name": "wireguard.peer",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

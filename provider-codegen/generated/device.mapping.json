@@ -1,0 +1,277 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_device",
+  "resource": "unifi_device",
+  "fields": [
+    {
+      "structural_name": "adopted",
+      "terraform_name": "adopted",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "bandsteering_mode",
+      "terraform_name": "bandsteering_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "config_network",
+      "terraform_name": "config_network",
+      "structural_type": "object",
+      "terraform_type": "single_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "disabled",
+      "terraform_name": "disabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "flowctrl_enabled",
+      "terraform_name": "flowctrl_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "jumboframe_enabled",
+      "terraform_name": "jumboframe_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "lcm_brightness",
+      "terraform_name": "lcm_brightness",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "lcm_brightness_override",
+      "terraform_name": "lcm_brightness_override",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "lcm_idle_timeout",
+      "terraform_name": "lcm_idle_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "lcm_idle_timeout_override",
+      "terraform_name": "lcm_idle_timeout_override",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "lcm_night_mode_begins",
+      "terraform_name": "lcm_night_mode_begins",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "lcm_night_mode_ends",
+      "terraform_name": "lcm_night_mode_ends",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "led_override",
+      "terraform_name": "led_override",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "led_override_color",
+      "terraform_name": "led_override_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "led_override_color_brightness",
+      "terraform_name": "led_override_color_brightness",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "locked",
+      "terraform_name": "locked",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mac",
+      "terraform_name": "mac",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mesh_sta_vap_enabled",
+      "terraform_name": "mesh_sta_vap_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mgmt_network_id",
+      "terraform_name": "mgmt_network_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "model",
+      "terraform_name": "model",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "name",
+      "terraform_name": "name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "outdoor_mode_override",
+      "terraform_name": "outdoor_mode_override",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "outlet_enabled",
+      "terraform_name": "outlet_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "outlet_overrides",
+      "terraform_name": "outlet_overrides",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "poe_mode",
+      "terraform_name": "poe_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "port_overrides",
+      "terraform_name": "port_override",
+      "structural_type": "array<object>",
+      "terraform_type": "set_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "radio_table",
+      "terraform_name": "radio_table",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "state",
+      "terraform_name": "state",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "stp_priority",
+      "terraform_name": "stp_priority",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "stp_version",
+      "terraform_name": "stp_version",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "switch_vlan_enabled",
+      "terraform_name": "switch_vlan_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "type",
+      "terraform_name": "type",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "volume",
+      "terraform_name": "volume",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_baresip_password",
+      "terraform_name": "x_baresip_password",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "allow_adoption",
+      "terraform_type": "bool",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "forget_on_destroy",
+      "terraform_type": "bool",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "id",
+      "terraform_type": "string",
+      "disposition": "computed",
+      "generated": true
+    },
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

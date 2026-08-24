@@ -1,0 +1,98 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_traffic_route",
+  "resource": "unifi_traffic_route",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "description",
+      "terraform_name": "description",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "kill_switch_enabled",
+      "terraform_name": "kill_switch_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "network_id",
+      "terraform_name": "network_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "next_hop",
+      "terraform_name": "next_hop",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "domains",
+      "terraform_name": "destination.domain",
+      "structural_type": "array<object>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "regions",
+      "terraform_name": "destination.region",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip_addresses",
+      "terraform_name": "destination.ip",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "ip_ranges",
+      "terraform_name": "destination.ip",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "target_devices",
+      "terraform_name": "source.clients, source.networks",
+      "structural_type": "array<object>",
+      "terraform_type": "",
+      "disposition": ""
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

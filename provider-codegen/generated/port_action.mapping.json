@@ -1,0 +1,32 @@
+{
+  "format_version": 1,
+  "surface_kind": "action",
+  "surface_name": "unifi_port",
+  "resource": "unifi_port",
+  "fields": [],
+  "provider_owned": [
+    {
+      "terraform_name": "device_mac",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "poe_mode",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "port_number",
+      "terraform_type": "int64",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}
