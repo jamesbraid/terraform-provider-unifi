@@ -188,6 +188,7 @@ resource "unifi_firewall_policy" "block_web_domains" {
 - `ip_version` (String) The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.
 - `logging` (Boolean) Whether to log packets matching this policy. Defaults to `false`.
 - `protocol` (String) The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.
+- `schedule` (Attributes) When the policy is in force. Omit it to leave the controller's schedule alone; a policy created without one is always in force. (see [below for nested schema](#nestedatt--schedule))
 - `site` (String) The name of the UniFi site. Defaults to the site configured in the provider.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
@@ -197,7 +198,6 @@ resource "unifi_firewall_policy" "block_web_domains" {
 - `icmp_v6_typename` (String) ICMPv6 type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.
 - `id` (String) The ID of the firewall policy.
 - `index` (Number) The ordering index of the policy within its zone-pair, assigned by the controller. **Read-only:** UniFi does not accept a client-supplied index on create or update (the policy is always appended to the end of its source/destination zone-pair), and the supported API exposes no reorder operation, so policy ordering cannot be managed through this provider. Reorder policies in the UniFi UI if needed.
-- `schedule` (Attributes) Schedule returned by the UniFi controller. It is preserved in state so importing a scheduled policy or updating another field does not replace the existing schedule. (see [below for nested schema](#nestedatt--schedule))
 
 <a id="nestedatt--destination"></a>
 ### Nested Schema for `destination`
@@ -212,6 +212,10 @@ Optional:
 - `client_macs` (List of String) List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.
 - `ip_group_id` (String) ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.
 - `ips` (List of String) List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.
+- `match_mac` (Boolean) Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.
+- `match_opposite_ips` (Boolean) INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.
+- `match_opposite_networks` (Boolean) INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.
+- `match_opposite_ports` (Boolean) INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.
 - `network_ids` (List of String) List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.
 - `port` (String) Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match.
 - `port_group_id` (String) ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.
@@ -236,6 +240,10 @@ Optional:
 - `client_macs` (List of String) List of client MAC addresses to match. Used when `matching_target` is `CLIENT`.
 - `ip_group_id` (String) ID of a `unifi_firewall_group` (address-group type) to match. Used when `matching_target` is `IP` with `matching_target_type = OBJECT`.
 - `ips` (List of String) List of IP addresses or CIDR ranges to match. Used when `matching_target` is `IP`.
+- `match_mac` (Boolean) Match on the endpoint's MAC address rather than its network identity. Meaningful only when `matching_target` selects a client; an inversion or match flag with nothing to act on is reported as false by the controller.
+- `match_opposite_ips` (Boolean) INVERT the IP match: the policy matches every address EXCEPT those in `ips` or `ip_group_id`. Meaningful only when `matching_target` is `IP`. Leave unset to keep whatever the controller holds -- setting it wrong reverses the rule rather than disabling it.
+- `match_opposite_networks` (Boolean) INVERT the network match: the policy matches every network EXCEPT those in `network_ids`. Meaningful only when `matching_target` selects networks.
+- `match_opposite_ports` (Boolean) INVERT the port match: the policy matches every port EXCEPT those in `port` or `port_group_id`. Meaningful only when `port_matching_type` selects specific ports.
 - `network_ids` (List of String) List of UniFi network IDs to match. Used when `matching_target` is `NETWORK`.
 - `port` (String) Port(s) to match when `port_matching_type` is `SPECIFIC`. A single port (`161`) or a comma-separated list of ports/ranges (`80,443`, `8000-8100`). Leave unset for no port match.
 - `port_group_id` (String) ID of a `unifi_firewall_group` (port-group type) to match. Used when `port_matching_type` is `OBJECT`.
@@ -247,6 +255,21 @@ Read-Only:
 - `matching_target_type` (String) How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.
 
 
+<a id="nestedatt--schedule"></a>
+### Nested Schema for `schedule`
+
+Optional:
+
+- `date` (String) The single date a `ONE_TIME_ONLY` schedule runs on.
+- `date_end` (String) Last date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.
+- `date_start` (String) First date an `EVERY_DAY` or `EVERY_WEEK` schedule is in force.
+- `mode` (String) How the schedule repeats. `ALWAYS` is always in force. `CUSTOM` appears in the SDK's own enumeration and is not measured against a controller.
+- `repeat_on_days` (List of String) Days an `EVERY_WEEK` schedule runs on, as `mon` through `sun`.
+- `time_all_day` (Boolean) Whether the schedule covers the whole day rather than a time range.
+- `time_range_end` (String) End of the daily time range, as `HH:MM`.
+- `time_range_start` (String) Start of the daily time range, as `HH:MM`.
+
+
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
 
@@ -256,21 +279,6 @@ Optional:
 - `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
 - `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
-
-
-<a id="nestedatt--schedule"></a>
-### Nested Schema for `schedule`
-
-Read-Only:
-
-- `date` (String)
-- `date_end` (String)
-- `date_start` (String)
-- `mode` (String)
-- `repeat_on_days` (Set of String)
-- `time_all_day` (Boolean)
-- `time_range_end` (String)
-- `time_range_start` (String)
 
 ## Import
 
