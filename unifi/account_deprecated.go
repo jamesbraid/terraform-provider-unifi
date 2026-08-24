@@ -7,15 +7,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
-// deprecatedAccountResource wraps radiusUserResource to provide the old
+// deprecatedAccountResource wraps radiusUserKitResource to provide the old
 // "unifi_account" resource type name as a deprecated alias. This avoids a
 // breaking change for users who already have unifi_account in their state.
 type deprecatedAccountResource struct {
-	radiusUserResource
+	radiusUserKitResource
 }
 
+// NewDeprecatedAccountResource builds deprecatedAccountResource with its
+// embedded radiusUserKitResource fully constructed — a zero-valued kit
+// resource has no Spec, SchemaSpec or ListSurface, so every call would
+// either panic or silently do nothing.
 func NewDeprecatedAccountResource() resource.Resource {
-	return &deprecatedAccountResource{}
+	return &deprecatedAccountResource{radiusUserKitResource: *newRadiusUserKitResource()}
 }
 
 func (r *deprecatedAccountResource) Metadata(
@@ -31,10 +35,8 @@ func (r *deprecatedAccountResource) Schema(
 	req resource.SchemaRequest,
 	resp *resource.SchemaResponse,
 ) {
-	// Get the base schema from the real resource
-	r.radiusUserResource.Schema(ctx, req, resp)
+	r.radiusUserKitResource.Schema(ctx, req, resp)
 
-	// Add deprecation message
 	resp.Schema.DeprecationMessage = "Use unifi_radius_user instead. This resource will be removed in a future version."
 }
 
@@ -61,9 +63,7 @@ func (d *deprecatedAccountDataSource) Schema(
 	req datasource.SchemaRequest,
 	resp *datasource.SchemaResponse,
 ) {
-	// Get the base schema from the real data source
 	d.radiusUserDataSource.Schema(ctx, req, resp)
 
-	// Add deprecation message
 	resp.Schema.DeprecationMessage = "Use the unifi_radius_user data source instead. This data source will be removed in a future version."
 }

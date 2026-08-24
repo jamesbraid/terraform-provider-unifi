@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"testing"
 
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
@@ -167,10 +168,10 @@ resource "unifi_radius_user" "tt13" {
 `
 }
 
-// TestAccRadiusUser_moveFromAccount exercises the ResourceWithMoveState support
-// (#222): a deprecated unifi_account can be migrated to unifi_radius_user with a
-// `moved` block, in place. The move is proven by the target keeping the source's
-// ID — a destroy/recreate would assign a new one.
+// TestAccRadiusUser_moveFromAccount exercises the ResourceWithMoveState
+// support: a deprecated unifi_account can be migrated to unifi_radius_user
+// with a `moved` block, in place. The move is proven by the target keeping
+// the source's ID -- a destroy/recreate would assign a new one.
 func TestAccRadiusUser_moveFromAccount(t *testing.T) {
 	var accountID string
 
@@ -178,7 +179,6 @@ func TestAccRadiusUser_moveFromAccount(t *testing.T) {
 		PreCheck:                 func() { preCheck(t) },
 		ProtoV6ProviderFactories: providerFactories,
 		Steps: []resource.TestStep{
-			// Create the deprecated resource and capture its ID.
 			{
 				Config: testAccRadiusUserConfig_accountForMove(),
 				Check: resource.ComposeTestCheckFunc(
@@ -186,7 +186,6 @@ func TestAccRadiusUser_moveFromAccount(t *testing.T) {
 					testAccCaptureResourceID("unifi_account.move", &accountID),
 				),
 			},
-			// Move it to unifi_radius_user; the underlying object (ID) must survive.
 			{
 				Config: testAccRadiusUserConfig_radiusUserAfterMove(),
 				Check: resource.ComposeTestCheckFunc(
@@ -261,28 +260,8 @@ func TestNewRadiusUserListResource(t *testing.T) {
 	}
 }
 
-func Test_radiusUserResource_Metadata(t *testing.T) {
-	for _, tt := range []struct{ provider, want string }{
-		{"unifi", "unifi_radius_user"},
-		{"test", "test_radius_user"},
-	} {
-		t.Run(tt.provider, func(t *testing.T) {
-			r := &radiusUserResource{}
-			resp := &fwresource.MetadataResponse{}
-			r.Metadata(
-				context.Background(),
-				fwresource.MetadataRequest{ProviderTypeName: tt.provider},
-				resp,
-			)
-			if resp.TypeName != tt.want {
-				t.Errorf("got %q, want %q", resp.TypeName, tt.want)
-			}
-		})
-	}
-}
-
 func Test_radiusUserResource_IdentitySchema(t *testing.T) {
-	r := &radiusUserResource{}
+	r := newRadiusUserKitResource()
 	resp := &fwresource.IdentitySchemaResponse{}
 	r.IdentitySchema(context.Background(), fwresource.IdentitySchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -293,61 +272,9 @@ func Test_radiusUserResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-func Test_radiusUserResource_Schema(t *testing.T) {
-	r := &radiusUserResource{}
-	resp := &fwresource.SchemaResponse{}
-	r.Schema(context.Background(), fwresource.SchemaRequest{}, resp)
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Schema() produced errors: %v", resp.Diagnostics)
-	}
-	for _, attr := range []string{
-		"id", "site", "name", "password", "tunnel_type",
-		"tunnel_medium_type", "network_id", "vlan", "tunnel_config_type", "timeouts",
-	} {
-		if _, ok := resp.Schema.Attributes[attr]; !ok {
-			t.Errorf("missing attribute %q", attr)
-		}
-	}
-}
-
-func Test_radiusUserResource_Configure(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		data    any
-		wantErr bool
-	}{
-		{"nil", nil, false},
-		{"wrong type", "wrong", true},
-		{"correct", &Client{Site: "default"}, false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &radiusUserResource{}
-			resp := &fwresource.ConfigureResponse{}
-			r.Configure(
-				context.Background(),
-				fwresource.ConfigureRequest{ProviderData: tt.data},
-				resp,
-			)
-			if tt.wantErr && !resp.Diagnostics.HasError() {
-				t.Error("expected error")
-			}
-			if !tt.wantErr && resp.Diagnostics.HasError() {
-				t.Errorf("unexpected: %v", resp.Diagnostics)
-			}
-		})
-	}
-}
-
-func Test_radiusUserResource_IdentitySchemaStub(t *testing.T) {
-	// Already covered by Test_radiusUserResource_IdentitySchema above.
-}
-
 func Test_radiusUserResource_applyPlanToState(t *testing.T) {
-	ctx := context.Background()
-	r := &radiusUserResource{}
-
 	t.Run("plan values override state", func(t *testing.T) {
-		plan := &radiusUserResourceModel{
+		plan := &radiusUserKitModel{
 			Name:             types.StringValue("new-name"),
 			Password:         types.StringValue("new-pass"),
 			TunnelType:       types.Int64Value(13),
@@ -356,7 +283,7 @@ func Test_radiusUserResource_applyPlanToState(t *testing.T) {
 			VLAN:             types.Int64Value(200),
 			TunnelConfigType: types.StringValue("802.1x"),
 		}
-		state := &radiusUserResourceModel{
+		state := &radiusUserKitModel{
 			ID:               types.StringValue("existing-id"),
 			Name:             types.StringValue("old-name"),
 			Password:         types.StringValue("old-pass"),
@@ -366,7 +293,7 @@ func Test_radiusUserResource_applyPlanToState(t *testing.T) {
 			VLAN:             types.Int64Null(),
 			TunnelConfigType: types.StringNull(),
 		}
-		r.applyPlanToState(ctx, plan, state)
+		radiusUserKitSpec().ApplyPlanToState(plan, state)
 		if state.Name.ValueString() != "new-name" {
 			t.Errorf("Name = %q, want new-name", state.Name.ValueString())
 		}
@@ -383,7 +310,7 @@ func Test_radiusUserResource_applyPlanToState(t *testing.T) {
 	})
 
 	t.Run("null plan values leave state unchanged", func(t *testing.T) {
-		plan := &radiusUserResourceModel{
+		plan := &radiusUserKitModel{
 			Name:             types.StringNull(),
 			Password:         types.StringNull(),
 			TunnelType:       types.Int64Null(),
@@ -392,12 +319,12 @@ func Test_radiusUserResource_applyPlanToState(t *testing.T) {
 			VLAN:             types.Int64Null(),
 			TunnelConfigType: types.StringNull(),
 		}
-		state := &radiusUserResourceModel{
+		state := &radiusUserKitModel{
 			Name:             types.StringValue("keep-name"),
 			TunnelType:       types.Int64Value(3),
 			TunnelMediumType: types.Int64Value(6),
 		}
-		r.applyPlanToState(ctx, plan, state)
+		radiusUserKitSpec().ApplyPlanToState(plan, state)
 		if state.Name.ValueString() != "keep-name" {
 			t.Errorf("Name should be preserved, got %q", state.Name.ValueString())
 		}
@@ -409,12 +336,11 @@ func Test_radiusUserResource_applyPlanToState(t *testing.T) {
 
 func Test_radiusUserResource_modelToRadiusUser(t *testing.T) {
 	ctx := context.Background()
-	r := &radiusUserResource{}
 
 	t.Run("basic fields are set", func(t *testing.T) {
 		tt3 := int64(3)
 		tt6 := int64(6)
-		model := &radiusUserResourceModel{
+		model := &radiusUserKitModel{
 			Name:             types.StringValue("alice"),
 			Password:         types.StringValue("secret"),
 			TunnelType:       types.Int64Value(tt3),
@@ -423,7 +349,10 @@ func Test_radiusUserResource_modelToRadiusUser(t *testing.T) {
 			VLAN:             types.Int64Null(),
 			TunnelConfigType: types.StringNull(),
 		}
-		got := r.modelToRadiusUser(ctx, model)
+		got, sdkDiags := radiusUserKitSpec().ToSDK(ctx, model)
+		if sdkDiags.HasError() {
+			t.Fatalf("ToSDK: %v", sdkDiags)
+		}
 		if got == nil {
 			t.Fatal("modelToRadiusUser() returned nil")
 		}
@@ -445,7 +374,7 @@ func Test_radiusUserResource_modelToRadiusUser(t *testing.T) {
 	})
 
 	t.Run("optional fields are populated when set", func(t *testing.T) {
-		model := &radiusUserResourceModel{
+		model := &radiusUserKitModel{
 			Name:             types.StringValue("bob"),
 			Password:         types.StringValue("pass"),
 			TunnelType:       types.Int64Value(13),
@@ -454,7 +383,10 @@ func Test_radiusUserResource_modelToRadiusUser(t *testing.T) {
 			VLAN:             types.Int64Value(100),
 			TunnelConfigType: types.StringValue("802.1x"),
 		}
-		got := r.modelToRadiusUser(ctx, model)
+		got, sdkDiags := radiusUserKitSpec().ToSDK(ctx, model)
+		if sdkDiags.HasError() {
+			t.Fatalf("ToSDK: %v", sdkDiags)
+		}
 		if got.NetworkID != "net-abc" {
 			t.Errorf("NetworkID = %q, want net-abc", got.NetworkID)
 		}
@@ -470,14 +402,12 @@ func Test_radiusUserResource_modelToRadiusUser(t *testing.T) {
 func Test_radiusUserResource_resolveVLAN(t *testing.T) {
 	// client-independent branches (no network lookup needed)
 	ctx := context.Background()
-	r := &radiusUserResource{}
-
 	t.Run("explicit vlan wins", func(t *testing.T) {
-		model := &radiusUserResourceModel{
+		model := &radiusUserKitModel{
 			VLAN:      types.Int64Value(100),
 			NetworkID: types.StringValue("net-abc"),
 		}
-		vlan, diags := r.resolveVLAN(ctx, model, "default")
+		vlan, diags := resolveRadiusUserVLAN(ctx, nil, model, "default")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -487,11 +417,11 @@ func Test_radiusUserResource_resolveVLAN(t *testing.T) {
 	})
 
 	t.Run("no vlan and no network_id yields nil", func(t *testing.T) {
-		model := &radiusUserResourceModel{
+		model := &radiusUserKitModel{
 			VLAN:      types.Int64Null(),
 			NetworkID: types.StringNull(),
 		}
-		vlan, diags := r.resolveVLAN(ctx, model, "default")
+		vlan, diags := resolveRadiusUserVLAN(ctx, nil, model, "default")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -501,11 +431,11 @@ func Test_radiusUserResource_resolveVLAN(t *testing.T) {
 	})
 
 	t.Run("empty network_id string yields nil", func(t *testing.T) {
-		model := &radiusUserResourceModel{
+		model := &radiusUserKitModel{
 			VLAN:      types.Int64Null(),
 			NetworkID: types.StringValue(""),
 		}
-		vlan, diags := r.resolveVLAN(ctx, model, "default")
+		vlan, diags := resolveRadiusUserVLAN(ctx, nil, model, "default")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -517,8 +447,6 @@ func Test_radiusUserResource_resolveVLAN(t *testing.T) {
 
 func Test_radiusUserResource_radiusUserToModel(t *testing.T) {
 	ctx := context.Background()
-	r := &radiusUserResource{}
-
 	t.Run("all fields are mapped from API", func(t *testing.T) {
 		tt := int64(3)
 		mt := int64(6)
@@ -533,8 +461,8 @@ func Test_radiusUserResource_radiusUserToModel(t *testing.T) {
 			VLAN:             &vlan,
 			TunnelConfigType: "802.1x",
 		}
-		model := &radiusUserResourceModel{}
-		r.radiusUserToModel(ctx, account, model, "default")
+		model := &radiusUserKitModel{}
+		radiusUserKitSpec().ToModel(ctx, account, model, "default")
 
 		if model.ID.ValueString() != "acc-1" {
 			t.Errorf("ID = %q, want acc-1", model.ID.ValueString())
@@ -565,8 +493,8 @@ func Test_radiusUserResource_radiusUserToModel(t *testing.T) {
 			NetworkID:        "",
 			TunnelConfigType: "",
 		}
-		model := &radiusUserResourceModel{}
-		r.radiusUserToModel(ctx, account, model, "site1")
+		model := &radiusUserKitModel{}
+		radiusUserKitSpec().ToModel(ctx, account, model, "site1")
 
 		if !model.NetworkID.IsNull() {
 			t.Errorf(
@@ -584,7 +512,7 @@ func Test_radiusUserResource_radiusUserToModel(t *testing.T) {
 }
 
 func Test_radiusUserResource_ListResourceConfigSchema(t *testing.T) {
-	r := &radiusUserResource{}
+	r := newRadiusUserKitResource()
 	resp := &fwlist.ListResourceSchemaResponse{}
 	r.ListResourceConfigSchema(context.Background(), fwlist.ListResourceSchemaRequest{}, resp)
 	if resp.Diagnostics.HasError() {
@@ -628,21 +556,20 @@ func TestAccRadiusUserList_basic(t *testing.T) {
 	})
 }
 
-// TestResolveVLAN_DeterministicBranches covers the paths of resolveVLAN that do
-// not touch the controller (#67): an explicit vlan is returned as-is, and with
+// TestResolveVLAN_DeterministicBranches covers the paths of resolveVLAN that
+// do not touch the controller: an explicit vlan is returned as-is, and with
 // neither vlan nor network_id the result is nil (untagged fallback). The
-// network_id-derivation branch calls GetNetwork and is exercised by acceptance
-// tests against a real controller.
+// network_id-derivation branch calls GetNetwork and is exercised by
+// acceptance tests against a real controller.
 func TestResolveVLAN_DeterministicBranches(t *testing.T) {
 	ctx := context.Background()
-	r := &radiusUserResource{} // client is nil; these branches never use it
 
 	t.Run("explicit vlan wins", func(t *testing.T) {
-		model := &radiusUserResourceModel{
+		model := &radiusUserKitModel{
 			VLAN:      types.Int64Value(100),
 			NetworkID: types.StringValue("net-abc"), // ignored when vlan is set
 		}
-		vlan, diags := r.resolveVLAN(ctx, model, "default")
+		vlan, diags := resolveRadiusUserVLAN(ctx, nil, model, "default")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -652,11 +579,11 @@ func TestResolveVLAN_DeterministicBranches(t *testing.T) {
 	})
 
 	t.Run("no vlan and no network_id yields nil", func(t *testing.T) {
-		model := &radiusUserResourceModel{
+		model := &radiusUserKitModel{
 			VLAN:      types.Int64Null(),
 			NetworkID: types.StringNull(),
 		}
-		vlan, diags := r.resolveVLAN(ctx, model, "default")
+		vlan, diags := resolveRadiusUserVLAN(ctx, nil, model, "default")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -666,11 +593,11 @@ func TestResolveVLAN_DeterministicBranches(t *testing.T) {
 	})
 
 	t.Run("empty network_id string yields nil", func(t *testing.T) {
-		model := &radiusUserResourceModel{
+		model := &radiusUserKitModel{
 			VLAN:      types.Int64Null(),
 			NetworkID: types.StringValue(""),
 		}
-		vlan, diags := r.resolveVLAN(ctx, model, "default")
+		vlan, diags := resolveRadiusUserVLAN(ctx, nil, model, "default")
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
 		}
@@ -678,4 +605,25 @@ func TestResolveVLAN_DeterministicBranches(t *testing.T) {
 			t.Fatalf("vlan = %v, want nil", *vlan)
 		}
 	})
+}
+
+// BeforeSend derives VLAN from network_id whether or not the plan names it,
+// so vlan must be AlwaysWire in the mask -- otherwise the derived value is
+// computed and then silently dropped from the update.
+func TestRadiusUserWireMaskCarriesTheDerivedVLAN(t *testing.T) {
+	plan := &radiusUserKitModel{
+		NetworkID: types.StringValue("net-abc"),
+		VLAN:      types.Int64Null(),
+	}
+	fields, err := radiusUserKitSpec().WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	if !slices.Contains(fields, "vlan") {
+		t.Errorf("the mask omits vlan, so a network_id change would not move the VLAN: %v", fields)
+	}
+	// The control: an attribute nobody planned and nobody derives stays out.
+	if slices.Contains(fields, "tunnel_config_type") {
+		t.Errorf("the mask names tunnel_config_type, which the plan never set: %v", fields)
+	}
 }

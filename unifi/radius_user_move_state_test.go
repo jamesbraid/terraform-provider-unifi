@@ -10,12 +10,12 @@ import (
 func Test_radiusUserResource_MoveState(t *testing.T) {
 	tests := []struct {
 		name      string
-		r         *radiusUserResource
+		r         *radiusUserKitResource
 		wantCount int
 	}{
 		{
 			name:      "returns_one_mover",
-			r:         &radiusUserResource{},
+			r:         newRadiusUserKitResource(),
 			wantCount: 1,
 		},
 	}
@@ -90,7 +90,7 @@ func Test_radiusUserResource_moveFromAccount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &radiusUserResource{}
+			r := newRadiusUserKitResource()
 			resp := &fwresource.MoveStateResponse{}
 			r.moveFromAccount(context.Background(), tt.req, resp)
 			// We only check that no unexpected diagnostic errors were raised;
