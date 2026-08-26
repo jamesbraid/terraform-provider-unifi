@@ -32,7 +32,7 @@ func Test_settingResource_usgModelToSetting_preservesUnmanagedFields(t *testing.
 		DHCPRelayAgentsPackets: "forward",
 		DNSmasqAllServers:      true,
 		LldpEnableAll:          true,
-		MdnsEnabled:            true,
+		MdnsEnabled:            true, //nolint:staticcheck // the only wire for a released attribute
 		// The control: managed, declared in the model below, must be overwritten.
 		BroadcastPing: false,
 	}

@@ -20,7 +20,7 @@ import (
 // red.
 func Test_clientGeneratedDefaultsStillEqualTheConstants(t *testing.T) {
 	resp := &fwresource.SchemaResponse{}
-	(newClientKitResource()).Schema(context.Background(), fwresource.SchemaRequest{}, resp)
+	newClientKitResource().Schema(context.Background(), fwresource.SchemaRequest{}, resp)
 
 	for name, want := range map[string]bool{
 		"allow_existing":         defaultAllowExisting,
