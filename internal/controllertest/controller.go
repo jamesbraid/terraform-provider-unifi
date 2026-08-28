@@ -56,6 +56,21 @@ type Controller struct {
 	herder *herder
 }
 
+// DefaultControllerImage is the emulated controller the suite runs against
+// when UNIFI_TEST_CONTROLLER_IMAGE is unset: the -sim build of the release
+// go-unifi's field definitions were generated from. Bumping the SDK moves
+// the image with it; nothing else in this repository names the version.
+func DefaultControllerImage() string {
+	return "ghcr.io/jamesbraid/unifi-network:" + unifi.UnifiVersion + "-sim"
+}
+
+func controllerImage() string {
+	if image := os.Getenv("UNIFI_TEST_CONTROLLER_IMAGE"); image != "" {
+		return image
+	}
+	return DefaultControllerImage()
+}
+
 // Start brings up the controller, waits for its API, then starts the device
 // fleet and publishes each device's MAC to the variable its tests read.
 //
@@ -75,6 +90,7 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 	// unhealthy". Waiting on the API the tests actually use is the stronger
 	// signal.
 	if err := stack.WithOsEnv().
+		WithEnv(map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": controllerImage()}).
 		Up(ctx, compose.WithRecreate(api.RecreateDiverged)); err != nil {
 		logControllerStartupFailure(ctx, logger, stack)
 		return c, fmt.Errorf("compose up: %w", err)

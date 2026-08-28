@@ -2,8 +2,11 @@ package controllertest
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 func TestRemoveControllerImagesIsOptIn(t *testing.T) {
@@ -18,19 +21,35 @@ func TestRemoveControllerImagesIsOptIn(t *testing.T) {
 	}
 }
 
-func TestComposeControllerImageCanBePinnedAndKeptOffline(t *testing.T) {
+func TestComposeControllerImageComesFromTheHarnessNotALiteral(t *testing.T) {
 	data, err := os.ReadFile("../../docker-compose.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
 	contents := string(data)
-	for _, want := range []string{
-		"${UNIFI_TEST_CONTROLLER_IMAGE:-",
-		"${UNIFI_TEST_CONTROLLER_PULL_POLICY:-missing}",
-	} {
-		if !strings.Contains(contents, want) {
-			t.Errorf("docker-compose.yaml is missing %q", want)
-		}
+	if !strings.Contains(contents, "${UNIFI_TEST_CONTROLLER_IMAGE:?") {
+		t.Error("docker-compose.yaml must require UNIFI_TEST_CONTROLLER_IMAGE (the harness sets it from unifi.UnifiVersion); a :- default would let a literal version drift from the SDK")
+	}
+	if regexp.MustCompile(`unifi-network:[0-9]+\.[0-9]+\.[0-9]+`).MatchString(contents) {
+		t.Error("docker-compose.yaml names a controller version literally; the SDK owns that fact")
+	}
+	if !strings.Contains(contents, "${UNIFI_TEST_CONTROLLER_PULL_POLICY:-missing}") {
+		t.Error("docker-compose.yaml must keep the offline-friendly pull policy")
+	}
+}
+
+func TestDefaultControllerImageTracksTheSDK(t *testing.T) {
+	want := "ghcr.io/jamesbraid/unifi-network:" + unifi.UnifiVersion + "-sim"
+	if got := DefaultControllerImage(); got != want {
+		t.Errorf("DefaultControllerImage() = %q, want %q", got, want)
+	}
+	t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", "example.test/pinned:1")
+	if got := controllerImage(); got != "example.test/pinned:1" {
+		t.Errorf("controllerImage() = %q; an explicit UNIFI_TEST_CONTROLLER_IMAGE must win", got)
+	}
+	t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", "")
+	if got := controllerImage(); got != want {
+		t.Errorf("controllerImage() = %q, want the SDK-derived default when unset", got)
 	}
 }
 

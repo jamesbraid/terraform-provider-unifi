@@ -112,14 +112,14 @@ go test ./unifi ./internal/resourcekit
 ```
 
 **A new controller image.** The acceptance suite runs against a pinned,
-emulated controller rather than a live one — `docker-compose.yaml` pins the
-image tag (`UNIFI_TEST_CONTROLLER_IMAGE`, defaulting to a tag matching the
-go-unifi commit the SDK was generated from) and CI separately pins the
+emulated controller rather than a live one — the harness derives the image
+tag from the SDK (`internal/controllertest.DefaultControllerImage`,
+`ghcr.io/jamesbraid/unifi-network:<unifi.UnifiVersion>-sim`;
+`UNIFI_TEST_CONTROLLER_IMAGE` overrides it) and CI separately pins the
 version of `unifi-emu-herder`, which drives the simulated devices the
 controller adopts. Both need to move together with a controller bump: build
-and publish an image for the new release, then update the default tag in
-`docker-compose.yaml` and, if the new release needs device behavior the
-emulator doesn't yet simulate, the herder pin in
+and publish an image for the new release, then, if the new release needs
+device behavior the emulator doesn't yet simulate, update the herder pin in
 `.github/workflows/acctest.yaml`.
 
 **The acceptance run.** Each invocation boots its own controller and takes a

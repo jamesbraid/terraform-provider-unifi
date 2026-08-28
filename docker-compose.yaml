@@ -9,7 +9,7 @@ services:
     # Pinned, and pinned to the same tag go-unifi's controllertest uses, so a
     # controller change is one deliberate bump in both repositories rather than
     # a nightly that quietly moved underneath one of them.
-    image: ${UNIFI_TEST_CONTROLLER_IMAGE:-ghcr.io/jamesbraid/unifi-network:10.4.57-sim}
+    image: ${UNIFI_TEST_CONTROLLER_IMAGE:?internal/controllertest sets this from unifi.UnifiVersion}
     # Promotion jobs set this to "never" after inspecting the expected local
     # manifest. Developer runs retain Compose's ordinary pull-if-missing
     # behaviour.
