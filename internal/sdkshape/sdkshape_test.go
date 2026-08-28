@@ -1,6 +1,8 @@
 package sdkshape
 
 import (
+	"go/token"
+	"go/types"
 	"sort"
 	"testing"
 )
@@ -259,6 +261,55 @@ func TestLoadFoldsInAnExtraPackageWithoutDisturbingTheRoot(t *testing.T) {
 	if _, ok := dashboard["layout_preference"]; ok {
 		t.Error(`Dashboard has a "layout_preference" member; that's settings' shape, ` +
 			"which must not win over the root package's")
+	}
+}
+
+// namedMethodReturning builds a synthetic method named methodName on recv,
+// returning a pointer to a synthetic named struct called returnTypeName --
+// enough of go/types' shape for recordMethods to record it, without needing
+// a real importable package on disk. go-unifi's root and settings packages
+// have no genuine same-named-method collision to test the guard against
+// (settings' structs carry no client methods at all), so the fixture below
+// is synthetic rather than real SDK source, per the fix's own allowance.
+func namedMethodReturning(pkg *types.Package, recv *types.Named, methodName, returnTypeName string) *types.Func {
+	returned := types.NewNamed(
+		types.NewTypeName(token.NoPos, pkg, returnTypeName, nil), types.NewStruct(nil, nil), nil)
+	receiver := types.NewVar(token.NoPos, pkg, "", types.NewPointer(recv))
+	results := types.NewTuple(types.NewVar(token.NoPos, pkg, "", types.NewPointer(returned)))
+	signature := types.NewSignatureType(receiver, nil, nil, nil, results, false)
+	return types.NewFunc(token.NoPos, pkg, methodName, signature)
+}
+
+// TestRecordMethodsGivesTheRootPackagePriority is recordMethods' own
+// positive control, the same shape as record's (proven by
+// TestLoadFoldsInAnExtraPackageWithoutDisturbingTheRoot): a method name
+// recorded from the root package must survive a same-named method from a
+// package folded in afterward, or RootFor would silently answer whichever
+// package's merge happened to run last.
+func TestRecordMethodsGivesTheRootPackagePriority(t *testing.T) {
+	rootPkg := types.NewPackage("example.com/root", "root")
+	rootClient := types.NewNamed(
+		types.NewTypeName(token.NoPos, rootPkg, "Client", nil), types.NewStruct(nil, nil), nil)
+	rootClient.AddMethod(namedMethodReturning(rootPkg, rootClient, "Get", "RootThing"))
+
+	extraPkg := types.NewPackage("example.com/extra", "extra")
+	extraClient := types.NewNamed(
+		types.NewTypeName(token.NoPos, extraPkg, "Client", nil), types.NewStruct(nil, nil), nil)
+	extraClient.AddMethod(namedMethodReturning(extraPkg, extraClient, "Get", "ExtraThing"))
+
+	p := &Package{
+		structs:  map[string]map[string]bool{},
+		members:  map[string]map[string]Member{},
+		fields:   map[string][]string{},
+		backing:  map[string]map[string]string{},
+		operates: map[string]string{},
+	}
+	p.recordMethods(rootClient)  // root package's merge, processed first
+	p.recordMethods(extraClient) // a folded-in package's same-named method
+
+	if got := p.operates["Get"]; got != "RootThing" {
+		t.Errorf(`operates["Get"] = %q, want "RootThing" (the root package's own answer); `+
+			`a folded-in package's same-named method must not win`, got)
 	}
 }
 

@@ -117,10 +117,20 @@ func (p *Package) merge(path string) error {
 // recordMethods notes, for each method on a type, the struct it returns. The
 // SDK's client carries GetNetwork, CreateBGPConfig and so on, and the returned
 // type is the authoritative answer to "what does this resource operate on".
+//
+// Gated the same way record is: a method name already resolved from an
+// earlier package is left alone. Without this, a same-named method on a
+// later-loaded package would silently displace the root's answer for
+// RootFor -- last-write-wins by merge's package loop order, not by any rule
+// a caller could see. Load's root-wins doc comment governs this too, even
+// though today's two packages don't happen to collide on a method name.
 func (p *Package) recordMethods(named *types.Named) {
 	for index := range named.NumMethods() {
 		method := named.Method(index)
 		if !method.Exported() {
+			continue
+		}
+		if _, exists := p.operates[method.Name()]; exists {
 			continue
 		}
 		signature, ok := method.Type().(*types.Signature)
