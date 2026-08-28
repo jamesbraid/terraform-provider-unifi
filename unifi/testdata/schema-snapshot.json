@@ -2235,9 +2235,6 @@
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
-          ],
-          "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"ALL\" \"RESPOND_ONLY\"]"
           ]
         },
         "connection_states": {
@@ -2531,10 +2528,7 @@
           "computed": true,
           "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to all",
-          "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"all\" \"tcp\" \"udp\" \"tcp_udp\"]"
-          ]
+          "default": "stringdefault.staticStringDefault: value defaults to all"
         },
         "schedule": {
           "kind": "attribute",
@@ -8336,7 +8330,7 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "IGMP proxy downstream target (none, lan, guest)",
+          "description": "IGMP proxy downstream target (all, some, none)",
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."

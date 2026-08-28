@@ -255,8 +255,8 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 					"downstream": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "IGMP proxy downstream target (none, lan, guest)",
-						MarkdownDescription: "IGMP proxy downstream target (none, lan, guest)",
+						Description:         "IGMP proxy downstream target (all, some, none)",
+						MarkdownDescription: "IGMP proxy downstream target (all, some, none)",
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},

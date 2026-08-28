@@ -1356,7 +1356,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "IGMP proxy downstream target (none, lan, guest)",
+            "description": "IGMP proxy downstream target (all, some, none)",
             "plan_modifiers": [
               {
                 "custom": {

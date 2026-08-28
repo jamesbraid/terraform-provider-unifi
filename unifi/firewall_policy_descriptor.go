@@ -270,7 +270,11 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 				Wire:  "protocol",
 				Model: func(m *firewallPolicyKitModel) *types.String { return &m.Protocol },
 				SDK:   func(s *ui.FirewallPolicy) *string { return &s.Protocol },
-				Elide: resourcekit.NullZero,
+				// No validator rejects "" now that its OneOf is suppressed (the
+				// SDK's constraint table is narrower than the controller for
+				// this field; see r2-validator-corrections.md), so nothing
+				// marks the zero value invalid: KeepZero, not NullZero.
+				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
 				Wire:  "description",
@@ -302,7 +306,9 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 				Wire:  "connection_state_type",
 				Model: func(m *firewallPolicyKitModel) *types.String { return &m.ConnectionStateType },
 				SDK:   func(s *ui.FirewallPolicy) *string { return &s.ConnectionStateType },
-				Elide: resourcekit.NullZero,
+				// Same reasoning as protocol above: its OneOf is suppressed,
+				// so nothing rejects "" -- KeepZero, not NullZero.
+				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.StringListField[firewallPolicyKitModel, ui.FirewallPolicy]{
 				Wire:  "connection_states",

@@ -33,7 +33,8 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ]
+        ],
+        "validators": "none"
       }
     },
     {
@@ -538,7 +539,8 @@
         "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) \u2014 keep it `false` and add an explicit reverse policy if you need the reply.",
         "default": {
           "static": "all"
-        }
+        },
+        "validators": "none"
       }
     },
     {

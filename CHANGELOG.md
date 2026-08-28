@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.107.0] - DRAFT, unreleased
+
+### ⚠️ Breaking Changes
+
+- **`unifi_wan`: `igmp_proxy.downstream` only accepts `all`, `some`, or `none`.** The
+  hand-written validator allowed `none`, `lan`, or `guest` — a live-controller probe
+  (creating a WAN network with `igmp_proxy_for` set to each value) confirms the
+  controller has only ever accepted `all`/`some`/`none` (`api.err.InvalidValue`,
+  pattern `all|some|none`, for both `lan` and `guest`). Configurations using `lan` or
+  `guest` failed at the controller already; they now fail at plan time instead of
+  apply time.
+
 ## [v0.106.0] - DRAFT, unreleased
 
 ### 🔧 Maintenance

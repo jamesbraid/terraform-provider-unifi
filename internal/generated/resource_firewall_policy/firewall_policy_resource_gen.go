@@ -42,9 +42,6 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
-				Validators: []validator.String{
-					stringvalidator.OneOf("ALL", "RESPOND_ONLY"),
-				},
 			},
 			"connection_states": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -288,10 +285,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
 				MarkdownDescription: "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
-				Validators: []validator.String{
-					stringvalidator.OneOf("all", "tcp", "udp", "tcp_udp"),
-				},
-				Default: stringdefault.StaticString("all"),
+				Default:             stringdefault.StaticString("all"),
 			},
 			"schedule": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
