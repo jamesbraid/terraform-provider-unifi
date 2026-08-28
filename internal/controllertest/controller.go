@@ -65,11 +65,17 @@ func DefaultControllerImage() string {
 	return "ghcr.io/jamesbraid/unifi-network:" + unifi.UnifiVersion + "-sim"
 }
 
-func controllerImage() string {
-	if image := os.Getenv("UNIFI_TEST_CONTROLLER_IMAGE"); image != "" {
-		return image
+// composeEnv fills UNIFI_TEST_CONTROLLER_IMAGE for compose only when the
+// caller hasn't already exported one. WithOsEnv (below) already forwards an
+// exported value into compose's own environment, and WithEnv errors if a key
+// it's asked to set is already present there — so restating an override here
+// would collide with the value WithOsEnv just forwarded. The harness's only
+// job is supplying the default when there is nothing to forward.
+func composeEnv() map[string]string {
+	if os.Getenv("UNIFI_TEST_CONTROLLER_IMAGE") != "" {
+		return nil
 	}
-	return DefaultControllerImage()
+	return map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": DefaultControllerImage()}
 }
 
 // Start brings up the controller, waits for its API, then starts the device
@@ -91,7 +97,7 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 	// without that budget and reports what it saw; waitForAPI then proves the
 	// API the tests drive.
 	if err := stack.WithOsEnv().
-		WithEnv(map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": controllerImage()}).
+		WithEnv(composeEnv()).
 		Up(ctx, compose.WithRecreate(api.RecreateDiverged)); err != nil {
 		logControllerStartupFailure(ctx, logger, stack)
 		return c, fmt.Errorf("compose up: %w", err)

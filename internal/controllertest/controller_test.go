@@ -2,6 +2,7 @@ package controllertest
 
 import (
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -43,13 +44,28 @@ func TestDefaultControllerImageTracksTheSDK(t *testing.T) {
 	if got := DefaultControllerImage(); got != want {
 		t.Errorf("DefaultControllerImage() = %q, want %q", got, want)
 	}
-	t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", "example.test/pinned:1")
-	if got := controllerImage(); got != "example.test/pinned:1" {
-		t.Errorf("controllerImage() = %q; an explicit UNIFI_TEST_CONTROLLER_IMAGE must win", got)
+}
+
+// TestComposeEnv guards the collision fixed after Task 5 shipped: WithOsEnv
+// already forwards an exported UNIFI_TEST_CONTROLLER_IMAGE into compose's
+// environment, and WithEnv errors if asked to set a key already there, so
+// composeEnv must back off rather than restate the override.
+func TestComposeEnv(t *testing.T) {
+	want := map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": DefaultControllerImage()}
+	cases := map[string]struct {
+		envValue string
+		want     map[string]string
+	}{
+		"unset fills the default for WithOsEnv to carry":                 {envValue: "", want: want},
+		"an explicit override is left for WithOsEnv alone, not restated": {envValue: "example.test/pinned:1", want: nil},
 	}
-	t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", "")
-	if got := controllerImage(); got != want {
-		t.Errorf("controllerImage() = %q, want the SDK-derived default when unset", got)
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", tc.envValue)
+			if got := composeEnv(); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("composeEnv() = %#v, want %#v", got, tc.want)
+			}
+		})
 	}
 }
 
