@@ -49,7 +49,7 @@ func Test_walkPromotesEmbeddedStructFields(t *testing.T) {
 		[]string{"", `json:"code,omitempty"`},
 	)
 
-	got := fieldNames(walk(outer))
+	got := fieldNames(walk(outer, "Outer", nil))
 
 	want := []string{"_id", "code", "key"}
 	if len(got) != len(want) {
@@ -77,7 +77,7 @@ func Test_walkKeepsATaggedEmbeddedFieldAsAMember(t *testing.T) {
 		[]string{`json:"inner"`, `json:"code,omitempty"`},
 	)
 
-	got := walk(outer)
+	got := walk(outer, "Outer", nil)
 
 	if names := fieldNames(got); len(names) != 2 || names[0] != "code" || names[1] != "inner" {
 		t.Fatalf("walk() = %v, want [code inner]: a tagged embedded field is a member, not a promotion", names)

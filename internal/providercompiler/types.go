@@ -71,6 +71,24 @@ type bootstrapField struct {
 	// declared here to survive decoding.
 	GoName  string `json:"go_name,omitempty"`
 	Pointer bool   `json:"pointer,omitempty"`
+	// Constraint carries the SDK's validation facts for this field. Decoded
+	// but not yet consumed -- the compiler ignores it until it derives OneOf
+	// validators from it.
+	Constraint *bootstrapFieldConstraint `json:"constraint,omitempty"`
+}
+
+// bootstrapFieldConstraint mirrors cmd/sdk-bootstrap's own wire shape for
+// unifi.FieldConstraint / settings.FieldConstraint, copied verbatim.
+type bootstrapFieldConstraint struct {
+	Values      []string `json:"values,omitempty"`
+	Int64Values []int64  `json:"int64_values,omitempty"`
+	Pattern     string   `json:"pattern,omitempty"`
+	Min         int64    `json:"min,omitempty"`
+	Max         int64    `json:"max,omitempty"`
+	HasBounds   bool     `json:"has_bounds,omitempty"`
+	MinLength   int64    `json:"min_length,omitempty"`
+	MaxLength   int64    `json:"max_length,omitempty"`
+	HasLength   bool     `json:"has_length,omitempty"`
 }
 
 type policy struct {

@@ -65,6 +65,10 @@ type field struct {
 	// `omitempty` either.
 	GoName  string `json:"go_name,omitempty"`
 	Pointer bool   `json:"pointer,omitempty"`
+
+	// Constraint carries the controller's own validation facts for this
+	// field, copied verbatim from unifi.FieldConstraints / settings.FieldConstraints.
+	Constraint *fieldConstraint `json:"constraint,omitempty"`
 }
 
 // stringList collects a flag given more than once, in the order given, because
@@ -158,12 +162,12 @@ func run(args []string, stderr io.Writer) int {
 	document := bootstrapDocument{
 		FormatVersion: 1,
 		Source:        source,
-		Resource:      bootstrapResource{Name: *resource, Fields: walk(structure)},
+		Resource:      bootstrapResource{Name: *resource, Fields: walk(structure, structNames[0], sdkConstraints)},
 	}
 	for index, companion := range structures[1:] {
 		document.Companions = append(document.Companions, bootstrapCompanion{
 			Struct: structNames[index+1],
-			Fields: walk(companion),
+			Fields: walk(companion, structNames[index+1], sdkConstraints),
 		})
 	}
 
@@ -182,9 +186,11 @@ func run(args []string, stderr io.Writer) int {
 	return 0
 }
 
-// walk records each field's wire name and shape, sorted so the output does not
-// depend on declaration order.
-func walk(s *types.Struct) []field {
+// walk records each field's wire name and shape, sorted so the output does
+// not depend on declaration order. goType is s's own Go type name, used as
+// the constraint lookup key for s's direct fields; lookup may be nil, which
+// means no constraint is ever found (existing structural tests use this).
+func walk(s *types.Struct, goType string, lookup constraintLookup) []field {
 	out := []field{}
 	for index := range s.NumFields() {
 		member := s.Field(index)
@@ -197,13 +203,13 @@ func walk(s *types.Struct) []field {
 			// it. A tagged embedded field is a named member, not a
 			// promotion, and takes the ordinary path below.
 			if member.Embedded() {
-				if _, nested := describe(member.Type()); nested != nil {
-					out = append(out, walk(nested)...)
+				if _, nested, nestedType := describe(member.Type()); nested != nil {
+					out = append(out, walk(nested, nestedType, lookup)...)
 				}
 			}
 			continue
 		}
-		shape, nested := describe(member.Type())
+		shape, nested, nestedType := describe(member.Type())
 		// Pointer-ness is read BEFORE describe, which collapses a pointer to
 		// its element -- that collapse is why the fact was being lost.
 		_, isPointer := member.Type().(*types.Pointer)
@@ -214,8 +220,15 @@ func walk(s *types.Struct) []field {
 			GoName:          member.Name(),
 			Pointer:         isPointer,
 		}
+		if lookup != nil {
+			if constraint, ok := lookup(goType, name); ok {
+				entry.Constraint = constraintFromSDK(constraint)
+			}
+		}
 		if nested != nil {
-			entry.Fields = walk(nested)
+			// A nested struct's own fields are looked up under ITS type
+			// name, not s's -- FieldConstraints is keyed per declaring struct.
+			entry.Fields = walk(nested, nestedType, lookup)
 		}
 		out = append(out, entry)
 	}
@@ -223,31 +236,34 @@ func walk(s *types.Struct) []field {
 	return out
 }
 
-func describe(t types.Type) (string, *types.Struct) {
+// describe reports a field's bootstrap shape, its nested struct (if it has
+// one) to walk into, and that nested struct's own Go type name -- the
+// constraint lookup key for its fields.
+func describe(t types.Type) (string, *types.Struct, string) {
 	switch shaped := t.(type) {
 	case *types.Slice:
-		inner, nested := describe(shaped.Elem())
-		return "array<" + inner + ">", nested
+		inner, nested, nestedType := describe(shaped.Elem())
+		return "array<" + inner + ">", nested, nestedType
 	case *types.Pointer:
 		return describe(shaped.Elem())
 	case *types.Named:
 		if structure, ok := shaped.Underlying().(*types.Struct); ok {
-			return "object", structure
+			return "object", structure, shaped.Obj().Name()
 		}
 		return describe(shaped.Underlying())
 	case *types.Basic:
 		switch shaped.Kind() {
 		case types.Bool:
-			return "bool", nil
+			return "bool", nil, ""
 		case types.String:
-			return "string", nil
+			return "string", nil, ""
 		case types.Float32, types.Float64:
-			return "number", nil
+			return "number", nil, ""
 		default:
-			return "int64", nil
+			return "int64", nil, ""
 		}
 	}
-	return "unknown", nil
+	return "unknown", nil, ""
 }
 
 func jsonName(tag string) string {
