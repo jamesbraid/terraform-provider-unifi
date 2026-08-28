@@ -3,10 +3,13 @@ package unifi
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
@@ -22,14 +25,18 @@ import (
 // sibling DHCP guard probes: set the values on the controller out of band,
 // change something else through the provider, and require them to survive.
 //
-// The reading says they will not. dhcpd_ip_1..3 are force-emitted with no
-// omitempty and are in the masked update, so they are always written;
-// networkToModel leaves DhcpGuarding null when the practitioner never declared
-// the block, so the write path's servers.IsNull() early return leaves the fields
-// at "" and the controller receives three clears.
-//
-// It asserts survival, so it fails until the defect above is fixed -- a
-// version that only logged which way it went would pass either way.
+// They do. Network is kit-driven (network_descriptor.go): dhcp_guarding is a
+// resourcekit.ScatteredObjectField (network_descriptor.go:429-448). SetInPlan
+// reports it absent for a null object, so a plan that never declares
+// dhcp_guarding drops the field from the update mask entirely -- Encode never
+// runs and dhcpguard_enabled/dhcpd_ip_1..3 never join the patch
+// (internal/resourcekit/scattered_object_field.go:126-134 is maskedWireNames'
+// null check, :185-192 is ToSDK's). ConditionalWires handles the adjacent
+// case, a non-null object with fewer than three servers, so a short list
+// doesn't blank the slots it left unfilled. Either way the controller's
+// existing values are left alone. This is the live-controller half of that
+// proof; TestDHCPGuardingWireMaskExcludesItsFieldsWhenNull below is the
+// controller-free half of the same mechanism.
 func TestAnUnrelatedApplyDestroysDHCPGuardingServers(t *testing.T) {
 	const guard = "10.76.76.9"
 	var networkID string
@@ -82,8 +89,7 @@ func TestAnUnrelatedApplyDestroysDHCPGuardingServers(t *testing.T) {
 			return fmt.Errorf(
 				"dhcpd_ip_1 is %q after an apply whose only change was the vlan.\n"+
 					"    The controller held %q and the provider was never asked to touch "+
-					"dhcp_guarding.\n"+
-					"    EXPECTED TO FAIL UNTIL THE DHCP GUARD DEFECT ABOVE IS FIXED.",
+					"dhcp_guarding.",
 				back.DHCPDIP1, guard)
 		}
 		t.Logf("dhcpd_ip_1 survived the unrelated apply as %q", back.DHCPDIP1)
@@ -118,6 +124,56 @@ resource "unifi_network" "guard" {
 			},
 		},
 	})
+}
+
+// TestDHCPGuardingWireMaskExcludesItsFieldsWhenNull is the controller-free
+// half of TestAnUnrelatedApplyDestroysDHCPGuardingServers above: it pins
+// that Spec.WireFields itself never names dhcpguard_enabled or dhcpd_ip_1..3
+// for a plan whose dhcp_guarding is null (the SetInPlan/null-check mechanism
+// described there), and does name them once dhcp_guarding is set -- the same
+// call the resource's Update path uses, exercised directly with no
+// controller involved.
+func TestDHCPGuardingWireMaskExcludesItsFieldsWhenNull(t *testing.T) {
+	guardWires := []string{"dhcpguard_enabled", "dhcpd_ip_1", "dhcpd_ip_2", "dhcpd_ip_3"}
+
+	nullPlan := &netModel{
+		Name:         types.StringValue("probe"),
+		DhcpGuarding: types.ObjectNull(dhcpGuardingModel{}.AttributeTypes()),
+	}
+	fields, err := networkKitSpec().WireFields(nullPlan)
+	if err != nil {
+		t.Fatalf("WireFields (null dhcp_guarding): %v", err)
+	}
+	for _, wire := range guardWires {
+		if slices.Contains(fields, wire) {
+			t.Errorf("the mask names %q for a null dhcp_guarding object: %v", wire, fields)
+		}
+	}
+
+	// The positive control: the same four wires DO appear once dhcp_guarding
+	// is set, so the null case above isn't just an always-empty mask.
+	servers, diags := types.ListValueFrom(context.Background(), types.StringType,
+		[]string{"10.1.1.1", "10.1.1.2", "10.1.1.3"})
+	if diags.HasError() {
+		t.Fatalf("building the servers list: %v", diags)
+	}
+	guarding, diags := types.ObjectValue(dhcpGuardingModel{}.AttributeTypes(), map[string]attr.Value{
+		"enabled": types.BoolValue(true),
+		"servers": servers,
+	})
+	if diags.HasError() {
+		t.Fatalf("building the dhcp_guarding object: %v", diags)
+	}
+	populatedPlan := &netModel{Name: types.StringValue("probe"), DhcpGuarding: guarding}
+	fields, err = networkKitSpec().WireFields(populatedPlan)
+	if err != nil {
+		t.Fatalf("WireFields (populated dhcp_guarding): %v", err)
+	}
+	for _, wire := range guardWires {
+		if !slices.Contains(fields, wire) {
+			t.Errorf("the mask omits %q once dhcp_guarding is set: %v", wire, fields)
+		}
+	}
 }
 
 func TestAnUnrelatedApplyResetsDHCPRelayAndV6(t *testing.T) {
