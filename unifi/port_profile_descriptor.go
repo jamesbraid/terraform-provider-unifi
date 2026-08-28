@@ -142,11 +142,18 @@ func portProfileKitSpec() resourcekit.Spec[ppModel, ppSDK] {
 				Units: time.Second,
 				Elide: resourcekit.KeepZero,
 			},
-			ppInt(
-				"egress_rate_limit_kbps",
-				func(m *ppModel) *types.Int64 { return &m.EgressRateLimitKbps },
-				func(s *ppSDK) **int64 { return &s.EgressRateLimitKbps },
-			),
+			// OmitZero: the schema (Optional-only, no Computed) means an
+			// unset value is always Null rather than Unknown, and the
+			// validator (Between(64, 9999999)) already refuses a literal 0
+			// in config -- so this is defensive parity with the class, not
+			// a live fix (R2-C Task 10b fix round 1's census).
+			resourcekit.Int64PtrField[ppModel, ppSDK]{
+				Wire:     "egress_rate_limit_kbps",
+				Model:    func(m *ppModel) *types.Int64 { return &m.EgressRateLimitKbps },
+				SDK:      func(s *ppSDK) **int64 { return &s.EgressRateLimitKbps },
+				Elide:    resourcekit.NullZero,
+				OmitZero: true,
+			},
 			ppBool(
 				"egress_rate_limit_kbps_enabled",
 				func(m *ppModel) *types.Bool { return &m.EgressRateLimitKbpsEnabled },
@@ -219,8 +226,16 @@ func portProfileKitSpec() resourcekit.Spec[ppModel, ppSDK] {
 				func(m *ppModel) *types.Int64 { return &m.PriorityQueue4Level },
 				func(s *ppSDK) **int64 { return &s.PriorityQueue4Level },
 			),
-			ppInt("speed", func(m *ppModel) *types.Int64 { return &m.Speed },
-				func(s *ppSDK) **int64 { return &s.Speed }),
+			// OmitZero: same reasoning as egress_rate_limit_kbps above --
+			// Optional-only, and OneOf(10, 100, ...) already refuses a
+			// literal 0 in config.
+			resourcekit.Int64PtrField[ppModel, ppSDK]{
+				Wire:     "speed",
+				Model:    func(m *ppModel) *types.Int64 { return &m.Speed },
+				SDK:      func(s *ppSDK) **int64 { return &s.Speed },
+				Elide:    resourcekit.NullZero,
+				OmitZero: true,
+			},
 			ppBool(
 				"stormctrl_bcast_enabled",
 				func(m *ppModel) *types.Bool { return &m.StormctrlBcastEnabled },

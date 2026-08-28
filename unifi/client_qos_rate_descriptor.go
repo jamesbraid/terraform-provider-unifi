@@ -44,17 +44,25 @@ func clientQosRateKitSpec() resourcekit.Spec[clientQosRateKitModel, ui.ClientGro
 				SDK:   func(s *ui.ClientGroup) *string { return &s.Name },
 				Elide: resourcekit.KeepZero,
 			},
+			// OmitZero: unrelated to the Elide reasoning above -- the
+			// controller's own pattern (-1|[2-9]|...|100000) rejects a
+			// literal 0 outright, and the schema default (-1) means an
+			// unset value is never actually Unknown at ToSDK time, so this
+			// is defensive parity with the class rather than a live fix
+			// (R2-C Task 10b fix round 1's census).
 			resourcekit.Int64PtrField[clientQosRateKitModel, ui.ClientGroup]{
-				Wire:  "qos_rate_max_down",
-				Model: func(m *clientQosRateKitModel) *types.Int64 { return &m.QOSRateMaxDown },
-				SDK:   func(s *ui.ClientGroup) **int64 { return &s.QOSRateMaxDown },
-				Elide: resourcekit.KeepZero,
+				Wire:     "qos_rate_max_down",
+				Model:    func(m *clientQosRateKitModel) *types.Int64 { return &m.QOSRateMaxDown },
+				SDK:      func(s *ui.ClientGroup) **int64 { return &s.QOSRateMaxDown },
+				Elide:    resourcekit.KeepZero,
+				OmitZero: true,
 			},
 			resourcekit.Int64PtrField[clientQosRateKitModel, ui.ClientGroup]{
-				Wire:  "qos_rate_max_up",
-				Model: func(m *clientQosRateKitModel) *types.Int64 { return &m.QOSRateMaxUp },
-				SDK:   func(s *ui.ClientGroup) **int64 { return &s.QOSRateMaxUp },
-				Elide: resourcekit.KeepZero,
+				Wire:     "qos_rate_max_up",
+				Model:    func(m *clientQosRateKitModel) *types.Int64 { return &m.QOSRateMaxUp },
+				SDK:      func(s *ui.ClientGroup) **int64 { return &s.QOSRateMaxUp },
+				Elide:    resourcekit.KeepZero,
+				OmitZero: true,
 			},
 		},
 	}

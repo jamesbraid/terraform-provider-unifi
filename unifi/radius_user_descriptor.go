@@ -62,17 +62,22 @@ func radiusUserKitSpec() resourcekit.Spec[radiusUserKitModel, ui.Account] {
 				SDK:   func(s *ui.Account) *string { return &s.Password },
 				Elide: resourcekit.KeepZero,
 			},
+			// OmitZero: the schema default (3/6) means an unset plan value is
+			// never actually Unknown at ToSDK time, and the schema validator
+			// already refuses a literal 0 in config -- so this is defensive
+			// parity with the class, not a live fix (R2-C Task 10b fix round
+			// 1's census, internal/resourcekit/omit_zero_check.go).
 			resourcekit.Int64PtrField[radiusUserKitModel, ui.Account]{
 				Wire:  "tunnel_type",
 				Model: func(m *radiusUserKitModel) *types.Int64 { return &m.TunnelType },
 				SDK:   func(s *ui.Account) **int64 { return &s.TunnelType },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.KeepZero, OmitZero: true,
 			},
 			resourcekit.Int64PtrField[radiusUserKitModel, ui.Account]{
 				Wire:  "tunnel_medium_type",
 				Model: func(m *radiusUserKitModel) *types.Int64 { return &m.TunnelMediumType },
 				SDK:   func(s *ui.Account) **int64 { return &s.TunnelMediumType },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.KeepZero, OmitZero: true,
 			},
 			resourcekit.StringField[radiusUserKitModel, ui.Account]{
 				Wire:  "networkconf_id",
@@ -80,11 +85,16 @@ func radiusUserKitSpec() resourcekit.Spec[radiusUserKitModel, ui.Account] {
 				SDK:   func(s *ui.Account) *string { return &s.NetworkID },
 				Elide: resourcekit.NullZero,
 			},
+			// OmitZero: Optional+Computed with UseStateForUnknown and no
+			// schema default -- the dtim_6e shape exactly (R2-C Task 10b):
+			// an unset plan value is genuinely Unknown on create, and
+			// ValueInt64Pointer() would force-emit the zero the controller's
+			// own pattern rejects.
 			resourcekit.Int64PtrField[radiusUserKitModel, ui.Account]{
 				Wire:  "vlan",
 				Model: func(m *radiusUserKitModel) *types.Int64 { return &m.VLAN },
 				SDK:   func(s *ui.Account) **int64 { return &s.VLAN },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.KeepZero, OmitZero: true,
 			},
 			resourcekit.StringField[radiusUserKitModel, ui.Account]{
 				Wire:  "tunnel_config_type",

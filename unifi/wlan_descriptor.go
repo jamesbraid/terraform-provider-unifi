@@ -523,11 +523,16 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 				Model: func(m *wlanKitModel) *types.Bool { return &m.VLANEnabled },
 				SDK:   func(s *ui.WLAN) *bool { return &s.VLANEnabled },
 			},
+			// OmitZero: Optional-only (no Computed), and the schema
+			// validator (Between(2, 4095)) already refuses a literal 0 in
+			// config -- defensive parity with the class, not a live fix
+			// (R2-C Task 10b fix round 1's census).
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "vlan",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.VLAN },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.VLAN },
-				Elide: resourcekit.NullZero,
+				Wire:     "vlan",
+				Model:    func(m *wlanKitModel) *types.Int64 { return &m.VLAN },
+				SDK:      func(s *ui.WLAN) **int64 { return &s.VLAN },
+				Elide:    resourcekit.NullZero,
+				OmitZero: true,
 			},
 			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
 				Wire:  "mcastenhance_enabled",
@@ -596,20 +601,29 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 				Model: func(m *wlanKitModel) *types.Bool { return &m.RoamingAssistantNaEnabled },
 				SDK:   func(s *ui.WLAN) *bool { return &s.RoamingAssistantNaEnabled },
 			},
+			// OmitZero: same hazard and shape as dtim_6e/na/ng (R2-C Task
+			// 10b) -- Optional+Computed, UseStateForUnknown, no schema
+			// default, so an unset value is genuinely Unknown on create.
+			// Found by this task's fix-round census, not the original live
+			// rerun: it was masked behind dtim_6e failing validation first.
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "roaming_assistant_na_rssi",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.RoamingAssistantNaRssi },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.RoamingAssistantNaRssi },
+				Wire:     "roaming_assistant_na_rssi",
+				Model:    func(m *wlanKitModel) *types.Int64 { return &m.RoamingAssistantNaRssi },
+				SDK:      func(s *ui.WLAN) **int64 { return &s.RoamingAssistantNaRssi },
+				OmitZero: true,
 			},
 			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
 				Wire:  "roaming_assistant_6e_enabled",
 				Model: func(m *wlanKitModel) *types.Bool { return &m.RoamingAssistant6EEnabled },
 				SDK:   func(s *ui.WLAN) *bool { return &s.RoamingAssistant6EEnabled },
 			},
+			// OmitZero: the peeled-onion field this task's live rerun found
+			// behind dtim_6e -- same shape, same fix.
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "roaming_assistant_6e_rssi",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.RoamingAssistant6ERssi },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.RoamingAssistant6ERssi },
+				Wire:     "roaming_assistant_6e_rssi",
+				Model:    func(m *wlanKitModel) *types.Int64 { return &m.RoamingAssistant6ERssi },
+				SDK:      func(s *ui.WLAN) **int64 { return &s.RoamingAssistant6ERssi },
+				OmitZero: true,
 			},
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
 				Wire:  "group_rekey",

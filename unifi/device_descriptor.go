@@ -742,11 +742,16 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 				Model: func(m *deviceKitModel) *types.Bool { return &m.JumboframeEnabled },
 				SDK:   func(s *ui.Device) *bool { return &s.JumboframeEnabled },
 			},
+			// OmitZero: Optional+Computed with no schema default and no
+			// UseStateForUnknown -- an unset plan value is Unknown on
+			// create, and ValueInt64Pointer() would force-emit the zero
+			// the controller's pattern (1-100) rejects. Same class as
+			// dtim_6e (R2-C Task 10b).
 			resourcekit.Int64PtrField[deviceKitModel, ui.Device]{
 				Wire:  "lcm_brightness",
 				Model: func(m *deviceKitModel) *types.Int64 { return &m.LcmBrightness },
 				SDK:   func(s *ui.Device) **int64 { return &s.LcmBrightness },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.KeepZero, OmitZero: true,
 			},
 			resourcekit.BoolField[deviceKitModel, ui.Device]{
 				Wire:  "lcm_brightness_override",
