@@ -512,7 +512,7 @@ func TestCompileRejectsUnderivableNesting(t *testing.T) {
 			mutate: func(field map[string]any) {
 				field["fields"] = []any{jsonArray(field["fields"])[0]}
 			},
-			want: `member "port" is unclassified`,
+			want: `unclassified members "port": every member needs a policy decision`,
 		},
 		"hand-authored member list": {
 			structuralType: "object",
@@ -532,6 +532,24 @@ func TestCompileRejectsUnderivableNesting(t *testing.T) {
 				t.Fatalf("Compile() error = %v, want %q", err, test.want)
 			}
 		})
+	}
+}
+
+// A controller bump can add several members to one object field at once;
+// the member completeness check used to return on the first unclassified
+// member, same defect as the top-level completeness check above. It must
+// name every unaccounted member in one error instead.
+func TestCompileReportsAllUnclassifiedObjectMembersAtOnce(t *testing.T) {
+	_, err := Compile(nestedInput(t, "object", func(field map[string]any) {
+		field["fields"] = []any{}
+	}))
+	if err == nil {
+		t.Fatal("Compile() error = nil, want an unclassified-member error")
+	}
+	for _, want := range []string{`"host"`, `"port"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("Compile() error = %v, want it to name %s", err, want)
+		}
 	}
 }
 

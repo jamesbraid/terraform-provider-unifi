@@ -1361,15 +1361,26 @@ func nestedAttributes(
 			)
 		}
 	}
+	// Every one, not the first: an object field can gain several members in
+	// one controller bump, and reporting them one compile at a time turns a
+	// single policy decision pass into as many round trips as there are
+	// members.
+	var unclassifiedMembers []string
+	for _, member := range structural.Fields {
+		if _, classified := decisions[member.Name]; !classified {
+			unclassifiedMembers = append(unclassifiedMembers, fmt.Sprintf("%q", member.Name))
+		}
+	}
+	if len(unclassifiedMembers) > 0 {
+		return nil, fmt.Errorf(
+			"object field %q has unclassified members %s: every member needs a policy decision",
+			field.StructuralName, strings.Join(unclassifiedMembers, ", "),
+		)
+	}
+
 	members := make([]codeAttribute, 0, len(structural.Fields))
 	for _, member := range structural.Fields {
-		decision, classified := decisions[member.Name]
-		if !classified {
-			return nil, fmt.Errorf(
-				"object field %q member %q is unclassified: every member needs a policy decision",
-				field.StructuralName, member.Name,
-			)
-		}
+		decision := decisions[member.Name]
 		if err := validateDisposition(decision.Disposition, decision.TerraformName); err != nil {
 			return nil, err
 		}
