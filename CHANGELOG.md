@@ -2,6 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.106.0] - DRAFT, unreleased
+
+### 🔧 Maintenance
+
+- **The provider now builds against go-unifi v1.106.0, locked to UniFi
+  Network 10.6.101** (up from 10.4.57, pinned by v1.105.1). The schema this
+  provider serves is byte-identical to v0.105.0's, confirmed by a golden
+  snapshot comparison, and the full live acceptance suite passes 702/2/0
+  against UniFi Network 10.6.101 — the same result v0.105.0 gets, with
+  no test changes. Nothing behaves differently on this bump. Upgrading
+  needs no configuration change.
+
+**28 new controller fields exist at 10.6.101 and are deliberately not
+exposed yet** (162 per-surface policy decisions across 22 policy files) —
+each is a reviewed decision to defer, not an oversight:
+
+- `unifi_wlan`: `multicast_suppressor_mode`.
+- `unifi_firewall_group`: a URL-fed dynamic address group's fields —
+  `description`, `source`, `update_interval_seconds`, `url`.
+- `unifi_port_profile` (resource and data source): `ld_mode`.
+  `unifi_device`'s per-port overrides mirror the same field set and gained
+  it too, plus `sd_wan_underlay_port`, `sd_wan_underlay_port_networkconf_id`,
+  `trusted_port_mac`, and `unit_id`.
+- `unifi_network`, `unifi_wan`, `unifi_vpn_client`, `unifi_vpn_server`, and
+  `unifi_site_to_site_vpn` (all built on the SDK's shared network struct):
+  a Wi-Fi-uplink WAN group (`is_wifi_tethering`, `uplink_band`,
+  `uplink_identity`, `uplink_security`, `uplink_ssid`,
+  `x_uplink_password`), `wan_pppoe_rfc4638_enabled`, `sdwan_underlay`, a
+  site-to-site local-subnets group (`local_vpn_networkconf_ids`,
+  `local_vpn_subnets`, `local_vpn_subnets_mode`), and
+  `openvpn_compression_disabled`.
+- `unifi_device` and the `unifi_port` action: `lcm_status`,
+  `outlet_power_cycle_on_internet_loss_seconds`, and a
+  battery-management-system override, `vbms_override`.
+- `unifi_setting`: `auto_speedtest`'s `speed_test_mode` and `wan_list`, and
+  `igmp_snooping`'s `auto_unknown_traffic_handling`. Two settings sections
+  the controller now reports, `test_and_commit` and
+  `super_application_degradation`, aren't modeled by this provider at all.
+
+**Contributor-facing tooling changes:**
+
+- The acceptance harness derives its controller image tag from the SDK's
+  `UnifiVersion` instead of a hardcoded string (override with
+  `UNIFI_TEST_CONTROLLER_IMAGE`), and waits on the image's own healthcheck
+  before logging in rather than racing it.
+- A policy file whose bootstrap digest has gone stale from an SDK bump is
+  now re-pinned by the compiler automatically. A corrupt digest is still
+  refused.
+- `sdk-bootstrap` now records the SDK version `go.mod` actually resolves,
+  including through a replace, so nothing needs to be kept in sync by
+  hand.
+- A `go.mod` directory replace — the state while developing against an
+  untagged SDK — now fails a test, so it can't reach a merge.
+
+---
+
 ## [v0.105.0] - DRAFT, unreleased
 
 **This section is a draft.** v0.101.2 is this provider's last released
