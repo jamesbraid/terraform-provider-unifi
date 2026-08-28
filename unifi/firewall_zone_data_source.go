@@ -2,7 +2,9 @@ package unifi
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
@@ -76,28 +78,33 @@ func (d *firewallZoneDataSource) Read(
 
 	name := data.Name.ValueString()
 
-	zones, err := d.client.ListFirewallZone(ctx, site)
+	// Routed through the same ReadByName the resource's name-import path
+	// uses, so a duplicate name is refused here too instead of the data
+	// source silently picking whichever match came first.
+	zone, err := firewallZoneKitBackend(d.client.ApiClient).ReadByName(ctx, site, name)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error Reading Firewall Zones",
-			"Could not list firewall zones: "+err.Error(),
-		)
-		return
-	}
-
-	var zone *unifi.FirewallZone
-	for _, z := range zones {
-		if z.Name == name {
-			zone = &z
-			break
+		var notFound *unifi.NotFoundError
+		switch {
+		case errors.As(err, &notFound):
+			resp.Diagnostics.AddError(
+				"Firewall Zone Not Found",
+				fmt.Sprintf("No firewall zone with name %q found on site %q.", name, site),
+			)
+		case strings.Contains(err.Error(), "multiple firewall zones named"):
+			// A data source has no import to fall back to, unlike the
+			// resource's wording for the same case.
+			resp.Diagnostics.AddError(
+				"Ambiguous Firewall Zone Name",
+				fmt.Sprintf(
+					"multiple firewall zones named %q on site %q; refer to the zone by id instead",
+					name, site),
+			)
+		default:
+			resp.Diagnostics.AddError(
+				"Error Reading Firewall Zones",
+				"Could not list firewall zones: "+err.Error(),
+			)
 		}
-	}
-
-	if zone == nil {
-		resp.Diagnostics.AddError(
-			"Firewall Zone Not Found",
-			fmt.Sprintf("No firewall zone with name %q found on site %q.", name, site),
-		)
 		return
 	}
 
