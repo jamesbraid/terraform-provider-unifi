@@ -231,10 +231,6 @@ func networkKitAfterReceive(
 		model.MulticastDNS = prior.MulticastDNS
 	}
 	model.Vlan = networkVLANFromNetwork(sdk)
-	// ipv6_aliases stays null: the SDK does have an IPV6Aliases field, but the
-	// provider has never written it, and adding that is a practitioner-visible
-	// change for its own commit.
-	model.IPv6Aliases = types.ListNull(types.StringType)
 
 	// A VLAN-only network doesn't store most of this surface: the controller
 	// accepts the write but omits these fields on every read, so a plain
@@ -427,6 +423,13 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 				Wire:  "ip_aliases",
 				Model: func(m *netModel) *types.List { return &m.IPAliases },
 				SDK:   func(s *ui.Network) *[]string { return &s.IPAliases },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringListField[netModel, ui.Network]{
+				// KeepZero for the same reason as ip_aliases above.
+				Wire:  "ipv6_aliases",
+				Model: func(m *netModel) *types.List { return &m.IPv6Aliases },
+				SDK:   func(s *ui.Network) *[]string { return &s.IPV6Aliases },
 				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.ScatteredObjectField[netModel, ui.Network]{

@@ -156,7 +156,7 @@ func TestNetworkMaskExcludesTheFieldsItDoesNotManage(t *testing.T) {
 		// Spelled with one P on purpose: that's the controller's own spelling
 		// (via go-unifi's json tag), while the Go field IGMPSuppression has two.
 		"igmp_fastleave", "igmp_flood_unknown_multicast", "igmp_supression", //nolint:misspell // the controller's spelling
-		"ipv6_aliases", "mac_override_enabled", "upnp_lan_enabled",
+		"mac_override_enabled", "upnp_lan_enabled",
 	}
 	name := "probe"
 	for _, purpose := range []string{
@@ -325,8 +325,10 @@ func TestUnconditionalEmptySlicesAreMaskedOnlyWhereManaged(t *testing.T) {
 	}{
 		{
 			purpose: ui.PurposeCorporate, mask: networkWireFields,
-			managed:  []string{"ip_aliases", "nat_outbound_ip_addresses", "dhcp_relay_servers"},
-			excluded: []string{"ipv6_aliases"},
+			managed: []string{
+				"ip_aliases", "ipv6_aliases", "nat_outbound_ip_addresses", "dhcp_relay_servers",
+			},
+			excluded: nil,
 		},
 		{
 			purpose: ui.PurposeWAN, mask: wanWireFields,

@@ -75,6 +75,13 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "ipv6_aliases",
+      "terraform_name": "ipv6_aliases",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "ipv6_client_address_assignment",
       "terraform_name": "ipv6_client_address_assignment",
       "structural_type": "string",
@@ -496,12 +503,6 @@
     }
   ],
   "provider_owned": [
-    {
-      "terraform_name": "ipv6_aliases",
-      "terraform_type": "list",
-      "disposition": "managed",
-      "generated": true
-    },
     {
       "terraform_name": "site",
       "terraform_type": "string",

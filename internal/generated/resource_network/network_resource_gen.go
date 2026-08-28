@@ -411,8 +411,12 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 			"ipv6_aliases": schema.ListAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
+				Computed:            true,
 				Description:         "List of IPv6 aliases for the network.",
 				MarkdownDescription: "List of IPv6 aliases for the network.",
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"ipv6_client_address_assignment": schema.StringAttribute{
 				Optional:            true,

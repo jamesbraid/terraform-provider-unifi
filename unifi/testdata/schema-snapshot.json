@@ -3863,8 +3863,12 @@
           "kind": "attribute",
           "type": "[\"list\",\"string\"]",
           "optional": true,
+          "computed": true,
           "description": "List of IPv6 aliases for the network.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
         },
         "ipv6_client_address_assignment": {
           "kind": "attribute",
