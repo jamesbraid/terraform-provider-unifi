@@ -1509,6 +1509,18 @@ func (r *wanResource) ValidateConfig(
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	// Stopgap: the model has no ip/netmask/gateway attributes and the wire
+	// list has no matching wires, so a static WAN would plan clean and write
+	// an unaddressable one. Refuse until the WAN kit migration adds them.
+	if !model.Type.IsNull() && !model.Type.IsUnknown() && model.Type.ValueString() == "static" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("type"),
+			"Static WAN Addressing Not Supported",
+			"This provider has no attributes for static WAN addressing (IP, netmask, gateway) yet, "+
+				`so type = "static" would plan clean and write an unaddressable WAN. `+
+				"Use type = \"dhcp\" or configure the WAN's static address in the UniFi controller directly.",
+		)
+	}
 	network, diags := r.modelToNetwork(ctx, &model)
 	// A configuration this mapper can't build is a problem the apply will report
 	// properly; warning about its fields here would just be noise on top of a real error.

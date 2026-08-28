@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -628,6 +629,57 @@ func Test_wanResource_IdentitySchema(t *testing.T) {
 			t.Error("IdentitySchema() returned no attributes")
 		}
 	})
+}
+
+// TestWANConfigWithStaticTypeAndNoAddressIsRefused pins the stopgap in
+// ValidateConfig: the model has no ip/netmask/gateway attributes yet, so
+// type = "static" must be refused rather than plan clean and write an
+// unaddressable WAN. dhcp is the control and must not error.
+func TestWANConfigWithStaticTypeAndNoAddressIsRefused(t *testing.T) {
+	ctx := context.Background()
+	r := &wanResource{}
+	schemaResp := &fwresource.SchemaResponse{}
+	r.Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
+	if schemaResp.Diagnostics.HasError() {
+		t.Fatalf("build the schema: %v", schemaResp.Diagnostics)
+	}
+
+	configFor := func(t *testing.T, wanType string) tfsdk.Config {
+		t.Helper()
+		model := &wanResourceModel{
+			Name:     types.StringValue("wan1"),
+			Type:     types.StringValue(wanType),
+			Enabled:  types.BoolValue(true),
+			Timeouts: timeoutsNullValue(),
+		}
+		applyWANDefaults(model)
+		staging := tfsdk.State{Schema: schemaResp.Schema}
+		if diags := staging.Set(ctx, model); diags.HasError() {
+			t.Fatalf("set the config: %v", diags)
+		}
+		return tfsdk.Config{Schema: schemaResp.Schema, Raw: staging.Raw}
+	}
+
+	tests := []struct {
+		name      string
+		wanType   string
+		wantError bool
+	}{
+		{"static_type_is_refused", "static", true},
+		{"dhcp_type_is_allowed", "dhcp", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := &fwresource.ValidateConfigResponse{}
+			r.ValidateConfig(ctx, fwresource.ValidateConfigRequest{
+				Config: configFor(t, tt.wanType),
+			}, resp)
+			if got := resp.Diagnostics.HasError(); got != tt.wantError {
+				t.Errorf("type=%q: got error=%v, want %v (diags: %v)",
+					tt.wanType, got, tt.wantError, resp.Diagnostics)
+			}
+		})
+	}
 }
 
 func Test_wanResource_modelToNetwork(t *testing.T) {
