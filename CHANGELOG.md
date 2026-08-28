@@ -52,9 +52,10 @@ All notable changes to this project will be documented in this file.
   controller already; it now fails at plan time instead of apply time.
 - **Attribute validators now derive from the controller's own
   field-constraint table (go-unifi's `FieldConstraints`), not hand
-  transcription.** 126 attributes gained a pattern validator they didn't
-  have before, and roughly 20 `OneOf` value sets changed to match what the
-  controller actually accepts — for example, `unifi_dynamic_dns.x_password`
+  transcription.** 126 attributes gained a validator they didn't have
+  before (116 of them a pattern, the rest a value set or a list size), and
+  20 `OneOf` value sets changed to match what the controller actually
+  accepts — for example, `unifi_dynamic_dns.x_password`
   now rejects a value containing a space, and `unifi_wlan.name` now rejects
   a name longer than 32 characters. A value the controller would already
   have rejected now fails at plan time instead of apply time. Two sets were
