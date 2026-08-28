@@ -2,20 +2,13 @@
 #
 # A default overrides whatever the controller stores, so any attribute here
 # plans a change back to its default the moment it is left out of a
-# configuration -- and silently changes the device if the controller held
-# something else. That is only correct where the provider owns the value and
-# the controller stores nothing of its own.
-#
-# This list is an inventory of what still needs checking against a live
-# controller, not a list of approved patterns. Prefer no Default plus
-# UseStateForUnknown for anything the controller reports.
+# configuration. Only correct where the provider owns the value and the
+# controller stores nothing of its own. This is an inventory of what still
+# needs checking against a live controller, not a list of approved patterns.
 #
 # Regenerate with: UPDATE_GOLDEN=1 go test ./unifi/ -run Test_schemaOptionalComputedDefaults
 #
-# That refuses to drop an entry. A rewrite that would remove one has to say
-# so with UPDATE_GOLDEN_ALLOW_REMOVAL=1 as well, because removing a line here
-# is the direction a regression takes and rewriting the file is what erases
-# the evidence of it.
+# Removing an entry also requires UPDATE_GOLDEN_ALLOW_REMOVAL=1.
 unifi_account.tunnel_medium_type
 unifi_account.tunnel_type
 unifi_bgp.description
@@ -28,6 +21,7 @@ unifi_client_qos_rate.qos_rate_max_down
 unifi_client_qos_rate.qos_rate_max_up
 unifi_device.allow_adoption
 unifi_device.forget_on_destroy
+unifi_device.port_override.op_mode
 unifi_dns_record.enabled
 unifi_dynamic_dns.interface
 unifi_firewall_policy.create_allow_respond
@@ -93,6 +87,8 @@ unifi_power_supervisor.heartbeat_interval
 unifi_power_supervisor.power_off_duration
 unifi_power_supervisor.silence_threshold
 unifi_radius_profile.accounting_enabled
+unifi_radius_profile.acct_server.port
+unifi_radius_profile.auth_server.port
 unifi_radius_profile.interim_update_enabled
 unifi_radius_profile.interim_update_interval
 unifi_radius_profile.use_usg_acct_server
@@ -162,6 +158,7 @@ unifi_wlan.private_preshared_keys.network_id
 unifi_wlan.private_preshared_keys_enabled
 unifi_wlan.proxy_arp
 unifi_wlan.radius_mac_auth_enabled
+unifi_wlan.schedule.start_minute
 unifi_wlan.uapsd
 unifi_wlan.vlan_enabled
 unifi_wlan.wlan_band

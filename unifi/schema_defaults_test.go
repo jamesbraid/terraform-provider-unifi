@@ -39,9 +39,11 @@ const header = `# Optional + Computed attributes that also carry a Default.
 // must be justified deliberately, after confirming a refresh with the
 // attribute omitted plans empty.
 //
-// Blocks aren't walked (resp.Schema.Blocks is never passed to walk), and the
-// type switch has no default arm, so a newly added attribute type is
-// silently unread here.
+// walkBlocks walks nested schema declared as a Block -- a separate Go type
+// from Attributes that walk alone does not see -- and both walk's attribute
+// type switch and walkBlocks' block type switch fail loudly on a type
+// neither recognizes, so a newly added attribute or block type cannot
+// silently skip the ratchet.
 func Test_schemaOptionalComputedDefaults(t *testing.T) {
 	got := optionalComputedDefaults(t)
 
@@ -90,6 +92,8 @@ func optionalComputedDefaults(t *testing.T) []string {
 	var found []string
 
 	var walk func(prefix string, attrs map[string]schema.Attribute)
+	var walkBlocks func(prefix string, blocks map[string]schema.Block)
+
 	walk = func(prefix string, attrs map[string]schema.Attribute) {
 		for name, a := range attrs {
 			path := prefix + name
@@ -126,10 +130,34 @@ func optionalComputedDefaults(t *testing.T) []string {
 			case schema.MapNestedAttribute:
 				hasDefault = v.Default != nil
 				walk(path+".", v.NestedObject.Attributes)
+			default:
+				t.Fatalf("%s: %T is not a recognized attribute type; add a case to walk "+
+					"so a new attribute type cannot silently skip the defaults ratchet", path, a)
 			}
 
 			if hasDefault && a.IsOptional() && a.IsComputed() {
 				found = append(found, path)
+			}
+		}
+	}
+
+	walkBlocks = func(prefix string, blocks map[string]schema.Block) {
+		for name, b := range blocks {
+			path := prefix + name
+
+			switch v := b.(type) {
+			case schema.SingleNestedBlock:
+				walk(path+".", v.Attributes)
+				walkBlocks(path+".", v.Blocks)
+			case schema.ListNestedBlock:
+				walk(path+".", v.NestedObject.Attributes)
+				walkBlocks(path+".", v.NestedObject.Blocks)
+			case schema.SetNestedBlock:
+				walk(path+".", v.NestedObject.Attributes)
+				walkBlocks(path+".", v.NestedObject.Blocks)
+			default:
+				t.Fatalf("%s: %T is not a recognized block type; add a case to walkBlocks "+
+					"so a new block type cannot silently skip the defaults ratchet", path, b)
 			}
 		}
 	}
@@ -147,6 +175,7 @@ func optionalComputedDefaults(t *testing.T) []string {
 		}
 
 		walk(meta.TypeName+".", resp.Schema.Attributes)
+		walkBlocks(meta.TypeName+".", resp.Schema.Blocks)
 	}
 
 	sort.Strings(found)
