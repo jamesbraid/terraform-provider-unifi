@@ -83,6 +83,10 @@ All notable changes to this project will be documented in this file.
   field has never matched `0` — a configuration setting `port = 0` planned
   cleanly and then failed at apply with `api.err.InvalidValue`. It now
   fails to plan instead.
+- **`unifi_setting`: `mgmt.ssh_username` reads back as an empty string, not null,
+  when it is managed and the controller reports it cleared.** Previously any
+  empty read was treated as unset, so a username the controller had cleared
+  showed no diff against a configured value.
 
 ### 📖 Documentation
 
