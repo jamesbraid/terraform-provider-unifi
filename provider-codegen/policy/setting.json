@@ -9,6 +9,8 @@
     "AutoSpeedtest.attr_no_edit",
     "AutoSpeedtest.key",
     "AutoSpeedtest.site_id",
+    "AutoSpeedtest.speed_test_mode",
+    "AutoSpeedtest.wan_list",
     "Country._id",
     "Country.attr_hidden",
     "Country.attr_hidden_id",
@@ -35,6 +37,7 @@
     "IgmpSnooping.attr_hidden_id",
     "IgmpSnooping.attr_no_delete",
     "IgmpSnooping.attr_no_edit",
+    "IgmpSnooping.auto_unknown_traffic_handling",
     "IgmpSnooping.failover_querier",
     "IgmpSnooping.fastleave_for_network_ids",
     "IgmpSnooping.flood_known_protocols",
@@ -2121,6 +2124,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "e79e391df3a028f482e4fc48b76a250fc2c2cf1b8a5d8b3cfeb06feff80cb50a",
+  "source_specification_sha256": "79df0997715a8fa2a55b811846a7a4ac0099634252f9d2672781a4a0438e3bbb",
   "surface_kind": "managed_resource"
 }

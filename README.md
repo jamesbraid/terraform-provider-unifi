@@ -30,7 +30,7 @@ You can browse documentation on the [Terraform provider registry](https://regist
 
 ## Supported Unifi Controller Versions
 
-Acceptance tests run against UniFi Network 10.4.57. That is the version the SDK's field definitions are generated from, and the one to assume when a resource's behaviour is in question.
+Acceptance tests run against UniFi Network 10.6.101. That is the version the SDK's field definitions are generated from, and the one to assume when a resource's behaviour is in question.
 
 Version 6 is the floor, from [v0.34](https://github.com/ubiquiti-community/terraform-provider-unifi/releases/tag/v0.34.0) onwards. Pin an older provider release if you need v5.
 

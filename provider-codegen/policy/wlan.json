@@ -1199,6 +1199,7 @@
     "minrate_na_enabled",
     "minrate_ng_advertising_rates",
     "minrate_ng_enabled",
+    "multicast_suppressor_mode",
     "name_combine_enabled",
     "name_combine_suffix",
     "nas_identifier",
@@ -1350,6 +1351,6 @@
     }
   ],
   "resource": "unifi_wlan",
-  "source_specification_sha256": "fe96f8747c30171625706e538062cc45c090d1ac78e411469f6607a4e61e6ccd",
+  "source_specification_sha256": "b7c0dec2f41a4c7e26f245017baaede3f21698c45320bb32dc640f25fa807412",
   "surface_kind": "managed_resource"
 }

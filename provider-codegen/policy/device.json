@@ -1026,6 +1026,11 @@
         },
         {
           "disposition": "omitted",
+          "structural_name": "ld_mode",
+          "terraform_name": "ld_mode"
+        },
+        {
+          "disposition": "omitted",
           "structural_name": "link_debounce",
           "terraform_name": "link_debounce"
         },
@@ -1056,6 +1061,16 @@
         },
         {
           "disposition": "omitted",
+          "structural_name": "sd_wan_underlay_port",
+          "terraform_name": "sd_wan_underlay_port"
+        },
+        {
+          "disposition": "omitted",
+          "structural_name": "sd_wan_underlay_port_networkconf_id",
+          "terraform_name": "sd_wan_underlay_port_networkconf_id"
+        },
+        {
+          "disposition": "omitted",
           "structural_name": "stable_port_enabled",
           "terraform_name": "stable_port_enabled"
         },
@@ -1073,6 +1088,16 @@
           "disposition": "omitted",
           "structural_name": "stp_uplink",
           "terraform_name": "stp_uplink"
+        },
+        {
+          "disposition": "omitted",
+          "structural_name": "trusted_port_mac",
+          "terraform_name": "trusted_port_mac"
+        },
+        {
+          "disposition": "omitted",
+          "structural_name": "unit_id",
+          "terraform_name": "unit_id"
         }
       ],
       "structural_name": "port_overrides",
@@ -1393,6 +1418,7 @@
     "ip",
     "lcm_orientation_override",
     "lcm_settings_restricted_access",
+    "lcm_status",
     "lcm_tracker_enabled",
     "lcm_tracker_seed",
     "loopback_override",
@@ -1417,6 +1443,7 @@
     "outlet_power_cycle_enabled",
     "outlet_power_cycle_on_ac_recovery_enabled",
     "outlet_power_cycle_on_ac_recovery_seconds",
+    "outlet_power_cycle_on_internet_loss_seconds",
     "peer_to_peer_mode",
     "port_table",
     "power_source_ctrl",
@@ -1435,6 +1462,7 @@
     "station_mode",
     "ubb_pair_name",
     "ups_shutdown_remaining_minutes",
+    "vbms_override",
     "video_info",
     "x",
     "y"
@@ -1553,6 +1581,6 @@
     }
   ],
   "resource": "unifi_device",
-  "source_specification_sha256": "d1b25952207a78ffd67453b86ebfbb7fcfb361a5b35059a0ca2303876af25fe0",
+  "source_specification_sha256": "900b498da8a02f412678d23d5cc3af395bd6bb356937019abb99fdfc30806038",
   "surface_kind": "managed_resource"
 }

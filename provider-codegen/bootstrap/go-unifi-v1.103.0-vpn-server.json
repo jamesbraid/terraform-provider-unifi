@@ -2,9 +2,9 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.105.1",
-    "commit": "d20e126f0e2321727a66d5faeffeb434c215c455",
-    "specification_sha256": "3da8f8999c4727f8811ddd28717c8a19ca576531cc0d1c03469dbbeb1d3eb014"
+    "version": "v1.106.0",
+    "commit": "96f4b1df30d2b0eccc527cf7ae24f51b7085f11c",
+    "specification_sha256": "a62cf73cab03658ff3d4d3f0b661a0ad4ec3254cd58561ba1bd27453676e302b"
   },
   "resource": {
     "name": "unifi_vpn_server",
@@ -668,6 +668,11 @@
         "go_name": "IsNAT"
       },
       {
+        "name": "is_wifi_tethering",
+        "type": "bool",
+        "go_name": "IsWifiTethering"
+      },
+      {
         "name": "l2tp_allow_weak_ciphers",
         "type": "bool",
         "go_name": "L2TpAllowWeakCiphers"
@@ -694,6 +699,22 @@
         "name": "local_port",
         "type": "int64",
         "go_name": "LocalPort",
+        "pointer": true
+      },
+      {
+        "name": "local_vpn_networkconf_ids",
+        "type": "array<string>",
+        "go_name": "LocalVPNNetworkIDs"
+      },
+      {
+        "name": "local_vpn_subnets",
+        "type": "array<string>",
+        "go_name": "LocalVPNSubnets"
+      },
+      {
+        "name": "local_vpn_subnets_mode",
+        "type": "string",
+        "go_name": "LocalVPNSubnetsMode",
         "pointer": true
       },
       {
@@ -785,6 +806,11 @@
         "type": "string",
         "go_name": "NetworkGroup",
         "pointer": true
+      },
+      {
+        "name": "openvpn_compression_disabled",
+        "type": "bool",
+        "go_name": "OpenVPNCompressionDisabled"
       },
       {
         "name": "openvpn_configuration",
@@ -954,6 +980,11 @@
         "pointer": true
       },
       {
+        "name": "sdwan_underlay",
+        "type": "bool",
+        "go_name": "SdwanUnderlay"
+      },
+      {
         "name": "setting_preference",
         "type": "string",
         "go_name": "SettingPreference",
@@ -1034,6 +1065,30 @@
         "name": "uid_workspace_url",
         "type": "string",
         "go_name": "UidWorkspaceUrl",
+        "pointer": true
+      },
+      {
+        "name": "uplink_band",
+        "type": "string",
+        "go_name": "UplinkBand",
+        "pointer": true
+      },
+      {
+        "name": "uplink_identity",
+        "type": "string",
+        "go_name": "UplinkIDentity",
+        "pointer": true
+      },
+      {
+        "name": "uplink_security",
+        "type": "string",
+        "go_name": "UplinkSecurity",
+        "pointer": true
+      },
+      {
+        "name": "uplink_ssid",
+        "type": "string",
+        "go_name": "UplinkSSID",
         "pointer": true
       },
       {
@@ -1332,6 +1387,11 @@
         "go_name": "WANPppoePasswordEnabled"
       },
       {
+        "name": "wan_pppoe_rfc4638_enabled",
+        "type": "bool",
+        "go_name": "WANPppoeRfc4638Enabled"
+      },
+      {
         "name": "wan_pppoe_username_enabled",
         "type": "bool",
         "go_name": "WANPppoeUsernameEnabled"
@@ -1566,6 +1626,13 @@
         "type": "string",
         "secret_candidate": true,
         "go_name": "SharedClientKey",
+        "pointer": true
+      },
+      {
+        "name": "x_uplink_password",
+        "type": "string",
+        "secret_candidate": true,
+        "go_name": "UplinkPassword",
         "pointer": true
       },
       {

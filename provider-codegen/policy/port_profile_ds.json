@@ -75,6 +75,7 @@
     "flow_control_enabled",
     "full_duplex",
     "isolation",
+    "ld_mode",
     "link_debounce",
     "link_debounce_auto",
     "lldpmed_enabled",
@@ -145,6 +146,6 @@
     }
   ],
   "resource": "unifi_port_profile",
-  "source_specification_sha256": "0bd61dc32fd5006139c3e88058ca1946cb6b581b456f45e1e1b25b1431828ba8",
+  "source_specification_sha256": "440575be387df6dadaa8f71c602e2f26372f5bf94e569c5406f47e9a557f0071",
   "surface_kind": "data_source"
 }

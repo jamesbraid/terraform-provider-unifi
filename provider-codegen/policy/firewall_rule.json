@@ -468,6 +468,6 @@
     }
   ],
   "resource": "unifi_firewall_rule",
-  "source_specification_sha256": "6202360e85cb5ee0bae33d5629269273c58051cec97dafae23c1db3bb37dfc9e",
+  "source_specification_sha256": "cad6d9359c055bffd79a2131606b908db8743e6f18e90cd90520fc4595599ee6",
   "surface_kind": "managed_resource"
 }

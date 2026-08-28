@@ -44,6 +44,7 @@
     "lcm_night_mode_ends",
     "lcm_orientation_override",
     "lcm_settings_restricted_access",
+    "lcm_status",
     "lcm_tracker_enabled",
     "lcm_tracker_seed",
     "led_override",
@@ -80,6 +81,7 @@
     "outlet_power_cycle_enabled",
     "outlet_power_cycle_on_ac_recovery_enabled",
     "outlet_power_cycle_on_ac_recovery_seconds",
+    "outlet_power_cycle_on_internet_loss_seconds",
     "peer_to_peer_mode",
     "poe_mode",
     "port_overrides",
@@ -106,6 +108,7 @@
     "type",
     "ubb_pair_name",
     "ups_shutdown_remaining_minutes",
+    "vbms_override",
     "video_info",
     "volume",
     "x",
@@ -159,6 +162,6 @@
     }
   ],
   "resource": "unifi_port",
-  "source_specification_sha256": "d1b25952207a78ffd67453b86ebfbb7fcfb361a5b35059a0ca2303876af25fe0",
+  "source_specification_sha256": "900b498da8a02f412678d23d5cc3af395bd6bb356937019abb99fdfc30806038",
   "surface_kind": "action"
 }
