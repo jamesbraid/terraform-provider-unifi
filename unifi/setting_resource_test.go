@@ -700,6 +700,12 @@ resource "unifi_setting" "test" {
 // of these instead of shipping silently.
 
 func TestAccSettingResource_autoSpeedtest(t *testing.T) {
+	// auto_speedtest requires a real WAN uplink: the simulation controller has
+	// none, so it answers api.err.SpeedTestNotSupported (400) on the write.
+	if os.Getenv("UNIFI_SKIP_CONTAINER") == "" {
+		t.Skip("auto speedtest requires a real controller with a WAN uplink; set UNIFI_SKIP_CONTAINER to run")
+	}
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -1031,10 +1037,11 @@ resource "unifi_setting" "test" {
 `
 }
 
-// TestAccSettingResource_ntp pins the map's "" preserved behaviour: the
-// controller persists an unused NTP server slot as an empty string, a valid
-// configured value distinct from unset, and ntp_server_2 = "" here must
-// read back as "" rather than being rewritten to null.
+// TestAccSettingResource_ntp asserts what the controller actually does with
+// ntp_server_1 and setting_preference = "manual": an explicit "" for
+// ntp_server_2 is NOT preserved (that was the round 1 finding -- the
+// controller substitutes its own default pool address), so ntp_server_2 is
+// left unconfigured here and only checked as set, not for a literal value.
 func TestAccSettingResource_ntp(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -1046,17 +1053,16 @@ func TestAccSettingResource_ntp(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"unifi_setting.test",
 						"ntp.ntp_server_1",
-						"pool.ntp.org",
-					),
-					resource.TestCheckResourceAttr(
-						"unifi_setting.test",
-						"ntp.ntp_server_2",
-						"",
+						"time.example.com",
 					),
 					resource.TestCheckResourceAttr(
 						"unifi_setting.test",
 						"ntp.setting_preference",
 						"manual",
+					),
+					resource.TestCheckResourceAttrSet(
+						"unifi_setting.test",
+						"ntp.ntp_server_2",
 					),
 				),
 			},
@@ -1081,10 +1087,9 @@ func TestAccSettingResource_ntp(t *testing.T) {
 						"ntp.ntp_server_1",
 						"time.cloudflare.com",
 					),
-					resource.TestCheckResourceAttr(
+					resource.TestCheckResourceAttrSet(
 						"unifi_setting.test",
 						"ntp.ntp_server_2",
-						"",
 					),
 				),
 			},
@@ -1096,8 +1101,7 @@ func testAccSettingConfig_ntp() string {
 	return `
 resource "unifi_setting" "test" {
   ntp = {
-    ntp_server_1       = "pool.ntp.org"
-    ntp_server_2       = ""
+    ntp_server_1       = "time.example.com"
     setting_preference = "manual"
   }
 }
@@ -1109,7 +1113,6 @@ func testAccSettingConfig_ntpUpdate() string {
 resource "unifi_setting" "test" {
   ntp = {
     ntp_server_1       = "time.cloudflare.com"
-    ntp_server_2       = ""
     setting_preference = "manual"
   }
 }
@@ -1128,6 +1131,16 @@ func TestAccSettingResource_syslog(t *testing.T) {
 						"unifi_setting.test",
 						"syslog.enabled",
 						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"syslog.ip",
+						"10.0.0.5",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"syslog.port",
+						"514",
 					),
 					resource.TestCheckResourceAttr(
 						"unifi_setting.test",
@@ -1175,6 +1188,11 @@ func TestAccSettingResource_syslog(t *testing.T) {
 					),
 					resource.TestCheckResourceAttr(
 						"unifi_setting.test",
+						"syslog.ip",
+						"10.0.0.5",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
 						"syslog.contents.#",
 						"2",
 					),
@@ -1189,6 +1207,8 @@ func testAccSettingConfig_syslog() string {
 resource "unifi_setting" "test" {
   syslog = {
     enabled  = true
+    ip       = "10.0.0.5"
+    port     = 514
     contents = ["device", "client"]
   }
 }
@@ -1200,16 +1220,20 @@ func testAccSettingConfig_syslogUpdate() string {
 resource "unifi_setting" "test" {
   syslog = {
     enabled  = false
+    ip       = "10.0.0.5"
+    port     = 514
     contents = ["device", "client"]
   }
 }
 `
 }
 
-// TestAccSettingResource_igmpSnooping exercises only enabled: the site-level
-// igmp_snooping setting models 2 of the controller's 15 fields (the other
-// 13 -- querier mode, switches, flood options -- are advanced UI-only
-// options preserved via read-modify-write, not schema attributes).
+// TestAccSettingResource_igmpSnooping exercises the site-level
+// igmp_snooping setting's two modelled fields (of the controller's 15; the
+// other 13 -- querier mode, switches, flood options -- are advanced UI-only
+// options preserved via read-modify-write, not schema attributes):
+// enabled, and network_ids pointed at a real network so the round 1 finding
+// (enabled read back false with no networks named) gets a fair test.
 func TestAccSettingResource_igmpSnooping(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -1222,6 +1246,15 @@ func TestAccSettingResource_igmpSnooping(t *testing.T) {
 						"unifi_setting.test",
 						"igmp_snooping.enabled",
 						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"igmp_snooping.network_ids.#",
+						"1",
+					),
+					resource.TestCheckResourceAttrPair(
+						"unifi_setting.test", "igmp_snooping.network_ids.0",
+						"unifi_network.test", "id",
 					),
 				),
 			},
@@ -1243,6 +1276,11 @@ func TestAccSettingResource_igmpSnooping(t *testing.T) {
 						"igmp_snooping.enabled",
 						"false",
 					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"igmp_snooping.network_ids.#",
+						"1",
+					),
 				),
 			},
 		},
@@ -1251,9 +1289,16 @@ func TestAccSettingResource_igmpSnooping(t *testing.T) {
 
 func testAccSettingConfig_igmpSnooping() string {
 	return `
+resource "unifi_network" "test" {
+  name   = "test-igmp-network"
+  subnet = "10.3.10.1/24"
+  vlan   = 30
+}
+
 resource "unifi_setting" "test" {
   igmp_snooping = {
-    enabled = true
+    enabled     = true
+    network_ids = [unifi_network.test.id]
   }
 }
 `
@@ -1261,9 +1306,16 @@ resource "unifi_setting" "test" {
 
 func testAccSettingConfig_igmpSnoopingUpdate() string {
 	return `
+resource "unifi_network" "test" {
+  name   = "test-igmp-network"
+  subnet = "10.3.10.1/24"
+  vlan   = 30
+}
+
 resource "unifi_setting" "test" {
   igmp_snooping = {
-    enabled = false
+    enabled     = false
+    network_ids = [unifi_network.test.id]
   }
 }
 `
