@@ -452,26 +452,70 @@ func TestCompileAppendsDerivedRegexMatchesBesideAHandNonRegexValidator(t *testin
 	}
 }
 
-// TestCompileSkipsPatternDerivationBesideAHandGoDurationValidator is a third
+// TestCompileSkipsPatternDerivationForAGoDurationTypedAttribute is a third
 // silent-skip path, found by checking real shipped example values against
-// the derived patterns: a field with CustomType timetypes.GoDurationType (a
-// hand validators.GoDurationBetween/GoDurationMultipleOf pair validates it)
+// the derived patterns: a field with CustomType timetypes.GoDurationType
 // takes its config value as a Go duration string like "4h" or "3600s", but
 // the SDK's constraint pattern describes the wire format the provider sends
 // after converting that duration to seconds -- a bare digit string. The two
 // are different representations of the same value, not the same string
 // checked twice: "4h" fails a digits-only pattern and "3600" (what would
 // pass it) is not valid Go duration syntax, so appending the derived
-// RegexMatches would make every real value fail one validator or the other.
-// Unlike a hand validator of an unrelated kind (LengthBetween, say, tested
-// above), a hand GoDuration validator's presence means the two validators
-// are not independent checks on the same string -- so the derivation is
-// skipped, not appended, and the skip is recorded in Notices the same way
-// the RE2 skip is.
-func TestCompileSkipsPatternDerivationBesideAHandGoDurationValidator(t *testing.T) {
+// RegexMatches would make every real value fail.
+//
+// This attribute carries no hand validator at all -- the Computed-only
+// shape a data-source mirror takes, with nothing to hand-validate before
+// it's ever written. A coordinator review caught that keying the skip on
+// "does a hand GoDurationBetween/GoDurationMultipleOf validator exist"
+// (the first fix) missed exactly this case: three real Computed-only
+// attributes (network_ds's ipv6_ra_preferred_lifetime/ipv6_ra_valid_lifetime,
+// radius_profile_ds's interim_update_interval) still carried the broken
+// digits-only pattern, invisible to both the notice and the example check
+// (a Computed-only attribute is never configured, so no example ever sets
+// it). Keying on the attribute's own custom_type instead closes that gap.
+func TestCompileSkipsPatternDerivationForAGoDurationTypedAttribute(t *testing.T) {
 	result, err := Compile(CompileInput{
 		Bootstrap: oneOfBootstrap(t, "value", map[string]any{"pattern": "[0-9]{1,4}"}),
 		Policy: oneOfPolicy(t, "value", func(attribute map[string]any) {
+			attribute["custom_type"] = map[string]any{
+				"import": map[string]any{
+					"path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes",
+				},
+				"type":       "timetypes.GoDurationType{}",
+				"value_type": "timetypes.GoDuration",
+			}
+		}),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v, want the pattern derivation skipped, not an error", err)
+	}
+	if validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, "string", "value"); len(validators) != 0 {
+		t.Fatalf("validators = %v, want none: no hand validator was present and derivation was skipped", validators)
+	}
+	wantNotice := "skipped pattern derivation for unifi_dns_record.value: Go-duration custom type"
+	if len(result.Notices) != 1 || result.Notices[0] != wantNotice {
+		t.Fatalf("Notices = %v, want exactly [%q]", result.Notices, wantNotice)
+	}
+}
+
+// TestCompileSkipsPatternDerivationForAGoDurationTypedAttributeWithAHandValidator
+// is the same skip, on the shape a resource-side (Optional) attribute
+// actually takes: CustomType timetypes.GoDurationType alongside a hand
+// validators.GoDurationBetween/GoDurationMultipleOf pair that does the real
+// bounds-checking. The custom_type is still what triggers the skip -- the
+// hand validator's presence is not the condition -- but its outcome must be
+// the same as before: the hand validator survives untouched.
+func TestCompileSkipsPatternDerivationForAGoDurationTypedAttributeWithAHandValidator(t *testing.T) {
+	result, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "value", map[string]any{"pattern": "[0-9]{1,4}"}),
+		Policy: oneOfPolicy(t, "value", func(attribute map[string]any) {
+			attribute["custom_type"] = map[string]any{
+				"import": map[string]any{
+					"path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes",
+				},
+				"type":       "timetypes.GoDurationType{}",
+				"value_type": "timetypes.GoDuration",
+			}
 			attribute["validators"] = []any{
 				map[string]any{
 					"custom": map[string]any{
@@ -496,7 +540,7 @@ func TestCompileSkipsPatternDerivationBesideAHandGoDurationValidator(t *testing.
 	if got, want := jsonString(custom["schema_definition"]), "validators.GoDurationBetween(0, 3600*time.Second)"; got != want {
 		t.Fatalf("schema_definition = %q, want the hand validator %q unchanged", got, want)
 	}
-	wantNotice := "skipped pattern derivation for unifi_dns_record.value: hand Go-duration validator present"
+	wantNotice := "skipped pattern derivation for unifi_dns_record.value: Go-duration custom type"
 	if len(result.Notices) != 1 || result.Notices[0] != wantNotice {
 		t.Fatalf("Notices = %v, want exactly [%q]", result.Notices, wantNotice)
 	}

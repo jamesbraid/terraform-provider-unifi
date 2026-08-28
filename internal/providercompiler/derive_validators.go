@@ -77,21 +77,30 @@ func deriveConstraintValidators(owner, terraformType string, constraint *bootstr
 	if !ok {
 		return attribute, nil
 	}
-	// A hand Go-duration validator means the config value is the human-typed
-	// duration string ("4h", "3600s"), not the SDK's wire format (a bare
-	// digit string of seconds) the derived pattern describes -- the two
-	// validators would then reject every value the other accepts. Found by
-	// checking real shipped example values against the derived patterns
-	// (ipv6_ra_preferred_lifetime = "4h", interim_update_interval = "1h",
-	// both real examples, neither matching the derived digits-only pattern).
-	hasGoDuration, err := attributeHasGoDurationValidator(owner, attribute)
+	// A GoDurationType attribute's config value is the human-typed duration
+	// string ("4h", "3600s"), not the SDK's wire format (a bare digit string
+	// of seconds) the derived pattern describes -- the derived validator
+	// would then reject every real value. Keyed on the attribute's own
+	// custom_type, not on whether a hand GoDurationBetween/GoDurationMultipleOf
+	// validator happens to be present: a Computed-only attribute (a
+	// data-source mirror, say) is never configured, so it has nothing to
+	// hand-validate and carries no such validator, but still has the wrong
+	// pattern derived for it if this only checked for one. Every field in
+	// the policy corpus that does carry a hand Go-duration validator also
+	// declares this custom_type (verified 2026-08-28), so custom_type alone
+	// is the complete signal. Found by checking real shipped example values
+	// against the derived patterns (ipv6_ra_preferred_lifetime = "4h",
+	// interim_update_interval = "1h", both real examples, neither matching
+	// the derived digits-only pattern), then by a coordinator review
+	// pointing out this check still missed the Computed-only case.
+	hasGoDurationType, err := attributeHasGoDurationCustomType(owner, attribute)
 	if err != nil {
 		return nil, err
 	}
-	if hasGoDuration {
+	if hasGoDurationType {
 		if notices != nil {
 			*notices = append(*notices, fmt.Sprintf(
-				"skipped pattern derivation for %s: hand Go-duration validator present", owner,
+				"skipped pattern derivation for %s: Go-duration custom type", owner,
 			))
 		}
 		return attribute, nil
@@ -127,31 +136,26 @@ func attributeHasValidators(attribute json.RawMessage) (bool, error) {
 	return isArray && len(list) > 0, nil
 }
 
-// attributeHasGoDurationValidator reports whether the attribute's existing
-// validators array contains a hand validator that treats the value as a Go
-// duration string (validators.GoDurationBetween/GoDurationMultipleOf, from
-// unifi/validators/duration.go). Such a field's config value is the
-// human-typed duration string ("4h", "3600s"), not the SDK's wire format (a
-// bare digit string of seconds) a derived pattern would describe. By the
-// time this runs, validatorsSuppressed has already ruled out the "none"
-// marker, so a present "validators" key is guaranteed to be the ordinary
-// array shape.
-func attributeHasGoDurationValidator(owner string, attribute json.RawMessage) (bool, error) {
+// attributeHasGoDurationCustomType reports whether the attribute declares
+// timetypes.GoDurationType as its custom_type -- the signal that its config
+// value is a Go duration string, not the SDK's wire-format string a derived
+// pattern would describe. See deriveConstraintValidators for why this is
+// checked instead of "does a hand Go-duration validator exist": the two
+// are not equivalent for a Computed-only attribute, which has custom_type
+// but no hand validator to bounds-check against.
+func attributeHasGoDurationCustomType(owner string, attribute json.RawMessage) (bool, error) {
 	if len(attribute) == 0 {
 		return false, nil
 	}
 	var body struct {
-		Validators []customValidator `json:"validators"`
+		CustomType struct {
+			Type string `json:"type"`
+		} `json:"custom_type"`
 	}
 	if err := json.Unmarshal(attribute, &body); err != nil {
 		return false, fmt.Errorf("field %q attribute: %w", owner, err)
 	}
-	for _, entry := range body.Validators {
-		if entry.Custom != nil && strings.Contains(entry.Custom.SchemaDefinition, "GoDuration") {
-			return true, nil
-		}
-	}
-	return false, nil
+	return strings.Contains(body.CustomType.Type, "GoDurationType"), nil
 }
 
 // oneOfSchemaDefinition renders the SDK table's order into the same Go

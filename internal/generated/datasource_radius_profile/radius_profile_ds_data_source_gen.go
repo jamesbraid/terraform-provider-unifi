@@ -37,9 +37,6 @@ func RadiusProfileDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The interim update interval, as a Go duration string.",
 				MarkdownDescription: "The interim update interval, as a Go duration string.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([6-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9][0-9]|86400)$`), ""),
-				},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,

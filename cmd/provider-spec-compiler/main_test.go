@@ -175,3 +175,73 @@ func TestRunRefusesACorruptPolicyDigest(t *testing.T) {
 		t.Error("the corrupt policy was rewritten; refusal must leave the file alone")
 	}
 }
+
+// TestRunPrintsCompilerNoticesToStderr is the print loop's own test: the
+// compiler's Notices are data (providercompiler.Result.Notices), and until
+// this test existed, nothing exercised the loop in run() that turns them
+// into stderr output -- a bug there (wrong writer, wrong field, a dropped
+// loop) would have shipped invisibly. Bootstrap and policy are a minimal,
+// self-contained pair (not the frozen dns-record testdata, which other
+// tests here pin for unrelated reasons): one Computed-only string field
+// whose bootstrap constraint carries a pattern and whose policy declares
+// CustomType timetypes.GoDurationType -- exactly the shape that makes
+// deriveConstraintValidators skip the derived pattern and record a notice.
+func TestRunPrintsCompilerNoticesToStderr(t *testing.T) {
+	bootstrapPath := filepath.Join(t.TempDir(), "duration.bootstrap.json")
+	writeFile(t, bootstrapPath, `{
+		"format_version": 1,
+		"source": {
+			"repository": "github.com/ubiquiti-community/go-unifi",
+			"commit": "e255518385e0104eb838be56c2a491de158f3194",
+			"specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad"
+		},
+		"resource": {
+			"name": "unifi_duration_probe",
+			"fields": [
+				{
+					"name": "idle_timeout",
+					"type": "string",
+					"constraint": {"pattern": "[0-9]{1,4}"}
+				}
+			]
+		}
+	}`)
+	policyPath := filepath.Join(t.TempDir(), "duration.policy.json")
+	writeFile(t, policyPath, `{
+		"format_version": 1,
+		"surface_kind": "managed_resource",
+		"resource": "unifi_duration_probe",
+		"source_specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad",
+		"fields": [
+			{
+				"structural_name": "idle_timeout",
+				"terraform_name": "idle_timeout",
+				"disposition": "managed",
+				"attribute": {
+					"computed_optional_required": "computed",
+					"description": "Idle timeout, as a Go duration string.",
+					"custom_type": {
+						"import": {"path": "github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"},
+						"type": "timetypes.GoDurationType{}",
+						"value_type": "timetypes.GoDuration"
+					}
+				}
+			}
+		]
+	}`)
+
+	var stderr bytes.Buffer
+	exitCode := run([]string{
+		"-bootstrap", bootstrapPath,
+		"-policy", policyPath,
+		"-artifact-prefix", "duration_probe",
+		"-output-dir", t.TempDir(),
+	}, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() exit code = %d, stderr = %s", exitCode, stderr.String())
+	}
+	want := "skipped pattern derivation for unifi_duration_probe.idle_timeout: Go-duration custom type"
+	if !strings.Contains(stderr.String(), want) {
+		t.Fatalf("stderr = %q, want it to contain %q", stderr.String(), want)
+	}
+}
