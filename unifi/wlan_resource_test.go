@@ -29,6 +29,8 @@ func TestAccWLANFramework_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_wlan.test", "mac_filter.policy", "allow"),
 					resource.TestCheckResourceAttr("unifi_wlan.test", "mac_filter.list.#", "1"),
 				),
+			},
+			{
 				ResourceName:  "unifi_wlan.test",
 				ImportState:   true,
 				ImportStateId: "wlan1",
@@ -43,21 +45,30 @@ data "unifi_client_qos_rate" "default" {
 	name = "Default"
 }
 
+data "unifi_network" "default" {
+	name = "Default"
+}
+
 resource "unifi_wlan" "test" {
-	name            = "wlan1"
-	security        = "wpapsk"
-	passphrase      = "passphrase"
-	hide_ssid       = false
+	name          = "wlan1"
+	security      = "wpapsk"
+	passphrase    = "passphrase"
+	hide_ssid     = false
+	user_group_id = data.unifi_client_qos_rate.default.id
+	network_id    = data.unifi_network.default.id
+	mac_filter = {
+		enabled = true
+		policy  = "allow"
+		list    = ["00:11:22:33:44:55"]
+	}
 }
 `
 }
 
 // TestAccWLANFramework_additionalFields verifies that the newly exposed
-// security/DTIM/toggle attributes are populated by the read path when a WLAN
-// is imported. It follows the same import-based pattern as the basic test: a
-// full create cannot be exercised here because WLAN creation currently fails
-// with a pre-existing api.err.InvalidPayload that is unrelated to these
-// attributes (a minimal WLAN with none of them set fails identically).
+// security/DTIM/toggle attributes are populated by the read path once a WLAN
+// exists, following the same create/check-then-import shape as the basic
+// test above.
 func TestAccWLANFramework_additionalFields(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -90,6 +101,8 @@ func TestAccWLANFramework_additionalFields(t *testing.T) {
 						"minimum_data_rate_5g_kbps",
 					),
 				),
+			},
+			{
 				ResourceName:  "unifi_wlan.test",
 				ImportState:   true,
 				ImportStateId: "wlan1",
