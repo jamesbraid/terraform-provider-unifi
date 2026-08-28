@@ -91,8 +91,9 @@ func (d *firewallZoneDataSource) Read(
 				fmt.Sprintf("No firewall zone with name %q found on site %q.", name, site),
 			)
 		case strings.Contains(err.Error(), "multiple firewall zones named"):
-			// A data source has no import to fall back to, unlike the
-			// resource's wording for the same case.
+			// The matched substring, firewall_zone_descriptor.go's ReadByName
+			// error text, and TestFirewallZoneReadByNameRejectsAnAmbiguousName
+			// are pinned to each other: change all three together.
 			resp.Diagnostics.AddError(
 				"Ambiguous Firewall Zone Name",
 				fmt.Sprintf(
