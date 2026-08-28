@@ -112,9 +112,11 @@ All notable changes to this project will be documented in this file.
   cleanly and then failed at apply with `api.err.InvalidValue`. It now
   fails to plan instead.
 - **`unifi_setting`: `mgmt.ssh_username` reads back as an empty string, not null,
-  when it is managed and the controller reports it cleared.** Previously any
-  empty read was treated as unset, so a username the controller had cleared
-  showed no diff against a configured value.
+  when it is managed and the controller reports it cleared.** Previously an
+  empty controller response was mapped to a null value, discarding whatever
+  the practitioner had configured and producing a diff on every plan. State
+  now records `""` instead of null when the field is managed and the
+  controller reports it cleared.
 - **`unifi_wlan` creates no longer fail when `dtim_6e`/`dtim_na`/`dtim_ng`,
   the roaming-assistant RSSI thresholds, or the minimum data rates are left
   unset.** The provider force-emitted an explicit `0` for each of these on
