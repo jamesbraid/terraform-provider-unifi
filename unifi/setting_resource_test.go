@@ -691,6 +691,584 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_autoSpeedtest, _country, _dpi, _lcm,
+// _networkOptimization, _ntp, _syslog and _igmpSnooping are the RED/GREEN
+// net for the R2-B part 2 migration: these eight sections had zero live
+// coverage before this test, so their move to the resource kit would
+// otherwise be judged by unit round-trips alone. Proved green against the
+// legacy code first; a future regression in the migrated section fails one
+// of these instead of shipping silently.
+
+func TestAccSettingResource_autoSpeedtest(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_autoSpeedtest(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"auto_speedtest.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"auto_speedtest.cron_expr",
+						"0 3 * * *",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"auto_speedtest.%",
+					"auto_speedtest.enabled",
+					"auto_speedtest.cron_expr",
+				},
+			},
+			{
+				Config: testAccSettingConfig_autoSpeedtestUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"auto_speedtest.enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"auto_speedtest.cron_expr",
+						"0 3 * * *",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_autoSpeedtest() string {
+	return `
+resource "unifi_setting" "test" {
+  auto_speedtest = {
+    enabled   = true
+    cron_expr = "0 3 * * *"
+  }
+}
+`
+}
+
+func testAccSettingConfig_autoSpeedtestUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  auto_speedtest = {
+    enabled   = false
+    cron_expr = "0 3 * * *"
+  }
+}
+`
+}
+
+func TestAccSettingResource_country(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_country(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"country.code",
+						"826",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"country.%",
+					"country.code",
+				},
+			},
+			{
+				Config: testAccSettingConfig_countryUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"country.code",
+						"276",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_country() string {
+	return `
+resource "unifi_setting" "test" {
+  country = {
+    code = 826
+  }
+}
+`
+}
+
+func testAccSettingConfig_countryUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  country = {
+    code = 276
+  }
+}
+`
+}
+
+func TestAccSettingResource_dpi(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_dpi(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dpi.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dpi.fingerprinting_enabled",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"dpi.%",
+					"dpi.enabled",
+					"dpi.fingerprinting_enabled",
+				},
+			},
+			{
+				Config: testAccSettingConfig_dpiUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dpi.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dpi.fingerprinting_enabled",
+						"false",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_dpi() string {
+	return `
+resource "unifi_setting" "test" {
+  dpi = {
+    enabled                = true
+    fingerprinting_enabled = true
+  }
+}
+`
+}
+
+func testAccSettingConfig_dpiUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  dpi = {
+    enabled                = true
+    fingerprinting_enabled = false
+  }
+}
+`
+}
+
+func TestAccSettingResource_lcm(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_lcm(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"lcm.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"lcm.brightness",
+						"50",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"lcm.%",
+					"lcm.brightness",
+					"lcm.enabled",
+					"lcm.idle_timeout",
+					"lcm.sync",
+					"lcm.touch_event",
+				},
+			},
+			{
+				Config: testAccSettingConfig_lcmUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"lcm.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"lcm.brightness",
+						"80",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_lcm() string {
+	return `
+resource "unifi_setting" "test" {
+  lcm = {
+    enabled    = true
+    brightness = 50
+  }
+}
+`
+}
+
+func testAccSettingConfig_lcmUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  lcm = {
+    enabled    = true
+    brightness = 80
+  }
+}
+`
+}
+
+func TestAccSettingResource_networkOptimization(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_networkOptimization(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"network_optimization.enabled",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"network_optimization.%",
+					"network_optimization.enabled",
+				},
+			},
+			{
+				Config: testAccSettingConfig_networkOptimizationUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"network_optimization.enabled",
+						"false",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_networkOptimization() string {
+	return `
+resource "unifi_setting" "test" {
+  network_optimization = {
+    enabled = true
+  }
+}
+`
+}
+
+func testAccSettingConfig_networkOptimizationUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  network_optimization = {
+    enabled = false
+  }
+}
+`
+}
+
+// TestAccSettingResource_ntp pins the map's "" preserved behaviour: the
+// controller persists an unused NTP server slot as an empty string, a valid
+// configured value distinct from unset, and ntp_server_2 = "" here must
+// read back as "" rather than being rewritten to null.
+func TestAccSettingResource_ntp(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_ntp(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ntp.ntp_server_1",
+						"pool.ntp.org",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ntp.ntp_server_2",
+						"",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ntp.setting_preference",
+						"manual",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"ntp.%",
+					"ntp.ntp_server_1",
+					"ntp.ntp_server_2",
+					"ntp.ntp_server_3",
+					"ntp.ntp_server_4",
+					"ntp.setting_preference",
+				},
+			},
+			{
+				Config: testAccSettingConfig_ntpUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ntp.ntp_server_1",
+						"time.cloudflare.com",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ntp.ntp_server_2",
+						"",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_ntp() string {
+	return `
+resource "unifi_setting" "test" {
+  ntp = {
+    ntp_server_1       = "pool.ntp.org"
+    ntp_server_2       = ""
+    setting_preference = "manual"
+  }
+}
+`
+}
+
+func testAccSettingConfig_ntpUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  ntp = {
+    ntp_server_1       = "time.cloudflare.com"
+    ntp_server_2       = ""
+    setting_preference = "manual"
+  }
+}
+`
+}
+
+func TestAccSettingResource_syslog(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_syslog(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"syslog.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"syslog.contents.#",
+						"2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"syslog.contents.0",
+						"device",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"syslog.contents.1",
+						"client",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"syslog.%",
+					"syslog.contents",
+					"syslog.debug",
+					"syslog.enabled",
+					"syslog.ip",
+					"syslog.log_all_contents",
+					"syslog.netconsole_enabled",
+					"syslog.netconsole_host",
+					"syslog.netconsole_port",
+					"syslog.port",
+					"syslog.this_controller",
+					"syslog.this_controller_encrypted_only",
+				},
+			},
+			{
+				Config: testAccSettingConfig_syslogUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"syslog.enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"syslog.contents.#",
+						"2",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_syslog() string {
+	return `
+resource "unifi_setting" "test" {
+  syslog = {
+    enabled  = true
+    contents = ["device", "client"]
+  }
+}
+`
+}
+
+func testAccSettingConfig_syslogUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  syslog = {
+    enabled  = false
+    contents = ["device", "client"]
+  }
+}
+`
+}
+
+// TestAccSettingResource_igmpSnooping exercises only enabled: the site-level
+// igmp_snooping setting models 2 of the controller's 15 fields (the other
+// 13 -- querier mode, switches, flood options -- are advanced UI-only
+// options preserved via read-modify-write, not schema attributes).
+func TestAccSettingResource_igmpSnooping(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_igmpSnooping(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"igmp_snooping.enabled",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"igmp_snooping.%",
+					"igmp_snooping.enabled",
+					"igmp_snooping.network_ids",
+				},
+			},
+			{
+				Config: testAccSettingConfig_igmpSnoopingUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"igmp_snooping.enabled",
+						"false",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_igmpSnooping() string {
+	return `
+resource "unifi_setting" "test" {
+  igmp_snooping = {
+    enabled = true
+  }
+}
+`
+}
+
+func testAccSettingConfig_igmpSnoopingUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  igmp_snooping = {
+    enabled = false
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {
