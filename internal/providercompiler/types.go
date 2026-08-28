@@ -47,6 +47,7 @@ type bootstrapCompanion struct {
 
 type bootstrapSource struct {
 	Repository          string `json:"repository"`
+	Version             string `json:"version,omitempty"`
 	Commit              string `json:"commit"`
 	SpecificationSHA256 string `json:"specification_sha256"`
 }

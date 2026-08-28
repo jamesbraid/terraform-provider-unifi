@@ -143,6 +143,7 @@ func testBootstrap(t *testing.T, fieldNames []string) []byte {
 		"format_version": 1,
 		"source": map[string]any{
 			"repository":           "github.com/ubiquiti-community/go-unifi",
+			"version":              "v1.103.0",
 			"commit":               "e255518385e0104eb838be56c2a491de158f3194",
 			"specification_sha256": testSpecificationDigest,
 		},

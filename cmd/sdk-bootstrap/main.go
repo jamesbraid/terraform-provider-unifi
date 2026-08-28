@@ -39,7 +39,8 @@ type bootstrapCompanion struct {
 
 type bootstrapSource struct {
 	Repository          string `json:"repository"`
-	Commit              string `json:"commit"`
+	Version             string `json:"version,omitempty"`
+	Commit              string `json:"commit,omitempty"`
 	SpecificationSHA256 string `json:"specification_sha256"`
 }
 
@@ -88,13 +89,12 @@ func run(args []string, stderr io.Writer) int {
 		"SDK struct the resource operates on; repeat for a surface that projects several, "+
 			"the first being the one the surface leads with")
 	resource := flags.String("resource", "", "Terraform resource name")
-	commit := flags.String("commit", "", "SDK commit the bootstrap is derived from")
 	output := flags.String("output", "", "file to write")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if *pkgPath == "" || len(structNames) == 0 || *resource == "" || *commit == "" || *output == "" {
-		fmt.Fprintln(stderr, "package, struct, resource, commit and output are required")
+	if *pkgPath == "" || len(structNames) == 0 || *resource == "" || *output == "" {
+		fmt.Fprintln(stderr, "package, struct, resource and output are required")
 		return 2
 	}
 
@@ -148,14 +148,16 @@ func run(args []string, stderr io.Writer) int {
 		copy(sum[:], hash.Sum(nil))
 	}
 
+	source, err := resolveSDKModule(*pkgPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "resolve the SDK module: %v\n", err)
+		return 1
+	}
+	source.SpecificationSHA256 = hex.EncodeToString(sum[:])
 	document := bootstrapDocument{
 		FormatVersion: 1,
-		Source: bootstrapSource{
-			Repository:          "github.com/ubiquiti-community/go-unifi",
-			Commit:              *commit,
-			SpecificationSHA256: hex.EncodeToString(sum[:]),
-		},
-		Resource: bootstrapResource{Name: *resource, Fields: walk(structure)},
+		Source:        source,
+		Resource:      bootstrapResource{Name: *resource, Fields: walk(structure)},
 	}
 	for index, companion := range structures[1:] {
 		document.Companions = append(document.Companions, bootstrapCompanion{

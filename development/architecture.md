@@ -399,10 +399,11 @@ generator. The pipeline, per surface:
 
 1. **`cmd/sdk-bootstrap`** derives a *bootstrap*: which fields a resource's
    go-unifi SDK struct carries and what shape each one is, read directly from
-   the type checker against a pinned SDK commit rather than transcribed by
-   hand. This closes off an entire class of drift — a bootstrap can no longer
-   describe a field as something it is not, because it is generated from the
-   struct's own declaration.
+   the type checker against the go-unifi version `go.mod` resolves — the
+   bootstrap records that module, version and commit — rather than
+   transcribed by hand. This closes off an entire class of drift — a
+   bootstrap can no longer describe a field as something it is not, because
+   it is generated from the struct's own declaration.
 2. **`provider-codegen/policy/<surface>.json`** is the human-judgment half:
    which SDK field a released Terraform attribute maps to (where the names
    differ, or the mapping is not 1:1), which fields the provider deliberately

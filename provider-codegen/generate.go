@@ -1,8 +1,8 @@
 package providercodegen
 
-// sdkbootstrap pins the go-unifi module path and commit once for all calls below;
-// keep it in sync with the version go.mod pins -- nothing else enforces that.
-//go:generate -command sdkbootstrap go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi -commit d20e126f0e2321727a66d5faeffeb434c215c455
+// sdkbootstrap resolves go-unifi the way the build does -- through go.mod and
+// its replace -- so a bump is one go.mod edit and nothing here can go stale.
+//go:generate -command sdkbootstrap go run ../cmd/sdk-bootstrap -package github.com/ubiquiti-community/go-unifi/unifi
 //go:generate sdkbootstrap -struct FirewallPolicy -resource unifi_firewall_policy -output bootstrap/go-unifi-v1.103.0-firewall-policy.json
 //go:generate sdkbootstrap -struct FirewallZone -resource unifi_firewall_zone -output bootstrap/go-unifi-v1.103.0-firewall-zone.json
 //go:generate sdkbootstrap -struct PowerSupervisor -resource unifi_power_supervisor -output bootstrap/go-unifi-v1.103.0-power-supervisor.json

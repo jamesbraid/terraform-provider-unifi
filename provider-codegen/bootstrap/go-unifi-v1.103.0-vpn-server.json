@@ -1,7 +1,8 @@
 {
   "format_version": 1,
   "source": {
-    "repository": "github.com/ubiquiti-community/go-unifi",
+    "repository": "github.com/jamesbraid/go-unifi",
+    "version": "v1.105.1",
     "commit": "d20e126f0e2321727a66d5faeffeb434c215c455",
     "specification_sha256": "3da8f8999c4727f8811ddd28717c8a19ca576531cc0d1c03469dbbeb1d3eb014"
   },
