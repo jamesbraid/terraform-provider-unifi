@@ -44,6 +44,11 @@ func TestAccNetworkFramework_basic(t *testing.T) {
 					),
 					resource.TestCheckResourceAttr("unifi_network.test", "vlan", "10"),
 					resource.TestCheckResourceAttr("unifi_network.test", "enabled", "true"),
+					// firewall_zone_id is Computed+Optional on the assumption the
+					// controller assigns every network to a zone; this asserts that
+					// assumption without hardcoding which zone (the controller
+					// picks one, this provider doesn't).
+					resource.TestCheckResourceAttrSet("unifi_network.test", "firewall_zone_id"),
 				),
 			},
 			{
@@ -100,6 +105,21 @@ func TestAccNetworkFramework_dhcp(t *testing.T) {
 						"unifi_network.test_dhcp",
 						"dhcp_server.leasetime",
 						"24h0m0s",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp",
+						"dhcp_server.ntp_servers.#",
+						"2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp",
+						"dhcp_server.ntp_servers.0",
+						"192.168.20.1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_dhcp",
+						"dhcp_server.ntp_servers.1",
+						"192.168.20.2",
 					),
 				),
 			},
@@ -171,10 +191,11 @@ resource "unifi_network" "test_dhcp" {
 	vlan      = 20
 
 	dhcp_server = {
-		enabled   = true
-		start     = "192.168.20.10"
-		stop      = "192.168.20.254"
-		leasetime = "24h0m0s"
+		enabled     = true
+		start       = "192.168.20.10"
+		stop        = "192.168.20.254"
+		leasetime   = "24h0m0s"
+		ntp_servers = ["192.168.20.1", "192.168.20.2"]
 	}
 }
 `
@@ -565,6 +586,16 @@ func TestAccNetworkFramework_ipv6Static(t *testing.T) {
 						"ipv6_ra_preferred_lifetime",
 						"4h0m0s",
 					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_ipv6_static",
+						"ipv6_aliases.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_network.test_ipv6_static",
+						"ipv6_aliases.0",
+						"fd00::2/64",
+					),
 				),
 			},
 			{
@@ -668,6 +699,7 @@ resource "unifi_network" "test_ipv6_static" {
 	ipv6_ra_priority        = "high"
 	ipv6_ra_valid_lifetime  = "24h0m0s"
 	ipv6_ra_preferred_lifetime = "4h0m0s"
+	ipv6_aliases            = ["fd00::2/64"]
 }
 `
 }
