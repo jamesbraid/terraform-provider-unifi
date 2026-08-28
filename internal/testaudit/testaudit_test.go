@@ -108,6 +108,7 @@ func Test_scanDoesNotReportATestThatCanFail(t *testing.T) {
 		"TestRangeOverRuntimeValueIsNotAnEmptyTable",
 		"TestVarDeclaredTableFilledLater",
 		"TestVarDeclaredTableFilledByPointerArgument",
+		"TestVarDeclaredTableFilledThroughCompositeLiteralPointer",
 	} {
 		if kind, reported := got[name]; reported {
 			t.Errorf("%s can fail but was reported as %q", name, kind)

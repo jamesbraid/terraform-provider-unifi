@@ -276,14 +276,17 @@ func isSkipStub(fd *ast.FuncDecl) bool {
 // range census) must not be reported, so this tracks whether the variable
 // is ever written, not just its literal at declaration.
 //
-// A variable filled by passing its address to a call -- fillIt(&table), the
-// standard out-parameter idiom -- also counts as written, not just a direct
-// assignment or index write. Detecting that requires no type information:
-// any &ident used as a call argument qualifies. A pointer-receiver method
-// call on an already-addressable value (table.Fill(), no explicit &) is NOT
-// detected -- that needs type information to know the receiver is a
-// pointer, which this analyzer deliberately does not carry -- so it stays a
-// named gap, not a silent one.
+// A variable whose address is taken anywhere in the body -- fillIt(&table),
+// the out-parameter idiom, or rec := recorder{log: &table}, a struct literal
+// field -- also counts as written, not just a direct assignment or index
+// write. Detecting that requires no type information: any &ident qualifies,
+// regardless of where it appears, on the conservative bias every other case
+// here shares -- an address taken for a read produces a false negative,
+// never a false positive. A pointer-receiver method call on an
+// already-addressable value (table.Fill(), no explicit &) is NOT detected
+// -- that needs type information to know the receiver is a pointer, which
+// this analyzer deliberately does not carry -- so it stays a named gap, not
+// a silent one.
 //
 // Package-level var tables are out of scope: this only walks the function
 // declaration passed in, never the file's top-level Decls.
@@ -346,19 +349,16 @@ func rangesOverEmptyTable(fd *ast.FuncDecl) bool {
 					written[id.Name] = true
 				}
 			}
-		case *ast.CallExpr:
-			// fillIt(&table): the out-parameter idiom. &table as a call
-			// argument is treated as a write, the same conservative bias as
-			// every other case here -- a call that merely reads through the
-			// pointer produces a false negative, never a false positive.
-			for _, arg := range stmt.Args {
-				u, ok := arg.(*ast.UnaryExpr)
-				if !ok || u.Op != token.AND {
-					continue
-				}
-				if id, ok := u.X.(*ast.Ident); ok {
-					written[id.Name] = true
-				}
+		case *ast.UnaryExpr:
+			// &ident anywhere -- call argument, struct-literal field value,
+			// wherever -- is treated as a write. Position does not matter:
+			// a caller that merely reads through the pointer produces a
+			// false negative, never a false positive.
+			if stmt.Op != token.AND {
+				break
+			}
+			if id, ok := stmt.X.(*ast.Ident); ok {
+				written[id.Name] = true
 			}
 		}
 		return true

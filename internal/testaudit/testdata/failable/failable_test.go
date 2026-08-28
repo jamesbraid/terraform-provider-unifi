@@ -157,3 +157,29 @@ func TestVarDeclaredTableFilledByPointerArgument(t *testing.T) {
 func fillViaPointer(out *[]string) {
 	*out = append(*out, "a")
 }
+
+// A slice whose address is taken as a struct-literal field value, not a call
+// argument -- rec := recorder{log: &log} -- then filled by a method through
+// the pointer. This is the shape internal/resourcekit/composite_test.go
+// uses (fakeSection{log: &log}): the test ranges over log with an assertion
+// inside, so it can fail, but the call-argument-only check never sees the
+// write, because &log is a KeyValueExpr value inside a CompositeLit, not a
+// CallExpr argument.
+func TestVarDeclaredTableFilledThroughCompositeLiteralPointer(t *testing.T) {
+	var log []string
+	rec := recorder{log: &log}
+	rec.record("a")
+	for _, name := range log {
+		if name == "" {
+			t.Error("empty")
+		}
+	}
+}
+
+type recorder struct {
+	log *[]string
+}
+
+func (r recorder) record(name string) {
+	*r.log = append(*r.log, name)
+}
