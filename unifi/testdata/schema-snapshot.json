@@ -1935,7 +1935,7 @@
           "description": "The port of the DNS record.",
           "description_kind": "markdown",
           "validators": [
-            "int64validator.betweenValidator: value must be between 0 and 65535"
+            "int64validator.betweenValidator: value must be between 1 and 65535"
           ]
         },
         "priority": {

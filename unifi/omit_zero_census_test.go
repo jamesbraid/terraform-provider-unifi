@@ -12,11 +12,17 @@ import (
 // still be produced by the walk below, or the gap was closed and the pin is
 // stale; remove it in the same commit that fixes it.
 var knownOmitZeroGaps = map[string]string{
-	"dns_record.port": `a different defect, not this class's fix: the ` +
-		`generated SCHEMA validator (int64validator.Between(0, 65535)) permits a literal 0 while ` +
-		`the controller's own pattern ([1-9][0-9]{0,4}) rejects it. OmitZero would silently drop ` +
-		`a practitioner's explicit 0 instead of surfacing the mismatch as a validation error -- ` +
-		`the correct fix is tightening the schema validator to Between(1, 65535), not OmitZero.`,
+	"dns_record.port": `not this class's fix, even after R2-C Task 10c tightened the SCHEMA ` +
+		`validator to int64validator.Between(1, 65535) to match the controller's own pattern ` +
+		`([1-9][0-9]{0,4}) -- a config with port = 0 now fails at plan time, before ToSDK ever ` +
+		`runs, so the practitioner-facing hazard this table exists to catch is closed. This census ` +
+		`is structural, not schema-aware: it flags any Int64PtrField whose wire name resolves to a ` +
+		`zero-rejecting controller pattern and carries no OmitZero, regardless of what the ` +
+		`generated schema validator allows, so it still (correctly) reports this field. Adding ` +
+		`OmitZero would be redundant, not wrong -- port is Optional-only (no Computed), so it is ` +
+		`never Unknown on create, and an explicit 0 can no longer reach ToSDK at all now that the ` +
+		`validator rejects it at plan time -- but doing so is out of Task 10c's scope, which asked ` +
+		`only for the validator change.`,
 	"firewall_rule.rule_index": `Required, not Optional -- a Required attribute is never ` +
 		`legitimately unset, so OmitZero (which OMITS the field from the wire) is the wrong tool. ` +
 		`The hazard cannot currently trigger anyway: the schema validator already restricts the ` +

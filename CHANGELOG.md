@@ -78,6 +78,11 @@ All notable changes to this project will be documented in this file.
   until the SDK encoder is fixed to send an explicit `[]`; the acceptance
   test for this scenario asserts today's actual (failing) apply, not the
   claim.
+- **`unifi_dns_record`: `port` no longer accepts `0`.** The validator let
+  `0` through config validation, but the controller's own pattern for this
+  field has never matched `0` — a configuration setting `port = 0` planned
+  cleanly and then failed at apply with `api.err.InvalidValue`. It now
+  fails to plan instead.
 
 ### 📖 Documentation
 

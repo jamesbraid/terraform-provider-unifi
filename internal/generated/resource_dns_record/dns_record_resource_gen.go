@@ -54,7 +54,7 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The port of the DNS record.",
 				MarkdownDescription: "The port of the DNS record.",
 				Validators: []validator.Int64{
-					int64validator.Between(0, 65535),
+					int64validator.Between(1, 65535),
 				},
 			},
 			"priority": schema.Int64Attribute{
