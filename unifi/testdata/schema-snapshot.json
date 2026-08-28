@@ -1018,8 +1018,7 @@
           "description_kind": "plain",
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 10s and 1h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[1-9][0-9]|[1-9][0-9][0-9]|[1-2][0-9][0-9][0-9]|3[0-5][0-9][0-9]|3600)$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -1267,8 +1266,7 @@
           "description_kind": "plain",
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 0s and 18h12m15s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -3955,8 +3953,7 @@
           ],
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 0s and 8760h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -3986,8 +3983,7 @@
           ],
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 0s and 8760h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -4507,8 +4503,7 @@
           "default": "stringdefault.staticStringDefault: value defaults to 5m0s",
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 0s and 18h12m15s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -5241,8 +5236,7 @@
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to 1h0m0s",
           "validators": [
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^([6-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9][0-9]|86400)$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -6979,8 +6973,7 @@
           ],
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 30s and 24h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:3[0-9]|[4-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -7048,8 +7041,7 @@
           ],
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 30s and 24h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:3[0-9]|[4-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -9610,8 +9602,7 @@
           "description_kind": "markdown",
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 1m0s and 168h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1m0s",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^[1-9][0-9]*$'"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1m0s"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },

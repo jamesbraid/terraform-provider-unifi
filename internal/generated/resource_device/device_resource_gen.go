@@ -184,7 +184,6 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(10*time.Second, 3600*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[1-9][0-9]|[1-9][0-9][0-9]|[1-2][0-9][0-9][0-9]|3[0-5][0-9][0-9]|3600)$`), ""),
 				},
 			},
 			"lcm_idle_timeout_override": schema.BoolAttribute{
@@ -582,7 +581,6 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Validators: []validator.String{
 								validators.GoDurationBetween(0, 65535*time.Second),
 								validators.GoDurationMultipleOf(time.Second),
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$`), ""),
 							},
 						},
 						"egress_rate_limit_kbps": schema.Int64Attribute{

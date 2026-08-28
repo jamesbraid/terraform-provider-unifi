@@ -93,7 +93,6 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(30*time.Second, 86400*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:3[0-9]|[4-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)$`), ""),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -152,7 +151,6 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(30*time.Second, 86400*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:3[0-9]|[4-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)$`), ""),
 				},
 			},
 			"interface": schema.StringAttribute{

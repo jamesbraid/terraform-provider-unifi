@@ -374,6 +374,9 @@ func TestCompileRefusesAPatternGoRegexCannotCompile(t *testing.T) {
 // of the SDK's lookaround domain pattern -- refusing here would force
 // "validators": "none", which would delete that validator too (the
 // suppression marker replaces the whole array, not just the derivation).
+// The skip is not silent: it leaves a Notices entry naming the field, so a
+// plain go generate run (and its CI log) shows it without anyone having to
+// know this fallback exists.
 func TestCompileSkipsAnUncompilablePatternAlreadyCoveredByAHandValidator(t *testing.T) {
 	pattern := `(?=^.{3,253}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)|^$|[a-zA-Z0-9-]{1,63}`
 	result, err := Compile(CompileInput{
@@ -401,6 +404,10 @@ func TestCompileSkipsAnUncompilablePatternAlreadyCoveredByAHandValidator(t *test
 	custom := jsonObject(validators[0]["custom"])
 	if got, want := jsonString(custom["schema_definition"]), "validators.DomainNameValidator()"; got != want {
 		t.Fatalf("schema_definition = %q, want the hand validator %q unchanged", got, want)
+	}
+	wantNotice := "skipped unparsable pattern for unifi_dns_record.key: hand validator present"
+	if len(result.Notices) != 1 || result.Notices[0] != wantNotice {
+		t.Fatalf("Notices = %v, want exactly [%q]", result.Notices, wantNotice)
 	}
 }
 
@@ -442,6 +449,56 @@ func TestCompileAppendsDerivedRegexMatchesBesideAHandNonRegexValidator(t *testin
 	hasDerived := definitions[0] == wantDerived || definitions[1] == wantDerived
 	if !hasHand || !hasDerived {
 		t.Fatalf("validators = %v, want %q and %q", definitions, wantHand, wantDerived)
+	}
+}
+
+// TestCompileSkipsPatternDerivationBesideAHandGoDurationValidator is a third
+// silent-skip path, found by checking real shipped example values against
+// the derived patterns: a field with CustomType timetypes.GoDurationType (a
+// hand validators.GoDurationBetween/GoDurationMultipleOf pair validates it)
+// takes its config value as a Go duration string like "4h" or "3600s", but
+// the SDK's constraint pattern describes the wire format the provider sends
+// after converting that duration to seconds -- a bare digit string. The two
+// are different representations of the same value, not the same string
+// checked twice: "4h" fails a digits-only pattern and "3600" (what would
+// pass it) is not valid Go duration syntax, so appending the derived
+// RegexMatches would make every real value fail one validator or the other.
+// Unlike a hand validator of an unrelated kind (LengthBetween, say, tested
+// above), a hand GoDuration validator's presence means the two validators
+// are not independent checks on the same string -- so the derivation is
+// skipped, not appended, and the skip is recorded in Notices the same way
+// the RE2 skip is.
+func TestCompileSkipsPatternDerivationBesideAHandGoDurationValidator(t *testing.T) {
+	result, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "value", map[string]any{"pattern": "[0-9]{1,4}"}),
+		Policy: oneOfPolicy(t, "value", func(attribute map[string]any) {
+			attribute["validators"] = []any{
+				map[string]any{
+					"custom": map[string]any{
+						"imports": []any{
+							map[string]any{"path": "github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"},
+							map[string]any{"path": "time"},
+						},
+						"schema_definition": "validators.GoDurationBetween(0, 3600*time.Second)",
+					},
+				},
+			}
+		}),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v, want the pattern derivation skipped, not an error", err)
+	}
+	validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, "string", "value")
+	if len(validators) != 1 {
+		t.Fatalf("validators = %v, want exactly the untouched hand GoDuration validator", validators)
+	}
+	custom := jsonObject(validators[0]["custom"])
+	if got, want := jsonString(custom["schema_definition"]), "validators.GoDurationBetween(0, 3600*time.Second)"; got != want {
+		t.Fatalf("schema_definition = %q, want the hand validator %q unchanged", got, want)
+	}
+	wantNotice := "skipped pattern derivation for unifi_dns_record.value: hand Go-duration validator present"
+	if len(result.Notices) != 1 || result.Notices[0] != wantNotice {
+		t.Fatalf("Notices = %v, want exactly [%q]", result.Notices, wantNotice)
 	}
 }
 

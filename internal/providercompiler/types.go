@@ -26,6 +26,13 @@ type CompileInput struct {
 type Result struct {
 	ProviderCodeSpec []byte
 	MappingReport    []byte
+	// Notices are compiler observations worth a human seeing but not worth
+	// refusing the compile over -- e.g. a pattern the compiler could not
+	// derive a validator from because an existing hand validator already
+	// covers the field. main.go prints each to stderr so a plain go
+	// generate run, and CI logs, carry them without grepping the
+	// compiler's source.
+	Notices []string
 }
 
 type bootstrap struct {

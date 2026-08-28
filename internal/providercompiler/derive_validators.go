@@ -32,8 +32,10 @@ type customValidatorImport struct {
 // present in policy is refused rather than silently shadowed by the derived
 // one; policy may set "validators": "none" to record a deliberate exception
 // and suppress every derivation for the field. attribute is returned
-// unchanged when there is nothing to derive and nothing to suppress.
-func deriveConstraintValidators(owner, terraformType string, constraint *bootstrapFieldConstraint, attribute json.RawMessage) (json.RawMessage, error) {
+// unchanged when there is nothing to derive and nothing to suppress. notices
+// collects observations worth a human seeing but not worth refusing the
+// compile over -- see the RE2 fallback below, the only producer today.
+func deriveConstraintValidators(owner, terraformType string, constraint *bootstrapFieldConstraint, attribute json.RawMessage, notices *[]string) (json.RawMessage, error) {
 	suppressed, err := validatorsSuppressed(owner, attribute)
 	if err != nil {
 		return nil, err
@@ -55,16 +57,43 @@ func deriveConstraintValidators(owner, terraformType string, constraint *bootstr
 		// hand-written RE2-safe equivalent of the SDK's lookaround domain
 		// pattern. "validators": "none" replaces the whole array, so it
 		// cannot suppress just the derivation without also deleting that;
-		// skipping silently here is what lets the hand validator stand.
-		// A field with no validators at all still refuses, naming the
-		// field, so the gap becomes a recorded "validators": "none"
-		// decision instead of shipping silently unvalidated.
+		// skipping is what lets the hand validator stand. The skip itself
+		// is recorded in notices rather than left silent, so a plain go
+		// generate run (and its CI log) shows it without anyone having to
+		// know this fallback exists. A field with no validators at all
+		// still refuses, naming the field, so the gap becomes a recorded
+		// "validators": "none" decision instead of shipping silently
+		// unvalidated.
 		if hasHand, handErr := attributeHasValidators(attribute); handErr == nil && hasHand {
+			if notices != nil {
+				*notices = append(*notices, fmt.Sprintf(
+					"skipped unparsable pattern for %s: hand validator present", owner,
+				))
+			}
 			return attribute, nil
 		}
 		return nil, err
 	}
 	if !ok {
+		return attribute, nil
+	}
+	// A hand Go-duration validator means the config value is the human-typed
+	// duration string ("4h", "3600s"), not the SDK's wire format (a bare
+	// digit string of seconds) the derived pattern describes -- the two
+	// validators would then reject every value the other accepts. Found by
+	// checking real shipped example values against the derived patterns
+	// (ipv6_ra_preferred_lifetime = "4h", interim_update_interval = "1h",
+	// both real examples, neither matching the derived digits-only pattern).
+	hasGoDuration, err := attributeHasGoDurationValidator(owner, attribute)
+	if err != nil {
+		return nil, err
+	}
+	if hasGoDuration {
+		if notices != nil {
+			*notices = append(*notices, fmt.Sprintf(
+				"skipped pattern derivation for %s: hand Go-duration validator present", owner,
+			))
+		}
 		return attribute, nil
 	}
 	return appendDerivedValidator(owner, attribute, schemaDefinition, imports, ".RegexMatches(", "RegexMatches")
@@ -96,6 +125,33 @@ func attributeHasValidators(attribute json.RawMessage) (bool, error) {
 	// malformed input; neither counts as "already validated".
 	list, isArray := decoded.([]any)
 	return isArray && len(list) > 0, nil
+}
+
+// attributeHasGoDurationValidator reports whether the attribute's existing
+// validators array contains a hand validator that treats the value as a Go
+// duration string (validators.GoDurationBetween/GoDurationMultipleOf, from
+// unifi/validators/duration.go). Such a field's config value is the
+// human-typed duration string ("4h", "3600s"), not the SDK's wire format (a
+// bare digit string of seconds) a derived pattern would describe. By the
+// time this runs, validatorsSuppressed has already ruled out the "none"
+// marker, so a present "validators" key is guaranteed to be the ordinary
+// array shape.
+func attributeHasGoDurationValidator(owner string, attribute json.RawMessage) (bool, error) {
+	if len(attribute) == 0 {
+		return false, nil
+	}
+	var body struct {
+		Validators []customValidator `json:"validators"`
+	}
+	if err := json.Unmarshal(attribute, &body); err != nil {
+		return false, fmt.Errorf("field %q attribute: %w", owner, err)
+	}
+	for _, entry := range body.Validators {
+		if entry.Custom != nil && strings.Contains(entry.Custom.SchemaDefinition, "GoDuration") {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // oneOfSchemaDefinition renders the SDK table's order into the same Go

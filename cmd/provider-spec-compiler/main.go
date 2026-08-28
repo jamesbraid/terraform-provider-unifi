@@ -74,6 +74,13 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "compile: %v\n", err)
 		return 1
 	}
+	// Notices are not errors -- the compile already succeeded -- but they
+	// are worth a human seeing, so every plain go generate run (and its CI
+	// log) carries them without anyone having to know to grep the
+	// compiler's source for the fallback that produced them.
+	for _, notice := range result.Notices {
+		fmt.Fprintln(stderr, notice)
+	}
 	if err := os.MkdirAll(*outputDir, 0o755); err != nil {
 		fmt.Fprintf(stderr, "create output directory: %v\n", err)
 		return 1

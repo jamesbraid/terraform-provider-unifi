@@ -56,7 +56,6 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Specifies the RADIUS interim update interval, as a Go duration string (e.g. `1h`, `3600s`). Defaults to `1h0m0s`.",
 				Validators: []validator.String{
 					validators.GoDurationMultipleOf(time.Second),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([6-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9][0-9]|86400)$`), ""),
 				},
 				Default: stringdefault.StaticString("1h0m0s"),
 			},

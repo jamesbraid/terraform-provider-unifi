@@ -21,6 +21,9 @@ var validDispositions = map[string]struct{}{
 // Compile resolves structural facts and provider policy into generator input
 // and reviewable reports. It rejects drift instead of guessing policy.
 func Compile(input CompileInput) (Result, error) {
+	// notices accumulates observations worth a human seeing but not worth
+	// refusing the compile over; see Result.Notices.
+	var notices []string
 	var rules policy
 	if err := decodeJSON("policy", input.Policy, &rules, true); err != nil {
 		return Result{}, err
@@ -328,7 +331,7 @@ func Compile(input CompileInput) (Result, error) {
 			Disposition:    field.Disposition,
 		})
 		if field.Disposition == "managed" || field.Disposition == "computed" {
-			attribute, err := buildCodeAttribute(rules.Resource, field, structural, terraformNames)
+			attribute, err := buildCodeAttribute(rules.Resource, field, structural, terraformNames, &notices)
 			if err != nil {
 				return Result{}, fmt.Errorf("field %q: %w", name, err)
 			}
@@ -391,7 +394,7 @@ func Compile(input CompileInput) (Result, error) {
 				TerraformType:  member.TerraformType,
 				Disposition:    member.Disposition,
 				Attribute:      member.Attribute,
-			}, inner, terraformNames)
+			}, inner, terraformNames, &notices)
 			if err != nil {
 				return Result{}, fmt.Errorf("flattening of %q: %w", flattening.StructuralName, err)
 			}
@@ -402,7 +405,7 @@ func Compile(input CompileInput) (Result, error) {
 	groupings := append([]groupingPolicy(nil), rules.Groupings...)
 	sort.Slice(groupings, func(i, j int) bool { return groupings[i].TerraformName < groupings[j].TerraformName })
 	for _, grouping := range groupings {
-		attribute, err := buildGroupingAttribute(rules.Resource, grouping, sourceFields, terraformNames, claimedMembers)
+		attribute, err := buildGroupingAttribute(rules.Resource, grouping, sourceFields, terraformNames, claimedMembers, &notices)
 		if err != nil {
 			return Result{}, err
 		}
@@ -504,7 +507,7 @@ func Compile(input CompileInput) (Result, error) {
 		return Result{}, fmt.Errorf("encode mapping report: %w", err)
 	}
 
-	result := Result{ProviderCodeSpec: providerCodeSpec}
+	result := Result{ProviderCodeSpec: providerCodeSpec, Notices: notices}
 	// A list resource's fields are the lead struct's, entirely omitted, plus
 	// invented filter attributes with no structural name at all -- there is
 	// nothing in a mapping report for it a reviewer would look at. main.go
@@ -1055,6 +1058,7 @@ func buildGroupingAttribute(
 	sourceFields map[string]bootstrapField,
 	names map[string]string,
 	claimedMembers map[string]string,
+	notices *[]string,
 ) (codeAttribute, error) {
 	members := make([]codeAttribute, 0, len(grouping.Members))
 	for _, member := range grouping.Members {
@@ -1112,7 +1116,7 @@ func buildGroupingAttribute(
 			Disposition:    member.Disposition,
 			Attribute:      member.Attribute,
 			Fields:         member.Fields,
-		}, structural, names)
+		}, structural, names, notices)
 		if err != nil {
 			return codeAttribute{}, fmt.Errorf("grouping %q: %w", grouping.TerraformName, err)
 		}
@@ -1290,11 +1294,12 @@ func nestedDefinition(
 	structural bootstrapField,
 	terraformType string,
 	names map[string]string,
+	notices *[]string,
 ) (json.RawMessage, error) {
 	if len(structural.Fields) == 0 {
 		return nil, fmt.Errorf("object field %q has no members in the catalog", field.StructuralName)
 	}
-	members, err := nestedAttributes(surface, field, structural, names)
+	members, err := nestedAttributes(surface, field, structural, names, notices)
 	if err != nil {
 		return nil, err
 	}
@@ -1347,6 +1352,7 @@ func nestedAttributes(
 	field fieldPolicy,
 	structural bootstrapField,
 	names map[string]string,
+	notices *[]string,
 ) ([]codeAttribute, error) {
 	decisions := make(map[string]fieldPolicy, len(field.Fields))
 	for _, member := range field.Fields {
@@ -1394,7 +1400,7 @@ func nestedAttributes(
 		if err := claimTerraformName(names, owner+"/"+decision.TerraformName, owner); err != nil {
 			return nil, err
 		}
-		attribute, err := buildCodeAttribute(surface, decision, member, names)
+		attribute, err := buildCodeAttribute(surface, decision, member, names, notices)
 		if err != nil {
 			return nil, err
 		}
@@ -1442,13 +1448,14 @@ func buildCodeAttribute(
 	field fieldPolicy,
 	structural bootstrapField,
 	names map[string]string,
+	notices *[]string,
 ) (codeAttribute, error) {
 	if structuralIsObject(structural.Type) {
 		terraformType, err := objectTerraformType(field, structural.Type)
 		if err != nil {
 			return codeAttribute{}, err
 		}
-		definition, err := nestedDefinition(surface, field, structural, terraformType, names)
+		definition, err := nestedDefinition(surface, field, structural, terraformType, names, notices)
 		if err != nil {
 			return codeAttribute{}, err
 		}
@@ -1484,7 +1491,7 @@ func buildCodeAttribute(
 		if owner == "" {
 			owner = field.TerraformName
 		}
-		derived, err := deriveConstraintValidators(surface+"."+owner, terraformType, structural.Constraint, attribute)
+		derived, err := deriveConstraintValidators(surface+"."+owner, terraformType, structural.Constraint, attribute, notices)
 		if err != nil {
 			return codeAttribute{}, err
 		}

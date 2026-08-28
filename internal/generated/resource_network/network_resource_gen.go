@@ -488,7 +488,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(0, 31536000*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$`), ""),
 				},
 			},
 			"ipv6_ra_priority": schema.StringAttribute{
@@ -515,7 +514,6 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(0, 31536000*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$`), ""),
 				},
 			},
 			"ipv6_static_subnet": schema.StringAttribute{

@@ -563,7 +563,6 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 							Validators: []validator.String{
 								validators.GoDurationBetween(time.Minute, 7*24*time.Hour),
 								validators.GoDurationMultipleOf(time.Minute),
-								stringvalidator.RegexMatches(regexp.MustCompile(`^[1-9][0-9]*$`), ""),
 							},
 						},
 						"name": schema.StringAttribute{
