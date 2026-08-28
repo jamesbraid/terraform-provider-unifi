@@ -239,10 +239,67 @@ func regexMatchesSchemaDefinition(owner, terraformType string, constraint *boots
 // ends -- see regexMatchesSchemaDefinition for why an unanchored pattern is
 // unsafe to compile as-is.
 func anchorPattern(pattern string) string {
-	if strings.HasPrefix(pattern, "^") && strings.HasSuffix(pattern, "$") {
+	if fullyAnchored(pattern) {
 		return pattern
 	}
 	return "^(?:" + pattern + ")$"
+}
+
+// fullyAnchored reports whether pattern, matched with Go's regexp
+// MatchString (a partial match), can only ever match the whole input --
+// equivalent to the controller's own full-match semantics. A leading ^ and
+// trailing $ on the pattern as a whole are not sufficient: regexp's `|`
+// binds looser than either anchor, so "^A|B$" is the alternation of "^A"
+// (matches anything starting with A, no end anchor) and "B$" (matches
+// anything ending with B, no start anchor) -- neither branch alone forces a
+// full match, and go-unifi's DeviceConfigNetwork.netmask /
+// Network.wan_netmask patterns are exactly this shape. What's actually
+// required is that every top-level alternative -- split on a `|` outside
+// any group or character class -- independently starts with ^ and ends
+// with $; "^A$|^B$" is fine as-is, because both branches are self-anchored.
+func fullyAnchored(pattern string) bool {
+	for _, alternative := range splitTopLevelAlternatives(pattern) {
+		if !strings.HasPrefix(alternative, "^") || !strings.HasSuffix(alternative, "$") {
+			return false
+		}
+	}
+	return true
+}
+
+// splitTopLevelAlternatives splits pattern on every `|` that sits outside a
+// group, a character class, and an escape sequence -- the points where a
+// regex engine treats the pattern as a genuine top-level alternation, as
+// opposed to a `|` inside `(...)` or `[...]` that only alternates within
+// that piece.
+func splitTopLevelAlternatives(pattern string) []string {
+	var alternatives []string
+	depth := 0
+	inClass := false
+	start := 0
+	for i := 0; i < len(pattern); i++ {
+		switch pattern[i] {
+		case '\\':
+			i++ // the next byte is escaped, whatever it is; skip it too
+		case '[':
+			inClass = true
+		case ']':
+			inClass = false
+		case '(':
+			if !inClass {
+				depth++
+			}
+		case ')':
+			if !inClass && depth > 0 {
+				depth--
+			}
+		case '|':
+			if !inClass && depth == 0 {
+				alternatives = append(alternatives, pattern[start:i])
+				start = i + 1
+			}
+		}
+	}
+	return append(alternatives, pattern[start:])
 }
 
 // patternLiteral renders a pattern as a Go raw string literal so the SDK's

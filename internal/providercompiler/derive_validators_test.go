@@ -608,3 +608,66 @@ func TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace(t *testing.T) 
 		t.Fatalf("anchored pattern %q matched a value containing a double quote, want rejected", anchored)
 	}
 }
+
+// TestCompileWrapsAPatternWithAnUnparenthesizedTopLevelAlternation is the
+// anchoring path's other behavioural proof: a leading ^ and a trailing $ on
+// the pattern as a whole are not enough to call it anchored. "^A|B$" is the
+// alternation of "^A" (no end anchor) and "B$" (no start anchor), the exact
+// shape of go-unifi's DeviceConfigNetwork.netmask and Network.wan_netmask
+// patterns -- both were left unwrapped and matched a value with trailing or
+// leading garbage before this fix.
+func TestCompileWrapsAPatternWithAnUnparenthesizedTopLevelAlternation(t *testing.T) {
+	pattern := `^A|B$`
+	result, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": pattern}),
+		Policy:    oneOfPolicy(t, "key", nil),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, "string", "name")
+	if len(validators) != 1 {
+		t.Fatalf("validators = %v, want exactly 1 derived entry", validators)
+	}
+	custom := jsonObject(validators[0]["custom"])
+	definition := jsonString(custom["schema_definition"])
+	anchored := "^(?:" + pattern + ")$"
+	wantDefinition := "stringvalidator.RegexMatches(regexp.MustCompile(`" + anchored + "`), \"\")"
+	if definition != wantDefinition {
+		t.Fatalf("schema_definition = %q, want %q (pattern must be wrapped)", definition, wantDefinition)
+	}
+	re := regexp.MustCompile(anchored)
+	if re.MatchString("Agarbage") {
+		t.Fatalf("wrapped pattern %q matched %q on the unanchored first branch, want rejected", anchored, "Agarbage")
+	}
+	if re.MatchString("garbageB") {
+		t.Fatalf("wrapped pattern %q matched %q on the unanchored second branch, want rejected", anchored, "garbageB")
+	}
+	if !re.MatchString("A") || !re.MatchString("B") {
+		t.Fatalf("wrapped pattern %q rejected a real value, want both %q and %q accepted", anchored, "A", "B")
+	}
+}
+
+// A pattern whose top-level branches are each already self-anchored (the
+// real shape of go-unifi's DeviceIPv4.netmask, "^digits$|^$") must not be
+// re-wrapped: double-wrapping is harmless for correctness but would move
+// every such attribute's generated pattern for no reason.
+func TestCompileLeavesSelfAnchoredTopLevelBranchesUnwrapped(t *testing.T) {
+	pattern := `^(0|[1-9]|1[0-9]|2[0-9]|3[0-2])$|^$`
+	result, err := Compile(CompileInput{
+		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": pattern}),
+		Policy:    oneOfPolicy(t, "key", nil),
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	validators := oneOfAttributeValidators(t, result.ProviderCodeSpec, "string", "name")
+	if len(validators) != 1 {
+		t.Fatalf("validators = %v, want exactly 1 derived entry", validators)
+	}
+	custom := jsonObject(validators[0]["custom"])
+	wantDefinition := "stringvalidator.RegexMatches(regexp.MustCompile(`" + pattern + "`), \"\")"
+	if got := jsonString(custom["schema_definition"]); got != wantDefinition {
+		t.Fatalf("schema_definition = %q, want %q (pattern must not be re-anchored)", got, wantDefinition)
+	}
+}

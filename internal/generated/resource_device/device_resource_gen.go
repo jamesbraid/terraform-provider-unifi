@@ -109,7 +109,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Network mask (for static configuration).",
 						MarkdownDescription: "Network mask (for static configuration).",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^((128|192|224|240|248|252|254)\.0\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0)|255\.(0|128|192|224|240|248|252|254)))))$`), ""),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^((128|192|224|240|248|252|254)\.0\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0)|255\.(0|128|192|224|240|248|252|254)))))$)$`), ""),
 						},
 					},
 					"type": schema.StringAttribute{

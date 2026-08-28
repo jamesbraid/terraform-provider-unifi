@@ -489,7 +489,7 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The IPv4 netmask of the WAN.",
 				MarkdownDescription: "The IPv4 netmask of the WAN.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^((128|192|224|240|248|252|254)\.0\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0)|255\.(0|128|192|224|240|248|252|254)))))$`), ""),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^((128|192|224|240|248|252|254)\.0\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0)|255\.(0|128|192|224|240|248|252|254)))))$)$`), ""),
 				},
 			},
 			"wan_network_group": schema.StringAttribute{

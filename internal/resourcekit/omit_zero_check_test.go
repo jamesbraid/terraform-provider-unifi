@@ -1,6 +1,7 @@
 package resourcekit
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -112,5 +113,42 @@ func TestOmitZeroProblemsFlagsAPatternWithAnEmptyStringArmToo(t *testing.T) {
 	}
 	if problems := OmitZeroProblems(omitZeroProbeSpec(false), constraints); len(problems) != 1 {
 		t.Fatalf("want exactly 1 problem, got %d: %v", len(problems), problems)
+	}
+}
+
+// TestAnchoredControllerPatternWrapsAnUnparenthesizedTopLevelAlternation
+// is the same proof as provider-codegen's anchorPattern test, against this
+// package's own copy of the rule: a leading ^ and a trailing $ on the
+// pattern as a whole are not sufficient to call it anchored. "^A|B$" is the
+// alternation of "^A" (no end anchor) and "B$" (no start anchor) -- the
+// exact shape of go-unifi's DeviceConfigNetwork.netmask and
+// Network.wan_netmask patterns, both left unwrapped and matching a value
+// with trailing or leading garbage before this fix.
+func TestAnchoredControllerPatternWrapsAnUnparenthesizedTopLevelAlternation(t *testing.T) {
+	pattern := `^A|B$`
+	anchored := anchoredControllerPattern(pattern)
+	if want := "^(?:" + pattern + ")$"; anchored != want {
+		t.Fatalf("anchoredControllerPattern(%q) = %q, want %q", pattern, anchored, want)
+	}
+	re := regexp.MustCompile(anchored)
+	if re.MatchString("Agarbage") {
+		t.Errorf("wrapped pattern %q matched %q on the unanchored first branch, want rejected", anchored, "Agarbage")
+	}
+	if re.MatchString("garbageB") {
+		t.Errorf("wrapped pattern %q matched %q on the unanchored second branch, want rejected", anchored, "garbageB")
+	}
+	if !re.MatchString("A") || !re.MatchString("B") {
+		t.Errorf("wrapped pattern %q rejected a real value, want both %q and %q accepted", anchored, "A", "B")
+	}
+}
+
+// A pattern whose top-level branches are each already self-anchored (the
+// real shape of DeviceIPv4.netmask, "^digits$|^$") must not be re-wrapped:
+// double-wrapping is harmless for correctness but would move every such
+// attribute's generated pattern for no reason.
+func TestAnchoredControllerPatternLeavesSelfAnchoredBranchesAlone(t *testing.T) {
+	pattern := `^(0|[1-9]|1[0-9]|2[0-9]|3[0-2])$|^$`
+	if got := anchoredControllerPattern(pattern); got != pattern {
+		t.Fatalf("anchoredControllerPattern(%q) = %q, want the pattern left unwrapped", pattern, got)
 	}
 }

@@ -933,7 +933,7 @@
           "description": "Network mask (for static configuration).",
           "description_kind": "plain",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^((128|192|224|240|248|252|254)\\.0\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0)|255\\.(0|128|192|224|240|248|252|254)))))$'"
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^((128|192|224|240|248|252|254)\\.0\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0)|255\\.(0|128|192|224|240|248|252|254)))))$)$'"
           ]
         },
         "config_network.type": {
@@ -12002,7 +12002,7 @@
           "description": "The IPv4 netmask of the WAN.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^((128|192|224|240|248|252|254)\\.0\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0)|255\\.(0|128|192|224|240|248|252|254)))))$'"
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^((128|192|224|240|248|252|254)\\.0\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0)|255\\.(0|128|192|224|240|248|252|254)))))$)$'"
           ]
         },
         "wan_network_group": {
