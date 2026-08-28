@@ -271,6 +271,47 @@ func TestDecodeVPNClientWireguardKeepsRoundTrippingAConfigManagedKey(t *testing.
 	}
 }
 
+// TestDecodeVPNClientWireguardKeepsRoundTrippingAConfigManagedPresharedKey is
+// preshared_key's sibling of the control above: a prior with a non-null
+// preshared_key must adopt the controller's echo, not keep the prior value.
+// The two differ on purpose -- a decode that kept the prior instead of
+// adopting the echo would still pass a same-value assertion.
+func TestDecodeVPNClientWireguardKeepsRoundTrippingAConfigManagedPresharedKey(t *testing.T) {
+	ctx := context.Background()
+	echoedFromController := "psk-from-controller"
+	network := &ui.Network{
+		WireguardClientPresharedKeyEnabled: true,
+		WireguardClientPresharedKey:        &echoedFromController,
+	}
+
+	prior := wireguardModel{
+		PrivateKey:          types.StringNull(),
+		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
+		Peer:                types.ObjectNull(wireguardPeerModel{}.AttributeTypes()),
+		PresharedKeyEnabled: types.BoolValue(true),
+		PresharedKey:        types.StringValue("psk-from-prior-state"),
+		Interface:           types.StringValue("wan"),
+		DnsServers:          types.ListNull(types.StringType),
+	}
+	priorObject, d := types.ObjectValueFrom(ctx, prior.AttributeTypes(), prior)
+	if d.HasError() {
+		t.Fatalf("building the prior object: %v", d)
+	}
+
+	object, diags := decodeVPNClientWireguard(ctx, network, priorObject)
+	if diags.HasError() {
+		t.Fatalf("Decode: %v", diags)
+	}
+	var got wireguardModel
+	if d := object.As(ctx, &got, basetypes.ObjectAsOptions{}); d.HasError() {
+		t.Fatalf("reading back the decoded object: %v", d)
+	}
+	if got.PresharedKey.ValueString() != echoedFromController {
+		t.Errorf("preshared_key = %q, want %q; the controller's echo must win over the prior value",
+			got.PresharedKey.ValueString(), echoedFromController)
+	}
+}
+
 // wireguardPlanWithout builds the same plan with one member cleared, so the
 // conditional-wire cases differ from the ten-name case by exactly the thing
 // under test.
