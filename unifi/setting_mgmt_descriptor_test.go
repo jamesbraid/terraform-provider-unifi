@@ -62,6 +62,53 @@ func TestMgmtAfterReceive(t *testing.T) {
 	}
 }
 
+// TestMgmtSSHUsernameEmptyReadStaysEmptyWhenConfigured pins a deliberate
+// divergence from the deleted mgmtSettingToModel: that mapper additionally
+// nulled a *configured* ssh_username when the controller read back "" (via
+// util.StringValueOrNull), stacked on top of its plan-conditioned null.
+// mgmtKitSpec's ssh_username Field carries Elide: KeepZero -- required by
+// ElideProblems, since the schema declares ssh_username Optional+Computed
+// with no validator rejecting an empty string, so the schema's own contract
+// says an empty read is a value, not an absence. mgmtAfterReceive only
+// nulls ssh_username when the plan/prior never configured it at all; it
+// does not re-null an empty value the controller legitimately reports for
+// an attribute the practitioner DID configure. Both steps of the read path
+// are exercised here, in order: Spec.ToModel (the Field's own Elide) and
+// then mgmtAfterReceive (the plan-conditioned check) -- either one nulling
+// the empty string would be the old, superseded behaviour, not this one.
+func TestMgmtSSHUsernameEmptyReadStaysEmptyWhenConfigured(t *testing.T) {
+	ctx := context.Background()
+	spec := mgmtKitSpec()
+	sdk := &settings.Mgmt{SSHUsername: ""}
+
+	var model settingMgmtModel
+	if diags := spec.ToModel(ctx, sdk, &model, ""); diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if model.SSHUsername.IsNull() {
+		t.Fatal("ssh_username is null straight off ToModel; want a known empty string " +
+			"(Elide: KeepZero) -- an empty controller read is a value here, not an absence")
+	}
+	if model.SSHUsername.ValueString() != "" {
+		t.Fatalf("ssh_username = %q after ToModel, want \"\"", model.SSHUsername.ValueString())
+	}
+
+	// prior is configured (non-null) -- the practitioner DID manage
+	// ssh_username, they just happen to be reading back a live "".
+	prior := settingMgmtModel{SSHUsername: types.StringValue("admin")}
+	if diags := mgmtAfterReceive(ctx, sdk, &model, prior); diags.HasError() {
+		t.Fatalf("mgmtAfterReceive: %v", diags)
+	}
+	if model.SSHUsername.IsNull() {
+		t.Error("ssh_username came back null after mgmtAfterReceive; a configured " +
+			"attribute's empty read must stay a known \"\", not be renulled -- " +
+			"nulling it here would be the legacy mapper's behaviour, not this one's")
+	}
+	if model.SSHUsername.ValueString() != "" {
+		t.Errorf("ssh_username = %q after mgmtAfterReceive, want \"\"", model.SSHUsername.ValueString())
+	}
+}
+
 // TestMgmtKitSpecConformance runs the same conformance instruments every
 // other kit descriptor's test applies (see e.g. dns_record's case in
 // descriptor_elide_test.go), scoped to mgmt's own nested schema rather than
