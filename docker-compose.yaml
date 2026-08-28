@@ -1,14 +1,10 @@
 ---
 services:
   unifi:
-    # A controller that seeds its own admin account and starts no devices of
-    # its own. Every device the acceptance tests see is started by
-    # unifi-emu-herder and informs for real, so nothing here needs simulation
-    # mode, an init script or a package download. The image declares its own
-    # healthcheck, which is what compose.Wait waits on.
-    # Pinned, and pinned to the same tag go-unifi's controllertest uses, so a
-    # controller change is one deliberate bump in both repositories rather than
-    # a nightly that quietly moved underneath one of them.
+    # A controller that seeds its own admin account; unifi-emu-herder starts
+    # every device the tests see, so nothing here needs simulation mode. The
+    # image declares its own healthcheck; the harness polls it before the
+    # first login (internal/controllertest.waitForHealthy).
     image: ${UNIFI_TEST_CONTROLLER_IMAGE:?internal/controllertest sets this from unifi.UnifiVersion}
     # Promotion jobs set this to "never" after inspecting the expected local
     # manifest. Developer runs retain Compose's ordinary pull-if-missing

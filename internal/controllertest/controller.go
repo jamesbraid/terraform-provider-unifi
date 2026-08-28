@@ -11,6 +11,7 @@ package controllertest
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -84,16 +85,21 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 	}
 	c := &Controller{stack: stack}
 
-	// Readiness is waitForAPI's job, not the image healthcheck's: the image's
-	// fixed retry budget can be exhausted by a slow JVM start still
-	// configuring its own logging, failing the run with only "container is
-	// unhealthy". Waiting on the API the tests actually use is the stronger
-	// signal.
+	// Compose's own wait is not used: the image's healthcheck has a fixed
+	// retry budget a slow JVM can exhaust, and the failure would then be an
+	// opaque "container is unhealthy". waitForHealthy polls the same check
+	// without that budget and reports what it saw; waitForAPI then proves the
+	// API the tests drive.
 	if err := stack.WithOsEnv().
 		WithEnv(map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": controllerImage()}).
 		Up(ctx, compose.WithRecreate(api.RecreateDiverged)); err != nil {
 		logControllerStartupFailure(ctx, logger, stack)
 		return c, fmt.Errorf("compose up: %w", err)
+	}
+
+	if err := waitForHealthy(ctx, logger, stack, 15*time.Minute); err != nil {
+		logControllerStartupFailure(ctx, logger, stack)
+		return c, err
 	}
 
 	container, err := stack.ServiceContainer(ctx, "unifi")
@@ -270,6 +276,12 @@ func waitForAPI(
 			CloudConnector: false,
 		})
 		if err != nil {
+			var limited *unifi.RateLimitError
+			if errors.As(err, &limited) {
+				// Retrying a rate-limited login only extends the lockout; the
+				// healthcheck already proved login works, so report it.
+				return nil, fmt.Errorf("controller rate-limited the harness login (retry after %v): %w", limited.RetryAfter, err)
+			}
 			if i < maxRetries-1 {
 				if (i+1)%10 == 0 {
 					logger.Printf(
