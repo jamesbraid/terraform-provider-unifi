@@ -98,14 +98,14 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "generated source does not parse: %v\n---\n%s\n", err, source)
 		return 1
 	}
-	if err := os.MkdirAll(*output, 0o755); err != nil {
+	if err := os.MkdirAll(*output, 0o750); err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
 	// Matches tfplugingen-framework's own filename shape for a resource, so a
 	// list surface's generated code sits where the convention says to look for it.
 	name := strings.ReplaceAll(document.ListResources[0].Name, "-", "_") + "_list_resource_gen.go"
-	if err := os.WriteFile(filepath.Join(*output, name), formatted, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(*output, name), formatted, 0o600); err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}

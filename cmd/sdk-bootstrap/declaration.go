@@ -15,7 +15,7 @@ import (
 // no longer moves every policy pinned to it: a re-pin means the struct's
 // fields, or the comments that carry its enum facts, actually changed.
 func declarationBytes(filename, name string) ([]byte, error) {
-	source, err := os.ReadFile(filename)
+	source, err := os.ReadFile(filename) // #nosec G304 -- filename comes from resolving the -package build-time flag through go/importer, not user input
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", filename, err)
 	}

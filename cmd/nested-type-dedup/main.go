@@ -48,7 +48,7 @@ type declRun struct {
 }
 
 func dedupeFile(path string) (int, error) {
-	source, err := os.ReadFile(path)
+	source, err := os.ReadFile(path) // #nosec G304 G703 -- path is a go:generate-supplied file argument, not user input
 	if err != nil {
 		return 0, err
 	}
@@ -104,7 +104,7 @@ func dedupeFile(path string) (int, error) {
 	if _, err := parser.ParseFile(token.NewFileSet(), path, out, parser.SkipObjectResolution); err != nil {
 		return 0, fmt.Errorf("%s: deduplicated output does not parse: %w", path, err)
 	}
-	if err := os.WriteFile(path, out, 0o644); err != nil {
+	if err := os.WriteFile(path, out, 0o600); err != nil { // #nosec G703 -- path is a go:generate-supplied file argument, not user input
 		return 0, err
 	}
 	return len(drop), nil

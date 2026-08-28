@@ -179,7 +179,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "encode: %v\n", err)
 		return 1
 	}
-	if err := os.WriteFile(*output, []byte(encoded.String()), 0o644); err != nil {
+	if err := os.WriteFile(*output, []byte(encoded.String()), 0o600); err != nil {
 		fmt.Fprintf(stderr, "write %s: %v\n", *output, err)
 		return 1
 	}

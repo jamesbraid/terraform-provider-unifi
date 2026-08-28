@@ -102,7 +102,7 @@ func stripDir(dir string, dryRun bool, stdout io.Writer) (int, int, error) {
 	sources := make(map[string][]byte, len(paths))
 	declared := map[string]struct{}{}
 	for _, path := range paths {
-		source, err := os.ReadFile(path)
+		source, err := os.ReadFile(path) // #nosec G304 G703 -- path is built from a go:generate-supplied directory argument, not user input
 		if err != nil {
 			return 0, 0, err
 		}
@@ -140,7 +140,7 @@ func stripDir(dir string, dryRun bool, stdout io.Writer) (int, int, error) {
 		if err != nil {
 			return 0, 0, fmt.Errorf("%s: %w", path, err)
 		}
-		if err := os.WriteFile(path, out, 0o644); err != nil {
+		if err := os.WriteFile(path, out, 0o600); err != nil { // #nosec G703 -- path is built from a go:generate-supplied directory argument, not user input
 			return 0, 0, err
 		}
 		stripped += len(cuts)

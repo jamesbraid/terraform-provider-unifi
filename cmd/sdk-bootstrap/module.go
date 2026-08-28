@@ -30,7 +30,7 @@ type goListModule struct {
 // this build, so the bootstrap records the SDK the schema was derived from
 // rather than a commit someone typed into a generate directive.
 func resolveSDKModule(pkgPath string) (bootstrapSource, error) {
-	pkgJSON, err := exec.Command("go", "list", "-json", pkgPath).Output()
+	pkgJSON, err := exec.Command("go", "list", "-json", pkgPath).Output() // #nosec G204 -- pkgPath comes from the -package build-time flag
 	if err != nil {
 		return bootstrapSource{}, fmt.Errorf("go list %s: %w", pkgPath, err)
 	}
@@ -40,7 +40,7 @@ func resolveSDKModule(pkgPath string) (bootstrapSource, error) {
 	}
 	var modJSON []byte
 	if repo, version := moduleIdentity(pkg); version != "" {
-		modJSON, err = exec.Command("go", "list", "-m", "-json", repo+"@"+version).Output()
+		modJSON, err = exec.Command("go", "list", "-m", "-json", repo+"@"+version).Output() // #nosec G204 -- repo and version come from parsing 'go list -json' output for the -package build-time flag
 		if err != nil {
 			return bootstrapSource{}, fmt.Errorf("go list -m %s@%s: %w", repo, version, err)
 		}

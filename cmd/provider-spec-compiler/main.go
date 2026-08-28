@@ -63,7 +63,7 @@ func run(args []string, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "compile: %v; re-pin refused: %v\n", err, repinErr)
 			return 1
 		}
-		if writeErr := os.WriteFile(*policyPath, repinned, 0o644); writeErr != nil {
+		if writeErr := os.WriteFile(*policyPath, repinned, 0o600); writeErr != nil { // #nosec G703 -- policyPath comes from the -policy build-time flag
 			fmt.Fprintf(stderr, "write re-pinned policy: %v\n", writeErr)
 			return 1
 		}
@@ -81,7 +81,7 @@ func run(args []string, stderr io.Writer) int {
 	for _, notice := range result.Notices {
 		fmt.Fprintln(stderr, notice)
 	}
-	if err := os.MkdirAll(*outputDir, 0o755); err != nil {
+	if err := os.MkdirAll(*outputDir, 0o750); err != nil {
 		fmt.Fprintf(stderr, "create output directory: %v\n", err)
 		return 1
 	}
