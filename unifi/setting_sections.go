@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // settingSection is one attribute of unifi_setting: whether the plan
@@ -59,6 +60,44 @@ func (l legacySection) Read(
 	ctx context.Context, r *settingResource, site string, plan, out *settingResourceModel,
 ) diag.Diagnostics {
 	return l.read(r, ctx, site, plan, out)
+}
+
+// legacySectionAdapter satisfies resourcekit.Section[settingResourceModel] by
+// closing over the *settingResource each settingSection.Write/Read needs as
+// its receiver: resourcekit.Section carries no client of its own, so this is
+// where one gets bound in, once Configure knows it.
+type legacySectionAdapter struct {
+	r       *settingResource
+	section settingSection
+}
+
+func (a legacySectionAdapter) Name() string { return a.section.Name() }
+
+func (a legacySectionAdapter) Configured(ctx context.Context, plan *settingResourceModel) bool {
+	return a.section.Configured(ctx, plan)
+}
+
+func (a legacySectionAdapter) Write(
+	ctx context.Context, site string, plan, state *settingResourceModel, verb string,
+) diag.Diagnostics {
+	return a.section.Write(ctx, a.r, site, plan, state, verb)
+}
+
+func (a legacySectionAdapter) Read(
+	ctx context.Context, site string, plan, out *settingResourceModel,
+) diag.Diagnostics {
+	return a.section.Read(ctx, a.r, site, plan, out)
+}
+
+// legacySectionsFor adapts every entry of settingSections to
+// resourcekit.Section[settingResourceModel], bound to r. Called from
+// Configure, once r.client exists for the adapted Write/Read calls to use.
+func legacySectionsFor(r *settingResource) []resourcekit.Section[settingResourceModel] {
+	sections := make([]resourcekit.Section[settingResourceModel], len(settingSections))
+	for i, s := range settingSections {
+		sections[i] = legacySectionAdapter{r: r, section: s}
+	}
+	return sections
 }
 
 // settingSections is unifi_setting's 13 sections, in today's write order.

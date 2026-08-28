@@ -19,6 +19,7 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -29,11 +30,21 @@ var (
 )
 
 func NewSettingResource() resource.Resource {
-	return &settingResource{}
+	r := &settingResource{}
+	r.Site = func(m *settingResourceModel) *types.String { return &m.Site }
+	r.ID = func(m *settingResourceModel) *types.String { return &m.ID }
+	r.Timeouts = func(m *settingResourceModel) *timeouts.Value { return &m.Timeouts }
+	return r
 }
 
+// settingResource is served by resourcekit.Composite: unifi_setting is one
+// Terraform resource over thirteen independently-written settings documents,
+// not one document the way every other kit-served surface is. Metadata,
+// Schema, ImportState and UpgradeState stay hand-written below rather than
+// promoted from Composite -- see composite.go's own doc comment for why.
 type settingResource struct {
 	client *Client
+	resourcekit.Composite[settingResourceModel]
 }
 
 type sshKeyModel struct {
@@ -471,149 +482,8 @@ func (r *settingResource) Configure(
 	}
 
 	r.client = client
-}
-
-// writeSettings applies every setting document the model names, shared by Create
-// and Update since unifi_setting has no create -- every document PUTs to a fixed,
-// always-existing endpoint. verb ("Creating"/"Updating") is a parameter because it
-// reaches the practitioner in the diagnostic message (same as writeIpsSuppression, writeUsgGeo).
-func (r *settingResource) writeSettings(
-	ctx context.Context,
-	site string,
-	plan *settingResourceModel,
-	verb string,
-	diags *diag.Diagnostics,
-) {
-	for _, section := range settingSections {
-		if !section.Configured(ctx, plan) {
-			continue
-		}
-		diags.Append(section.Write(ctx, r, site, plan, nil, verb)...)
-		if diags.HasError() {
-			return
-		}
-	}
-}
-
-func (r *settingResource) Create(
-	ctx context.Context,
-	req resource.CreateRequest,
-	resp *resource.CreateResponse,
-) {
-	var plan settingResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	createTimeout, timeoutDiags := plan.Timeouts.Create(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, createTimeout)
-	defer cancel()
-
-	site := plan.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	r.writeSettings(ctx, site, &plan, "Creating", &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	r.readSettings(ctx, site, &plan, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-}
-
-func (r *settingResource) Update(
-	ctx context.Context,
-	req resource.UpdateRequest,
-	resp *resource.UpdateResponse,
-) {
-	var state settingResourceModel
-	var plan settingResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	updateTimeout, timeoutDiags := plan.Timeouts.Update(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
-	defer cancel()
-
-	// Site comes from state, not the plan -- the one asymmetry between the two
-	// callers: site has UseStateForUnknown, so the plan can carry unknown where state carries the real name.
-	site := state.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	r.writeSettings(ctx, site, &plan, "Updating", &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	r.readSettings(ctx, site, &plan, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-}
-
-func (r *settingResource) Read(
-	ctx context.Context,
-	req resource.ReadRequest,
-	resp *resource.ReadResponse,
-) {
-	var data settingResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	readTimeout, timeoutDiags := data.Timeouts.Read(ctx, 20*time.Minute)
-	resp.Diagnostics.Append(timeoutDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, readTimeout)
-	defer cancel()
-
-	site := data.Site.ValueString()
-	if site == "" {
-		site = r.client.Site
-	}
-
-	r.readSettings(ctx, site, &data, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-func (r *settingResource) Delete(
-	ctx context.Context,
-	req resource.DeleteRequest,
-	resp *resource.DeleteResponse,
-) {
-	// Settings cannot be deleted, only reset to defaults
-	// Just remove from state
+	r.DefaultSite = client.Site
+	r.Sections = legacySectionsFor(r)
 }
 
 func (r *settingResource) ImportState(
@@ -627,25 +497,6 @@ func (r *settingResource) ImportState(
 		req,
 		resp,
 	)
-}
-
-func (r *settingResource) readSettings(
-	ctx context.Context,
-	site string,
-	data *settingResourceModel,
-	diags *diag.Diagnostics,
-) {
-	// Set the ID to the site since settings are site-level
-	data.ID = types.StringValue(site)
-	data.Site = types.StringValue(site)
-
-	// Only read settings that were configured in the plan, set others to null
-	for _, section := range settingSections {
-		diags.Append(section.Read(ctx, r, site, data, data)...)
-		if diags.HasError() {
-			return
-		}
-	}
 }
 
 // Mgmt conversion functions.
