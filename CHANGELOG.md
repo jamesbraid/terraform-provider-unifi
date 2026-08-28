@@ -161,7 +161,7 @@ All notable changes to this project will be documented in this file.
   (`NetworkEncodedFields`, `NetworkEncodesField`, `NetworkPurposes`). No
   source changes were needed.
 
-## [v0.106.0] - DRAFT, unreleased
+## [v0.106.0] - 2026-08-28
 
 ### 🔧 Maintenance
 
@@ -217,7 +217,7 @@ each is a reviewed decision to defer, not an oversight:
 
 ---
 
-## [v0.105.0] - DRAFT, unreleased
+## [v0.105.0] - 2026-08-26
 
 **This section is a draft.** v0.101.2 is this provider's last released
 version; v0.102.0 and v0.103.0 were never published as releases of their
