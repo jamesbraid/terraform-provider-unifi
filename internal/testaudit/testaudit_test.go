@@ -69,11 +69,12 @@ func Test_scanReportsTheThreeShapes(t *testing.T) {
 	got := scanFixture(t, "unfailable")
 
 	want := map[string]Kind{
-		"TestNothingHappens":       NoAssertion,
-		"TestEmptyTable":           EmptyTable,
-		"TestPopulatedButMute":     NoAssertion,
-		"TestUnconditionalSkip":    SkipStub,
-		"TestEmptyMapNeverWritten": EmptyTable,
+		"TestNothingHappens":        NoAssertion,
+		"TestEmptyTable":            EmptyTable,
+		"TestPopulatedButMute":      NoAssertion,
+		"TestUnconditionalSkip":     SkipStub,
+		"TestEmptyMapNeverWritten":  EmptyTable,
+		"TestVarDeclaredEmptyTable": EmptyTable,
 	}
 	for name, kind := range want {
 		if got[name] != kind {
@@ -105,6 +106,7 @@ func Test_scanDoesNotReportATestThatCanFail(t *testing.T) {
 		"TestAccumulatorIsNotAnEmptyTable",
 		"TestAppendAccumulatorIsNotAnEmptyTable",
 		"TestRangeOverRuntimeValueIsNotAnEmptyTable",
+		"TestVarDeclaredTableFilledLater",
 	} {
 		if kind, reported := got[name]; reported {
 			t.Errorf("%s can fail but was reported as %q", name, kind)

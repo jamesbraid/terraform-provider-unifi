@@ -125,3 +125,16 @@ func TestRangeOverRuntimeValueIsNotAnEmptyTable(t *testing.T) {
 		}
 	}
 }
+
+// The var form of "declared empty, filled elsewhere": a nil slice declared
+// with var and no composite literal at all, then filled by append before the
+// range. Mirrors TestAppendAccumulatorIsNotAnEmptyTable for the := form.
+func TestVarDeclaredTableFilledLater(t *testing.T) {
+	var cases []string
+	cases = append(cases, "a")
+	for _, name := range cases {
+		if name == "" {
+			t.Error("empty")
+		}
+	}
+}

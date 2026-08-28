@@ -58,3 +58,13 @@ func TestEmptyMapNeverWritten(t *testing.T) {
 		}
 	}
 }
+
+// A table declared with var and an empty composite literal -- the gotests
+// scaffold most people actually write -- not the := form the assignment
+// check already covers. The loop still never runs.
+func TestVarDeclaredEmptyTable(t *testing.T) {
+	var cases = []struct{ name string }{}
+	for _, tt := range cases {
+		t.Errorf("unreachable: %s", tt.name)
+	}
+}

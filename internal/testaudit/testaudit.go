@@ -269,11 +269,15 @@ func isSkipStub(fd *ast.FuncDecl) bool {
 }
 
 // rangesOverEmptyTable reports a range over a slice literal with no
-// elements, directly or through a variable that stays empty. "Declared
-// empty" is not "empty": an accumulator declared empty and then filled
-// elsewhere (census := map[string]int{} ... census[mode]++ ... range
-// census) must not be reported, so this tracks whether the variable is
-// ever written, not just its literal at declaration.
+// elements, directly or through a variable that stays empty -- declared
+// with := or with var, as a composite literal or (for var) a bare nil
+// slice. "Declared empty" is not "empty": an accumulator declared empty and
+// then filled elsewhere (census := map[string]int{} ... census[mode]++ ...
+// range census) must not be reported, so this tracks whether the variable
+// is ever written, not just its literal at declaration.
+//
+// Package-level var tables are out of scope: this only walks the function
+// declaration passed in, never the file's top-level Decls.
 func rangesOverEmptyTable(fd *ast.FuncDecl) bool {
 	empty := map[string]bool{}
 	written := map[string]bool{}
@@ -301,6 +305,29 @@ func rangesOverEmptyTable(fd *ast.FuncDecl) bool {
 				}
 				if id, ok := stmt.Lhs[i].(*ast.Ident); ok {
 					empty[id.Name] = true
+				}
+			}
+		case *ast.GenDecl:
+			// var cases = []T{} or var cases []T: the := form above only sees
+			// short declarations, and gotests emits the var form just as often.
+			if stmt.Tok != token.VAR {
+				break
+			}
+			for _, spec := range stmt.Specs {
+				vs, ok := spec.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				for i, name := range vs.Names {
+					if i < len(vs.Values) {
+						if lit, ok := vs.Values[i].(*ast.CompositeLit); ok && len(lit.Elts) == 0 {
+							empty[name.Name] = true
+						}
+						continue
+					}
+					if arr, ok := vs.Type.(*ast.ArrayType); ok && arr.Len == nil {
+						empty[name.Name] = true // var cases []T: a nil slice, empty until written.
+					}
 				}
 			}
 		case *ast.IncDecStmt:
