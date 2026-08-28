@@ -184,6 +184,15 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Specifies whether DHCP NTP is enabled.",
 						Default:             booldefault.StaticBool(false),
 					},
+					"ntp_servers": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Description:         "List of NTP server addresses for DHCP clients (maximum 2).",
+						MarkdownDescription: "List of NTP server addresses for DHCP clients (maximum 2).",
+						Validators: []validator.List{
+							listvalidator.SizeAtMost(2),
+						},
+					},
 					"start": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,

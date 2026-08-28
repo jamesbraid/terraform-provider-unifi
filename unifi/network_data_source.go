@@ -274,6 +274,7 @@ func (d *networkDataSource) setDataSourceData(
 			TftpServer:        strPtrOrNull(network.DHCPDTFTPServer),
 			UnifiController:   strPtrOrNull(network.DHCPDUnifiController),
 			DnsServers:        dnsServersList,
+			NtpServers:        networkDataSourceNTPServersFromNetwork(ctx, diags, network),
 		}
 		dhcpServerObj, d := types.ObjectValueFrom(
 			ctx,
@@ -463,6 +464,18 @@ func networkDataSourceWINSFromNetwork(
 	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
 	diags.Append(d...)
 	return object
+}
+
+// networkDataSourceNTPServersFromNetwork reads dhcp_server.ntp_servers from
+// the two observed slots, collected non-empty.
+func networkDataSourceNTPServersFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *unifi.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
+		network.DHCPDNtp1, network.DHCPDNtp2,
+	))
 }
 
 // networkDataSourceBootFromNetwork reads dhcp_server.boot, which groups three

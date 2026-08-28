@@ -784,6 +784,7 @@ func Test_dhcpServerModel_AttributeTypes(t *testing.T) {
 				"tftp_server":         types.StringType,
 				"unifi_controller":    types.StringType,
 				"dns_servers":         types.ListType{ElemType: types.StringType},
+				"ntp_servers":         types.ListType{ElemType: types.StringType},
 			},
 		},
 	}

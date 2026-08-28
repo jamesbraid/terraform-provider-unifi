@@ -3602,6 +3602,16 @@
           "description_kind": "markdown",
           "default": "booldefault.staticBoolDefault: value defaults to false"
         },
+        "dhcp_server.ntp_servers": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "description": "List of NTP server addresses for DHCP clients (maximum 2).",
+          "description_kind": "markdown",
+          "validators": [
+            "listvalidator.sizeAtMostValidator: list must contain at most 2 elements"
+          ]
+        },
         "dhcp_server.start": {
           "kind": "attribute",
           "type": "\"string\"",
@@ -11497,6 +11507,13 @@
           "type": "\"bool\"",
           "computed": true,
           "description": "Specifies whether DHCP NTP is enabled.",
+          "description_kind": "markdown"
+        },
+        "dhcp_server.ntp_servers": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "computed": true,
+          "description": "List of NTP server addresses for DHCP clients (maximum 2).",
           "description_kind": "markdown"
         },
         "dhcp_server.start": {

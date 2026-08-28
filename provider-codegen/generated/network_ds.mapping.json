@@ -467,6 +467,20 @@
       "disposition": ""
     },
     {
+      "structural_name": "dhcpd_ntp_1",
+      "terraform_name": "dhcp_server.ntp_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_ntp_2",
+      "terraform_name": "dhcp_server.ntp_servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
       "structural_name": "dhcpd_wins_enabled",
       "terraform_name": "dhcp_server.wins",
       "structural_type": "bool",

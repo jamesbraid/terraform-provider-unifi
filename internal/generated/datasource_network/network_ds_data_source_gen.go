@@ -121,6 +121,12 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Specifies whether DHCP NTP is enabled.",
 						MarkdownDescription: "Specifies whether DHCP NTP is enabled.",
 					},
+					"ntp_servers": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Computed:            true,
+						Description:         "List of NTP server addresses for DHCP clients (maximum 2).",
+						MarkdownDescription: "List of NTP server addresses for DHCP clients (maximum 2).",
+					},
 					"start": schema.StringAttribute{
 						Computed:            true,
 						Description:         "The IPv4 address where the DHCP range starts.",

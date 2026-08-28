@@ -481,6 +481,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					"dhcpd_unifi_controller", "dhcpd_dns_1", "dhcpd_dns_2", "dhcpd_dns_3",
 					"dhcpd_dns_4", "dhcpd_boot_enabled", "dhcpd_boot_server", "dhcpd_boot_filename",
 					"dhcpd_wins_enabled", "dhcpd_wins_1", "dhcpd_wins_2",
+					"dhcpd_ntp_1", "dhcpd_ntp_2",
 				},
 				Model:     func(m *netModel) *types.Object { return &m.DhcpServer },
 				AttrTypes: dhcpServerModel{}.AttributeTypes(),
@@ -510,6 +511,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 					sdk.DHCPDTFTPServer = emptyIfUnset(server.TftpServer)
 					sdk.DHCPDUnifiController = emptyIfUnset(server.UnifiController)
 					networkDHCPServerDNSToNetwork(ctx, &diags, server.DnsServers, sdk)
+					networkNTPServersToNetwork(ctx, &diags, server.NtpServers, sdk)
 					return diags
 				},
 				Decode: func(
@@ -532,6 +534,7 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 						TftpServer:        strPtrOrNull(sdk.DHCPDTFTPServer),
 						UnifiController:   strPtrOrNull(sdk.DHCPDUnifiController),
 						DnsServers:        networkDHCPServerDNSFromNetwork(ctx, &diags, sdk),
+						NtpServers:        networkNTPServersFromNetwork(ctx, &diags, sdk),
 					}
 					object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
 					diags.Append(d...)

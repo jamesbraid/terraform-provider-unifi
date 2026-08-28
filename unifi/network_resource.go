@@ -61,6 +61,7 @@ type dhcpServerModel struct {
 	TftpServer        types.String         `tfsdk:"tftp_server"`
 	UnifiController   types.String         `tfsdk:"unifi_controller"`
 	DnsServers        types.List           `tfsdk:"dns_servers"`
+	NtpServers        types.List           `tfsdk:"ntp_servers"`
 }
 
 func (m dhcpServerModel) AttributeTypes() map[string]attr.Type {
@@ -80,6 +81,7 @@ func (m dhcpServerModel) AttributeTypes() map[string]attr.Type {
 		"tftp_server":         types.StringType,
 		"unifi_controller":    types.StringType,
 		"dns_servers":         types.ListType{ElemType: types.StringType},
+		"ntp_servers":         types.ListType{ElemType: types.StringType},
 	}
 }
 
@@ -428,6 +430,49 @@ func networkDHCPV6ServerDNSFromNetwork(
 	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
 		network.DHCPDV6DNS1, network.DHCPDV6DNS2,
 		network.DHCPDV6DNS3, network.DHCPDV6DNS4,
+	))
+}
+
+// networkNTPServersToNetwork distributes ntp_servers positionally into the two
+// observed slots, clearing the trailing one it does not use; SDK wire defect
+// noted at the call site -- nilIfEmpty in the encoder still squashes an
+// explicit clear to omitted, same class as dns_servers (#448/7150ba56).
+func networkNTPServersToNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	ntpServers types.List,
+	network *ui.Network,
+) {
+	slots := []**string{&network.DHCPDNtp1, &network.DHCPDNtp2}
+	if ntpServers.IsNull() || ntpServers.IsUnknown() {
+		for _, slot := range slots {
+			*slot = util.Ptr("")
+		}
+		return
+	}
+	var values []string
+	diags.Append(ntpServers.ElementsAs(ctx, &values, false)...)
+	if diags.HasError() {
+		return
+	}
+	for i, slot := range slots {
+		if i < len(values) {
+			*slot = util.Ptr(values[i])
+			continue
+		}
+		*slot = util.Ptr("")
+	}
+}
+
+// networkNTPServersFromNetwork collects the two observed slots back into the
+// one released list, keeping only the non-empty ones (compacted).
+func networkNTPServersFromNetwork(
+	ctx context.Context,
+	diags *diag.Diagnostics,
+	network *ui.Network,
+) types.List {
+	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
+		network.DHCPDNtp1, network.DHCPDNtp2,
 	))
 }
 

@@ -94,6 +94,20 @@
     },
     {
       "mapping": {
+        "from_api": "networkDataSourceNTPServersFromNetwork",
+        "kind": "dedicated"
+      },
+      "reason": "one released list distributed positionally into two observed slots, collected non-empty",
+      "structural_names": [
+        "dhcpd_ntp_1",
+        "dhcpd_ntp_2"
+      ],
+      "terraform_members": [
+        "dhcp_server.ntp_servers"
+      ]
+    },
+    {
+      "mapping": {
         "from_api": "networkDataSourceBootFromNetwork",
         "kind": "dedicated"
       },
@@ -574,8 +588,6 @@
     "dhcpd_mac_1",
     "dhcpd_mac_2",
     "dhcpd_mac_3",
-    "dhcpd_ntp_1",
-    "dhcpd_ntp_2",
     "dhcpd_time_offset",
     "dhcpdv6_allow_slaac",
     "dpi_enabled",
@@ -1022,6 +1034,18 @@
           "disposition": "managed",
           "terraform_name": "wins",
           "terraform_type": "single_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed",
+            "description": "List of NTP server addresses for DHCP clients (maximum 2).",
+            "element_type": {
+              "string": {}
+            }
+          },
+          "disposition": "managed",
+          "terraform_name": "ntp_servers",
+          "terraform_type": "list"
         }
       ],
       "terraform_name": "dhcp_server",
