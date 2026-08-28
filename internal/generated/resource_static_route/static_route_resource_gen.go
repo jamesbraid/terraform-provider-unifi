@@ -105,7 +105,7 @@ func StaticRouteResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The type of static route. Can be `interface-route`, `nexthop-route`, or `blackhole`.",
 				MarkdownDescription: "The type of static route. Can be `interface-route`, `nexthop-route`, or `blackhole`.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("interface-route", "nexthop-route", "blackhole"),
+					stringvalidator.OneOf("nexthop-route", "interface-route", "blackhole"),
 				},
 			},
 		},

@@ -61,19 +61,7 @@
         "default": {
           "static": "default"
         },
-        "description": "The type of gateway for the static route. Can be `default` or `switch`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"default\", \"switch\")"
-            }
-          }
-        ]
+        "description": "The type of gateway for the static route. Can be `default` or `switch`."
       },
       "disposition": "managed",
       "structural_name": "gateway_type",
@@ -173,19 +161,7 @@
     {
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The type of static route. Can be `interface-route`, `nexthop-route`, or `blackhole`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"interface-route\", \"nexthop-route\", \"blackhole\")"
-            }
-          }
-        ]
+        "description": "The type of static route. Can be `interface-route`, `nexthop-route`, or `blackhole`."
       },
       "disposition": "managed",
       "structural_name": "static-route_type",

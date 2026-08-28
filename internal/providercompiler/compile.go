@@ -328,7 +328,7 @@ func Compile(input CompileInput) (Result, error) {
 			Disposition:    field.Disposition,
 		})
 		if field.Disposition == "managed" || field.Disposition == "computed" {
-			attribute, err := buildCodeAttribute(field, structural, terraformNames)
+			attribute, err := buildCodeAttribute(rules.Resource, field, structural, terraformNames)
 			if err != nil {
 				return Result{}, fmt.Errorf("field %q: %w", name, err)
 			}
@@ -385,7 +385,7 @@ func Compile(input CompileInput) (Result, error) {
 			if member.Disposition != "managed" && member.Disposition != "computed" {
 				continue
 			}
-			attribute, err := buildCodeAttribute(fieldPolicy{
+			attribute, err := buildCodeAttribute(rules.Resource, fieldPolicy{
 				StructuralName: member.StructuralName,
 				TerraformName:  member.TerraformName,
 				TerraformType:  member.TerraformType,
@@ -402,7 +402,7 @@ func Compile(input CompileInput) (Result, error) {
 	groupings := append([]groupingPolicy(nil), rules.Groupings...)
 	sort.Slice(groupings, func(i, j int) bool { return groupings[i].TerraformName < groupings[j].TerraformName })
 	for _, grouping := range groupings {
-		attribute, err := buildGroupingAttribute(grouping, sourceFields, terraformNames, claimedMembers)
+		attribute, err := buildGroupingAttribute(rules.Resource, grouping, sourceFields, terraformNames, claimedMembers)
 		if err != nil {
 			return Result{}, err
 		}
@@ -1050,6 +1050,7 @@ func collapsedElementAttribute(
 // catalog for observed members; an invented member has no observed type, so its
 // policy must supply one.
 func buildGroupingAttribute(
+	surface string,
 	grouping groupingPolicy,
 	sourceFields map[string]bootstrapField,
 	names map[string]string,
@@ -1104,7 +1105,7 @@ func buildGroupingAttribute(
 			members = append(members, attribute)
 			continue
 		}
-		attribute, err := buildCodeAttribute(fieldPolicy{
+		attribute, err := buildCodeAttribute(surface, fieldPolicy{
 			StructuralName: member.StructuralName,
 			TerraformName:  member.TerraformName,
 			TerraformType:  member.TerraformType,
@@ -1284,6 +1285,7 @@ func objectTerraformType(field fieldPolicy, structuralType string) (string, erro
 // them. The member list is generated rather than authored, which is what makes
 // this a migration instead of hand-writing moved to another file.
 func nestedDefinition(
+	surface string,
 	field fieldPolicy,
 	structural bootstrapField,
 	terraformType string,
@@ -1292,7 +1294,7 @@ func nestedDefinition(
 	if len(structural.Fields) == 0 {
 		return nil, fmt.Errorf("object field %q has no members in the catalog", field.StructuralName)
 	}
-	members, err := nestedAttributes(field, structural, names)
+	members, err := nestedAttributes(surface, field, structural, names)
 	if err != nil {
 		return nil, err
 	}
@@ -1341,6 +1343,7 @@ func nestedDefinition(
 // its policy decision. It recurses, so nesting depth is bounded by the catalog
 // rather than by this code.
 func nestedAttributes(
+	surface string,
 	field fieldPolicy,
 	structural bootstrapField,
 	names map[string]string,
@@ -1391,7 +1394,7 @@ func nestedAttributes(
 		if err := claimTerraformName(names, owner+"/"+decision.TerraformName, owner); err != nil {
 			return nil, err
 		}
-		attribute, err := buildCodeAttribute(decision, member, names)
+		attribute, err := buildCodeAttribute(surface, decision, member, names)
 		if err != nil {
 			return nil, err
 		}
@@ -1435,6 +1438,7 @@ func structuralHasMember(structural bootstrapField, name string) bool {
 // buildCodeAttribute resolves one field, scalar or object, to its
 // specification attribute.
 func buildCodeAttribute(
+	surface string,
 	field fieldPolicy,
 	structural bootstrapField,
 	names map[string]string,
@@ -1444,7 +1448,7 @@ func buildCodeAttribute(
 		if err != nil {
 			return codeAttribute{}, err
 		}
-		definition, err := nestedDefinition(field, structural, terraformType, names)
+		definition, err := nestedDefinition(surface, field, structural, terraformType, names)
 		if err != nil {
 			return codeAttribute{}, err
 		}
@@ -1457,7 +1461,9 @@ func buildCodeAttribute(
 		)
 	}
 	terraformType := field.TerraformType
-	if element, isCollection := structuralElementType(structural.Type); isCollection {
+	isCollection := false
+	if element, ok := structuralElementType(structural.Type); ok {
+		isCollection = true
 		resolved, err := collectionTerraformType(field, element)
 		if err != nil {
 			return codeAttribute{}, err
@@ -1468,7 +1474,23 @@ func buildCodeAttribute(
 	} else if err := requireScalarOverride(field.StructuralName, structural.Type, terraformType); err != nil {
 		return codeAttribute{}, err
 	}
-	return makeCodeAttribute(field.TerraformName, terraformType, field.Attribute)
+	attribute := field.Attribute
+	// Derivation is scoped to scalar attributes: a collection's element type
+	// carries no OneOf shape this task derives (deferred; see the task
+	// report), and structuralElementType already routed those here with
+	// isCollection set.
+	if !isCollection {
+		owner := field.StructuralName
+		if owner == "" {
+			owner = field.TerraformName
+		}
+		derived, err := deriveOneOfValidator(surface+"."+owner, terraformType, structural.Constraint, attribute)
+		if err != nil {
+			return codeAttribute{}, err
+		}
+		attribute = derived
+	}
+	return makeCodeAttribute(field.TerraformName, terraformType, attribute)
 }
 
 // terraformScalarTypes are the specification members that hold a single value.

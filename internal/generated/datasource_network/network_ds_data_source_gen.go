@@ -225,6 +225,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The gateway type.",
 				MarkdownDescription: "The gateway type.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("default", "switch"),
+				},
 			},
 			"id": schema.StringAttribute{
 				Optional:            true,
@@ -261,6 +264,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies which type of IPv6 connection to use.",
 				MarkdownDescription: "Specifies which type of IPv6 connection to use.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("static", "pd", "single_network", "none"),
+				},
 			},
 			"ipv6_pd_interface": schema.StringAttribute{
 				Computed:            true,
@@ -297,6 +303,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "IPv6 router advertisement priority. One of `high`, `medium`, or `low`.",
 				MarkdownDescription: "IPv6 router advertisement priority. One of `high`, `medium`, or `low`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("high", "medium", "low"),
+				},
 			},
 			"ipv6_ra_valid_lifetime": schema.StringAttribute{
 				CustomType:          timetypes.GoDurationType{},
@@ -346,6 +355,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "The mode.",
 							MarkdownDescription: "The mode.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("all", "ip_address", "ip_address_pool"),
+							},
 						},
 						"wan_network_group": schema.StringAttribute{
 							Computed:            true,
@@ -377,6 +389,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Setting preference. One of `auto` or `manual`.",
 				MarkdownDescription: "Setting preference. One of `auto` or `manual`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("auto", "manual"),
+				},
 			},
 			"site": schema.StringAttribute{
 				Optional:            true,
@@ -439,11 +454,17 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies the IPv4 WAN connection type. One of `disabled`, `static`, `dhcp`, or `pppoe`.",
 				MarkdownDescription: "Specifies the IPv4 WAN connection type. One of `disabled`, `static`, `dhcp`, or `pppoe`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("disabled", "dhcp", "static", "pppoe", "dslite", "map-e,hubspoke", "map-e,jpix", "map-e,ntt", "dslite-over-pppoe"),
+				},
 			},
 			"wan_type_v6": schema.StringAttribute{
 				Computed:            true,
 				Description:         "Specifies the IPv6 WAN connection type. One of `disabled`, `static`, or `dhcpv6`.",
 				MarkdownDescription: "Specifies the IPv6 WAN connection type. One of `disabled`, `static`, or `dhcpv6`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("disabled", "slaac", "dhcpv6", "static"),
+				},
 			},
 			"wan_username": schema.StringAttribute{
 				Computed:            true,

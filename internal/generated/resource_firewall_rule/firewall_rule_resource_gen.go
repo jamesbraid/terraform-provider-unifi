@@ -27,7 +27,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The action of the firewall rule. Must be one of `drop`, `accept`, or `reject`.",
 				MarkdownDescription: "The action of the firewall rule. Must be one of `drop`, `accept`, or `reject`.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("drop", "accept", "reject"),
+					stringvalidator.OneOf("drop", "reject", "accept"),
 				},
 			},
 			"dst_address": schema.StringAttribute{

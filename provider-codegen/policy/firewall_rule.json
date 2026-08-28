@@ -25,19 +25,7 @@
     {
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The action of the firewall rule. Must be one of `drop`, `accept`, or `reject`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"drop\", \"accept\", \"reject\")"
-            }
-          }
-        ]
+        "description": "The action of the firewall rule. Must be one of `drop`, `accept`, or `reject`."
       },
       "disposition": "managed",
       "structural_name": "action",
@@ -89,19 +77,7 @@
         "default": {
           "static": "NETv4"
         },
-        "description": "The destination network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"ADDRv4\", \"NETv4\")"
-            }
-          }
-        ]
+        "description": "The destination network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`."
       },
       "disposition": "managed",
       "structural_name": "dst_networkconf_type",
@@ -242,19 +218,7 @@
     {
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The ruleset for the rule. This is from the perspective of the security gateway.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"WAN_IN\", \"WAN_OUT\", \"WAN_LOCAL\", \"LAN_IN\", \"LAN_OUT\", \"LAN_LOCAL\", \"GUEST_IN\", \"GUEST_OUT\", \"GUEST_LOCAL\", \"WANv6_IN\", \"WANv6_OUT\", \"WANv6_LOCAL\", \"LANv6_IN\", \"LANv6_OUT\", \"LANv6_LOCAL\", \"GUESTv6_IN\", \"GUESTv6_OUT\", \"GUESTv6_LOCAL\")"
-            }
-          }
-        ]
+        "description": "The ruleset for the rule. This is from the perspective of the security gateway."
       },
       "disposition": "managed",
       "structural_name": "ruleset",
@@ -263,19 +227,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Whether the rule is managed automatically by the controller or manually. Can be one of `auto` or `manual`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-            }
-          }
-        ]
+        "description": "Whether the rule is managed automatically by the controller or manually. Can be one of `auto` or `manual`."
       },
       "disposition": "managed",
       "structural_name": "setting_preference",
@@ -343,19 +295,7 @@
         "default": {
           "static": "NETv4"
         },
-        "description": "The source network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"ADDRv4\", \"NETv4\")"
-            }
-          }
-        ]
+        "description": "The source network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`."
       },
       "disposition": "managed",
       "structural_name": "src_networkconf_type",

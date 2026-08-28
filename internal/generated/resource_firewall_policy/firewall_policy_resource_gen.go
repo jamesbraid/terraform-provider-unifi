@@ -43,7 +43,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("ALL", "RESPOND_ONLY", "CUSTOM"),
+					stringvalidator.OneOf("ALL", "RESPOND_ONLY"),
 				},
 			},
 			"connection_states": schema.ListAttribute{
@@ -143,7 +143,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "NETWORK", "CLIENT", "IP", "DEVICE", "MAC", "WEB"),
+							stringvalidator.OneOf("ANY", "DEVICE", "IP", "NETWORK", "CLIENT", "MAC", "WEB", "APP", "APP_CATEGORY"),
 						},
 					},
 					"matching_target_type": schema.StringAttribute{
@@ -152,6 +152,9 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.String{
+							stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
 						},
 					},
 					"network_ids": schema.ListAttribute{
@@ -189,7 +192,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						MarkdownDescription: "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT"),
+							stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
 						},
 						Default: stringdefault.StaticString("ANY"),
 					},
@@ -227,6 +230,9 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Validators: []validator.String{
+					stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
+				},
 			},
 			"icmp_v6_typename": schema.StringAttribute{
 				Computed:            true,
@@ -234,6 +240,9 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "ICMPv6 type matching mode. Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.String{
+					stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -280,7 +289,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
 				MarkdownDescription: "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("all", "tcp", "udp", "tcp_udp", "icmp", "icmpv6"),
+					stringvalidator.OneOf("all", "tcp", "udp", "tcp_udp"),
 				},
 				Default: stringdefault.StaticString("all"),
 			},
@@ -450,7 +459,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						MarkdownDescription: "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "NETWORK", "CLIENT", "IP", "DEVICE", "MAC", "WEB"),
+							stringvalidator.OneOf("ANY", "DEVICE", "IP", "NETWORK", "CLIENT", "MAC", "WEB", "APP", "APP_CATEGORY"),
 						},
 					},
 					"matching_target_type": schema.StringAttribute{
@@ -459,6 +468,9 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "How the matching target is specified (`ANY`, `SPECIFIC`, `LIST`, `OBJECT`). Managed by the UniFi controller; the provider round-trips it so updates are accepted.",
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.String{
+							stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
 						},
 					},
 					"network_ids": schema.ListAttribute{
@@ -496,7 +508,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						MarkdownDescription: "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
 						Validators: []validator.String{
-							stringvalidator.OneOf("ANY", "SPECIFIC", "OBJECT"),
+							stringvalidator.OneOf("ANY", "SPECIFIC", "LIST", "OBJECT"),
 						},
 						Default: stringdefault.StaticString("ANY"),
 					},

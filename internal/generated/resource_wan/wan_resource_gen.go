@@ -261,7 +261,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 							stringplanmodifier.UseStateForUnknown(),
 						},
 						Validators: []validator.String{
-							stringvalidator.OneOf("none", "lan", "guest"),
+							stringvalidator.OneOf("all", "some", "none"),
 						},
 					},
 					"upstream": schema.BoolAttribute{
@@ -479,7 +479,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("dhcp", "static", "pppoe", "disabled"),
+					stringvalidator.OneOf("disabled", "dhcp", "static", "pppoe", "dslite", "map-e,hubspoke", "map-e,jpix", "map-e,ntt", "dslite-over-pppoe"),
 				},
 			},
 			"type_v6": schema.StringAttribute{
@@ -491,7 +491,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("dhcpv6", "slaac", "static", "disabled"),
+					stringvalidator.OneOf("disabled", "slaac", "dhcpv6", "static"),
 				},
 			},
 			"upnp": schema.SingleNestedAttribute{

@@ -359,6 +359,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "Channel width (20, 40, 80, 160).",
 							MarkdownDescription: "Channel width (20, 40, 80, 160).",
+							Validators: []validator.Int64{
+								int64validator.OneOf(20, 40, 80, 160, 240, 320, 1080, 2160, 4320),
+							},
 						},
 						"loadbalance_enabled": schema.BoolAttribute{
 							Optional:            true,
@@ -395,6 +398,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "Radio band (ng, na, ad, 6e).",
 							MarkdownDescription: "Radio band (ng, na, ad, 6e).",
+							Validators: []validator.String{
+								stringvalidator.OneOf("ng", "na", "ad", "6e"),
+							},
 						},
 						"sens_level": schema.Int64Attribute{
 							Optional:            true,
@@ -419,6 +425,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "Transmit power mode (auto, medium, high, low, custom).",
 							MarkdownDescription: "Transmit power mode (auto, medium, high, low, custom).",
+							Validators: []validator.String{
+								stringvalidator.OneOf("auto", "medium", "high", "low", "custom", "disabled"),
+							},
 						},
 						"vwire_enabled": schema.BoolAttribute{
 							Optional:            true,
@@ -517,6 +526,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "802.1X control mode.",
 							MarkdownDescription: "802.1X control mode.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("auto", "force_authorized", "force_unauthorized", "mac_based", "multi_host"),
+							},
 						},
 						"dot1x_idle_timeout": schema.StringAttribute{
 							CustomType:          timetypes.GoDurationType{},
@@ -549,6 +561,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Forward Error Correction mode.",
 							MarkdownDescription: "Forward Error Correction mode.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("rs-fec", "fc-fec", "default", "disabled"),
+							},
 						},
 						"flow_control_enabled": schema.BoolAttribute{
 							Optional:            true,
@@ -560,6 +575,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Forwarding mode.",
 							MarkdownDescription: "Forwarding mode.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("all", "native", "customize", "disabled"),
+							},
 						},
 						"full_duplex": schema.BoolAttribute{
 							Optional:            true,
@@ -617,7 +635,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.",
 							MarkdownDescription: "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.",
 							Validators: []validator.String{
-								stringvalidator.OneOf("switch", "mirror", "aggregate"),
+								stringvalidator.OneOf("switch", "mirror", "aggregate", "routed", "routed_aggregate"),
 							},
 							Default: stringdefault.StaticString("switch"),
 						},
@@ -676,11 +694,17 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Setting preference.",
 							MarkdownDescription: "Setting preference.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("auto", "manual"),
+							},
 						},
 						"speed": schema.Int64Attribute{
 							Optional:            true,
 							Description:         "Port speed in Mbps.",
 							MarkdownDescription: "Port speed in Mbps.",
+							Validators: []validator.Int64{
+								int64validator.OneOf(10, 100, 1000, 2500, 5000, 10000, 20000, 25000, 40000, 50000, 100000),
+							},
 						},
 						"stormctrl_bcast_enabled": schema.BoolAttribute{
 							Optional:            true,
@@ -718,6 +742,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Storm control type.",
 							MarkdownDescription: "Storm control type.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("level", "rate"),
+							},
 						},
 						"stormctrl_ucast_enabled": schema.BoolAttribute{
 							Optional:            true,
@@ -751,6 +778,9 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "Tagged VLAN management.",
 							MarkdownDescription: "Tagged VLAN management.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("auto", "block_all", "custom"),
+							},
 						},
 						"voice_networkconf_id": schema.StringAttribute{
 							Optional:            true,

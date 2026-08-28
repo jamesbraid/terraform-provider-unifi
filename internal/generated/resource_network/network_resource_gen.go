@@ -401,7 +401,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("slaac", "dhcpv6", "slaac-dhcpv6"),
+					stringvalidator.OneOf("slaac", "dhcpv6"),
 				},
 			},
 			"ipv6_interface_type": schema.StringAttribute{
@@ -413,7 +413,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.OneOf("none", "pd", "static"),
+					stringvalidator.OneOf("static", "pd", "single_network", "none"),
 				},
 			},
 			"ipv6_pd_auto_prefixid_enabled": schema.BoolAttribute{
@@ -556,6 +556,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "The mode.",
 							MarkdownDescription: "The mode.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("all", "ip_address", "ip_address_pool"),
+							},
 						},
 						"wan_network_group": schema.StringAttribute{
 							Optional:            true,

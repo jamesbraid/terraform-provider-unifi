@@ -12,19 +12,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The action to take when the policy matches: `ALLOW`, `BLOCK`, or `REJECT`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"ALLOW\", \"BLOCK\", \"REJECT\")"
-            }
-          }
-        ]
+        "description": "The action to take when the policy matches: `ALLOW`, `BLOCK`, or `REJECT`."
       }
     },
     {
@@ -34,18 +22,6 @@
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "Connection-state matching mode: `ALL` (any state), `RESPOND_ONLY` (established/related returns), or `CUSTOM` (match the states listed in `connection_states`). Optional: if omitted the controller assigns it (defaults to `ALL`) and the provider round-trips the value so updates are accepted.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"ALL\", \"RESPOND_ONLY\", \"CUSTOM\")"
-            }
-          }
-        ],
         "plan_modifiers": [
           {
             "custom": {
@@ -300,19 +276,7 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "required",
-            "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"ANY\", \"NETWORK\", \"CLIENT\", \"IP\", \"DEVICE\", \"MAC\", \"WEB\")"
-                }
-              }
-            ]
+            "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN)."
           }
         },
         {
@@ -416,18 +380,6 @@
           "attribute": {
             "computed_optional_required": "computed_optional",
             "description": "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"ANY\", \"SPECIFIC\", \"OBJECT\")"
-                }
-              }
-            ],
             "default": {
               "static": "ANY"
             }
@@ -551,18 +503,6 @@
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"BOTH\", \"IPV4\", \"IPV6\")"
-            }
-          }
-        ],
         "default": {
           "static": "IPV4"
         }
@@ -596,18 +536,6 @@
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) \u2014 keep it `false` and add an explicit reverse policy if you need the reply.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"all\", \"tcp\", \"udp\", \"tcp_udp\", \"icmp\", \"icmpv6\")"
-            }
-          }
-        ],
         "default": {
           "static": "all"
         }
@@ -651,18 +579,6 @@
                     }
                   ],
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-                }
-              }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"ALWAYS\", \"EVERY_DAY\", \"EVERY_WEEK\", \"ONE_TIME_ONLY\", \"CUSTOM\")"
                 }
               }
             ]
@@ -997,19 +913,7 @@
           "disposition": "managed",
           "attribute": {
             "computed_optional_required": "required",
-            "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"ANY\", \"NETWORK\", \"CLIENT\", \"IP\", \"DEVICE\", \"MAC\", \"WEB\")"
-                }
-              }
-            ]
+            "description": "What to match: `ANY`, `NETWORK`, `CLIENT`, `IP`, `DEVICE`, `MAC`, or `WEB` (domains/FQDN)."
           }
         },
         {
@@ -1113,18 +1017,6 @@
           "attribute": {
             "computed_optional_required": "computed_optional",
             "description": "How to match ports: `ANY`, `SPECIFIC`, or `OBJECT` (port group).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"ANY\", \"SPECIFIC\", \"OBJECT\")"
-                }
-              }
-            ],
             "default": {
               "static": "ANY"
             }

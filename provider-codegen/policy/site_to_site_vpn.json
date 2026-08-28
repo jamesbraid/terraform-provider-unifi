@@ -91,18 +91,6 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"aes128\", \"aes192\", \"aes256\", \"3des\")"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -145,18 +133,6 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"aes128\", \"aes192\", \"aes256\", \"3des\")"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -176,18 +152,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"sha1\", \"md5\", \"sha256\", \"sha384\", \"sha512\")"
             }
           }
         ]
@@ -266,18 +230,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"sha1\", \"md5\", \"sha256\", \"sha384\", \"sha512\")"
             }
           }
         ]
@@ -373,19 +325,7 @@
         "default": {
           "static": "ikev2"
         },
-        "description": "IKE key-exchange version. One of `ikev1` or `ikev2`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"ikev1\", \"ikev2\")"
-            }
-          }
-        ]
+        "description": "IKE key-exchange version. One of `ikev1` or `ikev2`."
       },
       "disposition": "managed",
       "structural_name": "ipsec_key_exchange",
@@ -481,18 +421,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"customized\", \"azure_dynamic\", \"azure_static\")"
             }
           }
         ]

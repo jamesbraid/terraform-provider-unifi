@@ -62,18 +62,6 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -144,18 +132,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
             }
           }
         ]
@@ -343,18 +319,6 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"dhcp\", \"static\", \"pppoe\", \"disabled\")"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -374,18 +338,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"dhcpv6\", \"slaac\", \"static\", \"disabled\")"
             }
           }
         ]
@@ -840,18 +792,6 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-                }
-              }
             ]
           },
           "disposition": "managed",
@@ -871,18 +811,6 @@
                     }
                   ],
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-                }
-              }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
                 }
               }
             ]
@@ -1142,18 +1070,6 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"pd\", \"single_network\", \"none\")"
-                }
-              }
             ]
           },
           "disposition": "managed",
@@ -1343,18 +1259,6 @@
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
                 }
               }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"failover-only\", \"weighted\")"
-                }
-              }
             ]
           },
           "disposition": "managed",
@@ -1462,18 +1366,6 @@
                     }
                   ],
                   "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-                }
-              }
-            ],
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"none\", \"lan\", \"guest\")"
                 }
               }
             ]

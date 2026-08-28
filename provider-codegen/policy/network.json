@@ -199,19 +199,7 @@
         "default": {
           "static": "default"
         },
-        "description": "The gateway type. Must be one of `default` or `switch`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"default\", \"switch\")"
-            }
-          }
-        ]
+        "description": "The gateway type. Must be one of `default` or `switch`."
       },
       "disposition": "managed",
       "structural_name": "gateway_type",
@@ -303,18 +291,6 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"slaac\", \"dhcpv6\", \"slaac-dhcpv6\")"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -325,18 +301,6 @@
       "attribute": {
         "computed_optional_required": "computed_optional",
         "description": "Specifies which type of IPv6 connection to use. Must be one of `none`, `pd`, or `static`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"none\", \"pd\", \"static\")"
-            }
-          }
-        ],
         "plan_modifiers": [
           {
             "custom": {
@@ -538,18 +502,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"high\", \"medium\", \"low\")"
             }
           }
         ]
@@ -776,18 +728,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
             }
           }
         ]

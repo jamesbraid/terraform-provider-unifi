@@ -319,7 +319,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Enable Protected Management Frames. This cannot be disabled if using WPA 3.",
 				MarkdownDescription: "Enable Protected Management Frames. This cannot be disabled if using WPA 3.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("required", "optional", "disabled"),
+					stringvalidator.OneOf("disabled", "optional", "required"),
 				},
 				Default: stringdefault.StaticString("disabled"),
 			},
@@ -425,7 +425,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The type of WiFi security for this network.",
 				MarkdownDescription: "The type of WiFi security for this network.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("wpapsk", "wpaeap", "open"),
+					stringvalidator.OneOf("open", "wpapsk", "wep", "wpaeap", "osen"),
 				},
 			},
 			"site": schema.StringAttribute{

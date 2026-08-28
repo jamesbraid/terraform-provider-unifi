@@ -146,7 +146,7 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "OpenVPN mode.",
 						MarkdownDescription: "OpenVPN mode.",
 						Validators: []validator.String{
-							stringvalidator.OneOf("server", "site-to-site"),
+							stringvalidator.OneOf("site-to-site", "client", "server"),
 						},
 						Default: stringdefault.StaticString("server"),
 					},

@@ -13,19 +13,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Band steering mode; valid values are `off`, `equal`, and `prefer_5g`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"off\", \"equal\", \"prefer_5g\")"
-            }
-          }
-        ]
+        "description": "Band steering mode; valid values are `off`, `equal`, and `prefer_5g`."
       },
       "disposition": "managed",
       "structural_name": "bandsteering_mode",
@@ -104,19 +92,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Network configuration type (dhcp or static).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"dhcp\", \"static\")"
-                }
-              }
-            ]
+            "description": "Network configuration type (dhcp or static)."
           },
           "disposition": "managed",
           "structural_name": "type",
@@ -257,18 +233,6 @@
                 }
               ],
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
-            }
-          }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"default\", \"on\", \"off\")"
             }
           }
         ]
@@ -417,19 +381,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Outdoor mode override; valid values are `default`, `on`, and `off`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"default\", \"on\", \"off\")"
-            }
-          }
-        ]
+        "description": "Outdoor mode override; valid values are `default`, `on`, and `off`."
       },
       "disposition": "managed",
       "structural_name": "outdoor_mode_override",
@@ -507,19 +459,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "PoE mode; valid values are `auto`, `pasv24`, `passthrough`, and `off`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"pasv24\", \"passthrough\", \"off\")"
-            }
-          }
-        ]
+        "description": "PoE mode; valid values are `auto`, `pasv24`, `passthrough`, and `off`."
       },
       "disposition": "managed",
       "structural_name": "poe_mode",
@@ -756,19 +696,7 @@
             "default": {
               "static": "switch"
             },
-            "description": "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"switch\", \"mirror\", \"aggregate\")"
-                }
-              }
-            ]
+            "description": "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update."
           },
           "disposition": "managed",
           "structural_name": "op_mode",
@@ -777,19 +705,7 @@
         {
           "attribute": {
             "computed_optional_required": "optional",
-            "description": "PoE mode of the port; valid values are `auto`, `pasv24`, `passthrough`, and `off`.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"pasv24\", \"passthrough\", \"off\")"
-                }
-              }
-            ]
+            "description": "PoE mode of the port; valid values are `auto`, `pasv24`, `passthrough`, and `off`."
           },
           "disposition": "managed",
           "structural_name": "poe_mode",
@@ -1298,19 +1214,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "STP priority.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.OneOf(0, 4096, 8192, 12288, 16384, 20480, 24576, 28672, 32768, 36864, 40960, 45056, 49152, 53248, 57344, 61440)"
-            }
-          }
-        ]
+        "description": "STP priority."
       },
       "disposition": "managed",
       "structural_name": "stp_priority",
@@ -1319,19 +1223,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "STP version; valid values are `stp`, `rstp`, and `disabled`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"stp\", \"rstp\", \"disabled\")"
-            }
-          }
-        ]
+        "description": "STP version; valid values are `stp`, `rstp`, and `disabled`."
       },
       "disposition": "managed",
       "structural_name": "stp_version",

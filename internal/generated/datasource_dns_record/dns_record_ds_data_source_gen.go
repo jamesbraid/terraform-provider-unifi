@@ -7,6 +7,8 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
@@ -45,6 +47,9 @@ func DnsRecordDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The type of the DNS record.",
 				MarkdownDescription: "The type of the DNS record.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("A", "AAAA", "CNAME", "MX", "NS", "PTR", "SOA", "SRV", "TXT"),
+				},
 			},
 			"value": schema.StringAttribute{
 				Computed:            true,

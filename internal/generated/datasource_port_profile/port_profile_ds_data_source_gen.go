@@ -6,6 +6,8 @@ package datasource_port_profile
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -24,6 +26,9 @@ func PortProfileDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The forwarding mode of the port profile. One of `all`, `native`, `customize` or `disabled`.",
 				MarkdownDescription: "The forwarding mode of the port profile. One of `all`, `native`, `customize` or `disabled`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("all", "native", "customize", "disabled"),
+				},
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -56,6 +61,9 @@ func PortProfileDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom).",
 				MarkdownDescription: "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom).",
+				Validators: []validator.String{
+					stringvalidator.OneOf("auto", "block_all", "custom"),
+				},
 			},
 		},
 		MarkdownDescription: "Data source for port profiles.",

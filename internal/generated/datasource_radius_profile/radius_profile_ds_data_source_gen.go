@@ -7,6 +7,8 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
@@ -65,6 +67,9 @@ func RadiusProfileDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The VLAN WLAN mode.",
 				MarkdownDescription: "The VLAN WLAN mode.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("disabled", "optional", "required"),
+				},
 			},
 		},
 		MarkdownDescription: "Data source for RADIUS profiles.",

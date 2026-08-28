@@ -163,7 +163,7 @@ func PortProfileResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`.",
 				MarkdownDescription: "The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("auto", "passv24", "passthrough", "off"),
+					stringvalidator.OneOf("auto", "off"),
 				},
 			},
 			"port_keepalive_enabled": schema.BoolAttribute{

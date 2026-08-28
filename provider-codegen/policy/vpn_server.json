@@ -544,19 +544,7 @@
             "default": {
               "static": "server"
             },
-            "description": "OpenVPN mode.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"server\", \"site-to-site\")"
-                }
-              }
-            ]
+            "description": "OpenVPN mode."
           },
           "disposition": "managed",
           "structural_name": "openvpn_mode",
@@ -568,19 +556,7 @@
             "default": {
               "static": "AES_256_CBC"
             },
-            "description": "Encryption cipher for OpenVPN. One of `AES_256_CBC` or `BF_CBC`.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"AES_256_CBC\", \"BF_CBC\")"
-                }
-              }
-            ]
+            "description": "Encryption cipher for OpenVPN. One of `AES_256_CBC` or `BF_CBC`."
           },
           "disposition": "managed",
           "structural_name": "openvpn_encryption_cipher",

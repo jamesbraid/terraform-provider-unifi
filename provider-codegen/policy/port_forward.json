@@ -16,19 +16,7 @@
         "default": {
           "static": "tcp_udp"
         },
-        "description": "The protocol for the port forwarding rule. Can be `tcp`, `udp`, or `tcp_udp`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"tcp_udp\", \"tcp\", \"udp\")"
-            }
-          }
-        ]
+        "description": "The protocol for the port forwarding rule. Can be `tcp`, `udp`, or `tcp_udp`."
       },
       "disposition": "managed",
       "structural_name": "proto",
@@ -268,19 +256,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "The source limiting type. Can be `ip` or `firewall_group`. Inferred automatically when only one of `ip` or `firewall_group_id` is set.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"ip\", \"firewall_group\")"
-                }
-              }
-            ]
+            "description": "The source limiting type. Can be `ip` or `firewall_group`. Inferred automatically when only one of `ip` or `firewall_group_id` is set."
           },
           "disposition": "managed",
           "structural_name": "src_limiting_type",

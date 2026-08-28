@@ -799,6 +799,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 								Computed:            true,
 								Description:         "Setting preference: auto or manual.",
 								MarkdownDescription: "Setting preference: auto or manual.",
+								Validators: []validator.String{
+									stringvalidator.OneOf("auto", "manual"),
+								},
 							},
 						},
 						Optional:            true,
@@ -817,6 +820,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Geo IP filtering action: block or allow.",
 						MarkdownDescription: "Geo IP filtering action: block or allow.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("block", "allow"),
+						},
 					},
 					"geo_ip_filtering_countries": schema.StringAttribute{
 						Optional:            true,
@@ -835,6 +841,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Geo IP filtering traffic direction: both, ingress, or egress.",
 						MarkdownDescription: "Geo IP filtering traffic direction: both, ingress, or egress.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("both", "ingress", "egress"),
+						},
 					},
 					"gre_module": schema.BoolAttribute{
 						Optional:            true,

@@ -53,19 +53,7 @@
         "default": {
           "static": "all"
         },
-        "description": "Access point group mode.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"all\", \"groups\", \"devices\")"
-            }
-          }
-        ]
+        "description": "Access point group mode."
       },
       "disposition": "managed",
       "structural_name": "ap_group_mode",
@@ -162,19 +150,7 @@
         "default": {
           "static": "default"
         },
-        "description": "DTIM mode. Can be one of `default` or `custom`. Use `custom` together with `dtim_ng`/`dtim_na`/`dtim_6e`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"default\", \"custom\")"
-            }
-          }
-        ]
+        "description": "DTIM mode. Can be one of `default` or `custom`. Use `custom` together with `dtim_ng`/`dtim_na`/`dtim_6e`."
       },
       "disposition": "managed",
       "structural_name": "dtim_mode",
@@ -456,18 +432,6 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-            }
-          }
         ]
       },
       "disposition": "managed",
@@ -501,19 +465,7 @@
         "default": {
           "static": "bssid"
         },
-        "description": "NAS identifier type for RADIUS.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"ap_name\", \"ap_mac\", \"bssid\", \"site_name\", \"custom\")"
-            }
-          }
-        ]
+        "description": "NAS identifier type for RADIUS."
       },
       "disposition": "managed",
       "structural_name": "nas_identifier_type",
@@ -558,19 +510,7 @@
         "default": {
           "static": "disabled"
         },
-        "description": "Enable Protected Management Frames. This cannot be disabled if using WPA 3.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"required\", \"optional\", \"disabled\")"
-            }
-          }
-        ]
+        "description": "Enable Protected Management Frames. This cannot be disabled if using WPA 3."
       },
       "disposition": "managed",
       "structural_name": "pmf_mode",
@@ -927,19 +867,7 @@
     {
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The type of WiFi security for this network.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"wpapsk\", \"wpaeap\", \"open\")"
-            }
-          }
-        ]
+        "description": "The type of WiFi security for this network."
       },
       "disposition": "managed",
       "structural_name": "security",
@@ -1005,19 +933,7 @@
         "default": {
           "static": "both"
         },
-        "description": "WLAN band.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"2g\", \"5g\", \"both\")"
-            }
-          }
-        ]
+        "description": "WLAN band."
       },
       "disposition": "managed",
       "structural_name": "wlan_band",
@@ -1121,19 +1037,7 @@
         "default": {
           "static": "ccmp"
         },
-        "description": "WPA encryption. Can be one of `auto`, `ccmp`, `gcmp`, `ccmp-256`, or `gcmp-256`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"ccmp\", \"gcmp\", \"ccmp-256\", \"gcmp-256\")"
-            }
-          }
-        ]
+        "description": "WPA encryption. Can be one of `auto`, `ccmp`, `gcmp`, `ccmp-256`, or `gcmp-256`."
       },
       "disposition": "managed",
       "structural_name": "wpa_enc",
@@ -1145,19 +1049,7 @@
         "default": {
           "static": "wpa2"
         },
-        "description": "WPA mode. Can be one of `auto`, `wpa1`, or `wpa2`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"wpa1\", \"wpa2\")"
-            }
-          }
-        ]
+        "description": "WPA mode. Can be one of `auto`, `wpa1`, or `wpa2`."
       },
       "disposition": "managed",
       "structural_name": "wpa_mode",
@@ -1283,19 +1175,7 @@
             "default": {
               "static": "deny"
             },
-            "description": "MAC address filter policy (only valid if `enabled` is `true`).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"allow\", \"deny\")"
-                }
-              }
-            ]
+            "description": "MAC address filter policy (only valid if `enabled` is `true`)."
           },
           "disposition": "managed",
           "structural_name": "mac_filter_policy",

@@ -38,19 +38,7 @@
     {
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The type of the firewall group. Must be one of: `address-group`, `port-group`, or `ipv6-address-group`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"address-group\", \"port-group\", \"ipv6-address-group\")"
-            }
-          }
-        ]
+        "description": "The type of the firewall group. Must be one of: `address-group`, `port-group`, or `ipv6-address-group`."
       },
       "disposition": "managed",
       "structural_name": "group_type",

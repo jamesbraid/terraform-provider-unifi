@@ -100,19 +100,7 @@
       "disposition": "managed",
       "attribute": {
         "computed_optional_required": "required",
-        "description": "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"A\", \"AAAA\", \"CNAME\", \"MX\", \"TXT\", \"SRV\", \"PTR\", \"NS\")"
-            }
-          }
-        ]
+        "description": "The type of the DNS record. One of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `PTR` or `NS`."
       }
     },
     {

@@ -52,6 +52,9 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
+				Validators: []validator.Int64{
+					int64validator.OneOf(1, 2, 5, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32),
+				},
 			},
 			"esp_encryption": schema.StringAttribute{
 				Optional:            true,
@@ -106,6 +109,9 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "IKE (phase 1) Diffie-Hellman group. Only used when `profile = customized`.",
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.Int64{
+					int64validator.OneOf(2, 5, 14, 15, 16, 19, 20, 21, 25, 26),
 				},
 			},
 			"ike_encryption": schema.StringAttribute{

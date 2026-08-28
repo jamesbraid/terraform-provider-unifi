@@ -40,19 +40,7 @@
         "default": {
           "static": "force_authorized"
         },
-        "description": "The type of 802.1X control to use. Can be `auto`, `force_authorized`, `force_unauthorized`, `mac_based` or `multi_host`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"force_authorized\", \"force_unauthorized\", \"mac_based\", \"multi_host\")"
-            }
-          }
-        ]
+        "description": "The type of 802.1X control to use. Can be `auto`, `force_authorized`, `force_unauthorized`, `mac_based` or `multi_host`."
       },
       "disposition": "managed",
       "structural_name": "dot1x_ctrl",
@@ -155,19 +143,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "Forward Error Correction mode. Can be `rs-fec`, `fc-fec`, `default`, or `disabled`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"rs-fec\", \"fc-fec\", \"default\", \"disabled\")"
-            }
-          }
-        ]
+        "description": "Forward Error Correction mode. Can be `rs-fec`, `fc-fec`, `default`, or `disabled`."
       },
       "disposition": "managed",
       "structural_name": "fec_mode",
@@ -176,19 +152,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "The forwarding mode. Can be `all`, `native`, `customize`, or `disabled`; tagged VLAN configuration derives the matching value when omitted.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"all\", \"native\", \"customize\", \"disabled\")"
-            }
-          }
-        ]
+        "description": "The forwarding mode. Can be `all`, `native`, `customize`, or `disabled`; tagged VLAN configuration derives the matching value when omitted."
       },
       "disposition": "managed",
       "structural_name": "forward",
@@ -309,19 +273,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"passv24\", \"passthrough\", \"off\")"
-            }
-          }
-        ]
+        "description": "The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`."
       },
       "disposition": "managed",
       "structural_name": "poe_mode",
@@ -451,19 +403,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Whether the port profile settings are managed automatically or manually. Can be `auto` or `manual`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-            }
-          }
-        ]
+        "description": "Whether the port profile settings are managed automatically or manually. Can be `auto` or `manual`."
       },
       "disposition": "managed",
       "structural_name": "setting_preference",
@@ -472,19 +412,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The link speed to set for the port profile. Can be one of `10`, `100`, `1000`, `2500`, `5000`, `10000`, `20000`, `25000`, `40000`, `50000` or `100000`",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                }
-              ],
-              "schema_definition": "int64validator.OneOf(10, 100, 1000, 2500, 5000, 10000, 20000, 25000, 40000, 50000, 100000)"
-            }
-          }
-        ]
+        "description": "The link speed to set for the port profile. Can be one of `10`, `100`, `1000`, `2500`, `5000`, `10000`, `20000`, `25000`, `40000`, `50000` or `100000`"
       },
       "disposition": "managed",
       "structural_name": "speed",
@@ -653,19 +581,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The type of Storm Control to use for the port profile. Can be `level` or `rate`.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"level\", \"rate\")"
-            }
-          }
-        ]
+        "description": "The type of Storm Control to use for the port profile. Can be `level` or `rate`."
       },
       "disposition": "managed",
       "structural_name": "stormctrl_type",
@@ -775,19 +691,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom). An exact tagged or excluded set derives the matching mode when omitted.",
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                }
-              ],
-              "schema_definition": "stringvalidator.OneOf(\"auto\", \"block_all\", \"custom\")"
-            }
-          }
-        ]
+        "description": "Tagged VLAN mode: `auto` (UI: Allow All), `block_all` (UI: Block All), or `custom` (UI: Custom). An exact tagged or excluded set derives the matching mode when omitted."
       },
       "disposition": "managed",
       "structural_name": "tagged_vlan_mgmt",

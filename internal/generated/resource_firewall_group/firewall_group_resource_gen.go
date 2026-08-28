@@ -52,7 +52,7 @@ func FirewallGroupResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The type of the firewall group. Must be one of: `address-group`, `port-group`, or `ipv6-address-group`.",
 				MarkdownDescription: "The type of the firewall group. Must be one of: `address-group`, `port-group`, or `ipv6-address-group`.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("address-group", "port-group", "ipv6-address-group"),
+					stringvalidator.OneOf("address-group", "port-group", "ipv6-address-group", "domain-group"),
 				},
 			},
 		},

@@ -944,19 +944,7 @@
             {
               "attribute": {
                 "computed_optional_required": "required",
-                "description": "IP version: v4 or v6.",
-                "validators": [
-                  {
-                    "custom": {
-                      "imports": [
-                        {
-                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                        }
-                      ],
-                      "schema_definition": "stringvalidator.OneOf(\"v4\", \"v6\")"
-                    }
-                  }
-                ]
+                "description": "IP version: v4 or v6."
               },
               "disposition": "managed",
               "structural_name": "version",
@@ -1073,19 +1061,7 @@
                 {
                   "attribute": {
                     "computed_optional_required": "required",
-                    "description": "Match direction: both, src, or dest.",
-                    "validators": [
-                      {
-                        "custom": {
-                          "imports": [
-                            {
-                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                            }
-                          ],
-                          "schema_definition": "stringvalidator.OneOf(\"both\", \"src\", \"dest\")"
-                        }
-                      }
-                    ]
+                    "description": "Match direction: both, src, or dest."
                   },
                   "disposition": "managed",
                   "structural_name": "direction",
@@ -1094,19 +1070,7 @@
                 {
                   "attribute": {
                     "computed_optional_required": "required",
-                    "description": "Match mode: ip, subnet, or network.",
-                    "validators": [
-                      {
-                        "custom": {
-                          "imports": [
-                            {
-                              "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                            }
-                          ],
-                          "schema_definition": "stringvalidator.OneOf(\"ip\", \"subnet\", \"network\")"
-                        }
-                      }
-                    ]
+                    "description": "Match mode: ip, subnet, or network."
                   },
                   "disposition": "managed",
                   "structural_name": "mode",
@@ -1129,19 +1093,7 @@
             {
               "attribute": {
                 "computed_optional_required": "computed_optional",
-                "description": "Suppression type: `all` (everywhere) or `track` (only the tracked sources/destinations).",
-                "validators": [
-                  {
-                    "custom": {
-                      "imports": [
-                        {
-                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                        }
-                      ],
-                      "schema_definition": "stringvalidator.OneOf(\"all\", \"track\")"
-                    }
-                  }
-                ]
+                "description": "Suppression type: `all` (everywhere) or `track` (only the tracked sources/destinations)."
               },
               "disposition": "managed",
               "structural_name": "type",
@@ -1163,19 +1115,7 @@
             {
               "attribute": {
                 "computed_optional_required": "required",
-                "description": "Match direction: both, src, or dest.",
-                "validators": [
-                  {
-                    "custom": {
-                      "imports": [
-                        {
-                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                        }
-                      ],
-                      "schema_definition": "stringvalidator.OneOf(\"both\", \"src\", \"dest\")"
-                    }
-                  }
-                ]
+                "description": "Match direction: both, src, or dest."
               },
               "disposition": "managed",
               "structural_name": "direction",
@@ -1184,19 +1124,7 @@
             {
               "attribute": {
                 "computed_optional_required": "required",
-                "description": "Match mode: ip, subnet, or network.",
-                "validators": [
-                  {
-                    "custom": {
-                      "imports": [
-                        {
-                          "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                        }
-                      ],
-                      "schema_definition": "stringvalidator.OneOf(\"ip\", \"subnet\", \"network\")"
-                    }
-                  }
-                ]
+                "description": "Match mode: ip, subnet, or network."
               },
               "disposition": "managed",
               "structural_name": "mode",
