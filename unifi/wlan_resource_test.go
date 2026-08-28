@@ -7,8 +7,12 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/ubiquiti-community/go-unifi/unifi"
@@ -422,6 +426,65 @@ func TestWLANMinrateFieldsOmitAnUnknownRatherThanAZero(t *testing.T) {
 	if !slices.Contains(mask, "minrate_na_data_rate_kbps") {
 		t.Error("minrate_na_data_rate_kbps is missing from the update mask; a " +
 			"practitioner-set value would never be written")
+	}
+}
+
+// TestWLANMinimumDataRateFieldsRejectZeroAtPlan pins provider-codegen/policy/wlan.json's
+// R2-C Task 10c correction: minimum_data_rate_2g_kbps/minimum_data_rate_5g_kbps's hand
+// int64validator.OneOf sets used to list 0 as a legal config value, even though the
+// bisection probe in the R2-C Task 10b report proved the controller rejects an explicit
+// 0 for either field unconditionally (api.err.InvalidRate, independent of the enabled
+// flag or minrate_setting_preference). A 0 must now fail during config validation --
+// i.e. at plan, before Apply ever reaches ToSDK -- rather than reaching the controller
+// and failing there.
+func TestWLANMinimumDataRateFieldsRejectZeroAtPlan(t *testing.T) {
+	ctx := context.Background()
+	resp := &fwresource.SchemaResponse{}
+	(&wlanFrameworkResource{}).Schema(ctx, fwresource.SchemaRequest{}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("build the schema: %v", resp.Diagnostics)
+	}
+
+	validateInt64 := func(t *testing.T, key string, value int64) diag.Diagnostics {
+		t.Helper()
+		attribute, ok := resp.Schema.Attributes[key]
+		if !ok {
+			t.Fatalf("schema is missing attribute %q", key)
+		}
+		int64Attribute, ok := attribute.(schema.Int64Attribute)
+		if !ok {
+			t.Fatalf("attribute %q is a %T, want schema.Int64Attribute", key, attribute)
+		}
+		var diags diag.Diagnostics
+		for _, v := range int64Attribute.Validators {
+			validateResp := &validator.Int64Response{}
+			v.ValidateInt64(ctx, validator.Int64Request{
+				Path:        path.Root(key),
+				ConfigValue: types.Int64Value(value),
+			}, validateResp)
+			diags.Append(validateResp.Diagnostics...)
+		}
+		return diags
+	}
+
+	for _, tt := range []struct {
+		key       string
+		validRate int64
+	}{
+		{"minimum_data_rate_2g_kbps", 1000},
+		{"minimum_data_rate_5g_kbps", 6000},
+	} {
+		t.Run(tt.key, func(t *testing.T) {
+			if diags := validateInt64(t, tt.key, 0); !diags.HasError() {
+				t.Errorf("%s = 0 passed config validation; want a plan-time error, since the "+
+					"controller unconditionally rejects an explicit 0 (api.err.InvalidRate)", tt.key)
+			}
+			// The control: a real, controller-legal rate must still pass, or the
+			// assertion above would hold for a validator that rejects everything.
+			if diags := validateInt64(t, tt.key, tt.validRate); diags.HasError() {
+				t.Errorf("%s = %d failed config validation: %v", tt.key, tt.validRate, diags)
+			}
+		})
 	}
 }
 

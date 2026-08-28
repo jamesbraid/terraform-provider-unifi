@@ -9360,7 +9360,7 @@
             "planmodifiers.UseStateUnlessSiblingChanges: Once set, this value is kept in the plan unless \"minrate_setting_preference\" is changing, in which case the controller supplies it."
           ],
           "validators": [
-            "int64validator.oneOfValidator: value must be one of: [\"0\" \"1000\" \"2000\" \"5500\" \"6000\" \"9000\" \"11000\" \"12000\" \"18000\" \"24000\" \"36000\" \"48000\" \"54000\"]"
+            "int64validator.oneOfValidator: value must be one of: [\"1000\" \"2000\" \"5500\" \"6000\" \"9000\" \"11000\" \"12000\" \"18000\" \"24000\" \"36000\" \"48000\" \"54000\"]"
           ]
         },
         "minimum_data_rate_5g_kbps": {
@@ -9374,7 +9374,7 @@
             "planmodifiers.UseStateUnlessSiblingChanges: Once set, this value is kept in the plan unless \"minrate_setting_preference\" is changing, in which case the controller supplies it."
           ],
           "validators": [
-            "int64validator.oneOfValidator: value must be one of: [\"0\" \"6000\" \"9000\" \"12000\" \"18000\" \"24000\" \"36000\" \"48000\" \"54000\"]"
+            "int64validator.oneOfValidator: value must be one of: [\"6000\" \"9000\" \"12000\" \"18000\" \"24000\" \"36000\" \"48000\" \"54000\"]"
           ]
         },
         "minrate_setting_preference": {

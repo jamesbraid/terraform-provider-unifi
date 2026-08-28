@@ -31,6 +31,17 @@ All notable changes to this project will be documented in this file.
   accepted at all) and a plan-time validator now checks new and existing
   configurations against it. A configuration pairing an out-of-version protocol
   with its `ip_version` now fails at plan time instead of apply time.
+- **`unifi_wlan`: `minimum_data_rate_2g_kbps` and `minimum_data_rate_5g_kbps`
+  no longer accept an explicit `0`.** Both validators used to list `0` as a
+  legal value, on the assumption that zero is a rate a practitioner can
+  legitimately request. Testing directly against the controller (bypassing
+  Terraform to isolate the exact payload) shows that assumption doesn't
+  hold: the controller rejects an explicit `0` for either rate
+  unconditionally, with `api.err.InvalidRate`, regardless of
+  `minrate_setting_preference` or the derived `*_enabled` flag. A
+  configuration setting either field to `0` used to plan cleanly and fail
+  at apply; it now fails to plan instead. Leave the attribute unset to let
+  the controller assign its own value (e.g. `1000`/`6000` in `auto` mode).
 
 ### ✨ Features
 

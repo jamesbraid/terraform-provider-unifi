@@ -236,7 +236,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 					planmodifiers.UseStateUnlessSiblingChanges{Sibling: "minrate_setting_preference"},
 				},
 				Validators: []validator.Int64{
-					int64validator.OneOf(0, 1000, 2000, 5500, 6000, 9000, 11000, 12000, 18000, 24000, 36000, 48000, 54000),
+					int64validator.OneOf(1000, 2000, 5500, 6000, 9000, 11000, 12000, 18000, 24000, 36000, 48000, 54000),
 				},
 			},
 			"minimum_data_rate_5g_kbps": schema.Int64Attribute{
@@ -248,7 +248,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 					planmodifiers.UseStateUnlessSiblingChanges{Sibling: "minrate_setting_preference"},
 				},
 				Validators: []validator.Int64{
-					int64validator.OneOf(0, 6000, 9000, 12000, 18000, 24000, 36000, 48000, 54000),
+					int64validator.OneOf(6000, 9000, 12000, 18000, 24000, 36000, 48000, 54000),
 				},
 			},
 			"minrate_setting_preference": schema.StringAttribute{
