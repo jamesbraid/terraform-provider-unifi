@@ -5,6 +5,7 @@ package resource_client
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -61,6 +62,9 @@ func ClientResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The MAC address of the access point to which this client should be fixed.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`), ""),
 				},
 			},
 			"fixed_ip": schema.StringAttribute{
@@ -125,6 +129,9 @@ func ClientResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The MAC address of the client.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`), ""),
 				},
 			},
 			"name": schema.StringAttribute{

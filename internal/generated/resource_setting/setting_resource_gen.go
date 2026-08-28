@@ -829,6 +829,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Comma-separated list of country codes for geo IP filtering.",
 						MarkdownDescription: "Comma-separated list of country codes for geo IP filtering.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^([A-Z]{2})?(,[A-Z]{2}){0,149}$`), ""),
+						},
 					},
 					"geo_ip_filtering_enabled": schema.BoolAttribute{
 						Optional:            true,

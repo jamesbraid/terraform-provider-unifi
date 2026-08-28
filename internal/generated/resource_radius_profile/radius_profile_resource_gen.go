@@ -5,6 +5,7 @@ package resource_radius_profile
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
@@ -55,6 +56,7 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Specifies the RADIUS interim update interval, as a Go duration string (e.g. `1h`, `3600s`). Defaults to `1h0m0s`.",
 				Validators: []validator.String{
 					validators.GoDurationMultipleOf(time.Second),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^([6-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9][0-9]|86400)$`), ""),
 				},
 				Default: stringdefault.StaticString("1h0m0s"),
 			},
@@ -62,6 +64,9 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The name of the profile.",
 				MarkdownDescription: "The name of the profile.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+				},
 			},
 			"site": schema.StringAttribute{
 				Optional:            true,
@@ -119,6 +124,7 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "IP address of the accounting server. Optional: the controller-managed default profile returns a server entry without an IP, so importing it must not force one.",
 							Validators: []validator.String{
 								validators.IPv4Validator(),
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`), ""),
 							},
 						},
 						"port": schema.Int64Attribute{
@@ -151,6 +157,7 @@ func RadiusProfileResourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "IP address of the authentication server. Optional: the controller-managed default profile (e.g. the one created when a gateway RADIUS/VPN service is enabled, with `use_usg_auth_server = true`) returns a server entry without an IP, so importing it must not force one.",
 							Validators: []validator.String{
 								validators.IPv4Validator(),
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`), ""),
 							},
 						},
 						"port": schema.Int64Attribute{

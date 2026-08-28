@@ -21,7 +21,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the account.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\"' ]+$'"
+          ]
         },
         "network_id": {
           "kind": "attribute",
@@ -104,7 +107,8 @@
           "description": "The tunnel configuration type. Can be `vpn`, `802.1x`, or `custom`.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"vpn\" \"802.1x\" \"custom\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"vpn\" \"802.1x\" \"custom\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:vpn|802.1x|custom)$'"
           ]
         },
         "tunnel_medium_type": {
@@ -279,7 +283,10 @@
           "computed": true,
           "description": "Description of the BGP configuration.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to BGP Configuration"
+          "default": "stringdefault.staticStringDefault: value defaults to BGP Configuration",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{0,128})$'"
+          ]
         },
         "enabled": {
           "kind": "attribute",
@@ -414,7 +421,10 @@
           "computed": true,
           "description": "The name of the uploaded configuration file.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to frr.conf"
+          "default": "stringdefault.staticStringDefault: value defaults to frr.conf",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{0,256})$'"
+          ]
         }
       }
     },
@@ -467,6 +477,9 @@
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ],
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'"
           ],
           "custom_type": "hwtypes.MACAddressType: \u003ccarries no description\u003e"
         },
@@ -544,6 +557,9 @@
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource."
+          ],
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'"
           ],
           "custom_type": "hwtypes.MACAddressType: \u003ccarries no description\u003e"
         },
@@ -716,7 +732,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the client QOS rate.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "qos_rate_max_down": {
           "kind": "attribute",
@@ -860,7 +879,10 @@
           "optional": true,
           "computed": true,
           "description": "Primary DNS server.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$'"
+          ]
         },
         "config_network.dns2": {
           "kind": "attribute",
@@ -868,7 +890,10 @@
           "optional": true,
           "computed": true,
           "description": "Secondary DNS server.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$'"
+          ]
         },
         "config_network.dnssuffix": {
           "kind": "attribute",
@@ -884,7 +909,10 @@
           "optional": true,
           "computed": true,
           "description": "Gateway address (for static configuration).",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
+          ]
         },
         "config_network.ip": {
           "kind": "attribute",
@@ -892,7 +920,10 @@
           "optional": true,
           "computed": true,
           "description": "IP address (for static configuration).",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'"
+          ]
         },
         "config_network.netmask": {
           "kind": "attribute",
@@ -900,7 +931,10 @@
           "optional": true,
           "computed": true,
           "description": "Network mask (for static configuration).",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^((128|192|224|240|248|252|254)\\.0\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0)|255\\.(0|128|192|224|240|248|252|254)))))$'"
+          ]
         },
         "config_network.type": {
           "kind": "attribute",
@@ -984,7 +1018,8 @@
           "description_kind": "plain",
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 10s and 1h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[1-9][0-9]|[1-9][0-9][0-9]|[1-2][0-9][0-9][0-9]|3[0-5][0-9][0-9]|3600)$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -1002,7 +1037,10 @@
           "optional": true,
           "computed": true,
           "description": "LCM night mode begin time (HH:MM format).",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:(^$)|(^(0[0-9])|(1[0-9])|(2[0-3])):([0-5][0-9]$))$'"
+          ]
         },
         "lcm_night_mode_ends": {
           "kind": "attribute",
@@ -1010,7 +1048,10 @@
           "optional": true,
           "computed": true,
           "description": "LCM night mode end time (HH:MM format).",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:(^$)|(^(0[0-9])|(1[0-9])|(2[0-3])):([0-5][0-9]$))$'"
+          ]
         },
         "led_override": {
           "kind": "attribute",
@@ -1035,6 +1076,9 @@
           "description_kind": "plain",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ],
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^#(?:[0-9a-fA-F]{3}){1,2}$'"
           ]
         },
         "led_override_color_brightness": {
@@ -1086,7 +1130,10 @@
           "optional": true,
           "computed": true,
           "description": "Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink (a port_override tagged_networkconf_ids entry) first, then set mgmt_network_id. Leave unset to manage on the uplink's native (untagged) network.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\d\\w-]+)$'"
+          ]
         },
         "model": {
           "kind": "attribute",
@@ -1101,7 +1148,10 @@
           "optional": true,
           "computed": true,
           "description": "The name of the device.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{0,128})$'"
+          ]
         },
         "outdoor_mode_override": {
           "kind": "attribute",
@@ -1154,7 +1204,10 @@
           "optional": true,
           "computed": true,
           "description": "Outlet name.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{0,128})$'"
+          ]
         },
         "outlet_overrides.relay_state": {
           "kind": "attribute",
@@ -1214,7 +1267,8 @@
           "description_kind": "plain",
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 0s and 18h12m15s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -1326,7 +1380,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "Human-readable name of the port.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{0,128})$'"
+          ]
         },
         "port_override.native_networkconf_id": {
           "kind": "attribute",
@@ -1370,7 +1427,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "ID of the Port Profile used on this port.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\d\\w-]+)$'"
+          ]
         },
         "port_override.port_security_enabled": {
           "kind": "attribute",
@@ -1576,7 +1636,10 @@
           "optional": true,
           "computed": true,
           "description": "Channel number or 'auto'.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9]|[1][0-4]|1.5|2.5|3.5|4.5|5.5|6.5|5|16|17|21|25|29|33|34|36|37|38|40|41|42|44|45|46|48|49|52|53|56|57|60|61|64|65|69|73|77|81|85|89|93|97|100|101|104|105|108|109|112|113|117|116|120|121|124|125|128|129|132|133|136|137|140|141|144|145|149|153|157|161|165|169|173|177|181|183|184|185|187|188|189|192|193|196|197|201|205|209|213|217|221|225|229|233|auto)$'"
+          ]
         },
         "radio_table.dfs": {
           "kind": "attribute",
@@ -1678,7 +1741,10 @@
           "optional": true,
           "computed": true,
           "description": "Transmit power or 'auto'.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\d]+|auto)$'"
+          ]
         },
         "radio_table.tx_power_mode": {
           "kind": "attribute",
@@ -1820,7 +1886,10 @@
           "computed": true,
           "sensitive": true,
           "description": "Baresip password.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^[a-zA-Z0-9_.\\-!~*'()]*)$'"
+          ]
         }
       }
     },
@@ -1856,6 +1925,9 @@
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource."
+          ],
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
           ]
         },
         "port": {
@@ -1964,7 +2036,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The value of the DNS record.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,256})$'"
+          ]
         },
         "weight": {
           "kind": "attribute",
@@ -1988,7 +2063,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The host name to update in the dynamic DNS service.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\"' ]+$'"
+          ]
         },
         "id": {
           "kind": "attribute",
@@ -2012,7 +2090,8 @@
             "stringplanmodifier.requiresReplaceIfModifier: If the value of this attribute changes, Terraform will destroy and recreate the resource."
           ],
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:wan[2-9]?)$'"
           ]
         },
         "login": {
@@ -2020,7 +2099,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The login for the dynamic DNS service.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\"' ]+$'"
+          ]
         },
         "password": {
           "kind": "attribute",
@@ -2028,14 +2110,20 @@
           "optional": true,
           "sensitive": true,
           "description": "The password for the dynamic DNS service.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\"' ]+$'"
+          ]
         },
         "server": {
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
           "description": "The server for the dynamic DNS service.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\"' ]+$|^$'"
+          ]
         },
         "service": {
           "kind": "attribute",
@@ -2138,7 +2226,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the firewall group.",
-          "description_kind": "plain"
+          "description_kind": "plain",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,64})$'"
+          ]
         },
         "site": {
           "kind": "attribute",
@@ -2902,7 +2993,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The destination network ID of the firewall rule.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\d\\w-]+|^$)$'"
+          ]
         },
         "dst_network_type": {
           "kind": "attribute",
@@ -2937,14 +3031,20 @@
           "type": "\"string\"",
           "optional": true,
           "description": "ICMP type name.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^$|address-mask-reply|address-mask-request|any|communication-prohibited|destination-unreachable|echo-reply|echo-request|fragmentation-needed|host-precedence-violation|host-prohibited|host-redirect|host-unknown|host-unreachable|ip-header-bad|network-prohibited|network-redirect|network-unknown|network-unreachable|parameter-problem|port-unreachable|precedence-cutoff|protocol-unreachable|redirect|required-option-missing|router-advertisement|router-solicitation|source-quench|source-route-failed|time-exceeded|timestamp-reply|timestamp-request|TOS-host-redirect|TOS-host-unreachable|TOS-network-redirect|TOS-network-unreachable|ttl-zero-during-reassembly|ttl-zero-during-transit)$'"
+          ]
         },
         "icmp_v6_typename": {
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
           "description": "ICMPv6 type name.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^$|address-unreachable|bad-header|beyond-scope|communication-prohibited|destination-unreachable|echo-reply|echo-request|failed-policy|neighbor-advertisement|neighbor-solicitation|no-route|packet-too-big|parameter-problem|port-unreachable|redirect|reject-route|router-advertisement|router-solicitation|time-exceeded|ttl-zero-during-reassembly|ttl-zero-during-transit|unknown-header-type|unknown-option)$'"
+          ]
         },
         "id": {
           "kind": "attribute",
@@ -2963,7 +3063,8 @@
           "description": "Specify whether the rule matches on IPsec packets. Can be one of `match-ipset` or `match-none`.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"match-ipsec\" \"match-none\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"match-ipsec\" \"match-none\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:match-ipsec|match-none|^$)$'"
           ]
         },
         "logging": {
@@ -2980,14 +3081,20 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the firewall rule.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "protocol": {
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
           "description": "The protocol of the rule.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^$|all|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|tcp_udp|ah|ax.25|dccp|ddp|egp|eigrp|encap|esp|etherip|fc|ggp|gre|hip|hmp|icmp|idpr-cmtp|idrp|igmp|igp|ip|ipcomp|ipencap|ipip|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|iso-tp4|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|pup|rdp|rohc|rspf|rsvp|sctp|shim6|skip|st|tcp|udp|udplite|vmtp|vrrp|wesp|xns-idp|xtp)$'"
+          ]
         },
         "protocol_match_excepted": {
           "kind": "attribute",
@@ -3003,7 +3110,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The IPv6 protocol of the rule.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^$|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|ah|all|dccp|eigrp|esp|gre|icmpv6|ipcomp|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|rsvp|sctp|shim6|tcp|tcp_udp|udp|vrrp)$'"
+          ]
         },
         "rule_index": {
           "kind": "attribute",
@@ -3075,6 +3185,9 @@
           "optional": true,
           "description": "The source MAC address of the firewall rule.",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$|^$'"
+          ],
           "custom_type": "hwtypes.MACAddressType: \u003ccarries no description\u003e"
         },
         "src_network_id": {
@@ -3082,7 +3195,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The source network ID for the firewall rule.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\d\\w-]+|^$)$'"
+          ]
         },
         "src_network_type": {
           "kind": "attribute",
@@ -3499,7 +3615,8 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address"
+            "*validators.ipv4Validator: value must be a valid IPv4 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
           ]
         },
         "dhcp_server.stop": {
@@ -3513,7 +3630,8 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address"
+            "*validators.ipv4Validator: value must be a valid IPv4 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
           ]
         },
         "dhcp_server.tftp_server": {
@@ -3539,7 +3657,8 @@
           "description": "UniFi controller IP address.",
           "description_kind": "markdown",
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address"
+            "*validators.ipv4Validator: value must be a valid IPv4 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
           ]
         },
         "dhcp_server.wins": {
@@ -3772,7 +3891,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The IPv6 Prefix Delegation WAN interface (e.g., `wan`, `wan2`).",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:wan[2-9]?)$'"
+          ]
         },
         "ipv6_pd_prefixid": {
           "kind": "attribute",
@@ -3783,6 +3905,9 @@
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ],
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^$|[a-fA-F0-9]{1,4})$'"
           ]
         },
         "ipv6_pd_start": {
@@ -3830,7 +3955,8 @@
           ],
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 0s and 8760h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -3860,7 +3986,8 @@
           ],
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 0s and 8760h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -3902,7 +4029,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the network.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "nat_outbound_ip_addresses": {
           "kind": "attribute",
@@ -3920,7 +4050,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The IP address.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
+          ]
         },
         "nat_outbound_ip_addresses.ip_address_pool": {
           "kind": "attribute",
@@ -3944,7 +4077,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The WAN network group.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:WAN[2-9]?)$'"
+          ]
         },
         "network_isolation": {
           "kind": "attribute",
@@ -4001,6 +4137,9 @@
           "optional": true,
           "description": "The network's gateway IP and prefix in CIDR notation. The host portion is the gateway address the controller assigns — it need not be the first usable address: `10.0.10.1/24` uses gateway `10.0.10.1`, while `10.0.10.254/24` uses gateway `10.0.10.254` on the same subnet. Optional: it is not required for `vlan_only` networks (`third_party_gateway = true`), where the UniFi controller does not manage the subnet.",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([1-9]|[1-2][0-9]|3[0-2])$'"
+          ],
           "custom_type": "cidrtypes.IPv4PrefixType: \u003ccarries no description\u003e"
         },
         "third_party_gateway": {
@@ -4092,7 +4231,8 @@
           "description": "The destination IPv4 address. Use `any` for all addresses.",
           "description_kind": "markdown",
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address or \"any\""
+            "*validators.ipv4Validator: value must be a valid IPv4 address or \"any\"",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^any$'"
           ]
         },
         "destination_ips.interface": {
@@ -4102,7 +4242,8 @@
           "description": "The WAN interface for this destination (e.g. `wan`, `wan2`).",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:wan[2-9]?)$'"
           ]
         },
         "enabled": {
@@ -4129,7 +4270,8 @@
           "description": "The forward IPv4 address to send traffic to.",
           "description_kind": "markdown",
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address"
+            "*validators.ipv4Validator: value must be a valid IPv4 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'"
           ]
         },
         "forward.port": {
@@ -4137,7 +4279,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The forward port or port range (e.g. `1-10,11,12`).",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:(([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])|([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])-([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5]))+(,([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])|,([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])-([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])){0,14})$'"
+          ]
         },
         "id": {
           "kind": "attribute",
@@ -4163,7 +4308,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The name of the port forwarding rule.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "protocol": {
           "kind": "attribute",
@@ -4219,7 +4367,10 @@
           "computed": true,
           "description": "The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`.",
           "description_kind": "markdown",
-          "default": "stringdefault.staticStringDefault: value defaults to any"
+          "default": "stringdefault.staticStringDefault: value defaults to any",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])-(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])/([0-9]|[1-2][0-9]|3[0-2])$|^!(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^!(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])-(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^!(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])/([0-9]|[1-2][0-9]|3[0-2])$|^any$'"
+          ]
         },
         "source_limiting.type": {
           "kind": "attribute",
@@ -4293,7 +4444,8 @@
           "description": "The WAN interface. Can be `wan`, `wan2`, or `both`.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\" \"both\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\" \"both\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:wan[2-9]?|both|all)$'"
           ]
         },
         "wan.ip_address": {
@@ -4303,7 +4455,8 @@
           "description": "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
           "description_kind": "markdown",
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address or \"any\""
+            "*validators.ipv4Validator: value must be a valid IPv4 address or \"any\"",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^any$'"
           ]
         },
         "wan.port": {
@@ -4311,7 +4464,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The WAN port or port range (e.g. `1-10,11,12`).",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:(([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])|([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])-([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5]))+(,([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])|,([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])-([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])){0,14})$'"
+          ]
         }
       }
     },
@@ -4351,7 +4507,8 @@
           "default": "stringdefault.staticStringDefault: value defaults to 5m0s",
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 0s and 18h12m15s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -4481,7 +4638,8 @@
           "description_kind": "plain",
           "default": "stringdefault.staticStringDefault: value defaults to switch",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"switch\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"switch\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:switch)$'"
           ]
         },
         "poe_mode": {
@@ -4994,7 +5152,8 @@
           "description": "IP address of the accounting server. Optional: the controller-managed default profile returns a server entry without an IP, so importing it must not force one.",
           "description_kind": "markdown",
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address"
+            "*validators.ipv4Validator: value must be a valid IPv4 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'"
           ]
         },
         "acct_server.port": {
@@ -5030,7 +5189,8 @@
           "description": "IP address of the authentication server. Optional: the controller-managed default profile (e.g. the one created when a gateway RADIUS/VPN service is enabled, with `use_usg_auth_server = true`) returns a server entry without an IP, so importing it must not force one.",
           "description_kind": "markdown",
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address"
+            "*validators.ipv4Validator: value must be a valid IPv4 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'"
           ]
         },
         "auth_server.port": {
@@ -5081,7 +5241,8 @@
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to 1h0m0s",
           "validators": [
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([6-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9][0-9]|86400)$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -5090,7 +5251,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the profile.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "site": {
           "kind": "attribute",
@@ -5216,7 +5380,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the account.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\"' ]+$'"
+          ]
         },
         "network_id": {
           "kind": "attribute",
@@ -5299,7 +5466,8 @@
           "description": "The tunnel configuration type. Can be `vpn`, `802.1x`, or `custom`.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"vpn\" \"802.1x\" \"custom\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"vpn\" \"802.1x\" \"custom\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:vpn|802.1x|custom)$'"
           ]
         },
         "tunnel_medium_type": {
@@ -6373,7 +6541,10 @@
           "optional": true,
           "computed": true,
           "description": "Comma-separated list of country codes for geo IP filtering.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([A-Z]{2})?(,[A-Z]{2}){0,149}$'"
+          ]
         },
         "usg.geo_ip_filtering_enabled": {
           "kind": "attribute",
@@ -6808,7 +6979,8 @@
           ],
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 30s and 24h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:3[0-9]|[4-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -6876,7 +7048,8 @@
           ],
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 30s and 24h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:3[0-9]|[4-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -6889,7 +7062,8 @@
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to wan",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"wan\" \"wan2\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:wan[2-9]?)$'"
           ]
         },
         "key_exchange": {
@@ -6914,6 +7088,9 @@
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^any$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'"
+          ],
           "custom_type": "iptypes.IPv4AddressType: \u003ccarries no description\u003e"
         },
         "name": {
@@ -6921,7 +7098,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the site-to-site VPN.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "peer_ip": {
           "kind": "attribute",
@@ -6951,7 +7131,10 @@
           "optional": true,
           "sensitive": true,
           "description": "The IPsec pre-shared key. Stored in state — use `pre_shared_key_wo` to avoid persisting the secret.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[^\\\"\\' ]+)$'"
+          ]
         },
         "pre_shared_key_wo": {
           "kind": "attribute",
@@ -7096,7 +7279,8 @@
           "description": "The MAC address of the gateway device, used when `gateway_type` is `switch`.",
           "description_kind": "markdown",
           "validators": [
-            "*validators.macAddressValidator: value must be a valid MAC address"
+            "*validators.macAddressValidator: value must be a valid MAC address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$'"
           ]
         },
         "gateway_type": {
@@ -7126,14 +7310,20 @@
           "type": "\"string\"",
           "optional": true,
           "description": "The interface of the static route (only valid for `interface-route` type). This can be `WAN1`, `WAN2`, or a network ID.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:WAN[1-9]?|[\\d\\w-]+|^$)$'"
+          ]
         },
         "name": {
           "kind": "attribute",
           "type": "\"string\"",
           "required": true,
           "description": "The name of the static route.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "network": {
           "kind": "attribute",
@@ -7142,7 +7332,8 @@
           "description": "The network subnet address.",
           "description_kind": "markdown",
           "validators": [
-            "*validators.cidrValidator: value must be a valid CIDR notation"
+            "*validators.cidrValidator: value must be a valid CIDR notation",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([1-9]|[1-2][0-9]|3[0-2])$|^([a-fA-F0-9:]+\\/(([1-9]|[1-8][0-9]|9[0-9]|1[01][0-9]|12[0-8])))$'"
           ]
         },
         "next_hop": {
@@ -7152,7 +7343,8 @@
           "description": "The next hop of the static route (only valid for `nexthop-route` type). Accepts IPv4 or IPv6 addresses.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.anyValidator: Value must satisfy at least one of the validations: value must be a valid IPv4 address + value must be a valid IPv6 address"
+            "stringvalidator.anyValidator: Value must satisfy at least one of the validations: value must be a valid IPv4 address + value must be a valid IPv6 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^([a-fA-F0-9:]+)$|^$'"
           ],
           "custom_type": "iptypes.IPAddressType: \u003ccarries no description\u003e"
         },
@@ -7237,7 +7429,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "A description of the traffic route (max 128 characters).",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{0,128})$'"
+          ]
         },
         "destination": {
           "kind": "attribute",
@@ -7471,7 +7666,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the VPN client.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "pull_dns": {
           "kind": "attribute",
@@ -7500,6 +7698,9 @@
           "required": true,
           "description": "The local IP address for the WireGuard tunnel in CIDR notation (e.g., `10.0.0.2/24`).",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([1-9]|[1-2][0-9]|3[0-2])$'"
+          ],
           "custom_type": "cidrtypes.IPv4PrefixType: \u003ccarries no description\u003e"
         },
         "timeouts": {
@@ -7597,7 +7798,7 @@
           "description_kind": "markdown",
           "default": "stringdefault.staticStringDefault: value defaults to wan",
           "validators": [
-            "stringvalidator.regexMatchesValidator: must be 'wan' or 'wan2' through 'wan9'"
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:wan[2-9]?)$'"
           ]
         },
         "wireguard.peer": {
@@ -7762,14 +7963,20 @@
           "required": true,
           "sensitive": true,
           "description": "IPsec pre-shared key for L2TP. Required by the UniFi controller.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[^\\\"\\' ]+)$'"
+          ]
         },
         "name": {
           "kind": "attribute",
           "type": "\"string\"",
           "required": true,
           "description": "The name of the VPN server.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "openvpn": {
           "kind": "attribute",
@@ -7927,6 +8134,9 @@
           "required": true,
           "description": "The VPN server subnet in CIDR notation (e.g., `10.100.0.1/24`). The first address is the server's tunnel IP, so use the gateway form (`10.100.0.1/24`) — the network address (`10.100.0.0/24`) is rejected with `api.err.IncorrectIPSubnetSpec`.",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([1-9]|[1-2][0-9]|3[0-2])$'"
+          ],
           "custom_type": "cidrtypes.IPv4PrefixType: \u003ccarries no description\u003e"
         },
         "timeouts": {
@@ -8220,14 +8430,20 @@
           "type": "\"string\"",
           "optional": true,
           "description": "Primary IPv6 DNS server",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$'"
+          ]
         },
         "dns.ipv6_secondary": {
           "kind": "attribute",
           "type": "\"string\"",
           "optional": true,
           "description": "Secondary IPv6 DNS server",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$'"
+          ]
         },
         "dns.preference": {
           "kind": "attribute",
@@ -8250,7 +8466,8 @@
           "description": "Primary DNS server",
           "description_kind": "markdown",
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address"
+            "*validators.ipv4Validator: value must be a valid IPv4 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
           ]
         },
         "dns.secondary": {
@@ -8260,7 +8477,8 @@
           "description": "Secondary DNS server",
           "description_kind": "markdown",
           "validators": [
-            "*validators.ipv4Validator: value must be a valid IPv4 address"
+            "*validators.ipv4Validator: value must be a valid IPv4 address",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
           ]
         },
         "egress_qos": {
@@ -8440,7 +8658,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the WAN network",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "networkgroup": {
           "kind": "attribute",
@@ -8453,7 +8674,7 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ],
           "validators": [
-            "stringvalidator.regexMatchesValidator: must be WAN, WAN2-WAN9, or WAN_LTE_FAILOVER"
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:WAN[2-9]?|WAN_LTE_FAILOVER)$'"
           ]
         },
         "provider_capabilities": {
@@ -9177,7 +9398,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The SSID of the network.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,32})$'"
+          ]
         },
         "nas_identifier_type": {
           "kind": "attribute",
@@ -9217,7 +9441,10 @@
           "optional": true,
           "sensitive": true,
           "description": "The passphrase for the network, only required if `security` is not `open`. Stored in state — use `passphrase_wo` to avoid persisting the secret.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\x20-\\x7E]{8,255}|[0-9a-fA-F]{64})$'"
+          ]
         },
         "passphrase_wo": {
           "kind": "attribute",
@@ -9267,7 +9494,8 @@
           "description": "The passphrase for this key (8-255 characters).",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.lengthBetweenValidator: string length must be between 8 and 255"
+            "stringvalidator.lengthBetweenValidator: string length must be between 8 and 255",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\x20-\\x7E]{8,255})$'"
           ]
         },
         "private_preshared_keys_enabled": {
@@ -9382,7 +9610,8 @@
           "description_kind": "markdown",
           "validators": [
             "*validators.goDurationBetweenValidator: value must be a Go duration string between 1m0s and 168h0m0s",
-            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1m0s"
+            "*validators.goDurationMultipleOfValidator: value must be a Go duration string that is a whole multiple of 1m0s",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[1-9][0-9]*$'"
           ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
@@ -9391,7 +9620,10 @@
           "type": "\"string\"",
           "optional": true,
           "description": "Name of the block.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.*)$'"
+          ]
         },
         "schedule.start_hour": {
           "kind": "attribute",
@@ -9625,7 +9857,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the account to look up.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\"' ]+$'"
+          ]
         },
         "network_id": {
           "kind": "attribute",
@@ -9761,6 +9996,9 @@
           "computed": true,
           "description": "The MAC address of the access point to which this client should be fixed.",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'"
+          ],
           "custom_type": "hwtypes.MACAddressType: \u003ccarries no description\u003e"
         },
         "fixed_ip": {
@@ -9805,6 +10043,9 @@
           "required": true,
           "description": "The MAC address of the client.",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'"
+          ],
           "custom_type": "hwtypes.MACAddressType: \u003ccarries no description\u003e"
         },
         "name": {
@@ -9861,7 +10102,10 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The name of the client group.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "site": {
           "kind": "attribute",
@@ -10631,7 +10875,10 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The MAC address of the access point to which this client is fixed.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'"
+          ]
         },
         "clients.fixed_ip": {
           "kind": "attribute",
@@ -10729,7 +10976,10 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The MAC address of the client.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$'"
+          ]
         },
         "clients.name": {
           "kind": "attribute",
@@ -10929,7 +11179,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the client QOS rate to look up.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "qos_rate_max_down": {
           "kind": "attribute",
@@ -10996,7 +11249,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the DNS record to look up.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "site": {
           "kind": "attribute",
@@ -11046,7 +11302,10 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The value of the DNS record.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,256})$'"
+          ]
         }
       }
     },
@@ -11254,14 +11513,20 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The IPv4 address where the DHCP range starts.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
+          ]
         },
         "dhcp_server.stop": {
           "kind": "attribute",
           "type": "\"string\"",
           "computed": true,
           "description": "The IPv4 address where the DHCP range stops.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
+          ]
         },
         "dhcp_server.tftp_server": {
           "kind": "attribute",
@@ -11282,7 +11547,10 @@
           "type": "\"string\"",
           "computed": true,
           "description": "UniFi controller IP address.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
+          ]
         },
         "dhcp_server.wins": {
           "kind": "attribute",
@@ -11439,14 +11707,20 @@
           "type": "\"string\"",
           "computed": true,
           "description": "Specifies which WAN interface to use for IPv6 PD. One of `wan` or `wan2`.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:wan[2-9]?)$'"
+          ]
         },
         "ipv6_pd_prefixid": {
           "kind": "attribute",
           "type": "\"string\"",
           "computed": true,
           "description": "Specifies the IPv6 Prefix ID.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:^$|[a-fA-F0-9]{1,4})$'"
+          ]
         },
         "ipv6_pd_start": {
           "kind": "attribute",
@@ -11475,6 +11749,9 @@
           "computed": true,
           "description": "Preferred lifetime for IPv6 RA, as a Go duration string.",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$'"
+          ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
         "ipv6_ra_priority": {
@@ -11493,6 +11770,9 @@
           "computed": true,
           "description": "Total lifetime for the IPv6 RA address, as a Go duration string.",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$'"
+          ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
         "ipv6_static_subnet": {
@@ -11524,7 +11804,8 @@
           "description": "The name of the network.",
           "description_kind": "markdown",
           "validators": [
-            "schemavalidator.ConflictsWithValidator: Ensure that if an attribute is set, these are not set: \"[id]\""
+            "schemavalidator.ConflictsWithValidator: Ensure that if an attribute is set, these are not set: \"[id]\"",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
           ]
         },
         "nat_outbound_ip_addresses": {
@@ -11539,7 +11820,10 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The IP address.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$'"
+          ]
         },
         "nat_outbound_ip_addresses.ip_address_pool": {
           "kind": "attribute",
@@ -11563,14 +11847,20 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The WAN network group.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:WAN[2-9]?)$'"
+          ]
         },
         "network_group": {
           "kind": "attribute",
           "type": "\"string\"",
           "computed": true,
           "description": "The group of the network.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:LAN[2-8]?)$'"
+          ]
         },
         "network_isolation": {
           "kind": "attribute",
@@ -11609,7 +11899,10 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The IP subnet of the network in CIDR notation.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([1-9]|[1-2][0-9]|3[0-2])$'"
+          ]
         },
         "third_party_gateway": {
           "kind": "attribute",
@@ -11661,35 +11954,50 @@
           "type": "\"string\"",
           "computed": true,
           "description": "The IPv4 gateway of the WAN.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'"
+          ]
         },
         "wan_gateway_v6": {
           "kind": "attribute",
           "type": "\"string\"",
           "computed": true,
           "description": "The IPv6 gateway of the WAN.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$'"
+          ]
         },
         "wan_ip": {
           "kind": "attribute",
           "type": "\"string\"",
           "computed": true,
           "description": "The IPv4 address of the WAN.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'"
+          ]
         },
         "wan_netmask": {
           "kind": "attribute",
           "type": "\"string\"",
           "computed": true,
           "description": "The IPv4 netmask of the WAN.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^((128|192|224|240|248|252|254)\\.0\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0\\.0)|(255\\.(((0|128|192|224|240|248|252|254)\\.0)|255\\.(0|128|192|224|240|248|252|254)))))$'"
+          ]
         },
         "wan_network_group": {
           "kind": "attribute",
           "type": "\"string\"",
           "computed": true,
           "description": "Specifies the WAN network group. One of `WAN`, `WAN2` or `WAN_LTE_FAILOVER`.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:WAN[2-9]?|WAN_LTE_FAILOVER)$'"
+          ]
         },
         "wan_type": {
           "kind": "attribute",
@@ -11716,7 +12024,10 @@
           "type": "\"string\"",
           "computed": true,
           "description": "Specifies the IPv4 WAN username.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[^\"' ]+|^$)$'"
+          ]
         }
       }
     },
@@ -11839,6 +12150,9 @@
           "computed": true,
           "description": "The interim update interval, as a Go duration string.",
           "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^([6-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9][0-9]|86400)$'"
+          ],
           "custom_type": "timetypes.GoDurationType: \u003ccarries no description\u003e"
         },
         "name": {
@@ -11846,7 +12160,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the RADIUS profile to look up.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "site": {
           "kind": "attribute",
@@ -11923,7 +12240,10 @@
           "type": "\"string\"",
           "required": true,
           "description": "The name of the account to look up.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\"' ]+$'"
+          ]
         },
         "network_id": {
           "kind": "attribute",

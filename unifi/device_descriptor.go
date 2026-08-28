@@ -786,7 +786,7 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 				Wire:  "led_override_color",
 				Model: func(m *deviceKitModel) *types.String { return &m.LedOverrideColor },
 				SDK:   func(s *ui.Device) *string { return &s.LedOverrideColor },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.Int64PtrField[deviceKitModel, ui.Device]{
 				Wire:  "led_override_color_brightness",
@@ -820,7 +820,7 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 				Wire:  "mgmt_network_id",
 				Model: func(m *deviceKitModel) *types.String { return &m.MgmtNetworkID },
 				SDK:   func(s *ui.Device) *string { return &s.MgmtNetworkID },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.StringField[deviceKitModel, ui.Device]{
 				Wire:  "model",

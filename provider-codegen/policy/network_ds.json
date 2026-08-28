@@ -146,7 +146,8 @@
     {
       "attribute": {
         "computed_optional_required": "computed",
-        "description": "The domain name for the network."
+        "description": "The domain name for the network.",
+        "validators": "none"
       },
       "disposition": "managed",
       "structural_name": "domain_name",

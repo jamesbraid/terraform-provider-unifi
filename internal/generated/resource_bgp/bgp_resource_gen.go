@@ -5,6 +5,7 @@ package resource_bgp
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -45,7 +46,10 @@ func BgpResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Description of the BGP configuration.",
 				MarkdownDescription: "Description of the BGP configuration.",
-				Default:             stringdefault.StaticString("BGP Configuration"),
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,128})$`), ""),
+				},
+				Default: stringdefault.StaticString("BGP Configuration"),
 			},
 			"enabled": schema.BoolAttribute{
 				Optional:            true,
@@ -118,7 +122,10 @@ func BgpResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The name of the uploaded configuration file.",
 				MarkdownDescription: "The name of the uploaded configuration file.",
-				Default:             stringdefault.StaticString("frr.conf"),
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,256})$`), ""),
+				},
+				Default: stringdefault.StaticString("frr.conf"),
 			},
 		},
 		MarkdownDescription: "Manages BGP configuration for the UniFi Controller. Configuration can be provided either as a raw FRR config string via `config`, or via structured attributes (`asn`, `router_id`, `peers`) which render a config from a template.",

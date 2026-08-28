@@ -5,6 +5,7 @@ package resource_dns_record
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
@@ -43,6 +44,9 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The key of the DNS record.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
 				},
 			},
 			"port": schema.Int64Attribute{
@@ -93,6 +97,9 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The value of the DNS record.",
 				MarkdownDescription: "The value of the DNS record.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,256})$`), ""),
+				},
 			},
 			"weight": schema.Int64Attribute{
 				Optional:            true,

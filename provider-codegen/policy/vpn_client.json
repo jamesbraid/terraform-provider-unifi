@@ -404,22 +404,7 @@
             "default": {
               "static": "wan"
             },
-            "description": "WAN interface to use for the VPN connection (e.g., `wan`, `wan2`).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^wan[2-9]?$`), \"must be 'wan' or 'wan2' through 'wan9'\")"
-                }
-              }
-            ]
+            "description": "WAN interface to use for the VPN connection (e.g., `wan`, `wan2`)."
           },
           "disposition": "managed",
           "structural_name": "wireguard_interface",

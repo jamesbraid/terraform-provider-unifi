@@ -5,6 +5,7 @@ package resource_port_forward
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -29,6 +30,7 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "The destination IPv4 address. Use `any` for all addresses.",
 							Validators: []validator.String{
 								validators.IPv4OrAnyValidator(),
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^any$`), ""),
 							},
 						},
 						"interface": schema.StringAttribute{
@@ -37,6 +39,7 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "The WAN interface for this destination (e.g. `wan`, `wan2`).",
 							Validators: []validator.String{
 								stringvalidator.OneOf("wan", "wan2"),
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
 							},
 						},
 					},
@@ -61,12 +64,16 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The forward IPv4 address to send traffic to.",
 						Validators: []validator.String{
 							validators.IPv4Validator(),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`), ""),
 						},
 					},
 					"port": schema.StringAttribute{
 						Optional:            true,
 						Description:         "The forward port or port range (e.g. `1-10,11,12`).",
 						MarkdownDescription: "The forward port or port range (e.g. `1-10,11,12`).",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:(([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])|([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])-([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5]))+(,([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])|,([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])-([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])){0,14})$`), ""),
+						},
 					},
 				},
 				Optional:            true,
@@ -92,6 +99,9 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "The name of the port forwarding rule.",
 				MarkdownDescription: "The name of the port forwarding rule.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+				},
 			},
 			"protocol": schema.StringAttribute{
 				Optional:            true,
@@ -132,7 +142,10 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`.",
 						MarkdownDescription: "The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`.",
-						Default:             stringdefault.StaticString("any"),
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])-(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])/([0-9]|[1-2][0-9]|3[0-2])$|^!(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^!(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])-(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^!(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])/([0-9]|[1-2][0-9]|3[0-2])$|^any$`), ""),
+						},
+						Default: stringdefault.StaticString("any"),
 					},
 					"type": schema.StringAttribute{
 						Optional:            true,
@@ -156,6 +169,7 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The WAN interface. Can be `wan`, `wan2`, or `both`.",
 						Validators: []validator.String{
 							stringvalidator.OneOf("wan", "wan2", "both"),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?|both|all)$`), ""),
 						},
 					},
 					"ip_address": schema.StringAttribute{
@@ -164,12 +178,16 @@ func PortForwardResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The WAN IP address for the port forwarding rule. Use `any` for all addresses.",
 						Validators: []validator.String{
 							validators.IPv4OrAnyValidator(),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^any$`), ""),
 						},
 					},
 					"port": schema.StringAttribute{
 						Optional:            true,
 						Description:         "The WAN port or port range (e.g. `1-10,11,12`).",
 						MarkdownDescription: "The WAN port or port range (e.g. `1-10,11,12`).",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:(([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])|([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])-([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5]))+(,([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])|,([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])-([1-9][0-9]{0,3}|[1-5][0-9]{4}|[6][0-4][0-9]{3}|[6][5][0-4][0-9]{2}|[6][5][5][0-2][0-9]|[6][5][5][3][0-5])){0,14})$`), ""),
+						},
 					},
 				},
 				Optional:            true,

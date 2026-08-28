@@ -38,7 +38,8 @@
     {
       "attribute": {
         "computed_optional_required": "computed",
-        "description": "The display name of the client."
+        "description": "The display name of the client.",
+        "validators": "none"
       },
       "disposition": "managed",
       "structural_name": "display_name",

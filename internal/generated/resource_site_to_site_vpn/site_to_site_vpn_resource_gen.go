@@ -5,6 +5,7 @@ package resource_site_to_site_vpn
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
@@ -92,6 +93,7 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(30*time.Second, 86400*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:3[0-9]|[4-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)$`), ""),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -150,6 +152,7 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(30*time.Second, 86400*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:3[0-9]|[4-9][0-9]|[1-9][0-9]{2,3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)$`), ""),
 				},
 			},
 			"interface": schema.StringAttribute{
@@ -159,6 +162,7 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The local WAN interface the tunnel binds to (e.g. `wan`, `wan2`).",
 				Validators: []validator.String{
 					stringvalidator.OneOf("wan", "wan2"),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
 				},
 				Default: stringdefault.StaticString("wan"),
 			},
@@ -181,11 +185,17 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^any$|^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`), ""),
+				},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
 				Description:         "The name of the site-to-site VPN.",
 				MarkdownDescription: "The name of the site-to-site VPN.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+				},
 			},
 			"peer_ip": schema.StringAttribute{
 				CustomType:          iptypes.IPv4AddressType{},
@@ -210,6 +220,9 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 				Sensitive:           true,
 				Description:         "The IPsec pre-shared key. Stored in state — use `pre_shared_key_wo` to avoid persisting the secret.",
 				MarkdownDescription: "The IPsec pre-shared key. Stored in state — use `pre_shared_key_wo` to avoid persisting the secret.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[^\"\' ]+)$`), ""),
+				},
 			},
 			"profile": schema.StringAttribute{
 				Optional:            true,

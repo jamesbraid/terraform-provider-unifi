@@ -1476,15 +1476,15 @@ func buildCodeAttribute(
 	}
 	attribute := field.Attribute
 	// Derivation is scoped to scalar attributes: a collection's element type
-	// carries no OneOf shape this task derives (deferred; see the task
-	// report), and structuralElementType already routed those here with
-	// isCollection set.
+	// carries no OneOf/RegexMatches shape this task derives (deferred; see
+	// the task report), and structuralElementType already routed those here
+	// with isCollection set.
 	if !isCollection {
 		owner := field.StructuralName
 		if owner == "" {
 			owner = field.TerraformName
 		}
-		derived, err := deriveOneOfValidator(surface+"."+owner, terraformType, structural.Constraint, attribute)
+		derived, err := deriveConstraintValidators(surface+"."+owner, terraformType, structural.Constraint, attribute)
 		if err != nil {
 			return codeAttribute{}, err
 		}

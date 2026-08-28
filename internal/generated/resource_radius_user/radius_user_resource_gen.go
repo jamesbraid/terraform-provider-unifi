@@ -5,6 +5,7 @@ package resource_radius_user
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -32,6 +33,9 @@ func RadiusUserResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The name of the account.",
 				MarkdownDescription: "The name of the account.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$`), ""),
+				},
 			},
 			"network_id": schema.StringAttribute{
 				Optional:            true,
@@ -60,6 +64,7 @@ func RadiusUserResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The tunnel configuration type. Can be `vpn`, `802.1x`, or `custom`.",
 				Validators: []validator.String{
 					stringvalidator.OneOf("vpn", "802.1x", "custom"),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:vpn|802.1x|custom)$`), ""),
 				},
 			},
 			"tunnel_medium_type": schema.Int64Attribute{

@@ -218,21 +218,6 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": [
-          {
-            "custom": {
-              "imports": [
-                {
-                  "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                },
-                {
-                  "path": "regexp"
-                }
-              ],
-              "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^WAN([2-9])?$|^WAN_LTE_FAILOVER$`), \"must be WAN, WAN2-WAN9, or WAN_LTE_FAILOVER\")"
-            }
-          }
         ]
       },
       "disposition": "managed",

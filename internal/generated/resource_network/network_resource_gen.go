@@ -5,6 +5,7 @@ package resource_network
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
@@ -193,6 +194,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						},
 						Validators: []validator.String{
 							validators.IPv4Validator(),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
 						},
 					},
 					"stop": schema.StringAttribute{
@@ -205,6 +207,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						},
 						Validators: []validator.String{
 							validators.IPv4Validator(),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
 						},
 					},
 					"tftp_server": schema.StringAttribute{
@@ -225,6 +228,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "UniFi controller IP address.",
 						Validators: []validator.String{
 							validators.IPv4Validator(),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
 						},
 					},
 					"wins": schema.SingleNestedAttribute{
@@ -429,6 +433,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "The IPv6 Prefix Delegation WAN interface (e.g., `wan`, `wan2`).",
 				MarkdownDescription: "The IPv6 Prefix Delegation WAN interface (e.g., `wan`, `wan2`).",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
+				},
 			},
 			"ipv6_pd_prefixid": schema.StringAttribute{
 				Optional:            true,
@@ -437,6 +444,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The IPv6 Prefix Delegation prefix ID (hex string, e.g., `0`, `1a`).",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^$|[a-fA-F0-9]{1,4})$`), ""),
 				},
 			},
 			"ipv6_pd_start": schema.StringAttribute{
@@ -478,6 +488,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(0, 31536000*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$`), ""),
 				},
 			},
 			"ipv6_ra_priority": schema.StringAttribute{
@@ -504,6 +515,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					validators.GoDurationBetween(0, 31536000*time.Second),
 					validators.GoDurationMultipleOf(time.Second),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$`), ""),
 				},
 			},
 			"ipv6_static_subnet": schema.StringAttribute{
@@ -537,6 +549,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The name of the network.",
 				MarkdownDescription: "The name of the network.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+				},
 			},
 			"nat_outbound_ip_addresses": schema.ListNestedAttribute{
 				NestedObject: schema.NestedAttributeObject{
@@ -545,6 +560,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "The IP address.",
 							MarkdownDescription: "The IP address.",
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+							},
 						},
 						"ip_address_pool": schema.ListAttribute{
 							ElementType:         types.StringType,
@@ -564,6 +582,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 							Optional:            true,
 							Description:         "The WAN network group.",
 							MarkdownDescription: "The WAN network group.",
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[2-9]?)$`), ""),
+							},
 						},
 					},
 				},
@@ -621,6 +642,9 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "The network's gateway IP and prefix in CIDR notation. The host portion is the gateway address the controller assigns — it need not be the first usable address: `10.0.10.1/24` uses gateway `10.0.10.1`, while `10.0.10.254/24` uses gateway `10.0.10.254` on the same subnet. Optional: it is not required for `vlan_only` networks (`third_party_gateway = true`), where the UniFi controller does not manage the subnet.",
 				MarkdownDescription: "The network's gateway IP and prefix in CIDR notation. The host portion is the gateway address the controller assigns — it need not be the first usable address: `10.0.10.1/24` uses gateway `10.0.10.1`, while `10.0.10.254/24` uses gateway `10.0.10.254` on the same subnet. Optional: it is not required for `vlan_only` networks (`third_party_gateway = true`), where the UniFi controller does not manage the subnet.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$`), ""),
+				},
 			},
 			"third_party_gateway": schema.BoolAttribute{
 				Optional:            true,

@@ -5,7 +5,10 @@ package datasource_client_list
 
 import (
 	"context"
+	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -66,6 +69,9 @@ func ClientListDsDataSourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "The MAC address of the access point to which this client is fixed.",
 							MarkdownDescription: "The MAC address of the access point to which this client is fixed.",
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`), ""),
+							},
 						},
 						"fixed_ip": schema.StringAttribute{
 							Computed:            true,
@@ -136,6 +142,9 @@ func ClientListDsDataSourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "The MAC address of the client.",
 							MarkdownDescription: "The MAC address of the client.",
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`), ""),
+							},
 						},
 						"name": schema.StringAttribute{
 							Computed:            true,

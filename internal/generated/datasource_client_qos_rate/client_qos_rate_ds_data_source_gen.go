@@ -5,6 +5,10 @@ package datasource_client_qos_rate
 
 import (
 	"context"
+	"regexp"
+
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
@@ -21,6 +25,9 @@ func ClientQosRateDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The name of the client QOS rate to look up.",
 				MarkdownDescription: "The name of the client QOS rate to look up.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+				},
 			},
 			"qos_rate_max_down": schema.Int64Attribute{
 				Computed:            true,

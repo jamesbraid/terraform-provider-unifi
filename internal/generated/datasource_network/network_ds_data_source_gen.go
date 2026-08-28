@@ -5,6 +5,7 @@ package datasource_network
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -124,11 +125,17 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "The IPv4 address where the DHCP range starts.",
 						MarkdownDescription: "The IPv4 address where the DHCP range starts.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+						},
 					},
 					"stop": schema.StringAttribute{
 						Computed:            true,
 						Description:         "The IPv4 address where the DHCP range stops.",
 						MarkdownDescription: "The IPv4 address where the DHCP range stops.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+						},
 					},
 					"tftp_server": schema.StringAttribute{
 						Computed:            true,
@@ -144,6 +151,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "UniFi controller IP address.",
 						MarkdownDescription: "UniFi controller IP address.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+						},
 					},
 					"wins": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
@@ -272,11 +282,17 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies which WAN interface to use for IPv6 PD. One of `wan` or `wan2`.",
 				MarkdownDescription: "Specifies which WAN interface to use for IPv6 PD. One of `wan` or `wan2`.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
+				},
 			},
 			"ipv6_pd_prefixid": schema.StringAttribute{
 				Computed:            true,
 				Description:         "Specifies the IPv6 Prefix ID.",
 				MarkdownDescription: "Specifies the IPv6 Prefix ID.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^$|[a-fA-F0-9]{1,4})$`), ""),
+				},
 			},
 			"ipv6_pd_start": schema.StringAttribute{
 				Computed:            true,
@@ -298,6 +314,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Preferred lifetime for IPv6 RA, as a Go duration string.",
 				MarkdownDescription: "Preferred lifetime for IPv6 RA, as a Go duration string.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$`), ""),
+				},
 			},
 			"ipv6_ra_priority": schema.StringAttribute{
 				Computed:            true,
@@ -312,6 +331,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Total lifetime for the IPv6 RA address, as a Go duration string.",
 				MarkdownDescription: "Total lifetime for the IPv6 RA address, as a Go duration string.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[1-8][0-9]{4}|9[0-8][0-9]{3}|99[0-8][0-9]{2}|999[0-8][0-9]|9999[0-9]|[1-8][0-9]{5}|9[0-8][0-9]{4}|99[0-8][0-9]{3}|999[0-8][0-9]{2}|9999[0-8][0-9]|99999[0-9]|[1-8][0-9]{6}|9[0-8][0-9]{5}|99[0-8][0-9]{4}|999[0-8][0-9]{3}|9999[0-8][0-9]{2}|99999[0-8][0-9]|999999[0-9]|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)$|^$`), ""),
+				},
 			},
 			"ipv6_static_subnet": schema.StringAttribute{
 				Computed:            true,
@@ -335,6 +357,7 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The name of the network.",
 				Validators: []validator.String{
 					stringvalidator.ConflictsWith(path.Expressions{path.MatchRoot("id")}...),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
 				},
 			},
 			"nat_outbound_ip_addresses": schema.ListNestedAttribute{
@@ -344,6 +367,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "The IP address.",
 							MarkdownDescription: "The IP address.",
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+							},
 						},
 						"ip_address_pool": schema.ListAttribute{
 							ElementType:         types.StringType,
@@ -363,6 +389,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 							Computed:            true,
 							Description:         "The WAN network group.",
 							MarkdownDescription: "The WAN network group.",
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[2-9]?)$`), ""),
+							},
 						},
 					},
 				},
@@ -374,6 +403,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The group of the network.",
 				MarkdownDescription: "The group of the network.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:LAN[2-8]?)$`), ""),
+				},
 			},
 			"network_isolation": schema.BoolAttribute{
 				Computed:            true,
@@ -403,6 +435,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The IP subnet of the network in CIDR notation.",
 				MarkdownDescription: "The IP subnet of the network in CIDR notation.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$`), ""),
+				},
 			},
 			"third_party_gateway": schema.BoolAttribute{
 				Computed:            true,
@@ -429,26 +464,41 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The IPv4 gateway of the WAN.",
 				MarkdownDescription: "The IPv4 gateway of the WAN.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`), ""),
+				},
 			},
 			"wan_gateway_v6": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The IPv6 gateway of the WAN.",
 				MarkdownDescription: "The IPv6 gateway of the WAN.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$`), ""),
+				},
 			},
 			"wan_ip": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The IPv4 address of the WAN.",
 				MarkdownDescription: "The IPv4 address of the WAN.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`), ""),
+				},
 			},
 			"wan_netmask": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The IPv4 netmask of the WAN.",
 				MarkdownDescription: "The IPv4 netmask of the WAN.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^((128|192|224|240|248|252|254)\.0\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0)|255\.(0|128|192|224|240|248|252|254)))))$`), ""),
+				},
 			},
 			"wan_network_group": schema.StringAttribute{
 				Computed:            true,
 				Description:         "Specifies the WAN network group. One of `WAN`, `WAN2` or `WAN_LTE_FAILOVER`.",
 				MarkdownDescription: "Specifies the WAN network group. One of `WAN`, `WAN2` or `WAN_LTE_FAILOVER`.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[2-9]?|WAN_LTE_FAILOVER)$`), ""),
+				},
 			},
 			"wan_type": schema.StringAttribute{
 				Computed:            true,
@@ -470,6 +520,9 @@ func NetworkDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Specifies the IPv4 WAN username.",
 				MarkdownDescription: "Specifies the IPv4 WAN username.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[^"' ]+|^$)$`), ""),
+				},
 			},
 		},
 		MarkdownDescription: "`unifi_network` data source can be used to retrieve settings for a network by name or ID.",

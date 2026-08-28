@@ -81,6 +81,9 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "IPsec pre-shared key for L2TP. Required by the UniFi controller.",
 						MarkdownDescription: "IPsec pre-shared key for L2TP. Required by the UniFi controller.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[^\"\' ]+)$`), ""),
+						},
 					},
 				},
 				Optional:            true,
@@ -91,6 +94,9 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The name of the VPN server.",
 				MarkdownDescription: "The name of the VPN server.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+				},
 			},
 			"openvpn": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -221,6 +227,9 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The VPN server subnet in CIDR notation (e.g., `10.100.0.1/24`). The first address is the server's tunnel IP, so use the gateway form (`10.100.0.1/24`) — the network address (`10.100.0.0/24`) is rejected with `api.err.IncorrectIPSubnetSpec`.",
 				MarkdownDescription: "The VPN server subnet in CIDR notation (e.g., `10.100.0.1/24`). The first address is the server's tunnel IP, so use the gateway form (`10.100.0.1/24`) — the network address (`10.100.0.0/24`) is rejected with `api.err.IncorrectIPSubnetSpec`.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$`), ""),
+				},
 			},
 			"wan": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{

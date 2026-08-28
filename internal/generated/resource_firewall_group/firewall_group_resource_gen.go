@@ -5,6 +5,7 @@ package resource_firewall_group
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -36,6 +37,9 @@ func FirewallGroupResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The name of the firewall group.",
 				MarkdownDescription: "The name of the firewall group.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,64})$`), ""),
+				},
 			},
 			"site": schema.StringAttribute{
 				Optional:            true,

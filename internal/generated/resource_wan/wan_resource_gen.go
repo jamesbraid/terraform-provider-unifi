@@ -164,11 +164,17 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						Optional:            true,
 						Description:         "Primary IPv6 DNS server",
 						MarkdownDescription: "Primary IPv6 DNS server",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$`), ""),
+						},
 					},
 					"ipv6_secondary": schema.StringAttribute{
 						Optional:            true,
 						Description:         "Secondary IPv6 DNS server",
 						MarkdownDescription: "Secondary IPv6 DNS server",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$`), ""),
+						},
 					},
 					"preference": schema.StringAttribute{
 						Optional:            true,
@@ -188,6 +194,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Primary DNS server",
 						Validators: []validator.String{
 							validators.IPv4Validator(),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
 						},
 					},
 					"secondary": schema.StringAttribute{
@@ -196,6 +203,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Secondary DNS server",
 						Validators: []validator.String{
 							validators.IPv4Validator(),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
 						},
 					},
 				},
@@ -360,6 +368,9 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The name of the WAN network",
 				MarkdownDescription: "The name of the WAN network",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+				},
 			},
 			"networkgroup": schema.StringAttribute{
 				Optional:            true,
@@ -370,7 +381,7 @@ func WanResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^WAN([2-9])?$|^WAN_LTE_FAILOVER$`), "must be WAN, WAN2-WAN9, or WAN_LTE_FAILOVER"),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[2-9]?|WAN_LTE_FAILOVER)$`), ""),
 				},
 			},
 			"provider_capabilities": schema.SingleNestedAttribute{

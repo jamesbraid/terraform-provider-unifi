@@ -5,6 +5,7 @@ package resource_dynamic_dns
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -22,6 +23,9 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The host name to update in the dynamic DNS service.",
 				MarkdownDescription: "The host name to update in the dynamic DNS service.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$`), ""),
+				},
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -41,6 +45,7 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("wan", "wan2"),
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
 				},
 				Default: stringdefault.StaticString("wan"),
 			},
@@ -48,17 +53,26 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 				Optional:            true,
 				Description:         "The login for the dynamic DNS service.",
 				MarkdownDescription: "The login for the dynamic DNS service.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$`), ""),
+				},
 			},
 			"password": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				Description:         "The password for the dynamic DNS service.",
 				MarkdownDescription: "The password for the dynamic DNS service.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$`), ""),
+				},
 			},
 			"server": schema.StringAttribute{
 				Optional:            true,
 				Description:         "The server for the dynamic DNS service.",
 				MarkdownDescription: "The server for the dynamic DNS service.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$|^$`), ""),
+				},
 			},
 			"service": schema.StringAttribute{
 				Required:            true,

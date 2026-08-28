@@ -5,6 +5,7 @@ package resource_wlan
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
@@ -280,6 +281,9 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The SSID of the network.",
 				MarkdownDescription: "The SSID of the network.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,32})$`), ""),
+				},
 			},
 			"nas_identifier_type": schema.StringAttribute{
 				Optional:            true,
@@ -312,6 +316,9 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Sensitive:           true,
 				Description:         "The passphrase for the network, only required if `security` is not `open`. Stored in state — use `passphrase_wo` to avoid persisting the secret.",
 				MarkdownDescription: "The passphrase for the network, only required if `security` is not `open`. Stored in state — use `passphrase_wo` to avoid persisting the secret.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\x20-\x7E]{8,255}|[0-9a-fA-F]{64})$`), ""),
+				},
 			},
 			"pmf_mode": schema.StringAttribute{
 				Optional:            true,
@@ -340,6 +347,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "The passphrase for this key (8-255 characters).",
 							Validators: []validator.String{
 								stringvalidator.LengthBetween(8, 255),
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\x20-\x7E]{8,255})$`), ""),
 							},
 						},
 					},
@@ -555,12 +563,16 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 							Validators: []validator.String{
 								validators.GoDurationBetween(time.Minute, 7*24*time.Hour),
 								validators.GoDurationMultipleOf(time.Minute),
+								stringvalidator.RegexMatches(regexp.MustCompile(`^[1-9][0-9]*$`), ""),
 							},
 						},
 						"name": schema.StringAttribute{
 							Optional:            true,
 							Description:         "Name of the block.",
 							MarkdownDescription: "Name of the block.",
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.*)$`), ""),
+							},
 						},
 						"start_hour": schema.Int64Attribute{
 							Required:            true,

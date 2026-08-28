@@ -50,6 +50,9 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The name of the VPN client.",
 				MarkdownDescription: "The name of the VPN client.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+				},
 			},
 			"pull_dns": schema.BoolAttribute{
 				Optional:            true,
@@ -73,6 +76,9 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 				Required:            true,
 				Description:         "The local IP address for the WireGuard tunnel in CIDR notation (e.g., `10.0.0.2/24`).",
 				MarkdownDescription: "The local IP address for the WireGuard tunnel in CIDR notation (e.g., `10.0.0.2/24`).",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$`), ""),
+				},
 			},
 			"wireguard": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -109,7 +115,7 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "WAN interface to use for the VPN connection (e.g., `wan`, `wan2`).",
 						MarkdownDescription: "WAN interface to use for the VPN connection (e.g., `wan`, `wan2`).",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^wan[2-9]?$`), "must be 'wan' or 'wan2' through 'wan9'"),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
 						},
 						Default: stringdefault.StaticString("wan"),
 					},
