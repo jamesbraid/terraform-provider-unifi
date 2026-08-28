@@ -211,14 +211,21 @@ func Compile(input CompileInput) (Result, error) {
 		return Result{}, err
 	}
 
-	for name := range sourceFields {
+	var unclassified []string
+	for _, name := range cmdio.SortedKeys(sourceFields) {
 		_, classified := policyFields[name]
 		_, consumed := grouped[name]
 		_, spread := flattened[name]
 		_, related := claimedFields[name]
 		if !classified && !consumed && !spread && !related {
-			return Result{}, fmt.Errorf("unclassified structural field %q", name)
+			unclassified = append(unclassified, fmt.Sprintf("%q", name))
 		}
+	}
+	if len(unclassified) > 0 {
+		// Every one, not the first: a controller bump can add several fields to
+		// one surface, and reporting them one compile at a time turns a single
+		// policy decision pass into as many round trips as there are fields.
+		return Result{}, fmt.Errorf("unclassified structural field %s", strings.Join(unclassified, ", "))
 	}
 	// A claim naming a member no grouping and no field list declares would
 	// otherwise consume its fields and emit nothing, which reads downstream as a

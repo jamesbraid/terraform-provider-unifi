@@ -119,6 +119,25 @@ func TestCompileFailsClosed(t *testing.T) {
 	}
 }
 
+// A controller bump can add several fields to one surface at once; the
+// completeness check used to return on the first unclassified field, which
+// turned a single policy decision pass into as many compiles as there were
+// new fields. It must name every unaccounted field in one error instead.
+func TestCompileReportsAllUnclassifiedFieldsAtOnce(t *testing.T) {
+	_, err := Compile(CompileInput{
+		Bootstrap: testBootstrap(t, append(dnsFieldNames(), "new_field", "second_field")),
+		Policy:    testPolicy(t, dnsFieldNames(), testSpecificationDigest),
+	})
+	if err == nil {
+		t.Fatal("Compile() error = nil, want an unclassified-field error")
+	}
+	for _, want := range []string{`"new_field"`, `"second_field"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("Compile() error = %v, want it to name %s", err, want)
+		}
+	}
+}
+
 func dnsFieldNames() []string {
 	return []string{"enabled", "key", "port", "priority", "record_type", "ttl", "value", "weight"}
 }
