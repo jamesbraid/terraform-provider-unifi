@@ -273,7 +273,7 @@
     {
       "attribute": {
         "computed_optional_required": "optional",
-        "description": "The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`."
+        "description": "The POE mode for the port profile. Can be one of `auto` or `off`."
       },
       "disposition": "managed",
       "structural_name": "poe_mode",

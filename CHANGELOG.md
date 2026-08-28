@@ -42,6 +42,14 @@ All notable changes to this project will be documented in this file.
   configuration setting either field to `0` used to plan cleanly and fail
   at apply; it now fails to plan instead. Leave the attribute unset to let
   the controller assign its own value (e.g. `1000`/`6000` in `auto` mode).
+- **`unifi_port_profile`: `poe_mode` only accepts `auto` or `off`.** The
+  description advertised `auto`, `passv24`, `passthrough`, or `off`; the
+  SDK's own field-constraint table for `PortProfile.poe_mode` has only ever
+  listed `auto|off`, and a live-controller probe (creating a port profile
+  with `poe_mode` set to `passv24` and to `passthrough`) confirms the
+  controller rejects both, with `api.err.InvalidValue: poe_mode must match
+  auto|off`. A configuration using `passv24` or `passthrough` failed at the
+  controller already; it now fails at plan time instead of apply time.
 
 ### ✨ Features
 
