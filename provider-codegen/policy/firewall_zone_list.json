@@ -3,7 +3,7 @@
   "surface_kind": "list_resource",
   "resource": "unifi_firewall_zone",
   "generator_name": "firewall_zone",
-  "source_specification_sha256": "87f566f1b227520831a1dbd31e421cf8a543da872a90b9ad601c3b03b8560e75",
+  "source_specification_sha256": "4db160bc7dab48c12721099dec02ff5946a048456abcff09ef042c83e386c431",
   "description": "List firewall zones in a site.",
   "fields": [],
   "omitted": [

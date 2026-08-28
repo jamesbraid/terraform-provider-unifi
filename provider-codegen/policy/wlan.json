@@ -1351,6 +1351,6 @@
     }
   ],
   "resource": "unifi_wlan",
-  "source_specification_sha256": "b7c0dec2f41a4c7e26f245017baaede3f21698c45320bb32dc640f25fa807412",
+  "source_specification_sha256": "806160571cd8df694bc8269eca6548d12050df04fc2924a9eac74de50efe761f",
   "surface_kind": "managed_resource"
 }

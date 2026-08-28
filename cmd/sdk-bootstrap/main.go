@@ -104,8 +104,9 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "import %s: %v\n", *pkgPath, err)
 		return 1
 	}
-	// Each struct's own declaring file, in the order named -- not a filename
-	// guessed from the resource, which can differ from where the type actually lives.
+	// Each struct's own declaration -- not the whole file it's declared in,
+	// which the struct doesn't own, and not a filename guessed from the
+	// resource, which can differ from where the type actually lives.
 	declared := make([][]byte, 0, len(structNames))
 	structures := make([]*types.Struct, 0, len(structNames))
 	seen := map[string]bool{}
@@ -125,12 +126,12 @@ func run(args []string, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "%s.%s is not a struct\n", *pkgPath, name)
 			return 1
 		}
-		contents, err := os.ReadFile(fset.Position(object.Pos()).Filename)
+		declaration, err := declarationBytes(fset.Position(object.Pos()).Filename, name)
 		if err != nil {
-			fmt.Fprintf(stderr, "read the file declaring %s: %v\n", name, err)
+			fmt.Fprintf(stderr, "%v\n", err)
 			return 1
 		}
-		declared = append(declared, contents)
+		declared = append(declared, declaration)
 		structures = append(structures, structure)
 	}
 	structure := structures[0]

@@ -62,6 +62,6 @@
     }
   ],
   "resource": "unifi_wireguard_peer",
-  "source_specification_sha256": "6da615d10e57ce9bff302a0cd5715a062b3e7bea10825a4a6d1b1ee1d4ccb508",
+  "source_specification_sha256": "1dfdcd1b9924762f8af46c0732d9c907f366d87c5af36401f8dedccc1b1aa581",
   "surface_kind": "list_resource"
 }

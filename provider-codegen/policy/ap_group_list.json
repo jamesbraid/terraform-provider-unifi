@@ -55,6 +55,6 @@
     }
   ],
   "resource": "unifi_ap_group",
-  "source_specification_sha256": "29a8b60b47b0c158ed9da90b83caea8e8bdb842c57d07ab5b201d7139efb6cbf",
+  "source_specification_sha256": "bf08859c890e2ed5404cc41f96df606e2156231c156c9a3ba0763e63abd1d4d6",
   "surface_kind": "list_resource"
 }

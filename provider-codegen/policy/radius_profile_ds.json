@@ -127,6 +127,6 @@
     }
   ],
   "resource": "unifi_radius_profile",
-  "source_specification_sha256": "0b560d27f0691adea8c20168e45455939bc7bd435a1f961b47f90c599d4dbf78",
+  "source_specification_sha256": "89989ccc7bd633c37df5607d9b28b4ccdba5d9408708e7c4e00e9980121d3583",
   "surface_kind": "data_source"
 }

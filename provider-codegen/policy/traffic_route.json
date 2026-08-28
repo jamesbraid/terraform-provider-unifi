@@ -360,6 +360,6 @@
     }
   ],
   "resource": "unifi_traffic_route",
-  "source_specification_sha256": "619a39dcd6efb333fc488e6f67298a309122148f916bfafdb1f2dae284edc1ce",
+  "source_specification_sha256": "39c71afd6b852f826d830994d7df6c15217dcd784e5782916b249e2e27264def",
   "surface_kind": "managed_resource"
 }

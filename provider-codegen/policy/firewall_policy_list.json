@@ -71,6 +71,6 @@
     }
   ],
   "resource": "unifi_firewall_policy",
-  "source_specification_sha256": "cd75c947cc3c150c41b45ea8f1d12f0790715a89dc193d7fe7fc8bae41ba18da",
+  "source_specification_sha256": "752e3d10aafc777652abed06a6f066b91fdd83ed1fe5c22a4384d5434d659109",
   "surface_kind": "list_resource"
 }

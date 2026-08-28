@@ -891,6 +891,6 @@
   }
  ],
  "resource": "unifi_client_list",
- "source_specification_sha256": "71b8b1ede450fcf9be6f037afe26202c5b9c3adaf2c2c088c7f8d44eab72cf7c",
+ "source_specification_sha256": "c36c5008285cc73bb041725407687a0dcf7d07da1d0abd4df237c32487766614",
  "surface_kind": "data_source"
 }
