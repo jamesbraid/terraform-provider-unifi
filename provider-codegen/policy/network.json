@@ -279,7 +279,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "How clients on this network obtain an IPv6 address (UI: Networks \u2192 IPv6 \u2192 Client Address Assignment). One of `slaac` (SLAAC only), `dhcpv6` (DHCPv6 only), or `slaac-dhcpv6` (both). Computed from the controller when not set.",
+        "description": "How clients on this network obtain an IPv6 address (UI: Networks \u2192 IPv6 \u2192 Client Address Assignment). One of `slaac` (SLAAC only) or `dhcpv6` (DHCPv6 only) -- the controller dropped the combined `slaac-dhcpv6` mode between 10.4.57 and 10.6.101. Computed from the controller when not set.",
         "plan_modifiers": [
           {
             "custom": {

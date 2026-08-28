@@ -13,6 +13,14 @@ All notable changes to this project will be documented in this file.
   pattern `all|some|none`, for both `lan` and `guest`). Configurations using `lan` or
   `guest` failed at the controller already; they now fail at plan time instead of
   apply time.
+- **`unifi_network.ipv6_client_address_assignment` no longer accepts `slaac-dhcpv6`.**
+  v0.45.0 added this attribute with `slaac-dhcpv6` validated live on a 10.4.57
+  controller (#232, #233). A live-controller probe against 10.6.101 (creating a
+  corporate network with IPv6 enabled and setting the field to `slaac-dhcpv6`) now
+  gets `api.err.InvalidValue` (pattern `slaac|dhcpv6`) — the controller itself
+  dropped the combined value somewhere between 10.4.57 and 10.6.101; the provider
+  isn't narrowing something the controller still accepts. A configuration using
+  `slaac-dhcpv6` now fails at plan time instead of apply time.
 
 ## [v0.106.0] - DRAFT, unreleased
 

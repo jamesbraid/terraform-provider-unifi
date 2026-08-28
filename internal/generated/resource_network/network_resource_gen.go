@@ -395,8 +395,8 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 			"ipv6_client_address_assignment": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "How clients on this network obtain an IPv6 address (UI: Networks → IPv6 → Client Address Assignment). One of `slaac` (SLAAC only), `dhcpv6` (DHCPv6 only), or `slaac-dhcpv6` (both). Computed from the controller when not set.",
-				MarkdownDescription: "How clients on this network obtain an IPv6 address (UI: Networks → IPv6 → Client Address Assignment). One of `slaac` (SLAAC only), `dhcpv6` (DHCPv6 only), or `slaac-dhcpv6` (both). Computed from the controller when not set.",
+				Description:         "How clients on this network obtain an IPv6 address (UI: Networks → IPv6 → Client Address Assignment). One of `slaac` (SLAAC only) or `dhcpv6` (DHCPv6 only) -- the controller dropped the combined `slaac-dhcpv6` mode between 10.4.57 and 10.6.101. Computed from the controller when not set.",
+				MarkdownDescription: "How clients on this network obtain an IPv6 address (UI: Networks → IPv6 → Client Address Assignment). One of `slaac` (SLAAC only) or `dhcpv6` (DHCPv6 only) -- the controller dropped the combined `slaac-dhcpv6` mode between 10.4.57 and 10.6.101. Computed from the controller when not set.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
