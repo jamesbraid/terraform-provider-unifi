@@ -2,6 +2,7 @@ package resourcekit
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -244,6 +245,43 @@ func TestListWithNoHooksYieldsTheObjectItWasGiven(t *testing.T) {
 	}
 	if !model.Timeouts.IsNull() {
 		t.Error("a listed object carries timeouts, which belong to a managed resource")
+	}
+}
+
+// TestListRefusesASpecMissingIDOrTimeouts proves the same guard Create,
+// Read, Update and Delete use also covers List: list.go dereferences
+// Backend.GetID and Spec.Timeouts directly in its stream callback, and a
+// descriptor missing either would otherwise panic there instead of failing
+// with a diagnostic naming the descriptor. Mirrors
+// TestResourceRefusesASpecMissingIDSiteOrTimeouts's style.
+func TestListRefusesASpecMissingIDOrTimeouts(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		nilOut func(*Resource[kitModel, kitSDK])
+	}{
+		{"ID", func(r *Resource[kitModel, kitSDK]) { r.Spec.ID = nil }},
+		{"Timeouts", func(r *Resource[kitModel, kitSDK]) { r.Spec.Timeouts = nil }},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			r := kitListResource([]kitSDK{{ID: "1", Name: "a"}})
+			testCase.nilOut(r)
+
+			results := drain(t, r)
+			if len(results) != 1 {
+				t.Fatalf("want 1 result carrying the error, got %d", len(results))
+			}
+			if !results[0].Diagnostics.HasError() {
+				t.Fatalf("a Resource with a nil Spec.%s was accepted by List", testCase.name)
+			}
+			if !strings.Contains(results[0].Diagnostics.Errors()[0].Detail(), "kit_probe") {
+				t.Errorf("the error does not name the descriptor: %q",
+					results[0].Diagnostics.Errors()[0].Detail())
+			}
+			if !strings.Contains(results[0].Diagnostics.Errors()[0].Detail(), testCase.name) {
+				t.Errorf("the error does not name the missing accessor %q: %q",
+					testCase.name, results[0].Diagnostics.Errors()[0].Detail())
+			}
+		})
 	}
 }
 

@@ -177,14 +177,20 @@ func (s Spec[M, S]) ToSDK(ctx context.Context, model *M) (*S, diag.Diagnostics) 
 	return sdk, diags
 }
 
-// ToModel writes what the controller returned back onto the model.
+// ToModel writes what the controller returned back onto the model. ID and
+// Site are skipped when the Spec owns neither: a composite's section Spec has
+// no id or site attribute of its own -- the composite sets those itself.
 func (s Spec[M, S]) ToModel(ctx context.Context, sdk *S, model *M, site string) diag.Diagnostics {
 	var diags diag.Diagnostics
 	for _, field := range s.Fields {
 		diags.Append(field.ToModel(ctx, sdk, model)...)
 	}
-	*s.ID(model) = types.StringValue(s.Backend.GetID(sdk))
-	*s.Site(model) = types.StringValue(site)
+	if s.ID != nil && s.Backend.GetID != nil {
+		*s.ID(model) = types.StringValue(s.Backend.GetID(sdk))
+	}
+	if s.Site != nil {
+		*s.Site(model) = types.StringValue(site)
+	}
 	return diags
 }
 
@@ -291,11 +297,39 @@ func (r *Resource[M, S]) Site(model *M) string {
 	return r.DefaultSite
 }
 
+// requireIdentitySpec reports a Resource whose Spec omits ID, Site or
+// Timeouts. A composite's section Spec may leave these nil (they belong to
+// the composite instead); a whole Resource dereferences all three directly
+// in Create, Read, Update, Delete and List (list.go), so a nil one here is a
+// descriptor defect, not a configuration one.
+func (r *Resource[M, S]) requireIdentitySpec() error {
+	var missing []string
+	if r.Spec.ID == nil {
+		missing = append(missing, "ID")
+	}
+	if r.Spec.Site == nil {
+		missing = append(missing, "Site")
+	}
+	if r.Spec.Timeouts == nil {
+		missing = append(missing, "Timeouts")
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	return fmt.Errorf(
+		"%s declares no Spec.%s, so there is no way to serve it as a whole resource",
+		r.Spec.TypeName, strings.Join(missing, "/"))
+}
+
 func (r *Resource[M, S]) Create(
 	ctx context.Context,
 	req resource.CreateRequest,
 	resp *resource.CreateResponse,
 ) {
+	if err := r.requireIdentitySpec(); err != nil {
+		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, err.Error())
+		return
+	}
 	var data M
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
@@ -363,6 +397,10 @@ func (r *Resource[M, S]) Read(
 	req resource.ReadRequest,
 	resp *resource.ReadResponse,
 ) {
+	if err := r.requireIdentitySpec(); err != nil {
+		resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject, err.Error())
+		return
+	}
 	var data M
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
@@ -426,6 +464,10 @@ func (r *Resource[M, S]) Update(
 	req resource.UpdateRequest,
 	resp *resource.UpdateResponse,
 ) {
+	if err := r.requireIdentitySpec(); err != nil {
+		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
+		return
+	}
 	var state, plan M
 	// State first, and it matters: the update sends the state's values with
 	// the plan's changes applied, so an unmentioned attribute keeps what the
@@ -539,6 +581,10 @@ func (r *Resource[M, S]) Delete(
 	req resource.DeleteRequest,
 	resp *resource.DeleteResponse,
 ) {
+	if err := r.requireIdentitySpec(); err != nil {
+		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, err.Error())
+		return
+	}
 	var data M
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {

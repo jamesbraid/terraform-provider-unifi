@@ -3,6 +3,7 @@ package resourcekit
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -731,4 +732,200 @@ func TestUpdateHandsAfterReceiveTheEffectiveModelNotTheRawPlan(t *testing.T) {
 		t.Errorf("prior.name = %q, want what the object was actually built from",
 			got.ValueString())
 	}
+}
+
+// sectionSpec stands in for a composite's per-section Spec
+// (r2b-settings-composite, task 1): no ID, Site or Timeouts, since the
+// composite owns id = site and there is no per-section timeouts block.
+func sectionSpec() Spec[kitModel, kitSDK] {
+	return Spec[kitModel, kitSDK]{
+		TypeName: "kit_probe",
+		Subject:  "Kit Probe",
+		New:      func() *kitSDK { return &kitSDK{} },
+		Fields: []Field[kitModel, kitSDK]{
+			StringField[kitModel, kitSDK]{
+				Wire:  "name",
+				Model: func(m *kitModel) *types.String { return &m.Name },
+				SDK:   func(s *kitSDK) *string { return &s.Name },
+				Elide: KeepZero,
+			},
+		},
+	}
+}
+
+func TestSpecWithNoIDSiteOrTimeoutsRoundTripsWithoutPanicking(t *testing.T) {
+	spec := sectionSpec()
+	ctx := context.Background()
+
+	plan := &kitModel{Name: types.StringValue("configured")}
+	sdk, diags := spec.ToSDK(ctx, plan)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+	fields, err := spec.WireFields(plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	if len(fields) != 1 || fields[0] != "name" {
+		t.Fatalf("WireFields = %v, want [name]", fields)
+	}
+
+	state := &kitModel{}
+	diags = spec.ToModel(ctx, sdk, state, "unused-site")
+	if diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if state.Name.ValueString() != "configured" {
+		t.Errorf("name = %v, want configured; a section Spec's Fields must still decode", state.Name)
+	}
+
+	spec.ApplyPlanToState(plan, state)
+	if state.Name.ValueString() != "configured" {
+		t.Errorf("name = %v after ApplyPlanToState, want configured", state.Name)
+	}
+}
+
+func TestToModelLeavesIDAndSiteAloneWhenTheSpecOwnsNeither(t *testing.T) {
+	spec := sectionSpec()
+	sdk := &kitSDK{ID: "controller-id", Name: "from-controller"}
+	model := &kitModel{
+		ID:   types.StringValue("untouched-id"),
+		Site: types.StringValue("untouched-site"),
+		Name: types.StringValue("stale"),
+	}
+	diags := spec.ToModel(context.Background(), sdk, model, "some-site")
+	if diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if model.Name.ValueString() != "from-controller" {
+		t.Errorf("name = %v, want from-controller; the Field-decoded attribute must still land",
+			model.Name)
+	}
+	if model.ID.ValueString() != "untouched-id" {
+		t.Errorf("id = %v, want untouched-id; a Spec with no ID accessor has nowhere to write "+
+			"one and must not touch it", model.ID)
+	}
+	if model.Site.ValueString() != "untouched-site" {
+		t.Errorf("site = %v, want untouched-site; a Spec with no Site accessor has nowhere to "+
+			"write one and must not touch it", model.Site)
+	}
+}
+
+// TestToModelWritesIDAndSiteWhenTheSpecOwnsBoth is the positive control: a
+// whole-resource Spec must keep writing id and site exactly as before.
+func TestToModelWritesIDAndSiteWhenTheSpecOwnsBoth(t *testing.T) {
+	spec := sectionSpec()
+	spec.ID = func(m *kitModel) *types.String { return &m.ID }
+	spec.Site = func(m *kitModel) *types.String { return &m.Site }
+	spec.Backend.GetID = func(s *kitSDK) string { return s.ID }
+
+	sdk := &kitSDK{ID: "controller-id", Name: "from-controller"}
+	model := &kitModel{}
+	diags := spec.ToModel(context.Background(), sdk, model, "some-site")
+	if diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if model.ID.ValueString() != "controller-id" {
+		t.Errorf("id = %v, want controller-id", model.ID)
+	}
+	if model.Site.ValueString() != "some-site" {
+		t.Errorf("site = %v, want some-site", model.Site)
+	}
+}
+
+// TestResourceRefusesASpecMissingIDSiteOrTimeouts is Resource's side of the
+// same change: a section Spec may omit these, but Resource (the
+// whole-resource server) dereferences all three directly, so a nil one is a
+// descriptor defect that must fail with a clear message rather than panic.
+// Mirrors TestCreateRefusesADescriptorThatDeclaresNoWriter's style.
+func TestResourceRefusesASpecMissingIDSiteOrTimeouts(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		nilOut func(*Resource[kitModel, kitSDK])
+	}{
+		{"ID", func(r *Resource[kitModel, kitSDK]) { r.Spec.ID = nil }},
+		{"Site", func(r *Resource[kitModel, kitSDK]) { r.Spec.Site = nil }},
+		{"Timeouts", func(r *Resource[kitModel, kitSDK]) { r.Spec.Timeouts = nil }},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			r := kitResource(Backend[kitSDK]{
+				Create: func(_ context.Context, _ string, in *kitSDK) (*kitSDK, error) {
+					return in, nil
+				},
+			})
+			testCase.nilOut(r)
+			plan := kitStateWith(t, kitModel{
+				ID: types.StringNull(), Site: types.StringValue("default"),
+				Name: types.StringValue("probe"),
+			})
+			resp := &resource.CreateResponse{
+				State:    tfsdk.State{Schema: kitSchema(context.Background())},
+				Identity: func() *tfsdk.ResourceIdentity { id := kitIdentity(t); return &id }(),
+			}
+			r.Create(context.Background(), resource.CreateRequest{Plan: tfsdk.Plan(plan)}, resp)
+
+			if !resp.Diagnostics.HasError() {
+				t.Fatalf("a Resource with a nil Spec.%s was accepted", testCase.name)
+			}
+			if !strings.Contains(resp.Diagnostics.Errors()[0].Detail(), "kit_probe") {
+				t.Errorf("the error does not name the descriptor: %q",
+					resp.Diagnostics.Errors()[0].Detail())
+			}
+			if !strings.Contains(resp.Diagnostics.Errors()[0].Detail(), testCase.name) {
+				t.Errorf("the error does not name the missing accessor %q: %q",
+					testCase.name, resp.Diagnostics.Errors()[0].Detail())
+			}
+		})
+	}
+}
+
+// TestReadUpdateDeleteRefuseASpecMissingTimeouts proves the same guard
+// applies to every operation, not only Create: Timeouts is the first of the
+// three accessors each of them dereferences.
+func TestReadUpdateDeleteRefuseASpecMissingTimeouts(t *testing.T) {
+	state := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("probe"),
+	})
+
+	t.Run("Read", func(t *testing.T) {
+		r := kitResource(Backend[kitSDK]{
+			Read: func(context.Context, string, string) (*kitSDK, error) {
+				return &kitSDK{ID: "id-1", Name: "probe"}, nil
+			},
+		})
+		r.Spec.Timeouts = nil
+		resp := &resource.ReadResponse{State: state}
+		r.Read(context.Background(), resource.ReadRequest{State: state}, resp)
+		if !resp.Diagnostics.HasError() {
+			t.Fatal("a Resource with a nil Spec.Timeouts was accepted by Read")
+		}
+	})
+
+	t.Run("Update", func(t *testing.T) {
+		r := kitResource(Backend[kitSDK]{
+			UpdateFields: func(_ context.Context, _ string, in *kitSDK, _ ...string) (*kitSDK, error) {
+				return in, nil
+			},
+		})
+		r.Spec.Timeouts = nil
+		identity := kitIdentity(t)
+		resp := &resource.UpdateResponse{State: state, Identity: &identity}
+		r.Update(context.Background(), resource.UpdateRequest{State: state, Plan: tfsdk.Plan(state)}, resp)
+		if !resp.Diagnostics.HasError() {
+			t.Fatal("a Resource with a nil Spec.Timeouts was accepted by Update")
+		}
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		r := kitResource(Backend[kitSDK]{
+			Delete: func(context.Context, string, string) error { return nil },
+		})
+		r.Spec.Timeouts = nil
+		resp := &resource.DeleteResponse{State: state}
+		r.Delete(context.Background(), resource.DeleteRequest{State: state}, resp)
+		if !resp.Diagnostics.HasError() {
+			t.Fatal("a Resource with a nil Spec.Timeouts was accepted by Delete")
+		}
+	})
 }

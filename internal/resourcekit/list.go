@@ -63,6 +63,12 @@ func (r *Resource[M, S]) List(
 	req list.ListRequest,
 	stream *list.ListResultsStream,
 ) {
+	if err := r.requireIdentitySpec(); err != nil {
+		var diags diag.Diagnostics
+		diags.AddError("Error Listing "+r.Spec.Subject, err.Error())
+		stream.Results = list.ListResultsStreamDiagnostics(diags)
+		return
+	}
 	var config ListConfig
 	if diags := req.Config.Get(ctx, &config); diags.HasError() {
 		stream.Results = list.ListResultsStreamDiagnostics(diags)
