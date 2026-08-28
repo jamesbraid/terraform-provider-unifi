@@ -180,6 +180,10 @@
       },
       "schema_version": 0
     },
+    "unifi_setting": {
+      "sdk_type": "composite over settings.* -- resourcekit.Composite fans out to one SDK type per section (see unifi/setting_sections.go); no single sdk_type applies until every section is a Spec. The mgmt section's is settings.Mgmt.",
+      "schema_version": 1
+    },
     "unifi_site_to_site_vpn": {
       "sdk_type": "Network",
       "duration_units": {

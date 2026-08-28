@@ -49,6 +49,25 @@ func loadDescriptorPolicy(t *testing.T) descriptorPolicy {
 // resourcekit.Resource, and reads the Terraform type name off its Metadata.
 func kitServedSurfaces(t *testing.T) map[string]string {
 	t.Helper()
+	return kitEmbeddingSurfaces(t, "Resource")
+}
+
+// kitServedCompositeSurfaces is kitServedSurfaces' counterpart for
+// resourcekit.Composite (settingResource, so far the only one). Kept
+// separate rather than folded into kitServedSurfaces: three other
+// consolidated checks call kitServedSurfaces and assume one Spec/Backend per
+// surface (elide, zero-read, and write-path classification), which a
+// Composite's per-section Specs don't have -- only the policy cross-check
+// below wants every kit-served surface, of either shape, uniformly.
+func kitServedCompositeSurfaces(t *testing.T) map[string]string {
+	t.Helper()
+	return kitEmbeddingSurfaces(t, "Composite")
+}
+
+// kitEmbeddingSurfaces finds every type in this package that embeds
+// resourcekit.<kitType>, and reads the Terraform type name off its Metadata.
+func kitEmbeddingSurfaces(t *testing.T, kitType string) map[string]string {
+	t.Helper()
 	fset := token.NewFileSet()
 	embeds := map[string]bool{}
 	names := map[string]string{}
@@ -80,16 +99,21 @@ func kitServedSurfaces(t *testing.T) map[string]string {
 				if len(field.Names) != 0 {
 					continue // embedded fields have no name
 				}
-				index, ok := field.Type.(*ast.IndexListExpr)
-				if !ok {
-					continue
+				// A two-parameter generic (Resource[M, S]) parses as
+				// IndexListExpr; a one-parameter one (Composite[M]) parses
+				// as plain IndexExpr instead -- both must be tried.
+				var selector *ast.SelectorExpr
+				switch index := field.Type.(type) {
+				case *ast.IndexListExpr:
+					selector, _ = index.X.(*ast.SelectorExpr)
+				case *ast.IndexExpr:
+					selector, _ = index.X.(*ast.SelectorExpr)
 				}
-				selector, ok := index.X.(*ast.SelectorExpr)
-				if !ok {
+				if selector == nil {
 					continue
 				}
 				pkg, ok := selector.X.(*ast.Ident)
-				if ok && pkg.Name == "resourcekit" && selector.Sel.Name == "Resource" {
+				if ok && pkg.Name == "resourcekit" && selector.Sel.Name == kitType {
 					embeds[spec.Name.Name] = true
 				}
 			}
@@ -131,8 +155,8 @@ func kitServedSurfaces(t *testing.T) map[string]string {
 	}
 
 	if len(embeds) == 0 {
-		t.Fatal("no type in this package embeds resourcekit.Resource; the detector is broken, " +
-			"not the tree -- an empty result here would pass both directions below")
+		t.Fatalf("no type in this package embeds resourcekit.%s; the detector is broken, "+
+			"not the tree -- an empty result here would pass both directions below", kitType)
 	}
 	if len(names) != len(embeds) {
 		t.Errorf("%d type(s) embed the kit but %d declare a Metadata TypeName; a kit-served "+
@@ -143,9 +167,24 @@ func kitServedSurfaces(t *testing.T) map[string]string {
 	return names
 }
 
+// allKitServedSurfaces is every surface the policy cross-check below wants
+// covered: kitServedSurfaces' Resource-embedding surfaces plus
+// kitServedCompositeSurfaces' Composite-embedding ones.
+func allKitServedSurfaces(t *testing.T) map[string]string {
+	t.Helper()
+	all := map[string]string{}
+	for name, structName := range kitServedSurfaces(t) {
+		all[name] = structName
+	}
+	for name, structName := range kitServedCompositeSurfaces(t) {
+		all[name] = structName
+	}
+	return all
+}
+
 func TestEveryKitSurfaceHasAPolicyEntry(t *testing.T) {
 	policy := loadDescriptorPolicy(t)
-	served := kitServedSurfaces(t)
+	served := allKitServedSurfaces(t)
 
 	var missing []string
 	for name := range served {
@@ -162,7 +201,7 @@ func TestEveryKitSurfaceHasAPolicyEntry(t *testing.T) {
 
 func TestEveryPolicyEntryNamesAKitSurface(t *testing.T) {
 	policy := loadDescriptorPolicy(t)
-	served := kitServedSurfaces(t)
+	served := allKitServedSurfaces(t)
 
 	var stale []string
 	for name := range policy.Surfaces {
