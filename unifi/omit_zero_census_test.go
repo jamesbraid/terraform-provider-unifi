@@ -26,7 +26,7 @@ var knownOmitZeroGaps = map[string]string{
 	"firewall_rule.rule_index": `Required, not Optional -- a Required attribute is never ` +
 		`legitimately unset, so OmitZero (which OMITS the field from the wire) is the wrong tool. ` +
 		`The hazard cannot currently trigger anyway: the schema validator already restricts the ` +
-		`value to the four legal index ranges, none of which include 0.`,
+		`value to the six legal index ranges, none of which include 0.`,
 	"static_route.static-route_distance": `Required (the Terraform attribute is named "distance"); ` +
 		`same reasoning as firewall_rule.rule_index above.`,
 }
