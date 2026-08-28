@@ -417,7 +417,10 @@ generator. The pipeline, per surface:
    `data-sources` (`tfplugingen-framework generate --help` shows the current
    set, checked against this worktree's pinned version) — there is no `list`
    or `action` subcommand, even though the code-spec format it reads carries
-   its own `listresources` and `actions` members.
+   its own `listresources` and `actions` members. It refuses a
+   bootstrap/policy pair whose digests disagree unless the policy's digest is
+   well-formed and merely stale, in which case it re-pins the policy file and
+   continues — the diff is the review signal.
 4. Two of this repo's own tools cover exactly that gap: `cmd/list-resource-gen`
    and `cmd/action-gen` read a code-spec's `listresources`/`actions` members
    and emit the Go the upstream generator has no subcommand for at all. A

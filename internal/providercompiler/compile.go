@@ -52,11 +52,10 @@ func Compile(input CompileInput) (Result, error) {
 		)
 	}
 	if source.Source.SpecificationSHA256 != rules.SourceSpecificationSHA256 {
-		return Result{}, fmt.Errorf(
-			"bootstrap digest mismatch: bootstrap %q, policy %q",
-			source.Source.SpecificationSHA256,
-			rules.SourceSpecificationSHA256,
-		)
+		return Result{}, &DigestMismatchError{
+			Bootstrap: source.Source.SpecificationSHA256,
+			Policy:    rules.SourceSpecificationSHA256,
+		}
 	}
 	// Reject an unsupported surface kind up front, rather than downstream
 	// where the failure would look unrelated to the real cause.

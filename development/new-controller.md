@@ -75,6 +75,12 @@ With the new go-unifi tag available:
    generated-code change: a surface with no policy change should regenerate
    byte-identical.
 
+   A surface whose SDK struct changed shape shows up as a one-line change to
+   its policy's `source_specification_sha256`: the compiler re-pins a stale
+   digest itself and announces it on stderr, so the list of surfaces to look
+   at in step 3 is exactly the list of re-pinned policy files in
+   `git status`. A digest that is not a SHA-256 at all is refused, unchanged.
+
 5. **Update descriptors.** A new attribute needs a new `Field` entry (or, for
    a value the schema alone can't express, a hook — see
    [architecture.md](architecture.md#the-three-hooks)) in the surface's

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -120,5 +122,60 @@ func TestRunRejectsInvalidArtifactPrefix(t *testing.T) {
 	}, &stderr)
 	if exitCode == 0 || !bytes.Contains(stderr.Bytes(), []byte("artifact-prefix")) {
 		t.Fatalf("run() exit code = %d, stderr = %q", exitCode, stderr.String())
+	}
+}
+
+func TestRunRepinsAStalePolicyDigestAndCompiles(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", ".."))
+	bootstrapPath := filepath.Join(root, "provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json")
+	original, err := os.ReadFile(filepath.Join(root, "provider-codegen/policy/dns_record.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := regexp.MustCompile(`"source_specification_sha256": "([0-9a-f]{64})"`).ReplaceAll(original, []byte(`"source_specification_sha256": "`+strings.Repeat("1", 64)+`"`))
+	policyPath := filepath.Join(t.TempDir(), "dns_record.json")
+	writeFile(t, policyPath, string(stale))
+	outputDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	exitCode := run([]string{"-bootstrap", bootstrapPath, "-policy", policyPath, "-artifact-prefix", "dns_record", "-output-dir", outputDir}, &stderr)
+
+	if exitCode != 0 {
+		t.Fatalf("exit %d, stderr %s -- a stale, well-formed digest is a bump, not corruption", exitCode, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "re-pinned") {
+		t.Errorf("stderr = %q; the re-pin must be announced", stderr.String())
+	}
+	repinned, err := os.ReadFile(policyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(repinned, original) {
+		t.Errorf("policy after re-pin differs from the committed one beyond the digest:\n%s", repinned)
+	}
+	if _, err := os.Stat(filepath.Join(outputDir, "dns_record.provider-code-spec.json")); err != nil {
+		t.Errorf("artifact not written after re-pin: %v", err)
+	}
+}
+
+func TestRunRefusesACorruptPolicyDigest(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", ".."))
+	original, err := os.ReadFile(filepath.Join(root, "provider-codegen/policy/dns_record.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corrupt := regexp.MustCompile(`"source_specification_sha256": "([0-9a-f]{64})"`).ReplaceAll(original, []byte(`"source_specification_sha256": "deadbeef"`))
+	policyPath := filepath.Join(t.TempDir(), "dns_record.json")
+	writeFile(t, policyPath, string(corrupt))
+	var stderr bytes.Buffer
+
+	exitCode := run([]string{"-bootstrap", filepath.Join(root, "provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json"), "-policy", policyPath, "-artifact-prefix", "dns_record", "-output-dir", t.TempDir()}, &stderr)
+
+	if exitCode == 0 {
+		t.Fatal("a digest that is not 64 hex characters was accepted; corruption must refuse")
+	}
+	after, _ := os.ReadFile(policyPath)
+	if !bytes.Equal(after, corrupt) {
+		t.Error("the corrupt policy was rewritten; refusal must leave the file alone")
 	}
 }

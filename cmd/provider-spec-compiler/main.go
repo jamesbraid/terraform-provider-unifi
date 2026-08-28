@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -52,10 +53,23 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 
-	result, err := providercompiler.Compile(providercompiler.CompileInput{
-		Bootstrap: bootstrap,
-		Policy:    policy,
-	})
+	result, err := providercompiler.Compile(providercompiler.CompileInput{Bootstrap: bootstrap, Policy: policy})
+	var mismatch *providercompiler.DigestMismatchError
+	if errors.As(err, &mismatch) && providercompiler.WellFormedDigest(mismatch.Policy) {
+		// A well-formed but stale digest means the SDK struct moved under
+		// the policy; re-pin in place so the diff is the review signal.
+		repinned, repinErr := providercompiler.RepinPolicy(policy, mismatch.Policy, mismatch.Bootstrap)
+		if repinErr != nil {
+			fmt.Fprintf(stderr, "compile: %v; re-pin refused: %v\n", err, repinErr)
+			return 1
+		}
+		if writeErr := os.WriteFile(*policyPath, repinned, 0o644); writeErr != nil {
+			fmt.Fprintf(stderr, "write re-pinned policy: %v\n", writeErr)
+			return 1
+		}
+		fmt.Fprintf(stderr, "re-pinned %s: %s -> %s\n", *policyPath, mismatch.Policy[:8], mismatch.Bootstrap[:8])
+		result, err = providercompiler.Compile(providercompiler.CompileInput{Bootstrap: bootstrap, Policy: repinned})
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "compile: %v\n", err)
 		return 1

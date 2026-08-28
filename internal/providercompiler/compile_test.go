@@ -3,6 +3,7 @@ package providercompiler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -2456,5 +2457,54 @@ func TestCompileAcceptsASecretCandidateOmittedByTheCompactForm(t *testing.T) {
 	input.Bootstrap = mustJSON(t, document)
 	if _, err := Compile(input); err != nil {
 		t.Fatalf("Compile() rejected a secret candidate omitted by the compact form: %v", err)
+	}
+}
+
+func TestCompileReturnsATypedDigestMismatch(t *testing.T) {
+	// The dns_record fixture pair the "bootstrap digest mismatch" table case
+	// uses, with the policy's digest shifted one hex digit: still 64 hex
+	// chars, still well formed, just not what the bootstrap carries.
+	bootstrap := testBootstrap(t, dnsFieldNames())
+	staleDigest := "4" + strings.TrimPrefix(testSpecificationDigest, "3")
+	policy := testPolicy(t, dnsFieldNames(), staleDigest)
+
+	_, err := Compile(CompileInput{Bootstrap: bootstrap, Policy: policy})
+
+	var mismatch *DigestMismatchError
+	if !errors.As(err, &mismatch) {
+		t.Fatalf("Compile() error = %v; want *DigestMismatchError so a caller can tell a bump from corruption", err)
+	}
+	if mismatch.Bootstrap == "" || mismatch.Policy == "" || mismatch.Bootstrap == mismatch.Policy {
+		t.Errorf("DigestMismatchError = %+v; both digests must be reported", *mismatch)
+	}
+}
+
+func TestRepinPolicyRewritesExactlyTheDigestLine(t *testing.T) {
+	policy := []byte("{\n  \"resource\": \"unifi_x\",\n  \"source_specification_sha256\": \"" + strings.Repeat("a", 64) + "\",\n  \"fields\": []\n}\n")
+	got, err := RepinPolicy(policy, strings.Repeat("a", 64), strings.Repeat("b", 64))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := bytes.Replace(policy, []byte(strings.Repeat("a", 64)), []byte(strings.Repeat("b", 64)), 1)
+	if !bytes.Equal(got, want) {
+		t.Errorf("RepinPolicy() changed more than the digest:\n%s", got)
+	}
+}
+
+func TestRepinPolicyRefusesWhenTheDigestIsNotExactlyOnce(t *testing.T) {
+	policy := []byte(`{"source_specification_sha256": "` + strings.Repeat("a", 64) + `", "other": "` + strings.Repeat("a", 64) + `"}`)
+	if _, err := RepinPolicy(policy, strings.Repeat("a", 64), strings.Repeat("b", 64)); err == nil {
+		t.Error("RepinPolicy() accepted a policy where the digest text appears twice; it must refuse rather than guess which is the pin")
+	}
+}
+
+func TestWellFormedDigest(t *testing.T) {
+	if !WellFormedDigest(strings.Repeat("0", 64)) {
+		t.Error("64 hex chars is well formed")
+	}
+	for _, bad := range []string{"", "deadbeef", strings.Repeat("g", 64), strings.Repeat("0", 63)} {
+		if WellFormedDigest(bad) {
+			t.Errorf("WellFormedDigest(%q) = true; want false", bad)
+		}
 	}
 }
