@@ -99,6 +99,7 @@ resource "unifi_network" "third_party" {
 - `dhcp_v6_server` (Attributes) DHCPv6 server configuration. (see [below for nested schema](#nestedatt--dhcp_v6_server))
 - `domain_name` (String) The domain name for the network.
 - `enabled` (Boolean) Specifies whether the network is enabled.
+- `firewall_zone_id` (String) The ID of the firewall zone (`unifi_firewall_zone`) this network belongs to.
 - `gateway_type` (String) The gateway type. Must be one of `default` or `switch`.
 - `igmp_snooping` (Boolean) Specifies whether IGMP snooping is enabled.
 - `internet_access` (Boolean) Specifies whether internet access is enabled.
@@ -163,6 +164,7 @@ Optional:
 - `gateway_enabled` (Boolean) Specifies whether DHCP gateway is enabled.
 - `leasetime` (String) Specifies the DHCP lease time, as a Go duration string (e.g. `24h`, `86400s`). Defaults to `24h0m0s`.
 - `ntp_enabled` (Boolean) Specifies whether DHCP NTP is enabled.
+- `ntp_servers` (List of String) List of NTP server addresses for DHCP clients (maximum 2).
 - `start` (String) The IPv4 address where the DHCP range starts.
 - `stop` (String) The IPv4 address where the DHCP range stops.
 - `tftp_server` (String) TFTP server address.
@@ -229,7 +231,7 @@ Optional:
 
 Import is supported using the following syntax:
 
-The [` + "`" + `terraform import` + "`" + ` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
 # import by ID from provider configured site

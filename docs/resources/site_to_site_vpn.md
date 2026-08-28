@@ -48,7 +48,7 @@ resource "unifi_site_to_site_vpn" "branch" {
 
 - `name` (String) The name of the site-to-site VPN.
 - `peer_ip` (String) The public IP address of the remote VPN gateway (peer).
-- `remote_subnets` (List of String) The remote site's subnets reachable through the tunnel (CIDR).
+- `remote_subnets` (List of String) The remote site's subnets reachable through the tunnel (CIDR). Must hold at least one subnet unless dynamic_routing is true, enforced by a config-time validator rather than a plain list-length check: a dynamic-routing tunnel discovers subnets itself, so an empty list is legal only then.
 
 ### Optional
 
@@ -93,7 +93,7 @@ Optional:
 
 Import is supported using the following syntax:
 
-The [` + "`" + `terraform import` + "`" + ` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
 # Site-to-site VPN networks can be imported using the network ID (the pre-shared
