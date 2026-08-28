@@ -54,12 +54,19 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Bug Fixes
 
-- **`unifi_site_to_site_vpn`: `remote_subnets` can be empty when
-  `dynamic_routing` is enabled.** The attribute required at least one CIDR
-  unconditionally, so a dynamic-routing tunnel — which discovers its own
-  subnets and has no configured list to give — could never be declared with
-  `remote_subnets = []`. The length requirement now applies only when
-  `dynamic_routing` is `false`.
+- **`unifi_site_to_site_vpn`: `remote_subnets` no longer requires at least
+  one CIDR unconditionally when `dynamic_routing` is enabled.** A
+  dynamic-routing tunnel discovers its own subnets and has no configured
+  list to give, so requiring one made no sense — matches upstream's #433.
+  **This does not yet make `remote_subnets = []` work end to end**: a
+  live probe found the SDK's site-VPN encoder tags the wire field
+  `omitempty`, which drops an explicitly empty list the same as an absent
+  one, and the controller rejects a create with the field entirely absent
+  regardless of `dynamic_routing`. The plan-time restriction is gone —
+  matching the intent — but the apply still fails on the controller side
+  until the SDK encoder is fixed to send an explicit `[]`; the acceptance
+  test for this scenario asserts today's actual (failing) apply, not the
+  claim.
 
 ### 📖 Documentation
 
