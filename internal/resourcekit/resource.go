@@ -115,11 +115,13 @@ type Spec[M any, S any] struct {
 	Name func(*M) *types.String
 }
 
-// WireFields lists the SDK names of every attribute the plan set, for a
-// masked update. An empty result errors rather than sending nothing: a
-// masked update naming no field is a no-op patch, indistinguishable from
-// success while changing nothing the plan asked for.
-func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
+// maskFields is the field-mask computation WireFields and specSection both
+// need. WireFields refuses an empty result -- a whole resource's masked
+// update naming no field is a no-op, indistinguishable from success. A
+// section's masked write treats the same empty result as a legitimate
+// no-op instead (a configured-but-empty section object writes nothing), so
+// it calls this directly rather than through WireFields' refusal.
+func (s Spec[M, S]) maskFields(plan *M) ([]string, error) {
 	fields := make([]string, 0, len(s.Fields))
 	seen := make(map[string]struct{}, len(s.Fields))
 	for _, field := range s.Fields {
@@ -146,6 +148,18 @@ func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
 		}
 		seen[name] = struct{}{}
 		fields = append(fields, name)
+	}
+	return fields, nil
+}
+
+// WireFields lists the SDK names of every attribute the plan set, for a
+// masked update. An empty result errors rather than sending nothing: a
+// masked update naming no field is a no-op patch, indistinguishable from
+// success while changing nothing the plan asked for.
+func (s Spec[M, S]) WireFields(plan *M) ([]string, error) {
+	fields, err := s.maskFields(plan)
+	if err != nil {
+		return nil, err
 	}
 	if len(fields) == 0 {
 		return nil, fmt.Errorf("%s patch needs at least one managed field", s.TypeName)
