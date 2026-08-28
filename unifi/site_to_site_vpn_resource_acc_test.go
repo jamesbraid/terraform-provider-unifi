@@ -124,3 +124,38 @@ resource "unifi_site_to_site_vpn" "pfs" {
 }
 `, name, pfs, dynamicRouting)
 }
+
+// TestAccSiteToSiteVPNFramework_dynamicRoutingEmptySubnets is the live
+// counterpart to Test_siteToSiteVPNRemoteSubnetsConfigValidator_ValidateResource:
+// the upstream #433 claim that a dynamic-routing tunnel with no configured
+// remote subnets applies, rather than failing schema validation.
+func TestAccSiteToSiteVPNFramework_dynamicRoutingEmptySubnets(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSiteToSiteVPNAccConfig_dynamicRoutingNoSubnets("tf-acc-s2s-dynamic"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_site_to_site_vpn.dynamic", "id"),
+					resource.TestCheckResourceAttr(
+						"unifi_site_to_site_vpn.dynamic", "dynamic_routing", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_site_to_site_vpn.dynamic", "remote_subnets.#", "0"),
+				),
+			},
+		},
+	})
+}
+
+func testAccSiteToSiteVPNAccConfig_dynamicRoutingNoSubnets(name string) string {
+	return fmt.Sprintf(`
+resource "unifi_site_to_site_vpn" "dynamic" {
+  name             = %q
+  peer_ip          = "203.0.113.50"
+  pre_shared_key   = "tf-acc-psk-not-a-real-secret"
+  remote_subnets   = []
+  dynamic_routing  = true
+}
+`, name)
+}

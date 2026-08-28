@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -467,5 +468,112 @@ func TestPFSAndDynamicRoutingAreEmittedUnconditionally(t *testing.T) {
 					on, name, inMask, isEmitted)
 			}
 		}
+	}
+}
+
+func Test_siteToSiteVPNKitResource_ConfigValidators(t *testing.T) {
+	r := newSiteToSiteVPNKitResource()
+	validators := r.ConfigValidators(context.Background())
+	if len(validators) == 0 {
+		t.Error("expected at least one config validator")
+	}
+}
+
+func Test_siteToSiteVPNRemoteSubnetsConfigValidator_Description(t *testing.T) {
+	v := &siteToSiteVPNRemoteSubnetsConfigValidator{}
+	want := "remote_subnets must hold at least one subnet unless dynamic_routing is true"
+	if got := v.Description(context.Background()); got != want {
+		t.Errorf("Description() = %q, want %q", got, want)
+	}
+}
+
+func Test_siteToSiteVPNRemoteSubnetsConfigValidator_MarkdownDescription(t *testing.T) {
+	v := &siteToSiteVPNRemoteSubnetsConfigValidator{}
+	want := "remote_subnets must hold at least one subnet unless dynamic_routing is true"
+	if got := v.MarkdownDescription(context.Background()); got != want {
+		t.Errorf("MarkdownDescription() = %q, want %q", got, want)
+	}
+}
+
+// Test_siteToSiteVPNRemoteSubnetsConfigValidator_ValidateResource builds a
+// real schema-backed config, the same shape
+// Test_staticRouteIPVersionValidator_ValidateResource uses, and exercises
+// both sides of upstream's #433 fix: empty remote_subnets is rejected with
+// dynamic_routing off, and allowed once it's on.
+func Test_siteToSiteVPNRemoteSubnetsConfigValidator_ValidateResource(t *testing.T) {
+	ctx := context.Background()
+	schemaResp := &fwresource.SchemaResponse{}
+	newSiteToSiteVPNKitResource().Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
+	if schemaResp.Diagnostics.HasError() {
+		t.Fatalf("build the schema: %v", schemaResp.Diagnostics)
+	}
+
+	configFor := func(t *testing.T, dynamicRouting types.Bool, subnets []string) tfsdk.Config {
+		t.Helper()
+		remoteSubnets := types.ListNull(types.StringType)
+		if subnets != nil {
+			var diags diag.Diagnostics
+			remoteSubnets, diags = types.ListValueFrom(ctx, types.StringType, subnets)
+			if diags.HasError() {
+				t.Fatalf("building remote_subnets: %v", diags)
+			}
+		}
+		model := siteToSiteVPNKitModel{
+			ID:             types.StringNull(),
+			Site:           types.StringNull(),
+			Name:           types.StringValue("HQ-to-Branch"),
+			Enabled:        types.BoolValue(true),
+			Interface:      types.StringNull(),
+			PeerIP:         iptypes.NewIPv4AddressValue("203.0.113.9"),
+			LocalIP:        iptypes.NewIPv4AddressNull(),
+			KeyExchange:    types.StringNull(),
+			PreSharedKey:   types.StringNull(),
+			PreSharedKeyWO: types.StringNull(),
+			RemoteSubnets:  remoteSubnets,
+			Profile:        types.StringNull(),
+			IKEEncryption:  types.StringNull(),
+			IKEHash:        types.StringNull(),
+			IKEDhGroup:     types.Int64Null(),
+			IKELifetime:    timetypes.NewGoDurationNull(),
+			ESPEncryption:  types.StringNull(),
+			ESPHash:        types.StringNull(),
+			ESPDhGroup:     types.Int64Null(),
+			ESPLifetime:    timetypes.NewGoDurationNull(),
+			PFS:            types.BoolNull(),
+			DynamicRouting: dynamicRouting,
+			RouteDistance:  types.Int64Null(),
+			Timeouts:       timeoutsNullValue(),
+		}
+		staging := tfsdk.State{Schema: schemaResp.Schema}
+		if diags := staging.Set(ctx, model); diags.HasError() {
+			t.Fatalf("set the config: %v", diags)
+		}
+		return tfsdk.Config{Schema: schemaResp.Schema, Raw: staging.Raw}
+	}
+
+	tests := []struct {
+		name           string
+		dynamicRouting types.Bool
+		subnets        []string
+		wantError      bool
+	}{
+		{"static_with_subnets", types.BoolValue(false), []string{"192.0.2.0/24"}, false},
+		{"static_with_no_subnets", types.BoolValue(false), []string{}, true},
+		{"static_unset_with_no_subnets", types.BoolNull(), []string{}, true},
+		{"dynamic_with_no_subnets", types.BoolValue(true), []string{}, false},
+		{"dynamic_with_subnets", types.BoolValue(true), []string{"192.0.2.0/24"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := &siteToSiteVPNRemoteSubnetsConfigValidator{}
+			resp := &fwresource.ValidateConfigResponse{}
+			v.ValidateResource(ctx, fwresource.ValidateConfigRequest{
+				Config: configFor(t, tt.dynamicRouting, tt.subnets),
+			}, resp)
+			if got := resp.Diagnostics.HasError(); got != tt.wantError {
+				t.Errorf("dynamic_routing=%v subnets=%v: got error=%v, want %v (diags: %v)",
+					tt.dynamicRouting, tt.subnets, got, tt.wantError, resp.Diagnostics)
+			}
+		})
 	}
 }

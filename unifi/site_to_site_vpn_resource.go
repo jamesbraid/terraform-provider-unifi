@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	resource_site_to_site_vpn "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site_to_site_vpn"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -22,12 +23,13 @@ type siteToSiteVPNKitResource struct {
 }
 
 var (
-	_ resource.Resource                 = &siteToSiteVPNKitResource{}
-	_ resource.ResourceWithImportState  = &siteToSiteVPNKitResource{}
-	_ resource.ResourceWithIdentity     = &siteToSiteVPNKitResource{}
-	_ resource.ResourceWithUpgradeState = &siteToSiteVPNKitResource{}
-	_ list.ListResource                 = &siteToSiteVPNKitResource{}
-	_ list.ListResourceWithConfigure    = &siteToSiteVPNKitResource{}
+	_ resource.Resource                     = &siteToSiteVPNKitResource{}
+	_ resource.ResourceWithImportState      = &siteToSiteVPNKitResource{}
+	_ resource.ResourceWithIdentity         = &siteToSiteVPNKitResource{}
+	_ resource.ResourceWithUpgradeState     = &siteToSiteVPNKitResource{}
+	_ resource.ResourceWithConfigValidators = &siteToSiteVPNKitResource{}
+	_ list.ListResource                     = &siteToSiteVPNKitResource{}
+	_ list.ListResourceWithConfigure        = &siteToSiteVPNKitResource{}
 )
 
 func newSiteToSiteVPNKitResource() *siteToSiteVPNKitResource {
@@ -91,6 +93,64 @@ func (r *siteToSiteVPNKitResource) Configure(
 	r.Spec.Backend = siteToSiteVPNKitBackend(client.ApiClient)
 	r.DefaultSite = client.Site
 }
+
+func (r *siteToSiteVPNKitResource) ConfigValidators(
+	_ context.Context,
+) []resource.ConfigValidator {
+	return []resource.ConfigValidator{&siteToSiteVPNRemoteSubnetsConfigValidator{}}
+}
+
+// siteToSiteVPNRemoteSubnetsConfigValidator requires remote_subnets to hold at
+// least one subnet unless dynamic_routing is true (upstream #433): a
+// dynamic-routing tunnel discovers subnets itself, so an empty list only
+// makes sense there -- a static tunnel with no subnets configured would never
+// route anything.
+type siteToSiteVPNRemoteSubnetsConfigValidator struct{}
+
+func (v *siteToSiteVPNRemoteSubnetsConfigValidator) Description(_ context.Context) string {
+	return "remote_subnets must hold at least one subnet unless dynamic_routing is true"
+}
+
+func (v *siteToSiteVPNRemoteSubnetsConfigValidator) MarkdownDescription(
+	ctx context.Context,
+) string {
+	return v.Description(ctx)
+}
+
+func (v *siteToSiteVPNRemoteSubnetsConfigValidator) ValidateResource(
+	ctx context.Context,
+	req resource.ValidateConfigRequest,
+	resp *resource.ValidateConfigResponse,
+) {
+	var dynamicRouting types.Bool
+	var remoteSubnets types.List
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("dynamic_routing"), &dynamicRouting)...)
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("remote_subnets"), &remoteSubnets)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Unknown means an expression this validator can't resolve yet; skip
+	// rather than guess.
+	if dynamicRouting.IsUnknown() || dynamicRouting.ValueBool() {
+		return
+	}
+	if remoteSubnets.IsUnknown() {
+		return
+	}
+	if !remoteSubnets.IsNull() && len(remoteSubnets.Elements()) > 0 {
+		return
+	}
+	resp.Diagnostics.AddError(
+		"Missing remote_subnets",
+		"remote_subnets must hold at least one subnet when dynamic_routing is "+
+			"false. Set dynamic_routing = true to let the tunnel discover "+
+			"subnets dynamically, or provide at least one CIDR in remote_subnets.",
+	)
+}
+
+var _ resource.ConfigValidator = &siteToSiteVPNRemoteSubnetsConfigValidator{}
 
 func (r *siteToSiteVPNKitResource) UpgradeState(
 	ctx context.Context,

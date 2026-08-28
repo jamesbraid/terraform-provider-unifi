@@ -237,10 +237,9 @@ func SiteToSiteVpnResourceSchema(ctx context.Context) schema.Schema {
 			"remote_subnets": schema.ListAttribute{
 				ElementType:         types.StringType,
 				Required:            true,
-				Description:         "The remote site's subnets reachable through the tunnel (CIDR).",
-				MarkdownDescription: "The remote site's subnets reachable through the tunnel (CIDR).",
+				Description:         "The remote site's subnets reachable through the tunnel (CIDR). Must hold at least one subnet unless dynamic_routing is true, enforced by a config-time validator rather than a plain list-length check: a dynamic-routing tunnel discovers subnets itself, so an empty list is legal only then.",
+				MarkdownDescription: "The remote site's subnets reachable through the tunnel (CIDR). Must hold at least one subnet unless dynamic_routing is true, enforced by a config-time validator rather than a plain list-length check: a dynamic-routing tunnel discovers subnets itself, so an empty list is legal only then.",
 				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
 					listvalidator.ValueStringsAre(validators.CIDRValidator()),
 				},
 			},
