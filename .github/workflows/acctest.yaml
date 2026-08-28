@@ -4,6 +4,7 @@ on:
     types: [published]
   schedule:
     - cron: "0 13 * * *"
+  workflow_dispatch:
 
 # OIDC token is needed to authenticate uploads to Codecov.
 permissions:

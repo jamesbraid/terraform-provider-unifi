@@ -12,4 +12,4 @@ build:
 
 .PHONY: testacc
 testacc:
-	TF_ACC=1 go tool gotestsum --junitfile junit.xml -- -coverprofile=coverage.txt -covermode=atomic -count $(TEST_COUNT) -timeout $(TEST_TIMEOUT) $(TEST) $(TESTARGS)
+	TF_ACC=1 go tool gotestsum --junitfile junit.xml -- -tags acceptance -coverprofile=coverage.txt -covermode=atomic -count $(TEST_COUNT) -timeout $(TEST_TIMEOUT) $(TEST) $(TESTARGS)
