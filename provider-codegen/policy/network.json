@@ -211,6 +211,27 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
+        "description": "The ID of the firewall zone (`unifi_firewall_zone`) this network belongs to.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "disposition": "managed",
+      "structural_name": "firewall_zone_id",
+      "terraform_name": "firewall_zone_id"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
         "default": {
           "static": "default"
         },
@@ -844,7 +865,6 @@
     "dpi_enabled",
     "dpigroup_id",
     "exposed_to_site_vpn",
-    "firewall_zone_id",
     "gateway_device",
     "igmp_fastleave",
     "igmp_flood_unknown_multicast",

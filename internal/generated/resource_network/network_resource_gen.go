@@ -357,6 +357,15 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Specifies whether the network is enabled.",
 				Default:             booldefault.StaticBool(true),
 			},
+			"firewall_zone_id": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Description:         "The ID of the firewall zone (`unifi_firewall_zone`) this network belongs to.",
+				MarkdownDescription: "The ID of the firewall zone (`unifi_firewall_zone`) this network belongs to.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"gateway_type": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,

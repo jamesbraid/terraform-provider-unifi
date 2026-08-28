@@ -36,6 +36,7 @@ type networkKitModel struct {
 	IgmpSnooping                types.Bool           `tfsdk:"igmp_snooping"`
 	MulticastDNS                types.Bool           `tfsdk:"multicast_dns"`
 	GatewayType                 types.String         `tfsdk:"gateway_type"`
+	FirewallZoneID              types.String         `tfsdk:"firewall_zone_id"`
 	IPv6InterfaceType           types.String         `tfsdk:"ipv6_interface_type"`
 	IPv6ClientAddressAssignment types.String         `tfsdk:"ipv6_client_address_assignment"`
 	IPv6StaticSubnet            types.String         `tfsdk:"ipv6_static_subnet"`
@@ -371,6 +372,8 @@ func networkKitSpec() resourcekit.Spec[netModel, ui.Network] {
 				func(s *ui.Network) *bool { return &s.InternetAccessEnabled }),
 			netBool("igmp_snooping", func(m *netModel) *types.Bool { return &m.IgmpSnooping },
 				func(s *ui.Network) *bool { return &s.IGMPSnooping }),
+			netPtr("firewall_zone_id", func(m *netModel) *types.String { return &m.FirewallZoneID },
+				func(s *ui.Network) **string { return &s.FirewallZoneID }),
 			netPtr("gateway_type", func(m *netModel) *types.String { return &m.GatewayType },
 				func(s *ui.Network) **string { return &s.GatewayType }),
 			netPtr("ipv6_interface_type",

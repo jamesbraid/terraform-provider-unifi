@@ -3797,6 +3797,17 @@
           "description_kind": "markdown",
           "default": "booldefault.staticBoolDefault: value defaults to true"
         },
+        "firewall_zone_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "The ID of the firewall zone (`unifi_firewall_zone`) this network belongs to.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
         "gateway_type": {
           "kind": "attribute",
           "type": "\"string\"",

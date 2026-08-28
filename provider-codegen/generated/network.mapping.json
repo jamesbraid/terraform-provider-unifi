@@ -33,6 +33,13 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "firewall_zone_id",
+      "terraform_name": "firewall_zone_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "gateway_type",
       "terraform_name": "gateway_type",
       "structural_type": "string",
