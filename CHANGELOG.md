@@ -50,6 +50,26 @@ All notable changes to this project will be documented in this file.
   controller rejects both, with `api.err.InvalidValue: poe_mode must match
   auto|off`. A configuration using `passv24` or `passthrough` failed at the
   controller already; it now fails at plan time instead of apply time.
+- **Attribute validators now derive from the controller's own
+  field-constraint table (go-unifi's `FieldConstraints`), not hand
+  transcription.** 126 attributes gained a pattern validator they didn't
+  have before, and roughly 20 `OneOf` value sets changed to match what the
+  controller actually accepts — for example, `unifi_dynamic_dns.x_password`
+  now rejects a value containing a space, and `unifi_wlan.name` now rejects
+  a name longer than 32 characters. A value the controller would already
+  have rejected now fails at plan time instead of apply time. Two sets were
+  loosened instead: `unifi_firewall_policy.protocol` and
+  `.connection_state_type` had their derived `OneOf` suppressed, because the
+  table is measurably wrong there (the controller accepts more values,
+  including `icmp`/`icmpv6` and a `CUSTOM` connection state, than it lists)
+  — both fields are validated by the controller at apply instead.
+- **`unifi_wan`: `type = "static"` is refused at plan.** The provider has
+  no attributes yet for static WAN addressing (IP, netmask, gateway) and
+  go-unifi's wire list has none either, so a static WAN configuration used
+  to plan clean and write an unaddressable WAN; `ValidateConfig` now
+  rejects it before that can happen. A configuration that previously failed
+  at apply now fails at plan instead. Use `type = "dhcp"`, or configure the
+  WAN's static address in the UniFi controller directly.
 
 ### ✨ Features
 
@@ -95,6 +115,31 @@ All notable changes to this project will be documented in this file.
   when it is managed and the controller reports it cleared.** Previously any
   empty read was treated as unset, so a username the controller had cleared
   showed no diff against a configured value.
+- **`unifi_wlan` creates no longer fail when `dtim_6e`/`dtim_na`/`dtim_ng`,
+  the roaming-assistant RSSI thresholds, or the minimum data rates are left
+  unset.** The provider force-emitted an explicit `0` for each of these on
+  every create where they were unset, and the controller rejects a literal
+  `0` for all of them (`api.err.InvalidValue`/`InvalidRate`) — every create
+  that left any of them unset failed. Unset values now stay off the wire
+  instead.
+- **`unifi_vpn_client` import no longer adopts the controller-echoed
+  WireGuard `private_key`/`preshared_key` into state.** The write-only
+  guard that nulls a controller echo only ran when a prior state existed;
+  `terraform import` leaves the WireGuard object's prior null on its first
+  read, so that branch never ran and the echoed keys landed straight in
+  state. Both keys are now nulled whenever there is no prior, not only
+  when the last apply used the write-only path.
+- **`unifi_client`: concurrent applies sharing a new `qos_rate` usergroup
+  name no longer create duplicate usergroups.** The create-on-miss lookup
+  checked only the current request's own snapshot, with no lock and no
+  re-list, so N concurrent applies for the same name each saw a miss and
+  each created a group. The create-on-miss path is now serialized and
+  re-checks after acquiring the lock.
+- **`unifi_firewall_zone` data source now errors on a duplicate name
+  instead of silently returning one of them.** It used to scan the zone
+  list and return the first name match; the resource's own name-based
+  import already refused the same ambiguity. The data source is now routed
+  through the same lookup, so both surfaces agree.
 
 ### 📖 Documentation
 
@@ -103,6 +148,16 @@ All notable changes to this project will be documented in this file.
   `templates/resources.md.tmpl` rendered literally into every generated
   resource doc's Import section, breaking the surrounding link and code-span
   formatting there.
+
+### 🔧 Maintenance
+
+- **The provider now builds against go-unifi v1.108.0** (up from v1.106.0).
+  The bump is additive (apidiff clean, no breaking Go API changes) and
+  brings the masked-update methods (`UpdateSettingFields` and its
+  per-object siblings), the `FieldConstraints` tables the validator
+  derivation above reads from, and the network encoded-field tables
+  (`NetworkEncodedFields`, `NetworkEncodesField`, `NetworkPurposes`). No
+  source changes were needed.
 
 ## [v0.106.0] - DRAFT, unreleased
 
