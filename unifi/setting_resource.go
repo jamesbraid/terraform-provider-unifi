@@ -47,27 +47,10 @@ type settingResource struct {
 	resourcekit.Composite[settingResourceModel]
 }
 
-type sshKeyModel struct {
-	Name    types.String `tfsdk:"name"`
-	Type    types.String `tfsdk:"type"`
-	Key     types.String `tfsdk:"key"`
-	Comment types.String `tfsdk:"comment"`
-}
-
-type settingMgmtModel struct {
-	AutoUpgrade            types.Bool   `tfsdk:"auto_upgrade"`
-	AutoUpgradeHour        types.Int64  `tfsdk:"auto_upgrade_hour"`
-	SSHEnabled             types.Bool   `tfsdk:"ssh_enabled"`
-	SSHKeys                types.List   `tfsdk:"ssh_keys"`
-	AdvancedFeatureEnabled types.Bool   `tfsdk:"advanced_feature_enabled"`
-	DebugToolsEnabled      types.Bool   `tfsdk:"debug_tools_enabled"`
-	DirectConnectEnabled   types.Bool   `tfsdk:"direct_connect_enabled"`
-	UnifiIdpEnabled        types.Bool   `tfsdk:"unifi_idp_enabled"`
-	WifimanEnabled         types.Bool   `tfsdk:"wifiman_enabled"`
-	SSHUsername            types.String `tfsdk:"ssh_username"`
-	SSHPassword            types.String `tfsdk:"ssh_password"`
-	SSHAuthPasswordEnabled types.Bool   `tfsdk:"ssh_auth_password_enabled"`
-}
+// sshKeyModel and settingMgmtModel moved to setting_mgmt_descriptor.go,
+// alongside the Spec that now owns them: descriptor_mapping_test.go's
+// loadDescriptors reads a descriptor's model tags from the same file, so a
+// model declared elsewhere reads as undeclared.
 
 type settingRadiusModel struct {
 	AccountingEnabled     types.Bool           `tfsdk:"accounting_enabled"`
@@ -259,28 +242,8 @@ var (
 		"enabled":   types.BoolType,
 		"cron_expr": types.StringType,
 	}
-	mgmtSSHKeyAttrTypes = map[string]attr.Type{
-		"name":    types.StringType,
-		"type":    types.StringType,
-		"key":     types.StringType,
-		"comment": types.StringType,
-	}
-	mgmtAttrTypes = map[string]attr.Type{
-		"auto_upgrade":      types.BoolType,
-		"auto_upgrade_hour": types.Int64Type,
-		"ssh_enabled":       types.BoolType,
-		"ssh_keys": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes},
-		},
-		"advanced_feature_enabled":  types.BoolType,
-		"debug_tools_enabled":       types.BoolType,
-		"direct_connect_enabled":    types.BoolType,
-		"unifi_idp_enabled":         types.BoolType,
-		"wifiman_enabled":           types.BoolType,
-		"ssh_username":              types.StringType,
-		"ssh_password":              types.StringType,
-		"ssh_auth_password_enabled": types.BoolType,
-	}
+	// mgmtSSHKeyAttrTypes and mgmtAttrTypes moved to
+	// setting_mgmt_descriptor.go, alongside sshKeyModel/settingMgmtModel.
 	countryAttrTypes = map[string]attr.Type{
 		"code": types.Int64Type,
 	}
@@ -483,7 +446,7 @@ func (r *settingResource) Configure(
 
 	r.client = client
 	r.DefaultSite = client.Site
-	r.Sections = legacySectionsFor(r)
+	r.Sections = settingKitSections(r)
 }
 
 func (r *settingResource) ImportState(
@@ -499,134 +462,8 @@ func (r *settingResource) ImportState(
 	)
 }
 
-// Mgmt conversion functions.
-func (r *settingResource) mgmtModelToSetting(
-	ctx context.Context,
-	model *settingMgmtModel,
-	base *settings.Mgmt,
-) *settings.Mgmt {
-	setting := base
-
-	if !model.AutoUpgrade.IsNull() && !model.AutoUpgrade.IsUnknown() {
-		setting.AutoUpgrade = model.AutoUpgrade.ValueBool()
-	}
-	if !model.AutoUpgradeHour.IsNull() && !model.AutoUpgradeHour.IsUnknown() {
-		setting.AutoUpgradeHour = model.AutoUpgradeHour.ValueInt64Pointer()
-	}
-	if !model.SSHEnabled.IsNull() && !model.SSHEnabled.IsUnknown() {
-		setting.SSHEnabled = model.SSHEnabled.ValueBool()
-	}
-	if !model.AdvancedFeatureEnabled.IsNull() && !model.AdvancedFeatureEnabled.IsUnknown() {
-		setting.AdvancedFeatureEnabled = model.AdvancedFeatureEnabled.ValueBool()
-	}
-	if !model.DebugToolsEnabled.IsNull() && !model.DebugToolsEnabled.IsUnknown() {
-		setting.DebugToolsEnabled = model.DebugToolsEnabled.ValueBool()
-	}
-	if !model.DirectConnectEnabled.IsNull() && !model.DirectConnectEnabled.IsUnknown() {
-		setting.DirectConnectEnabled = model.DirectConnectEnabled.ValueBool()
-	}
-	if !model.UnifiIdpEnabled.IsNull() && !model.UnifiIdpEnabled.IsUnknown() {
-		setting.UniFiIdentityProviderEnabled = model.UnifiIdpEnabled.ValueBool()
-	}
-	if !model.WifimanEnabled.IsNull() && !model.WifimanEnabled.IsUnknown() {
-		setting.WifimanEnabled = model.WifimanEnabled.ValueBool()
-	}
-	if !model.SSHUsername.IsNull() && !model.SSHUsername.IsUnknown() {
-		setting.SSHUsername = model.SSHUsername.ValueString()
-	}
-	if !model.SSHPassword.IsNull() && !model.SSHPassword.IsUnknown() {
-		setting.SSHPassword = model.SSHPassword.ValueString()
-	}
-	if !model.SSHAuthPasswordEnabled.IsNull() && !model.SSHAuthPasswordEnabled.IsUnknown() {
-		setting.SSHAuthPasswordEnabled = model.SSHAuthPasswordEnabled.ValueBool()
-	}
-
-	if !model.SSHKeys.IsNull() && !model.SSHKeys.IsUnknown() {
-		setting.SSHKeys = nil
-		var sshKeys []sshKeyModel
-		model.SSHKeys.ElementsAs(ctx, &sshKeys, false)
-		for _, sshKey := range sshKeys {
-			setting.SSHKeys = append(setting.SSHKeys, settings.SettingMgmtSSHKeys{
-				Name:    sshKey.Name.ValueString(),
-				KeyType: sshKey.Type.ValueString(),
-				Key:     sshKey.Key.ValueString(),
-				Comment: sshKey.Comment.ValueString(),
-			})
-		}
-	}
-
-	return setting
-}
-
-func (r *settingResource) mgmtSettingToModel(
-	ctx context.Context,
-	setting *settings.Mgmt,
-	plan *settingMgmtModel,
-) *settingMgmtModel {
-	model := &settingMgmtModel{}
-
-	// Only populate fields that were explicitly configured in the plan, so the
-	// resource doesn't report drift on settings the user doesn't manage.
-	boolOrNull := func(planVal types.Bool, apiVal bool) types.Bool {
-		if !planVal.IsNull() && !planVal.IsUnknown() {
-			return types.BoolValue(apiVal)
-		}
-		return types.BoolNull()
-	}
-
-	model.AutoUpgrade = boolOrNull(plan.AutoUpgrade, setting.AutoUpgrade)
-	model.SSHEnabled = boolOrNull(plan.SSHEnabled, setting.SSHEnabled)
-	model.AdvancedFeatureEnabled = boolOrNull(
-		plan.AdvancedFeatureEnabled, setting.AdvancedFeatureEnabled,
-	)
-	model.DebugToolsEnabled = boolOrNull(plan.DebugToolsEnabled, setting.DebugToolsEnabled)
-	model.DirectConnectEnabled = boolOrNull(plan.DirectConnectEnabled, setting.DirectConnectEnabled)
-	model.UnifiIdpEnabled = boolOrNull(plan.UnifiIdpEnabled, setting.UniFiIdentityProviderEnabled)
-	model.WifimanEnabled = boolOrNull(plan.WifimanEnabled, setting.WifimanEnabled)
-	model.SSHAuthPasswordEnabled = boolOrNull(
-		plan.SSHAuthPasswordEnabled, setting.SSHAuthPasswordEnabled,
-	)
-
-	if !plan.AutoUpgradeHour.IsNull() && !plan.AutoUpgradeHour.IsUnknown() {
-		model.AutoUpgradeHour = types.Int64PointerValue(setting.AutoUpgradeHour)
-	} else {
-		model.AutoUpgradeHour = types.Int64Null()
-	}
-
-	if !plan.SSHUsername.IsNull() && !plan.SSHUsername.IsUnknown() {
-		model.SSHUsername = util.StringValueOrNull(setting.SSHUsername)
-	} else {
-		model.SSHUsername = types.StringNull()
-	}
-
-	// The controller never returns the plaintext SSH password (only hashes), so
-	// preserve the configured value to avoid a perpetual diff.
-	model.SSHPassword = plan.SSHPassword
-
-	if !plan.SSHKeys.IsNull() && !plan.SSHKeys.IsUnknown() {
-		if len(setting.SSHKeys) > 0 {
-			var sshKeys []sshKeyModel
-			for _, sshKey := range setting.SSHKeys {
-				sshKeys = append(sshKeys, sshKeyModel{
-					Name:    types.StringValue(sshKey.Name),
-					Type:    types.StringValue(sshKey.KeyType),
-					Key:     types.StringValue(sshKey.Key),
-					Comment: types.StringValue(sshKey.Comment),
-				})
-			}
-			listValue, _ := types.ListValueFrom(
-				ctx, types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes}, sshKeys,
-			)
-			model.SSHKeys = listValue
-		} else {
-			model.SSHKeys = types.ListNull(types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes})
-		}
-	} else {
-		model.SSHKeys = types.ListNull(types.ObjectType{AttrTypes: mgmtSSHKeyAttrTypes})
-	}
-
-	return model
-}
+// mgmt's mapper functions moved onto resourcekit.SpecSection -- see
+// setting_mgmt_descriptor.go's mgmtKitSpec and mgmtAfterReceive.
 
 // Radius conversion functions.
 func (r *settingResource) radiusModelToSetting(

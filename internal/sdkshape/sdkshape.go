@@ -59,13 +59,21 @@ type Member struct {
 	Pointer bool
 }
 
-// Load resolves a package from source. It uses the standard importer rather
-// than x/tools so the compiler gains no new dependency for this.
-func Load(path string) (*Package, error) {
-	imported, err := importer.ForCompiler(token.NewFileSet(), "source", nil).Import(path)
-	if err != nil {
-		return nil, fmt.Errorf("import %s: %w", path, err)
-	}
+// Load resolves one or more packages from source into a single Package. It
+// uses the standard importer rather than x/tools so the compiler gains no
+// new dependency for this. extra names further packages to fold in -- the
+// SDK is not one flat package: unifi_setting's per-section Specs declare
+// their SDK type argument from go-unifi/unifi/settings, a subpackage of
+// path, and Members would otherwise never find it.
+//
+// path always wins a name collision; extra only fills in names path does not
+// already have. go-unifi's settings package and its root package both
+// declare Dashboard, Setting and FieldConstraint (three legacy types the
+// settings redesign renamed around, not shadowed) -- none of them is any
+// descriptor's SDK type argument today, and resolving path first keeps every
+// descriptor loaded before extra existed pointed at exactly what it always
+// resolved to.
+func Load(path string, extra ...string) (*Package, error) {
 	resolved := &Package{
 		path:     path,
 		structs:  map[string]map[string]bool{},
@@ -74,6 +82,22 @@ func Load(path string) (*Package, error) {
 		backing:  map[string]map[string]string{},
 		operates: map[string]string{},
 	}
+	for _, p := range append([]string{path}, extra...) {
+		if err := resolved.merge(p); err != nil {
+			return nil, err
+		}
+	}
+	return resolved, nil
+}
+
+// merge imports one package and folds its exported structs into p. A struct
+// name already resolved from an earlier package is left alone -- see Load's
+// doc comment for why that, not an error, is the right call here.
+func (p *Package) merge(path string) error {
+	imported, err := importer.ForCompiler(token.NewFileSet(), "source", nil).Import(path)
+	if err != nil {
+		return fmt.Errorf("import %s: %w", path, err)
+	}
 	scope := imported.Scope()
 	for _, name := range scope.Names() {
 		named, ok := scope.Lookup(name).Type().(*types.Named)
@@ -81,11 +105,13 @@ func Load(path string) (*Package, error) {
 			continue
 		}
 		if structure, ok := named.Underlying().(*types.Struct); ok {
-			resolved.record(name, structure)
+			if _, exists := p.structs[name]; !exists {
+				p.record(name, structure)
+			}
 		}
-		resolved.recordMethods(named)
+		p.recordMethods(named)
 	}
-	return resolved, nil
+	return nil
 }
 
 // recordMethods notes, for each method on a type, the struct it returns. The

@@ -2,6 +2,7 @@ package unifi
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
@@ -46,6 +49,87 @@ func TestAccSettingResource_mgmt(t *testing.T) {
 					"mgmt.auto_upgrade",
 					"mgmt.ssh_enabled",
 				},
+			},
+		},
+	})
+}
+
+// TestAccSettingResource_mgmtMaskedWriteLeavesSiblingsAlone is R2-B part 1's
+// spike gate: mgmt is served through resourcekit.SpecSection, whose Write
+// sends UpdateSettingFields with a mask naming only the fields the plan
+// set. led_enabled is never named -- the config here never mentions it --
+// so setting it out of band, then applying a config change to a DIFFERENT
+// mgmt attribute, must leave it alone. Before the spike, writeMgmtSection's
+// read-modify-write would have carried whatever it fetched (a fetch that
+// races the out-of-band write): either way this pins the new mechanism, not
+// a coincidence of timing.
+func TestAccSettingResource_mgmtMaskedWriteLeavesSiblingsAlone(t *testing.T) {
+	const ledOutOfBand = true
+
+	setLedEnabledOutOfBand := func() {
+		client, site := probeClient(t)
+		ctx := context.Background()
+		_, mgmt, err := ui.GetSetting[*settings.Mgmt](client, ctx, site)
+		if err != nil {
+			t.Fatalf("reading mgmt out of band: %v", err)
+		}
+		mgmt.LedEnabled = ledOutOfBand
+		if err := client.UpdateSetting(ctx, site, mgmt); err != nil {
+			t.Fatalf("setting led_enabled out of band: %v", err)
+		}
+		_, back, err := ui.GetSetting[*settings.Mgmt](client, ctx, site)
+		if err != nil {
+			t.Fatalf("reading mgmt back out of band: %v", err)
+		}
+		if back.LedEnabled != ledOutOfBand {
+			t.Fatalf("the controller did not store led_enabled=%v (got %v), so there is "+
+				"nothing for the next apply to clobber and this test would pass vacuously",
+				ledOutOfBand, back.LedEnabled)
+		}
+		t.Logf("POSITIVE CONTROL: controller holds led_enabled=%v before the apply "+
+			"that changes a different mgmt attribute", back.LedEnabled)
+	}
+
+	checkLedSurvived := func(*terraform.State) error {
+		client, site := probeClient(t)
+		_, mgmt, err := ui.GetSetting[*settings.Mgmt](client, context.Background(), site)
+		if err != nil {
+			return err
+		}
+		if mgmt.LedEnabled != ledOutOfBand {
+			return fmt.Errorf(
+				"led_enabled = %v after an apply that only changed auto_upgrade; the "+
+					"masked write named auto_upgrade alone and must not have touched this",
+				mgmt.LedEnabled)
+		}
+		t.Logf("led_enabled survived the masked write as %v", mgmt.LedEnabled)
+		return nil
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+resource "unifi_setting" "test" {
+  mgmt = {
+    ssh_enabled = true
+  }
+}
+`,
+			},
+			{
+				PreConfig: setLedEnabledOutOfBand,
+				Config: `
+resource "unifi_setting" "test" {
+  mgmt = {
+    ssh_enabled  = true
+    auto_upgrade = true
+  }
+}
+`,
+				Check: checkLedSurvived,
 			},
 		},
 	})
@@ -677,97 +761,17 @@ func TestSettingNtpServersUseStateForUnknown(t *testing.T) {
 	}
 }
 
-func Test_settingResource_mgmtModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null fields produce empty setting", func(t *testing.T) {
-		// mgmtModelToSetting does not accept nil (it dereferences the pointer);
-		// test zero-value model produces a zero-value settings.Mgmt.
-		model := &settingMgmtModel{
-			AutoUpgrade: types.BoolNull(),
-			SSHEnabled:  types.BoolNull(),
-			SSHKeys:     types.ListNull(types.StringType),
-		}
-		got := r.mgmtModelToSetting(ctx, model, &settings.Mgmt{})
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.AutoUpgrade {
-			t.Error("AutoUpgrade should be false for null input")
-		}
-		if got.SSHEnabled {
-			t.Error("SSHEnabled should be false for null input")
-		}
-	})
-
-	t.Run("basic fields set", func(t *testing.T) {
-		model := &settingMgmtModel{
-			AutoUpgrade: types.BoolValue(true),
-			SSHEnabled:  types.BoolValue(false),
-			SSHKeys:     types.ListNull(types.StringType),
-		}
-		got := r.mgmtModelToSetting(ctx, model, &settings.Mgmt{})
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AutoUpgrade {
-			t.Error("AutoUpgrade should be true")
-		}
-		if got.SSHEnabled {
-			t.Error("SSHEnabled should be false")
-		}
-	})
-}
-
-func Test_settingResource_mgmtSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null plan fields produce null model fields", func(t *testing.T) {
-		setting := &settings.Mgmt{
-			AutoUpgrade: true,
-			SSHEnabled:  true,
-		}
-		plan := &settingMgmtModel{
-			AutoUpgrade: types.BoolNull(),
-			SSHEnabled:  types.BoolNull(),
-			SSHKeys:     types.ListNull(types.StringType),
-		}
-		got := r.mgmtSettingToModel(ctx, setting, plan)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AutoUpgrade.IsNull() {
-			t.Error("AutoUpgrade should be null when plan is null")
-		}
-		if !got.SSHEnabled.IsNull() {
-			t.Error("SSHEnabled should be null when plan is null")
-		}
-	})
-
-	t.Run("non-null plan fields reflect remote value", func(t *testing.T) {
-		setting := &settings.Mgmt{
-			AutoUpgrade: true,
-			SSHEnabled:  false,
-		}
-		plan := &settingMgmtModel{
-			AutoUpgrade: types.BoolValue(false), // plan had a value configured
-			SSHEnabled:  types.BoolValue(true),
-			SSHKeys:     types.ListNull(types.StringType),
-		}
-		got := r.mgmtSettingToModel(ctx, setting, plan)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AutoUpgrade.ValueBool() {
-			t.Error("AutoUpgrade should reflect remote value (true)")
-		}
-		if got.SSHEnabled.ValueBool() {
-			t.Error("SSHEnabled should reflect remote value (false)")
-		}
-	})
-}
+// Test_settingResource_mgmtModelToSetting and
+// Test_settingResource_mgmtSettingToModel (deleted along with the mappers
+// they exercised) pinned three behaviours, each with a surviving owner: a
+// plan-null bool field leaves the SDK struct at its Go zero on write --
+// resourcekit's own BoolField unit tests cover that generically, and it's
+// not mgmt-specific; the read side's plan-conditioned null/reflect-remote
+// split is TestMgmtAfterReceive's AutoUpgrade (configured) and
+// WifimanEnabled (unconfigured) cases -- boolOrNull is one shared helper
+// across all eight bools, so a second field exercising the same branch adds
+// no coverage; and the wire name itself is TestMgmtKitSpecConformance's
+// WireNameProblems.
 
 func Test_settingResource_radiusModelToSetting(t *testing.T) {
 	r := &settingResource{}
@@ -1416,48 +1420,15 @@ func TestNtpSettingStateNormalization(t *testing.T) {
 	}
 }
 
-// TestMgmtNewFields checks that new mgmt fields overlay onto the current
-// remote setting (so unmanaged fields aren't clobbered) and that
-// ssh_password is preserved from the plan, since the controller never
-// echoes it back.
-func TestMgmtNewFields(t *testing.T) {
-	ctx := context.Background()
-	r := &settingResource{}
-
-	// Base has a field the user does NOT manage; it must survive.
-	base := &settings.Mgmt{WifimanEnabled: true}
-	model := &settingMgmtModel{
-		SSHUsername:            types.StringValue("admin"),
-		SSHPassword:            types.StringValue("s3cret"),
-		SSHAuthPasswordEnabled: types.BoolValue(true),
-		AdvancedFeatureEnabled: types.BoolValue(true),
-	}
-	setting := r.mgmtModelToSetting(ctx, model, base)
-	if !setting.WifimanEnabled {
-		t.Error("read-base field WifimanEnabled was clobbered")
-	}
-	if setting.SSHUsername != "admin" || setting.SSHPassword != "s3cret" ||
-		!setting.SSHAuthPasswordEnabled || !setting.AdvancedFeatureEnabled {
-		t.Errorf("overlay missing: %+v", setting)
-	}
-
-	// On read, ssh_password is preserved from the plan (API returns no plaintext).
-	plan := &settingMgmtModel{
-		SSHUsername: types.StringValue("admin"),
-		SSHPassword: types.StringValue("s3cret"),
-	}
-	out := r.mgmtSettingToModel(ctx, &settings.Mgmt{SSHUsername: "admin"}, plan)
-	if out.SSHPassword.ValueString() != "s3cret" {
-		t.Errorf("ssh_password not preserved: %q", out.SSHPassword.ValueString())
-	}
-	if out.SSHUsername.ValueString() != "admin" {
-		t.Errorf("ssh_username = %q, want admin", out.SSHUsername.ValueString())
-	}
-	// An unconfigured field stays null (no drift on unmanaged settings).
-	if !out.WifimanEnabled.IsNull() {
-		t.Error("unconfigured wifiman_enabled should be null")
-	}
-}
+// mgmt's ssh_password/plan-conditioned-null behaviour, formerly
+// TestMgmtNewFields against mgmtModelToSetting/mgmtSettingToModel, is now
+// TestMgmtAfterReceive (setting_mgmt_descriptor_test.go) against
+// mgmtAfterReceive directly. The one assertion with no equivalent there is
+// "read-base field WifimanEnabled was clobbered": that pinned the old
+// read-modify-write overlay, which the masked write retires outright --
+// UpdateSettingFields' field mask is what now keeps an unmanaged field from
+// being clobbered, not a Go-level struct merge, so there is nothing left in
+// this package for that assertion to pin.
 
 // TestSyslogOmitsUnsetPorts checks that an unset port / netconsole_port is
 // omitted (nil pointer), not serialized as 0 -- the controller rejects port 0.

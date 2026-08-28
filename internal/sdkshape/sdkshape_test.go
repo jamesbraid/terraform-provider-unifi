@@ -229,6 +229,39 @@ func TestNetworkViewsShareOneRoot(t *testing.T) {
 	}
 }
 
+// TestLoadFoldsInAnExtraPackageWithoutDisturbingTheRoot is the positive
+// control for Load's extra parameter: settings.Mgmt is real and must
+// resolve once settings is folded in, and Dashboard -- declared by both the
+// root package and settings, with different shapes -- must still resolve to
+// the root's own version, per Load's documented "path always wins" rule.
+func TestLoadFoldsInAnExtraPackageWithoutDisturbingTheRoot(t *testing.T) {
+	pkg, err := Load(sdkPackage, sdkPackage+"/settings")
+	if err != nil {
+		t.Skipf("SDK package unavailable: %v", err)
+	}
+
+	mgmt, ok := pkg.Members("Mgmt")
+	if !ok {
+		t.Fatal(`Members("Mgmt") not found; settings was not folded in`)
+	}
+	if _, ok := mgmt["x_ssh_enabled"]; !ok {
+		t.Errorf(`Mgmt has no "x_ssh_enabled" member; got %v`, mgmt)
+	}
+
+	dashboard, ok := pkg.Members("Dashboard")
+	if !ok {
+		t.Fatal(`Members("Dashboard") not found`)
+	}
+	if _, ok := dashboard["attr_hidden"]; !ok {
+		t.Errorf(`Dashboard has no "attr_hidden" member (the root package's own shape); `+
+			"got %v -- settings' Dashboard overrode the root's", dashboard)
+	}
+	if _, ok := dashboard["layout_preference"]; ok {
+		t.Error(`Dashboard has a "layout_preference" member; that's settings' shape, ` +
+			"which must not win over the root package's")
+	}
+}
+
 func load(t *testing.T) *Package {
 	t.Helper()
 	pkg, err := Load(sdkPackage)

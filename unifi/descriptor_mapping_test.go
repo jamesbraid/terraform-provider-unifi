@@ -18,12 +18,17 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/sdkshape"
 )
 
-const goUnifiPackage = "github.com/ubiquiti-community/go-unifi/unifi"
+const (
+	goUnifiPackage         = "github.com/ubiquiti-community/go-unifi/unifi"
+	goUnifiSettingsPackage = goUnifiPackage + "/settings"
+)
 
 // loadSDK resolves the go-unifi package once. It is the slowest thing here by
-// an order of magnitude and both tests need it.
+// an order of magnitude and both tests need it. settings is folded in
+// alongside the root package: unifi_setting's per-section descriptors (e.g.
+// setting_mgmt) declare their SDK type argument from there.
 var loadSDK = sync.OnceValues(func() (*sdkshape.Package, error) {
-	return sdkshape.Load(goUnifiPackage)
+	return sdkshape.Load(goUnifiPackage, goUnifiSettingsPackage)
 })
 
 // The descriptors and the mapping artifacts must agree on which fields exist

@@ -1,0 +1,93 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.mgmt",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "advanced_feature_enabled",
+      "terraform_name": "advanced_feature_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "auto_upgrade",
+      "terraform_name": "auto_upgrade",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "auto_upgrade_hour",
+      "terraform_name": "auto_upgrade_hour",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "debug_tools_enabled",
+      "terraform_name": "debug_tools_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "direct_connect_enabled",
+      "terraform_name": "direct_connect_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ssh_auth_password_enabled",
+      "terraform_name": "ssh_auth_password_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ssh_enabled",
+      "terraform_name": "ssh_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ssh_keys",
+      "terraform_name": "ssh_keys",
+      "structural_type": "array<object>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ssh_password",
+      "terraform_name": "ssh_password",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ssh_username",
+      "terraform_name": "ssh_username",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "unifi_idp_enabled",
+      "terraform_name": "unifi_idp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wifiman_enabled",
+      "terraform_name": "wifiman_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

@@ -89,18 +89,25 @@ func (a legacySectionAdapter) Read(
 	return a.section.Read(ctx, a.r, site, plan, out)
 }
 
-// legacySectionsFor adapts every entry of settingSections to
-// resourcekit.Section[settingResourceModel], bound to r. Called from
-// Configure, once r.client exists for the adapted Write/Read calls to use.
-func legacySectionsFor(r *settingResource) []resourcekit.Section[settingResourceModel] {
-	sections := make([]resourcekit.Section[settingResourceModel], len(settingSections))
-	for i, s := range settingSections {
-		sections[i] = legacySectionAdapter{r: r, section: s}
+// settingKitSections adapts every entry of settingSections to
+// resourcekit.Section[settingResourceModel], bound to r, and splices in
+// mgmt right after its historical predecessor "ips" -- settingSections no
+// longer carries mgmt itself, since mgmt is a resourcekit.SpecSection now,
+// not a legacySection. Called from Configure, once r.client exists for
+// both the adapted legacy Write/Read calls and mgmt's own backend to use.
+func settingKitSections(r *settingResource) []resourcekit.Section[settingResourceModel] {
+	sections := make([]resourcekit.Section[settingResourceModel], 0, len(settingSections)+1)
+	for _, s := range settingSections {
+		sections = append(sections, legacySectionAdapter{r: r, section: s})
+		if s.Name() == "ips" {
+			sections = append(sections, mgmtKitSection(r.client.ApiClient))
+		}
 	}
 	return sections
 }
 
-// settingSections is unifi_setting's 13 sections, in today's write order.
+// settingSections is unifi_setting's 12 remaining legacySections, in
+// today's write order minus mgmt (see settingKitSections).
 var settingSections = []settingSection{
 	legacySection{
 		name:       "auto_speedtest",
@@ -155,12 +162,6 @@ var settingSections = []settingSection{
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Ips) },
 		write:      (*settingResource).writeIpsSection,
 		read:       (*settingResource).readIpsSection,
-	},
-	legacySection{
-		name:       "mgmt",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Mgmt) },
-		write:      (*settingResource).writeMgmtSection,
-		read:       (*settingResource).readMgmtSection,
 	},
 	legacySection{
 		name:       "radius",
@@ -624,67 +625,8 @@ func (r *settingResource) readIpsSection(
 	return diags
 }
 
-// -- mgmt --
-
-func (r *settingResource) writeMgmtSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var mgmt settingMgmtModel
-	diags.Append(plan.Mgmt.As(ctx, &mgmt, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	_, currentMgmt, err := ui.GetSetting[*settings.Mgmt](r.client.ApiClient, ctx, site)
-	if err != nil {
-		var notFound *ui.NotFoundError
-		if !errors.As(err, &notFound) {
-			diags.AddError("Error Reading Mgmt Setting", err.Error())
-			return diags
-		}
-		currentMgmt = &settings.Mgmt{}
-	}
-
-	setting := r.mgmtModelToSetting(ctx, &mgmt, currentMgmt)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" Mgmt Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readMgmtSection reads the mgmt setting.
-func (r *settingResource) readMgmtSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.Mgmt) {
-		out.Mgmt = types.ObjectNull(mgmtAttrTypes)
-		return diags
-	}
-
-	var planMgmt settingMgmtModel
-	diags.Append(plan.Mgmt.As(ctx, &planMgmt, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	_, mgmtSetting, err := ui.GetSetting[*settings.Mgmt](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading Mgmt Setting", err.Error())
-		return diags
-	}
-
-	mgmtModel := r.mgmtSettingToModel(ctx, mgmtSetting, &planMgmt)
-	objValue, d := types.ObjectValueFrom(ctx, mgmtAttrTypes, mgmtModel)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.Mgmt = objValue
-	return diags
-}
+// mgmt moved onto resourcekit.SpecSection -- see setting_mgmt_descriptor.go
+// and settingKitSections' splice, which inserts it back at this position.
 
 // -- radius --
 
