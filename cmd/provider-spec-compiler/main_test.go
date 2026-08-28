@@ -12,7 +12,6 @@ import (
 )
 
 func TestRunProducesDeterministicDNSArtifacts(t *testing.T) {
-	root := filepath.Clean(filepath.Join("..", ".."))
 	outputs := []string{
 		"dns_record.provider-code-spec.json",
 		"dns_record.mapping.json",
@@ -22,8 +21,8 @@ func TestRunProducesDeterministicDNSArtifacts(t *testing.T) {
 		outputDir := t.TempDir()
 		var stderr bytes.Buffer
 		exitCode := run([]string{
-			"-bootstrap", filepath.Join(root, "provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json"),
-			"-policy", filepath.Join(root, "provider-codegen/policy/dns_record.json"),
+			"-bootstrap", "testdata/dns-record-v1.102.0.bootstrap.json",
+			"-policy", "testdata/dns-record-v1.102.0.policy.json",
 			"-artifact-prefix", "dns_record",
 			"-output-dir", outputDir,
 		}, &stderr)
@@ -112,11 +111,10 @@ func writeFile(t *testing.T, path, content string) {
 }
 
 func TestRunRejectsInvalidArtifactPrefix(t *testing.T) {
-	root := filepath.Clean(filepath.Join("..", ".."))
 	var stderr bytes.Buffer
 	exitCode := run([]string{
-		"-bootstrap", filepath.Join(root, "provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json"),
-		"-policy", filepath.Join(root, "provider-codegen/policy/dns_record.json"),
+		"-bootstrap", "testdata/dns-record-v1.102.0.bootstrap.json",
+		"-policy", "testdata/dns-record-v1.102.0.policy.json",
 		"-artifact-prefix", "../dns-record",
 		"-output-dir", t.TempDir(),
 	}, &stderr)
@@ -126,9 +124,8 @@ func TestRunRejectsInvalidArtifactPrefix(t *testing.T) {
 }
 
 func TestRunRepinsAStalePolicyDigestAndCompiles(t *testing.T) {
-	root := filepath.Clean(filepath.Join("..", ".."))
-	bootstrapPath := filepath.Join(root, "provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json")
-	original, err := os.ReadFile(filepath.Join(root, "provider-codegen/policy/dns_record.json"))
+	bootstrapPath := "testdata/dns-record-v1.102.0.bootstrap.json"
+	original, err := os.ReadFile("testdata/dns-record-v1.102.0.policy.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,8 +156,7 @@ func TestRunRepinsAStalePolicyDigestAndCompiles(t *testing.T) {
 }
 
 func TestRunRefusesACorruptPolicyDigest(t *testing.T) {
-	root := filepath.Clean(filepath.Join("..", ".."))
-	original, err := os.ReadFile(filepath.Join(root, "provider-codegen/policy/dns_record.json"))
+	original, err := os.ReadFile("testdata/dns-record-v1.102.0.policy.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +165,7 @@ func TestRunRefusesACorruptPolicyDigest(t *testing.T) {
 	writeFile(t, policyPath, string(corrupt))
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{"-bootstrap", filepath.Join(root, "provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json"), "-policy", policyPath, "-artifact-prefix", "dns_record", "-output-dir", t.TempDir()}, &stderr)
+	exitCode := run([]string{"-bootstrap", "testdata/dns-record-v1.102.0.bootstrap.json", "-policy", policyPath, "-artifact-prefix", "dns_record", "-output-dir", t.TempDir()}, &stderr)
 
 	if exitCode == 0 {
 		t.Fatal("a digest that is not 64 hex characters was accepted; corruption must refuse")

@@ -2,11 +2,17 @@
   "description": "List DNS records in a site.",
   "fields": [],
   "omitted": [
+    "_id",
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
     "enabled",
     "key",
     "port",
     "priority",
     "record_type",
+    "site_id",
     "ttl",
     "value",
     "weight"
@@ -54,6 +60,6 @@
     }
   ],
   "resource": "unifi_dns_record",
-  "source_specification_sha256": "3ddcc597a631259089c823553f3bf696725ad0bbf7d78d2f412b111e8e3427ad",
+  "source_specification_sha256": "95c7282bbfa66a7d35b0315e6a1d54b475cfd03d28d87d22e4d129b1059b0ac5",
   "surface_kind": "list_resource"
 }

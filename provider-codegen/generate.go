@@ -7,7 +7,8 @@ package providercodegen
 //go:generate sdkbootstrap -struct FirewallZone -resource unifi_firewall_zone -output bootstrap/go-unifi-v1.103.0-firewall-zone.json
 //go:generate sdkbootstrap -struct PowerSupervisor -resource unifi_power_supervisor -output bootstrap/go-unifi-v1.103.0-power-supervisor.json
 //go:generate sdkbootstrap -struct WLAN -resource unifi_wlan -output bootstrap/go-unifi-v1.103.0-wlan.json
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.102.0-dns-record.json -policy policy/dns_record.json -artifact-prefix dns_record -output-dir generated
+//go:generate sdkbootstrap -struct DNSRecord -resource unifi_dns_record -output bootstrap/go-unifi-v1.103.0-dns-record.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dns-record.json -policy policy/dns_record.json -artifact-prefix dns_record -output-dir generated
 //go:generate go tool tfplugingen-framework generate resources --input generated/dns_record.provider-code-spec.json --output ../internal/generated/resource_dns_record --package resource_dns_record
 //go:generate gofmt -w ../internal/generated/resource_dns_record/dns_record_resource_gen.go
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-firewall-policy.json -policy policy/firewall_policy.json -artifact-prefix firewall_policy -output-dir generated
@@ -175,7 +176,7 @@ package providercodegen
 //go:generate sdkbootstrap -struct Device -resource unifi_port -output bootstrap/go-unifi-v1.103.0-port.json
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-port.json -policy policy/port_action.json -artifact-prefix port_action -output-dir generated
 //go:generate go run ../cmd/action-gen --input generated/port_action.provider-code-spec.json --output ../internal/generated/action_port --package action_port
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.102.0-dns-record.json -policy policy/dns_record_list.json -artifact-prefix dns_record_list -output-dir generated
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dns-record.json -policy policy/dns_record_list.json -artifact-prefix dns_record_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/dns_record_list.provider-code-spec.json --output ../internal/generated/listresource_dns_record --package listresource_dns_record
 //go:generate sdkbootstrap -struct FirewallZone -resource unifi_firewall_zone -output bootstrap/go-unifi-v1.103.0-firewall-zone-ds.json
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-firewall-zone-ds.json -policy policy/firewall_zone_ds.json -artifact-prefix firewall_zone_ds -output-dir generated

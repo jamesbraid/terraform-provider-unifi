@@ -114,14 +114,15 @@ provider-codegen/generated/*.impact.json
 # already reproduces deterministically -- the real drift gate is each
 # policy file's own source_specification_sha256 pin, checked against a
 # freshly-derived digest every run; a stale checked-in bootstrap sat next to
-# that gate without strengthening it. Three files stay committed anyway:
-# go-unifi-v1.102.0-dns-record.json has no go:generate line that reproduces
-# it -- it is a frozen snapshot from a go-unifi commit nothing else in this
-# tree still imports; go-unifi-v1.103.0-vpn-server.json and
-# go-unifi-v1.103.0-firewall-zone.json are read directly by
-# secret_candidate_test.go and resourcekit_contract_test.go, the same reason
-# *.mapping.json above stays committed rather than gitignored.
+# that gate without strengthening it. Two files stay committed anyway:
+# go-unifi-v1.103.0-vpn-server.json and go-unifi-v1.103.0-firewall-zone.json
+# are read directly by secret_candidate_test.go and
+# resourcekit_contract_test.go, the same reason *.mapping.json above stays
+# committed rather than gitignored. dns_record used to have a third
+# exception here (a frozen v1.102.0 snapshot with no go:generate line that
+# reproduced it) -- it now derives like every other surface, and the frozen
+# snapshot lives on as a stable compiler-test fixture in
+# cmd/provider-spec-compiler/testdata, outside this glob.
 provider-codegen/bootstrap/*.json
-!provider-codegen/bootstrap/go-unifi-v1.102.0-dns-record.json
 !provider-codegen/bootstrap/go-unifi-v1.103.0-vpn-server.json
 !provider-codegen/bootstrap/go-unifi-v1.103.0-firewall-zone.json
