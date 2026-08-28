@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
@@ -1134,6 +1135,210 @@ func TestClientBeforeSendSerializesNetworkMembersGroupCreateOnMiss(t *testing.T)
 	if creates != 1 {
 		t.Errorf("network members group %q: want exactly 1 create across %d concurrent "+
 			"unifi_client writes sharing the name, got %d", groupName, workers, creates)
+	}
+}
+
+// TestClientBeforeSendSerializesUserGroupCreateOnMiss is
+// TestClientBeforeSendSerializesNetworkMembersGroupCreateOnMiss's twin for the
+// qos_rate path: N concurrent unifi_client creates sharing one qos_rate =
+// { name = ... } each start from their own empty prefetch snapshot, so
+// without the same create-on-miss serialization clientResolveGroup uses for
+// usergroups, each of the N would create its own usergroup of the same name.
+func TestClientBeforeSendSerializesUserGroupCreateOnMiss(t *testing.T) {
+	const groupName = "tfacc-shared-qos-group"
+	const workers = 8
+
+	var (
+		mu      sync.Mutex
+		exist   []unifi.ClientGroup
+		creates int
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/proxy/network/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"meta":{"server_version":"10.4.57"}}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case req.Method == http.MethodGet && strings.HasSuffix(req.URL.Path, "/rest/usergroup"):
+			// The re-list, taken under groupMu, is what lets the second
+			// worker see the first worker's create -- so it has to answer
+			// from the same shared slice every create appends to, not a
+			// fixed fixture.
+			mu.Lock()
+			snapshot := append([]unifi.ClientGroup(nil), exist...)
+			mu.Unlock()
+			_ = json.NewEncoder(w).Encode(struct {
+				Data []unifi.ClientGroup `json:"data"`
+			}{Data: snapshot})
+		case req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/rest/usergroup"):
+			var in unifi.ClientGroup
+			if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
+				t.Errorf("decode create body: %v", err)
+			}
+			mu.Lock()
+			creates++
+			in.ID = fmt.Sprintf("ug-%d", creates)
+			exist = append(exist, in)
+			mu.Unlock()
+			_ = json.NewEncoder(w).Encode(struct {
+				Data []unifi.ClientGroup `json:"data"`
+			}{Data: []unifi.ClientGroup{in}})
+		default:
+			t.Errorf("unexpected request: %s %s", req.Method, req.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	api, err := unifi.New(context.Background(), &unifi.Config{BaseURL: server.URL, APIKey: "test-key"})
+	if err != nil {
+		t.Fatalf("create the API client: %v", err)
+	}
+
+	qos := qosRateModel{
+		ID:      types.StringNull(),
+		Name:    types.StringValue(groupName),
+		MaxUp:   types.Int64Null(),
+		MaxDown: types.Int64Null(),
+	}
+	qosValue, diags := types.ObjectValueFrom(context.Background(), qosRateModel{}.AttributeTypes(), qos)
+	if diags.HasError() {
+		t.Fatalf("building qos_rate object: %v", diags)
+	}
+
+	var groupMu sync.Mutex
+	hook := clientKitBeforeSend(api, "default", &groupMu)
+
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	errs := make(chan error, workers)
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			model := clientModel{
+				FixedIP:        types.StringNull(),
+				FixedApMAC:     hwtypes.NewMACAddressNull(),
+				LocalDNSRecord: types.StringNull(),
+				NetworkID:      types.StringNull(),
+				QOSRate:        qosValue,
+				Groups:         types.ListNull(types.StringType),
+			}
+			sdk := &unifi.Client{}
+			prefetched := &clientGroups{byName: map[string]unifi.ClientGroup{}}
+			if d := hook(context.Background(), &model, &model, sdk, prefetched); d.HasError() {
+				errs <- fmt.Errorf("BeforeSend: %v", d)
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
+
+	if creates != 1 {
+		t.Errorf("usergroup %q: want exactly 1 create across %d concurrent unifi_client "+
+			"writes sharing the qos_rate name, got %d", groupName, workers, creates)
+	}
+}
+
+// TestClientBeforeSendWithQosRateAndGroupsDoesNotDeadlock is the test the
+// naive fix for the race above fails: locking groupMu at the top of the
+// qos_rate branch with a defer ties the unlock to clientKitBeforeSend's
+// whole closure (Go defers to the enclosing func, not the enclosing block),
+// so by the time the groups branch tries to lock the same non-reentrant
+// mutex on its own miss, the goroutine already holds it -- forever.
+func TestClientBeforeSendWithQosRateAndGroupsDoesNotDeadlock(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/proxy/network/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"meta":{"server_version":"10.4.57"}}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case req.Method == http.MethodGet && strings.HasSuffix(req.URL.Path, "/rest/usergroup"):
+			_ = json.NewEncoder(w).Encode(struct {
+				Data []unifi.ClientGroup `json:"data"`
+			}{})
+		case req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/rest/usergroup"):
+			var in unifi.ClientGroup
+			if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
+				t.Errorf("decode create body: %v", err)
+			}
+			in.ID = "ug-1"
+			_ = json.NewEncoder(w).Encode(struct {
+				Data []unifi.ClientGroup `json:"data"`
+			}{Data: []unifi.ClientGroup{in}})
+		case req.Method == http.MethodGet && strings.HasSuffix(req.URL.Path, "/network-members-groups"):
+			_ = json.NewEncoder(w).Encode([]unifi.NetworkMembersGroup{})
+		case req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/network-members-group"):
+			var in unifi.NetworkMembersGroup
+			if err := json.NewDecoder(req.Body).Decode(&in); err != nil {
+				t.Errorf("decode create body: %v", err)
+			}
+			in.ID = "grp-1"
+			_ = json.NewEncoder(w).Encode(in)
+		default:
+			t.Errorf("unexpected request: %s %s", req.Method, req.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	api, err := unifi.New(context.Background(), &unifi.Config{BaseURL: server.URL, APIKey: "test-key"})
+	if err != nil {
+		t.Fatalf("create the API client: %v", err)
+	}
+
+	qos := qosRateModel{
+		ID:      types.StringNull(),
+		Name:    types.StringValue("tfacc-both-qos-group"),
+		MaxUp:   types.Int64Null(),
+		MaxDown: types.Int64Null(),
+	}
+	qosValue, diags := types.ObjectValueFrom(context.Background(), qosRateModel{}.AttributeTypes(), qos)
+	if diags.HasError() {
+		t.Fatalf("building qos_rate object: %v", diags)
+	}
+	groupsValue, diags := types.ListValueFrom(
+		context.Background(), types.StringType, []string{"tfacc-both-member-group"})
+	if diags.HasError() {
+		t.Fatalf("building groups list: %v", diags)
+	}
+
+	var groupMu sync.Mutex
+	hook := clientKitBeforeSend(api, "default", &groupMu)
+
+	model := clientModel{
+		FixedIP:        types.StringNull(),
+		FixedApMAC:     hwtypes.NewMACAddressNull(),
+		LocalDNSRecord: types.StringNull(),
+		NetworkID:      types.StringNull(),
+		QOSRate:        qosValue,
+		Groups:         groupsValue,
+	}
+	sdk := &unifi.Client{}
+	prefetched := &clientGroups{byName: map[string]unifi.ClientGroup{}, memberIDByName: map[string]string{}}
+
+	done := make(chan diag.Diagnostics, 1)
+	go func() {
+		done <- hook(context.Background(), &model, &model, sdk, prefetched)
+	}()
+
+	select {
+	case d := <-done:
+		if d.HasError() {
+			t.Fatalf("BeforeSend: %v", d)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("deadlock: BeforeSend did not return within 5s with both qos_rate and groups set")
 	}
 }
 

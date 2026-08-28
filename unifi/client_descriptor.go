@@ -139,8 +139,12 @@ func clientKitPrefetch(client *ui.ApiClient) func(context.Context, string) (any,
 // explicit site, ToModel hasn't run yet, so effective.Site and sdk's site are
 // both still empty, and the group creates below need a real one.
 //
-// groupMu closes the create-on-miss race; sync.Mutex is non-reentrant --
-// do not extend the deferred lock over clientResolveGroup's miss path.
+// groupMu closes the create-on-miss race for both usergroups and
+// network-members groups. Each miss path locks it inside its own
+// function-scoped helper (clientResolveGroupLocked,
+// clientResolveMemberGroupsLocked), so the lock always releases before the
+// next branch needs it -- sync.Mutex is non-reentrant, so nothing may hold
+// it across two of these helpers in the same call.
 func clientKitBeforeSend(
 	client *ui.ApiClient,
 	defaultSite string,
@@ -181,7 +185,7 @@ func clientKitBeforeSend(
 			if diags.HasError() {
 				return diags
 			}
-			id, d := clientResolveGroup(ctx, client, site, groups, qos)
+			id, d := clientResolveGroup(ctx, client, site, groupMu, groups, qos)
 			diags.Append(d...)
 			if diags.HasError() {
 				return diags
@@ -195,57 +199,82 @@ func clientKitBeforeSend(
 			if diags.HasError() {
 				return diags
 			}
-			// fresh is populated lazily, and only from inside the lock: the
-			// common case (every name already resolves from this operation's own
-			// Prefetch) never blocks on another RPC's group resolution at all.
-			var fresh map[string]string
+			// misses only holds what this operation's own Prefetch didn't
+			// already resolve, so the common case (every name already in
+			// groups.memberIDByName) never locks at all.
+			var misses []string
+			for _, name := range names {
+				if _, ok := groups.memberIDByName[name]; !ok {
+					misses = append(misses, name)
+				}
+			}
+			if len(misses) > 0 {
+				resolved, d := clientResolveMemberGroupsLocked(ctx, client, site, groupMu, misses)
+				diags.Append(d...)
+				if diags.HasError() {
+					return diags
+				}
+				for name, id := range resolved {
+					groups.memberIDByName[name] = id
+				}
+			}
 			ids := make([]string, 0, len(names))
 			for _, name := range names {
-				if id, ok := groups.memberIDByName[name]; ok {
-					ids = append(ids, id)
-					continue
-				}
-				if fresh == nil {
-					groupMu.Lock()
-					defer groupMu.Unlock()
-					list, err := client.ListNetworkMembersGroups(ctx, site)
-					if err != nil {
-						diags.AddError("Error Listing Network Members Groups",
-							fmt.Sprintf("Could not list network members groups: %s", err.Error()))
-						return diags
-					}
-					fresh = make(map[string]string, len(list))
-					for _, g := range list {
-						fresh[g.Name] = g.ID
-					}
-				}
-				id, ok := fresh[name]
-				if !ok {
-					// A name with no network-members group behind it gets one
-					// created rather than erroring; fresh and groups are both
-					// updated so a second colliding name in this same list
-					// reuses it instead of creating a duplicate.
-					created, err := client.CreateNetworkMembersGroup(ctx, site,
-						&ui.NetworkMembersGroup{Name: name, Members: []string{}, Type: "CLIENTS"})
-					if err != nil {
-						diags.AddError("Error Creating Network Members Group",
-							fmt.Sprintf("Could not create network members group %q: %s",
-								name, err.Error()))
-						continue
-					}
-					id = created.ID
-					fresh[name] = id
-				}
-				groups.memberIDByName[name] = id
-				ids = append(ids, id)
-			}
-			if diags.HasError() {
-				return diags
+				ids = append(ids, groups.memberIDByName[name])
 			}
 			sdk.NetworkMembersGroupIDs = ids
 		}
 		return diags
 	}
+}
+
+// clientResolveMemberGroupsLocked is the network-members-group miss path:
+// locked for exactly this call, it re-lists to see whatever the lock's
+// previous holder just created, then creates whatever of misses is still
+// absent. Function-scoped so the lock releases the moment this returns
+// rather than spanning the rest of BeforeSend.
+func clientResolveMemberGroupsLocked(
+	ctx context.Context,
+	client *ui.ApiClient,
+	site string,
+	groupMu *sync.Mutex,
+	misses []string,
+) (map[string]string, diag.Diagnostics) {
+	groupMu.Lock()
+	defer groupMu.Unlock()
+
+	var diags diag.Diagnostics
+	list, err := client.ListNetworkMembersGroups(ctx, site)
+	if err != nil {
+		diags.AddError("Error Listing Network Members Groups",
+			fmt.Sprintf("Could not list network members groups: %s", err.Error()))
+		return nil, diags
+	}
+	fresh := make(map[string]string, len(list))
+	for _, g := range list {
+		fresh[g.Name] = g.ID
+	}
+
+	resolved := make(map[string]string, len(misses))
+	for _, name := range misses {
+		if id, ok := fresh[name]; ok {
+			resolved[name] = id
+			continue
+		}
+		// A name with no network-members group behind it gets one created
+		// rather than erroring; fresh is updated too so a second colliding
+		// name in this same call reuses it instead of creating a duplicate.
+		created, err := client.CreateNetworkMembersGroup(ctx, site,
+			&ui.NetworkMembersGroup{Name: name, Members: []string{}, Type: "CLIENTS"})
+		if err != nil {
+			diags.AddError("Error Creating Network Members Group",
+				fmt.Sprintf("Could not create network members group %q: %s", name, err.Error()))
+			continue
+		}
+		fresh[name] = created.ID
+		resolved[name] = created.ID
+	}
+	return resolved, diags
 }
 
 // clientKitAfterReceive fills the two attributes read back from ids, and
@@ -338,6 +367,7 @@ func clientResolveGroup(
 	ctx context.Context,
 	client *ui.ApiClient,
 	site string,
+	groupMu *sync.Mutex,
 	groups *clientGroups,
 	qos qosRateModel,
 ) (string, diag.Diagnostics) {
@@ -363,29 +393,39 @@ func clientResolveGroup(
 	}
 
 	if existing, found := groups.byName[name]; found {
-		update := false
-		if !qos.MaxUp.IsNull() && !qos.MaxUp.IsUnknown() {
-			desired := qos.MaxUp.ValueInt64()
-			if existing.QOSRateMaxUp == nil || *existing.QOSRateMaxUp != desired {
-				existing.QOSRateMaxUp = &desired
-				update = true
-			}
+		return clientUpdateGroupIfNeeded(ctx, client, site, existing, qos)
+	}
+
+	return clientResolveGroupLocked(ctx, client, site, groupMu, name, qos)
+}
+
+// clientResolveGroupLocked is clientResolveGroup's miss path: locked for
+// exactly this call, it re-lists to see whatever the lock's previous holder
+// just created, and only creates when the miss survives the re-list.
+// Function-scoped so the lock releases the moment this returns rather than
+// spanning the rest of BeforeSend.
+func clientResolveGroupLocked(
+	ctx context.Context,
+	client *ui.ApiClient,
+	site string,
+	groupMu *sync.Mutex,
+	name string,
+	qos qosRateModel,
+) (string, diag.Diagnostics) {
+	groupMu.Lock()
+	defer groupMu.Unlock()
+
+	var diags diag.Diagnostics
+	list, err := client.ListClientGroup(ctx, site)
+	if err != nil {
+		diags.AddError("Error Listing Client Groups",
+			fmt.Sprintf("Could not list client groups: %s", err.Error()))
+		return "", diags
+	}
+	for _, existing := range list {
+		if existing.Name == name {
+			return clientUpdateGroupIfNeeded(ctx, client, site, existing, qos)
 		}
-		if !qos.MaxDown.IsNull() && !qos.MaxDown.IsUnknown() {
-			desired := qos.MaxDown.ValueInt64()
-			if existing.QOSRateMaxDown == nil || *existing.QOSRateMaxDown != desired {
-				existing.QOSRateMaxDown = &desired
-				update = true
-			}
-		}
-		if update {
-			if _, err := client.UpdateClientGroup(ctx, site, &existing); err != nil {
-				diags.AddError("Error Updating Client Group",
-					fmt.Sprintf("Could not update client group %q: %s", name, err.Error()))
-				return "", diags
-			}
-		}
-		return existing.ID, diags
 	}
 
 	created := &ui.ClientGroup{Name: name}
@@ -404,6 +444,43 @@ func clientResolveGroup(
 		return "", diags
 	}
 	return made.ID, diags
+}
+
+// clientUpdateGroupIfNeeded re-rates an existing usergroup when qos_rate's
+// max_up/max_down disagree with what the controller already has, and
+// returns its id unchanged otherwise.
+func clientUpdateGroupIfNeeded(
+	ctx context.Context,
+	client *ui.ApiClient,
+	site string,
+	existing ui.ClientGroup,
+	qos qosRateModel,
+) (string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	update := false
+	if !qos.MaxUp.IsNull() && !qos.MaxUp.IsUnknown() {
+		desired := qos.MaxUp.ValueInt64()
+		if existing.QOSRateMaxUp == nil || *existing.QOSRateMaxUp != desired {
+			existing.QOSRateMaxUp = &desired
+			update = true
+		}
+	}
+	if !qos.MaxDown.IsNull() && !qos.MaxDown.IsUnknown() {
+		desired := qos.MaxDown.ValueInt64()
+		if existing.QOSRateMaxDown == nil || *existing.QOSRateMaxDown != desired {
+			existing.QOSRateMaxDown = &desired
+			update = true
+		}
+	}
+	if update {
+		if _, err := client.UpdateClientGroup(ctx, site, &existing); err != nil {
+			diags.AddError("Error Updating Client Group",
+				fmt.Sprintf("Could not update client group %q: %s", existing.Name, err.Error()))
+			return "", diags
+		}
+	}
+	return existing.ID, diags
 }
 
 func clientKitSpec() resourcekit.Spec[clientModel, ui.Client] {
