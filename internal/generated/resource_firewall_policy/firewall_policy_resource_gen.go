@@ -261,8 +261,8 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 			"ip_version": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.",
-				MarkdownDescription: "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.",
+				Description:         "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`. Gates which `protocol` values are accepted at plan time: `BOTH` only accepts a protocol valid under both versions.",
+				MarkdownDescription: "The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`. Gates which `protocol` values are accepted at plan time: `BOTH` only accepts a protocol valid under both versions.",
 				Validators: []validator.String{
 					stringvalidator.OneOf("BOTH", "IPV4", "IPV6"),
 				},
@@ -283,8 +283,8 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 			"protocol": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
-				MarkdownDescription: "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
+				Description:         "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`, or an IANA protocol name/number. Defaults to `all`. Gated against `ip_version` at plan time (measured against UniFi Network 10.6.101): some names are IPv4-only (e.g. `icmp`) or IPv6-only (e.g. `icmpv6`), while `all`/`tcp`/`udp`/`tcp_udp` and most numbered protocols work under any `ip_version`. Numeric protocol numbers are accepted for every `ip_version` even where the equivalent name is gated — `58` (icmpv6's protocol number) is accepted under `IPV4`, where the name `icmpv6` is not. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
+				MarkdownDescription: "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`, or an IANA protocol name/number. Defaults to `all`. Gated against `ip_version` at plan time (measured against UniFi Network 10.6.101): some names are IPv4-only (e.g. `icmp`) or IPv6-only (e.g. `icmpv6`), while `all`/`tcp`/`udp`/`tcp_udp` and most numbered protocols work under any `ip_version`. Numeric protocol numbers are accepted for every `ip_version` even where the equivalent name is gated — `58` (icmpv6's protocol number) is accepted under `IPV4`, where the name `icmpv6` is not. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
 				Default:             stringdefault.StaticString("all"),
 			},
 			"schedule": schema.SingleNestedAttribute{

@@ -185,9 +185,9 @@ resource "unifi_firewall_policy" "block_web_domains" {
 - `create_allow_respond` (Boolean) When `true`, UniFi automatically creates a matching rule to allow established/related return traffic. Recommended for `ALLOW` policies. Defaults to `false`.
 - `description` (String) A description for the policy.
 - `enabled` (Boolean) Whether the policy is enabled. Defaults to `true`.
-- `ip_version` (String) The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`.
+- `ip_version` (String) The IP version to match: `BOTH`, `IPV4`, or `IPV6`. Defaults to `IPV4`. Gates which `protocol` values are accepted at plan time: `BOTH` only accepts a protocol valid under both versions.
 - `logging` (Boolean) Whether to log packets matching this policy. Defaults to `false`.
-- `protocol` (String) The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`. Defaults to `all`. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.
+- `protocol` (String) The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`, or an IANA protocol name/number. Defaults to `all`. Gated against `ip_version` at plan time (measured against UniFi Network 10.6.101): some names are IPv4-only (e.g. `icmp`) or IPv6-only (e.g. `icmpv6`), while `all`/`tcp`/`udp`/`tcp_udp` and most numbered protocols work under any `ip_version`. Numeric protocol numbers are accepted for every `ip_version` even where the equivalent name is gated — `58` (icmpv6's protocol number) is accepted under `IPV4`, where the name `icmpv6` is not. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.
 - `schedule` (Attributes) When the policy is in force. Omit it to leave the controller's schedule alone; a policy created without one is always in force. (see [below for nested schema](#nestedatt--schedule))
 - `site` (String) The name of the UniFi site. Defaults to the site configured in the provider.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -23,12 +24,13 @@ type firewallPolicyKitResource struct {
 }
 
 var (
-	_ resource.Resource                 = &firewallPolicyKitResource{}
-	_ resource.ResourceWithImportState  = &firewallPolicyKitResource{}
-	_ resource.ResourceWithIdentity     = &firewallPolicyKitResource{}
-	_ resource.ResourceWithUpgradeState = &firewallPolicyKitResource{}
-	_ list.ListResource                 = &firewallPolicyKitResource{}
-	_ list.ListResourceWithConfigure    = &firewallPolicyKitResource{}
+	_ resource.Resource                     = &firewallPolicyKitResource{}
+	_ resource.ResourceWithImportState      = &firewallPolicyKitResource{}
+	_ resource.ResourceWithIdentity         = &firewallPolicyKitResource{}
+	_ resource.ResourceWithUpgradeState     = &firewallPolicyKitResource{}
+	_ resource.ResourceWithConfigValidators = &firewallPolicyKitResource{}
+	_ list.ListResource                     = &firewallPolicyKitResource{}
+	_ list.ListResourceWithConfigure        = &firewallPolicyKitResource{}
 )
 
 func newFirewallPolicyKitResource() *firewallPolicyKitResource {
@@ -126,6 +128,129 @@ func (r *firewallPolicyKitResource) Configure(
 	r.Spec.BeforeSend = firewallPolicyCarrySchedule(r.Spec.Backend.Read, client.Site)
 	r.DefaultSite = client.Site
 }
+
+func (r *firewallPolicyKitResource) ConfigValidators(
+	_ context.Context,
+) []resource.ConfigValidator {
+	return []resource.ConfigValidator{&firewallPolicyProtocolIPVersionConfigValidator{}}
+}
+
+// firewallPolicyUniversalProtocols accepts on any declared ip_version
+// (BOTH/IPV4/IPV6). Includes two numeric forms ("6", "58") alongside their
+// names' asymmetric siblings: the controller accepts a protocol *number*
+// under any ip_version even where the equivalent *name* is gated -- "58"
+// (icmpv6's protocol number) passes under IPV4, where the name "icmpv6"
+// does not. Measured against UniFi Network 10.6.101, 2026-08-28; see
+// TestFirewallPolicyProtocolMatrixMatchesTheMeasuredSets.
+var firewallPolicyUniversalProtocols = map[string]bool{
+	"all": true, "tcp": true, "udp": true, "tcp_udp": true,
+	"6": true, "58": true,
+	"ah": true, "dccp": true, "eigrp": true, "esp": true, "gre": true,
+	"ipcomp": true, "isis": true, "l2tp": true, "manet": true,
+	"mobility-header": true, "mpls-in-ip": true, "ospf": true, "pim": true,
+	"rsvp": true, "sctp": true, "shim6": true, "vrrp": true,
+}
+
+// firewallPolicyIPv4OnlyProtocols accepts only when ip_version is IPV4.
+// Same measurement as firewallPolicyUniversalProtocols.
+var firewallPolicyIPv4OnlyProtocols = map[string]bool{
+	"ax.25": true, "ddp": true, "egp": true, "encap": true, "etherip": true,
+	"fc": true, "ggp": true, "hip": true, "hmp": true, "icmp": true,
+	"idpr-cmtp": true, "idrp": true, "igmp": true, "igp": true, "ip": true,
+	"ipencap": true, "ipip": true, "iso-tp4": true, "pup": true, "rdp": true,
+	"rohc": true, "rspf": true, "skip": true, "st": true, "udplite": true,
+	"vmtp": true, "wesp": true, "xns-idp": true, "xtp": true,
+}
+
+// firewallPolicyIPv6OnlyProtocols accepts only when ip_version is IPV6.
+// Same measurement as firewallPolicyUniversalProtocols.
+var firewallPolicyIPv6OnlyProtocols = map[string]bool{
+	"icmpv6": true, "ipv6": true, "ipv6-frag": true, "ipv6-nonxt": true,
+	"ipv6-opts": true, "ipv6-route": true,
+}
+
+// firewallPolicyProtocolAllowedForIPVersion answers whether the matrix has
+// positive evidence protocol is valid for ipVersion. A protocol this matrix
+// never measured returns true (no claim, not an assertion of validity) --
+// protocol itself carries no enum validator (policy: "validators": "none")
+// for the same reason: this provider only narrows what it has measured.
+// "ipv6-icmp" is the one name measured unsupported under every ip_version
+// (the controller always answers "unsupported on IP version" for it), so it
+// is rejected unconditionally rather than folded into a per-version set.
+func firewallPolicyProtocolAllowedForIPVersion(protocol, ipVersion string) bool {
+	if protocol == "ipv6-icmp" {
+		return false
+	}
+	if firewallPolicyUniversalProtocols[protocol] {
+		return true
+	}
+	if firewallPolicyIPv4OnlyProtocols[protocol] {
+		return ipVersion == "IPV4"
+	}
+	if firewallPolicyIPv6OnlyProtocols[protocol] {
+		return ipVersion == "IPV6"
+	}
+	return true
+}
+
+// firewallPolicyProtocolIPVersionConfigValidator pairs protocol with the
+// declared ip_version, per the matrix measured in
+// firewallPolicyProtocolAllowedForIPVersion. BOTH validates as the
+// intersection: a BOTH policy only accepts a protocol valid under both
+// IPV4 and IPV6, which is exactly the universal set, so BOTH needs no
+// separate rule here -- it is whatever protocol is NOT in either
+// version-only set.
+type firewallPolicyProtocolIPVersionConfigValidator struct{}
+
+func (v *firewallPolicyProtocolIPVersionConfigValidator) Description(_ context.Context) string {
+	return "protocol must be valid for the declared ip_version"
+}
+
+func (v *firewallPolicyProtocolIPVersionConfigValidator) MarkdownDescription(
+	ctx context.Context,
+) string {
+	return v.Description(ctx)
+}
+
+func (v *firewallPolicyProtocolIPVersionConfigValidator) ValidateResource(
+	ctx context.Context,
+	req resource.ValidateConfigRequest,
+	resp *resource.ValidateConfigResponse,
+) {
+	var protocol types.String
+	var ipVersion types.String
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("protocol"), &protocol)...)
+	resp.Diagnostics.Append(
+		req.Config.GetAttribute(ctx, path.Root("ip_version"), &ipVersion)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if protocol.IsNull() || protocol.IsUnknown() || ipVersion.IsUnknown() {
+		return
+	}
+	version := ipVersion.ValueString()
+	if ipVersion.IsNull() {
+		// ValidateResource sees the raw config, before the schema default
+		// applies -- simulate it, since an unset ip_version still resolves
+		// to IPV4 by the time the controller sees it.
+		version = "IPV4"
+	}
+	if firewallPolicyProtocolAllowedForIPVersion(protocol.ValueString(), version) {
+		return
+	}
+	resp.Diagnostics.AddError(
+		"protocol not valid for ip_version",
+		fmt.Sprintf(
+			"protocol = %q is not accepted by the controller when ip_version = %q "+
+				"(measured against UniFi Network 10.6.101). Use a protocol valid for "+
+				"that IP version, its numeric form if one exists, or change ip_version.",
+			protocol.ValueString(), version,
+		),
+	)
+}
+
+var _ resource.ConfigValidator = &firewallPolicyProtocolIPVersionConfigValidator{}
 
 // firewallPolicyEndpointModelV0 mirrors firewallPolicyEndpointModel but with the
 // pre-v1 integer `port`. It exists only to decode prior state during upgrade.
