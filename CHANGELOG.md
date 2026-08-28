@@ -21,6 +21,53 @@ All notable changes to this project will be documented in this file.
   dropped the combined value somewhere between 10.4.57 and 10.6.101; the provider
   isn't narrowing something the controller still accepts. A configuration using
   `slaac-dhcpv6` now fails at plan time instead of apply time.
+- **`unifi_firewall_policy`: `protocol` is now validated against the declared
+  `ip_version`.** Some protocol names only work under one IP version — `icmp` is
+  IPv4-only, `icmpv6` is IPv6-only — but nothing previously stopped a config from
+  pairing the wrong one; the mismatch only surfaced at apply time as the
+  controller's own "unsupported on IP version" error. A live-controller probe
+  against 10.6.101 measured the full accepted set (23 protocol names/numbers
+  valid under any `ip_version`, 29 IPv4-only, 6 IPv6-only, one name never
+  accepted at all) and a plan-time validator now checks new and existing
+  configurations against it. A configuration pairing an out-of-version protocol
+  with its `ip_version` now fails at plan time instead of apply time.
+
+### ✨ Features
+
+- **`unifi_network`: `dhcp_server.ntp_servers` manages the DHCP server's NTP
+  addresses.** The SDK carried up to two NTP server addresses for DHCP
+  clients, but the attribute was never modeled — `dhcpd_ntp_enabled` toggled a
+  setting with no way to supply the addresses it needed. Setting it to an
+  empty list won't clear a previously-set value on the controller yet (a
+  separate go-unifi wire defect, same class as `dns_servers`'s); adding new
+  addresses works.
+- **`unifi_network`: `firewall_zone_id` manages the network's zone-based
+  firewall zone assignment.** The controller field existed and the provider's
+  own encoder already sent it on every write; only the attribute itself was
+  missing from the schema.
+- **`unifi_network`: `ipv6_aliases` is now a real, working attribute.** It was
+  already present in the schema, but nothing backed it: setting it produced no
+  validation error, no write to the controller, and a read that came back null
+  every time — either a silent no-op or a perpetual diff, depending on the
+  plan. It now reads and writes the controller's IPv6 alias list like
+  `ip_aliases` does.
+
+### 🐛 Bug Fixes
+
+- **`unifi_site_to_site_vpn`: `remote_subnets` can be empty when
+  `dynamic_routing` is enabled.** The attribute required at least one CIDR
+  unconditionally, so a dynamic-routing tunnel — which discovers its own
+  subnets and has no configured list to give — could never be declared with
+  `remote_subnets = []`. The length requirement now applies only when
+  `dynamic_routing` is `false`.
+
+### 📖 Documentation
+
+- **Generated resource docs no longer show a leaked template artifact in their
+  Import section.** A stray Go string-concatenation fragment in
+  `templates/resources.md.tmpl` rendered literally into every generated
+  resource doc's Import section, breaking the surrounding link and code-span
+  formatting there.
 
 ## [v0.106.0] - DRAFT, unreleased
 
