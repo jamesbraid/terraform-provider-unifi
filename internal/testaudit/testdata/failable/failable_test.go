@@ -138,3 +138,22 @@ func TestVarDeclaredTableFilledLater(t *testing.T) {
 		}
 	}
 }
+
+// A var-declared table filled by passing its address to a call -- the Go
+// idiom for an out-parameter -- must not be reported: fillViaPointer(&got)
+// genuinely fills it before the range runs. This is the shape a real audit
+// hit exposed: unifi/device_resource_test.go fills a decoded slice the same
+// way via tftypes.Value.As(&overrides).
+func TestVarDeclaredTableFilledByPointerArgument(t *testing.T) {
+	var got []string
+	fillViaPointer(&got)
+	for _, name := range got {
+		if name == "" {
+			t.Error("empty")
+		}
+	}
+}
+
+func fillViaPointer(out *[]string) {
+	*out = append(*out, "a")
+}
