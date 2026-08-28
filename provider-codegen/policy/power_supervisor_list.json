@@ -53,6 +53,6 @@
     }
   ],
   "resource": "unifi_power_supervisor",
-  "source_specification_sha256": "6e9323970396a327ad963849ca8d896f973317d28bb5b3ab9c245c7d53ae2c7a",
+  "source_specification_sha256": "8c7c24867772159576338942f6bb0c61a6c74f99bda8bbf08b594b75c139c793",
   "surface_kind": "list_resource"
 }
