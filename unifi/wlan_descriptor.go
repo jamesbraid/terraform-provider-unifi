@@ -586,15 +586,34 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 				SDK:   func(s *ui.WLAN) *string { return &s.MinrateSettingPreference },
 				Elide: resourcekit.NullZero,
 			},
+			// OmitZero: NOT caught by the census (internal/resourcekit/
+			// omit_zero_check.go only sees a rejection go-unifi's
+			// FieldConstraints declares as a Pattern, and this wire name has
+			// no entry there at all). Found live instead, by bisecting the
+			// api.err.InvalidRate failure the roaming_assistant fix
+			// uncovered (R2-C Task 10b fix round 2): both fields are
+			// Optional+Computed with UseStateUnlessSiblingChanges and no
+			// schema default, so an unset value is Unknown on create;
+			// ValueInt64Pointer() force-emits that as a pointer to zero. The
+			// controller rejects a literal zero for either wire name
+			// unconditionally -- confirmed by direct SDK probing: nil (the
+			// field omitted) succeeds, any real non-zero rate succeeds with
+			// minrate_*_enabled either true or false, and an explicit
+			// pointer-to-zero fails with InvalidRate every time, regardless
+			// of the enabled flag. The schema's own OneOf validator still
+			// lists 0 as legal (a separate, unaddressed mismatch, same
+			// shape as dns_record.port's).
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "minrate_ng_data_rate_kbps",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.MinimumDataRate2GKbps },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.MinrateNgDataRateKbps },
+				Wire:     "minrate_ng_data_rate_kbps",
+				Model:    func(m *wlanKitModel) *types.Int64 { return &m.MinimumDataRate2GKbps },
+				SDK:      func(s *ui.WLAN) **int64 { return &s.MinrateNgDataRateKbps },
+				OmitZero: true,
 			},
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
-				Wire:  "minrate_na_data_rate_kbps",
-				Model: func(m *wlanKitModel) *types.Int64 { return &m.MinimumDataRate5GKbps },
-				SDK:   func(s *ui.WLAN) **int64 { return &s.MinrateNaDataRateKbps },
+				Wire:     "minrate_na_data_rate_kbps",
+				Model:    func(m *wlanKitModel) *types.Int64 { return &m.MinimumDataRate5GKbps },
+				SDK:      func(s *ui.WLAN) **int64 { return &s.MinrateNaDataRateKbps },
+				OmitZero: true,
 			},
 			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
 				Wire:  "roaming_assistant_na_enabled",

@@ -363,6 +363,68 @@ func TestWLANDtimFieldsOmitAnUnknownRatherThanAZero(t *testing.T) {
 	}
 }
 
+// TestWLANMinrateFieldsOmitAnUnknownRatherThanAZero pins the R2-C Task 10b
+// fix round 2 fix: minrate_ng_data_rate_kbps/minrate_na_data_rate_kbps carry
+// the same Optional+Computed/no-default/Unknown-on-create shape as dtim, but
+// go-unifi's FieldConstraints table declares no Pattern for either wire name
+// -- the census (internal/resourcekit/omit_zero_check.go) cannot see this
+// one, and it was found instead by bisecting a live api.err.InvalidRate
+// failure. A direct SDK probe confirmed the controller rejects an explicit
+// pointer-to-zero for either field unconditionally (regardless of
+// minrate_*_enabled), while nil and any real non-zero rate both succeed.
+func TestWLANMinrateFieldsOmitAnUnknownRatherThanAZero(t *testing.T) {
+	ctx := context.Background()
+	spec := wlanKitSpec()
+
+	plan := wlanKitModel{
+		Name:     types.StringValue("test"),
+		Security: types.StringValue("wpapsk"),
+		MacFilter: types.ObjectNull(map[string]attr.Type{
+			"enabled": types.BoolType,
+			"list":    types.SetType{ElemType: types.StringType},
+			"policy":  types.StringType,
+		}),
+		PrivatePresharedKeys: types.ListNull(
+			types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()},
+		),
+		ApGroupIDs:          types.SetNull(types.StringType),
+		WLANBands:           types.SetNull(types.StringType),
+		Schedule:            types.ListNull(types.ObjectType{}),
+		BroadcastFilterList: types.SetNull(types.StringType),
+
+		MinimumDataRate2GKbps: types.Int64Unknown(),
+		MinimumDataRate5GKbps: types.Int64Value(6000),
+	}
+
+	got, diags := spec.ToSDK(ctx, &plan)
+	if diags.HasError() {
+		t.Fatalf("ToSDK() diagnostics: %v", diags)
+	}
+	if got.MinrateNgDataRateKbps != nil {
+		t.Errorf("MinrateNgDataRateKbps = %d, want nil: an Unknown value must not reach the "+
+			"wire as a pointer to zero", *got.MinrateNgDataRateKbps)
+	}
+	// The control: a real value is unaffected by OmitZero and still reaches
+	// the wire, or the assertion above would hold for a ToSDK that never
+	// writes anything.
+	if got.MinrateNaDataRateKbps == nil || *got.MinrateNaDataRateKbps != 6000 {
+		t.Fatalf("MinrateNaDataRateKbps = %v, want a pointer to 6000", got.MinrateNaDataRateKbps)
+	}
+
+	mask, err := spec.WireFields(&plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	if slices.Contains(mask, "minrate_ng_data_rate_kbps") {
+		t.Error("minrate_ng_data_rate_kbps is in the update mask; an Unknown plan value " +
+			"should not be named in a masked update either")
+	}
+	if !slices.Contains(mask, "minrate_na_data_rate_kbps") {
+		t.Error("minrate_na_data_rate_kbps is missing from the update mask; a " +
+			"practitioner-set value would never be written")
+	}
+}
+
 func Test_wlanFrameworkResource_wlanToModel(t *testing.T) {
 	ctx := context.Background()
 	spec := wlanKitSpec()
