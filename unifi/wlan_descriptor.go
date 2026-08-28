@@ -669,20 +669,27 @@ func wlanKitSpec() resourcekit.Spec[wlanKitModel, ui.WLAN] {
 				Model: func(m *wlanKitModel) *types.Bool { return &m.MloEnabled },
 				SDK:   func(s *ui.WLAN) *bool { return &s.MloEnabled },
 			},
+			// OmitZero: dtim_ng/na/6e are Optional+Computed with no schema
+			// default, so an unset one is Unknown on create; the controller's
+			// validator (^([1-9]|...|25[0-5])$|^$) rejects the zero that
+			// ValueInt64Pointer() would otherwise send for it.
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
 				Wire:  "dtim_ng",
 				Model: func(m *wlanKitModel) *types.Int64 { return &m.DTIMNg },
 				SDK:   func(s *ui.WLAN) **int64 { return &s.DTIMNg },
+				Elide: resourcekit.KeepZero, OmitZero: true,
 			},
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
 				Wire:  "dtim_na",
 				Model: func(m *wlanKitModel) *types.Int64 { return &m.DTIMNa },
 				SDK:   func(s *ui.WLAN) **int64 { return &s.DTIMNa },
+				Elide: resourcekit.KeepZero, OmitZero: true,
 			},
 			resourcekit.Int64PtrField[wlanKitModel, ui.WLAN]{
 				Wire:  "dtim_6e",
 				Model: func(m *wlanKitModel) *types.Int64 { return &m.DTIM6E },
 				SDK:   func(s *ui.WLAN) **int64 { return &s.DTIM6E },
+				Elide: resourcekit.KeepZero, OmitZero: true,
 			},
 			resourcekit.BoolField[wlanKitModel, ui.WLAN]{
 				Wire:  "private_preshared_keys_enabled",

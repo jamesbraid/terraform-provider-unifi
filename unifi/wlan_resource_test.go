@@ -3,6 +3,7 @@ package unifi
 import (
 	"context"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -292,6 +293,73 @@ func Test_wlanFrameworkResource_planToWLAN(t *testing.T) {
 	// since go-unifi's omitempty tag now drops a zero-length slice either way.
 	if got.ScheduleWithDuration != nil {
 		t.Errorf("ScheduleWithDuration = %v, want nil for an absent schedule", got.ScheduleWithDuration)
+	}
+}
+
+// TestWLANDtimFieldsOmitAnUnknownRatherThanAZero pins the create-time fix: the
+// three dtim fields are Optional+Computed with no schema default, so an
+// unset one is Unknown on create (UseStateForUnknown has no prior state to
+// fall back to), and Int64PtrField.ToSDK without OmitZero sent
+// ValueInt64Pointer()'s pointer to zero -- which the controller's
+// ^([1-9]|...|25[0-5])$|^$ validator on every one of the three rejects
+// (api.err.InvalidValue). OmitZero must keep an Unknown value off the wire
+// and out of the update mask, while a real value still reaches both.
+func TestWLANDtimFieldsOmitAnUnknownRatherThanAZero(t *testing.T) {
+	ctx := context.Background()
+	spec := wlanKitSpec()
+
+	plan := wlanKitModel{
+		Name:     types.StringValue("test"),
+		Security: types.StringValue("wpapsk"),
+		MacFilter: types.ObjectNull(map[string]attr.Type{
+			"enabled": types.BoolType,
+			"list":    types.SetType{ElemType: types.StringType},
+			"policy":  types.StringType,
+		}),
+		PrivatePresharedKeys: types.ListNull(
+			types.ObjectType{AttrTypes: wlanPrivatePresharedKeyModel{}.AttributeTypes()},
+		),
+		ApGroupIDs:          types.SetNull(types.StringType),
+		WLANBands:           types.SetNull(types.StringType),
+		Schedule:            types.ListNull(types.ObjectType{}),
+		BroadcastFilterList: types.SetNull(types.StringType),
+
+		DTIMNg: types.Int64Unknown(),
+		DTIMNa: types.Int64Null(),
+		DTIM6E: types.Int64Value(3),
+	}
+
+	got, diags := spec.ToSDK(ctx, &plan)
+	if diags.HasError() {
+		t.Fatalf("ToSDK() diagnostics: %v", diags)
+	}
+	if got.DTIMNg != nil {
+		t.Errorf("DTIMNg = %d, want nil: an Unknown value must not reach the wire as a "+
+			"pointer to zero", *got.DTIMNg)
+	}
+	if got.DTIMNa != nil {
+		t.Errorf("DTIMNa = %d, want nil for a null plan value", *got.DTIMNa)
+	}
+	// The control: a real value is unaffected by OmitZero and still reaches
+	// the wire, or the assertions above would hold for a ToSDK that never
+	// writes anything.
+	if got.DTIM6E == nil || *got.DTIM6E != 3 {
+		t.Fatalf("DTIM6E = %v, want a pointer to 3", got.DTIM6E)
+	}
+
+	mask, err := spec.WireFields(&plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+	for _, name := range []string{"dtim_ng", "dtim_na"} {
+		if slices.Contains(mask, name) {
+			t.Errorf("%s is in the update mask; an Unknown/null plan value should not be "+
+				"named in a masked update either", name)
+		}
+	}
+	if !slices.Contains(mask, "dtim_6e") {
+		t.Error("dtim_6e is missing from the update mask; a practitioner-set value would " +
+			"never be written")
 	}
 }
 
