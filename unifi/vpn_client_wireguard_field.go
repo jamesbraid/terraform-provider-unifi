@@ -172,11 +172,14 @@ func decodeVPNClientPeer(
 // decodeVPNClientWireguard reads private_key and preshared_key straight off
 // the SDK response.
 //
-// private_key is Optional now that private_key_wo can also supply it, so
-// echoing the controller's response unconditionally would leak a write-only
-// secret through its sibling. before.PrivateKey null means the last apply
-// used private_key_wo (schema's AtLeastOneOf rules out neither); non-null
-// keeps round-tripping through the echo unchanged.
+// Both are Optional (private_key_wo can also supply the first), so echoing
+// the controller's response unconditionally would leak a write-only secret
+// through its sibling. Both default to null and are only adopted from the
+// echo when prior is non-null AND the prior attribute itself is non-null --
+// not just "the last apply used the write-only path" but also "there is a
+// prior state at all". terraform import leaves prior null outright, on the
+// object's first Read, which the old before.PrivateKey.IsNull() check never
+// saw because it lived inside the `!prior.IsNull()` branch.
 //
 // private_key_wo_version has no wire -- it's an invented rotation counter so
 // an unchanged write-only key still triggers an update -- so prior is the
@@ -188,7 +191,8 @@ func decodeVPNClientWireguard(
 ) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	privateKey := types.StringPointerValue(network.WireguardPrivateKey)
+	privateKey := types.StringNull()
+	presharedKey := types.StringNull()
 	version := types.Int64Null()
 	if !prior.IsNull() && !prior.IsUnknown() {
 		var before wireguardModel
@@ -196,8 +200,11 @@ func decodeVPNClientWireguard(
 		if diags.HasError() {
 			return types.ObjectNull(wireguardModel{}.AttributeTypes()), diags
 		}
-		if before.PrivateKey.IsNull() {
-			privateKey = types.StringNull()
+		if !before.PrivateKey.IsNull() {
+			privateKey = types.StringPointerValue(network.WireguardPrivateKey)
+		}
+		if !before.PresharedKey.IsNull() {
+			presharedKey = types.StringPointerValue(network.WireguardClientPresharedKey)
 		}
 		version = before.PrivateKeyWOVersion
 	}
@@ -211,7 +218,7 @@ func decodeVPNClientWireguard(
 		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
 		Peer:                decodeVPNClientPeer(ctx, &diags, network),
 		PresharedKeyEnabled: types.BoolValue(network.WireguardClientPresharedKeyEnabled),
-		PresharedKey:        types.StringPointerValue(network.WireguardClientPresharedKey),
+		PresharedKey:        presharedKey,
 		Interface:           types.StringPointerValue(network.WireguardInterface),
 		DnsServers:          wireguardDNSServersFromNetwork(ctx, &diags, network),
 	}

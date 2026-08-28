@@ -136,7 +136,11 @@ func TestWireguardFieldRoundTripsWhatTheControllerReturns(t *testing.T) {
 		t.Errorf("dns servers landed as %q/%q", network.DHCPDDNS1, network.DHCPDDNS2)
 	}
 
-	back := &vpnClientResourceModel{}
+	// ToModel's prior is *whatever back.Wireguard already holds*, which on a
+	// real Create is the plan (Resource.Create loads data from req.Plan
+	// before calling Spec.ToModel) -- not a blank struct, which would read
+	// as an import with no prior state and correctly null the echo.
+	back := &vpnClientResourceModel{Wireguard: model.Wireguard}
 	if diags := field.ToModel(ctx, network, back); diags.HasError() {
 		t.Fatalf("ToModel: %v", diags)
 	}
@@ -147,23 +151,30 @@ func TestWireguardFieldRoundTripsWhatTheControllerReturns(t *testing.T) {
 	if decoded.Interface.ValueString() != "wan" {
 		t.Errorf("interface came back as %q", decoded.Interface.ValueString())
 	}
-	// private_key is Required in the schema, so a Decode that nulled it would
-	// disagree with the config on every refresh.
+	// The plan's private_key is non-null, so the echo must round-trip.
 	if decoded.PrivateKey.ValueString() != "privkey" {
 		t.Errorf("private key came back as %q, want %q", decoded.PrivateKey.ValueString(), "privkey")
 	}
 }
 
-// The controller echoes back whatever private key it holds -- Encode sent
-// it, so Decode sees it on network -- regardless of how the practitioner
-// supplied it. prior.PrivateKey null is the only signal that the write-only
-// path made this apply.
+// The controller echoes back whatever private key and preshared key it
+// holds -- Encode sent them, so Decode sees them on network -- regardless of
+// how the practitioner supplied them. A null prior attribute is the only
+// signal that adopting the echo isn't safe: that covers both the
+// write-only-managed case (prior.PrivateKey null, prior itself non-null) and
+// terraform import, where prior is null outright and every attribute reads
+// as unset.
 func TestDecodeVPNClientWireguardNeverLeaksAWriteOnlyKeyBackIntoState(t *testing.T) {
 	ctx := context.Background()
-	echoed := "must-not-enter-state"
-	network := &ui.Network{WireguardPrivateKey: &echoed}
+	echoedKey := "must-not-enter-state-key"
+	echoedPSK := "must-not-enter-state-psk"
+	network := &ui.Network{
+		WireguardPrivateKey:                &echoedKey,
+		WireguardClientPresharedKeyEnabled: true,
+		WireguardClientPresharedKey:        &echoedPSK,
+	}
 
-	prior := wireguardModel{
+	writeOnlyPrior := wireguardModel{
 		PrivateKey:          types.StringNull(),
 		PrivateKeyWO:        types.StringNull(),
 		PrivateKeyWOVersion: types.Int64Value(7),
@@ -174,31 +185,52 @@ func TestDecodeVPNClientWireguardNeverLeaksAWriteOnlyKeyBackIntoState(t *testing
 		Interface:           types.StringValue("wan"),
 		DnsServers:          types.ListNull(types.StringType),
 	}
-	priorObject, d := types.ObjectValueFrom(ctx, prior.AttributeTypes(), prior)
+	writeOnlyPriorObject, d := types.ObjectValueFrom(ctx, writeOnlyPrior.AttributeTypes(), writeOnlyPrior)
 	if d.HasError() {
 		t.Fatalf("building the prior object: %v", d)
 	}
 
-	object, diags := decodeVPNClientWireguard(ctx, network, priorObject)
-	if diags.HasError() {
-		t.Fatalf("Decode: %v", diags)
-	}
-	var got wireguardModel
-	if d := object.As(ctx, &got, basetypes.ObjectAsOptions{}); d.HasError() {
-		t.Fatalf("reading back the decoded object: %v", d)
-	}
-	if !got.PrivateKey.IsNull() {
-		t.Errorf("private_key = %q, want null; the controller's echo of a write-only-managed "+
-			"key must not enter state", got.PrivateKey.ValueString())
-	}
-	if !got.PrivateKeyWO.IsNull() {
-		t.Error("private_key_wo decoded to a non-null value; write-only must never be read back")
-	}
-	// private_key_wo_version has no wire: it's a rotation counter the
-	// provider invents, so a bare refresh can only get it from prior.
-	if got.PrivateKeyWOVersion.ValueInt64() != 7 {
-		t.Errorf("private_key_wo_version = %d, want 7 carried forward from prior state",
-			got.PrivateKeyWOVersion.ValueInt64())
+	for _, testCase := range []struct {
+		name            string
+		prior           types.Object
+		wantVersionNull bool
+	}{
+		{"write-only managed key, prior records the write-only path", writeOnlyPriorObject, false},
+		// terraform import: the wireguard object is null on the first Read,
+		// not merely a prior with a null private_key.
+		{"import: no prior state at all", types.ObjectNull(wireguardModel{}.AttributeTypes()), true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			object, diags := decodeVPNClientWireguard(ctx, network, testCase.prior)
+			if diags.HasError() {
+				t.Fatalf("Decode: %v", diags)
+			}
+			var got wireguardModel
+			if d := object.As(ctx, &got, basetypes.ObjectAsOptions{}); d.HasError() {
+				t.Fatalf("reading back the decoded object: %v", d)
+			}
+			if !got.PrivateKey.IsNull() {
+				t.Errorf("private_key = %q, want null; the controller's echo of a write-only-managed "+
+					"key must not enter state", got.PrivateKey.ValueString())
+			}
+			if !got.PresharedKey.IsNull() {
+				t.Errorf("preshared_key = %q, want null; with no prior recording it as adopted, "+
+					"the controller's echo must not enter state", got.PresharedKey.ValueString())
+			}
+			if !got.PrivateKeyWO.IsNull() {
+				t.Error("private_key_wo decoded to a non-null value; write-only must never be read back")
+			}
+			// private_key_wo_version has no wire: it's a rotation counter the
+			// provider invents, so a bare refresh can only get it from prior.
+			switch {
+			case testCase.wantVersionNull && !got.PrivateKeyWOVersion.IsNull():
+				t.Errorf("private_key_wo_version = %d, want null; there is no prior to carry it forward",
+					got.PrivateKeyWOVersion.ValueInt64())
+			case !testCase.wantVersionNull && got.PrivateKeyWOVersion.ValueInt64() != 7:
+				t.Errorf("private_key_wo_version = %d, want 7 carried forward from prior state",
+					got.PrivateKeyWOVersion.ValueInt64())
+			}
+		})
 	}
 }
 

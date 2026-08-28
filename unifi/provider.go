@@ -43,9 +43,10 @@ type Client struct {
 	*ui.ApiClient
 	Site string
 
-	// clientGroupMu serializes network-members-group create-on-miss across
-	// concurrent unifi_client writes. It lives here rather than on
-	// clientKitResource because the framework builds a fresh one per RPC.
+	// clientGroupMu serializes both network-members-group and usergroup
+	// create-on-miss across concurrent unifi_client writes. It lives here
+	// rather than on clientKitResource because the framework builds a fresh
+	// one per RPC.
 	clientGroupMu sync.Mutex
 }
 
