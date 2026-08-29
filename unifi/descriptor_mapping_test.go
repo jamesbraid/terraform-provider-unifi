@@ -238,6 +238,8 @@ func derivableKind(f mappingField) string {
 		return "StringSetField"
 	case f.StructuralType == "array<string>" && f.TerraformType == "list":
 		return "StringListField"
+	case f.StructuralType == "array<object>" && f.TerraformType == "list_nested":
+		return "ObjectListField"
 	case f.StructuralType == "string" && f.TerraformType == "string":
 		return "StringField"
 	case f.StructuralType == "bool" && f.TerraformType == "bool":
