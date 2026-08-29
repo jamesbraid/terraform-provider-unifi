@@ -631,3 +631,195 @@ func conditionalWiresOf(
 	slices.Sort(names)
 	return names
 }
+
+// vpnClientWireguardBlockAbsent describes a prior state with no wireguard
+// block at all -- the shape before the resource ever recorded one, or an
+// unpopulated import.
+func vpnClientWireguardBlockAbsent() types.Object {
+	return types.ObjectNull(wireguardModel{}.AttributeTypes())
+}
+
+// vpnClientWireguardBlockWithServers builds a wireguard block with
+// dns_servers set to exactly the given list. SizeBetween(1,2) means a real
+// config can never send an empty list here, so unlike vpn_server's DNS
+// block this builder never takes one.
+func vpnClientWireguardBlockWithServers(t *testing.T, servers []string) types.Object {
+	t.Helper()
+	ctx := context.Background()
+	list, d := types.ListValueFrom(ctx, types.StringType, servers)
+	if d.HasError() {
+		t.Fatalf("building dns_servers list: %v", d)
+	}
+	value := wireguardModel{
+		PrivateKey:          types.StringValue("WPiBa/Ak1W+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ+kFg="),
+		PrivateKeyWO:        types.StringNull(),
+		PrivateKeyWOVersion: types.Int64Null(),
+		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
+		Peer:                types.ObjectNull(wireguardPeerModel{}.AttributeTypes()),
+		PresharedKeyEnabled: types.BoolValue(false),
+		PresharedKey:        types.StringNull(),
+		Interface:           types.StringNull(),
+		DnsServers:          list,
+	}
+	object, d := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+	if d.HasError() {
+		t.Fatalf("building wireguard object: %v", d)
+	}
+	return object
+}
+
+// vpnClientWireguardBlockServersOmitted describes a wireguard block that is
+// part of the apply (a private key is set) but doesn't mention dns_servers
+// at all.
+func vpnClientWireguardBlockServersOmitted(t *testing.T) types.Object {
+	t.Helper()
+	value := wireguardModel{
+		PrivateKey:          types.StringValue("WPiBa/Ak1W+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ+kFg="),
+		PrivateKeyWO:        types.StringNull(),
+		PrivateKeyWOVersion: types.Int64Null(),
+		Configuration:       types.ObjectNull(wireguardConfigurationModel{}.AttributeTypes()),
+		Peer:                types.ObjectNull(wireguardPeerModel{}.AttributeTypes()),
+		PresharedKeyEnabled: types.BoolValue(false),
+		PresharedKey:        types.StringNull(),
+		Interface:           types.StringNull(),
+		DnsServers:          types.ListNull(types.StringType),
+	}
+	object, d := types.ObjectValueFrom(context.Background(), value.AttributeTypes(), value)
+	if d.HasError() {
+		t.Fatalf("building wireguard object: %v", d)
+	}
+	return object
+}
+
+// vpnClientMaskTestModel builds a full model around one wireguard block.
+// Subnet and everything else the mask doesn't care about is left zero.
+func vpnClientMaskTestModel(wireguard types.Object) vpnClientResourceModel {
+	return vpnClientResourceModel{
+		Name:      types.StringValue("mask-scenario"),
+		Enabled:   types.BoolValue(true),
+		Wireguard: wireguard,
+	}
+}
+
+// vpnClientRunDNSMaskScenario is vpn_server's vpnServerRunDNSMaskScenario,
+// narrowed to vpnClientKitSpec -- see that function's comment for the
+// mechanism this reproduces (final-review.md's Lens C probe).
+func vpnClientRunDNSMaskScenario(
+	t *testing.T, prior, plan vpnClientResourceModel,
+) (map[string]bool, *ui.Network) {
+	t.Helper()
+	ctx := context.Background()
+	spec := vpnClientKitSpec()
+
+	priorState := prior
+	state := prior
+	spec.ApplyPlanToState(&plan, &state)
+
+	fields, err := spec.WireFields(&plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+
+	sdk, diags := spec.ToSDK(ctx, &state)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+
+	diags = spec.BeforeSend(ctx, &plan, &state, priorState, sdk, nil)
+	if diags.HasError() {
+		t.Fatalf("BeforeSend: %v", diags)
+	}
+
+	if spec.UnwritableWires != nil {
+		unwritable := make(map[string]struct{})
+		for _, name := range spec.UnwritableWires(sdk) {
+			unwritable[name] = struct{}{}
+		}
+		kept := fields[:0:0]
+		for _, name := range fields {
+			if _, drop := unwritable[name]; !drop {
+				kept = append(kept, name)
+			}
+		}
+		fields = kept
+	}
+
+	mask := make(map[string]bool, len(fields))
+	for _, name := range fields {
+		mask[name] = true
+	}
+	return mask, sdk
+}
+
+// vpnClientAssertDNSWire is vpn_server's vpnServerAssertDNSWire: wantValue
+// nil means "must be absent from the mask"; non-nil means "must be in the
+// mask with exactly this value", covering the deliberate "" clear too.
+func vpnClientAssertDNSWire(t *testing.T, mask map[string]bool, current *string, wire string, wantValue *string) {
+	t.Helper()
+	inMask := mask[wire]
+	wantInMask := wantValue != nil
+	if inMask != wantInMask {
+		t.Errorf("%s in mask = %v, want %v", wire, inMask, wantInMask)
+		return
+	}
+	if !wantInMask {
+		return
+	}
+	if current == nil || *current != *wantValue {
+		t.Errorf("%s = %v, want a pointer to %q", wire, current, *wantValue)
+	}
+}
+
+// TestVPNClientDNSMaskAcrossPriorAndPlanShapes is
+// TestVPNServerDNSMaskAcrossPriorAndPlanShapes's vpn_client twin, narrowed
+// to two slots. dhcpd_dns_1/dhcpd_dns_2 share one ConditionalWires
+// predicate (vpnClientWireguardWritesDNS(1), "at least one server"), so
+// there is no "prior 2, plan 1" vs "prior 2, plan 0" distinction to make:
+// SizeBetween(1,2) forbids an empty dns_servers list at plan time, so that
+// shape can never reach this code from a real config.
+func TestVPNClientDNSMaskAcrossPriorAndPlanShapes(t *testing.T) {
+	strp := func(s string) *string { return &s }
+
+	t.Run("prior 2, plan 1 -- drops the slot the new list no longer covers", func(t *testing.T) {
+		prior := vpnClientMaskTestModel(vpnClientWireguardBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2"}))
+		plan := vpnClientMaskTestModel(vpnClientWireguardBlockWithServers(t, []string{"9.9.9.9"}))
+
+		mask, sdk := vpnClientRunDNSMaskScenario(t, prior, plan)
+
+		vpnClientAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp("9.9.9.9"))
+		vpnClientAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", strp(""))
+	})
+
+	t.Run("prior 2, plan omits dns_servers -- untouched, no dns wire at all", func(t *testing.T) {
+		prior := vpnClientMaskTestModel(vpnClientWireguardBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2"}))
+		plan := vpnClientMaskTestModel(vpnClientWireguardBlockServersOmitted(t))
+
+		mask, sdk := vpnClientRunDNSMaskScenario(t, prior, plan)
+
+		vpnClientAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", nil)
+		vpnClientAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", nil)
+	})
+
+	t.Run("prior 1, plan 2 -- growing needs no clear", func(t *testing.T) {
+		prior := vpnClientMaskTestModel(vpnClientWireguardBlockWithServers(t, []string{"1.1.1.1"}))
+		plan := vpnClientMaskTestModel(vpnClientWireguardBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2"}))
+
+		mask, sdk := vpnClientRunDNSMaskScenario(t, prior, plan)
+
+		vpnClientAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp("1.1.1.1"))
+		vpnClientAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", strp("2.2.2.2"))
+	})
+
+	t.Run("prior has no wireguard block at all (import), plan 1 -- nothing to clear", func(t *testing.T) {
+		prior := vpnClientMaskTestModel(vpnClientWireguardBlockAbsent())
+		plan := vpnClientMaskTestModel(vpnClientWireguardBlockWithServers(t, []string{"1.1.1.1"}))
+
+		mask, sdk := vpnClientRunDNSMaskScenario(t, prior, plan)
+
+		vpnClientAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp("1.1.1.1"))
+		vpnClientAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", nil)
+	})
+}

@@ -1239,3 +1239,257 @@ func TestVPNServerDNSServersRejectsAFifthServerAtPlan(t *testing.T) {
 		t.Errorf("four servers failed config validation: %v", diags)
 	}
 }
+
+// vpnServerDNSBlockAbsent describes a prior state with no dns block at all --
+// the shape of a resource state before it ever recorded one, or an
+// unpopulated import.
+func vpnServerDNSBlockAbsent() types.Object {
+	return types.ObjectNull(vpnServerDNSModel{}.AttributeTypes())
+}
+
+// vpnServerDNSBlockWithServers builds a dns block with servers set to
+// exactly the given list, including an explicit empty one.
+func vpnServerDNSBlockWithServers(t *testing.T, servers []string) types.Object {
+	t.Helper()
+	ctx := context.Background()
+	list, d := types.ListValueFrom(ctx, types.StringType, servers)
+	if d.HasError() {
+		t.Fatalf("building servers list: %v", d)
+	}
+	object, d := types.ObjectValueFrom(ctx, vpnServerDNSModel{}.AttributeTypes(), vpnServerDNSModel{
+		Enabled: types.BoolValue(true),
+		Servers: list,
+	})
+	if d.HasError() {
+		t.Fatalf("building dns object: %v", d)
+	}
+	return object
+}
+
+// vpnServerDNSBlockServersOmitted describes a dns block that is part of the
+// apply (enabled is set) but doesn't mention servers at all -- distinct from
+// vpnServerDNSBlockAbsent, whose whole block is null.
+func vpnServerDNSBlockServersOmitted(t *testing.T) types.Object {
+	t.Helper()
+	object, d := types.ObjectValueFrom(context.Background(), vpnServerDNSModel{}.AttributeTypes(), vpnServerDNSModel{
+		Enabled: types.BoolValue(true),
+		Servers: types.ListNull(types.StringType),
+	})
+	if d.HasError() {
+		t.Fatalf("building dns object: %v", d)
+	}
+	return object
+}
+
+// vpnServerMaskTestModel builds a full model around one dns block, with a
+// wireguard block set (a private key) so every scenario has something else
+// to keep the write mask non-empty regardless of what the dns scenario does
+// -- matching final-review.md's Lens C setup ("wireguard, dns.enabled=true").
+func vpnServerMaskTestModel(t *testing.T, dns types.Object) vpnServerKitModel {
+	t.Helper()
+	ctx := context.Background()
+	wireguard, d := types.ObjectValueFrom(ctx, vpnServerWireguardModel{}.AttributeTypes(), vpnServerWireguardModel{
+		PrivateKey: types.StringValue("WPiBa/Ak1W+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ+kFg="),
+		PublicKey:  types.StringNull(),
+		Port:       types.Int64Null(),
+	})
+	if d.HasError() {
+		t.Fatalf("building wireguard object: %v", d)
+	}
+	return vpnServerKitModel{
+		Name:      types.StringValue("mask-scenario"),
+		Enabled:   types.BoolValue(true),
+		Subnet:    cidrtypes.NewIPv4PrefixValue("10.100.0.1/24"),
+		DNS:       dns,
+		WAN:       types.ObjectNull(vpnServerWANModel{}.AttributeTypes()),
+		Wireguard: wireguard,
+		L2TP:      types.ObjectNull(vpnServerL2TPModel{}.AttributeTypes()),
+		OpenVPN:   types.ObjectNull(vpnServerOpenVPNModel{}.AttributeTypes()),
+	}
+}
+
+// vpnServerRunDNSMaskScenario drives resourcekit's own Update() sequence for
+// vpnServerKitSpec by hand -- ApplyPlanToState, WireFields from the raw
+// plan, ToSDK from the merged state, BeforeSend, then UnwritableWires -- in
+// the exact order internal/resourcekit.Resource.Update follows, without the
+// tfprotov6 request/response plumbing around it. Returns the final wire
+// mask as a set, and the SDK object BeforeSend/Encode left behind, so a
+// caller can check exactly which DNS wires reached the write and what value
+// each holds -- reproducing final-review.md's Lens C probe (a throwaway
+// kit-level Update probe, deleted after the review) as a committed test.
+func vpnServerRunDNSMaskScenario(
+	t *testing.T, prior, plan vpnServerKitModel,
+) (map[string]bool, *unifi.Network) {
+	t.Helper()
+	ctx := context.Background()
+	spec := vpnServerKitSpec()
+
+	// Captured before ApplyPlanToState overwrites state in place, exactly as
+	// Update does -- this is the only point where the prior and the plan are
+	// still two separate things.
+	priorState := prior
+	state := prior
+	spec.ApplyPlanToState(&plan, &state)
+
+	fields, err := spec.WireFields(&plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+
+	sdk, diags := spec.ToSDK(ctx, &state)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+
+	diags = spec.BeforeSend(ctx, &plan, &state, priorState, sdk, nil)
+	if diags.HasError() {
+		t.Fatalf("BeforeSend: %v", diags)
+	}
+
+	if spec.UnwritableWires != nil {
+		unwritable := make(map[string]struct{})
+		for _, name := range spec.UnwritableWires(sdk) {
+			unwritable[name] = struct{}{}
+		}
+		kept := fields[:0:0]
+		for _, name := range fields {
+			if _, drop := unwritable[name]; !drop {
+				kept = append(kept, name)
+			}
+		}
+		fields = kept
+	}
+
+	mask := make(map[string]bool, len(fields))
+	for _, name := range fields {
+		mask[name] = true
+	}
+	return mask, sdk
+}
+
+// vpnServerAssertDNSWire checks one dhcpd_dns_N wire against a scenario's
+// mask and the SDK value left behind. wantValue nil means "must be absent
+// from the mask" -- current's Go value is not checked in that case, since a
+// wire outside the mask is never sent regardless of what it holds. A
+// non-nil wantValue means "must be in the mask, with exactly this value",
+// which also covers the deliberate "" clear.
+func vpnServerAssertDNSWire(t *testing.T, mask map[string]bool, current *string, wire string, wantValue *string) {
+	t.Helper()
+	inMask := mask[wire]
+	wantInMask := wantValue != nil
+	if inMask != wantInMask {
+		t.Errorf("%s in mask = %v, want %v", wire, inMask, wantInMask)
+		return
+	}
+	if !wantInMask {
+		return
+	}
+	if current == nil || *current != *wantValue {
+		t.Errorf("%s = %v, want a pointer to %q", wire, current, *wantValue)
+	}
+}
+
+// TestVPNServerDNSMaskAcrossPriorAndPlanShapes pins final-review.md's Lens C
+// table: the joint decision of ConditionalWires (mask from the raw plan),
+// vpnServerDNSServersClearDropped (the prior/plan comparison) and
+// vpnServerUnwritableWires (the nil-narrowing) has to produce, for every
+// prior/plan shape, exactly the kept slots with values, the dropped slots
+// as a deliberate non-nil "", and nothing else. An acceptance test can only
+// see the read-back result, which can't tell "wire absent from the mask"
+// from "wire sent as an explicit JSON null" (both read back empty) -- this
+// test inspects the mask directly instead.
+func TestVPNServerDNSMaskAcrossPriorAndPlanShapes(t *testing.T) {
+	strp := func(s string) *string { return &s }
+
+	t.Run("prior 3, plan 1 -- drops the two the new list no longer covers", func(t *testing.T) {
+		prior := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}))
+		plan := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t, []string{"1.1.1.1"}))
+
+		mask, sdk := vpnServerRunDNSMaskScenario(t, prior, plan)
+
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp("1.1.1.1"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", strp(""))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS3, "dhcpd_dns_3", strp(""))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS4, "dhcpd_dns_4", nil)
+	})
+
+	t.Run("prior 3, plan omits servers -- DNS untouched, no dns wire at all", func(t *testing.T) {
+		prior := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}))
+		plan := vpnServerMaskTestModel(t, vpnServerDNSBlockServersOmitted(t))
+
+		mask, sdk := vpnServerRunDNSMaskScenario(t, prior, plan)
+
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", nil)
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", nil)
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS3, "dhcpd_dns_3", nil)
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS4, "dhcpd_dns_4", nil)
+	})
+
+	t.Run("prior 3, plan [] -- clears every slot prior held", func(t *testing.T) {
+		prior := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}))
+		plan := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t, []string{}))
+
+		mask, sdk := vpnServerRunDNSMaskScenario(t, prior, plan)
+
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp(""))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", strp(""))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS3, "dhcpd_dns_3", strp(""))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS4, "dhcpd_dns_4", nil)
+	})
+
+	t.Run("prior 3, plan the same 3 -- nothing dropped", func(t *testing.T) {
+		prior := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}))
+		plan := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}))
+
+		mask, sdk := vpnServerRunDNSMaskScenario(t, prior, plan)
+
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp("1.1.1.1"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", strp("2.2.2.2"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS3, "dhcpd_dns_3", strp("3.3.3.3"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS4, "dhcpd_dns_4", nil)
+	})
+
+	t.Run("prior 1, plan 3 -- growing needs no clear", func(t *testing.T) {
+		prior := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t, []string{"1.1.1.1"}))
+		plan := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}))
+
+		mask, sdk := vpnServerRunDNSMaskScenario(t, prior, plan)
+
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp("1.1.1.1"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", strp("2.2.2.2"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS3, "dhcpd_dns_3", strp("3.3.3.3"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS4, "dhcpd_dns_4", nil)
+	})
+
+	t.Run("prior 4, plan 2 -- clears both trailing slots", func(t *testing.T) {
+		prior := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t,
+			[]string{"1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"}))
+		plan := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t,
+			[]string{"1.1.1.1", "9.9.9.9"}))
+
+		mask, sdk := vpnServerRunDNSMaskScenario(t, prior, plan)
+
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp("1.1.1.1"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", strp("9.9.9.9"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS3, "dhcpd_dns_3", strp(""))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS4, "dhcpd_dns_4", strp(""))
+	})
+
+	t.Run("prior has no dns block at all (import), plan 1 -- nothing to clear", func(t *testing.T) {
+		prior := vpnServerMaskTestModel(t, vpnServerDNSBlockAbsent())
+		plan := vpnServerMaskTestModel(t, vpnServerDNSBlockWithServers(t, []string{"1.1.1.1"}))
+
+		mask, sdk := vpnServerRunDNSMaskScenario(t, prior, plan)
+
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS1, "dhcpd_dns_1", strp("1.1.1.1"))
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS2, "dhcpd_dns_2", nil)
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS3, "dhcpd_dns_3", nil)
+		vpnServerAssertDNSWire(t, mask, sdk.DHCPDDNS4, "dhcpd_dns_4", nil)
+	})
+}
