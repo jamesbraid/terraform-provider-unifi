@@ -283,6 +283,102 @@ func TestCompositeUpdateUsesStatesSiteWhenThePlansIsUnknown(t *testing.T) {
 	}
 }
 
+// fakeSectionThatHydratesASiblingOnWrite is a fakeSection whose Write
+// mutates a field of the shared model the plan never set -- the same shape
+// SpecSection.Write's own s.Set(plan, object) takes when an Extra's
+// response merges a sibling attribute the practitioner never configured
+// (usg_geo hydrating geo_ip_filtering_traffic_direction is the real
+// example). Its Read treats the plan argument it's handed as the prior a
+// plan-conditioned null rule would use: b comes back null only when that
+// prior still has it null. Configured is gated on a (always set here), not
+// b, so Write always runs regardless of b's state -- the section is
+// "configured" the way usg is configured by ftp_module while
+// geo_ip_filtering_traffic_direction stays unset.
+//
+// This is the regression pin for composite.go's own half of the
+// AfterReceive-ordering fix: Composite.Create and Composite.Update must
+// hand read() the plan as the practitioner configured it, not the plan
+// write() just mutated, or this section's b always comes back hydrated
+// even when nothing ever configured it.
+func fakeSectionThatHydratesASiblingOnWrite(log *[]string) fakeSection {
+	return fakeSection{
+		name:  "a",
+		field: func(m *compositeModel) *types.String { return &m.A },
+		log:   log,
+		writeFn: func(_ context.Context, _ string, plan, _ *compositeModel, _ string) diag.Diagnostics {
+			plan.B = types.StringValue("hydrated-by-write")
+			return nil
+		},
+		readFn: func(_ context.Context, _ string, plan, out *compositeModel) diag.Diagnostics {
+			out.A = types.StringValue("fetched:a")
+			if plan.B.IsNull() || plan.B.IsUnknown() {
+				out.B = types.StringNull()
+			} else {
+				out.B = plan.B
+			}
+			return nil
+		},
+	}
+}
+
+func TestCompositeCreateReadSeesTheOriginalPlanNotWritesMutation(t *testing.T) {
+	var log []string
+	a := fakeSectionThatHydratesASiblingOnWrite(&log)
+	c := compositeResource([]Section[compositeModel]{a})
+
+	// b left null: the practitioner never configured it.
+	plan := compositeStateWith(t, compositeModel{
+		Site: types.StringValue("site-1"),
+		A:    types.StringValue("configured"),
+	})
+	resp := &resource.CreateResponse{State: compositeStateWith(t, compositeModel{})}
+	c.Create(context.Background(), resource.CreateRequest{Plan: tfsdk.Plan(plan)}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
+	}
+
+	var got compositeModel
+	if diags := resp.State.Get(context.Background(), &got); diags.HasError() {
+		t.Fatalf("read back state: %v", diags)
+	}
+	if !got.B.IsNull() {
+		t.Errorf("b = %v, want null -- the plan never set it, but write() mutated the shared "+
+			"plan object; the follow-up read must still see the ORIGINAL plan as its prior, not "+
+			"what write() left behind", got.B)
+	}
+}
+
+func TestCompositeUpdateReadSeesTheOriginalPlanNotWritesMutation(t *testing.T) {
+	var log []string
+	a := fakeSectionThatHydratesASiblingOnWrite(&log)
+	c := compositeResource([]Section[compositeModel]{a})
+
+	state := compositeStateWith(t, compositeModel{
+		ID: types.StringValue("site-1"), Site: types.StringValue("site-1"),
+		A: types.StringValue("configured"), B: types.StringValue("previously-set"),
+	})
+	// b left null in the new plan: the practitioner removed it from config.
+	plan := compositeStateWith(t, compositeModel{
+		Site: types.StringValue("site-1"),
+		A:    types.StringValue("configured"),
+	})
+	resp := &resource.UpdateResponse{State: state}
+	c.Update(context.Background(), resource.UpdateRequest{State: state, Plan: tfsdk.Plan(plan)}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
+	}
+
+	var got compositeModel
+	if diags := resp.State.Get(context.Background(), &got); diags.HasError() {
+		t.Fatalf("read back state: %v", diags)
+	}
+	if !got.B.IsNull() {
+		t.Errorf("b = %v, want null -- the plan never set it, but write() mutated the shared "+
+			"plan object; the follow-up read must still see the ORIGINAL plan as its prior, not "+
+			"what write() left behind", got.B)
+	}
+}
+
 func TestCompositeDeleteLeavesNoState(t *testing.T) {
 	var log []string
 	a := fakeSection{name: "a", field: func(m *compositeModel) *types.String { return &m.A }, log: &log}

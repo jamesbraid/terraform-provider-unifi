@@ -937,9 +937,14 @@ func TestSpecSectionExtraFieldThePlanLeftNullStaysNullAfterWriteAndRead(t *testi
 			afterWrite.B.ValueString(), afterWrite.B.IsNull())
 	}
 
-	// Composite's own post-write Read runs next -- reproduce its exact call
-	// convention (plan and out are the SAME pointer, the value Write just
-	// mutated), not a fresh copy of the original plan.
+	// Read again, reusing the SAME plan Write just mutated for both the
+	// plan and out arguments -- the shape Composite's Create/Update used
+	// before composite.go was fixed to hand read() a copy of the original
+	// plan instead (composite_test.go pins that half separately). Reusing
+	// it here, even though Composite itself no longer does, proves the
+	// kit-level fix alone -- AfterReceive running once, after the Extra
+	// loop -- is enough to keep b null without leaning on the Composite
+	// fix too.
 	diags = section.Read(context.Background(), "site-1", &plan, &plan)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
