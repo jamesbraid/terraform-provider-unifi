@@ -150,7 +150,7 @@ Optional:
 
 Optional:
 
-- `enabled` (Boolean) Whether IGMP snooping is enabled for the site.
+- `enabled` (Boolean) Whether IGMP snooping is enabled for the site. Enabling it only takes effect when `network_ids` names a network.
 - `network_ids` (List of String) IDs of the networks IGMP snooping applies to.
 
 
@@ -273,10 +273,10 @@ Optional:
 
 Optional:
 
-- `ntp_server_1` (String) Primary NTP server.
-- `ntp_server_2` (String) Second NTP server.
-- `ntp_server_3` (String) Third NTP server.
-- `ntp_server_4` (String) Fourth NTP server.
+- `ntp_server_1` (String) Primary NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).
+- `ntp_server_2` (String) Second NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).
+- `ntp_server_3` (String) Third NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).
+- `ntp_server_4` (String) Fourth NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).
 - `setting_preference` (String) Configuration mode: `auto` or `manual`.
 
 
