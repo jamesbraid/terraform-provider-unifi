@@ -150,15 +150,15 @@ func (d SpecDocument[SM, S]) Read(ctx context.Context, site string, model *SM) d
 }
 
 // SpecSection serves one Composite[M] section from a Spec[SM, S] instead of
-// a hand-written read/write pair (legacySection's shape). M is the whole
+// a hand-written read/write pair. M is the whole
 // resource's model (settingResourceModel); SM is this section's own model,
 // decoded out of one types.Object attribute of M; S is the SDK struct
 // Spec.Backend reads and writes.
 type SpecSection[M any, SM any, S any] struct {
 	SectionName string
 	// Get and Set reach the section's own attribute on the whole model --
-	// the types.Object a legacySection's Configured/Read null-arm also work
-	// against.
+	// the same types.Object this type's own Configured and Read null-arm
+	// work against, below.
 	Get func(*M) *types.Object
 	Set func(*M, types.Object)
 	// AttrTypes types the section's object in state; it must match the
@@ -296,7 +296,7 @@ func (s SpecSection[M, SM, S]) Write(
 }
 
 // Read fetches the section fresh when the plan configures it, or writes
-// null onto out when it does not -- match legacySection's own read arm.
+// null onto out when it does not, per Configured's own check.
 func (s SpecSection[M, SM, S]) Read(
 	ctx context.Context, site string, plan, out *M,
 ) diag.Diagnostics {
