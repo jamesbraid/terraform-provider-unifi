@@ -1417,9 +1417,10 @@ func TestSettingNtpServersUseStateForUnknown(t *testing.T) {
 // TestUsgGeoRenamesBlockToActionOnTheWire and TestUsgGeoIsWrittenOnlyWhenConfigured
 // (the wire-rename and write-only-when-configured behaviours),
 // TestUsgGeoBackendPreservesUnmanagedSubFieldsOnAPartialWrite (the
-// read-modify-write merge), TestUsgGeoBackendReadTreatsAnAbsentDocumentAsZero
-// and TestUsgAfterReceiveNullsWhatThePlanDidNotName (the absent-usg_geo and
-// null-plan read-side behaviours).
+// read-modify-write merge), TestUsgGeoBackendReadTreatsIPFilteringNilAsZero and
+// TestUsgGeoDocumentReadNotFoundLeavesModelUntouched (the absent-usg_geo cases)
+// and TestUsgAfterReceiveNullsWhatThePlanDidNotName (the null-plan read-side
+// behaviour).
 
 // TestIpsSuppressionAbsentSetting mirrors usg_geo's own absent-document
 // behaviour (setting_usg_descriptor_test.go) for the ips_suppression split.

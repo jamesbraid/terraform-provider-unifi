@@ -591,3 +591,191 @@ func TestSpecSectionReadNotFoundStaysTodaysErrorSummary(t *testing.T) {
 		t.Errorf("detail = %q, want it to carry the backend's own error %q", got[0].Detail(), notFound.Error())
 	}
 }
+
+// ssObjNestedSDK stands in for a nested SDK object shaped like usg's own
+// dns_verification (settings.SettingUsgDNSVerification): a struct the
+// primary's ObjectField owns, not the extra.
+type ssObjNestedSDK struct {
+	A string
+	B string
+}
+
+// ssObjNestedModel is ssObjNestedSDK's model-side shape -- ObjectField's own
+// Encode/Decode need a real tfsdk-tagged struct to decode into, the same way
+// usg's dnsVerificationModel does.
+type ssObjNestedModel struct {
+	A types.String `tfsdk:"a"`
+	B types.String `tfsdk:"b"`
+}
+
+var ssObjNestedAttrTypes = map[string]attr.Type{
+	"a": types.StringType,
+	"b": types.StringType,
+}
+
+// ssObjSectionModel is ssSectionModel's sibling for the ObjectField case:
+// Nested is the primary's own nested object (usg's dns_verification),
+// Extra is a second, unrelated attribute an Extra document owns (usg_geo's
+// own attributes) -- sharing one model between the two the same way usg and
+// usg_geo share settingUSGModel.
+type ssObjSectionModel struct {
+	Name   types.String `tfsdk:"name"`
+	Nested types.Object `tfsdk:"nested"`
+	Extra  types.String `tfsdk:"extra"`
+}
+
+func ssObjAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"name":   types.StringType,
+		"nested": types.ObjectType{AttrTypes: ssObjNestedAttrTypes},
+		"extra":  types.StringType,
+	}
+}
+
+// ssObjSDK stands in for a settings.Usg-shaped struct: Name is an ordinary
+// field, Nested is the ObjectField's own target.
+type ssObjSDK struct {
+	Name   string
+	Nested *ssObjNestedSDK
+}
+
+// ssObjSpec is the primary Spec: Name is an ordinary StringField, Nested is
+// an ObjectField over ssObjNestedSDK -- the shape whose own CopyPlanToState
+// does a member-by-member merge rather than a wholesale copy, specifically
+// to keep an Unknown inner member (a Computed sub-attribute the plan didn't
+// resolve) out of state. TestSpecSectionExtraWriteLeavesThePrimarysObjectMergeIntact
+// is what an Extra sharing this model must not undo.
+func ssObjSpec(backend Backend[ssObjSDK]) Spec[ssObjSectionModel, ssObjSDK] {
+	return Spec[ssObjSectionModel, ssObjSDK]{
+		TypeName: "ss_obj_probe",
+		Subject:  "SS Obj Probe",
+		New:      func() *ssObjSDK { return &ssObjSDK{} },
+		Fields: []Field[ssObjSectionModel, ssObjSDK]{
+			StringField[ssObjSectionModel, ssObjSDK]{
+				Wire:  "name",
+				Model: func(m *ssObjSectionModel) *types.String { return &m.Name },
+				SDK:   func(s *ssObjSDK) *string { return &s.Name },
+				Elide: KeepZero,
+			},
+			ObjectField[ssObjSectionModel, ssObjSDK, ssObjNestedSDK]{
+				Wire:      "nested",
+				Model:     func(m *ssObjSectionModel) *types.Object { return &m.Nested },
+				SDK:       func(s *ssObjSDK) **ssObjNestedSDK { return &s.Nested },
+				AttrTypes: ssObjNestedAttrTypes,
+				Encode: func(ctx context.Context, object types.Object) (*ssObjNestedSDK, diag.Diagnostics) {
+					var model ssObjNestedModel
+					diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
+					return &ssObjNestedSDK{A: model.A.ValueString(), B: model.B.ValueString()}, diags
+				},
+				Decode: func(ctx context.Context, sdk *ssObjNestedSDK) (types.Object, diag.Diagnostics) {
+					return types.ObjectValueFrom(ctx, ssObjNestedAttrTypes, ssObjNestedModel{
+						A: types.StringValue(sdk.A), B: types.StringValue(sdk.B),
+					})
+				},
+				Elide: KeepZero,
+			},
+		},
+		Backend: backend,
+	}
+}
+
+// ssObjExtraSDK stands in for usg_geo's own document: a second controller
+// document mapping onto the SAME section model as ssObjSDK, on a field the
+// primary's own Fields never touch (Extra).
+type ssObjExtraSDK struct {
+	Value string
+}
+
+func ssObjExtraSpec(backend Backend[ssObjExtraSDK]) Spec[ssObjSectionModel, ssObjExtraSDK] {
+	return Spec[ssObjSectionModel, ssObjExtraSDK]{
+		TypeName: "ss_obj_probe_extra",
+		Subject:  "SS Obj Probe Extra",
+		New:      func() *ssObjExtraSDK { return &ssObjExtraSDK{} },
+		Fields: []Field[ssObjSectionModel, ssObjExtraSDK]{
+			StringField[ssObjSectionModel, ssObjExtraSDK]{
+				Wire:  "value",
+				Model: func(m *ssObjSectionModel) *types.String { return &m.Extra },
+				SDK:   func(s *ssObjExtraSDK) *string { return &s.Value },
+				Elide: KeepZero,
+			},
+		},
+		Backend: backend,
+	}
+}
+
+// TestSpecSectionExtraWriteLeavesThePrimarysObjectMergeIntact is the
+// regression test for a bug an earlier version of this package's
+// SpecDocument.Write had: it called the full Spec.ApplyPlanToState, whose
+// copyUncoveredPlanValues catch-up treats every model field a Spec's own
+// Fields don't cover as "nobody's job, copy the plan's raw value forward."
+// That premise only holds for a section's sole Spec -- for an Extra sharing
+// a model with a primary that has its own ObjectField, it's false: the
+// Extra's own catch-up saw the primary's nested object as uncovered and
+// overwrote ObjectField's careful member-by-member merge with a wholesale
+// copy of the plan's raw object, Unknown inner member included. usg hit
+// this the moment usg_geo became its first Extra (dns_verification is the
+// primary's ObjectField there). SpecDocument.Write now calls
+// applyOwnFieldsToState instead -- this section's model.
+func TestSpecSectionExtraWriteLeavesThePrimarysObjectMergeIntact(t *testing.T) {
+	section := SpecSection[ssModel, ssObjSectionModel, ssObjSDK]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   ssObjAttrTypes(),
+		Spec: ssObjSpec(Backend[ssObjSDK]{
+			UpdateFields: func(_ context.Context, _ string, in *ssObjSDK, _ ...string) (*ssObjSDK, error) {
+				return in, nil
+			},
+		}),
+		Extra: []Document[ssObjSectionModel]{
+			SpecDocument[ssObjSectionModel, ssObjExtraSDK]{
+				Spec: ssObjExtraSpec(Backend[ssObjExtraSDK]{
+					UpdateFields: func(_ context.Context, _ string, in *ssObjExtraSDK, _ ...string) (*ssObjExtraSDK, error) {
+						return in, nil
+					},
+				}),
+			},
+		},
+	}
+
+	// nested is configured (non-null) but its "b" member is Unknown -- the
+	// shape an Optional+Computed sub-attribute takes when the practitioner
+	// sets the object but not every member on create (firewall_policy's own
+	// matching_target_type does this; ObjectField.CopyPlanToState exists
+	// specifically to keep an Unknown member like this out of state).
+	nested, diags := types.ObjectValue(ssObjNestedAttrTypes, map[string]attr.Value{
+		"a": types.StringValue("configured-a"),
+		"b": types.StringUnknown(),
+	})
+	if diags.HasError() {
+		t.Fatalf("build nested: %v", diags)
+	}
+	// extra is also configured, which is what makes the Extra's own Write
+	// (and its old, buggy ApplyPlanToState call) actually run.
+	sectionObject, diags := types.ObjectValue(ssObjAttrTypes(), map[string]attr.Value{
+		"name":   types.StringValue("n"),
+		"nested": nested,
+		"extra":  types.StringValue("configured-extra"),
+	})
+	if diags.HasError() {
+		t.Fatalf("build section: %v", diags)
+	}
+
+	plan := ssModel{Section: sectionObject}
+	diags = section.Write(context.Background(), "site-1", &plan, nil, "Creating")
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	var got ssObjSectionModel
+	diags = plan.Section.As(context.Background(), &got, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		t.Fatalf("decode written-back section: %v", diags)
+	}
+	b, ok := got.Nested.Attributes()["b"]
+	if !ok || b.IsUnknown() {
+		t.Errorf("nested.b = %v, want a known value -- the Extra's own write must not "+
+			"overwrite the primary's ObjectField merge with the plan's raw (Unknown-carrying) "+
+			"object", b)
+	}
+}
