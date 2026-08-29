@@ -99,6 +99,20 @@ func vpnServerDNSServerCount(object types.Object) int {
 	return len(servers.Elements())
 }
 
+// vpnServerDNSServersTouched reports whether this apply gives dns.servers a
+// value at all -- distinct from giving it a SHORTER one. Omitting servers
+// from an otherwise-set dns block (toggling just enabled, say) must leave
+// existing DNS servers alone; an explicit list, even an empty one, is the
+// practitioner saying what the servers now are, and is what gates the
+// clearing read in vpnServerBeforeSend.
+func vpnServerDNSServersTouched(object types.Object) bool {
+	if object.IsNull() || object.IsUnknown() {
+		return false
+	}
+	servers, ok := object.Attributes()["servers"].(types.List)
+	return ok && !servers.IsNull() && !servers.IsUnknown()
+}
+
 // encodeVPNServerWAN is a no-op, deliberately: it runs during ToSDK's Fields
 // pass, before vpnServerBeforeSend (the only place that sets sdk.VPNType) has
 // run, so the switch in vpnServerWANIPToNetwork/vpnServerWANInterfaceToNetwork
@@ -300,7 +314,82 @@ func vpnServerUnwritableWires(sdk *ui.Network) []string {
 	return unwritable
 }
 
-func vpnServerBeforeSend(ctx context.Context, _, effective *vpnServerKitModel, sdk *ui.Network, _ any) diag.Diagnostics {
+// vpnServerBeforeSend takes the client because clearing a dropped DNS server
+// needs a fresh read of what the controller currently holds -- see
+// vpnServerClearDroppedDNS. A nil client is fine at construction time (see
+// vpnServerKitSpec); Configure rebinds this once the real one exists.
+func vpnServerBeforeSend(
+	client *ui.ApiClient,
+) func(ctx context.Context, config, effective *vpnServerKitModel, sdk *ui.Network, prefetched any) diag.Diagnostics {
+	return func(
+		ctx context.Context,
+		_, effective *vpnServerKitModel,
+		sdk *ui.Network,
+		_ any,
+	) diag.Diagnostics {
+		diags := vpnServerBeforeSendBody(ctx, effective, sdk)
+		if diags.HasError() {
+			return diags
+		}
+		diags.Append(vpnServerClearDroppedDNS(ctx, client, effective)...)
+		return diags
+	}
+}
+
+// vpnServerClearDroppedDNS clears a DNS slot the controller currently fills
+// that this apply's server list no longer reaches.
+//
+// This can't be Encode's job: by the time ToSDK runs, the kit's Update has
+// already merged the plan onto state, so the object Encode sees holds only
+// the NEW list -- nothing at that point still knows the OLD one. A fresh
+// read is the only way back to it. It's a second, separate write (not folded
+// into the mask the kit computes from the plan) because that mask is built
+// before this hook runs, from ConditionalWires evaluated on the plan alone --
+// too early to know which dropped slots need clearing.
+//
+// Skipped on create (no id yet, nothing to have dropped) and whenever
+// dns.servers isn't part of this apply at all, so an update touching some
+// other attribute never pays for a read it has no use for.
+func vpnServerClearDroppedDNS(
+	ctx context.Context,
+	client *ui.ApiClient,
+	effective *vpnServerKitModel,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	id := effective.ID.ValueString()
+	if id == "" || !vpnServerDNSServersTouched(effective.DNS) {
+		return diags
+	}
+	site := effective.Site.ValueString()
+	current, err := client.GetNetwork(ctx, site, id)
+	if err != nil {
+		diags.AddError(
+			"Unable to read the VPN server's current DNS servers",
+			"Clearing a DNS server the configuration dropped requires reading the "+
+				"server's current configuration first: "+err.Error(),
+		)
+		return diags
+	}
+	serversAttr, ok := effective.DNS.Attributes()["servers"].(types.List)
+	if !ok {
+		return diags
+	}
+	var servers []string
+	diags.Append(serversAttr.ElementsAs(ctx, &servers, false)...)
+	if diags.HasError() {
+		return diags
+	}
+	dropped := vpnServerDNSServersClearDropped(servers, current)
+	if len(dropped) == 0 {
+		return diags
+	}
+	if _, err := client.UpdateNetworkFields(ctx, site, current, dropped...); err != nil {
+		diags.AddError("Unable to clear the dropped DNS server(s)", err.Error())
+	}
+	return diags
+}
+
+func vpnServerBeforeSendBody(ctx context.Context, effective *vpnServerKitModel, sdk *ui.Network) diag.Diagnostics {
 	var diags diag.Diagnostics
 	sdk.Purpose = ui.PurposeUserVPN
 	sdk.SettingPreference = util.Ptr("manual")
@@ -438,7 +527,13 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 			// BeforeSend guarantees this whenever the block is set.
 			"x_wireguard_private_key",
 		},
-		BeforeSend:      vpnServerBeforeSend,
+		// A nil client here is safe: vpnServerClearDroppedDNS only ever
+		// dereferences it on an update with an id, which nothing before
+		// Configure runs can produce (ValidateConfig and this package's own
+		// ToSDK-level tests call BeforeSend directly, both always on a
+		// create-shaped model with no id). Configure rebinds this to the
+		// real client once one exists.
+		BeforeSend:      vpnServerBeforeSend(nil),
 		AfterReceive:    vpnServerAfterReceive,
 		UnwritableWires: vpnServerUnwritableWires,
 		Fields: []resourcekit.Field[vpnServerKitModel, ui.Network]{
@@ -468,10 +563,16 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 				New:   func(v basetypes.StringValue) types.String { return v },
 			},
 			// dhcpd_dns_enabled has NO omitempty in the UserVPN alias, so it
-			// travels whenever the block does and needs no predicate. The two
-			// slots do, and they differ -- see vpnServerDNSServerCount.
+			// travels whenever the block does and needs no predicate. The four
+			// slots do, and each differs from the others -- see
+			// vpnServerDNSServerCount. Clearing a slot the plan drops from a
+			// longer prior list is a SECOND write vpnServerBeforeSend issues
+			// separately (see vpnServerClearDroppedDNS); these predicates only
+			// ever gate what Encode writes from the plan's own list.
 			resourcekit.ScatteredObjectField[vpnServerKitModel, ui.Network]{
-				Wires:     []string{"dhcpd_dns_enabled", "dhcpd_dns_1", "dhcpd_dns_2"},
+				Wires: []string{
+					"dhcpd_dns_enabled", "dhcpd_dns_1", "dhcpd_dns_2", "dhcpd_dns_3", "dhcpd_dns_4",
+				},
 				Model:     func(m *vpnServerKitModel) *types.Object { return &m.DNS },
 				AttrTypes: vpnServerDNSModel{}.AttributeTypes(),
 				Encode:    encodeVPNServerDNS,
@@ -479,6 +580,8 @@ func vpnServerKitSpec() resourcekit.Spec[vpnServerKitModel, ui.Network] {
 				ConditionalWires: map[string]func(types.Object) bool{
 					"dhcpd_dns_1": func(o types.Object) bool { return vpnServerDNSServerCount(o) > 0 },
 					"dhcpd_dns_2": func(o types.Object) bool { return vpnServerDNSServerCount(o) > 1 },
+					"dhcpd_dns_3": func(o types.Object) bool { return vpnServerDNSServerCount(o) > 2 },
+					"dhcpd_dns_4": func(o types.Object) bool { return vpnServerDNSServerCount(o) > 3 },
 				},
 			},
 			// All six wan wires are declared; vpnServerUnwritableWires drops the

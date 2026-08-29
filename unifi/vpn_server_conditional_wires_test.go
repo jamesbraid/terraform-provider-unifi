@@ -125,7 +125,13 @@ func TestVPNServerConditionalWiresAgreeWithEncode(t *testing.T) {
 	// check's population is field.Wires, so an UNDECLARED conditional wire is
 	// reported by name -- the only case that destroys anything.
 	byLeadWire := map[string][]types.Object{
-		"dhcpd_dns_enabled":       {dnsObject(t), dnsObject(t, "1.1.1.1"), dnsObject(t, "1.1.1.1", "8.8.8.8")},
+		"dhcpd_dns_enabled": {
+			dnsObject(t),
+			dnsObject(t, "1.1.1.1"),
+			dnsObject(t, "1.1.1.1", "8.8.8.8"),
+			dnsObject(t, "1.1.1.1", "8.8.8.8", "9.9.9.9"),
+			dnsObject(t, "1.1.1.1", "8.8.8.8", "9.9.9.9", "4.4.4.4"),
+		},
 		"l2tp_allow_weak_ciphers": {l2tpObject(t, ""), l2tpObject(t, "a-pre-shared-key")},
 		"local_port":              {openVPNObject(t, false), openVPNObject(t, true)},
 		"x_wireguard_private_key": {wireguardObject(t, false), wireguardObject(t, true)},

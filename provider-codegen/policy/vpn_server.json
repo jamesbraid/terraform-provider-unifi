@@ -53,10 +53,12 @@
         "kind": "dedicated",
         "to_api": "vpnServerDNSServersToNetwork"
       },
-      "reason": "one released list distributed positionally into two observed slots, and read back by collecting the non-empty ones",
+      "reason": "one released list distributed positionally into four observed slots, clearing a slot the controller filled and the list no longer reaches, and read back by collecting the non-empty ones",
       "structural_names": [
         "dhcpd_dns_1",
-        "dhcpd_dns_2"
+        "dhcpd_dns_2",
+        "dhcpd_dns_3",
+        "dhcpd_dns_4"
       ],
       "terraform_members": [
         "dns.servers"
@@ -145,8 +147,6 @@
     "dhcpd_boot_filename",
     "dhcpd_boot_server",
     "dhcpd_conflict_checking",
-    "dhcpd_dns_3",
-    "dhcpd_dns_4",
     "dhcpd_enabled",
     "dhcpd_gateway",
     "dhcpd_gateway_enabled",

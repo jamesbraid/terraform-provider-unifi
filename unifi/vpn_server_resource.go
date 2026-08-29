@@ -182,6 +182,7 @@ func (r *vpnServerResource) Configure(
 	}
 
 	r.Spec.Backend = vpnServerKitBackend(client.ApiClient)
+	r.Spec.BeforeSend = vpnServerBeforeSend(client.ApiClient)
 	r.DefaultSite = client.Site
 }
 
@@ -268,10 +269,14 @@ func vpnServerWANInterfaceFromNetwork(network *unifi.Network) types.String {
 	return types.StringPointerValue(nil)
 }
 
-// vpnServerDNSServersToNetwork distributes dns.servers positionally into the two
-// observed slots without clearing the unused one. Unlike network's dhcp_server
-// (SizeAtMost(4)) and vpn_client's wireguard (SizeBetween(1,2)), this attribute has
-// no size validator, so a third server is silently accepted and dropped -- known, not fixed, since the bound would be a public schema change.
+// vpnServerDNSServersToNetwork distributes dns.servers positionally into the
+// four observed slots without clearing the ones it does not use -- that half
+// is vpnServerDNSServersClearDropped's job, since it needs to know what the
+// controller currently holds, which this function is never given. This
+// attribute has no size validator, unlike network's dhcp_server
+// (SizeAtMost(4)) and vpn_client's wireguard (SizeBetween(1,2)), so a fifth
+// server is silently accepted and dropped -- known, not fixed, since the
+// bound would be a public schema change.
 func vpnServerDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
 	if len(dnsServers) > 0 {
 		network.DHCPDDNS1 = util.Ptr(dnsServers[0])
@@ -279,16 +284,57 @@ func vpnServerDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
 	if len(dnsServers) > 1 {
 		network.DHCPDDNS2 = util.Ptr(dnsServers[1])
 	}
+	if len(dnsServers) > 2 {
+		network.DHCPDDNS3 = util.Ptr(dnsServers[2])
+	}
+	if len(dnsServers) > 3 {
+		network.DHCPDDNS4 = util.Ptr(dnsServers[3])
+	}
 }
 
-// vpnServerDNSServersFromNetwork collects dns.servers from the two observed
+// vpnServerDNSServersClearDropped mutates current's dhcpd_dns_N slots to an
+// explicit "" for any position newServers no longer reaches but current
+// still fills, and reports the wire names it changed.
+//
+// This exists apart from vpnServerDNSServersToNetwork because the kit's
+// Update merges the plan onto state before any hook runs, so by the time
+// Encode sees dns.servers it already holds the plan's shortened list --
+// nothing at that point still knows what the controller had. current has to
+// come from a fresh read (see vpnServerBeforeSend) for exactly that reason.
+//
+// A position neither side ever fills is left at its current Go value (nil,
+// if current never held one) and reported nowhere: go-unifi's masked write
+// synthesizes JSON null for a nil pointer named in the mask, and null is not
+// "leave alone" -- so a slot with nothing to clear must stay off whatever
+// list of wires the caller is about to write.
+func vpnServerDNSServersClearDropped(newServers []string, current *unifi.Network) []string {
+	slots := []**string{
+		&current.DHCPDDNS1, &current.DHCPDDNS2, &current.DHCPDDNS3, &current.DHCPDDNS4,
+	}
+	wires := [4]string{"dhcpd_dns_1", "dhcpd_dns_2", "dhcpd_dns_3", "dhcpd_dns_4"}
+	var dropped []string
+	for i, slot := range slots {
+		if i < len(newServers) {
+			continue // the new list still covers this slot.
+		}
+		if *slot != nil && **slot != "" {
+			*slot = util.Ptr("")
+			dropped = append(dropped, wires[i])
+		}
+	}
+	return dropped
+}
+
+// vpnServerDNSServersFromNetwork collects dns.servers from the four observed
 // slots, keeping only non-empty ones; pairing with the write above compacts, so a lone slot-two value reads back as the first element.
 func vpnServerDNSServersFromNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
 	network *unifi.Network,
 ) types.List {
-	servers := collectNonEmptyStringPointers(network.DHCPDDNS1, network.DHCPDDNS2)
+	servers := collectNonEmptyStringPointers(
+		network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
+	)
 	if len(servers) == 0 {
 		return types.ListNull(types.StringType)
 	}

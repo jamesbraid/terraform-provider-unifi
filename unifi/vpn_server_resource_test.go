@@ -3,6 +3,8 @@ package unifi
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
@@ -108,11 +110,13 @@ func TestAccVPNServer_wireguard_with_dns(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccVPNServerConfig_wireguard_with_dns(),
+				Config: testAccVPNServerConfig_wireguard_with_dns_servers(
+					"8.8.8.8", "8.8.4.4", "1.1.1.1",
+				),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_vpn_server.test", "name", "tfacc-wg-dns"),
 					resource.TestCheckResourceAttr("unifi_vpn_server.test", "dns.enabled", "true"),
-					resource.TestCheckResourceAttr("unifi_vpn_server.test", "dns.servers.#", "2"),
+					resource.TestCheckResourceAttr("unifi_vpn_server.test", "dns.servers.#", "3"),
 					resource.TestCheckResourceAttr(
 						"unifi_vpn_server.test",
 						"dns.servers.0",
@@ -123,6 +127,11 @@ func TestAccVPNServer_wireguard_with_dns(t *testing.T) {
 						"dns.servers.1",
 						"8.8.4.4",
 					),
+					resource.TestCheckResourceAttr(
+						"unifi_vpn_server.test",
+						"dns.servers.2",
+						"1.1.1.1",
+					),
 				),
 			},
 			{
@@ -132,6 +141,21 @@ func TestAccVPNServer_wireguard_with_dns(t *testing.T) {
 				ImportStateVerifyIgnore: []string{
 					"wireguard.private_key",
 				},
+			},
+			{
+				// A server the config drops must be cleared on the controller,
+				// not merely left out of state: the two slots holding
+				// "8.8.4.4" and "1.1.1.1" have to come back empty, or the read
+				// below shows the stale, compacted leftovers instead of one.
+				Config: testAccVPNServerConfig_wireguard_with_dns_servers("8.8.8.8"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_vpn_server.test", "dns.servers.#", "1"),
+					resource.TestCheckResourceAttr(
+						"unifi_vpn_server.test",
+						"dns.servers.0",
+						"8.8.8.8",
+					),
+				),
 			},
 		},
 	})
@@ -400,21 +424,28 @@ resource "unifi_vpn_server" "test" {
 `
 }
 
-func testAccVPNServerConfig_wireguard_with_dns() string {
-	return `
+// testAccVPNServerConfig_wireguard_with_dns_servers parameterizes the DNS
+// acceptance config on the server list, so the same config builds both the
+// initial create and a later update that drops some of them.
+func testAccVPNServerConfig_wireguard_with_dns_servers(servers ...string) string {
+	quoted := make([]string, len(servers))
+	for i, server := range servers {
+		quoted[i] = fmt.Sprintf("%q", server)
+	}
+	return fmt.Sprintf(`
 resource "unifi_vpn_server" "test" {
   name   = "tfacc-wg-dns"
   subnet = "10.103.0.1/24"
 
   dns = {
-    servers = ["8.8.8.8", "8.8.4.4"]
+    servers = [%s]
   }
 
   wireguard = {
     private_key = "WPiBa/Ak1W+8Sp8L5yvbyhHeRO2o5kJvihq2VtJ+kFg="
   }
 }
-`
+`, strings.Join(quoted, ", "))
 }
 
 func testAccVPNServerConfig_wireguard_disabled() string {
@@ -1010,4 +1041,72 @@ func deref(prior *vpnServerKitModel) vpnServerKitModel {
 		return vpnServerKitModel{}
 	}
 	return *prior
+}
+
+// TestVPNServerDNSServersFillFourSlotsInOrder pins the four-slot lift: the
+// controller carries four dhcpd_dns_N wires, not two, and a config listing
+// four servers must reach all of them, in order.
+func TestVPNServerDNSServersFillFourSlotsInOrder(t *testing.T) {
+	network := &unifi.Network{}
+	vpnServerDNSServersToNetwork(
+		[]string{"1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"},
+		network,
+	)
+
+	for i, want := range []struct {
+		got  *string
+		name string
+	}{
+		{network.DHCPDDNS1, "DHCPDDNS1"},
+		{network.DHCPDDNS2, "DHCPDDNS2"},
+		{network.DHCPDDNS3, "DHCPDDNS3"},
+		{network.DHCPDDNS4, "DHCPDDNS4"},
+	} {
+		wantValue := []string{"1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"}[i]
+		if want.got == nil || *want.got != wantValue {
+			t.Errorf("%s = %v, want %q", want.name, want.got, wantValue)
+		}
+	}
+}
+
+// TestVPNServerDNSServersClearTheSlotsAConfigDropped pins the clearing half:
+// a slot the controller currently fills and the new list no longer reaches
+// gets an explicit "" so the write clears it, not nil -- go-unifi's masked
+// write synthesizes JSON null for a nil pointer named in the mask, and null
+// is not "leave alone". A slot neither side ever filled stays nil and is
+// reported to nobody, so the write says nothing about it.
+func TestVPNServerDNSServersClearTheSlotsAConfigDropped(t *testing.T) {
+	current := &unifi.Network{
+		DHCPDDNS1: strPtr("1.1.1.1"),
+		DHCPDDNS2: strPtr("2.2.2.2"),
+		DHCPDDNS3: strPtr("3.3.3.3"),
+		// DHCPDDNS4 was never configured; stays nil.
+	}
+
+	dropped := vpnServerDNSServersClearDropped([]string{"9.9.9.9"}, current)
+
+	wantDropped := map[string]bool{"dhcpd_dns_2": true, "dhcpd_dns_3": true}
+	if len(dropped) != len(wantDropped) {
+		t.Fatalf("dropped wires = %v, want exactly %v", dropped, wantDropped)
+	}
+	for _, wire := range dropped {
+		if !wantDropped[wire] {
+			t.Errorf("unexpected wire %q in dropped", wire)
+		}
+	}
+
+	if current.DHCPDDNS2 == nil || *current.DHCPDDNS2 != "" {
+		t.Errorf("DHCPDDNS2 = %v, want a non-nil pointer to \"\"", current.DHCPDDNS2)
+	}
+	if current.DHCPDDNS3 == nil || *current.DHCPDDNS3 != "" {
+		t.Errorf("DHCPDDNS3 = %v, want a non-nil pointer to \"\"", current.DHCPDDNS3)
+	}
+	if current.DHCPDDNS4 != nil {
+		t.Errorf("DHCPDDNS4 = %v, want nil (neither side ever filled it)", current.DHCPDDNS4)
+	}
+	// The slot the new list still covers is left for Encode to write; this
+	// helper only ever adds to what Encode already decided.
+	if current.DHCPDDNS1 == nil || *current.DHCPDDNS1 != "1.1.1.1" {
+		t.Errorf("DHCPDDNS1 = %v, want untouched at \"1.1.1.1\"", current.DHCPDDNS1)
+	}
 }

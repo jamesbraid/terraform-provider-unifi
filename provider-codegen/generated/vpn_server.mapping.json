@@ -159,6 +159,20 @@
       "disposition": ""
     },
     {
+      "structural_name": "dhcpd_dns_3",
+      "terraform_name": "dns.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
+      "structural_name": "dhcpd_dns_4",
+      "terraform_name": "dns.servers",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": ""
+    },
+    {
       "structural_name": "l2tp_interface",
       "terraform_name": "wan.interface",
       "structural_type": "string",
