@@ -52,14 +52,8 @@ type settingResource struct {
 // loadDescriptors reads a descriptor's model tags from the same file, so a
 // model declared elsewhere reads as undeclared.
 
-type settingRadiusModel struct {
-	AccountingEnabled     types.Bool           `tfsdk:"accounting_enabled"`
-	Enabled               types.Bool           `tfsdk:"enabled"`
-	AcctPort              types.Int64          `tfsdk:"acct_port"`
-	AuthPort              types.Int64          `tfsdk:"auth_port"`
-	InterimUpdateInterval timetypes.GoDuration `tfsdk:"interim_update_interval"`
-	Secret                types.String         `tfsdk:"secret"`
-}
+// settingRadiusModel moved to setting_radius_descriptor.go, alongside the
+// Spec that now owns it.
 
 type dnsVerificationModel struct {
 	Domain             types.String `tfsdk:"domain"`
@@ -383,66 +377,9 @@ func (r *settingResource) ImportState(
 }
 
 // mgmt's mapper functions moved onto resourcekit.SpecSection -- see
-// setting_mgmt_descriptor.go's mgmtKitSpec and mgmtAfterReceive.
-
-// Radius conversion functions.
-func (r *settingResource) radiusModelToSetting(
-	_ context.Context,
-	model *settingRadiusModel,
-	base *settings.Radius,
-) *settings.Radius {
-	setting := base
-
-	if !model.AccountingEnabled.IsNull() && !model.AccountingEnabled.IsUnknown() {
-		setting.AccountingEnabled = model.AccountingEnabled.ValueBool()
-	}
-	if !model.Enabled.IsNull() && !model.Enabled.IsUnknown() {
-		setting.Enabled = model.Enabled.ValueBool()
-	}
-	if !model.AcctPort.IsNull() && !model.AcctPort.IsUnknown() {
-		setting.AcctPort = model.AcctPort.ValueInt64Pointer()
-	}
-	if !model.AuthPort.IsNull() && !model.AuthPort.IsUnknown() {
-		setting.AuthPort = model.AuthPort.ValueInt64Pointer()
-	}
-	if !model.InterimUpdateInterval.IsNull() && !model.InterimUpdateInterval.IsUnknown() {
-		setting.InterimUpdateInterval = util.DurationUnitsPtr(
-			model.InterimUpdateInterval,
-			time.Second,
-		)
-	}
-	if !model.Secret.IsNull() && !model.Secret.IsUnknown() {
-		setting.Secret = model.Secret.ValueString()
-	}
-
-	return setting
-}
-
-func (r *settingResource) radiusSettingToModel(
-	_ context.Context,
-	setting *settings.Radius,
-	plan *settingRadiusModel,
-) *settingRadiusModel {
-	model := &settingRadiusModel{}
-
-	model.AccountingEnabled = types.BoolValue(setting.AccountingEnabled)
-
-	model.Enabled = types.BoolValue(setting.Enabled)
-
-	model.AcctPort = types.Int64PointerValue(setting.AcctPort)
-
-	model.AuthPort = types.Int64PointerValue(setting.AuthPort)
-
-	model.InterimUpdateInterval = util.DurationPtrValue(setting.InterimUpdateInterval, time.Second)
-
-	if !plan.Secret.IsNull() && !plan.Secret.IsUnknown() {
-		model.Secret = util.StringValueOrNull(setting.Secret)
-	} else {
-		model.Secret = types.StringNull()
-	}
-
-	return model
-}
+// setting_mgmt_descriptor.go's mgmtKitSpec and mgmtAfterReceive. radius's
+// moved the same way -- see setting_radius_descriptor.go's radiusKitSpec
+// and radiusAfterReceive.
 
 // USG conversion functions.
 // usgGeoConfigured reports whether the practitioner manages any geo IP filtering

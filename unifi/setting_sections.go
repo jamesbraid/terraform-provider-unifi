@@ -127,12 +127,7 @@ var settingKitSectionTable = []settingKitSectionEntry{
 		read:       (*settingResource).readIpsSection,
 	}},
 	{Kit: mgmtKitSection},
-	{Legacy: legacySection{
-		name:       "radius",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Radius) },
-		write:      (*settingResource).writeRadiusSection,
-		read:       (*settingResource).readRadiusSection,
-	}},
+	{Kit: radiusKitSection},
 	{Legacy: legacySection{
 		name:       "usg",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.USG) },
@@ -307,79 +302,9 @@ func (r *settingResource) readIpsSection(
 	return diags
 }
 
-// mgmt moved onto resourcekit.SpecSection -- see setting_mgmt_descriptor.go
-// and settingKitSectionTable, which names it back in at this position.
-
-// -- radius --
-
-func (r *settingResource) writeRadiusSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var radius settingRadiusModel
-	diags.Append(plan.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	_, currentRadius, err := ui.GetSetting[*settings.Radius](r.client.ApiClient, ctx, site)
-	if err != nil {
-		var notFound *ui.NotFoundError
-		if !errors.As(err, &notFound) {
-			diags.AddError("Error Reading Radius Setting", err.Error())
-			return diags
-		}
-		currentRadius = &settings.Radius{}
-	}
-
-	setting := r.radiusModelToSetting(ctx, &radius, currentRadius)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" Radius Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readRadiusSection reads the radius setting.
-func (r *settingResource) readRadiusSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	radiusAttrTypes := map[string]attr.Type{
-		"accounting_enabled":      types.BoolType,
-		"enabled":                 types.BoolType,
-		"acct_port":               types.Int64Type,
-		"auth_port":               types.Int64Type,
-		"interim_update_interval": timetypes.GoDurationType{},
-		"secret":                  types.StringType,
-	}
-
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.Radius) {
-		out.Radius = types.ObjectNull(radiusAttrTypes)
-		return diags
-	}
-
-	var planRadius settingRadiusModel
-	diags.Append(plan.Radius.As(ctx, &planRadius, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	_, radiusSetting, err := ui.GetSetting[*settings.Radius](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading Radius Setting", err.Error())
-		return diags
-	}
-
-	radiusModel := r.radiusSettingToModel(ctx, radiusSetting, &planRadius)
-	objValue, d := types.ObjectValueFrom(ctx, radiusAttrTypes, radiusModel)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.Radius = objValue
-	return diags
-}
+// mgmt and radius moved onto resourcekit.SpecSection -- see
+// setting_mgmt_descriptor.go / setting_radius_descriptor.go and
+// settingKitSectionTable, which names each back in at its own position.
 
 // -- usg --
 

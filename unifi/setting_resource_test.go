@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -1403,95 +1402,14 @@ func TestSettingNtpServersUseStateForUnknown(t *testing.T) {
 // no coverage; and the wire name itself is TestMgmtKitSpecConformance's
 // WireNameProblems.
 
-func Test_settingResource_radiusModelToSetting(t *testing.T) {
-	r := &settingResource{}
-
-	t.Run("null fields leave base unchanged", func(t *testing.T) {
-		authPort := int64(1812)
-		base := &settings.Radius{
-			AccountingEnabled: true,
-			AuthPort:          &authPort,
-		}
-		model := &settingRadiusModel{
-			AccountingEnabled:     types.BoolNull(),
-			AcctPort:              types.Int64Null(),
-			AuthPort:              types.Int64Null(),
-			InterimUpdateInterval: timetypes.NewGoDurationNull(),
-			Secret:                types.StringNull(),
-		}
-		got := r.radiusModelToSetting(context.Background(), model, base)
-		// radiusModelToSetting starts from base and only overlays non-null fields.
-		// Null AccountingEnabled means the base value (true) is left in place.
-		if !got.AccountingEnabled {
-			t.Error("AccountingEnabled should remain true (from base)")
-		}
-	})
-
-	t.Run("non-null fields overlay base", func(t *testing.T) {
-		base := &settings.Radius{}
-		model := &settingRadiusModel{
-			AccountingEnabled:     types.BoolValue(true),
-			AcctPort:              types.Int64Value(1813),
-			AuthPort:              types.Int64Value(1812),
-			InterimUpdateInterval: timetypes.NewGoDurationNull(),
-			Secret:                types.StringValue("mysecret"),
-		}
-		got := r.radiusModelToSetting(context.Background(), model, base)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AccountingEnabled {
-			t.Error("AccountingEnabled should be true")
-		}
-		if got.AuthPort == nil || *got.AuthPort != 1812 {
-			t.Errorf("AuthPort = %v, want 1812", got.AuthPort)
-		}
-		if got.Secret != "mysecret" {
-			t.Errorf("Secret = %q, want mysecret", got.Secret)
-		}
-	})
-}
-
-func Test_settingResource_radiusSettingToModel(t *testing.T) {
-	r := &settingResource{}
-
-	t.Run("nil secret plan produces null secret model", func(t *testing.T) {
-		authPort := int64(1812)
-		acctPort := int64(1813)
-		setting := &settings.Radius{
-			AccountingEnabled: true,
-			AuthPort:          &authPort,
-			AcctPort:          &acctPort,
-			Secret:            "remote-secret",
-		}
-		plan := &settingRadiusModel{
-			Secret: types.StringNull(),
-		}
-		got := r.radiusSettingToModel(context.Background(), setting, plan)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.AccountingEnabled.ValueBool() {
-			t.Error("AccountingEnabled should be true")
-		}
-		// When plan.Secret is null, model.Secret should be null regardless of remote value.
-		if !got.Secret.IsNull() {
-			t.Errorf(
-				"Secret should be null when plan secret is null, got %q",
-				got.Secret.ValueString(),
-			)
-		}
-	})
-
-	t.Run("non-null secret plan reflects remote value", func(t *testing.T) {
-		setting := &settings.Radius{Secret: "the-secret"}
-		plan := &settingRadiusModel{Secret: types.StringValue("old")}
-		got := r.radiusSettingToModel(context.Background(), setting, plan)
-		if got.Secret.ValueString() != "the-secret" {
-			t.Errorf("Secret = %q, want the-secret", got.Secret.ValueString())
-		}
-	})
-}
+// Test_settingResource_radiusModelToSetting and
+// Test_settingResource_radiusSettingToModel (deleted along with the mappers
+// they exercised) pinned two behaviours, each with a surviving owner: the
+// null-plan-leaves-base-unchanged / non-null-overlay write-side behaviour is
+// TestRadiusSettingRoundTrip (setting_radius_descriptor_test.go), driving
+// radiusKitSpec's own ToSDK/ToModel instead of the deleted mappers; the
+// secret plan-conditioned read is TestRadiusAfterReceiveKeepsThePlansSecretWhenNamed,
+// which ports the two radiusSettingToModel subtests exactly.
 
 // TestUsgGeoRoundTrip covers the geo IP filtering split: UniFi Network 10.x
 // moved these four attributes onto `usg_geo` and renamed
