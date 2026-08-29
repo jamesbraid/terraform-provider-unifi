@@ -123,7 +123,7 @@ package providercodegen
 //go:generate go tool tfplugingen-framework generate resources --input generated/device.provider-code-spec.json --output ../internal/generated/resource_device --package resource_device
 //go:generate gofmt -w ../internal/generated/resource_device/device_resource_gen.go
 //go:generate sdkbootstrap -package github.com/ubiquiti-community/go-unifi/unifi/settings -struct Usg -struct Rsyslogd -struct Ips -struct Lcm -struct Radius -struct Doh -struct Dpi -struct Mgmt -struct Ntp -struct Country -struct AutoSpeedtest -struct IgmpSnooping -struct NetworkOptimization -struct IpsSuppression -struct SettingUsgGeoIPFiltering -resource unifi_setting -output bootstrap/go-unifi-v1.103.0-setting.json
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-setting.json -policy policy/setting.json -artifact-prefix setting -output-dir generated
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-setting.json -policy policy/setting.json -artifact-prefix setting -output-dir generated -emit-grouping-mappings
 //go:generate go tool tfplugingen-framework generate resources --input generated/setting.provider-code-spec.json --output ../internal/generated/resource_setting --package resource_setting
 //go:generate gofmt -w ../internal/generated/resource_setting/setting_resource_gen.go
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-ap-group.json -policy policy/ap_group_list.json -artifact-prefix ap_group_list -output-dir generated

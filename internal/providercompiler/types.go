@@ -15,6 +15,11 @@ const (
 	Action          SurfaceKind = "action"
 )
 
+// managedSection is not a policy's own surface_kind -- no policy declares
+// it -- but the mapping report for one grouping, seen in isolation, needs a
+// value that says so rather than borrowing the surface's.
+const managedSection SurfaceKind = "managed_section"
+
 // CompileInput contains the immutable structural source and provider policy
 // used for one compiler run.
 type CompileInput struct {
@@ -26,6 +31,11 @@ type CompileInput struct {
 type Result struct {
 	ProviderCodeSpec []byte
 	MappingReport    []byte
+	// GroupingMappingReports holds one mapping report per declared grouping,
+	// keyed by the grouping's terraform_name -- a Composite section's own
+	// mapping.json is one of these, generated instead of hand-written. Nil
+	// when the surface declares no groupings.
+	GroupingMappingReports map[string][]byte
 	// Notices are compiler observations worth a human seeing but not worth
 	// refusing the compile over -- e.g. a pattern the compiler could not
 	// derive a validator from because an existing hand validator already

@@ -928,6 +928,156 @@ func TestCompileConstructsTwoMembersOverOneField(t *testing.T) {
 	}
 }
 
+// twoGroupingsWithAClaimedMemberInput builds a policy with two groupings:
+// "endpoint" has a claimed member alongside an ordinary one, "meta" has
+// nothing but an ordinary one. A Composite section's own mapping report is
+// generated from exactly this shape, one document per grouping.
+func twoGroupingsWithAClaimedMemberInput(t *testing.T) CompileInput {
+	t.Helper()
+	names := dnsFieldNames()
+	rules := testPolicyObject(names, testSpecificationDigest)
+	kept := []any{}
+	for _, raw := range jsonArray(rules["fields"]) {
+		field := jsonObject(raw)
+		switch field["structural_name"] {
+		case "port", "priority", "weight", "ttl":
+			continue
+		}
+		kept = append(kept, field)
+	}
+	rules["fields"] = kept
+	rules["groupings"] = []any{
+		map[string]any{
+			"terraform_name": "endpoint",
+			"terraform_type": "single_nested",
+			"attribute":      map[string]any{"computed_optional_required": "optional"},
+			"members": []any{
+				map[string]any{
+					"structural_name": "port", "terraform_name": "port", "disposition": "managed",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+				},
+				map[string]any{
+					// Claimed: no structural_name of its own, folding both
+					// "priority" and "ttl" into this one member through the
+					// claim below (a claim relating one member to two
+					// fields, not one to one, is what makes it a claim
+					// rather than a plain structural_name).
+					"terraform_name": "priority", "terraform_type": "string", "disposition": "managed",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+				},
+			},
+		},
+		map[string]any{
+			"terraform_name": "meta",
+			"terraform_type": "single_nested",
+			"attribute":      map[string]any{"computed_optional_required": "optional"},
+			"members": []any{
+				map[string]any{
+					"structural_name": "weight", "terraform_name": "weight", "disposition": "managed",
+					"attribute": map[string]any{"computed_optional_required": "optional"},
+				},
+			},
+		},
+	}
+	rules["claims"] = []any{testClaim([]any{"endpoint.priority"}, []any{"priority", "ttl"})}
+	return CompileInput{
+		Bootstrap: testBootstrap(t, names),
+		Policy:    mustJSON(t, rules),
+	}
+}
+
+// A Composite section's own mapping.json is generated instead of
+// hand-written: one document per grouping, carrying the same rows the
+// surface report carries for that grouping's unclaimed members but named
+// without either qualifier the surface row needs -- not the grouping name,
+// since the document already has only that grouping in it, and not the
+// companion struct, since that's an SDK fact irrelevant to a reviewer of
+// this one section.
+func TestCompileEmitsAMappingReportPerGrouping(t *testing.T) {
+	result, err := Compile(twoGroupingsWithAClaimedMemberInput(t))
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	if len(result.GroupingMappingReports) != 2 {
+		t.Fatalf("GroupingMappingReports has %d keys, want 2 (endpoint, meta)", len(result.GroupingMappingReports))
+	}
+
+	type reportField struct {
+		StructuralName string `json:"structural_name"`
+		TerraformName  string `json:"terraform_name"`
+		StructuralType string `json:"structural_type"`
+		TerraformType  string `json:"terraform_type"`
+		Disposition    string `json:"disposition"`
+	}
+	type report struct {
+		FormatVersion int           `json:"format_version"`
+		SurfaceKind   string        `json:"surface_kind"`
+		SurfaceName   string        `json:"surface_name"`
+		Resource      string        `json:"resource"`
+		Fields        []reportField `json:"fields"`
+		ProviderOwned []any         `json:"provider_owned"`
+	}
+	decode := func(t *testing.T, raw []byte) report {
+		t.Helper()
+		var parsed report
+		if err := json.Unmarshal(raw, &parsed); err != nil {
+			t.Fatal(err)
+		}
+		return parsed
+	}
+
+	endpointRaw, ok := result.GroupingMappingReports["endpoint"]
+	if !ok {
+		t.Fatal(`GroupingMappingReports has no entry for "endpoint"`)
+	}
+	endpoint := decode(t, endpointRaw)
+	if endpoint.FormatVersion != 1 {
+		t.Fatalf("endpoint format_version = %d, want 1", endpoint.FormatVersion)
+	}
+	if endpoint.SurfaceKind != "managed_section" {
+		t.Fatalf("endpoint surface_kind = %q, want managed_section", endpoint.SurfaceKind)
+	}
+	if endpoint.SurfaceName != "unifi_dns_record.endpoint" {
+		t.Fatalf("endpoint surface_name = %q, want unifi_dns_record.endpoint", endpoint.SurfaceName)
+	}
+	if endpoint.Resource != "unifi_dns_record" {
+		t.Fatalf("endpoint resource = %q, want unifi_dns_record", endpoint.Resource)
+	}
+	// priority is claimed and must be absent, exactly as it is from the
+	// surface report.
+	if len(endpoint.Fields) != 1 {
+		t.Fatalf("endpoint fields = %+v, want exactly 1 (priority is claimed)", endpoint.Fields)
+	}
+	if got := endpoint.Fields[0]; got.StructuralName != "port" || got.TerraformName != "port" ||
+		got.StructuralType != "int64" || got.TerraformType != "int64" || got.Disposition != "managed" {
+		t.Fatalf("endpoint field = %+v, want unqualified port/port, int64/int64, managed", got)
+	}
+	if endpoint.ProviderOwned == nil {
+		t.Fatal("endpoint provider_owned decoded to null, want an empty array")
+	}
+	if len(endpoint.ProviderOwned) != 0 {
+		t.Fatalf("endpoint provider_owned = %v, want empty", endpoint.ProviderOwned)
+	}
+	if !bytes.Contains(endpointRaw, []byte(`"provider_owned": []`)) {
+		t.Fatalf("endpoint report does not literally emit an empty array for provider_owned: %s", endpointRaw)
+	}
+
+	metaRaw, ok := result.GroupingMappingReports["meta"]
+	if !ok {
+		t.Fatal(`GroupingMappingReports has no entry for "meta"`)
+	}
+	meta := decode(t, metaRaw)
+	if meta.SurfaceName != "unifi_dns_record.meta" {
+		t.Fatalf("meta surface_name = %q, want unifi_dns_record.meta", meta.SurfaceName)
+	}
+	if len(meta.Fields) != 1 {
+		t.Fatalf("meta fields = %+v, want exactly 1", meta.Fields)
+	}
+	if got := meta.Fields[0]; got.StructuralName != "weight" || got.TerraformName != "weight" {
+		t.Fatalf("meta field = %+v, want weight/weight", got)
+	}
+}
+
 // A refusal that names nothing -- neither the member, the grouping, nor any
 // field -- is treated as a defect here.
 func TestCompileRefusesAClaimedMemberWithNoDeclaredType(t *testing.T) {

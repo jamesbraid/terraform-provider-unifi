@@ -1,0 +1,268 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.usg",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "broadcast_ping",
+      "terraform_name": "broadcast_ping",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dns_verification",
+      "terraform_name": "dns_verification",
+      "structural_type": "object",
+      "terraform_type": "single_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ftp_module",
+      "terraform_name": "ftp_module",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "action",
+      "terraform_name": "geo_ip_filtering_block",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "countries",
+      "terraform_name": "geo_ip_filtering_countries",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "geo_ip_filtering_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "traffic_direction",
+      "terraform_name": "geo_ip_filtering_traffic_direction",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "gre_module",
+      "terraform_name": "gre_module",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "h323_module",
+      "terraform_name": "h323_module",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "icmp_timeout",
+      "terraform_name": "icmp_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mss_clamp",
+      "terraform_name": "mss_clamp",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_accounting",
+      "terraform_name": "offload_accounting",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_l2_blocking",
+      "terraform_name": "offload_l2_blocking",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "offload_sch",
+      "terraform_name": "offload_sch",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "other_timeout",
+      "terraform_name": "other_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "pptp_module",
+      "terraform_name": "pptp_module",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "receive_redirects",
+      "terraform_name": "receive_redirects",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "send_redirects",
+      "terraform_name": "send_redirects",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "sip_module",
+      "terraform_name": "sip_module",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "syn_cookies",
+      "terraform_name": "syn_cookies",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_close_timeout",
+      "terraform_name": "tcp_close_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_close_wait_timeout",
+      "terraform_name": "tcp_close_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_established_timeout",
+      "terraform_name": "tcp_established_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_fin_wait_timeout",
+      "terraform_name": "tcp_fin_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_last_ack_timeout",
+      "terraform_name": "tcp_last_ack_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_syn_recv_timeout",
+      "terraform_name": "tcp_syn_recv_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_syn_sent_timeout",
+      "terraform_name": "tcp_syn_sent_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tcp_time_wait_timeout",
+      "terraform_name": "tcp_time_wait_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "tftp_module",
+      "terraform_name": "tftp_module",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "timeout_setting_preference",
+      "terraform_name": "timeout_setting_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "udp_other_timeout",
+      "terraform_name": "udp_other_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "udp_stream_timeout",
+      "terraform_name": "udp_stream_timeout",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "unbind_wan_monitors",
+      "terraform_name": "unbind_wan_monitors",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_enabled",
+      "terraform_name": "upnp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_nat_pmp_enabled",
+      "terraform_name": "upnp_nat_pmp_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_secure_mode",
+      "terraform_name": "upnp_secure_mode",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "upnp_wan_interface",
+      "terraform_name": "upnp_wan_interface",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

@@ -404,6 +404,11 @@ func Compile(input CompileInput) (Result, error) {
 
 	groupings := append([]groupingPolicy(nil), rules.Groupings...)
 	sort.Slice(groupings, func(i, j int) bool { return groupings[i].TerraformName < groupings[j].TerraformName })
+	// A Composite section's own mapping report is one grouping's rows seen in
+	// isolation; gathered here, alongside the surface report's rows for the
+	// same members, so the two can never disagree about which fields a
+	// grouping consumes.
+	groupingFields := make(map[string][]mappingField, len(groupings))
 	for _, grouping := range groupings {
 		attribute, err := buildGroupingAttribute(rules.Resource, grouping, sourceFields, terraformNames, claimedMembers, &notices)
 		if err != nil {
@@ -417,17 +422,47 @@ func Compile(input CompileInput) (Result, error) {
 		} else {
 			attributes = append(attributes, attribute)
 		}
+		// Seeded even when every member below turns out claimed: the
+		// grouping still gets a report, with an empty field list, rather
+		// than silently having none.
+		if _, seeded := groupingFields[grouping.TerraformName]; !seeded {
+			groupingFields[grouping.TerraformName] = []mappingField{}
+		}
 		for _, member := range grouping.Members {
 			// A claimed member's fields are reported by its claim, in one
 			// place; reporting them here too would double-count them.
 			if _, claimed := claimedMembers[grouping.TerraformName+"."+member.TerraformName]; claimed {
 				continue
 			}
+			structuralName := qualifyField(member.StructuralSource, member.StructuralName)
+			structuralType := groupedStructuralType(sourceFields, member)
 			mapping.Fields = append(mapping.Fields, mappingField{
-				StructuralName: qualifyField(member.StructuralSource, member.StructuralName),
+				StructuralName: structuralName,
 				TerraformName:  grouping.TerraformName + "." + member.TerraformName,
-				StructuralType: groupedStructuralType(sourceFields, member),
+				StructuralType: structuralType,
 				TerraformType:  member.TerraformType,
+				Disposition:    member.Disposition,
+			})
+			// A grouping's own report names this member without either
+			// qualifier the surface row above needs: not the grouping name,
+			// since the report already has only that grouping in it, and
+			// not the companion struct, since that's an implementation
+			// fact of the SDK a reviewer of this section has no use for.
+			// terraform_type is resolved rather than copied from the
+			// policy raw, matching what buildGroupingAttribute already
+			// resolved for the same member's specification attribute a few
+			// lines above -- copying the raw value would under-report a
+			// type the SDK left for the compiler to infer.
+			resolvedType, err := groupedMemberTerraformType(sourceFields, member)
+			if err != nil {
+				return Result{}, fmt.Errorf(
+					"grouping %q member %q: %w", grouping.TerraformName, member.TerraformName, err)
+			}
+			groupingFields[grouping.TerraformName] = append(groupingFields[grouping.TerraformName], mappingField{
+				StructuralName: member.StructuralName,
+				TerraformName:  member.TerraformName,
+				StructuralType: structuralType,
+				TerraformType:  resolvedType,
 				Disposition:    member.Disposition,
 			})
 		}
@@ -514,8 +549,40 @@ func Compile(input CompileInput) (Result, error) {
 	// writes no file for one.
 	if rules.SurfaceKind != ListResource {
 		result.MappingReport = mappingBytes
+		reports, err := buildGroupingMappingReports(rules.Resource, mapping.FormatVersion, groupingFields)
+		if err != nil {
+			return Result{}, err
+		}
+		result.GroupingMappingReports = reports
 	}
 	return result, nil
+}
+
+// buildGroupingMappingReports emits the mapping report for each grouping in
+// isolation -- the document a Composite section's mapping.json used to be
+// hand-written as. A surface with no groupings returns nil: there is
+// nothing for main.go to write.
+func buildGroupingMappingReports(resource string, formatVersion int, fields map[string][]mappingField) (map[string][]byte, error) {
+	if len(fields) == 0 {
+		return nil, nil
+	}
+	reports := make(map[string][]byte, len(fields))
+	for name, rows := range fields {
+		report := mappingReport{
+			FormatVersion: formatVersion,
+			SurfaceKind:   managedSection,
+			SurfaceName:   resource + "." + name,
+			Resource:      resource,
+			Fields:        withoutOmittedRows(rows),
+			ProviderOwned: []providerOwnedMapping{},
+		}
+		encoded, err := marshalCanonical(report)
+		if err != nil {
+			return nil, fmt.Errorf("encode mapping report for grouping %q: %w", name, err)
+		}
+		reports[name] = encoded
+	}
+	return reports, nil
 }
 
 // groupedStructuralFields validates every declared grouping and returns
@@ -751,6 +818,37 @@ func groupedStructuralType(sourceFields map[string]bootstrapField, member groupe
 		return "invented"
 	}
 	return sourceFields[qualifyField(member.StructuralSource, member.StructuralName)].Type
+}
+
+// groupedMemberTerraformType resolves the terraform_type a grouping member's
+// own mapping report names for it -- the same value buildCodeAttribute
+// already resolved for that member's specification attribute, by the same
+// rules: an object falls back to single_nested, a collection must declare
+// list or set, and a plain scalar left undeclared borrows the observed
+// type. Skipped for an omitted member, since that member never built a
+// specification attribute and never will -- resolving one anyway risks a
+// spurious error over a row withoutOmittedRows discards regardless. An
+// invented or collapsed-element member has no fallback to resolve: each
+// requires its own declared type, checked before this ever runs.
+func groupedMemberTerraformType(sourceFields map[string]bootstrapField, member groupedMember) (string, error) {
+	if member.Disposition == "omitted" || member.Invented != "" || member.ElementMember != "" {
+		return member.TerraformType, nil
+	}
+	structural := sourceFields[qualifyField(member.StructuralSource, member.StructuralName)]
+	asField := fieldPolicy{StructuralName: member.StructuralName, TerraformType: member.TerraformType, Attribute: member.Attribute}
+	if structuralIsObject(structural.Type) {
+		return objectTerraformType(asField, structural.Type)
+	}
+	// collectionTerraformType reads the declared element_type from
+	// field.Attribute, so it must carry the member's, not a zero value that
+	// would misreport a correctly declared collection as undeclared.
+	if element, isCollection := structuralElementType(structural.Type); isCollection {
+		return collectionTerraformType(asField, element)
+	}
+	if member.TerraformType == "" {
+		return structural.Type, nil
+	}
+	return member.TerraformType, nil
 }
 
 // claimMappingRows reports one row per observed field a claim consumes --

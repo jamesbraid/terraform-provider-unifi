@@ -57,7 +57,7 @@
       "structural_name": "x_ssh_keys",
       "terraform_name": "ssh_keys",
       "structural_type": "array<object>",
-      "terraform_type": "list",
+      "terraform_type": "list_nested",
       "disposition": "managed"
     },
     {

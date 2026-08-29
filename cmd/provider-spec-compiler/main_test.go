@@ -103,6 +103,97 @@ func TestRunWritesNoMappingReportForAListResource(t *testing.T) {
 	}
 }
 
+// A grouping is also how an ordinary nested attribute is declared on a
+// surface with no Composite section at all, so run() writes a mapping
+// report per grouping only when asked -- otherwise <artifact-prefix>_
+// <grouping>.mapping.json for one surface's grouping could collide with an
+// unrelated surface's own <that-name>.mapping.json.
+func TestRunWritesAMappingReportPerGroupingOnlyWhenRequested(t *testing.T) {
+	dir := t.TempDir()
+	bootstrapPath := filepath.Join(dir, "bootstrap.json")
+	policyPath := filepath.Join(dir, "policy.json")
+	writeFile(t, bootstrapPath, `{
+		"format_version": 1,
+		"source": {"repository": "r", "commit": "c", "specification_sha256": "d"},
+		"resource": {
+			"name": "unifi_composite_probe",
+			"fields": [
+				{"name": "alpha", "type": "string"},
+				{"name": "beta", "type": "string"}
+			]
+		}
+	}`)
+	writeFile(t, policyPath, `{
+		"format_version": 1,
+		"surface_kind": "managed_resource",
+		"resource": "unifi_composite_probe",
+		"source_specification_sha256": "d",
+		"fields": [],
+		"groupings": [
+			{
+				"terraform_name": "one",
+				"terraform_type": "single_nested",
+				"attribute": {"computed_optional_required": "optional"},
+				"members": [
+					{"structural_name": "alpha", "terraform_name": "alpha", "disposition": "managed",
+					 "attribute": {"computed_optional_required": "optional"}}
+				]
+			},
+			{
+				"terraform_name": "two",
+				"terraform_type": "single_nested",
+				"attribute": {"computed_optional_required": "optional"},
+				"members": [
+					{"structural_name": "beta", "terraform_name": "beta", "disposition": "managed",
+					 "attribute": {"computed_optional_required": "optional"}}
+				]
+			}
+		],
+		"provider_owned": []
+	}`)
+
+	requested := t.TempDir()
+	var stderr bytes.Buffer
+	exitCode := run([]string{
+		"-bootstrap", bootstrapPath,
+		"-policy", policyPath,
+		"-artifact-prefix", "composite_probe",
+		"-output-dir", requested,
+		"-emit-grouping-mappings",
+	}, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() exit code = %d, stderr = %s", exitCode, stderr.String())
+	}
+	for _, name := range []string{
+		"composite_probe.mapping.json",
+		"composite_probe_one.mapping.json",
+		"composite_probe_two.mapping.json",
+	} {
+		if _, err := os.Stat(filepath.Join(requested, name)); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+
+	notRequested := t.TempDir()
+	exitCode = run([]string{
+		"-bootstrap", bootstrapPath,
+		"-policy", policyPath,
+		"-artifact-prefix", "composite_probe",
+		"-output-dir", notRequested,
+	}, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("run() without -emit-grouping-mappings exit code = %d, stderr = %s", exitCode, stderr.String())
+	}
+	for _, name := range []string{"composite_probe_one.mapping.json", "composite_probe_two.mapping.json"} {
+		if _, err := os.Stat(filepath.Join(notRequested, name)); !os.IsNotExist(err) {
+			t.Errorf("%s stat = %v, want it not to exist without -emit-grouping-mappings", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(notRequested, "composite_probe.mapping.json")); err != nil {
+		t.Errorf("composite_probe.mapping.json: %v", err)
+	}
+}
+
 func writeFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {

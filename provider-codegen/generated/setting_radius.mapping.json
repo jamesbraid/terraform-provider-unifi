@@ -1,0 +1,51 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.radius",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "accounting_enabled",
+      "terraform_name": "accounting_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "acct_port",
+      "terraform_name": "acct_port",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "auth_port",
+      "terraform_name": "auth_port",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "interim_update_interval",
+      "terraform_name": "interim_update_interval",
+      "structural_type": "int64",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_secret",
+      "terraform_name": "secret",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

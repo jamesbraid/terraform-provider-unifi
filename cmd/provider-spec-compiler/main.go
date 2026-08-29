@@ -8,12 +8,18 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/cmdio"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/providercompiler"
 )
 
 var artifactPrefixPattern = regexp.MustCompile(`^[a-z0-9_]+$`)
+
+type generatedArtifact struct {
+	name string
+	data []byte
+}
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stderr))
@@ -26,6 +32,14 @@ func run(args []string, stderr io.Writer) int {
 	policyPath := flags.String("policy", "", "path to the provider policy")
 	artifactPrefix := flags.String("artifact-prefix", "", "prefix for generated artifact names")
 	outputDir := flags.String("output-dir", "", "directory for generated compiler artifacts")
+	// Off by default: a grouping is also how an ordinary nested attribute is
+	// declared, on surfaces with no Composite section at all, and
+	// <artifact-prefix>_<grouping>.mapping.json can then collide with an
+	// unrelated surface's own <that-name>.mapping.json (e.g. unifi_client's
+	// "qos_rate" grouping against the standalone unifi_client_qos_rate
+	// resource). Only a policy whose groupings are themselves Composite
+	// sections -- currently just setting.json -- passes this.
+	emitGroupingMappings := flags.Bool("emit-grouping-mappings", false, "also write a mapping report per grouping, for a surface whose groupings are Composite sections")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -86,12 +100,24 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 
-	artifacts := []struct {
-		name string
-		data []byte
-	}{
+	artifacts := []generatedArtifact{
 		{*artifactPrefix + ".provider-code-spec.json", result.ProviderCodeSpec},
 		{*artifactPrefix + ".mapping.json", result.MappingReport},
+	}
+	if *emitGroupingMappings {
+		// Sorted grouping order, not map iteration order, so a plain go
+		// generate run writes the same artifact list every time.
+		groupingNames := make([]string, 0, len(result.GroupingMappingReports))
+		for name := range result.GroupingMappingReports {
+			groupingNames = append(groupingNames, name)
+		}
+		sort.Strings(groupingNames)
+		for _, name := range groupingNames {
+			artifacts = append(artifacts, generatedArtifact{
+				name: *artifactPrefix + "_" + name + ".mapping.json",
+				data: result.GroupingMappingReports[name],
+			})
+		}
 	}
 	for _, artifact := range artifacts {
 		// A list resource's mapping report is empty by design (see

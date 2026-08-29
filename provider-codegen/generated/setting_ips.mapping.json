@@ -1,0 +1,86 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.ips",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "advanced_filtering_preference",
+      "terraform_name": "advanced_filtering_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "content_filtering_blocking_page_enabled",
+      "terraform_name": "content_filtering_blocking_page_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled_categories",
+      "terraform_name": "enabled_categories",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled_networks",
+      "terraform_name": "enabled_networks",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "honeypot",
+      "terraform_name": "honeypot",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "honeypot_enabled",
+      "terraform_name": "honeypot_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ips_mode",
+      "terraform_name": "ips_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "memory_optimized",
+      "terraform_name": "memory_optimized",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "restrict_torrents",
+      "terraform_name": "restrict_torrents",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "alerts",
+      "terraform_name": "suppression_alerts",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "whitelist",
+      "terraform_name": "suppression_whitelist",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}
