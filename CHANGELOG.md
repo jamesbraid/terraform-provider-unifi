@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### ⚠️ Breaking Changes
 
-- **Ten `unifi_setting` attributes across four sections now read back a
+- **Twelve `unifi_setting` attributes across six sections now read back a
   plain empty value instead of `null` once their section is managed and
   the controller reports the field empty; one reads back `null` where it
   used to read a value.** The resource kit's masked-write path applies a
@@ -15,24 +15,58 @@ All notable changes to this project will be documented in this file.
   `syslog.netconsole_host`, `usg.mss_clamp`,
   `usg.timeout_setting_preference`, `usg.upnp_wan_interface` and
   `usg.geo_ip_filtering_countries` now read `""` instead of `null`;
-  `syslog.contents` and `igmp_snooping.network_ids` now read `[]` instead
-  of `null` on an empty controller response. Going the other way,
-  `usg.geo_ip_filtering_enabled` now reads `null`, not the old mapper's
-  `false`, when the controller's `usg_geo` object is
-  missing from the read entirely (an older controller) — an apply still
-  fails there either way, with the existing "not supported" diagnostic.
-  All of these are Computed attributes, so an apply does not show them as
-  a plan diff. A practitioner notices only by looking at state directly —
+  `syslog.contents`, `igmp_snooping.network_ids`, `doh.server_names`,
+  `ips.enabled_categories` and `ips.enabled_networks` now read `[]`
+  instead of `null` on an empty controller response. Going the other
+  way, `usg.geo_ip_filtering_enabled` now reads `null`, not the old
+  mapper's `false`, when the controller's `usg_geo` object is missing
+  from the read entirely (an older controller) — an apply still fails
+  there either way, with the existing "not supported" diagnostic. All
+  of these are Computed attributes, so an apply does not show them as a
+  plan diff. A practitioner notices only by looking at state directly —
   `terraform state show`, or an output value that references one of them.
 
 ### 🐛 Bug Fixes
 
+- **`unifi_setting`: a configured empty list or string now actually
+  clears the controller's stored value.** The legacy whole-object PUT's
+  `omitempty` tags silently dropped a configured `[]` or `""` from the
+  write — `syslog.contents`, `syslog.ip`, `syslog.netconsole_host`,
+  `igmp_snooping.network_ids`, `doh.server_names`,
+  `ips.enabled_categories` and `ips.enabled_networks` among them —
+  leaving the controller's existing value in place, and on some of these
+  producing an "inconsistent result after apply" on the next read. The
+  masked write forces a field the plan configures onto the wire, zero
+  value included, so clearing one of these to `[]` or `""` now actually
+  reaches and clears the controller.
 - **`unifi_setting`: `syslog.enabled = true` without `syslog.ip` now fails
   at plan.** The controller has always rejected that combination with
   `api.err.Invalid` at apply time; `ValidateConfig` now catches it before
   that, the same idiom `unifi_wan`'s `ValidateConfig` uses for its own
   stopgap. A configuration that sets `syslog.enabled = true` without
   `syslog.ip` now fails at plan time instead of apply time.
+
+### 📋 Known Issues
+
+- **`unifi_setting`: an explicit `"0s"` on one of usg's twelve duration
+  attributes (`icmp_timeout`, `other_timeout`, `tcp_close_timeout` and
+  nine more) fails the apply.** None of the twelve carry a validator, so
+  `"0s"` reaches the plan; the masked write then sends the controller a
+  literal `0`. A live probe against `icmp_timeout` shows the controller
+  silently normalizing that to its own floor (`30`) instead of rejecting
+  it outright, so Terraform finds the read-back value disagrees with the
+  plan and fails the apply with "Provider produced inconsistent result
+  after apply". Fixing it needs a plan-time validator carrying each
+  field's real floor, not a change to how a read decodes a zero — the
+  controller here never returns zero, so there is no zero value to
+  elide, and skipping the write for a configured `"0s"` would still leave
+  the plan and the read-back value disagreeing. Whether the legacy
+  whole-object PUT hit the same failure was not checked: its `omitempty`
+  tag dropped a configured `0` from the write the same way, but what the
+  controller does with a *missing* key was not measured, only what it
+  does with an explicit one. Only `icmp_timeout` was measured live; the
+  other eleven share the same struct, tag and write path and are assumed
+  to fail the same way until measured.
 
 ### 📖 Documentation
 
