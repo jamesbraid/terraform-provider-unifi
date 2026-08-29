@@ -114,12 +114,7 @@ var settingKitSectionTable = []settingKitSectionEntry{
 	{Kit: networkOptimizationKitSection},
 	{Kit: ntpKitSection},
 	{Kit: syslogKitSection},
-	{Legacy: legacySection{
-		name:       "doh",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Doh) },
-		write:      (*settingResource).writeDohSection,
-		read:       (*settingResource).readDohSection,
-	}},
+	{Kit: dohKitSection},
 	{Legacy: legacySection{
 		name:       "ips",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Ips) },
@@ -156,67 +151,12 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 	return sections
 }
 
-// auto_speedtest, country, dpi, lcm, network_optimization, ntp and syslog
-// moved onto resourcekit.SpecSection -- see
+// auto_speedtest, country, dpi, lcm, network_optimization, ntp, syslog and
+// doh moved onto resourcekit.SpecSection -- see
 // setting_auto_speedtest_descriptor.go, setting_country_descriptor.go,
 // setting_dpi_descriptor.go, setting_lcm_descriptor.go,
-// setting_network_optimization_descriptor.go, setting_ntp_descriptor.go and
-// setting_syslog_descriptor.go.
-
-// -- doh --
-
-func (r *settingResource) writeDohSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var doh settingDohModel
-	diags.Append(plan.Doh.As(ctx, &doh, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	setting := r.dohModelToSetting(ctx, &doh, &diags)
-	if diags.HasError() {
-		return diags
-	}
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" DoH Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readDohSection reads the DoH setting.
-func (r *settingResource) readDohSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.Doh) {
-		out.Doh = types.ObjectNull(dohAttrTypes)
-		return diags
-	}
-
-	var planDoh settingDohModel
-	diags.Append(plan.Doh.As(ctx, &planDoh, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	_, dohSetting, err := ui.GetSetting[*settings.Doh](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading DoH Setting", err.Error())
-		return diags
-	}
-
-	dohModel := r.dohSettingToModel(ctx, dohSetting, &planDoh, &diags)
-	objValue, d := types.ObjectValueFrom(ctx, dohAttrTypes, dohModel)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.Doh = objValue
-	return diags
-}
+// setting_network_optimization_descriptor.go, setting_ntp_descriptor.go,
+// setting_syslog_descriptor.go and setting_doh_descriptor.go.
 
 // -- ips --
 

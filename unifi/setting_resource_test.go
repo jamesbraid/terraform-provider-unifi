@@ -1613,87 +1613,13 @@ func Test_settingResource_usgSettingToModel(t *testing.T) {
 // "advanced fields preserved" assertions did not port: see that file's own
 // comment for what replaces them.
 
-func Test_settingResource_dohModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null fields produce empty setting", func(t *testing.T) {
-		model := &settingDohModel{
-			State:         types.StringNull(),
-			ServerNames:   types.ListNull(types.StringType),
-			CustomServers: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.dohModelToSetting(ctx, model, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if got.State != "" {
-			t.Errorf("State should be empty, got %q", got.State)
-		}
-	})
-
-	t.Run("state set", func(t *testing.T) {
-		model := &settingDohModel{
-			State:         types.StringValue("auto"),
-			ServerNames:   types.ListNull(types.StringType),
-			CustomServers: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.dohModelToSetting(ctx, model, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.State != "auto" {
-			t.Errorf("State = %q, want auto", got.State)
-		}
-	})
-}
-
-func Test_settingResource_dohSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null plan state produces null model state", func(t *testing.T) {
-		setting := &settings.Doh{State: "auto"}
-		plan := &settingDohModel{
-			State:         types.StringNull(),
-			ServerNames:   types.ListNull(types.StringType),
-			CustomServers: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.dohSettingToModel(ctx, setting, plan, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.State.IsNull() {
-			t.Errorf("State should be null when plan is null, got %q", got.State.ValueString())
-		}
-	})
-
-	t.Run("non-null plan state reflects remote value", func(t *testing.T) {
-		setting := &settings.Doh{State: "off"}
-		plan := &settingDohModel{
-			State:         types.StringValue("auto"),
-			ServerNames:   types.ListNull(types.StringType),
-			CustomServers: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.dohSettingToModel(ctx, setting, plan, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.State.ValueString() != "off" {
-			t.Errorf("State = %q, want off", got.State.ValueString())
-		}
-	})
-}
+// Test_settingResource_dohModelToSetting and
+// Test_settingResource_dohSettingToModel (deleted along with the mappers
+// they exercised) moved to setting_doh_descriptor_test.go's
+// TestDohSettingRoundTrip (the state/round-trip assertions),
+// TestDohAfterReceiveNullsWhatThePlanDidNotName (the plan-conditioned-null
+// case) and TestDohConfiguredEmptyCustomServersReadsBackAsEmptyList (a
+// case neither deleted test covered).
 
 func Test_settingResource_ipsSettingToModel(t *testing.T) {
 	r := &settingResource{}

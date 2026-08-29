@@ -102,23 +102,12 @@ type settingUSGModel struct {
 	UPnPWANInterface               types.String         `tfsdk:"upnp_wan_interface"`
 }
 
-type settingDohCustomServerModel struct {
-	Enabled    types.Bool   `tfsdk:"enabled"`
-	SDNSStamp  types.String `tfsdk:"sdns_stamp"`
-	ServerName types.String `tfsdk:"server_name"`
-}
-
 // settingAutoSpeedtestModel, settingCountryModel, settingDpiModel,
-// settingNetworkOptimizationModel, settingLcmModel, settingNtpModel and
-// settingSyslogModel moved to their own *_descriptor.go files, alongside
-// the Specs that now own them: descriptor_mapping_test.go's loadDescriptors
-// reads a descriptor's model tags from the same file.
-
-type settingDohModel struct {
-	CustomServers types.List   `tfsdk:"custom_servers"`
-	ServerNames   types.List   `tfsdk:"server_names"`
-	State         types.String `tfsdk:"state"`
-}
+// settingNetworkOptimizationModel, settingLcmModel, settingNtpModel,
+// settingSyslogModel, settingDohCustomServerModel and settingDohModel moved
+// to their own *_descriptor.go files, alongside the Specs that now own
+// them: descriptor_mapping_test.go's loadDescriptors reads a descriptor's
+// model tags from the same file.
 
 type settingIpsHoneypotModel struct {
 	IPAddress types.String `tfsdk:"ip_address"`
@@ -197,18 +186,9 @@ var (
 	// settingNtpModel and the Spec that now owns it.
 	// syslogAttrTypes moved to setting_syslog_descriptor.go, alongside
 	// settingSyslogModel and the Spec that now owns it.
-	dohCustomServerAttrTypes = map[string]attr.Type{
-		"enabled":     types.BoolType,
-		"sdns_stamp":  types.StringType,
-		"server_name": types.StringType,
-	}
-	dohAttrTypes = map[string]attr.Type{
-		"state":        types.StringType,
-		"server_names": types.ListType{ElemType: types.StringType},
-		"custom_servers": types.ListType{
-			ElemType: types.ObjectType{AttrTypes: dohCustomServerAttrTypes},
-		},
-	}
+	// dohCustomServerAttrTypes and dohAttrTypes moved to
+	// setting_doh_descriptor.go, alongside settingDohCustomServerModel,
+	// settingDohModel and the Spec that now owns them.
 	ipsHoneypotAttrTypes = map[string]attr.Type{
 		"ip_address": types.StringType,
 		"network_id": types.StringType,
@@ -866,94 +846,11 @@ func (r *settingResource) usgSettingToModel(
 // setting_country_descriptor.go, setting_dpi_descriptor.go and
 // setting_network_optimization_descriptor.go.
 //
-// lcmModelToSetting/lcmSettingToModel, ntpModelToSetting/ntpSettingToModel
-// and syslogModelToSetting/syslogSettingToModel moved onto
-// resourcekit.SpecSection -- see setting_lcm_descriptor.go,
-// setting_ntp_descriptor.go and setting_syslog_descriptor.go.
-
-// DoH conversion functions.
-func (r *settingResource) dohModelToSetting(
-	ctx context.Context,
-	model *settingDohModel,
-	diags *diag.Diagnostics,
-) *settings.Doh {
-	setting := &settings.Doh{}
-
-	if !model.State.IsNull() && !model.State.IsUnknown() {
-		setting.State = model.State.ValueString()
-	}
-	if !model.ServerNames.IsNull() && !model.ServerNames.IsUnknown() {
-		diags.Append(model.ServerNames.ElementsAs(ctx, &setting.ServerNames, false)...)
-		if diags.HasError() {
-			return setting
-		}
-	}
-	if !model.CustomServers.IsNull() && !model.CustomServers.IsUnknown() {
-		var servers []settingDohCustomServerModel
-		diags.Append(model.CustomServers.ElementsAs(ctx, &servers, false)...)
-		if diags.HasError() {
-			return setting
-		}
-		for _, s := range servers {
-			enabled := true
-			if !s.Enabled.IsNull() && !s.Enabled.IsUnknown() {
-				enabled = s.Enabled.ValueBool()
-			}
-			setting.CustomServers = append(setting.CustomServers, settings.SettingDohCustomServers{
-				Enabled:    enabled,
-				SdnsStamp:  s.SDNSStamp.ValueString(),
-				ServerName: s.ServerName.ValueString(),
-			})
-		}
-	}
-
-	return setting
-}
-
-func (r *settingResource) dohSettingToModel(
-	ctx context.Context,
-	setting *settings.Doh,
-	plan *settingDohModel,
-	diags *diag.Diagnostics,
-) *settingDohModel {
-	model := &settingDohModel{}
-
-	if !plan.State.IsNull() && !plan.State.IsUnknown() {
-		model.State = util.StringValueOrNull(setting.State)
-	} else {
-		model.State = types.StringNull()
-	}
-
-	// Configured (plan known) mirrors the remote value as a list, empty list
-	// included; ListNull here would differ from a planned []value and trip
-	// "inconsistent result after apply" -- it's reserved for not-configured/unknown.
-	if !plan.ServerNames.IsNull() && !plan.ServerNames.IsUnknown() {
-		listVal, d := types.ListValueFrom(ctx, types.StringType, setting.ServerNames)
-		diags.Append(d...)
-		model.ServerNames = listVal
-	} else {
-		model.ServerNames = types.ListNull(types.StringType)
-	}
-
-	customServersType := types.ObjectType{AttrTypes: dohCustomServerAttrTypes}
-	if !plan.CustomServers.IsNull() && !plan.CustomServers.IsUnknown() {
-		servers := make([]settingDohCustomServerModel, 0, len(setting.CustomServers))
-		for _, s := range setting.CustomServers {
-			servers = append(servers, settingDohCustomServerModel{
-				Enabled:    types.BoolValue(s.Enabled),
-				SDNSStamp:  types.StringValue(s.SdnsStamp),
-				ServerName: types.StringValue(s.ServerName),
-			})
-		}
-		listVal, d := types.ListValueFrom(ctx, customServersType, servers)
-		diags.Append(d...)
-		model.CustomServers = listVal
-	} else {
-		model.CustomServers = types.ListNull(customServersType)
-	}
-
-	return model
-}
+// lcmModelToSetting/lcmSettingToModel, ntpModelToSetting/ntpSettingToModel,
+// syslogModelToSetting/syslogSettingToModel and
+// dohModelToSetting/dohSettingToModel moved onto resourcekit.SpecSection --
+// see setting_lcm_descriptor.go, setting_ntp_descriptor.go,
+// setting_syslog_descriptor.go and setting_doh_descriptor.go.
 
 // IPS conversion functions.
 // ipsModelToSetting overlays the user-set fields onto the current remote setting,
@@ -1177,7 +1074,7 @@ func (r *settingResource) ipsSettingToModel(
 	}
 
 	// Configured lists mirror the remote value (empty list included); ListNull is
-	// reserved for the not-configured/unknown case (see dohSettingToModel for why a configured-but-empty list must not become ListNull).
+	// reserved for the not-configured/unknown case -- a configured-but-empty list must not become ListNull (see dohAfterReceive, setting_doh_descriptor.go, for the same rule on doh's own lists).
 	if !plan.EnabledCategories.IsNull() && !plan.EnabledCategories.IsUnknown() {
 		listVal, d := types.ListValueFrom(ctx, types.StringType, setting.EnabledCategories)
 		diags.Append(d...)
