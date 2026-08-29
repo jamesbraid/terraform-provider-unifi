@@ -33,8 +33,7 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": "none"
+        ]
       }
     },
     {
@@ -539,8 +538,7 @@
         "description": "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`, or an IANA protocol name/number. Defaults to `all`. Gated against `ip_version` at plan time (measured against UniFi Network 10.6.101): some names are IPv4-only (e.g. `icmp`) or IPv6-only (e.g. `icmpv6`), while `all`/`tcp`/`udp`/`tcp_udp` and most numbered protocols work under any `ip_version`. Numeric protocol numbers are accepted for every `ip_version` even where the equivalent name is gated \u2014 `58` (icmpv6's protocol number) is accepted under `IPV4`, where the name `icmpv6` is not. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) \u2014 keep it `false` and add an explicit reverse policy if you need the reply.",
         "default": {
           "static": "all"
-        },
-        "validators": "none"
+        }
       }
     },
     {

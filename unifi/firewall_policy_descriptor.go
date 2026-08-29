@@ -271,11 +271,12 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 				Wire:  "protocol",
 				Model: func(m *firewallPolicyKitModel) *types.String { return &m.Protocol },
 				SDK:   func(s *ui.FirewallPolicy) *string { return &s.Protocol },
-				// No validator rejects "" now that its OneOf is suppressed (the
-				// SDK's constraint table is narrower than the controller for
-				// this field; see r2-validator-corrections.md), so nothing
-				// marks the zero value invalid: KeepZero, not NullZero.
-				Elide: resourcekit.KeepZero,
+				// The suppression came off (go-unifi v1.110.0's protocol
+				// vocabulary matches the controller's measured acceptance
+				// exactly -- see r3-sdk-bump task 3), so a derived
+				// RegexMatches now rejects "". The default is "all", not "",
+				// so the zero value isn't the default either: NullZero.
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.StringField[firewallPolicyKitModel, ui.FirewallPolicy]{
 				Wire:  "description",
@@ -307,9 +308,10 @@ func firewallPolicyKitSpec() resourcekit.Spec[firewallPolicyKitModel, ui.Firewal
 				Wire:  "connection_state_type",
 				Model: func(m *firewallPolicyKitModel) *types.String { return &m.ConnectionStateType },
 				SDK:   func(s *ui.FirewallPolicy) *string { return &s.ConnectionStateType },
-				// Same reasoning as protocol above: its OneOf is suppressed,
-				// so nothing rejects "" -- KeepZero, not NullZero.
-				Elide: resourcekit.KeepZero,
+				// Same reasoning as protocol above: the suppression came off
+				// and the derived OneOf(ALL, RESPOND_ONLY, CUSTOM) rejects "",
+				// with no default equal to the zero value: NullZero.
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.StringListField[firewallPolicyKitModel, ui.FirewallPolicy]{
 				Wire:  "connection_states",

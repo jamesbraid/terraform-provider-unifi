@@ -172,8 +172,10 @@ var firewallPolicyIPv6OnlyProtocols = map[string]bool{
 // firewallPolicyProtocolAllowedForIPVersion answers whether the matrix has
 // positive evidence protocol is valid for ipVersion. A protocol this matrix
 // never measured returns true (no claim, not an assertion of validity) --
-// protocol itself carries no enum validator (policy: "validators": "none")
-// for the same reason: this provider only narrows what it has measured.
+// this provider only narrows what it has measured. protocol's own derived
+// RegexMatches (go-unifi v1.110.0's vocabulary, confirmed to match this
+// matrix's measured union exactly; SDK-bump task 3) knows nothing about
+// ip_version, so this per-version narrowing still has to happen here.
 // "ipv6-icmp" is the one name measured unsupported under every ip_version
 // (the controller always answers "unsupported on IP version" for it), so it
 // is rejected unconditionally rather than folded into a per-version set.
