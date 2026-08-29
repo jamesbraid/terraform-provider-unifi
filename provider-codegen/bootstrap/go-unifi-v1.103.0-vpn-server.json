@@ -2,9 +2,9 @@
   "format_version": 1,
   "source": {
     "repository": "github.com/jamesbraid/go-unifi",
-    "version": "v1.108.0",
-    "commit": "ae40acddaf43fe2b7c85e5a4545bd006dcc93022",
-    "specification_sha256": "6aaf433bf4aa555bcb7d9171902d5a7bfc830f6aa222cb96c25f291fed5c9497"
+    "version": "v1.110.0",
+    "commit": "a446575eea2176bf8e80ffd2bcfc4fb5444e5b01",
+    "specification_sha256": "6b40f87df39d8e210230daa2b1a5b3b19cad1523e1237a8482226c2defae004e"
   },
   "resource": {
     "name": "unifi_vpn_server",
@@ -85,17 +85,20 @@
       {
         "name": "dhcpd_dns_1",
         "type": "string",
-        "go_name": "DHCPDDNS1"
+        "go_name": "DHCPDDNS1",
+        "pointer": true
       },
       {
         "name": "dhcpd_dns_2",
         "type": "string",
-        "go_name": "DHCPDDNS2"
+        "go_name": "DHCPDDNS2",
+        "pointer": true
       },
       {
         "name": "dhcpd_dns_3",
         "type": "string",
         "go_name": "DHCPDDNS3",
+        "pointer": true,
         "constraint": {
           "pattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$"
         }
@@ -104,6 +107,7 @@
         "name": "dhcpd_dns_4",
         "type": "string",
         "go_name": "DHCPDDNS4",
+        "pointer": true,
         "constraint": {
           "pattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$"
         }

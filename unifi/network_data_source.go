@@ -430,7 +430,7 @@ func networkDataSourceDHCPServerDNSFromNetwork(
 	diags *diag.Diagnostics,
 	network *unifi.Network,
 ) types.List {
-	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
+	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
 		network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
 	))
 }

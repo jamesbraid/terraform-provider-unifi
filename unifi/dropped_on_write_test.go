@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // The control that makes the rest mean anything: the same fields set on a
@@ -14,7 +15,7 @@ func TestNothingIsReportedWhenThePurposeCarriesTheFields(t *testing.T) {
 	start := "10.0.0.100"
 	network := &ui.Network{
 		Purpose:      ui.PurposeCorporate,
-		DHCPDDNS1:    "10.0.0.1",
+		DHCPDDNS1:    util.Ptr("10.0.0.1"),
 		DHCPDStart:   &start,
 		DHCPDEnabled: true,
 	}
@@ -31,7 +32,7 @@ func TestVLANOnlyReportsTheDHCPFieldsItDiscards(t *testing.T) {
 	lease := int64(86400)
 	network := &ui.Network{
 		Purpose:        ui.PurposeVLANOnly,
-		DHCPDDNS1:      "10.0.0.1",
+		DHCPDDNS1:      util.Ptr("10.0.0.1"),
 		DHCPDStart:     &start,
 		DHCPDLeaseTime: &lease,
 		DHCPDEnabled:   true,
@@ -69,7 +70,7 @@ func TestVLANOnlyReportsTheDHCPFieldsItDiscards(t *testing.T) {
 // warning about it would put 44 unactionable warnings on every
 // vlan-only plan.
 func TestAnUnsetFieldIsNotReported(t *testing.T) {
-	network := &ui.Network{Purpose: ui.PurposeVLANOnly, DHCPDDNS1: "10.0.0.1"}
+	network := &ui.Network{Purpose: ui.PurposeVLANOnly, DHCPDDNS1: util.Ptr("10.0.0.1")}
 	diags := droppedOnWrite("vlan-only network", network)
 	if len(diags) != 1 {
 		t.Fatalf("want exactly the one set field reported, got %d: %v", len(diags), diags)
@@ -102,7 +103,7 @@ func TestAZeroFieldIsNotReportedEvenWhereTheEncoderWouldDropIt(t *testing.T) {
 // everything: a Network with no Purpose fails to marshal, and the write itself
 // will say so far more clearly than 273 warnings would.
 func TestAnUnencodableObjectIsSilent(t *testing.T) {
-	if diags := droppedOnWrite("network", &ui.Network{DHCPDDNS1: "10.0.0.1"}); len(diags) != 0 {
+	if diags := droppedOnWrite("network", &ui.Network{DHCPDDNS1: util.Ptr("10.0.0.1")}); len(diags) != 0 {
 		t.Fatalf("an unencodable object produced %d warning(s): %v", len(diags), diags)
 	}
 }

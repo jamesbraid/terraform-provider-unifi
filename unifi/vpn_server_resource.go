@@ -15,6 +15,7 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_vpn_server"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
+	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -273,10 +274,10 @@ func vpnServerWANInterfaceFromNetwork(network *unifi.Network) types.String {
 // no size validator, so a third server is silently accepted and dropped -- known, not fixed, since the bound would be a public schema change.
 func vpnServerDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
 	if len(dnsServers) > 0 {
-		network.DHCPDDNS1 = dnsServers[0]
+		network.DHCPDDNS1 = util.Ptr(dnsServers[0])
 	}
 	if len(dnsServers) > 1 {
-		network.DHCPDDNS2 = dnsServers[1]
+		network.DHCPDDNS2 = util.Ptr(dnsServers[1])
 	}
 }
 
@@ -287,13 +288,7 @@ func vpnServerDNSServersFromNetwork(
 	diags *diag.Diagnostics,
 	network *unifi.Network,
 ) types.List {
-	var servers []string
-	if network.DHCPDDNS1 != "" {
-		servers = append(servers, network.DHCPDDNS1)
-	}
-	if network.DHCPDDNS2 != "" {
-		servers = append(servers, network.DHCPDDNS2)
-	}
+	servers := collectNonEmptyStringPointers(network.DHCPDDNS1, network.DHCPDDNS2)
 	if len(servers) == 0 {
 		return types.ListNull(types.StringType)
 	}

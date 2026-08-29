@@ -321,6 +321,6 @@
     }
   ],
   "resource": "unifi_vpn_client",
-  "source_specification_sha256": "6aaf433bf4aa555bcb7d9171902d5a7bfc830f6aa222cb96c25f291fed5c9497",
+  "source_specification_sha256": "6b40f87df39d8e210230daa2b1a5b3b19cad1523e1237a8482226c2defae004e",
   "surface_kind": "list_resource"
 }

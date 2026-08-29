@@ -353,12 +353,12 @@ func networkDHCPServerDNSToNetwork(
 	dnsServers types.List,
 	network *ui.Network,
 ) {
-	slots := []*string{
+	slots := []**string{
 		&network.DHCPDDNS1, &network.DHCPDDNS2, &network.DHCPDDNS3, &network.DHCPDDNS4,
 	}
 	if dnsServers.IsNull() || dnsServers.IsUnknown() {
 		for _, slot := range slots {
-			*slot = ""
+			*slot = util.Ptr("")
 		}
 		return
 	}
@@ -369,10 +369,10 @@ func networkDHCPServerDNSToNetwork(
 	}
 	for i, slot := range slots {
 		if i < len(values) {
-			*slot = values[i]
+			*slot = util.Ptr(values[i])
 			continue
 		}
-		*slot = ""
+		*slot = util.Ptr("")
 	}
 }
 
@@ -383,7 +383,7 @@ func networkDHCPServerDNSFromNetwork(
 	diags *diag.Diagnostics,
 	network *ui.Network,
 ) types.List {
-	return stringListOrNull(ctx, diags, collectNonEmptyStrings(
+	return stringListOrNull(ctx, diags, collectNonEmptyStringPointers(
 		network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
 	))
 }

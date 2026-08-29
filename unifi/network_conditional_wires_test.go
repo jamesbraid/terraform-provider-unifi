@@ -62,15 +62,17 @@ func TestNetworkNarrowingStaysSafeWhileWiresAreUnclassified(t *testing.T) {
 	// Pinned by name, not just a count: a name leaves this list only by being
 	// classified, either as an intentional zero or via a ConditionalWires
 	// declaration.
+	// dhcpd_dns_1..4 are not here: go-unifi v1.109.0 made DHCPDDNS1..4
+	// *string, and the network mapper now clears an unused slot by assigning
+	// a non-nil pointer to "" (matching the v6 slots, which were already
+	// pointers and were never in this list either) rather than leaving the
+	// struct field at its plain-string zero value -- the clear is now an
+	// explicit, non-zero write, not an ambiguous one.
 	wantAtRisk := []string{
 		"dhcp_relay_enabled",
 		"dhcpd_boot_enabled",
 		"dhcpd_boot_server",
 		"dhcpd_conflict_checking",
-		"dhcpd_dns_1",
-		"dhcpd_dns_2",
-		"dhcpd_dns_3",
-		"dhcpd_dns_4",
 		"dhcpd_dns_enabled",
 		"dhcpd_enabled",
 		"dhcpd_gateway_enabled",

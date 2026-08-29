@@ -13,6 +13,16 @@ import (
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
+// derefOrEmpty reads a possibly-nil DHCPDDNS slot for comparison and
+// printing, nil reading as "" -- the slots are *string as of go-unifi
+// v1.109.0.
+func derefOrEmpty(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
 func wireguardSpec(wires []string) resourcekit.Spec[vpnClientResourceModel, ui.Network] {
 	field := vpnClientWireguardField()
 	field.Wires = wires
@@ -98,9 +108,9 @@ func TestWireguardFieldWithTheDNSNamesMissingWritesThemAndCannotSendThem(t *test
 		t.Fatalf("Encode: %v", diags)
 	}
 	// Control: the value really is written, or the absence below proves nothing.
-	if network.DHCPDDNS1 != "10.0.0.1" {
+	if derefOrEmpty(network.DHCPDDNS1) != "10.0.0.1" {
 		t.Fatalf("Encode did not write dhcpd_dns_1 (%q), so its absence from the mask "+
-			"is not a demonstration of anything", network.DHCPDDNS1)
+			"is not a demonstration of anything", derefOrEmpty(network.DHCPDDNS1))
 	}
 
 	fields, err := wireguardSpec(incomplete).WireFields(wireguardPlanWritingEverything(t))
@@ -112,7 +122,7 @@ func TestWireguardFieldWithTheDNSNamesMissingWritesThemAndCannotSendThem(t *test
 	}
 	t.Logf("Encode wrote dhcpd_dns_1=%q and the mask of %d name(s) does not carry it: "+
 		"the apply succeeds and the controller keeps its old DNS",
-		network.DHCPDDNS1, len(fields))
+		derefOrEmpty(network.DHCPDDNS1), len(fields))
 }
 
 func TestWireguardFieldRoundTripsWhatTheControllerReturns(t *testing.T) {
@@ -132,8 +142,8 @@ func TestWireguardFieldRoundTripsWhatTheControllerReturns(t *testing.T) {
 	if network.WireguardInterface == nil || *network.WireguardInterface != "wan" {
 		t.Error("interface did not land")
 	}
-	if network.DHCPDDNS1 != "10.0.0.1" || network.DHCPDDNS2 != "10.0.0.2" {
-		t.Errorf("dns servers landed as %q/%q", network.DHCPDDNS1, network.DHCPDDNS2)
+	if derefOrEmpty(network.DHCPDDNS1) != "10.0.0.1" || derefOrEmpty(network.DHCPDDNS2) != "10.0.0.2" {
+		t.Errorf("dns servers landed as %q/%q", derefOrEmpty(network.DHCPDDNS1), derefOrEmpty(network.DHCPDDNS2))
 	}
 
 	// ToModel's prior is *whatever back.Wireguard already holds*, which on a
@@ -346,9 +356,9 @@ func TestWireguardFieldDropsTheDNSNamesWhenNothingWillWriteThem(t *testing.T) {
 	if diags := encodeVPNClientWireguard(ctx, plan.Wireguard, network); diags.HasError() {
 		t.Fatalf("Encode: %v", diags)
 	}
-	if network.DHCPDDNS1 != "" || network.DHCPDDNS2 != "" {
+	if derefOrEmpty(network.DHCPDDNS1) != "" || derefOrEmpty(network.DHCPDDNS2) != "" {
 		t.Fatalf("Encode wrote dhcpd_dns_1=%q dhcpd_dns_2=%q for a plan with no dns_servers; "+
-			"this case is not the one it is named for", network.DHCPDDNS1, network.DHCPDDNS2)
+			"this case is not the one it is named for", derefOrEmpty(network.DHCPDDNS1), derefOrEmpty(network.DHCPDDNS2))
 	}
 
 	fields, err := wireguardSpec(vpnClientWireguardWires()).WireFields(plan)
@@ -486,8 +496,8 @@ func wireguardWireValues(network *ui.Network) map[string]string {
 		"wireguard_client_peer_public_key":       text(network.WireguardClientPeerPublicKey),
 		"wireguard_client_peer_ip":               text(network.WireguardClientPeerIP),
 		"wireguard_client_peer_port":             number(network.WireguardClientPeerPort),
-		"dhcpd_dns_1":                            network.DHCPDDNS1,
-		"dhcpd_dns_2":                            network.DHCPDDNS2,
+		"dhcpd_dns_1":                            text(network.DHCPDDNS1),
+		"dhcpd_dns_2":                            text(network.DHCPDDNS2),
 	}
 }
 
@@ -516,8 +526,8 @@ func writtenWires(t *testing.T, plan *vpnClientResourceModel) []string {
 		WireguardClientPeerPublicKey:       &sentinel,
 		WireguardClientPeerIP:              &sentinel,
 		WireguardClientPeerPort:            &port,
-		DHCPDDNS1:                          sentinel,
-		DHCPDDNS2:                          sentinel,
+		DHCPDDNS1:                          &sentinel,
+		DHCPDDNS2:                          &sentinel,
 	})
 
 	var written []string

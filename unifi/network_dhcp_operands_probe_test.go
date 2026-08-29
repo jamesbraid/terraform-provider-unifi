@@ -46,7 +46,7 @@ func TestEachDHCPFlagWithItsOperand(t *testing.T) {
 	}{
 		{"dhcpd_dns_enabled", func(n *ui.Network) {
 			n.DHCPDDNSEnabled = true
-			n.DHCPDDNS1 = dns1
+			n.DHCPDDNS1 = &dns1
 		}, func(n *ui.Network) bool { return n.DHCPDDNSEnabled }, "dhcpd_dns_1"},
 
 		{"dhcpd_conflict_checking", func(n *ui.Network) {
@@ -102,7 +102,7 @@ func TestEachDHCPFlagWithItsOperand(t *testing.T) {
 			t.Fatal(err)
 		}
 		base.DHCPDEnabled = true
-		base.DHCPDDNS1 = dns1
+		base.DHCPDDNS1 = &dns1
 		if _, err := client.UpdateNetwork(ctx, site, base); err != nil {
 			t.Fatalf("the controller refused dhcpd_enabled with a DNS server: %v", err)
 		}

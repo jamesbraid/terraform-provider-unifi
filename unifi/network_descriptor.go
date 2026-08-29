@@ -206,10 +206,10 @@ func networkKitBeforeSend(
 		sdk.DHCPDWPAdUrl = util.Ptr("")
 		sdk.DHCPDTFTPServer = util.Ptr("")
 		sdk.DHCPDUnifiController = util.Ptr("")
-		sdk.DHCPDDNS1 = ""
-		sdk.DHCPDDNS2 = ""
-		sdk.DHCPDDNS3 = ""
-		sdk.DHCPDDNS4 = ""
+		sdk.DHCPDDNS1 = util.Ptr("")
+		sdk.DHCPDDNS2 = util.Ptr("")
+		sdk.DHCPDDNS3 = util.Ptr("")
+		sdk.DHCPDDNS4 = util.Ptr("")
 	}
 	return diags
 }

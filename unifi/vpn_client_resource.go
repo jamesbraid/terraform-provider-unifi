@@ -237,10 +237,10 @@ func wireguardPeerToNetwork(peer wireguardPeerModel, network *unifi.Network) {
 // (schema carries SizeBetween(1,2)). Both the configured list and one parsed from a file arrive here, since the distribution is the same either way.
 func wireguardDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
 	if len(dnsServers) > 0 {
-		network.DHCPDDNS1 = dnsServers[0]
+		network.DHCPDDNS1 = util.Ptr(dnsServers[0])
 	}
 	if len(dnsServers) > 1 {
-		network.DHCPDDNS2 = dnsServers[1]
+		network.DHCPDDNS2 = util.Ptr(dnsServers[1])
 	}
 }
 
@@ -276,13 +276,7 @@ func wireguardDNSServersFromNetwork(
 	diags *diag.Diagnostics,
 	network *unifi.Network,
 ) types.List {
-	var servers []string
-	if network.DHCPDDNS1 != "" {
-		servers = append(servers, network.DHCPDDNS1)
-	}
-	if network.DHCPDDNS2 != "" {
-		servers = append(servers, network.DHCPDDNS2)
-	}
+	servers := collectNonEmptyStringPointers(network.DHCPDDNS1, network.DHCPDDNS2)
 	if len(servers) == 0 {
 		return types.ListNull(types.StringType)
 	}
