@@ -69,6 +69,8 @@ func TestSettingValidateConfigSyslogRequiresAnAddressWhenEnabled(t *testing.T) {
 		{"enabled_without_ip_errors", types.BoolValue(true), types.StringNull(), true},
 		{"enabled_with_ip_is_clean", types.BoolValue(true), types.StringValue("10.0.0.5"), false},
 		{"enabled_unknown_is_clean", types.BoolUnknown(), types.StringNull(), false},
+		{"enabled_true_ip_unknown_is_clean", types.BoolValue(true), types.StringUnknown(), false},
+		{"enabled_null_ip_null_is_clean", types.BoolNull(), types.StringNull(), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
