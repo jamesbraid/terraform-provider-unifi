@@ -2,12 +2,107 @@ package resourcekit
 
 import (
 	"context"
+	"errors"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 )
+
+// Document is one controller document a section reads and writes. A
+// SpecSection's primary Spec is one; Extra holds the rest, over the same
+// section model, each masking only the fields it maps.
+type Document[SM any] interface {
+	// Write sends the fields of plan that this document maps and that the
+	// plan set; an empty mask is a no-op, not an error (the document is
+	// unconfigured). prior accumulates the fields this document's own
+	// response covers -- the same model Extra shares with the primary and
+	// with each other, since they map disjoint fields of it.
+	Write(ctx context.Context, site string, plan *SM, prior *SM) diag.Diagnostics
+	// Read decodes this document's fields into model, leaving every other
+	// field untouched. NotFound is reported through OnNotFound.
+	Read(ctx context.Context, site string, model *SM) diag.Diagnostics
+}
+
+// SpecDocument adapts a Spec[SM, S] + Backend[S] into a Document[SM]. It is
+// what an Extra is made of; the primary Spec on a SpecSection is one too,
+// modulo the not-found handling described below.
+type SpecDocument[SM any, S any] struct {
+	Spec Spec[SM, S]
+	// OnNotFound turns the backend's not-found into diagnostics; nil means
+	// "leave the model's fields as they are, no diagnostic" -- the natural
+	// default for a document that may simply not exist yet on this
+	// controller (usg_geo, ips_suppression on a site that never configured
+	// either).
+	OnNotFound func() diag.Diagnostics
+}
+
+// specDocumentWrite is the mask/send/merge machinery a document's write
+// needs, shared by SpecDocument.Write and SpecSection.Write's own primary
+// step: build the SDK struct from plan, mask it down to what the plan
+// actually set, send it, and merge the response's fields onto model. The
+// returned *S is nil when the mask was empty -- a no-op, not an error --
+// which is how the primary tells whether it has a response to hand its own
+// AfterReceive hook.
+func specDocumentWrite[SM any, S any](
+	ctx context.Context, spec Spec[SM, S], site, errSummary string, plan, model *SM,
+) (*S, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	sdk, d := spec.ToSDK(ctx, plan)
+	diags.Append(d...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	fields, err := spec.maskFields(plan)
+	if err != nil {
+		diags.AddError(errSummary, err.Error())
+		return nil, diags
+	}
+	if len(fields) == 0 {
+		return nil, diags
+	}
+
+	updated, err := spec.Backend.UpdateFields(ctx, site, sdk, fields...)
+	if err != nil {
+		diags.AddError(errSummary, err.Error())
+		return nil, diags
+	}
+
+	diags.Append(spec.ToModel(ctx, updated, model, "")...)
+	return updated, diags
+}
+
+func (d SpecDocument[SM, S]) Write(ctx context.Context, site string, plan, prior *SM) diag.Diagnostics {
+	_, diags := specDocumentWrite(ctx, d.Spec, site, "Error Writing "+d.Spec.Subject, plan, prior)
+	if diags.HasError() {
+		return diags
+	}
+	// The response doesn't outrank the plan for a value the plan set -- the
+	// same rule the primary applies via Spec.ApplyPlanToState.
+	d.Spec.ApplyPlanToState(plan, prior)
+	return diags
+}
+
+func (d SpecDocument[SM, S]) Read(ctx context.Context, site string, model *SM) diag.Diagnostics {
+	var diags diag.Diagnostics
+	sdk, err := d.Spec.Backend.Read(ctx, site, "")
+	if err != nil {
+		var notFound *ui.NotFoundError
+		if errors.As(err, &notFound) {
+			if d.OnNotFound != nil {
+				diags.Append(d.OnNotFound()...)
+			}
+			return diags
+		}
+		diags.AddError("Error Reading "+d.Spec.Subject, err.Error())
+		return diags
+	}
+	diags.Append(d.Spec.ToModel(ctx, sdk, model, "")...)
+	return diags
+}
 
 // SpecSection serves one Composite[M] section from a Spec[SM, S] instead of
 // a hand-written read/write pair (legacySection's shape). M is the whole
@@ -26,6 +121,16 @@ type SpecSection[M any, SM any, S any] struct {
 	AttrTypes map[string]attr.Type
 
 	Spec Spec[SM, S]
+
+	// Extra holds documents beyond the primary, over the same section
+	// model: usg writes usg and (only when configured) usg_geo; ips writes
+	// ips and ips_suppression. Written after Spec, in order, each masking
+	// only the fields it maps -- an empty mask skips that Extra's write
+	// without erroring, since it may simply be unconfigured. Read after
+	// Spec, in order, and always: an Extra's fields hydrate from the
+	// controller regardless of whether its write ran, the same way the
+	// primary's own unconfigured fields do.
+	Extra []Document[SM]
 
 	// AfterReceive runs after every ToModel, on both Write and Read: model
 	// has already been overwritten field-by-field from the SDK struct, and
@@ -82,39 +187,41 @@ func (s SpecSection[M, SM, S]) Write(
 		return diags
 	}
 
-	sdk, d := s.Spec.ToSDK(ctx, &planModel)
+	// fresh starts as a copy of the plan so a field no Field on this Spec
+	// covers -- an Extra-only attribute like usg_geo's -- carries the
+	// plan's own value forward until that Extra's own Read or Write
+	// contributes the controller's.
+	fresh := planModel
+	updated, d := specDocumentWrite(ctx, s.Spec, site, "Error "+verb+" "+s.Spec.Subject, &planModel, &fresh)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
-
-	fields, err := s.Spec.maskFields(&planModel)
-	if err != nil {
-		diags.AddError("Error "+verb+" "+s.Spec.Subject, err.Error())
+	if updated == nil && len(s.Extra) == 0 {
+		// A configured-but-empty section object with nothing else to write
+		// either: nothing the plan set, so nothing to do. WireFields would
+		// refuse this for a whole resource; a section's empty object is a
+		// legitimate no-op instead.
 		return diags
 	}
-	if len(fields) == 0 {
-		// A configured-but-empty section object: nothing the plan set, so
-		// nothing to write. WireFields would refuse this for a whole
-		// resource; a section's empty object is a legitimate no-op instead.
-		return diags
-	}
-
-	updated, err := s.Spec.Backend.UpdateFields(ctx, site, sdk, fields...)
-	if err != nil {
-		diags.AddError("Error "+verb+" "+s.Spec.Subject, err.Error())
-		return diags
+	if updated != nil {
+		diags.Append(s.runAfterReceive(ctx, updated, &fresh, planModel)...)
+		if diags.HasError() {
+			return diags
+		}
+		// The response doesn't outrank the plan for a value the plan set,
+		// the same rule Resource[M,S]'s Create/Update tail applies.
+		s.Spec.ApplyPlanToState(&planModel, &fresh)
 	}
 
-	var fresh SM
-	diags.Append(s.Spec.ToModel(ctx, updated, &fresh, "")...)
-	diags.Append(s.runAfterReceive(ctx, updated, &fresh, planModel)...)
-	if diags.HasError() {
-		return diags
+	// Extra, in order; the first error aborts before later Extras, the same
+	// rule Composite applies across sections.
+	for _, extra := range s.Extra {
+		diags.Append(extra.Write(ctx, site, &planModel, &fresh)...)
+		if diags.HasError() {
+			return diags
+		}
 	}
-	// The response doesn't outrank the plan for a value the plan set, the
-	// same rule Resource[M,S]'s Create/Update tail applies.
-	s.Spec.ApplyPlanToState(&planModel, &fresh)
 
 	object, d := s.encode(ctx, fresh)
 	diags.Append(d...)
@@ -150,6 +257,20 @@ func (s SpecSection[M, SM, S]) Read(
 
 	var model SM
 	diags.Append(s.Spec.ToModel(ctx, sdk, &model, "")...)
+	if diags.HasError() {
+		return diags
+	}
+
+	// Extra, in order and unconditionally -- an Extra's fields hydrate from
+	// the controller even when its write was skipped as unconfigured, the
+	// same way the primary's own unset fields do.
+	for _, extra := range s.Extra {
+		diags.Append(extra.Read(ctx, site, &model)...)
+		if diags.HasError() {
+			return diags
+		}
+	}
+
 	diags.Append(s.runAfterReceive(ctx, sdk, &model, planModel)...)
 	if diags.HasError() {
 		return diags

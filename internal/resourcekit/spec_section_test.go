@@ -2,12 +2,15 @@ package resourcekit
 
 import (
 	"context"
+	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 // ssModel stands in for settingResourceModel: one section attribute (plus a
@@ -74,6 +77,55 @@ func ssSectionObject(t *testing.T, name *string) types.Object {
 		t.Fatalf("build section object: %v", diags)
 	}
 	return object
+}
+
+// ssExtraSDK stands in for a second controller document -- usg_geo,
+// ips_suppression -- mapping onto the SAME section model as ssSDK, on its
+// own wire member.
+type ssExtraSDK struct {
+	Value string
+}
+
+func ssExtraSpec(backend Backend[ssExtraSDK]) Spec[ssSectionModel, ssExtraSDK] {
+	return Spec[ssSectionModel, ssExtraSDK]{
+		TypeName: "ss_probe_extra",
+		Subject:  "SS Probe Extra",
+		New:      func() *ssExtraSDK { return &ssExtraSDK{} },
+		Fields: []Field[ssSectionModel, ssExtraSDK]{
+			StringField[ssSectionModel, ssExtraSDK]{
+				Wire:  "value",
+				Model: func(m *ssSectionModel) *types.String { return &m.Extra },
+				SDK:   func(s *ssExtraSDK) *string { return &s.Value },
+				Elide: KeepZero,
+			},
+		},
+		Backend: backend,
+	}
+}
+
+// fakeDocument is a Document[ssSectionModel] that only logs that it ran --
+// for TestSpecSectionWritesExtraDocumentsAfterThePrimaryInOrder and
+// TestSpecSectionExtraErrorAbortsBeforeLaterExtras, which care about call
+// order rather than any actual masking or wire behaviour (ssExtraSDK covers
+// that instead).
+type fakeDocument struct {
+	name     string
+	calls    *[]string
+	writeErr error
+}
+
+func (f fakeDocument) Write(context.Context, string, *ssSectionModel, *ssSectionModel) diag.Diagnostics {
+	*f.calls = append(*f.calls, "write:"+f.name)
+	var diags diag.Diagnostics
+	if f.writeErr != nil {
+		diags.AddError("Error Writing "+f.name, f.writeErr.Error())
+	}
+	return diags
+}
+
+func (f fakeDocument) Read(context.Context, string, *ssSectionModel) diag.Diagnostics {
+	*f.calls = append(*f.calls, "read:"+f.name)
+	return nil
 }
 
 func TestSpecSectionWriteMasksOnlyThePlanSetFields(t *testing.T) {
@@ -257,4 +309,177 @@ func TestSpecSectionReadFetchesAndAfterReceiveSeesThePlanAsPrior(t *testing.T) {
 	if !got.Extra.IsNull() {
 		t.Errorf("extra = %v, want null (AfterReceive's plan-conditioned null)", got.Extra)
 	}
+}
+
+func TestSpecSectionWritesExtraDocumentsAfterThePrimaryInOrder(t *testing.T) {
+	var calls []string
+	section := SpecSection[ssModel, ssSectionModel, ssSDK]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   ssAttrTypes(),
+		Spec: ssSpec(Backend[ssSDK]{
+			UpdateFields: func(_ context.Context, _ string, in *ssSDK, _ ...string) (*ssSDK, error) {
+				calls = append(calls, "primary")
+				return in, nil
+			},
+		}),
+		Extra: []Document[ssSectionModel]{
+			fakeDocument{name: "first", calls: &calls},
+			fakeDocument{name: "second", calls: &calls},
+		},
+	}
+
+	name := "foo"
+	plan := ssModel{Section: ssSectionObject(t, &name)}
+	diags := section.Write(context.Background(), "site-1", &plan, nil, "Creating")
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	want := []string{"primary", "write:first", "write:second"}
+	if !reflect.DeepEqual(calls, want) {
+		t.Errorf("call order = %v, want %v", calls, want)
+	}
+}
+
+// TestSpecSectionSkipsAnExtraWhoseMaskIsEmpty exercises a real SpecDocument
+// Extra (not the logging fakeDocument), since the behaviour under test is
+// the actual mask computation: a plan that never named the Extra's field
+// must not send it, yet the Extra must still be read.
+func TestSpecSectionSkipsAnExtraWhoseMaskIsEmpty(t *testing.T) {
+	var writeCalled, readCalled bool
+	extra := SpecDocument[ssSectionModel, ssExtraSDK]{
+		Spec: ssExtraSpec(Backend[ssExtraSDK]{
+			UpdateFields: func(_ context.Context, _ string, in *ssExtraSDK, _ ...string) (*ssExtraSDK, error) {
+				writeCalled = true
+				return in, nil
+			},
+			Read: func(context.Context, string, string) (*ssExtraSDK, error) {
+				readCalled = true
+				return &ssExtraSDK{Value: "hydrated"}, nil
+			},
+		}),
+	}
+	section := SpecSection[ssModel, ssSectionModel, ssSDK]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   ssAttrTypes(),
+		Spec: ssSpec(Backend[ssSDK]{
+			UpdateFields: func(_ context.Context, _ string, in *ssSDK, _ ...string) (*ssSDK, error) {
+				return in, nil
+			},
+			Read: func(context.Context, string, string) (*ssSDK, error) {
+				return &ssSDK{Name: "server-name"}, nil
+			},
+		}),
+		Extra: []Document[ssSectionModel]{extra},
+	}
+
+	// The plan sets name (the primary's own field) but leaves extra null:
+	// the Extra's own mask is empty even though the section itself is
+	// configured.
+	name := "foo"
+	plan := ssModel{Section: ssSectionObject(t, &name)}
+	diags := section.Write(context.Background(), "site-1", &plan, nil, "Creating")
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if writeCalled {
+		t.Error("the Extra's UpdateFields was called with an empty mask; it should have been skipped")
+	}
+
+	var out ssModel
+	diags = section.Read(context.Background(), "site-1", &plan, &out)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if !readCalled {
+		t.Error("the Extra's Read was not called; an Extra must be read even when its write was skipped")
+	}
+	var got ssSectionModel
+	diags = out.Section.As(context.Background(), &got, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		t.Fatalf("decode read section: %v", diags)
+	}
+	if got.Extra.ValueString() != "hydrated" {
+		t.Errorf("extra = %q, want the fetched value %q (hydrated even though never configured)",
+			got.Extra.ValueString(), "hydrated")
+	}
+}
+
+func TestSpecSectionExtraErrorAbortsBeforeLaterExtras(t *testing.T) {
+	var calls []string
+	failing := fakeDocument{name: "failing", calls: &calls, writeErr: errors.New("boom")}
+	never := fakeDocument{name: "never", calls: &calls}
+	section := SpecSection[ssModel, ssSectionModel, ssSDK]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   ssAttrTypes(),
+		Spec: ssSpec(Backend[ssSDK]{
+			UpdateFields: func(_ context.Context, _ string, in *ssSDK, _ ...string) (*ssSDK, error) {
+				calls = append(calls, "primary")
+				return in, nil
+			},
+		}),
+		Extra: []Document[ssSectionModel]{failing, never},
+	}
+
+	name := "foo"
+	plan := ssModel{Section: ssSectionObject(t, &name)}
+	diags := section.Write(context.Background(), "site-1", &plan, nil, "Creating")
+	if !diags.HasError() {
+		t.Fatal("expected an error from the failing Extra")
+	}
+	want := []string{"primary", "write:failing"}
+	if !reflect.DeepEqual(calls, want) {
+		t.Errorf("calls = %v, want %v (the second Extra must never run)", calls, want)
+	}
+}
+
+func TestSpecDocumentOnNotFoundIsReportedAsItsDiagnostics(t *testing.T) {
+	notFound := &ui.NotFoundError{Type: "SSProbeExtra", Attr: "id", Value: "site-1"}
+
+	t.Run("OnNotFound set", func(t *testing.T) {
+		document := SpecDocument[ssSectionModel, ssExtraSDK]{
+			Spec: ssExtraSpec(Backend[ssExtraSDK]{
+				Read: func(context.Context, string, string) (*ssExtraSDK, error) {
+					return nil, notFound
+				},
+			}),
+			OnNotFound: func() diag.Diagnostics {
+				var diags diag.Diagnostics
+				diags.AddError("SS Probe Extra is too old for this controller", "detail")
+				return diags
+			},
+		}
+		var model ssSectionModel
+		diags := document.Read(context.Background(), "site-1", &model)
+		if !diags.HasError() {
+			t.Fatal("expected OnNotFound's diagnostics")
+		}
+		got := diags.Errors()
+		if len(got) != 1 || got[0].Summary() != "SS Probe Extra is too old for this controller" {
+			t.Errorf("diagnostics = %v, want OnNotFound's own diagnostic", diags)
+		}
+	})
+
+	t.Run("OnNotFound nil", func(t *testing.T) {
+		document := SpecDocument[ssSectionModel, ssExtraSDK]{
+			Spec: ssExtraSpec(Backend[ssExtraSDK]{
+				Read: func(context.Context, string, string) (*ssExtraSDK, error) {
+					return nil, notFound
+				},
+			}),
+		}
+		model := ssSectionModel{Name: types.StringValue("untouched"), Extra: types.StringValue("also-untouched")}
+		diags := document.Read(context.Background(), "site-1", &model)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+		if model.Name.ValueString() != "untouched" || model.Extra.ValueString() != "also-untouched" {
+			t.Errorf("model = %+v, want untouched (nil OnNotFound leaves the model alone)", model)
+		}
+	})
 }
