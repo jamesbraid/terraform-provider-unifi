@@ -298,8 +298,8 @@ func vpnServerDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
 // This exists apart from vpnServerDNSServersToNetwork because the kit's
 // Update merges the plan onto state before any hook runs, so by the time
 // Encode sees dns.servers it already holds the plan's shortened list --
-// nothing at that point still knows what the controller had. current has to
-// come from a fresh read (see vpnServerBeforeSend) for exactly that reason.
+// nothing at that point still knows what the controller had. current is
+// built from the prior model the kit hands BeforeSend, for exactly that reason.
 //
 // A position neither side ever fills is left at its current Go value (nil,
 // if current never held one) and reported nowhere: go-unifi's masked write
