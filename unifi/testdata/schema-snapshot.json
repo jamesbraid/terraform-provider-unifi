@@ -7936,7 +7936,10 @@
           "type": "[\"list\",\"string\"]",
           "optional": true,
           "description": "DNS servers to push to VPN clients.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "listvalidator.sizeAtMostValidator: list must contain at most 4 elements"
+          ]
         },
         "enabled": {
           "kind": "attribute",

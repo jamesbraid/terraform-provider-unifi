@@ -40,25 +40,6 @@ func TestVPNServerConditionalWiresAgreeWithEncode(t *testing.T) {
 		}
 		return types.StringValue(s)
 	}
-	dnsObject := func(t *testing.T, servers ...string) types.Object {
-		t.Helper()
-		list := types.ListNull(types.StringType)
-		if servers != nil {
-			values := make([]attr.Value, len(servers))
-			for i, s := range servers {
-				values[i] = types.StringValue(s)
-			}
-			built, diags := types.ListValue(types.StringType, values)
-			if diags.HasError() {
-				t.Fatalf("building dns list: %v", diags)
-			}
-			list = built
-		}
-		return object(t, vpnServerDNSModel{}.AttributeTypes(), map[string]attr.Value{
-			"enabled": types.BoolValue(true),
-			"servers": list,
-		})
-	}
 	openVPNObject := func(t *testing.T, filled bool) types.Object {
 		v := func(s string) types.String {
 			if filled {
@@ -121,17 +102,19 @@ func TestVPNServerConditionalWiresAgreeWithEncode(t *testing.T) {
 		})
 	}
 
-	// Every scattered field, not only the ones declaring predicates: the
-	// check's population is field.Wires, so an UNDECLARED conditional wire is
-	// reported by name -- the only case that destroys anything.
+	// Every scattered field but one, not only the ones declaring predicates:
+	// the check's population is field.Wires, so an UNDECLARED conditional
+	// wire is reported by name -- the only case that destroys anything. DNS
+	// (led by dhcpd_dns_enabled) is the exception: all five of its wires are
+	// unconditional now, and this check would rightly flag that as "Encode
+	// writes it for some objects and not others" -- Encode's own mask
+	// eligibility genuinely is unconditional; what decides whether a given
+	// slot is actually written is vpnServerClearDroppedDNS plus
+	// vpnServerUnwritableWires, a joint decision this Encode-only check has
+	// no way to model. TestVPNServerDNSServersFillFourSlotsInOrder and
+	// TestVPNServerDNSServersClearTheSlotsAConfigDropped cover that pair
+	// directly instead.
 	byLeadWire := map[string][]types.Object{
-		"dhcpd_dns_enabled": {
-			dnsObject(t),
-			dnsObject(t, "1.1.1.1"),
-			dnsObject(t, "1.1.1.1", "8.8.8.8"),
-			dnsObject(t, "1.1.1.1", "8.8.8.8", "9.9.9.9"),
-			dnsObject(t, "1.1.1.1", "8.8.8.8", "9.9.9.9", "4.4.4.4"),
-		},
 		"l2tp_allow_weak_ciphers": {l2tpObject(t, ""), l2tpObject(t, "a-pre-shared-key")},
 		"local_port":              {openVPNObject(t, false), openVPNObject(t, true)},
 		"x_wireguard_private_key": {wireguardObject(t, false), wireguardObject(t, true)},
@@ -144,6 +127,9 @@ func TestVPNServerConditionalWiresAgreeWithEncode(t *testing.T) {
 		if !ok {
 			continue
 		}
+		if scattered.Wires[0] == "dhcpd_dns_enabled" {
+			continue
+		}
 		objects, known := byLeadWire[scattered.Wires[0]]
 		if !known {
 			t.Fatalf("scattered field leading with %q has no objects here; a new field must be exercised, not skipped", scattered.Wires[0])
@@ -153,8 +139,8 @@ func TestVPNServerConditionalWiresAgreeWithEncode(t *testing.T) {
 			t.Errorf("%s: %s", scattered.Wires[0], problem)
 		}
 	}
-	if matched != 5 {
-		t.Fatalf("exercised %d scattered fields, want 5; the descriptor changed shape and this test stopped seeing it", matched)
+	if matched != 4 {
+		t.Fatalf("exercised %d scattered fields, want 4; the descriptor changed shape and this test stopped seeing it", matched)
 	}
 	_ = ctx
 }

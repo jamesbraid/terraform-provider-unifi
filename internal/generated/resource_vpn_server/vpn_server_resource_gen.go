@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -42,6 +43,9 @@ func VpnServerResourceSchema(ctx context.Context) schema.Schema {
 						Optional:            true,
 						Description:         "DNS servers to push to VPN clients.",
 						MarkdownDescription: "DNS servers to push to VPN clients.",
+						Validators: []validator.List{
+							listvalidator.SizeAtMost(4),
+						},
 					},
 				},
 				Optional:            true,

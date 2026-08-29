@@ -429,7 +429,19 @@
             "description": "DNS servers to push to VPN clients.",
             "element_type": {
               "string": {}
-            }
+            },
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                    }
+                  ],
+                  "schema_definition": "listvalidator.SizeAtMost(4)"
+                }
+              }
+            ]
           },
           "disposition": "managed",
           "terraform_name": "servers",

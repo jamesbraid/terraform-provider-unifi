@@ -8,8 +8,12 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -1108,5 +1112,66 @@ func TestVPNServerDNSServersClearTheSlotsAConfigDropped(t *testing.T) {
 	// helper only ever adds to what Encode already decided.
 	if current.DHCPDDNS1 == nil || *current.DHCPDDNS1 != "1.1.1.1" {
 		t.Errorf("DHCPDDNS1 = %v, want untouched at \"1.1.1.1\"", current.DHCPDDNS1)
+	}
+}
+
+// TestVPNServerDNSServersRejectsAFifthServerAtPlan pins the
+// listvalidator.SizeAtMost(4) added alongside the four-slot lift: the
+// controller carries exactly four dhcpd_dns_N slots, so a fifth server
+// belongs in a plan-time error, not a silent truncation.
+func TestVPNServerDNSServersRejectsAFifthServerAtPlan(t *testing.T) {
+	ctx := context.Background()
+	var response fwresource.SchemaResponse
+	newVPNServerKitResource().Schema(ctx, fwresource.SchemaRequest{}, &response)
+	if response.Diagnostics.HasError() {
+		t.Fatalf("build the schema: %v", response.Diagnostics)
+	}
+
+	dnsAttr, ok := response.Schema.Attributes["dns"]
+	if !ok {
+		t.Fatal(`schema is missing attribute "dns"`)
+	}
+	dnsNested, ok := dnsAttr.(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf(`attribute "dns" is a %T, want schema.SingleNestedAttribute`, dnsAttr)
+	}
+	serversAttr, ok := dnsNested.Attributes["servers"]
+	if !ok {
+		t.Fatal(`dns is missing member "servers"`)
+	}
+	listAttr, ok := serversAttr.(schema.ListAttribute)
+	if !ok {
+		t.Fatalf(`dns.servers is a %T, want schema.ListAttribute`, serversAttr)
+	}
+
+	validateServers := func(t *testing.T, servers []string) diag.Diagnostics {
+		t.Helper()
+		list, d := types.ListValueFrom(ctx, types.StringType, servers)
+		if d.HasError() {
+			t.Fatalf("building the list value: %v", d)
+		}
+		var diags diag.Diagnostics
+		for _, v := range listAttr.Validators {
+			validateResp := &validator.ListResponse{}
+			v.ValidateList(ctx, validator.ListRequest{
+				Path:        path.Root("dns").AtName("servers"),
+				ConfigValue: list,
+			}, validateResp)
+			diags.Append(validateResp.Diagnostics...)
+		}
+		return diags
+	}
+
+	if diags := validateServers(t, []string{
+		"1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4", "5.5.5.5",
+	}); !diags.HasError() {
+		t.Error("five servers passed config validation; want a plan-time error, since " +
+			"the controller has only four dhcpd_dns_N slots to hold them")
+	}
+	// The control: four, the declared maximum, must still pass.
+	if diags := validateServers(t, []string{
+		"1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4",
+	}); diags.HasError() {
+		t.Errorf("four servers failed config validation: %v", diags)
 	}
 }

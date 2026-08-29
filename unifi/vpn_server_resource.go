@@ -182,7 +182,6 @@ func (r *vpnServerResource) Configure(
 	}
 
 	r.Spec.Backend = vpnServerKitBackend(client.ApiClient)
-	r.Spec.BeforeSend = vpnServerBeforeSend(client.ApiClient)
 	r.DefaultSite = client.Site
 }
 
