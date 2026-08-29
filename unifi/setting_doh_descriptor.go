@@ -201,8 +201,8 @@ func dohKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Doh] {
 	}
 }
 
-// dohKitSection builds the doh entry for settingResource's Sections, bound
-// to client the same way legacySectionsFor binds *settingResource.
+// dohKitSection builds the doh entry for settingResource's Sections, bound to
+// client via settingKitSections, which calls it with r.client.ApiClient.
 func dohKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := dohKitSpec()
 	spec.Backend = dohKitBackend(client)

@@ -679,8 +679,8 @@ func usgGeoKitDocument(client *ui.ApiClient) resourcekit.Document[settingUSGMode
 	}
 }
 
-// usgKitSection builds the usg entry for settingResource's Sections, bound
-// to client the same way legacySectionsFor binds *settingResource.
+// usgKitSection builds the usg entry for settingResource's Sections, bound to
+// client via settingKitSections, which calls it with r.client.ApiClient.
 func usgKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := usgKitSpec()
 	spec.Backend = usgKitBackend(client)

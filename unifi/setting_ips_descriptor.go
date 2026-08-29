@@ -599,8 +599,8 @@ func ipsSuppressionKitDocument(client *ui.ApiClient) resourcekit.Document[settin
 	}
 }
 
-// ipsKitSection builds the ips entry for settingResource's Sections, bound
-// to client the same way legacySectionsFor binds *settingResource.
+// ipsKitSection builds the ips entry for settingResource's Sections, bound to
+// client via settingKitSections, which calls it with r.client.ApiClient.
 func ipsKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := ipsKitSpec()
 	spec.Backend = ipsKitBackend(client)

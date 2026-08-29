@@ -103,8 +103,8 @@ func autoSpeedtestKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.
 }
 
 // autoSpeedtestKitSection builds the auto_speedtest entry for
-// settingResource's Sections, bound to client the same way legacySectionsFor
-// binds *settingResource.
+// settingResource's Sections, bound to client via settingKitSections, which
+// calls it with r.client.ApiClient.
 func autoSpeedtestKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := autoSpeedtestKitSpec()
 	spec.Backend = autoSpeedtestKitBackend(client)

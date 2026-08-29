@@ -184,7 +184,8 @@ func syslogKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Rsyslog
 }
 
 // syslogKitSection builds the syslog entry for settingResource's Sections,
-// bound to client the same way legacySectionsFor binds *settingResource.
+// bound to client via settingKitSections, which calls it with
+// r.client.ApiClient.
 func syslogKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := syslogKitSpec()
 	spec.Backend = syslogKitBackend(client)

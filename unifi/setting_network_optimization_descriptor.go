@@ -91,8 +91,8 @@ func networkOptimizationKitBackend(client *ui.ApiClient) resourcekit.Backend[set
 }
 
 // networkOptimizationKitSection builds the network_optimization entry for
-// settingResource's Sections, bound to client the same way
-// legacySectionsFor binds *settingResource.
+// settingResource's Sections, bound to client via settingKitSections, which
+// calls it with r.client.ApiClient.
 func networkOptimizationKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := networkOptimizationKitSpec()
 	spec.Backend = networkOptimizationKitBackend(client)

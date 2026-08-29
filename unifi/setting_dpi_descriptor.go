@@ -96,7 +96,7 @@ func dpiKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Dpi] {
 }
 
 // dpiKitSection builds the dpi entry for settingResource's Sections, bound to
-// client the same way legacySectionsFor binds *settingResource.
+// client via settingKitSections, which calls it with r.client.ApiClient.
 func dpiKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := dpiKitSpec()
 	spec.Backend = dpiKitBackend(client)

@@ -90,7 +90,8 @@ func countryKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Countr
 }
 
 // countryKitSection builds the country entry for settingResource's Sections,
-// bound to client the same way legacySectionsFor binds *settingResource.
+// bound to client via settingKitSections, which calls it with
+// r.client.ApiClient.
 func countryKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := countryKitSpec()
 	spec.Backend = countryKitBackend(client)

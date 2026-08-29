@@ -187,7 +187,8 @@ func radiusKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Radius]
 }
 
 // radiusKitSection builds the radius entry for settingResource's Sections,
-// bound to client the same way legacySectionsFor binds *settingResource.
+// bound to client via settingKitSections, which calls it with
+// r.client.ApiClient.
 func radiusKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := radiusKitSpec()
 	spec.Backend = radiusKitBackend(client)

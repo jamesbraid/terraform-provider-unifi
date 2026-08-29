@@ -271,8 +271,8 @@ func mgmtKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Mgmt] {
 	}
 }
 
-// mgmtKitSection builds the mgmt entry for settingResource's Sections,
-// bound to client the same way legacySectionsFor binds *settingResource.
+// mgmtKitSection builds the mgmt entry for settingResource's Sections, bound
+// to client via settingKitSections, which calls it with r.client.ApiClient.
 func mgmtKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := mgmtKitSpec()
 	spec.Backend = mgmtKitBackend(client)

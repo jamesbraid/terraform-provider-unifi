@@ -163,8 +163,9 @@ func TestAccSettingResource_radius(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				ImportStateVerifyIgnore: []string{
-					// readSettings only populates what the plan configured; an
-					// import has no plan, so every radius attribute reads back null.
+					// SpecSection.Read only fetches a section when Configured(plan)
+					// is true; import's state has just id set, so radius reads
+					// back null instead of the applied values.
 					"radius.secret", // Secret is sensitive and won't be in state after import
 					"radius.%",
 					"radius.accounting_enabled",

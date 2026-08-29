@@ -3,9 +3,9 @@ package unifi
 import "testing"
 
 // TestSettingKitSectionsOrder documents settingKitSectionTable's order: the
-// Composite's actual Sections, in today's historical write order, mixing
-// legacySection rows and resourcekit.SpecSection kit constructor rows (see
-// settingKitSectionTable's own comment). This subsumes what used to be a
+// Composite's actual Sections, in today's historical write order, all
+// resourcekit.SpecSection kit constructor rows (see settingKitSectionTable's
+// own comment). This subsumes what used to be a
 // separate TestSettingSectionsOrder over the legacy-only settingSections
 // var: that var is gone now that four more sections migrated onto the kit
 // in the same table, so this is the sole order-authority test.

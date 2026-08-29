@@ -129,8 +129,8 @@ func lcmKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Lcm] {
 	}
 }
 
-// lcmKitSection builds the lcm entry for settingResource's Sections, bound
-// to client the same way legacySectionsFor binds *settingResource.
+// lcmKitSection builds the lcm entry for settingResource's Sections, bound to
+// client via settingKitSections, which calls it with r.client.ApiClient.
 func lcmKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := lcmKitSpec()
 	spec.Backend = lcmKitBackend(client)

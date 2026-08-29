@@ -122,9 +122,9 @@ func igmpSnoopingKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.I
 	}
 }
 
-// igmpSnoopingKitSection builds the igmp_snooping entry for
-// settingResource's Sections, bound to client the same way
-// legacySectionsFor binds *settingResource.
+// igmpSnoopingKitSection builds the igmp_snooping entry for settingResource's
+// Sections, bound to client via settingKitSections, which calls it with
+// r.client.ApiClient.
 func igmpSnoopingKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := igmpSnoopingKitSpec()
 	spec.Backend = igmpSnoopingKitBackend(client)

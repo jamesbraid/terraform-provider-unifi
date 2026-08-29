@@ -128,8 +128,8 @@ func ntpKitBackend(client *ui.ApiClient) resourcekit.Backend[settings.Ntp] {
 	}
 }
 
-// ntpKitSection builds the ntp entry for settingResource's Sections, bound
-// to client the same way legacySectionsFor binds *settingResource.
+// ntpKitSection builds the ntp entry for settingResource's Sections, bound to
+// client via settingKitSections, which calls it with r.client.ApiClient.
 func ntpKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceModel] {
 	spec := ntpKitSpec()
 	spec.Backend = ntpKitBackend(client)
