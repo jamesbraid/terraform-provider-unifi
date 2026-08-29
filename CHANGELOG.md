@@ -16,9 +16,9 @@ All notable changes to this project will be documented in this file.
   `usg.timeout_setting_preference`, `usg.upnp_wan_interface` and
   `usg.geo_ip_filtering_countries` now read `""` instead of `null`;
   `syslog.contents` and `igmp_snooping.network_ids` now read `[]` instead
-  of `null` on an empty controller response. Going the other way, one of
-  `usg`'s `geo_ip_filtering_*` attributes now reads `null`, not the old
-  mapper's `false`/empty, when the controller's `usg_geo` object is
+  of `null` on an empty controller response. Going the other way,
+  `usg.geo_ip_filtering_enabled` now reads `null`, not the old mapper's
+  `false`, when the controller's `usg_geo` object is
   missing from the read entirely (an older controller) — an apply still
   fails there either way, with the existing "not supported" diagnostic.
   All of these are Computed attributes, so an apply does not show them as
