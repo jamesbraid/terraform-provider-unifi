@@ -19,7 +19,8 @@ type Document[SM any] interface {
 	// plan set; an empty mask is a no-op, not an error (the document is
 	// unconfigured). prior accumulates the fields this document's own
 	// response covers -- the same model Extra shares with the primary and
-	// with each other, since they map disjoint fields of it.
+	// with each other, since they map disjoint fields of it. NotFound is
+	// reported through OnNotFound, the same as Read.
 	Write(ctx context.Context, site string, plan *SM, prior *SM) diag.Diagnostics
 	// Read decodes this document's fields into model, leaving every other
 	// field untouched. NotFound is reported through OnNotFound.
@@ -27,27 +28,35 @@ type Document[SM any] interface {
 }
 
 // SpecDocument adapts a Spec[SM, S] + Backend[S] into a Document[SM]. It is
-// what an Extra is made of; the primary Spec on a SpecSection is one too,
-// modulo the not-found handling described below.
+// what an Extra is made of; the primary Spec on a SpecSection is one too.
 type SpecDocument[SM any, S any] struct {
 	Spec Spec[SM, S]
-	// OnNotFound turns the backend's not-found into diagnostics; nil means
+	// OnNotFound turns the backend's not-found -- on either Write or Read --
+	// into diagnostics, carrying the error so a caller that needs its text
+	// can use it (usg_geo's own "Geo IP Filtering Not Supported By This
+	// Controller" comes from a masked write's not-found this way). nil means
 	// "leave the model's fields as they are, no diagnostic" -- the natural
 	// default for a document that may simply not exist yet on this
 	// controller (usg_geo, ips_suppression on a site that never configured
 	// either).
-	OnNotFound func() diag.Diagnostics
+	OnNotFound func(err error) diag.Diagnostics
 }
 
 // specDocumentWrite is the mask/send/merge machinery a document's write
 // needs, shared by SpecDocument.Write and SpecSection.Write's own primary
 // step: build the SDK struct from plan, mask it down to what the plan
 // actually set, send it, and merge the response's fields onto model. The
-// returned *S is nil when the mask was empty -- a no-op, not an error --
-// which is how the primary tells whether it has a response to hand its own
-// AfterReceive hook.
+// returned *S is nil when the mask was empty, or when the send reported
+// not-found -- neither is an error, so the primary can tell "there is
+// nothing to hand my own AfterReceive hook" apart from a real failure.
+// UpdateFields' own not-found routes through onNotFound exactly as a
+// document's Read does; every other error keeps using errSummary, which is
+// how the primary -- passing a not-found handler that just reproduces
+// errSummary -- keeps today's unconditional "any error is an error"
+// behaviour.
 func specDocumentWrite[SM any, S any](
 	ctx context.Context, spec Spec[SM, S], site, errSummary string, plan, model *SM,
+	onNotFound func(error) diag.Diagnostics,
 ) (*S, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	sdk, d := spec.ToSDK(ctx, plan)
@@ -67,6 +76,13 @@ func specDocumentWrite[SM any, S any](
 
 	updated, err := spec.Backend.UpdateFields(ctx, site, sdk, fields...)
 	if err != nil {
+		var notFound *ui.NotFoundError
+		if errors.As(err, &notFound) {
+			if onNotFound != nil {
+				diags.Append(onNotFound(err)...)
+			}
+			return nil, diags
+		}
 		diags.AddError(errSummary, err.Error())
 		return nil, diags
 	}
@@ -76,7 +92,7 @@ func specDocumentWrite[SM any, S any](
 }
 
 func (d SpecDocument[SM, S]) Write(ctx context.Context, site string, plan, prior *SM) diag.Diagnostics {
-	_, diags := specDocumentWrite(ctx, d.Spec, site, "Error Writing "+d.Spec.Subject, plan, prior)
+	_, diags := specDocumentWrite(ctx, d.Spec, site, "Error Writing "+d.Spec.Subject, plan, prior, d.OnNotFound)
 	if diags.HasError() {
 		return diags
 	}
@@ -86,21 +102,33 @@ func (d SpecDocument[SM, S]) Write(ctx context.Context, site string, plan, prior
 	return diags
 }
 
-func (d SpecDocument[SM, S]) Read(ctx context.Context, site string, model *SM) diag.Diagnostics {
+// specDocumentRead is the fetch/merge machinery a document's read needs,
+// shared by SpecDocument.Read and SpecSection.Read's own primary step. The
+// returned *S is nil on any error, not-found included, since only a
+// successful fetch has one to hand the primary's own AfterReceive hook.
+func specDocumentRead[SM any, S any](
+	ctx context.Context, spec Spec[SM, S], site string, model *SM,
+	onNotFound func(error) diag.Diagnostics,
+) (*S, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	sdk, err := d.Spec.Backend.Read(ctx, site, "")
+	sdk, err := spec.Backend.Read(ctx, site, "")
 	if err != nil {
 		var notFound *ui.NotFoundError
 		if errors.As(err, &notFound) {
-			if d.OnNotFound != nil {
-				diags.Append(d.OnNotFound()...)
+			if onNotFound != nil {
+				diags.Append(onNotFound(err)...)
 			}
-			return diags
+			return nil, diags
 		}
-		diags.AddError("Error Reading "+d.Spec.Subject, err.Error())
-		return diags
+		diags.AddError("Error Reading "+spec.Subject, err.Error())
+		return nil, diags
 	}
-	diags.Append(d.Spec.ToModel(ctx, sdk, model, "")...)
+	diags.Append(spec.ToModel(ctx, sdk, model, "")...)
+	return sdk, diags
+}
+
+func (d SpecDocument[SM, S]) Read(ctx context.Context, site string, model *SM) diag.Diagnostics {
+	_, diags := specDocumentRead(ctx, d.Spec, site, model, d.OnNotFound)
 	return diags
 }
 
@@ -171,6 +199,20 @@ func (s SpecSection[M, SM, S]) runAfterReceive(
 	return s.AfterReceive(ctx, sdk, model, prior)
 }
 
+// primaryNotFoundText is the primary's own not-found handler for both Write
+// and Read: it reproduces the plain "any error is an error" diagnostic the
+// primary has always reported, so routing the primary through the same
+// specDocumentWrite/specDocumentRead machinery as an Extra changes nothing
+// about its own observable behaviour -- only an Extra opts into a quieter
+// (or differently worded) not-found by setting its own OnNotFound.
+func primaryNotFoundText(summary string) func(error) diag.Diagnostics {
+	return func(err error) diag.Diagnostics {
+		var diags diag.Diagnostics
+		diags.AddError(summary, err.Error())
+		return diags
+	}
+}
+
 // Write decodes the plan's section object, sends only the fields the plan
 // set, and writes the refreshed result back onto plan's own attribute --
 // mirroring Resource[M,S]'s Create/Update tail, even though a Composite's
@@ -192,7 +234,8 @@ func (s SpecSection[M, SM, S]) Write(
 	// plan's own value forward until that Extra's own Read or Write
 	// contributes the controller's.
 	fresh := planModel
-	updated, d := specDocumentWrite(ctx, s.Spec, site, "Error "+verb+" "+s.Spec.Subject, &planModel, &fresh)
+	errSummary := "Error " + verb + " " + s.Spec.Subject
+	updated, d := specDocumentWrite(ctx, s.Spec, site, errSummary, &planModel, &fresh, primaryNotFoundText(errSummary))
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -249,14 +292,10 @@ func (s SpecSection[M, SM, S]) Read(
 		return diags
 	}
 
-	sdk, err := s.Spec.Backend.Read(ctx, site, "")
-	if err != nil {
-		diags.AddError("Error Reading "+s.Spec.Subject, err.Error())
-		return diags
-	}
-
 	var model SM
-	diags.Append(s.Spec.ToModel(ctx, sdk, &model, "")...)
+	sdk, d := specDocumentRead(ctx, s.Spec, site, &model,
+		primaryNotFoundText("Error Reading "+s.Spec.Subject))
+	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}

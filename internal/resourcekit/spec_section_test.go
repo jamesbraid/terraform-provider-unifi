@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -440,19 +441,20 @@ func TestSpecSectionExtraErrorAbortsBeforeLaterExtras(t *testing.T) {
 
 func TestSpecDocumentOnNotFoundIsReportedAsItsDiagnostics(t *testing.T) {
 	notFound := &ui.NotFoundError{Type: "SSProbeExtra", Attr: "id", Value: "site-1"}
+	tooOld := func(err error) diag.Diagnostics {
+		var diags diag.Diagnostics
+		diags.AddError("SS Probe Extra is too old for this controller", err.Error())
+		return diags
+	}
 
-	t.Run("OnNotFound set", func(t *testing.T) {
+	t.Run("Read/OnNotFound set", func(t *testing.T) {
 		document := SpecDocument[ssSectionModel, ssExtraSDK]{
 			Spec: ssExtraSpec(Backend[ssExtraSDK]{
 				Read: func(context.Context, string, string) (*ssExtraSDK, error) {
 					return nil, notFound
 				},
 			}),
-			OnNotFound: func() diag.Diagnostics {
-				var diags diag.Diagnostics
-				diags.AddError("SS Probe Extra is too old for this controller", "detail")
-				return diags
-			},
+			OnNotFound: tooOld,
 		}
 		var model ssSectionModel
 		diags := document.Read(context.Background(), "site-1", &model)
@@ -463,9 +465,13 @@ func TestSpecDocumentOnNotFoundIsReportedAsItsDiagnostics(t *testing.T) {
 		if len(got) != 1 || got[0].Summary() != "SS Probe Extra is too old for this controller" {
 			t.Errorf("diagnostics = %v, want OnNotFound's own diagnostic", diags)
 		}
+		if !strings.Contains(got[0].Detail(), notFound.Error()) {
+			t.Errorf("detail = %q, want it to carry the backend's own not-found error %q",
+				got[0].Detail(), notFound.Error())
+		}
 	})
 
-	t.Run("OnNotFound nil", func(t *testing.T) {
+	t.Run("Read/OnNotFound nil", func(t *testing.T) {
 		document := SpecDocument[ssSectionModel, ssExtraSDK]{
 			Spec: ssExtraSpec(Backend[ssExtraSDK]{
 				Read: func(context.Context, string, string) (*ssExtraSDK, error) {
@@ -482,4 +488,80 @@ func TestSpecDocumentOnNotFoundIsReportedAsItsDiagnostics(t *testing.T) {
 			t.Errorf("model = %+v, want untouched (nil OnNotFound leaves the model alone)", model)
 		}
 	})
+
+	// usg_geo's own write reports a masked UpdateFields' not-found as "Geo
+	// IP Filtering Not Supported By This Controller" (writeUsgGeo); an
+	// Extra needs the identical hook on Write that it already has on Read.
+	t.Run("Write/OnNotFound set", func(t *testing.T) {
+		document := SpecDocument[ssSectionModel, ssExtraSDK]{
+			Spec: ssExtraSpec(Backend[ssExtraSDK]{
+				UpdateFields: func(context.Context, string, *ssExtraSDK, ...string) (*ssExtraSDK, error) {
+					return nil, notFound
+				},
+			}),
+			OnNotFound: tooOld,
+		}
+		plan := ssSectionModel{Extra: types.StringValue("configured")}
+		prior := plan
+		diags := document.Write(context.Background(), "site-1", &plan, &prior)
+		if !diags.HasError() {
+			t.Fatal("expected OnNotFound's diagnostics")
+		}
+		got := diags.Errors()
+		if len(got) != 1 || got[0].Summary() != "SS Probe Extra is too old for this controller" {
+			t.Errorf("diagnostics = %v, want OnNotFound's own diagnostic", diags)
+		}
+	})
+
+	t.Run("Write/OnNotFound nil", func(t *testing.T) {
+		document := SpecDocument[ssSectionModel, ssExtraSDK]{
+			Spec: ssExtraSpec(Backend[ssExtraSDK]{
+				UpdateFields: func(context.Context, string, *ssExtraSDK, ...string) (*ssExtraSDK, error) {
+					return nil, notFound
+				},
+			}),
+		}
+		plan := ssSectionModel{Extra: types.StringValue("configured")}
+		prior := ssSectionModel{}
+		diags := document.Write(context.Background(), "site-1", &plan, &prior)
+		if diags.HasError() {
+			t.Fatalf("unexpected diagnostics: %v", diags)
+		}
+	})
+}
+
+// TestSpecSectionReadNotFoundStaysTodaysErrorSummary pins the primary's own
+// not-found behaviour through the read-path change: routing the primary's
+// Read through the same specDocumentRead machinery an Extra uses must not
+// turn its not-found silent -- the primary has no OnNotFound of its own to
+// opt into that, and today's diagnostic text must survive unchanged.
+func TestSpecSectionReadNotFoundStaysTodaysErrorSummary(t *testing.T) {
+	notFound := &ui.NotFoundError{Type: "SSProbe", Attr: "id", Value: "site-1"}
+	section := SpecSection[ssModel, ssSectionModel, ssSDK]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   ssAttrTypes(),
+		Spec: ssSpec(Backend[ssSDK]{
+			Read: func(context.Context, string, string) (*ssSDK, error) {
+				return nil, notFound
+			},
+		}),
+	}
+
+	name := "foo"
+	plan := ssModel{Section: ssSectionObject(t, &name)}
+	var out ssModel
+	diags := section.Read(context.Background(), "site-1", &plan, &out)
+	if !diags.HasError() {
+		t.Fatal("expected a diagnostic; the primary has no OnNotFound to opt out of one")
+	}
+	got := diags.Errors()
+	wantSummary := "Error Reading SS Probe"
+	if len(got) != 1 || got[0].Summary() != wantSummary {
+		t.Errorf("diagnostics = %v, want a single %q summary (today's text, unchanged)", diags, wantSummary)
+	}
+	if !strings.Contains(got[0].Detail(), notFound.Error()) {
+		t.Errorf("detail = %q, want it to carry the backend's own error %q", got[0].Detail(), notFound.Error())
+	}
 }
