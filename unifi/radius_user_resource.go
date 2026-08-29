@@ -80,11 +80,12 @@ func (r *radiusUserKitResource) Configure(
 // didn't mention still lives in state, and reading config would re-derive it from network_id, silently overriding a pinned VLAN.
 func radiusUserDeriveVLAN(
 	client *ui.ApiClient,
-) func(context.Context, *radiusUserKitModel, *radiusUserKitModel, *ui.Account, any) diag.Diagnostics {
+) func(context.Context, *radiusUserKitModel, *radiusUserKitModel, radiusUserKitModel, *ui.Account, any) diag.Diagnostics {
 	return func(
 		ctx context.Context,
 		_ *radiusUserKitModel,
 		effective *radiusUserKitModel,
+		_ radiusUserKitModel,
 		sdk *ui.Account,
 		_ any,
 	) diag.Diagnostics {

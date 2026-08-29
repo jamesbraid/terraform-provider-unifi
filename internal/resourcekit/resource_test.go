@@ -279,7 +279,7 @@ func hookSpy(t *testing.T) (Spec[kitModel, kitSDK], *map[string]int) {
 			seen["prefetch"]++
 			return "inventory", nil
 		},
-		BeforeSend: func(_ context.Context, _, _ *kitModel, _ *kitSDK, prefetched any) diag.Diagnostics {
+		BeforeSend: func(_ context.Context, _, _ *kitModel, _ kitModel, _ *kitSDK, prefetched any) diag.Diagnostics {
 			seen["beforeSend"]++
 			if prefetched != "inventory" {
 				t.Errorf(
@@ -423,7 +423,7 @@ func TestBeforeSendGetsTheModelTheObjectWasBuiltFrom(t *testing.T) {
 	// before reaching the hook. AlwaysWire keeps the write legal without
 	// putting a value in the plan, which is exactly the case under test.
 	r.Spec.AlwaysWire = []string{"name"}
-	r.Spec.BeforeSend = func(_ context.Context, config, effective *kitModel, sdk *kitSDK, _ any) diag.Diagnostics {
+	r.Spec.BeforeSend = func(_ context.Context, config, effective *kitModel, _ kitModel, sdk *kitSDK, _ any) diag.Diagnostics {
 		sawConfig = config.Name.ValueString()
 		sawEffective = effective.Name.ValueString()
 		return nil
@@ -501,7 +501,7 @@ func TestBeforeSendRunsOnTheObjectThatIsActuallySent(t *testing.T) {
 		},
 	})
 	r.Spec.BeforeSend = func(
-		_ context.Context, _, _ *kitModel, sdk *kitSDK, _ any,
+		_ context.Context, _, _ *kitModel, _ kitModel, sdk *kitSDK, _ any,
 	) diag.Diagnostics {
 		sdk.Unmanaged = "derived-by-hook"
 		return nil
@@ -545,8 +545,8 @@ func TestBeforeSendRunsOnTheObjectThatIsActuallySent(t *testing.T) {
 func TestBeforeSendSeesAnEmptyIDOnCreateAndTheRealOneOnUpdate(t *testing.T) {
 	ctx := context.Background()
 
-	newHook := func(seen *[]string) func(context.Context, *kitModel, *kitModel, *kitSDK, any) diag.Diagnostics {
-		return func(_ context.Context, _, effective *kitModel, _ *kitSDK, _ any) diag.Diagnostics {
+	newHook := func(seen *[]string) func(context.Context, *kitModel, *kitModel, kitModel, *kitSDK, any) diag.Diagnostics {
+		return func(_ context.Context, _, effective *kitModel, _ kitModel, _ *kitSDK, _ any) diag.Diagnostics {
 			*seen = append(*seen, effective.ID.ValueString())
 			return nil
 		}
@@ -616,6 +616,88 @@ func TestBeforeSendSeesAnEmptyIDOnCreateAndTheRealOneOnUpdate(t *testing.T) {
 		t.Errorf("BeforeSend saw id %q on update, want id-1. A hook that carries a "+
 			"controller-owned field forward could not find the object to carry it from",
 			onUpdate[0])
+	}
+}
+
+// TestBeforeSendSeesThePriorOnUpdateAndTheZeroValueOnCreate pins prior the
+// same way TestBeforeSendSeesAnEmptyIDOnCreateAndTheRealOneOnUpdate pins
+// effective's id: on update, prior is state as it stood BEFORE the plan was
+// applied, not effective (which already has the plan merged in) -- a mapper
+// that needs to know what the controller held before this write, to clear
+// something the new plan dropped, has nowhere else to read it. On create
+// there is no prior state, so prior is the zero model, matching
+// AfterReceive's own zero-prior case.
+func TestBeforeSendSeesThePriorOnUpdateAndTheZeroValueOnCreate(t *testing.T) {
+	ctx := context.Background()
+
+	newHook := func(seen *[]kitModel) func(context.Context, *kitModel, *kitModel, kitModel, *kitSDK, any) diag.Diagnostics {
+		return func(_ context.Context, _, _ *kitModel, prior kitModel, _ *kitSDK, _ any) diag.Diagnostics {
+			*seen = append(*seen, prior)
+			return nil
+		}
+	}
+
+	var onCreate []kitModel
+	create := kitResource(Backend[kitSDK]{
+		Create: func(_ context.Context, _ string, in *kitSDK) (*kitSDK, error) {
+			return &kitSDK{ID: "assigned-by-controller", Name: in.Name}, nil
+		},
+	})
+	create.Spec.BeforeSend = newHook(&onCreate)
+	createPlan := kitStateWith(t, kitModel{
+		ID: types.StringNull(), Site: types.StringValue("default"),
+		Name: types.StringValue("what-the-plan-said"),
+	})
+	createIdentity := kitIdentity(t)
+	createResp := &resource.CreateResponse{
+		State: tfsdk.State{Schema: kitSchema(ctx)}, Identity: &createIdentity,
+	}
+	create.Create(ctx, resource.CreateRequest{
+		Plan: tfsdk.Plan(createPlan), Config: tfsdk.Config(createPlan),
+	}, createResp)
+	if createResp.Diagnostics.HasError() {
+		t.Fatalf("Create: %v", createResp.Diagnostics)
+	}
+
+	var onUpdate []kitModel
+	update := kitResource(Backend[kitSDK]{
+		UpdateFields: func(_ context.Context, _ string, in *kitSDK, _ ...string) (*kitSDK, error) {
+			return in, nil
+		},
+	})
+	update.Spec.BeforeSend = newHook(&onUpdate)
+	updateState := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("what-state-held-before"),
+	})
+	updatePlan := kitStateWith(t, kitModel{
+		ID: types.StringValue("id-1"), Site: types.StringValue("default"),
+		Name: types.StringValue("what-the-plan-changed-it-to"),
+	})
+	updateIdentity := kitIdentity(t)
+	updateResp := &resource.UpdateResponse{
+		State: tfsdk.State{Schema: kitSchema(ctx)}, Identity: &updateIdentity,
+	}
+	update.Update(ctx, resource.UpdateRequest{
+		State: updateState, Plan: tfsdk.Plan(updatePlan), Config: tfsdk.Config(updatePlan),
+	}, updateResp)
+	if updateResp.Diagnostics.HasError() {
+		t.Fatalf("Update: %v", updateResp.Diagnostics)
+	}
+
+	if len(onCreate) != 1 || len(onUpdate) != 1 {
+		t.Fatalf("BeforeSend ran %d time(s) on create and %d on update, want 1 each; "+
+			"the assertions below would otherwise pass vacuously", len(onCreate), len(onUpdate))
+	}
+	if !onCreate[0].Name.IsNull() {
+		t.Errorf("prior.name on create = %q, want null (the zero model) -- there is no "+
+			"prior state to report before the object exists", onCreate[0].Name.ValueString())
+	}
+	if got := onUpdate[0].Name.ValueString(); got != "what-state-held-before" {
+		t.Errorf("prior.name on update = %q, want %q -- prior must be state as it stood "+
+			"before ApplyPlanToState merged the plan in, or a mapper reading it to see "+
+			"what the controller held before this write sees the new value instead",
+			got, "what-state-held-before")
 	}
 }
 

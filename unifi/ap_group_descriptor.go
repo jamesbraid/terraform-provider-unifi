@@ -69,6 +69,7 @@ func apGroupKitSpec() resourcekit.Spec[apGroupKitModel, ui.APGroup] {
 		BeforeSend: func(
 			_ context.Context,
 			_, _ *apGroupKitModel,
+			_ apGroupKitModel,
 			sdk *ui.APGroup,
 			_ any,
 		) diag.Diagnostics {

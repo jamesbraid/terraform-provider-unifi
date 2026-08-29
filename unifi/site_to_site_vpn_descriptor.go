@@ -273,6 +273,7 @@ func siteToSiteVPNKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Networ
 func siteToSiteVPNPreSharedKey(
 	_ context.Context,
 	config, effective *s2sModel,
+	_ s2sModel,
 	sdk *ui.Network,
 	_ any,
 ) diag.Diagnostics {

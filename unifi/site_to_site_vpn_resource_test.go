@@ -345,7 +345,7 @@ func siteToSiteVPNToSDKWithHooks(
 	if diags.HasError() {
 		return sdk, diags
 	}
-	diags.Append(siteToSiteVPNPreSharedKey(ctx, model, model, sdk, nil)...)
+	diags.Append(siteToSiteVPNPreSharedKey(ctx, model, model, siteToSiteVPNKitModel{}, sdk, nil)...)
 	return sdk, diags
 }
 

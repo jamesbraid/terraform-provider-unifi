@@ -260,7 +260,7 @@ func Test_apGroupKit_writePath(t *testing.T) {
 		if diags.HasError() {
 			t.Fatalf("ToSDK: %v", diags)
 		}
-		if diags := spec.BeforeSend(ctx, model, model, sdk, nil); diags.HasError() {
+		if diags := spec.BeforeSend(ctx, model, model, apGroupKitModel{}, sdk, nil); diags.HasError() {
 			t.Fatalf("BeforeSend: %v", diags)
 		}
 		return sdk

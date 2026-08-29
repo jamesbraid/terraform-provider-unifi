@@ -320,10 +320,11 @@ func vpnServerUnwritableWires(sdk *ui.Network) []string {
 // vpnServerKitSpec); Configure rebinds this once the real one exists.
 func vpnServerBeforeSend(
 	client *ui.ApiClient,
-) func(ctx context.Context, config, effective *vpnServerKitModel, sdk *ui.Network, prefetched any) diag.Diagnostics {
+) func(ctx context.Context, config, effective *vpnServerKitModel, prior vpnServerKitModel, sdk *ui.Network, prefetched any) diag.Diagnostics {
 	return func(
 		ctx context.Context,
 		_, effective *vpnServerKitModel,
+		_ vpnServerKitModel,
 		sdk *ui.Network,
 		_ any,
 	) diag.Diagnostics {

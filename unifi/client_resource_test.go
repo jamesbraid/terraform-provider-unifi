@@ -1005,7 +1005,7 @@ func TestClientBeforeSendDerivesTheCompanionFlags(t *testing.T) {
 			// A nil api and mutex are safe here: with qos_rate and groups both
 			// null there is nothing for BeforeSend to look up or create.
 			hook := clientKitBeforeSend(nil, "default", &sync.Mutex{})
-			if diags := hook(t.Context(), &model, &model, sdk, &clientGroups{}); diags.HasError() {
+			if diags := hook(t.Context(), &model, &model, model, sdk, &clientGroups{}); diags.HasError() {
 				t.Fatalf("BeforeSend: %v", diags)
 			}
 			if sdk.UseFixedIP != testCase.wantFixed {
@@ -1120,7 +1120,7 @@ func TestClientBeforeSendSerializesNetworkMembersGroupCreateOnMiss(t *testing.T)
 			}
 			sdk := &unifi.Client{}
 			prefetched := &clientGroups{memberIDByName: map[string]string{}}
-			if d := hook(context.Background(), &model, &model, sdk, prefetched); d.HasError() {
+			if d := hook(context.Background(), &model, &model, model, sdk, prefetched); d.HasError() {
 				errs <- fmt.Errorf("BeforeSend: %v", d)
 			}
 		}()
@@ -1230,7 +1230,7 @@ func TestClientBeforeSendSerializesUserGroupCreateOnMiss(t *testing.T) {
 			}
 			sdk := &unifi.Client{}
 			prefetched := &clientGroups{byName: map[string]unifi.ClientGroup{}}
-			if d := hook(context.Background(), &model, &model, sdk, prefetched); d.HasError() {
+			if d := hook(context.Background(), &model, &model, model, sdk, prefetched); d.HasError() {
 				errs <- fmt.Errorf("BeforeSend: %v", d)
 			}
 		}()
@@ -1329,7 +1329,7 @@ func TestClientBeforeSendWithQosRateAndGroupsDoesNotDeadlock(t *testing.T) {
 
 	done := make(chan diag.Diagnostics, 1)
 	go func() {
-		done <- hook(context.Background(), &model, &model, sdk, prefetched)
+		done <- hook(context.Background(), &model, &model, model, sdk, prefetched)
 	}()
 
 	select {

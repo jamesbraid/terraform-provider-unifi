@@ -154,6 +154,7 @@ func networkKitBackend(client *ui.ApiClient) resourcekit.Backend[ui.Network] {
 func networkKitBeforeSend(
 	ctx context.Context,
 	_, effective *netModel,
+	_ netModel,
 	sdk *ui.Network,
 	_ any,
 ) diag.Diagnostics {

@@ -79,7 +79,14 @@ type Spec[M any, S any] struct {
 	// effective is what the object was built from (plan on create, state with
 	// plan applied on update). Derive values from effective, not the plan, or
 	// an unrelated apply can silently re-derive a value the practitioner pinned.
-	BeforeSend func(ctx context.Context, config, effective *M, sdk *S, prefetched any) diag.Diagnostics
+	// prior mirrors AfterReceive's own prior parameter: the state as it stood
+	// before this apply touched it, still unmerged with the plan (the zero
+	// model on create, since there is no prior state then). effective has
+	// already had the plan applied by the time BeforeSend runs, so prior is
+	// the only parameter that can still answer "what did the controller hold
+	// before this write" -- a mapper that needs to clear something the plan
+	// dropped has nowhere else to learn what to clear.
+	BeforeSend func(ctx context.Context, config, effective *M, prior M, sdk *S, prefetched any) diag.Diagnostics
 	// AfterReceive's model has already been overwritten by ToModel for every
 	// Field-decoded attribute; prior is the plan on create, the state on read,
 	// and the state with the plan applied on update. An attribute no Field
@@ -405,7 +412,10 @@ func (r *Resource[M, S]) Create(
 		return
 	}
 	if r.Spec.BeforeSend != nil {
-		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &data, sdk, prefetched)...)
+		// No prior state exists yet on create; the zero model is the honest
+		// answer, matching AfterReceive's own zero-prior case (a list read).
+		var noPrior M
+		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &data, noPrior, sdk, prefetched)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -527,6 +537,13 @@ func (r *Resource[M, S]) Update(
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	// Captured before ApplyPlanToState overwrites state in place: this is
+	// the only point in Update where the controller's last-known values and
+	// the plan's are still two separate things, which is what BeforeSend's
+	// prior parameter needs -- effective, right below, is state AFTER this
+	// merge.
+	priorState := state
+
 	r.Spec.ApplyPlanToState(&plan, &state)
 	site := r.Site(&state)
 
@@ -570,7 +587,7 @@ func (r *Resource[M, S]) Update(
 	}
 
 	if r.Spec.BeforeSend != nil {
-		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &state, sdk, prefetched)...)
+		resp.Diagnostics.Append(r.Spec.BeforeSend(ctx, &config, &state, priorState, sdk, prefetched)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}

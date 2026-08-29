@@ -251,10 +251,11 @@ func deviceKitPrefetch() func(context.Context, string) (any, diag.Diagnostics) {
 // overrides on every write.
 func deviceKitBeforeSend(
 	client *ui.ApiClient,
-) func(context.Context, *deviceKitModel, *deviceKitModel, *ui.Device, any) diag.Diagnostics {
+) func(context.Context, *deviceKitModel, *deviceKitModel, deviceKitModel, *ui.Device, any) diag.Diagnostics {
 	return func(
 		ctx context.Context,
 		_, effective *deviceKitModel,
+		_ deviceKitModel,
 		sdk *ui.Device,
 		prefetched any,
 	) diag.Diagnostics {

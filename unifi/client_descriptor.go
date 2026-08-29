@@ -149,10 +149,11 @@ func clientKitBeforeSend(
 	client *ui.ApiClient,
 	defaultSite string,
 	groupMu *sync.Mutex,
-) func(context.Context, *clientModel, *clientModel, *ui.Client, any) diag.Diagnostics {
+) func(context.Context, *clientModel, *clientModel, clientModel, *ui.Client, any) diag.Diagnostics {
 	return func(
 		ctx context.Context,
 		_, effective *clientModel,
+		_ clientModel,
 		sdk *ui.Client,
 		prefetched any,
 	) diag.Diagnostics {

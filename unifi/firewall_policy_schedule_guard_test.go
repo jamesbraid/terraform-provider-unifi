@@ -41,7 +41,7 @@ func TestTheScheduleHookKeepsWhatTheControllerHolds(t *testing.T) {
 			}, "default")
 		hook(context.Background(), nil, &firewallPolicyKitModel{
 			ID: types.StringValue("policy-1"), Site: types.StringValue("default"),
-		}, sdk, nil)
+		}, firewallPolicyKitModel{}, sdk, nil)
 		if sdk.Schedule != declared {
 			t.Errorf("the declared schedule was replaced (%+v); the attribute cannot be set",
 				sdk.Schedule)
@@ -55,7 +55,7 @@ func TestTheScheduleHookKeepsWhatTheControllerHolds(t *testing.T) {
 				t.Error("the controller was read on a create; there is no policy to read yet")
 				return nil, nil
 			}, "default")
-		hook(context.Background(), nil, &firewallPolicyKitModel{ID: types.StringNull()}, sdk, nil)
+		hook(context.Background(), nil, &firewallPolicyKitModel{ID: types.StringNull()}, firewallPolicyKitModel{}, sdk, nil)
 		if sdk.Schedule == nil || sdk.Schedule.Mode != firewallPolicyScheduleAlways {
 			t.Fatalf("a create sent %+v; the controller refuses a null schedule outright",
 				sdk.Schedule)
@@ -70,7 +70,7 @@ func TestTheScheduleHookKeepsWhatTheControllerHolds(t *testing.T) {
 			}, "default")
 		hook(context.Background(), nil, &firewallPolicyKitModel{
 			ID: types.StringValue("policy-1"), Site: types.StringValue("default"),
-		}, sdk, nil)
+		}, firewallPolicyKitModel{}, sdk, nil)
 		if sdk.Schedule == nil || sdk.Schedule.Mode != "EVERY_DAY" {
 			t.Fatalf("an update sent %+v, not the controller's EVERY_DAY schedule.\n"+
 				"    A rule the practitioner scheduled for business hours runs "+
@@ -93,7 +93,7 @@ func TestTheScheduleHookKeepsWhatTheControllerHolds(t *testing.T) {
 			}, "the-provider-site")
 		hook(context.Background(), nil, &firewallPolicyKitModel{
 			ID: types.StringValue("policy-1"), Site: types.StringNull(),
-		}, sdk, nil)
+		}, firewallPolicyKitModel{}, sdk, nil)
 		if sawSite != "the-provider-site" {
 			t.Errorf("read against site %q; a model with no site must fall back to the "+
 				"provider's, and a wrong site resets the schedule with no error to show",
@@ -109,7 +109,7 @@ func TestTheScheduleHookKeepsWhatTheControllerHolds(t *testing.T) {
 			}, "default")
 		diags := hook(context.Background(), nil, &firewallPolicyKitModel{
 			ID: types.StringValue("policy-1"),
-		}, sdk, nil)
+		}, firewallPolicyKitModel{}, sdk, nil)
 		if diags.HasError() {
 			t.Errorf("a transient read error failed the apply: %v", diags.Errors())
 		}

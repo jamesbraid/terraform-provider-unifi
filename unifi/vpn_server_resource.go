@@ -375,7 +375,10 @@ func (r *vpnServerResource) ValidateConfig(
 	}
 	// BeforeSend sets purpose and vpn_type, which droppedOnWrite needs to choose
 	// an encoder; ToSDK alone hands it a Network with no purpose, encoding to an error instead of a field list.
-	if diags := r.Spec.BeforeSend(ctx, &model, &model, network, nil); diags.HasError() {
+	// No prior state exists at plan time either, so the zero model stands in
+	// here the same way Create's does.
+	var noPrior vpnServerKitModel
+	if diags := r.Spec.BeforeSend(ctx, &model, &model, noPrior, network, nil); diags.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(droppedOnWrite("remote-user VPN", network)...)

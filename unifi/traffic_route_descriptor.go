@@ -614,6 +614,7 @@ func trafficRoutePrefetchWANID(
 func trafficRouteBeforeSend(
 	ctx context.Context,
 	_, _ *trafficRouteKitModel,
+	_ trafficRouteKitModel,
 	sdk *ui.TrafficRoute,
 	prefetched any,
 ) diag.Diagnostics {

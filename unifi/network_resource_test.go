@@ -1578,7 +1578,7 @@ func (r *networkKitResource) modelToNetwork(
 	if diags.HasError() {
 		return sdk, diags
 	}
-	diags.Append(r.Spec.BeforeSend(ctx, model, model, sdk, nil)...)
+	diags.Append(r.Spec.BeforeSend(ctx, model, model, netModel{}, sdk, nil)...)
 	return sdk, diags
 }
 

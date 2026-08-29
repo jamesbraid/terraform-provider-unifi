@@ -903,7 +903,7 @@ func Test_trafficRouteBeforeSend(t *testing.T) {
 
 	t.Run("fills an empty network_id", func(t *testing.T) {
 		sdk := &unifi.TrafficRoute{}
-		if d := trafficRouteBeforeSend(ctx, nil, nil, sdk, lookup); d.HasError() {
+		if d := trafficRouteBeforeSend(ctx, nil, nil, trafficRouteKitModel{}, sdk, lookup); d.HasError() {
 			t.Fatalf("unexpected diags: %v", d)
 		}
 		if sdk.NetworkID != "derived-wan" {
@@ -913,7 +913,7 @@ func Test_trafficRouteBeforeSend(t *testing.T) {
 
 	t.Run("leaves a set network_id alone", func(t *testing.T) {
 		sdk := &unifi.TrafficRoute{NetworkID: "pinned"}
-		if d := trafficRouteBeforeSend(ctx, nil, nil, sdk, lookup); d.HasError() {
+		if d := trafficRouteBeforeSend(ctx, nil, nil, trafficRouteKitModel{}, sdk, lookup); d.HasError() {
 			t.Fatalf("unexpected diags: %v", d)
 		}
 		if sdk.NetworkID != "pinned" {
@@ -926,7 +926,7 @@ func Test_trafficRouteBeforeSend(t *testing.T) {
 			return "", fmt.Errorf("no default WAN network found")
 		}
 		sdk := &unifi.TrafficRoute{}
-		d := trafficRouteBeforeSend(ctx, nil, nil, sdk, failing)
+		d := trafficRouteBeforeSend(ctx, nil, nil, trafficRouteKitModel{}, sdk, failing)
 		if !d.HasError() {
 			t.Fatal("expected an error diagnostic")
 		}

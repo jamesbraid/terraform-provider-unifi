@@ -106,6 +106,7 @@ func vpnClientAfterReceive(
 func vpnClientBeforeSend(
 	ctx context.Context,
 	config, _ *vpnClientResourceModel,
+	_ vpnClientResourceModel,
 	sdk *ui.Network,
 	_ any,
 ) diag.Diagnostics {

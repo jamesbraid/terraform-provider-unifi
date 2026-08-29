@@ -241,7 +241,7 @@ func wlanPrefetch(client *ui.ApiClient) func(context.Context, string) (any, diag
 // wlanBeforeSend carries the five derived wires and the two defaults, all in
 // AlwaysWire since no attribute holds them and nothing else would add them to
 // the mask.
-func wlanBeforeSend(ctx context.Context, config, effective *wlanKitModel, sdk *ui.WLAN, prefetched any) diag.Diagnostics {
+func wlanBeforeSend(ctx context.Context, config, effective *wlanKitModel, _ wlanKitModel, sdk *ui.WLAN, prefetched any) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	// Always true on the wire; no attribute has ever carried it.

@@ -171,10 +171,11 @@ func firewallPolicyEndpointObjectFrom(
 func firewallPolicyCarrySchedule(
 	read func(context.Context, string, string) (*ui.FirewallPolicy, error),
 	defaultSite string,
-) func(context.Context, *firewallPolicyKitModel, *firewallPolicyKitModel, *ui.FirewallPolicy, any) diag.Diagnostics {
+) func(context.Context, *firewallPolicyKitModel, *firewallPolicyKitModel, firewallPolicyKitModel, *ui.FirewallPolicy, any) diag.Diagnostics {
 	return func(
 		ctx context.Context,
 		_, effective *firewallPolicyKitModel,
+		_ firewallPolicyKitModel,
 		sdk *ui.FirewallPolicy,
 		_ any,
 	) diag.Diagnostics {

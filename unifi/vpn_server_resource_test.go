@@ -757,7 +757,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 		if !diags.HasError() {
 			// vpn_type is set by BeforeSend, not ToSDK, so BeforeSend must
 			// run for the discriminator to appear.
-			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+			diags.Append(spec.BeforeSend(ctx, model, model, vpnServerKitModel{}, got, nil)...)
 		}
 		if !diags.HasError() {
 			t.Error("expected error for missing VPN type")
@@ -799,7 +799,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 		if !diags.HasError() {
 			// vpn_type is set by BeforeSend, not ToSDK, so BeforeSend must
 			// run for the discriminator to appear.
-			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+			diags.Append(spec.BeforeSend(ctx, model, model, vpnServerKitModel{}, got, nil)...)
 		}
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)
@@ -842,7 +842,7 @@ func Test_vpnServerResource_modelToNetwork(t *testing.T) {
 		if !diags.HasError() {
 			// vpn_type is set by BeforeSend, not ToSDK, so BeforeSend must
 			// run for the discriminator to appear.
-			diags.Append(spec.BeforeSend(ctx, model, model, got, nil)...)
+			diags.Append(spec.BeforeSend(ctx, model, model, vpnServerKitModel{}, got, nil)...)
 		}
 		if diags.HasError() {
 			t.Fatalf("unexpected diags: %v", diags)

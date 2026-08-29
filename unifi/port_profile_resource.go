@@ -112,6 +112,7 @@ func portProfilePrefetchNetworks(
 func portProfileBeforeSend(
 	ctx context.Context,
 	config, plan *portProfileKitModel,
+	_ portProfileKitModel,
 	sdk *ui.PortProfile,
 	prefetched any,
 ) diag.Diagnostics {
