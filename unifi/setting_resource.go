@@ -127,13 +127,8 @@ type settingLcmModel struct {
 	TouchEvent  types.Bool  `tfsdk:"touch_event"`
 }
 
-type settingNtpModel struct {
-	NtpServer1        types.String `tfsdk:"ntp_server_1"`
-	NtpServer2        types.String `tfsdk:"ntp_server_2"`
-	NtpServer3        types.String `tfsdk:"ntp_server_3"`
-	NtpServer4        types.String `tfsdk:"ntp_server_4"`
-	SettingPreference types.String `tfsdk:"setting_preference"`
-}
+// settingNtpModel moved to setting_ntp_descriptor.go, alongside the Spec
+// that now owns it.
 
 type settingSyslogModel struct {
 	Enabled                     types.Bool   `tfsdk:"enabled"`
@@ -237,13 +232,8 @@ var (
 		"sync":         types.BoolType,
 		"touch_event":  types.BoolType,
 	}
-	ntpAttrTypes = map[string]attr.Type{
-		"ntp_server_1":       types.StringType,
-		"ntp_server_2":       types.StringType,
-		"ntp_server_3":       types.StringType,
-		"ntp_server_4":       types.StringType,
-		"setting_preference": types.StringType,
-	}
+	// ntpAttrTypes moved to setting_ntp_descriptor.go, alongside
+	// settingNtpModel and the Spec that now owns it.
 	syslogAttrTypes = map[string]attr.Type{
 		"enabled":                        types.BoolType,
 		"contents":                       types.ListType{ElemType: types.StringType},
@@ -1019,7 +1009,7 @@ func (r *settingResource) igmpSnoopingSettingToModel(
 // setting_country_descriptor.go, setting_dpi_descriptor.go and
 // setting_network_optimization_descriptor.go.
 //
-// Simple 1:1 conversion functions: LCM, NTP and syslog.
+// Simple 1:1 conversion functions: LCM and syslog.
 func (r *settingResource) lcmModelToSetting(m *settingLcmModel) *settings.Lcm {
 	setting := &settings.Lcm{
 		Enabled:    m.Enabled.ValueBool(),
@@ -1047,27 +1037,8 @@ func (r *settingResource) lcmSettingToModel(s *settings.Lcm) settingLcmModel {
 	}
 }
 
-func (r *settingResource) ntpModelToSetting(m *settingNtpModel) *settings.Ntp {
-	return &settings.Ntp{
-		NtpServer1:        m.NtpServer1.ValueString(),
-		NtpServer2:        m.NtpServer2.ValueString(),
-		NtpServer3:        m.NtpServer3.ValueString(),
-		NtpServer4:        m.NtpServer4.ValueString(),
-		SettingPreference: m.SettingPreference.ValueString(),
-	}
-}
-
-func (r *settingResource) ntpSettingToModel(s *settings.Ntp) settingNtpModel {
-	// The controller persists unused server slots as "", a valid configured value
-	// distinct from unset; rewriting it to null (as StringValueOrNull did) collided with an explicit "" and destabilized state.
-	return settingNtpModel{
-		NtpServer1:        types.StringValue(s.NtpServer1),
-		NtpServer2:        types.StringValue(s.NtpServer2),
-		NtpServer3:        types.StringValue(s.NtpServer3),
-		NtpServer4:        types.StringValue(s.NtpServer4),
-		SettingPreference: util.StringValueOrNull(s.SettingPreference),
-	}
-}
+// ntpModelToSetting/ntpSettingToModel moved onto resourcekit.SpecSection --
+// see setting_ntp_descriptor.go.
 
 func (r *settingResource) syslogModelToSetting(
 	ctx context.Context,

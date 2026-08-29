@@ -117,12 +117,7 @@ var settingKitSectionTable = []settingKitSectionEntry{
 		read:       (*settingResource).readLcmSection,
 	}},
 	{Kit: networkOptimizationKitSection},
-	{Legacy: legacySection{
-		name:       "ntp",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Ntp) },
-		write:      (*settingResource).writeNtpSection,
-		read:       (*settingResource).readNtpSection,
-	}},
+	{Kit: ntpKitSection},
 	{Legacy: legacySection{
 		name:       "syslog",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Syslog) },
@@ -223,52 +218,10 @@ func (r *settingResource) readLcmSection(
 	return diags
 }
 
-// auto_speedtest, country, dpi and network_optimization moved onto
+// auto_speedtest, country, dpi, network_optimization and ntp moved onto
 // resourcekit.SpecSection -- see setting_auto_speedtest_descriptor.go,
-// setting_country_descriptor.go, setting_dpi_descriptor.go and
-// setting_network_optimization_descriptor.go.
-
-// -- ntp --
-
-func (r *settingResource) writeNtpSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var m settingNtpModel
-	diags.Append(plan.Ntp.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-	setting := r.ntpModelToSetting(&m)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" NTP Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readNtpSection reads the NTP setting.
-func (r *settingResource) readNtpSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.Ntp) {
-		out.Ntp = types.ObjectNull(ntpAttrTypes)
-		return diags
-	}
-	_, s, err := ui.GetSetting[*settings.Ntp](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading NTP Setting", err.Error())
-		return diags
-	}
-	objValue, d := types.ObjectValueFrom(ctx, ntpAttrTypes, r.ntpSettingToModel(s))
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.Ntp = objValue
-	return diags
-}
+// setting_country_descriptor.go, setting_dpi_descriptor.go,
+// setting_network_optimization_descriptor.go and setting_ntp_descriptor.go.
 
 // -- syslog --
 

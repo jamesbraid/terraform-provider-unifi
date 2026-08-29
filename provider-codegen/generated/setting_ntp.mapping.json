@@ -1,0 +1,44 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.ntp",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "ntp_server_1",
+      "terraform_name": "ntp_server_1",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ntp_server_2",
+      "terraform_name": "ntp_server_2",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ntp_server_3",
+      "terraform_name": "ntp_server_3",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ntp_server_4",
+      "terraform_name": "ntp_server_4",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

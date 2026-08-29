@@ -1961,23 +1961,14 @@ func TestIgmpSnoopingModelMerge(t *testing.T) {
 // autoSpeedtestKitSpec's own ToSDK/ToModel instead of the deleted
 // autoSpeedtestModelToSetting/autoSpeedtestSettingToModel mappers.
 
-// TestSettingBlocksRoundTrip covers the model<->go-unifi conversions for a
-// representative scalar block (ntp) and the list-bearing one (syslog).
+// TestSettingBlocksRoundTrip covers the model<->go-unifi conversion for the
+// list-bearing block (syslog). Its ntp subtest moved to
+// setting_ntp_descriptor_test.go's TestNtpSettingRoundTrip: it now drives
+// ntpKitSpec's own ToSDK/ToModel instead of the deleted
+// ntpModelToSetting/ntpSettingToModel mappers.
 func TestSettingBlocksRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	r := &settingResource{}
-
-	t.Run("ntp", func(t *testing.T) {
-		in := &settingNtpModel{
-			NtpServer1:        types.StringValue("pool.ntp.org"),
-			SettingPreference: types.StringValue("manual"),
-		}
-		out := r.ntpSettingToModel(r.ntpModelToSetting(in))
-		if out.NtpServer1.ValueString() != "pool.ntp.org" ||
-			out.SettingPreference.ValueString() != "manual" {
-			t.Errorf("ntp round-trip mismatch: %+v", out)
-		}
-	})
 
 	t.Run("syslog", func(t *testing.T) {
 		var diags diag.Diagnostics
@@ -2008,33 +1999,10 @@ func TestSettingBlocksRoundTrip(t *testing.T) {
 	})
 }
 
-// TestNtpSettingStateNormalization checks that the controller's "" for an
-// unset NTP server -- a valid configured value -- isn't rewritten to null
-// during the post-apply read.
-func TestNtpSettingStateNormalization(t *testing.T) {
-	r := &settingResource{}
-	apiSetting := r.ntpModelToSetting(&settingNtpModel{
-		NtpServer1:        types.StringValue("pool.ntp.org"),
-		NtpServer2:        types.StringValue(""),
-		NtpServer3:        types.StringNull(),
-		NtpServer4:        types.StringNull(),
-		SettingPreference: types.StringValue("manual"),
-	})
-
-	state := r.ntpSettingToModel(apiSetting)
-	if state.NtpServer1.ValueString() != "pool.ntp.org" {
-		t.Errorf("ntp_server_1 = %q, want pool.ntp.org", state.NtpServer1.ValueString())
-	}
-	for key, value := range map[string]types.String{
-		"ntp_server_2": state.NtpServer2,
-		"ntp_server_3": state.NtpServer3,
-		"ntp_server_4": state.NtpServer4,
-	} {
-		if value.IsNull() || value.IsUnknown() || value.ValueString() != "" {
-			t.Errorf("%s = %v, want known empty string", key, value)
-		}
-	}
-}
+// TestNtpSettingStateNormalization moved to
+// setting_ntp_descriptor_test.go's TestNtpSettingRoundTripStateNormalization:
+// it now drives ntpKitSpec's own ToSDK/ToModel instead of the deleted
+// ntpModelToSetting/ntpSettingToModel mappers.
 
 // mgmt's ssh_password/plan-conditioned-null behaviour, formerly
 // TestMgmtNewFields against mgmtModelToSetting/mgmtSettingToModel, is now
