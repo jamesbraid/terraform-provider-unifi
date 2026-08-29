@@ -34,9 +34,9 @@ func settingSectionConfigured(o types.Object) bool {
 
 // legacySection adapts one of unifi_setting's hand-written write/read blocks
 // (extracted below to named methods on *settingResource) to settingSection.
-// write/read are method expressions, not bound values, so settingSections
-// stays a genuine package-level table; the live *settingResource is threaded
-// through at call time by writeSettings/readSettings.
+// write/read are method expressions, not bound values, so a legacySection
+// literal stays a genuine package-level value; the live *settingResource is
+// threaded through at call time by writeSettings/readSettings.
 type legacySection struct {
 	name       string
 	configured func(plan *settingResourceModel) bool
@@ -89,226 +89,96 @@ func (a legacySectionAdapter) Read(
 	return a.section.Read(ctx, a.r, site, plan, out)
 }
 
-// settingKitSections adapts every entry of settingSections to
-// resourcekit.Section[settingResourceModel], bound to r, and splices in
-// mgmt right after its historical predecessor "ips" -- settingSections no
-// longer carries mgmt itself, since mgmt is a resourcekit.SpecSection now,
-// not a legacySection. Called from Configure, once r.client exists for
-// both the adapted legacy Write/Read calls and mgmt's own backend to use.
-func settingKitSections(r *settingResource) []resourcekit.Section[settingResourceModel] {
-	sections := make([]resourcekit.Section[settingResourceModel], 0, len(settingSections)+1)
-	for _, s := range settingSections {
-		sections = append(sections, legacySectionAdapter{r: r, section: s})
-		if s.Name() == "ips" {
-			sections = append(sections, mgmtKitSection(r.client.ApiClient))
-		}
-	}
-	return sections
+// settingKitSectionEntry is one row of settingKitSectionTable: exactly one
+// of Legacy and Kit is set. Legacy adapts a hand-written settingSection; Kit
+// builds a resourcekit.SpecSection bound to the client settingKitSections is
+// given.
+type settingKitSectionEntry struct {
+	Legacy settingSection
+	Kit    func(client *ui.ApiClient) resourcekit.Section[settingResourceModel]
 }
 
-// settingSections is unifi_setting's 12 remaining legacySections, in
-// today's write order minus mgmt (see settingKitSections).
-var settingSections = []settingSection{
-	legacySection{
-		name:       "auto_speedtest",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.AutoSpeedtest) },
-		write:      (*settingResource).writeAutoSpeedtestSection,
-		read:       (*settingResource).readAutoSpeedtestSection,
-	},
-	legacySection{
-		name:       "country",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Country) },
-		write:      (*settingResource).writeCountrySection,
-		read:       (*settingResource).readCountrySection,
-	},
-	legacySection{
-		name:       "dpi",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Dpi) },
-		write:      (*settingResource).writeDpiSection,
-		read:       (*settingResource).readDpiSection,
-	},
-	legacySection{
+// settingKitSectionTable names all thirteen of unifi_setting's sections, in
+// their historical write order, each row either a legacySection or a
+// resourcekit.SpecSection kit constructor. It replaces the splice-after-"ips"
+// approach settingKitSections used while mgmt was the only section served
+// from the kit -- that approach doesn't scale to several sections migrating
+// in one task (the R2-B part 1 report flagged this: every further migration
+// would need its own named splice point), where an ordered literal just
+// names each row once.
+var settingKitSectionTable = []settingKitSectionEntry{
+	{Kit: autoSpeedtestKitSection},
+	{Kit: countryKitSection},
+	{Kit: dpiKitSection},
+	{Legacy: legacySection{
 		name:       "lcm",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Lcm) },
 		write:      (*settingResource).writeLcmSection,
 		read:       (*settingResource).readLcmSection,
-	},
-	legacySection{
-		name:       "network_optimization",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.NetworkOpt) },
-		write:      (*settingResource).writeNetworkOptimizationSection,
-		read:       (*settingResource).readNetworkOptimizationSection,
-	},
-	legacySection{
+	}},
+	{Kit: networkOptimizationKitSection},
+	{Legacy: legacySection{
 		name:       "ntp",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Ntp) },
 		write:      (*settingResource).writeNtpSection,
 		read:       (*settingResource).readNtpSection,
-	},
-	legacySection{
+	}},
+	{Legacy: legacySection{
 		name:       "syslog",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Syslog) },
 		write:      (*settingResource).writeSyslogSection,
 		read:       (*settingResource).readSyslogSection,
-	},
-	legacySection{
+	}},
+	{Legacy: legacySection{
 		name:       "doh",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Doh) },
 		write:      (*settingResource).writeDohSection,
 		read:       (*settingResource).readDohSection,
-	},
-	legacySection{
+	}},
+	{Legacy: legacySection{
 		name:       "ips",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Ips) },
 		write:      (*settingResource).writeIpsSection,
 		read:       (*settingResource).readIpsSection,
-	},
-	legacySection{
+	}},
+	{Kit: mgmtKitSection},
+	{Legacy: legacySection{
 		name:       "radius",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Radius) },
 		write:      (*settingResource).writeRadiusSection,
 		read:       (*settingResource).readRadiusSection,
-	},
-	legacySection{
+	}},
+	{Legacy: legacySection{
 		name:       "usg",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.USG) },
 		write:      (*settingResource).writeUSGSection,
 		read:       (*settingResource).readUSGSection,
-	},
-	legacySection{
+	}},
+	{Legacy: legacySection{
 		name:       "igmp_snooping",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.IgmpSnooping) },
 		write:      (*settingResource).writeIgmpSnoopingSection,
 		read:       (*settingResource).readIgmpSnoopingSection,
-	},
+	}},
 }
 
-// -- auto_speedtest --
-
-func (r *settingResource) writeAutoSpeedtestSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var as settingAutoSpeedtestModel
-	diags.Append(plan.AutoSpeedtest.As(ctx, &as, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
+// settingKitSections adapts settingKitSectionTable to
+// []resourcekit.Section[settingResourceModel], bound to r. Called from
+// Configure, once r.client exists for both the adapted legacy Write/Read
+// calls and every kit section's own backend to use.
+func settingKitSections(r *settingResource) []resourcekit.Section[settingResourceModel] {
+	sections := make([]resourcekit.Section[settingResourceModel], 0, len(settingKitSectionTable))
+	for _, entry := range settingKitSectionTable {
+		switch {
+		case entry.Kit != nil:
+			sections = append(sections, entry.Kit(r.client.ApiClient))
+		case entry.Legacy != nil:
+			sections = append(sections, legacySectionAdapter{r: r, section: entry.Legacy})
+		default:
+			panic("settingKitSectionTable row names neither Legacy nor Kit")
+		}
 	}
-	setting := r.autoSpeedtestModelToSetting(&as)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" Auto Speedtest Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readAutoSpeedtestSection reads the auto speedtest setting.
-func (r *settingResource) readAutoSpeedtestSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.AutoSpeedtest) {
-		out.AutoSpeedtest = types.ObjectNull(autoSpeedtestAttrTypes)
-		return diags
-	}
-	_, asSetting, err := ui.GetSetting[*settings.AutoSpeedtest](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading Auto Speedtest Setting", err.Error())
-		return diags
-	}
-	objValue, d := types.ObjectValueFrom(
-		ctx, autoSpeedtestAttrTypes, r.autoSpeedtestSettingToModel(asSetting),
-	)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.AutoSpeedtest = objValue
-	return diags
-}
-
-// -- country --
-
-func (r *settingResource) writeCountrySection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var m settingCountryModel
-	diags.Append(plan.Country.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-	setting := r.countryModelToSetting(&m)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" Country Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readCountrySection reads the country setting.
-func (r *settingResource) readCountrySection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.Country) {
-		out.Country = types.ObjectNull(countryAttrTypes)
-		return diags
-	}
-	_, s, err := ui.GetSetting[*settings.Country](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading Country Setting", err.Error())
-		return diags
-	}
-	objValue, d := types.ObjectValueFrom(ctx, countryAttrTypes, r.countrySettingToModel(s))
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.Country = objValue
-	return diags
-}
-
-// -- dpi --
-
-func (r *settingResource) writeDpiSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var m settingDpiModel
-	diags.Append(plan.Dpi.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-	setting := r.dpiModelToSetting(&m)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" DPI Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readDpiSection reads the DPI setting.
-func (r *settingResource) readDpiSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.Dpi) {
-		out.Dpi = types.ObjectNull(dpiAttrTypes)
-		return diags
-	}
-	_, s, err := ui.GetSetting[*settings.Dpi](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading DPI Setting", err.Error())
-		return diags
-	}
-	objValue, d := types.ObjectValueFrom(ctx, dpiAttrTypes, r.dpiSettingToModel(s))
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.Dpi = objValue
-	return diags
+	return sections
 }
 
 // -- lcm --
@@ -353,49 +223,10 @@ func (r *settingResource) readLcmSection(
 	return diags
 }
 
-// -- network_optimization --
-
-func (r *settingResource) writeNetworkOptimizationSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var m settingNetworkOptimizationModel
-	diags.Append(plan.NetworkOpt.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-	setting := r.networkOptimizationModelToSetting(&m)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" Network Optimization Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readNetworkOptimizationSection reads the network optimization setting.
-func (r *settingResource) readNetworkOptimizationSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.NetworkOpt) {
-		out.NetworkOpt = types.ObjectNull(networkOptimizationAttrTypes)
-		return diags
-	}
-	_, s, err := ui.GetSetting[*settings.NetworkOptimization](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading Network Optimization Setting", err.Error())
-		return diags
-	}
-	objValue, d := types.ObjectValueFrom(
-		ctx, networkOptimizationAttrTypes, r.networkOptimizationSettingToModel(s),
-	)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.NetworkOpt = objValue
-	return diags
-}
+// auto_speedtest, country, dpi and network_optimization moved onto
+// resourcekit.SpecSection -- see setting_auto_speedtest_descriptor.go,
+// setting_country_descriptor.go, setting_dpi_descriptor.go and
+// setting_network_optimization_descriptor.go.
 
 // -- ntp --
 
@@ -626,7 +457,7 @@ func (r *settingResource) readIpsSection(
 }
 
 // mgmt moved onto resourcekit.SpecSection -- see setting_mgmt_descriptor.go
-// and settingKitSections' splice, which inserts it back at this position.
+// and settingKitSectionTable, which names it back in at this position.
 
 // -- radius --
 

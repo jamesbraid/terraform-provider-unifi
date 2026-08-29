@@ -114,19 +114,10 @@ type settingDohCustomServerModel struct {
 	ServerName types.String `tfsdk:"server_name"`
 }
 
-type settingAutoSpeedtestModel struct {
-	Enabled  types.Bool   `tfsdk:"enabled"`
-	CronExpr types.String `tfsdk:"cron_expr"`
-}
-
-type settingCountryModel struct {
-	Code types.Int64 `tfsdk:"code"`
-}
-
-type settingDpiModel struct {
-	Enabled               types.Bool `tfsdk:"enabled"`
-	FingerprintingEnabled types.Bool `tfsdk:"fingerprinting_enabled"`
-}
+// settingAutoSpeedtestModel, settingCountryModel, settingDpiModel and
+// settingNetworkOptimizationModel moved to their own *_descriptor.go files,
+// alongside the Specs that now own them: descriptor_mapping_test.go's
+// loadDescriptors reads a descriptor's model tags from the same file.
 
 type settingLcmModel struct {
 	Enabled     types.Bool  `tfsdk:"enabled"`
@@ -134,10 +125,6 @@ type settingLcmModel struct {
 	IdleTimeout types.Int64 `tfsdk:"idle_timeout"`
 	Sync        types.Bool  `tfsdk:"sync"`
 	TouchEvent  types.Bool  `tfsdk:"touch_event"`
-}
-
-type settingNetworkOptimizationModel struct {
-	Enabled types.Bool `tfsdk:"enabled"`
 }
 
 type settingNtpModel struct {
@@ -238,28 +225,17 @@ type settingIgmpSnoopingModel struct {
 // Shared attribute-type maps for the doh/ips nested objects, referenced from
 // both readSettings and the *SettingToModel helpers -- package level to avoid drift between the two.
 var (
-	autoSpeedtestAttrTypes = map[string]attr.Type{
-		"enabled":   types.BoolType,
-		"cron_expr": types.StringType,
-	}
+	// autoSpeedtestAttrTypes, countryAttrTypes, dpiAttrTypes and
+	// networkOptimizationAttrTypes moved to their own *_descriptor.go files,
+	// alongside the models and Specs that now own them.
 	// mgmtSSHKeyAttrTypes and mgmtAttrTypes moved to
 	// setting_mgmt_descriptor.go, alongside sshKeyModel/settingMgmtModel.
-	countryAttrTypes = map[string]attr.Type{
-		"code": types.Int64Type,
-	}
-	dpiAttrTypes = map[string]attr.Type{
-		"enabled":                types.BoolType,
-		"fingerprinting_enabled": types.BoolType,
-	}
 	lcmAttrTypes = map[string]attr.Type{
 		"enabled":      types.BoolType,
 		"brightness":   types.Int64Type,
 		"idle_timeout": types.Int64Type,
 		"sync":         types.BoolType,
 		"touch_event":  types.BoolType,
-	}
-	networkOptimizationAttrTypes = map[string]attr.Type{
-		"enabled": types.BoolType,
 	}
 	ntpAttrTypes = map[string]attr.Type{
 		"ntp_server_1":       types.StringType,
@@ -1035,52 +1011,15 @@ func (r *settingResource) igmpSnoopingSettingToModel(
 	return model
 }
 
-// Simple 1:1 conversion functions: auto-speedtest, country, DPI, LCM,
-// network-optimization, NTP and syslog.
-func (r *settingResource) autoSpeedtestModelToSetting(
-	model *settingAutoSpeedtestModel,
-) *settings.AutoSpeedtest {
-	setting := &settings.AutoSpeedtest{}
-	if !model.Enabled.IsNull() && !model.Enabled.IsUnknown() {
-		setting.Enabled = model.Enabled.ValueBool()
-	}
-	if !model.CronExpr.IsNull() && !model.CronExpr.IsUnknown() {
-		setting.CronExpr = model.CronExpr.ValueString()
-	}
-	return setting
-}
-
-func (r *settingResource) autoSpeedtestSettingToModel(
-	setting *settings.AutoSpeedtest,
-) settingAutoSpeedtestModel {
-	return settingAutoSpeedtestModel{
-		Enabled:  types.BoolValue(setting.Enabled),
-		CronExpr: util.StringValueOrNull(setting.CronExpr),
-	}
-}
-
-func (r *settingResource) countryModelToSetting(m *settingCountryModel) *settings.Country {
-	return &settings.Country{Code: m.Code.ValueInt64Pointer()}
-}
-
-func (r *settingResource) countrySettingToModel(s *settings.Country) settingCountryModel {
-	return settingCountryModel{Code: types.Int64PointerValue(s.Code)}
-}
-
-func (r *settingResource) dpiModelToSetting(m *settingDpiModel) *settings.Dpi {
-	return &settings.Dpi{
-		Enabled:               m.Enabled.ValueBool(),
-		FingerprintingEnabled: m.FingerprintingEnabled.ValueBool(),
-	}
-}
-
-func (r *settingResource) dpiSettingToModel(s *settings.Dpi) settingDpiModel {
-	return settingDpiModel{
-		Enabled:               types.BoolValue(s.Enabled),
-		FingerprintingEnabled: types.BoolValue(s.FingerprintingEnabled),
-	}
-}
-
+// autoSpeedtestModelToSetting/autoSpeedtestSettingToModel,
+// countryModelToSetting/countrySettingToModel,
+// dpiModelToSetting/dpiSettingToModel and
+// networkOptimizationModelToSetting/networkOptimizationSettingToModel moved
+// onto resourcekit.SpecSection -- see setting_auto_speedtest_descriptor.go,
+// setting_country_descriptor.go, setting_dpi_descriptor.go and
+// setting_network_optimization_descriptor.go.
+//
+// Simple 1:1 conversion functions: LCM, NTP and syslog.
 func (r *settingResource) lcmModelToSetting(m *settingLcmModel) *settings.Lcm {
 	setting := &settings.Lcm{
 		Enabled:    m.Enabled.ValueBool(),
@@ -1106,18 +1045,6 @@ func (r *settingResource) lcmSettingToModel(s *settings.Lcm) settingLcmModel {
 		Sync:        types.BoolValue(s.Sync),
 		TouchEvent:  types.BoolValue(s.TouchEvent),
 	}
-}
-
-func (r *settingResource) networkOptimizationModelToSetting(
-	m *settingNetworkOptimizationModel,
-) *settings.NetworkOptimization {
-	return &settings.NetworkOptimization{Enabled: m.Enabled.ValueBool()}
-}
-
-func (r *settingResource) networkOptimizationSettingToModel(
-	s *settings.NetworkOptimization,
-) settingNetworkOptimizationModel {
-	return settingNetworkOptimizationModel{Enabled: types.BoolValue(s.Enabled)}
 }
 
 func (r *settingResource) ntpModelToSetting(m *settingNtpModel) *settings.Ntp {

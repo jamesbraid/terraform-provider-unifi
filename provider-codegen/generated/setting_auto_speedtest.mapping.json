@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.auto_speedtest",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "cron_expr",
+      "terraform_name": "cron_expr",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

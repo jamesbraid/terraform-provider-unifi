@@ -1956,24 +1956,10 @@ func TestIgmpSnoopingModelMerge(t *testing.T) {
 	}
 }
 
-// TestAutoSpeedtestSettingRoundTrip is a unit round-trip for the
-// auto_speedtest setting block: model -> go-unifi setting -> model preserves
-// the fields.
-func TestAutoSpeedtestSettingRoundTrip(t *testing.T) {
-	r := &settingResource{}
-	in := &settingAutoSpeedtestModel{
-		Enabled:  types.BoolValue(true),
-		CronExpr: types.StringValue("0 3 * * *"),
-	}
-	setting := r.autoSpeedtestModelToSetting(in)
-	if !setting.Enabled || setting.CronExpr != "0 3 * * *" {
-		t.Fatalf("modelToSetting = %+v, want enabled cron=0 3 * * *", setting)
-	}
-	out := r.autoSpeedtestSettingToModel(setting)
-	if !out.Enabled.ValueBool() || out.CronExpr.ValueString() != "0 3 * * *" {
-		t.Errorf("settingToModel = %+v, want enabled cron preserved", out)
-	}
-}
+// TestAutoSpeedtestSettingRoundTrip moved to
+// setting_auto_speedtest_descriptor_test.go: it now drives
+// autoSpeedtestKitSpec's own ToSDK/ToModel instead of the deleted
+// autoSpeedtestModelToSetting/autoSpeedtestSettingToModel mappers.
 
 // TestSettingBlocksRoundTrip covers the model<->go-unifi conversions for a
 // representative scalar block (ntp) and the list-bearing one (syslog).
