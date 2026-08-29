@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.108.0] - DRAFT, unreleased
+
+### ⚠️ Breaking Changes
+
+- **Ten `unifi_setting` attributes across four sections now read back a
+  plain empty value instead of `null` once their section is managed and
+  the controller reports the field empty; one reads back `null` where it
+  used to read a value.** The resource kit's masked-write path applies a
+  single schema-driven rule for every section, in place of each section's
+  own hand-written mapper: `auto_speedtest.cron_expr`, `syslog.ip`,
+  `syslog.netconsole_host`, `usg.mss_clamp`,
+  `usg.timeout_setting_preference`, `usg.upnp_wan_interface` and
+  `usg.geo_ip_filtering_countries` now read `""` instead of `null`;
+  `syslog.contents` and `igmp_snooping.network_ids` now read `[]` instead
+  of `null` on an empty controller response. Going the other way, one of
+  `usg`'s `geo_ip_filtering_*` attributes now reads `null`, not the old
+  mapper's `false`/empty, when the controller's `usg_geo` object is
+  missing from the read entirely (an older controller) — an apply still
+  fails there either way, with the existing "not supported" diagnostic.
+  All of these are Computed attributes, so an apply does not show them as
+  a plan diff. A practitioner notices only by looking at state directly —
+  `terraform state show`, or an output value that references one of them.
+
+### 🐛 Bug Fixes
+
+- **`unifi_setting`: `syslog.enabled = true` without `syslog.ip` now fails
+  at plan.** The controller has always rejected that combination with
+  `api.err.Invalid` at apply time; `ValidateConfig` now catches it before
+  that, the same idiom `unifi_wan`'s `ValidateConfig` uses for its own
+  stopgap. A configuration that sets `syslog.enabled = true` without
+  `syslog.ip` now fails at plan time instead of apply time.
+
+### 📖 Documentation
+
+- **`unifi_setting`: the `ntp_server_1` through `ntp_server_4` and
+  `igmp_snooping.enabled` descriptions now say what the controller
+  actually does with them.** A live-controller probe found that setting
+  an NTP server to an empty string does not clear it — the controller
+  substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101) —
+  and that `igmp_snooping.enabled` only takes effect when
+  `igmp_snooping.network_ids` also names a network. Neither behavior was
+  documented before.
+
+### 🔧 Maintenance
+
+- **`unifi_setting` is now served entirely by the resource kit.** All
+  thirteen sections write through the kit's masked-write path: an apply
+  names only the fields the configuration sets, so a value changed in the
+  controller's own UI in a field the configuration doesn't name is no
+  longer overwritten by the next apply. The hand-written read/write loop
+  the sections used before is gone.
+
 ## [v0.107.0] - 2026-08-28
 
 ### ⚠️ Breaking Changes
