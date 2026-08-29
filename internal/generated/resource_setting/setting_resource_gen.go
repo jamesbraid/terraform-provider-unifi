@@ -570,24 +570,36 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Primary NTP server.",
 						MarkdownDescription: "Primary NTP server.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"ntp_server_2": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "Second NTP server.",
 						MarkdownDescription: "Second NTP server.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"ntp_server_3": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "Third NTP server.",
 						MarkdownDescription: "Third NTP server.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"ntp_server_4": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "Fourth NTP server.",
 						MarkdownDescription: "Fourth NTP server.",
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
 					},
 					"setting_preference": schema.StringAttribute{
 						Optional:            true,

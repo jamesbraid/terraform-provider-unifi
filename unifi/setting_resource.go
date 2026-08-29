@@ -7,9 +7,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
@@ -108,29 +105,22 @@ func (r *settingResource) Schema(
 	// v1: radius.interim_update_interval and the usg conntrack timeouts
 	// changed from Int64 (seconds) to GoDuration strings. See UpgradeState.
 	//
-	// Re-set by hand: a generated schema can't carry a version; left at zero,
-	// Terraform never runs the upgrader and prior state silently stops migrating.
+	// Re-set by hand: a generated schema can't carry a version, and the policy
+	// has no notion of a state upgrader either -- Version and UpgradeState stay
+	// hand-written for the same reason.
 	resp.Schema.Version = 1
+	// Every provider_owned "timeouts" seam across policy/*.json (ap_group.json,
+	// bgp.json, this one, ...) is declared generated:false, and the compiler
+	// only emits a provider-owned attribute it's told is generated -- so
+	// timeouts stays a hand graft here too, the same as every other
+	// kit-served resource, not a special case for unifi_setting.
+	//
 	// Load-bearing for the upgrade path too: UpgradeState derives its prior type
 	// from this schema and decodes twelve conntrack durations through it; without this graft that type differs and prior-version state stops decoding.
 	resp.Schema.Attributes["timeouts"] = timeouts.Attributes(
 		ctx,
 		timeouts.Opts{Create: true, Read: true, Update: true, Delete: true},
 	)
-
-	// Re-set by hand: the generator can't express a PlanModifier, so an omitted
-	// ntp slot would replan as unknown on every change despite the controller still reporting its prior value; UseStateForUnknown pins it (#382).
-	if ntp, ok := resp.Schema.Attributes["ntp"].(schema.SingleNestedAttribute); ok {
-		for _, key := range []string{"ntp_server_1", "ntp_server_2", "ntp_server_3", "ntp_server_4"} {
-			if server, ok := ntp.Attributes[key].(schema.StringAttribute); ok {
-				server.PlanModifiers = []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				}
-				ntp.Attributes[key] = server
-			}
-		}
-		resp.Schema.Attributes["ntp"] = ntp
-	}
 }
 
 // UpgradeState migrates v0 state to v1: radius.interim_update_interval and the
