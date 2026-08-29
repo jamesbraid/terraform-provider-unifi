@@ -143,12 +143,17 @@ func TestEveryKitWritePathIsClassified(t *testing.T) {
 // their mapper doesn't assign goes out as a Go zero on every apply -- unlike
 // the kit surfaces, nothing else would notice. wan is not among them: both
 // its update and its adopt path go through the masked UpdateNetworkFields.
+// setting dropped off this list once ips_suppression's own write
+// (setting_ips_descriptor.go's ipsSuppressionKitBackend) moved from the
+// deleted writeIpsSuppression's whole-object client.UpdateSetting call to
+// the masked UpdateSettingFields every other unifi_setting section already
+// used -- setting_resource.go now has no whole-object client.Update call
+// left at all.
 func TestTheUnmaskedHandWrittenSurfacesAreTheOnesWeThinkTheyAre(t *testing.T) {
 	want := []string{
 		"bgp",
 		"dynamic_dns",
 		"power_supervisor",
-		"setting",
 		"site",
 		"wireguard_peer",
 	}

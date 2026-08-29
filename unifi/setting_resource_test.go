@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -1422,33 +1421,13 @@ func TestSettingNtpServersUseStateForUnknown(t *testing.T) {
 // and TestUsgAfterReceiveNullsWhatThePlanDidNotName (the null-plan read-side
 // behaviour).
 
-// TestIpsSuppressionAbsentSetting mirrors usg_geo's own absent-document
-// behaviour (setting_usg_descriptor_test.go) for the ips_suppression split.
-func TestIpsSuppressionAbsentSetting(t *testing.T) {
-	ctx := context.Background()
-	r := &settingResource{}
-	var diags diag.Diagnostics
-
-	model := &settingIpsModel{
-		EnabledCategories:    types.ListNull(types.StringType),
-		EnabledNetworks:      types.ListNull(types.StringType),
-		Honeypot:             types.ListNull(types.ObjectType{AttrTypes: ipsHoneypotAttrTypes}),
-		SuppressionWhitelist: types.ListNull(types.ObjectType{AttrTypes: ipsWhitelistAttrTypes}),
-		SuppressionAlerts:    types.ListNull(types.ObjectType{AttrTypes: ipsAlertAttrTypes}),
-	}
-
-	if ipsSuppressionConfigured(model) {
-		t.Error("an unconfigured model must not trigger an ips_suppression write")
-	}
-
-	out := r.ipsSettingToModel(ctx, &settings.Ips{}, nil, model, &diags)
-	if diags.HasError() {
-		t.Fatalf("unexpected diags: %v", diags)
-	}
-	if !out.SuppressionAlerts.IsNull() || !out.SuppressionWhitelist.IsNull() {
-		t.Error("absent ips_suppression should read back as null lists")
-	}
-}
+// TestIpsSuppressionAbsentSetting (deleted along with ipsSettingToModel/
+// ipsSuppressionConfigured) moved to setting_ips_descriptor_test.go:
+// TestIpsSuppressionIsWrittenOnlyWhenConfigured (the configured predicate)
+// and TestIpsSuppressionDocumentReadNotFoundYieldsEmptyLists (the
+// absent-document read, which now reads back an empty, not null, list --
+// see that file's own top comment for why ips_suppression's own tolerance
+// differs from usg_geo's).
 
 // Test_settingResource_igmpSnoopingModelToSetting and
 // Test_settingResource_igmpSnoopingSettingToModel (deleted along with the
@@ -1466,47 +1445,11 @@ func TestIpsSuppressionAbsentSetting(t *testing.T) {
 // case) and TestDohConfiguredEmptyCustomServersReadsBackAsEmptyList (a
 // case neither deleted test covered).
 
-func Test_settingResource_ipsSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null plan ips_mode produces null model ips_mode", func(t *testing.T) {
-		setting := &settings.Ips{IPsMode: "ips"}
-		plan := &settingIpsModel{
-			IPSMode: types.StringNull(),
-		}
-		var diags diag.Diagnostics
-		got := r.ipsSettingToModel(ctx, setting, nil, plan, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.IPSMode.IsNull() {
-			t.Errorf("IPSMode should be null when plan is null, got %q", got.IPSMode.ValueString())
-		}
-	})
-
-	t.Run("non-null plan reflects remote value", func(t *testing.T) {
-		setting := &settings.Ips{IPsMode: "disabled", RestrictTorrents: true}
-		plan := &settingIpsModel{
-			IPSMode:          types.StringValue("ips"),
-			RestrictTorrents: types.BoolValue(false),
-		}
-		var diags diag.Diagnostics
-		got := r.ipsSettingToModel(ctx, setting, nil, plan, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.IPSMode.ValueString() != "disabled" {
-			t.Errorf("IPSMode = %q, want disabled", got.IPSMode.ValueString())
-		}
-		if !got.RestrictTorrents.ValueBool() {
-			t.Error("RestrictTorrents should be true (remote value)")
-		}
-	})
-}
+// Test_settingResource_ipsSettingToModel (deleted along with
+// ipsSettingToModel) is subsumed by TestIpsAfterReceiveNullsWhatThePlanDidNotName
+// (setting_ips_descriptor_test.go, the null-plan case) and ordinary
+// StringField.ToModel behavior (the non-null-reflects-remote-value case,
+// which every kit Field already carries its own tests for).
 
 // TestIgmpSnoopingModelMerge (deleted along with igmpSnoopingModelToSetting/
 // igmpSnoopingSettingToModel) pinned the Go-level read-modify-write that
