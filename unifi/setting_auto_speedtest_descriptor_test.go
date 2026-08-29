@@ -2,9 +2,14 @@ package unifi
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 	resource_setting "github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_setting"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
@@ -36,6 +41,55 @@ func TestAutoSpeedtestSettingRoundTrip(t *testing.T) {
 	}
 	if !out.Enabled.ValueBool() || out.CronExpr.ValueString() != "0 3 * * *" {
 		t.Errorf("ToModel = %+v, want enabled cron preserved", out)
+	}
+}
+
+// TestAutoSpeedtestBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey is the
+// unit half of auto_speedtest's masked-write gate, shaped exactly like
+// TestMgmtBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey
+// (setting_mgmt_descriptor_test.go): it runs autoSpeedtestKitBackend's
+// UpdateFields closure -- the same one Configure wires into the live
+// resource -- against an httptest server that keeps the raw, undecoded PUT
+// body. Unlike the other three sections migrated alongside auto_speedtest,
+// this is the ONLY test that exercises its masked write at all --
+// TestAccSettingResource_autoSpeedtest is a structural skip in this
+// environment (the emulated controller has no WAN uplink for a real speed
+// test), so there is no live acceptance run backing this one up. The
+// assertion is therefore the exact PUT body string, not just which keys are
+// present: cron_expr is the only field named, so the body must be exactly
+// that field plus "key" and nothing else, byte for byte.
+func TestAutoSpeedtestBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey(t *testing.T) {
+	var body []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/proxy/network/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"meta":{"server_version":"10.4.57"}}`))
+			return
+		}
+		raw, _ := io.ReadAll(req.Body)
+		body = raw
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(append(append([]byte(`{"data":[`), raw...), []byte(`]}`)...))
+	}))
+	t.Cleanup(server.Close)
+
+	api, err := ui.New(context.Background(), &ui.Config{BaseURL: server.URL, APIKey: "test-key"})
+	if err != nil {
+		t.Fatalf("create the API client: %v", err)
+	}
+
+	backend := autoSpeedtestKitBackend(api)
+	sdk := &settings.AutoSpeedtest{CronExpr: "0 3 * * *"}
+	if _, err := backend.UpdateFields(context.Background(), "default", sdk, "cron_expr"); err != nil {
+		t.Fatalf("UpdateFields: %v", err)
+	}
+
+	// enabled has no omitempty on settings.AutoSpeedtest -- an unmasked
+	// encode would always carry it. Its absence, and the exact shape of
+	// what remains, is what this byte-for-byte comparison exists to pin.
+	want := `{"cron_expr":"0 3 * * *","key":"auto_speedtest"}`
+	if string(body) != want {
+		t.Fatalf("PUT body = %s, want exactly %s", body, want)
 	}
 }
 
