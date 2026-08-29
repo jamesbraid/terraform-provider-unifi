@@ -779,3 +779,178 @@ func TestSpecSectionExtraWriteLeavesThePrimarysObjectMergeIntact(t *testing.T) {
 			"object", b)
 	}
 }
+
+// ssPartialModel is ssSectionModel's sibling for a partially-configured
+// Extra: an Extra document (like usg_geo) maps TWO fields (A, B) of the
+// SAME model, the same shape the four geo_ip_filtering_* attributes take
+// against usgGeoKitSpec.
+type ssPartialModel struct {
+	Name types.String `tfsdk:"name"`
+	A    types.String `tfsdk:"a"`
+	B    types.String `tfsdk:"b"`
+}
+
+func ssPartialAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"name": types.StringType,
+		"a":    types.StringType,
+		"b":    types.StringType,
+	}
+}
+
+// ssPartialSDK stands in for the primary's own SDK struct -- Name only, the
+// same shape settings.Usg has relative to its geo fields, which live on a
+// wholly separate document (settings.SettingUsgGeoIPFiltering).
+type ssPartialSDK struct {
+	Name string
+}
+
+func ssPartialSpec(backend Backend[ssPartialSDK]) Spec[ssPartialModel, ssPartialSDK] {
+	return Spec[ssPartialModel, ssPartialSDK]{
+		TypeName: "ss_partial_probe",
+		Subject:  "SS Partial Probe",
+		New:      func() *ssPartialSDK { return &ssPartialSDK{} },
+		Fields: []Field[ssPartialModel, ssPartialSDK]{
+			StringField[ssPartialModel, ssPartialSDK]{
+				Wire:  "name",
+				Model: func(m *ssPartialModel) *types.String { return &m.Name },
+				SDK:   func(s *ssPartialSDK) *string { return &s.Name },
+				Elide: KeepZero,
+			},
+		},
+		Backend: backend,
+	}
+}
+
+// ssPartialExtraSDK stands in for settings.SettingUsgGeoIPFiltering: two
+// wire members on one document, enough to configure one and leave the
+// other null -- usg_geo has four, but two is the minimum that reproduces
+// the bug.
+type ssPartialExtraSDK struct {
+	A string
+	B string
+}
+
+func ssPartialExtraSpec(backend Backend[ssPartialExtraSDK]) Spec[ssPartialModel, ssPartialExtraSDK] {
+	return Spec[ssPartialModel, ssPartialExtraSDK]{
+		TypeName: "ss_partial_probe_extra",
+		Subject:  "SS Partial Probe Extra",
+		New:      func() *ssPartialExtraSDK { return &ssPartialExtraSDK{} },
+		Fields: []Field[ssPartialModel, ssPartialExtraSDK]{
+			StringField[ssPartialModel, ssPartialExtraSDK]{
+				Wire:  "a",
+				Model: func(m *ssPartialModel) *types.String { return &m.A },
+				SDK:   func(s *ssPartialExtraSDK) *string { return &s.A },
+				Elide: KeepZero,
+			},
+			StringField[ssPartialModel, ssPartialExtraSDK]{
+				Wire:  "b",
+				Model: func(m *ssPartialModel) *types.String { return &m.B },
+				SDK:   func(s *ssPartialExtraSDK) *string { return &s.B },
+				Elide: KeepZero,
+			},
+		},
+		Backend: backend,
+	}
+}
+
+// TestSpecSectionExtraFieldThePlanLeftNullStaysNullAfterWriteAndRead is
+// final-review's Important 1, reproduced directly: an Extra document maps
+// two fields of the section model (A, B), the same shape usg_geo's four
+// geo_ip_filtering_* attributes take against usg's own 33. The plan sets
+// only A; the Extra's own masked write still gets back BOTH fields in the
+// controller's response (UpdateSettingFields unmarshals the whole document,
+// the same way go-unifi's UpdateSetting does for usg_geo), so B must stay
+// null both right after Write and after the follow-up Read Composite always
+// runs next -- using the SAME plan Write just mutated, exactly as
+// Composite.Create/Update do.
+//
+// Before the fix this fails both assertions with the review's own
+// reproduction: b = "controller-b" (null=false) in both places, because
+// AfterReceive ran before the Extra loop (so the Extra's own response
+// merge undid the null it had just set) and Composite's follow-up Read
+// then decoded its prior from that same wrong, non-null value.
+func TestSpecSectionExtraFieldThePlanLeftNullStaysNullAfterWriteAndRead(t *testing.T) {
+	section := SpecSection[ssModel, ssPartialModel, ssPartialSDK]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   ssPartialAttrTypes(),
+		Spec: ssPartialSpec(Backend[ssPartialSDK]{
+			UpdateFields: func(_ context.Context, _ string, in *ssPartialSDK, _ ...string) (*ssPartialSDK, error) {
+				return in, nil
+			},
+			Read: func(context.Context, string, string) (*ssPartialSDK, error) {
+				return &ssPartialSDK{Name: "server-name"}, nil
+			},
+		}),
+		Extra: []Document[ssPartialModel]{
+			SpecDocument[ssPartialModel, ssPartialExtraSDK]{
+				Spec: ssPartialExtraSpec(Backend[ssPartialExtraSDK]{
+					UpdateFields: func(_ context.Context, _ string, in *ssPartialExtraSDK, _ ...string) (*ssPartialExtraSDK, error) {
+						// The controller's response carries every field this
+						// document maps, whether or not the plan set it -- the
+						// same shape UpdateSettingFields' own unmarshal gives
+						// usg_geo's response.
+						return &ssPartialExtraSDK{A: in.A, B: "controller-b"}, nil
+					},
+					Read: func(context.Context, string, string) (*ssPartialExtraSDK, error) {
+						return &ssPartialExtraSDK{A: "controller-a", B: "controller-b"}, nil
+					},
+				}),
+			},
+		},
+		AfterReceive: func(_ context.Context, _ *ssPartialSDK, model *ssPartialModel, prior ssPartialModel) diag.Diagnostics {
+			if prior.A.IsNull() || prior.A.IsUnknown() {
+				model.A = types.StringNull()
+			}
+			if prior.B.IsNull() || prior.B.IsUnknown() {
+				model.B = types.StringNull()
+			}
+			return nil
+		},
+	}
+
+	object, diags := types.ObjectValue(ssPartialAttrTypes(), map[string]attr.Value{
+		"name": types.StringValue("configured-name"),
+		"a":    types.StringValue("configured-a"),
+		"b":    types.StringNull(),
+	})
+	if diags.HasError() {
+		t.Fatalf("build section: %v", diags)
+	}
+
+	plan := ssModel{Section: object}
+	diags = section.Write(context.Background(), "site-1", &plan, nil, "Creating")
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	var afterWrite ssPartialModel
+	diags = plan.Section.As(context.Background(), &afterWrite, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		t.Fatalf("decode written-back section: %v", diags)
+	}
+	if !afterWrite.B.IsNull() {
+		t.Errorf("after Write: b = %q (null=%v), want null -- the plan never set it, but the "+
+			"Extra's own response echoed the controller's value",
+			afterWrite.B.ValueString(), afterWrite.B.IsNull())
+	}
+
+	// Composite's own post-write Read runs next -- reproduce its exact call
+	// convention (plan and out are the SAME pointer, the value Write just
+	// mutated), not a fresh copy of the original plan.
+	diags = section.Read(context.Background(), "site-1", &plan, &plan)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	var afterRead ssPartialModel
+	diags = plan.Section.As(context.Background(), &afterRead, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		t.Fatalf("decode read section: %v", diags)
+	}
+	if !afterRead.B.IsNull() {
+		t.Errorf("after the follow-up Read: b = %q (null=%v), want null",
+			afterRead.B.ValueString(), afterRead.B.IsNull())
+	}
+}

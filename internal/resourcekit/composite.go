@@ -114,11 +114,17 @@ func (c *Composite[M]) Create(
 	defer cancel()
 
 	site := c.resolveSite(&plan)
+	// original is the plan as the practitioner wrote it, before write()
+	// overwrites plan's own section attributes with each document's
+	// response. read() below needs original, not plan, as the source of
+	// Configured() and of AfterReceive's prior -- see SpecSection.Write's own
+	// comment (spec_section.go).
+	original := plan
 	c.write(ctx, site, &plan, nil, "Creating", &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	c.read(ctx, site, &plan, &plan, &resp.Diagnostics)
+	c.read(ctx, site, &original, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -177,11 +183,17 @@ func (c *Composite[M]) Update(
 	// Site comes from state, not the plan: site has UseStateForUnknown, so
 	// the plan can carry unknown where state carries the real name.
 	site := c.resolveSite(&state)
+	// original is the plan as the practitioner wrote it, before write()
+	// overwrites plan's own section attributes with each document's
+	// response. read() below needs original, not plan, as the source of
+	// Configured() and of AfterReceive's prior -- see SpecSection.Write's own
+	// comment (spec_section.go).
+	original := plan
 	c.write(ctx, site, &plan, &state, "Updating", &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	c.read(ctx, site, &plan, &plan, &resp.Diagnostics)
+	c.read(ctx, site, &original, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

@@ -268,22 +268,32 @@ func (s SpecSection[M, SM, S]) Write(
 		return diags
 	}
 	if updated != nil {
-		diags.Append(s.runAfterReceive(ctx, updated, &fresh, planModel)...)
-		if diags.HasError() {
-			return diags
-		}
 		// The response doesn't outrank the plan for a value the plan set,
 		// the same rule Resource[M,S]'s Create/Update tail applies.
 		s.Spec.ApplyPlanToState(&planModel, &fresh)
 	}
 
 	// Extra, in order; the first error aborts before later Extras, the same
-	// rule Composite applies across sections.
+	// rule Composite applies across sections. AfterReceive runs AFTER this
+	// loop, not before: an Extra's own specDocumentWrite merges every field
+	// its Spec maps -- not just the ones the plan set -- out of the
+	// controller's response (spec.ToModel over the full Backend.UpdateFields
+	// reply), so a field the Extra maps but the plan left null would be
+	// re-hydrated with the controller's value if AfterReceive had already
+	// nulled it before the Extra ran.
 	for _, extra := range s.Extra {
 		diags.Append(extra.Write(ctx, site, &planModel, &fresh)...)
 		if diags.HasError() {
 			return diags
 		}
+	}
+
+	// Once, over the fully merged model, with the plan as it stood before
+	// any document wrote (planModel, decoded above) as prior -- never fresh,
+	// which by now carries every document's response.
+	diags.Append(s.runAfterReceive(ctx, updated, &fresh, planModel)...)
+	if diags.HasError() {
+		return diags
 	}
 
 	object, d := s.encode(ctx, fresh)

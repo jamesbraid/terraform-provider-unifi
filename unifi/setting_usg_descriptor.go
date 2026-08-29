@@ -414,13 +414,15 @@ func dnsVerificationDecode(
 // usgAfterReceive reproduces the deleted usgSettingToModel: every one of
 // usg's thirty-seven attributes -- the thirty-three usgKitSpec maps plus the
 // four geo_ip_filtering_* ones usgGeoKitSpec's own document already
-// hydrated into this same shared model by the time this runs on a read --
-// is plan-conditioned: null unless the practitioner's own config (prior) set
+// hydrated into this same shared model by the time this runs -- is
+// plan-conditioned: null unless the practitioner's own config (prior) set
 // it, so an unmanaged usg attribute never drifts. Run from both Write and
-// Read (SpecSection's own contract): on Write it nulls geo fields before
-// the Extra loop even reaches them, which is harmless since usgKitSpec
-// never touches them either way; on Read it runs after usgGeoKitDocument's
-// own Read has already populated them from the controller.
+// Read (SpecSection's own contract), and on both paths after every document
+// has written or read, never before: usgGeoKitDocument's own response
+// merge (spec.ToModel, run over all four geo fields regardless of which the
+// plan set) would otherwise re-hydrate a geo field this hook had already
+// nulled, on Write, or leave Read's own prior wrongly non-null for a field
+// the plan never named.
 func usgAfterReceive(
 	_ context.Context, _ *settings.Usg, model *settingUSGModel, prior settingUSGModel,
 ) diag.Diagnostics {
