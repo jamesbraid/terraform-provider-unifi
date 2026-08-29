@@ -161,6 +161,17 @@ func TestAccVPNServer_wireguard_with_dns(t *testing.T) {
 					),
 				),
 			},
+			{
+				// servers = [] clears the last slot too. The framework's own
+				// post-apply plan check is what proves this doesn't perpetually
+				// re-plan: an empty list reading back as null (Optional, not
+				// Computed) would show a diff on every following plan even
+				// though nothing changed.
+				Config: testAccVPNServerConfig_wireguard_with_dns_servers(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_vpn_server.test", "dns.servers.#", "0"),
+				),
+			},
 		},
 	})
 }
@@ -1113,6 +1124,59 @@ func TestVPNServerDNSServersClearTheSlotsAConfigDropped(t *testing.T) {
 	if current.DHCPDDNS1 == nil || *current.DHCPDDNS1 != "1.1.1.1" {
 		t.Errorf("DHCPDDNS1 = %v, want untouched at \"1.1.1.1\"", current.DHCPDDNS1)
 	}
+}
+
+// TestVPNServerDNSServersFromNetworkReadsBackEmptyNotNullWhenConfigured pins
+// the read-side half of "an explicit list, even an empty one, is
+// authoritative": a controller reporting all four slots empty reads back as
+// an empty, non-null list when the prior config named dns.servers at all
+// (even as []), and as null when it never did. Without this, `servers = []`
+// clears every slot (measured live) but state comes back null; since
+// dns.servers is Optional, not Computed, the next plan disagrees with state
+// forever.
+func TestVPNServerDNSServersFromNetworkReadsBackEmptyNotNullWhenConfigured(t *testing.T) {
+	ctx := context.Background()
+	network := &unifi.Network{} // every slot nil: the controller reports none.
+
+	emptyServers, d := types.ListValueFrom(ctx, types.StringType, []string{})
+	if d.HasError() {
+		t.Fatalf("building an empty servers list: %v", d)
+	}
+
+	t.Run("prior servers was an explicit empty list", func(t *testing.T) {
+		prior, d := types.ObjectValueFrom(ctx, vpnServerDNSModel{}.AttributeTypes(), vpnServerDNSModel{
+			Enabled: types.BoolValue(true),
+			Servers: emptyServers,
+		})
+		if d.HasError() {
+			t.Fatalf("building prior: %v", d)
+		}
+
+		var diags diag.Diagnostics
+		got := vpnServerDNSServersFromNetwork(ctx, &diags, network, vpnServerDNSServersTouched(prior))
+		if diags.HasError() {
+			t.Fatalf("decoding: %v", diags)
+		}
+		if got.IsNull() {
+			t.Error("servers = null, want a non-null empty list")
+		}
+		if len(got.Elements()) != 0 {
+			t.Errorf("servers has %d elements, want 0", len(got.Elements()))
+		}
+	})
+
+	t.Run("prior servers was never configured", func(t *testing.T) {
+		prior := types.ObjectNull(vpnServerDNSModel{}.AttributeTypes())
+
+		var diags diag.Diagnostics
+		got := vpnServerDNSServersFromNetwork(ctx, &diags, network, vpnServerDNSServersTouched(prior))
+		if diags.HasError() {
+			t.Fatalf("decoding: %v", diags)
+		}
+		if !got.IsNull() {
+			t.Errorf("servers = %v, want null", got)
+		}
+	})
 }
 
 // TestVPNServerDNSServersRejectsAFifthServerAtPlan pins the

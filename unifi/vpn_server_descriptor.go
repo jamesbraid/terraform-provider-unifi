@@ -78,11 +78,18 @@ func encodeVPNServerDNS(ctx context.Context, object types.Object, sdk *ui.Networ
 	return diags
 }
 
-func decodeVPNServerDNS(ctx context.Context, sdk *ui.Network, _ types.Object) (types.Object, diag.Diagnostics) {
+// decodeVPNServerDNS's prior is the dns object as it stood before this read
+// (ScatteredObjectField.ToModel's own doc: "the model loaded from state").
+// It carries whether the practitioner's own config named servers at all --
+// vpnServerDNSServersTouched's "explicit list, even an empty one, is
+// authoritative" rule applies symmetrically on read: the controller
+// reporting zero slots reads back as an empty list when servers was part of
+// this config, and null when it never was.
+func decodeVPNServerDNS(ctx context.Context, sdk *ui.Network, prior types.Object) (types.Object, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	return types.ObjectValue(vpnServerDNSModel{}.AttributeTypes(), map[string]attr.Value{
 		"enabled": types.BoolValue(sdk.DHCPDDNSEnabled),
-		"servers": vpnServerDNSServersFromNetwork(ctx, &diags, sdk),
+		"servers": vpnServerDNSServersFromNetwork(ctx, &diags, sdk, vpnServerDNSServersTouched(prior)),
 	})
 }
 

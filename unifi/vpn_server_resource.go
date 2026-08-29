@@ -325,17 +325,30 @@ func vpnServerDNSServersClearDropped(newServers []string, current *unifi.Network
 }
 
 // vpnServerDNSServersFromNetwork collects dns.servers from the four observed
-// slots, keeping only non-empty ones; pairing with the write above compacts, so a lone slot-two value reads back as the first element.
+// slots, keeping only non-empty ones; pairing with the write above compacts,
+// so a lone slot-two value reads back as the first element.
+//
+// configured reports whether the prior config named dns.servers at all, even
+// as an empty list -- vpnServerDNSServersTouched's own "explicit list,
+// including [], is authoritative" rule, applied here on the read side. Four
+// empty slots read back as null when servers was never part of this config
+// (nothing to elide), or as an empty, non-null list when it was: dns.servers
+// is Optional, not Computed, so a null read for a `[]` config would disagree
+// with the config on every later plan.
 func vpnServerDNSServersFromNetwork(
 	ctx context.Context,
 	diags *diag.Diagnostics,
 	network *unifi.Network,
+	configured bool,
 ) types.List {
 	servers := collectNonEmptyStringPointers(
 		network.DHCPDDNS1, network.DHCPDDNS2, network.DHCPDDNS3, network.DHCPDDNS4,
 	)
 	if len(servers) == 0 {
-		return types.ListNull(types.StringType)
+		if !configured {
+			return types.ListNull(types.StringType)
+		}
+		servers = []string{}
 	}
 	list, d := types.ListValueFrom(ctx, types.StringType, servers)
 	diags.Append(d...)
