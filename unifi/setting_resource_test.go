@@ -1037,10 +1037,13 @@ resource "unifi_setting" "test" {
 }
 
 // TestAccSettingResource_ntp asserts what the controller actually does with
-// ntp_server_1 and setting_preference = "manual": an explicit "" for
-// ntp_server_2 is NOT preserved (that was the round 1 finding -- the
-// controller substitutes its own default pool address), so ntp_server_2 is
-// left unconfigured here and only checked as set, not for a literal value.
+// ntp_server_1, ntp_server_2 and setting_preference = "manual": a
+// live-controller probe against this branch's own masked write (not the
+// legacy whole-object PUT the round 1 finding ran through, whose omitempty
+// tag never let an explicit "" reach the wire) found that ntp_server_2
+// clears to a literal "" both when configured that way from create and when
+// updated back to "" from a previously-set value. Both are asserted here as
+// exact values, not merely TestCheckResourceAttrSet.
 func TestAccSettingResource_ntp(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -1059,9 +1062,10 @@ func TestAccSettingResource_ntp(t *testing.T) {
 						"ntp.setting_preference",
 						"manual",
 					),
-					resource.TestCheckResourceAttrSet(
+					resource.TestCheckResourceAttr(
 						"unifi_setting.test",
 						"ntp.ntp_server_2",
+						"",
 					),
 				),
 			},
@@ -1086,9 +1090,25 @@ func TestAccSettingResource_ntp(t *testing.T) {
 						"ntp.ntp_server_1",
 						"time.cloudflare.com",
 					),
-					resource.TestCheckResourceAttrSet(
+					resource.TestCheckResourceAttr(
 						"unifi_setting.test",
 						"ntp.ntp_server_2",
+						"time.probe-configured.example.com",
+					),
+				),
+			},
+			{
+				Config: testAccSettingConfig_ntpUpdateCleared(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ntp.ntp_server_1",
+						"time.cloudflare.com",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ntp.ntp_server_2",
+						"",
 					),
 				),
 			},
@@ -1101,6 +1121,7 @@ func testAccSettingConfig_ntp() string {
 resource "unifi_setting" "test" {
   ntp = {
     ntp_server_1       = "time.example.com"
+    ntp_server_2       = ""
     setting_preference = "manual"
   }
 }
@@ -1112,6 +1133,19 @@ func testAccSettingConfig_ntpUpdate() string {
 resource "unifi_setting" "test" {
   ntp = {
     ntp_server_1       = "time.cloudflare.com"
+    ntp_server_2       = "time.probe-configured.example.com"
+    setting_preference = "manual"
+  }
+}
+`
+}
+
+func testAccSettingConfig_ntpUpdateCleared() string {
+	return `
+resource "unifi_setting" "test" {
+  ntp = {
+    ntp_server_1       = "time.cloudflare.com"
+    ntp_server_2       = ""
     setting_preference = "manual"
   }
 }

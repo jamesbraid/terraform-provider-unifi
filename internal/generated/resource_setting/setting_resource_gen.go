@@ -568,8 +568,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"ntp_server_1": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Primary NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
-						MarkdownDescription: "Primary NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
+						Description:         "Primary NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
+						MarkdownDescription: "Primary NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
@@ -577,8 +577,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"ntp_server_2": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Second NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
-						MarkdownDescription: "Second NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
+						Description:         "Second NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
+						MarkdownDescription: "Second NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
@@ -586,8 +586,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"ntp_server_3": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Third NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
-						MarkdownDescription: "Third NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
+						Description:         "Third NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
+						MarkdownDescription: "Third NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
@@ -595,8 +595,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"ntp_server_4": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Fourth NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
-						MarkdownDescription: "Fourth NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
+						Description:         "Fourth NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
+						MarkdownDescription: "Fourth NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},

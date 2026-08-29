@@ -38,10 +38,14 @@ All notable changes to this project will be documented in this file.
 
 - **`unifi_setting`: the `ntp_server_1` through `ntp_server_4` and
   `igmp_snooping.enabled` descriptions now say what the controller
-  actually does with them.** A live-controller probe found that setting
-  an NTP server to an empty string does not clear it — the controller
-  substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101) —
-  and that `igmp_snooping.enabled` only takes effect when
+  actually does with them.** A live-controller probe through this
+  branch's own masked write found that setting an NTP server to an
+  empty string clears it — the controller stores and returns the
+  literal empty value. An earlier probe had found the opposite, but it
+  ran through the legacy whole-object PUT, whose `omitempty` tag never
+  let an explicit `""` reach the wire at all; the controller was never
+  actually asked to store one. Also unchanged from that earlier probe:
+  `igmp_snooping.enabled` only takes effect when
   `igmp_snooping.network_ids` also names a network. Neither behavior was
   documented before.
 

@@ -6185,7 +6185,7 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "Primary NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
+          "description": "Primary NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
@@ -6196,7 +6196,7 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "Second NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
+          "description": "Second NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
@@ -6207,7 +6207,7 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "Third NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
+          "description": "Third NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
@@ -6218,7 +6218,7 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "Fourth NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).",
+          "description": "Fourth NTP server. An empty string clears it — the controller stores and returns the literal empty value.",
           "description_kind": "markdown",
           "plan_modifiers": [
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."

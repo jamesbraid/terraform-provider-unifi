@@ -273,10 +273,10 @@ Optional:
 
 Optional:
 
-- `ntp_server_1` (String) Primary NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).
-- `ntp_server_2` (String) Second NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).
-- `ntp_server_3` (String) Third NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).
-- `ntp_server_4` (String) Fourth NTP server. An empty string does not clear it — the controller substitutes its own default pool (`1.ubnt.pool.ntp.org` on 10.6.101).
+- `ntp_server_1` (String) Primary NTP server. An empty string clears it — the controller stores and returns the literal empty value.
+- `ntp_server_2` (String) Second NTP server. An empty string clears it — the controller stores and returns the literal empty value.
+- `ntp_server_3` (String) Third NTP server. An empty string clears it — the controller stores and returns the literal empty value.
+- `ntp_server_4` (String) Fourth NTP server. An empty string clears it — the controller stores and returns the literal empty value.
 - `setting_preference` (String) Configuration mode: `auto` or `manual`.
 
 
