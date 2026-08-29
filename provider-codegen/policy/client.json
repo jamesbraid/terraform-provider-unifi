@@ -61,8 +61,7 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": "none"
+        ]
       },
       "disposition": "managed",
       "structural_name": "display_name",
@@ -168,8 +167,7 @@
               "schema_definition": "stringplanmodifier.UseStateForUnknown()"
             }
           }
-        ],
-        "validators": "none"
+        ]
       },
       "disposition": "managed",
       "structural_name": "last_ip",
