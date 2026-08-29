@@ -189,6 +189,12 @@ func (r *settingResource) Configure(
 	r.Sections = settingKitSections(r)
 }
 
+// ImportState only sets id; the other twelve sections come back null until
+// Read populates whichever ones the config claims. A section is managed
+// only when the practitioner has configured it, and import has no way to
+// know which of the thirteen sections that will be -- hydrating all of
+// them here would claim every section as managed, and the next plan would
+// diff against attributes the practitioner never wrote.
 func (r *settingResource) ImportState(
 	ctx context.Context,
 	req resource.ImportStateRequest,
