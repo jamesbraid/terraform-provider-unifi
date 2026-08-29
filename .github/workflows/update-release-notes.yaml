@@ -7,6 +7,9 @@ on:
       - main
     paths:
       - 'CHANGELOG.md'
+  release:
+    types:
+      - published
 
 permissions:
   contents: write
