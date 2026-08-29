@@ -31,6 +31,34 @@ All notable changes to this project will be documented in this file.
   idiom `unifi_wan`'s `ValidateConfig` uses for its own stopgap. A
   configuration that sets `syslog.enabled = true` without `syslog.ip`
   now fails at plan time instead of apply time.
+- **`unifi_firewall_policy.protocol` and `.connection_state_type` validate
+  at plan again.** v0.107.0 shipped both fields with their derived
+  validators suppressed. go-unifi's field-constraint table was wrong at
+  the time — it named a set narrower than what the controller actually
+  accepts, including `icmp`, `icmpv6`, and a `CUSTOM` connection state.
+  go-unifi v1.110.0 corrects the table: `protocol` now spans 56 IANA
+  protocol names plus any numeric protocol number, `connection_state_type`
+  gains `CUSTOM`. Both were checked against the controller directly, not
+  just against the SDK table. `protocol`'s derived pattern was diffed
+  against a measured acceptance matrix built from a live controller. Every
+  candidate for `connection_state_type` was created and read back against
+  a live controller. Both derived sets match the measured acceptance
+  exactly. No configuration a v0.107.0 controller accepted starts failing
+  now. A configuration using a value the controller already refused, and
+  that used to reach the controller before failing there, now fails at
+  `terraform plan` instead.
+- **`unifi_vpn_server.dns.servers` is capped at four entries.** The
+  controller's DHCP DNS block has exactly four slots. The attribute
+  previously had no size validator at all, so a fifth server planned
+  cleanly and was silently dropped on write. A configuration listing more
+  than four servers now fails at plan instead of losing entries silently.
+
+### ✨ Features
+
+- **`unifi_vpn_server.dns.servers` addresses all four of the controller's
+  DHCP DNS slots.** Only the first two were wired before. A third or
+  fourth configured server now reaches the controller instead of being
+  silently dropped.
 
 ### 🐛 Bug Fixes
 
@@ -45,6 +73,29 @@ All notable changes to this project will be documented in this file.
   masked write forces a field the plan configures onto the wire, zero
   value included, so clearing one of these to `[]` or `""` now actually
   reaches and clears the controller.
+- **A DNS server removed from `unifi_vpn_server.dns.servers` or
+  `unifi_vpn_client.wireguard.dns_servers` is now cleared on the
+  controller.** Shortening either list used to leave the dropped server's
+  slot untouched on the controller, so a WireGuard client kept receiving
+  it even though the configuration no longer listed it. The resource
+  kit's `BeforeSend` hook now sees the state a resource held before this
+  apply, compares it against the new list, and clears exactly the slots
+  the new list no longer covers, in the same masked write the apply
+  already sends.
+- **`unifi_site_to_site_vpn`: `remote_subnets = []` with
+  `dynamic_routing = true` now applies end to end.** v0.107.0 lifted the
+  plan-time restriction on this combination, but the apply still failed
+  on the controller: go-unifi's site-VPN encoder tagged
+  `remote_vpn_subnets` `omitempty`, which drops an explicit empty list
+  the same way it drops an absent one, and the controller rejects the
+  field's total absence regardless of `dynamic_routing`. go-unifi
+  v1.110.0's `marshalNetwork` drops `omitempty` from `remote_vpn_subnets`
+  and `remote_site_subnets` and encodes both through a helper that turns
+  a nil or empty slice into an explicit `[]`, so the configured empty
+  list now reaches the wire. `apidiff` reported that SDK commit as no API
+  change — the hand-written purpose encoder it touches sits outside a
+  generated-API diff tool's baseline. Called out here explicitly rather
+  than left for the diff to have said nothing.
 
 ### 📋 Known Issues
 
@@ -91,6 +142,24 @@ All notable changes to this project will be documented in this file.
   controller's own UI in a field the configuration doesn't name is no
   longer overwritten by the next apply. The hand-written read/write loop
   the sections used before is gone.
+- **The provider now builds against go-unifi v1.110.0** (up from
+  v1.108.0). The bump carries the `DHCPDDNS1..4` slot-clear behind the
+  `dns.servers` fixes above (`Network`'s four DHCP DNS fields move to
+  `*string`, where `nil` preserves and a pointer to `""` clears), a keyed
+  overlay for per-port device overrides not yet consumed by this
+  provider, the firewall-policy vocabulary widening and the validator-slot
+  fix behind the revalidation above, the site-to-site empty-subnet-list
+  encoder change above, and a purpose-shape wire baseline that closes the
+  `apidiff` blind spot the site-to-site fix ran into, for hand-written
+  wire encoders going forward. `FirewallPolicyProtocolValues`, the flat
+  value-list mirror of the old four-value protocol set, is removed from
+  the SDK entirely — the provider had zero references to it, so nothing
+  else needed to change. Also carried in this bump: the resource kit's
+  `BeforeSend` hook now receives the model a resource held before the
+  current apply, as a parameter, the same way `AfterReceive` already
+  receives it. A hook can now compare the new plan against what was
+  actually applied last, not just see the new plan in isolation — the
+  DNS-clearing fix above is the first hook to use it.
 
 ## [v0.107.0] - 2026-08-28
 
