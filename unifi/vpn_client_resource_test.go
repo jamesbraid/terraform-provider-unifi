@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
+	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 func TestAccVPNClient_file_mode(t *testing.T) {
@@ -467,4 +468,62 @@ func TestAccVPNClientList_basic(t *testing.T) {
 			},
 		},
 	})
+}
+
+// TestWireguardDNSServersFillTwoSlotsInOrder pins the two-slot fill: the
+// controller carries two dhcpd_dns_N wires for wireguard.dns_servers, and a
+// config listing two servers must reach both, in order.
+func TestWireguardDNSServersFillTwoSlotsInOrder(t *testing.T) {
+	network := &unifi.Network{}
+	wireguardDNSServersToNetwork([]string{"1.1.1.1", "2.2.2.2"}, network)
+
+	if network.DHCPDDNS1 == nil || *network.DHCPDDNS1 != "1.1.1.1" {
+		t.Errorf("DHCPDDNS1 = %v, want %q", network.DHCPDDNS1, "1.1.1.1")
+	}
+	if network.DHCPDDNS2 == nil || *network.DHCPDDNS2 != "2.2.2.2" {
+		t.Errorf("DHCPDDNS2 = %v, want %q", network.DHCPDDNS2, "2.2.2.2")
+	}
+}
+
+// TestWireguardDNSServersClearTheSlotDropped pins the clearing half: a slot
+// the controller currently fills and the new list no longer reaches gets an
+// explicit "" so the write clears it, not nil -- go-unifi's masked write
+// synthesizes JSON null for a nil pointer named in the mask, and null is not
+// "leave alone". The slot the new list still covers is left for Encode to
+// write.
+func TestWireguardDNSServersClearTheSlotDropped(t *testing.T) {
+	current := &unifi.Network{
+		DHCPDDNS1: strPtr("1.1.1.1"),
+		DHCPDDNS2: strPtr("2.2.2.2"),
+	}
+
+	dropped := wireguardDNSServersClearDropped([]string{"9.9.9.9"}, current)
+
+	if len(dropped) != 1 || dropped[0] != "dhcpd_dns_2" {
+		t.Fatalf("dropped wires = %v, want exactly [dhcpd_dns_2]", dropped)
+	}
+	if current.DHCPDDNS2 == nil || *current.DHCPDDNS2 != "" {
+		t.Errorf("DHCPDDNS2 = %v, want a non-nil pointer to \"\"", current.DHCPDDNS2)
+	}
+	// The slot the new list still covers is left for Encode to write; this
+	// helper only ever adds to what Encode already decided.
+	if current.DHCPDDNS1 == nil || *current.DHCPDDNS1 != "1.1.1.1" {
+		t.Errorf("DHCPDDNS1 = %v, want untouched at \"1.1.1.1\"", current.DHCPDDNS1)
+	}
+}
+
+// TestWireguardDNSServersClearDroppedTouchesNothingWhenNothingDropped is the
+// control: a plan that still covers every slot prior filled must leave the
+// mask unchanged, or the drop check above is not proof of anything.
+func TestWireguardDNSServersClearDroppedTouchesNothingWhenNothingDropped(t *testing.T) {
+	current := &unifi.Network{
+		DHCPDDNS1: strPtr("1.1.1.1"),
+		DHCPDDNS2: strPtr("2.2.2.2"),
+	}
+
+	dropped := wireguardDNSServersClearDropped([]string{"1.1.1.1", "2.2.2.2"}, current)
+
+	if len(dropped) != 0 {
+		t.Errorf("dropped wires = %v, want none; the new list still covers both slots", dropped)
+	}
 }

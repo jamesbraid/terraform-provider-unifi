@@ -102,27 +102,51 @@ func vpnClientAfterReceive(
 
 // vpnClientBeforeSend sets the WireGuard private key from the write-only
 // wireguard.private_key_wo, reading it from config since Terraform nulls
-// write-only attributes in every persisted plan.
+// write-only attributes in every persisted plan, then clears any DNS server
+// prior held that this apply's effective list no longer reaches (see
+// vpnClientClearDroppedDNS).
 func vpnClientBeforeSend(
 	ctx context.Context,
-	config, _ *vpnClientResourceModel,
-	_ vpnClientResourceModel,
+	config, effective *vpnClientResourceModel,
+	prior vpnClientResourceModel,
 	sdk *ui.Network,
 	_ any,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
-	if config.Wireguard.IsNull() || config.Wireguard.IsUnknown() {
-		return diags
+	if !config.Wireguard.IsNull() && !config.Wireguard.IsUnknown() {
+		var wireguard wireguardModel
+		diags.Append(config.Wireguard.As(ctx, &wireguard, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return diags
+		}
+		if wo := wireguard.PrivateKeyWO; !wo.IsNull() && !wo.IsUnknown() && wo.ValueString() != "" {
+			sdk.WireguardPrivateKey = wo.ValueStringPointer()
+		}
 	}
-	var wireguard wireguardModel
-	diags.Append(config.Wireguard.As(ctx, &wireguard, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-	if wo := wireguard.PrivateKeyWO; !wo.IsNull() && !wo.IsUnknown() && wo.ValueString() != "" {
-		sdk.WireguardPrivateKey = wo.ValueStringPointer()
-	}
+	diags.Append(vpnClientClearDroppedDNS(ctx, &prior, effective, sdk)...)
 	return diags
+}
+
+// vpnClientUnwritableWires drops a DNS slot from the mask when neither
+// Encode nor vpnClientClearDroppedDNS wrote it -- the shared "servers part
+// of this apply at all" predicate in vpnClientKitSpec puts both dhcpd_dns_1
+// and dhcpd_dns_2 in the mask together, but a one-server apply only ever
+// fills the first, and go-unifi's masked write turns a nil pointer named in
+// the mask into a JSON null, not "leave alone". Unlike a plain zero check,
+// "" is NOT unwritable here: it is vpnClientClearDroppedDNS's own,
+// deliberate clear, and must stay on the mask for the write to say
+// anything.
+func vpnClientUnwritableWires(sdk *ui.Network) []string {
+	var unwritable []string
+	for name, value := range map[string]*string{
+		"dhcpd_dns_1": sdk.DHCPDDNS1,
+		"dhcpd_dns_2": sdk.DHCPDDNS2,
+	} {
+		if value == nil {
+			unwritable = append(unwritable, name)
+		}
+	}
+	return unwritable
 }
 
 func vpnClientKitSpec() resourcekit.Spec[vpnClientResourceModel, ui.Network] {
@@ -140,9 +164,10 @@ func vpnClientKitSpec() resourcekit.Spec[vpnClientResourceModel, ui.Network] {
 		Timeouts: func(m *vpnClientResourceModel) *timeouts.Value { return &m.Timeouts },
 		// AlwaysWire is required: no attribute carries purpose/vpn_type, so
 		// without it an update omits them and the controller picks the wrong encoder.
-		AlwaysWire:   []string{"purpose", "vpn_type"},
-		BeforeSend:   vpnClientBeforeSend,
-		AfterReceive: vpnClientAfterReceive,
+		AlwaysWire:      []string{"purpose", "vpn_type"},
+		BeforeSend:      vpnClientBeforeSend,
+		AfterReceive:    vpnClientAfterReceive,
+		UnwritableWires: vpnClientUnwritableWires,
 		Fields: []resourcekit.Field[vpnClientResourceModel, ui.Network]{
 			vpnClientPtr("name", func(m *vpnClientResourceModel) *types.String { return &m.Name },
 				func(s *ui.Network) **string { return &s.Name }),
@@ -180,9 +205,17 @@ func vpnClientKitSpec() resourcekit.Spec[vpnClientResourceModel, ui.Network] {
 				},
 				Model:     func(m *vpnClientResourceModel) *types.Object { return &m.Wireguard },
 				AttrTypes: wireguardModel{}.AttributeTypes(),
+				// dhcpd_dns_1 and dhcpd_dns_2 share nth=1's predicate --
+				// "does something supply at least one DNS server" -- rather
+				// than dhcpd_dns_2 keying on nth=2: a one-server apply would
+				// then exclude dhcpd_dns_2 from the mask, and
+				// vpnClientClearDroppedDNS needs it IN the mask to clear a
+				// second server prior held. vpnClientUnwritableWires narrows
+				// the mask back down once Encode and vpnClientClearDroppedDNS
+				// have both decided which of the two this apply writes.
 				ConditionalWires: map[string]func(types.Object) bool{
 					"dhcpd_dns_1":                      vpnClientWireguardWritesDNS(1),
-					"dhcpd_dns_2":                      vpnClientWireguardWritesDNS(2),
+					"dhcpd_dns_2":                      vpnClientWireguardWritesDNS(1),
 					"wireguard_client_mode":            vpnClientWireguardWritesPeer,
 					"wireguard_client_peer_public_key": vpnClientWireguardWritesPeer,
 					"wireguard_client_peer_ip":         vpnClientWireguardWritesPeer,

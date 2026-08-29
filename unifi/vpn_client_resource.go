@@ -232,9 +232,13 @@ func wireguardPeerToNetwork(peer wireguardPeerModel, network *unifi.Network) {
 	network.WireguardClientPeerPublicKey = peer.PublicKey.ValueStringPointer()
 }
 
-// wireguardDNSServersToNetwork distributes dns_servers positionally into the two
-// observed slots without clearing the unused one; a third never reaches here
-// (schema carries SizeBetween(1,2)). Both the configured list and one parsed from a file arrive here, since the distribution is the same either way.
+// wireguardDNSServersToNetwork distributes dns_servers positionally into the
+// two observed slots without clearing the ones it does not use -- that half
+// is wireguardDNSServersClearDropped's job, since it needs to know what the
+// controller currently holds, which this function is never given. A third
+// never reaches here (schema carries SizeBetween(1,2)). Both the configured
+// list and one parsed from a file arrive here, since the distribution is the
+// same either way.
 func wireguardDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
 	if len(dnsServers) > 0 {
 		network.DHCPDDNS1 = util.Ptr(dnsServers[0])
@@ -242,6 +246,34 @@ func wireguardDNSServersToNetwork(dnsServers []string, network *unifi.Network) {
 	if len(dnsServers) > 1 {
 		network.DHCPDDNS2 = util.Ptr(dnsServers[1])
 	}
+}
+
+// wireguardDNSServersClearDropped mutates current's dhcpd_dns_N slots to an
+// explicit "" for any position newServers no longer reaches but current
+// still fills, and reports the wire names it changed. See vpn_server's
+// vpnServerDNSServersClearDropped for the identical four-slot shape of this;
+// kept as a separate function since this schema's SizeBetween(1,2) list
+// only ever reaches two.
+//
+// A position neither side ever fills is left at its current Go value (nil,
+// if current never held one) and reported nowhere: go-unifi's masked write
+// synthesizes JSON null for a nil pointer named in the mask, and null is not
+// "leave alone" -- so a slot with nothing to clear must stay off whatever
+// list of wires the caller is about to write.
+func wireguardDNSServersClearDropped(newServers []string, current *unifi.Network) []string {
+	slots := []**string{&current.DHCPDDNS1, &current.DHCPDDNS2}
+	wires := [2]string{"dhcpd_dns_1", "dhcpd_dns_2"}
+	var dropped []string
+	for i, slot := range slots {
+		if i < len(newServers) {
+			continue // the new list still covers this slot.
+		}
+		if *slot != nil && **slot != "" {
+			*slot = util.Ptr("")
+			dropped = append(dropped, wires[i])
+		}
+	}
+	return dropped
 }
 
 // wireguardPeerFromNetwork reads wireguard.peer back from the three flat

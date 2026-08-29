@@ -53,6 +53,74 @@ func vpnClientWireguardWritesDNS(nth int) func(types.Object) bool {
 	}
 }
 
+// wireguardEffectiveDNSServers returns the DNS servers Encode will actually
+// derive for wireguard, matching encodeVPNClientWireguard's own precedence:
+// the explicit dns_servers list when set, else what's parsed from a
+// configuration file. Empty (not an error) when the object is null/unknown
+// or neither source supplies anything -- used by vpnClientClearDroppedDNS
+// to compare what this apply gives against what prior gave, regardless of
+// which source either one used.
+func wireguardEffectiveDNSServers(ctx context.Context, object types.Object) ([]string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if object.IsNull() || object.IsUnknown() {
+		return nil, diags
+	}
+	attributes := object.Attributes()
+	if servers, ok := attributes["dns_servers"].(types.List); ok &&
+		!servers.IsNull() && !servers.IsUnknown() {
+		var out []string
+		diags.Append(servers.ElementsAs(ctx, &out, false)...)
+		return out, diags
+	}
+	configuration, ok := attributes["configuration"].(types.Object)
+	if !ok || configuration.IsNull() || configuration.IsUnknown() {
+		return nil, diags
+	}
+	content, ok := configuration.Attributes()["content"].(types.String)
+	if !ok || content.IsNull() || content.IsUnknown() {
+		return nil, diags
+	}
+	parsed, err := parseWireGuardBase64Config(content.ValueString())
+	if err != nil {
+		// Encode surfaces this same parse error and writes nothing; matching
+		// that here rather than failing the apply a second time for it.
+		return nil, diags
+	}
+	return parsed.DNS, diags
+}
+
+// vpnClientClearDroppedDNS clears a DNS slot prior fills that this apply's
+// effective server list no longer reaches, writing directly onto sdk -- the
+// SAME object the kit's one masked write sends, not a second one. See
+// vpn_server's vpnServerClearDroppedDNS for the four-slot twin of this; kept
+// separate rather than shared, since wireguardDNSServersClearDropped only
+// ever touches the two wires this schema's SizeBetween(1,2) list can reach.
+func vpnClientClearDroppedDNS(
+	ctx context.Context,
+	prior, effective *vpnClientResourceModel,
+	sdk *ui.Network,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	newServers, d := wireguardEffectiveDNSServers(ctx, effective.Wireguard)
+	diags.Append(d...)
+	priorServers, d := wireguardEffectiveDNSServers(ctx, prior.Wireguard)
+	diags.Append(d...)
+	if diags.HasError() {
+		return diags
+	}
+	priorNetwork := &ui.Network{}
+	wireguardDNSServersToNetwork(priorServers, priorNetwork)
+	for _, wire := range wireguardDNSServersClearDropped(newServers, priorNetwork) {
+		switch wire {
+		case "dhcpd_dns_1":
+			sdk.DHCPDDNS1 = util.Ptr("")
+		case "dhcpd_dns_2":
+			sdk.DHCPDDNS2 = util.Ptr("")
+		}
+	}
+	return diags
+}
+
 // vpnClientWireguardWritesPeer reports whether Encode will write the four wires
 // of the manual-mode switch. Both arms write all four: the configuration arm
 // derives them from the parsed file, the peer arm copies them from the block.
