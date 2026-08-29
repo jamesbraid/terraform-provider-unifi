@@ -113,12 +113,7 @@ var settingKitSectionTable = []settingKitSectionEntry{
 	{Kit: lcmKitSection},
 	{Kit: networkOptimizationKitSection},
 	{Kit: ntpKitSection},
-	{Legacy: legacySection{
-		name:       "syslog",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Syslog) },
-		write:      (*settingResource).writeSyslogSection,
-		read:       (*settingResource).readSyslogSection,
-	}},
+	{Kit: syslogKitSection},
 	{Legacy: legacySection{
 		name:       "doh",
 		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Doh) },
@@ -171,58 +166,12 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 	return sections
 }
 
-// auto_speedtest, country, dpi, lcm, network_optimization and ntp moved onto
-// resourcekit.SpecSection -- see setting_auto_speedtest_descriptor.go,
-// setting_country_descriptor.go, setting_dpi_descriptor.go,
-// setting_lcm_descriptor.go, setting_network_optimization_descriptor.go and
-// setting_ntp_descriptor.go.
-
-// -- syslog --
-
-func (r *settingResource) writeSyslogSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var m settingSyslogModel
-	diags.Append(plan.Syslog.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-	setting := r.syslogModelToSetting(ctx, &m, &diags)
-	if diags.HasError() {
-		return diags
-	}
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" Syslog Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readSyslogSection reads the syslog setting.
-func (r *settingResource) readSyslogSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.Syslog) {
-		out.Syslog = types.ObjectNull(syslogAttrTypes)
-		return diags
-	}
-	_, s, err := ui.GetSetting[*settings.Rsyslogd](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading Syslog Setting", err.Error())
-		return diags
-	}
-	objValue, d := types.ObjectValueFrom(
-		ctx, syslogAttrTypes, r.syslogSettingToModel(ctx, s, &diags),
-	)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.Syslog = objValue
-	return diags
-}
+// auto_speedtest, country, dpi, lcm, network_optimization, ntp and syslog
+// moved onto resourcekit.SpecSection -- see
+// setting_auto_speedtest_descriptor.go, setting_country_descriptor.go,
+// setting_dpi_descriptor.go, setting_lcm_descriptor.go,
+// setting_network_optimization_descriptor.go, setting_ntp_descriptor.go and
+// setting_syslog_descriptor.go.
 
 // -- doh --
 

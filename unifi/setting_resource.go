@@ -115,27 +115,10 @@ type settingDohCustomServerModel struct {
 }
 
 // settingAutoSpeedtestModel, settingCountryModel, settingDpiModel,
-// settingNetworkOptimizationModel and settingLcmModel moved to their own
-// *_descriptor.go files, alongside the Specs that now own them:
-// descriptor_mapping_test.go's loadDescriptors reads a descriptor's model
-// tags from the same file.
-
-// settingNtpModel moved to setting_ntp_descriptor.go, alongside the Spec
-// that now owns it.
-
-type settingSyslogModel struct {
-	Enabled                     types.Bool   `tfsdk:"enabled"`
-	Contents                    types.List   `tfsdk:"contents"`
-	Debug                       types.Bool   `tfsdk:"debug"`
-	IP                          types.String `tfsdk:"ip"`
-	Port                        types.Int64  `tfsdk:"port"`
-	LogAllContents              types.Bool   `tfsdk:"log_all_contents"`
-	NetconsoleEnabled           types.Bool   `tfsdk:"netconsole_enabled"`
-	NetconsoleHost              types.String `tfsdk:"netconsole_host"`
-	NetconsolePort              types.Int64  `tfsdk:"netconsole_port"`
-	ThisController              types.Bool   `tfsdk:"this_controller"`
-	ThisControllerEncryptedOnly types.Bool   `tfsdk:"this_controller_encrypted_only"`
-}
+// settingNetworkOptimizationModel, settingLcmModel, settingNtpModel and
+// settingSyslogModel moved to their own *_descriptor.go files, alongside
+// the Specs that now own them: descriptor_mapping_test.go's loadDescriptors
+// reads a descriptor's model tags from the same file.
 
 type settingDohModel struct {
 	CustomServers types.List   `tfsdk:"custom_servers"`
@@ -222,19 +205,8 @@ var (
 	// settingLcmModel and the Spec that now owns it.
 	// ntpAttrTypes moved to setting_ntp_descriptor.go, alongside
 	// settingNtpModel and the Spec that now owns it.
-	syslogAttrTypes = map[string]attr.Type{
-		"enabled":                        types.BoolType,
-		"contents":                       types.ListType{ElemType: types.StringType},
-		"debug":                          types.BoolType,
-		"ip":                             types.StringType,
-		"port":                           types.Int64Type,
-		"log_all_contents":               types.BoolType,
-		"netconsole_enabled":             types.BoolType,
-		"netconsole_host":                types.StringType,
-		"netconsole_port":                types.Int64Type,
-		"this_controller":                types.BoolType,
-		"this_controller_encrypted_only": types.BoolType,
-	}
+	// syslogAttrTypes moved to setting_syslog_descriptor.go, alongside
+	// settingSyslogModel and the Spec that now owns it.
 	dohCustomServerAttrTypes = map[string]attr.Type{
 		"enabled":     types.BoolType,
 		"sdns_stamp":  types.StringType,
@@ -997,61 +969,10 @@ func (r *settingResource) igmpSnoopingSettingToModel(
 // setting_country_descriptor.go, setting_dpi_descriptor.go and
 // setting_network_optimization_descriptor.go.
 //
-// lcmModelToSetting/lcmSettingToModel and ntpModelToSetting/ntpSettingToModel
-// moved onto resourcekit.SpecSection -- see setting_lcm_descriptor.go and
-// setting_ntp_descriptor.go.
-//
-// Simple 1:1 conversion functions: syslog.
-func (r *settingResource) syslogModelToSetting(
-	ctx context.Context,
-	m *settingSyslogModel,
-	diags *diag.Diagnostics,
-) *settings.Rsyslogd {
-	setting := &settings.Rsyslogd{
-		Enabled:                     m.Enabled.ValueBool(),
-		Debug:                       m.Debug.ValueBool(),
-		IP:                          m.IP.ValueString(),
-		LogAllContents:              m.LogAllContents.ValueBool(),
-		NetconsoleEnabled:           m.NetconsoleEnabled.ValueBool(),
-		NetconsoleHost:              m.NetconsoleHost.ValueString(),
-		ThisController:              m.ThisController.ValueBool(),
-		ThisControllerEncryptedOnly: m.ThisControllerEncryptedOnly.ValueBool(),
-	}
-	// Guard the optional ports: an unknown (unset Optional+Computed) value yields a
-	// 0 pointer, which the controller rejects as an out-of-range port (#303, cf. #288).
-	if !m.Port.IsNull() && !m.Port.IsUnknown() {
-		setting.Port = m.Port.ValueInt64Pointer()
-	}
-	if !m.NetconsolePort.IsNull() && !m.NetconsolePort.IsUnknown() {
-		setting.NetconsolePort = m.NetconsolePort.ValueInt64Pointer()
-	}
-	if !m.Contents.IsNull() && !m.Contents.IsUnknown() {
-		diags.Append(m.Contents.ElementsAs(ctx, &setting.Contents, false)...)
-	}
-	return setting
-}
-
-func (r *settingResource) syslogSettingToModel(
-	ctx context.Context,
-	s *settings.Rsyslogd,
-	diags *diag.Diagnostics,
-) settingSyslogModel {
-	contents, d := types.ListValueFrom(ctx, types.StringType, s.Contents)
-	diags.Append(d...)
-	return settingSyslogModel{
-		Enabled:                     types.BoolValue(s.Enabled),
-		Contents:                    contents,
-		Debug:                       types.BoolValue(s.Debug),
-		IP:                          util.StringValueOrNull(s.IP),
-		Port:                        types.Int64PointerValue(s.Port),
-		LogAllContents:              types.BoolValue(s.LogAllContents),
-		NetconsoleEnabled:           types.BoolValue(s.NetconsoleEnabled),
-		NetconsoleHost:              util.StringValueOrNull(s.NetconsoleHost),
-		NetconsolePort:              types.Int64PointerValue(s.NetconsolePort),
-		ThisController:              types.BoolValue(s.ThisController),
-		ThisControllerEncryptedOnly: types.BoolValue(s.ThisControllerEncryptedOnly),
-	}
-}
+// lcmModelToSetting/lcmSettingToModel, ntpModelToSetting/ntpSettingToModel
+// and syslogModelToSetting/syslogSettingToModel moved onto
+// resourcekit.SpecSection -- see setting_lcm_descriptor.go,
+// setting_ntp_descriptor.go and setting_syslog_descriptor.go.
 
 // DoH conversion functions.
 func (r *settingResource) dohModelToSetting(

@@ -1961,43 +1961,10 @@ func TestIgmpSnoopingModelMerge(t *testing.T) {
 // autoSpeedtestKitSpec's own ToSDK/ToModel instead of the deleted
 // autoSpeedtestModelToSetting/autoSpeedtestSettingToModel mappers.
 
-// TestSettingBlocksRoundTrip covers the model<->go-unifi conversion for the
-// list-bearing block (syslog). Its ntp subtest moved to
-// setting_ntp_descriptor_test.go's TestNtpSettingRoundTrip: it now drives
-// ntpKitSpec's own ToSDK/ToModel instead of the deleted
-// ntpModelToSetting/ntpSettingToModel mappers.
-func TestSettingBlocksRoundTrip(t *testing.T) {
-	ctx := context.Background()
-	r := &settingResource{}
-
-	t.Run("syslog", func(t *testing.T) {
-		var diags diag.Diagnostics
-		contents, _ := types.ListValueFrom(ctx, types.StringType, []string{"device", "client"})
-		in := &settingSyslogModel{
-			Enabled:  types.BoolValue(true),
-			IP:       types.StringValue("10.0.0.9"),
-			Port:     types.Int64Value(514),
-			Contents: contents,
-		}
-		setting := r.syslogModelToSetting(ctx, in, &diags)
-		if diags.HasError() {
-			t.Fatalf("modelToSetting: %v", diags)
-		}
-		if !setting.Enabled || setting.IP != "10.0.0.9" || setting.Port == nil ||
-			*setting.Port != 514 || len(setting.Contents) != 2 {
-			t.Fatalf("syslog modelToSetting mismatch: %+v", setting)
-		}
-		out := r.syslogSettingToModel(ctx, setting, &diags)
-		if diags.HasError() {
-			t.Fatalf("settingToModel: %v", diags)
-		}
-		var gotContents []string
-		out.Contents.ElementsAs(ctx, &gotContents, false)
-		if out.IP.ValueString() != "10.0.0.9" || len(gotContents) != 2 {
-			t.Errorf("syslog round-trip mismatch: %+v", out)
-		}
-	})
-}
+// TestSettingBlocksRoundTrip moved to setting_syslog_descriptor_test.go's
+// TestSyslogSettingRoundTrip: it now drives syslogKitSpec's own
+// ToSDK/ToModel instead of the deleted
+// syslogModelToSetting/syslogSettingToModel mappers.
 
 // TestNtpSettingStateNormalization moved to
 // setting_ntp_descriptor_test.go's TestNtpSettingRoundTripStateNormalization:
@@ -2014,38 +1981,9 @@ func TestSettingBlocksRoundTrip(t *testing.T) {
 // being clobbered, not a Go-level struct merge, so there is nothing left in
 // this package for that assertion to pin.
 
-// TestSyslogOmitsUnsetPorts checks that an unset port / netconsole_port is
-// omitted (nil pointer), not serialized as 0 -- the controller rejects port 0.
-func TestSyslogOmitsUnsetPorts(t *testing.T) {
-	ctx := context.Background()
-	var diags diag.Diagnostics
-	r := &settingResource{}
-
-	m := &settingSyslogModel{
-		Enabled:        types.BoolValue(true),
-		IP:             types.StringValue("10.0.10.15"),
-		Port:           types.Int64Value(1514),
-		NetconsolePort: types.Int64Null(), // netconsole disabled / unset
-		Contents:       types.ListNull(types.StringType),
-	}
-	setting := r.syslogModelToSetting(ctx, m, &diags)
-	if diags.HasError() {
-		t.Fatalf("modelToSetting: %v", diags)
-	}
-	if setting.NetconsolePort != nil {
-		t.Errorf("netconsole_port must be omitted when unset, got %d", *setting.NetconsolePort)
-	}
-	if setting.Port == nil || *setting.Port != 1514 {
-		t.Errorf("port = %v, want 1514", setting.Port)
-	}
-
-	// Unknown (Optional+Computed at create) must also omit, not send 0.
-	m.Port = types.Int64Unknown()
-	setting = r.syslogModelToSetting(ctx, m, &diags)
-	if setting.Port != nil {
-		t.Errorf("unknown port must be omitted, got %d", *setting.Port)
-	}
-}
+// TestSyslogOmitsUnsetPorts moved to setting_syslog_descriptor_test.go's
+// TestSyslogSpecOmitsAnUnsetPort: it now drives syslogKitSpec's own ToSDK
+// instead of the deleted syslogModelToSetting.
 
 // TestLcmOmitsUnsetInts moved to setting_lcm_descriptor_test.go's
 // TestLcmSpecOmitsAnUnsetBrightness: it now drives lcmKitSpec's own ToSDK
