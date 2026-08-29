@@ -25,6 +25,12 @@ All notable changes to this project will be documented in this file.
   of these are Computed attributes, so an apply does not show them as a
   plan diff. A practitioner notices only by looking at state directly —
   `terraform state show`, or an output value that references one of them.
+- **`unifi_setting`: `syslog.enabled = true` requires `syslog.ip`.** The
+  controller has always rejected that combination with `api.err.Invalid`
+  at apply time; `ValidateConfig` now catches it before that, the same
+  idiom `unifi_wan`'s `ValidateConfig` uses for its own stopgap. A
+  configuration that sets `syslog.enabled = true` without `syslog.ip`
+  now fails at plan time instead of apply time.
 
 ### 🐛 Bug Fixes
 
@@ -39,12 +45,6 @@ All notable changes to this project will be documented in this file.
   masked write forces a field the plan configures onto the wire, zero
   value included, so clearing one of these to `[]` or `""` now actually
   reaches and clears the controller.
-- **`unifi_setting`: `syslog.enabled = true` without `syslog.ip` now fails
-  at plan.** The controller has always rejected that combination with
-  `api.err.Invalid` at apply time; `ValidateConfig` now catches it before
-  that, the same idiom `unifi_wan`'s `ValidateConfig` uses for its own
-  stopgap. A configuration that sets `syslog.enabled = true` without
-  `syslog.ip` now fails at plan time instead of apply time.
 
 ### 📋 Known Issues
 

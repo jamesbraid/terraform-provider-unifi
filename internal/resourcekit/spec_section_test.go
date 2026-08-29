@@ -115,7 +115,7 @@ type fakeDocument struct {
 	writeErr error
 }
 
-func (f fakeDocument) Write(context.Context, string, *ssSectionModel, *ssSectionModel) diag.Diagnostics {
+func (f fakeDocument) Write(context.Context, string, *ssSectionModel, *ssSectionModel, string) diag.Diagnostics {
 	*f.calls = append(*f.calls, "write:"+f.name)
 	var diags diag.Diagnostics
 	if f.writeErr != nil {
@@ -496,7 +496,7 @@ func TestSpecDocumentOnReadNotFoundIsReportedAsItsDiagnostics(t *testing.T) {
 
 // TestSpecDocumentOnWriteNotFoundIsReportedAsItsDiagnostics pins
 // OnWriteNotFound's two branches: set gets its own diagnostics; nil falls
-// back to today's plain "Error Writing <Subject>" diagnostic -- a
+// back to today's plain "Error <verb> <Subject>" diagnostic -- a
 // write-time not-found is still a failure to write what the plan asked
 // for, unlike a read-time one, unless a document opts into something else.
 func TestSpecDocumentOnWriteNotFoundIsReportedAsItsDiagnostics(t *testing.T) {
@@ -520,7 +520,7 @@ func TestSpecDocumentOnWriteNotFoundIsReportedAsItsDiagnostics(t *testing.T) {
 		}
 		plan := ssSectionModel{Extra: types.StringValue("configured")}
 		prior := plan
-		diags := document.Write(context.Background(), "site-1", &plan, &prior)
+		diags := document.Write(context.Background(), "site-1", &plan, &prior, "Creating")
 		if !diags.HasError() {
 			t.Fatal("expected OnWriteNotFound's diagnostics")
 		}
@@ -540,12 +540,12 @@ func TestSpecDocumentOnWriteNotFoundIsReportedAsItsDiagnostics(t *testing.T) {
 		}
 		plan := ssSectionModel{Extra: types.StringValue("configured")}
 		prior := ssSectionModel{}
-		diags := document.Write(context.Background(), "site-1", &plan, &prior)
+		diags := document.Write(context.Background(), "site-1", &plan, &prior, "Updating")
 		if !diags.HasError() {
 			t.Fatal("expected today's default diagnostic, not silence")
 		}
 		got := diags.Errors()
-		wantSummary := "Error Writing SS Probe Extra"
+		wantSummary := "Error Updating SS Probe Extra"
 		if len(got) != 1 || got[0].Summary() != wantSummary {
 			t.Errorf("diagnostics = %v, want a single %q summary (today's default)", diags, wantSummary)
 		}

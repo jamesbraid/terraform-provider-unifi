@@ -471,7 +471,7 @@ func TestIpsSuppressionIsWrittenOnlyWhenConfigured(t *testing.T) {
 		IPSMode: types.StringValue("disabled"),
 	}
 	prior := *plan
-	diags := document.Write(context.Background(), "default", plan, &prior)
+	diags := document.Write(context.Background(), "default", plan, &prior, "Creating")
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -482,7 +482,7 @@ func TestIpsSuppressionIsWrittenOnlyWhenConfigured(t *testing.T) {
 // lack the ips_suppression endpoint answers the write with a NotFoundError
 // (UpdateSetting's own len(data)!=1 rule), which must surface as the
 // deleted writeIpsSuppression's exact diagnostic, not the generic "Error
-// Writing IPS Suppression Setting".
+// Creating IPS Suppression Setting".
 func TestIpsSuppressionNotFoundIsTheControllerTooOldDiagnostic(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -518,7 +518,7 @@ func TestIpsSuppressionNotFoundIsTheControllerTooOldDiagnostic(t *testing.T) {
 	}
 	plan := &settingIpsModel{SuppressionWhitelist: whitelist}
 	prior := *plan
-	diags = document.Write(context.Background(), "default", plan, &prior)
+	diags = document.Write(context.Background(), "default", plan, &prior, "Creating")
 	if !diags.HasError() {
 		t.Fatal("expected the controller-too-old diagnostic")
 	}

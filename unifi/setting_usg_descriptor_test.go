@@ -331,7 +331,7 @@ func TestUsgGeoIsWrittenOnlyWhenConfigured(t *testing.T) {
 		FtpModule: types.BoolValue(true),
 	}
 	prior := *plan
-	diags := document.Write(context.Background(), "default", plan, &prior)
+	diags := document.Write(context.Background(), "default", plan, &prior, "Creating")
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -341,7 +341,7 @@ func TestUsgGeoIsWrittenOnlyWhenConfigured(t *testing.T) {
 // OnWriteNotFound: a controller old enough to lack the usg_geo endpoint
 // answers the write with a NotFoundError (UpdateSetting's own
 // len(data)!=1 rule), which must surface as the deleted writeUsgGeo's exact
-// diagnostic, not the generic "Error Writing USG Geo Setting".
+// diagnostic, not the generic "Error Creating USG Geo Setting".
 func TestUsgGeoNotFoundIsTheControllerTooOldDiagnostic(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -371,7 +371,7 @@ func TestUsgGeoNotFoundIsTheControllerTooOldDiagnostic(t *testing.T) {
 	document := usgGeoKitDocument(api)
 	plan := &settingUSGModel{GeoIPFilteringEnabled: types.BoolValue(true)}
 	prior := *plan
-	diags := document.Write(context.Background(), "default", plan, &prior)
+	diags := document.Write(context.Background(), "default", plan, &prior, "Creating")
 	if !diags.HasError() {
 		t.Fatal("expected the controller-too-old diagnostic")
 	}
@@ -431,7 +431,7 @@ func TestUsgGeoBackendPreservesUnmanagedSubFieldsOnAPartialWrite(t *testing.T) {
 	// Only countries is managed here.
 	plan := &settingUSGModel{GeoIPFilteringCountries: types.StringValue("NZ,AU")}
 	prior := *plan
-	if diags := document.Write(context.Background(), "default", plan, &prior); diags.HasError() {
+	if diags := document.Write(context.Background(), "default", plan, &prior, "Creating"); diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
 

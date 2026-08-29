@@ -50,7 +50,7 @@ func syslogValidateConfigFor(
 // TestSettingValidateConfigSyslogRequiresAnAddressWhenEnabled pins the plan-time
 // rule ValidateConfig enforces (setting_syslog_validate.go): the controller
 // rejects syslog.enabled = true with no syslog.ip (api.err.Invalid,
-// measured on 10.4.57 by Task 1), so this catches it before apply.
+// measured on 10.6.101), so this catches it before apply.
 func TestSettingValidateConfigSyslogRequiresAnAddressWhenEnabled(t *testing.T) {
 	ctx := context.Background()
 	r := &settingResource{}

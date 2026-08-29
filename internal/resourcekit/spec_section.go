@@ -19,9 +19,11 @@ type Document[SM any] interface {
 	// plan set; an empty mask is a no-op, not an error (the document is
 	// unconfigured). prior accumulates the fields this document's own
 	// response covers -- the same model Extra shares with the primary and
-	// with each other, since they map disjoint fields of it. A write-time
-	// not-found is reported through OnWriteNotFound (see SpecDocument).
-	Write(ctx context.Context, site string, plan *SM, prior *SM) diag.Diagnostics
+	// with each other, since they map disjoint fields of it. verb
+	// ("Creating"/"Updating") only reaches diagnostic text, the same
+	// contract as Section[M].Write's own verb. A write-time not-found is
+	// reported through OnWriteNotFound (see SpecDocument).
+	Write(ctx context.Context, site string, plan *SM, prior *SM, verb string) diag.Diagnostics
 	// Read decodes this document's fields into model, leaving every other
 	// field untouched. A read-time not-found is reported through
 	// OnReadNotFound (see SpecDocument).
@@ -45,7 +47,7 @@ type SpecDocument[SM any, S any] struct {
 	// "leave the model's fields as they are, no diagnostic".
 	OnReadNotFound func(err error) diag.Diagnostics
 	// OnWriteNotFound turns a Write's not-found into diagnostics; nil means
-	// today's behaviour -- the same "Error Writing <Subject>" diagnostic any
+	// today's behaviour -- the same "Error <verb> <Subject>" diagnostic any
 	// other write failure produces (usg_geo's own "Geo IP Filtering Not
 	// Supported By This Controller" is what a document sets this to
 	// instead).
@@ -98,8 +100,8 @@ func specDocumentWrite[SM any, S any](
 	return updated, diags
 }
 
-func (d SpecDocument[SM, S]) Write(ctx context.Context, site string, plan, prior *SM) diag.Diagnostics {
-	_, diags := specDocumentWrite(ctx, d.Spec, site, "Error Writing "+d.Spec.Subject, plan, prior, d.OnWriteNotFound)
+func (d SpecDocument[SM, S]) Write(ctx context.Context, site string, plan, prior *SM, verb string) diag.Diagnostics {
+	_, diags := specDocumentWrite(ctx, d.Spec, site, "Error "+verb+" "+d.Spec.Subject, plan, prior, d.OnWriteNotFound)
 	if diags.HasError() {
 		return diags
 	}
@@ -282,7 +284,7 @@ func (s SpecSection[M, SM, S]) Write(
 	// re-hydrated with the controller's value if AfterReceive had already
 	// nulled it before the Extra ran.
 	for _, extra := range s.Extra {
-		diags.Append(extra.Write(ctx, site, &planModel, &fresh)...)
+		diags.Append(extra.Write(ctx, site, &planModel, &fresh, verb)...)
 		if diags.HasError() {
 			return diags
 		}

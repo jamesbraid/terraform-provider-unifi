@@ -1,10 +1,9 @@
 package unifi
 
 // ValidateConfig enforces syslog's one plan-time rule: enabled=true with no
-// ip. Measured on 10.4.57 (Task 1): the controller rejects that combination
-// with api.err.Invalid at apply time, so this catches it at plan time
-// instead, the same idiom wan_resource.go's own ValidateConfig uses for its
-// stopgap.
+// ip. Measured on 10.6.101: the controller rejects that combination with
+// api.err.Invalid at apply time, so this catches it at plan time instead,
+// the same idiom wan_resource.go's own ValidateConfig uses for its stopgap.
 
 import (
 	"context"
