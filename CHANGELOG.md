@@ -58,7 +58,10 @@ All notable changes to this project will be documented in this file.
 - **`unifi_vpn_server.dns.servers` addresses all four of the controller's
   DHCP DNS slots.** Only the first two were wired before. A third or
   fourth configured server now reaches the controller instead of being
-  silently dropped.
+  silently dropped. Upgrading: the first refresh after this release reads
+  the two slots the previous provider never addressed. If a configuration
+  lists fewer servers than the controller currently holds in those slots,
+  the next plan shows their removal, and the following apply clears them.
 
 ### 🐛 Bug Fixes
 
@@ -81,7 +84,18 @@ All notable changes to this project will be documented in this file.
   kit's `BeforeSend` hook now sees the state a resource held before this
   apply, compares it against the new list, and clears exactly the slots
   the new list no longer covers, in the same masked write the apply
-  already sends.
+  already sends. Omitting `dns.servers`/`dns_servers` from the
+  configuration entirely still leaves the controller's existing servers
+  alone — only an explicit list, including an empty one, is authoritative.
+- **`unifi_vpn_server.dns.servers` set to an empty list no longer
+  re-plans on every subsequent run.** Clearing every configured server
+  cleared them on the controller correctly, but the read decoded four
+  empty slots as a null value. `dns.servers` is Optional, not Computed,
+  so state disagreeing with a configuration that explicitly says `[]`
+  showed a diff on every later plan with no way to reach a clean apply.
+  A read now returns an empty list instead of null whenever the prior
+  configuration named `servers` at all, reserving null for a `dns` block
+  that was never part of the configuration.
 - **`unifi_site_to_site_vpn`: `remote_subnets = []` with
   `dynamic_routing = true` now applies end to end.** v0.107.0 lifted the
   plan-time restriction on this combination, but the apply still failed
@@ -146,20 +160,21 @@ All notable changes to this project will be documented in this file.
   v1.108.0). The bump carries the `DHCPDDNS1..4` slot-clear behind the
   `dns.servers` fixes above (`Network`'s four DHCP DNS fields move to
   `*string`, where `nil` preserves and a pointer to `""` clears), a keyed
-  overlay for per-port device overrides not yet consumed by this
-  provider, the firewall-policy vocabulary widening and the validator-slot
-  fix behind the revalidation above, the site-to-site empty-subnet-list
-  encoder change above, and a purpose-shape wire baseline that closes the
-  `apidiff` blind spot the site-to-site fix ran into, for hand-written
-  wire encoders going forward. `FirewallPolicyProtocolValues`, the flat
-  value-list mirror of the old four-value protocol set, is removed from
-  the SDK entirely — the provider had zero references to it, so nothing
-  else needed to change. Also carried in this bump: the resource kit's
-  `BeforeSend` hook now receives the model a resource held before the
-  current apply, as a parameter, the same way `AfterReceive` already
-  receives it. A hook can now compare the new plan against what was
-  actually applied last, not just see the new plan in isolation — the
-  DNS-clearing fix above is the first hook to use it.
+  overlay for per-port device overrides (`UpdateDevicePortOverrides`, not
+  yet used by this provider), the firewall-policy vocabulary widening and
+  the validator-slot fix behind the revalidation above, the site-to-site
+  empty-subnet-list encoder change above, and a purpose-shape wire
+  baseline that closes the `apidiff` blind spot the site-to-site fix ran
+  into, for hand-written wire encoders going forward.
+  `FirewallPolicyProtocolValues`, the flat value-list mirror of the old
+  four-value protocol set, is removed from the SDK entirely — the
+  provider had zero references to it, so nothing else needed to change.
+  Also carried in this bump: the resource kit's `BeforeSend` hook now
+  receives the model a resource held before the current apply, as a
+  parameter, the same way `AfterReceive` already receives it. A hook can
+  now compare the new plan against what was actually applied last, not
+  just see the new plan in isolation — the DNS-clearing fix above is the
+  first hook to use it.
 
 ## [v0.107.0] - 2026-08-28
 
