@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.igmp_snooping",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "network_ids",
+      "terraform_name": "network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

@@ -139,12 +139,7 @@ var settingKitSectionTable = []settingKitSectionEntry{
 		write:      (*settingResource).writeUSGSection,
 		read:       (*settingResource).readUSGSection,
 	}},
-	{Legacy: legacySection{
-		name:       "igmp_snooping",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.IgmpSnooping) },
-		write:      (*settingResource).writeIgmpSnoopingSection,
-		read:       (*settingResource).readIgmpSnoopingSection,
-	}},
+	{Kit: igmpSnoopingKitSection},
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -512,59 +507,5 @@ func (r *settingResource) readUSGSection(
 	return diags
 }
 
-// -- igmp_snooping --
-
-func (r *settingResource) writeIgmpSnoopingSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var igmp settingIgmpSnoopingModel
-	diags.Append(plan.IgmpSnooping.As(ctx, &igmp, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	_, currentIgmp, err := ui.GetSetting[*settings.IgmpSnooping](r.client.ApiClient, ctx, site)
-	if err != nil {
-		var notFound *ui.NotFoundError
-		if !errors.As(err, &notFound) {
-			diags.AddError("Error Reading IGMP Snooping Setting", err.Error())
-			return diags
-		}
-		currentIgmp = &settings.IgmpSnooping{}
-	}
-
-	setting := r.igmpSnoopingModelToSetting(ctx, &igmp, currentIgmp, &diags)
-	if diags.HasError() {
-		return diags
-	}
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" IGMP Snooping Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readIgmpSnoopingSection reads the site-level IGMP snooping setting.
-func (r *settingResource) readIgmpSnoopingSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.IgmpSnooping) {
-		out.IgmpSnooping = types.ObjectNull(igmpSnoopingAttrTypes)
-		return diags
-	}
-	_, igmpSetting, err := ui.GetSetting[*settings.IgmpSnooping](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading IGMP Snooping Setting", err.Error())
-		return diags
-	}
-	igmpModel := r.igmpSnoopingSettingToModel(ctx, igmpSetting, &diags)
-	objValue, d := types.ObjectValueFrom(ctx, igmpSnoopingAttrTypes, igmpModel)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.IgmpSnooping = objValue
-	return diags
-}
+// igmp_snooping moved onto resourcekit.SpecSection -- see
+// setting_igmp_snooping_descriptor.go.

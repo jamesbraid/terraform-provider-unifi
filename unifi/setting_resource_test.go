@@ -1687,92 +1687,13 @@ func Test_settingResource_usgSettingToModel(t *testing.T) {
 	})
 }
 
-func Test_settingResource_igmpSnoopingModelToSetting(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("enabled overlaid onto base", func(t *testing.T) {
-		base := &settings.IgmpSnooping{Enabled: false, QuerierMode: "AUTO"}
-		model := &settingIgmpSnoopingModel{
-			Enabled:    types.BoolValue(true),
-			NetworkIDs: types.ListNull(types.StringType),
-		}
-		var diags diag.Diagnostics
-		got := r.igmpSnoopingModelToSetting(ctx, model, base, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if !got.Enabled {
-			t.Error("Enabled should be true")
-		}
-		// Advanced fields on base must be preserved.
-		if got.QuerierMode != "AUTO" {
-			t.Errorf("QuerierMode = %q, want AUTO", got.QuerierMode)
-		}
-	})
-
-	t.Run("network_ids overlaid onto base", func(t *testing.T) {
-		base := &settings.IgmpSnooping{NetworkIDs: []string{"old-net"}}
-		nids, d := types.ListValueFrom(ctx, types.StringType, []string{"net-1", "net-2"})
-		if d.HasError() {
-			t.Fatalf("building list: %v", d)
-		}
-		model := &settingIgmpSnoopingModel{
-			Enabled:    types.BoolNull(),
-			NetworkIDs: nids,
-		}
-		var diags diag.Diagnostics
-		got := r.igmpSnoopingModelToSetting(ctx, model, base, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if len(got.NetworkIDs) != 2 || got.NetworkIDs[0] != "net-1" {
-			t.Errorf("NetworkIDs = %v, want [net-1 net-2]", got.NetworkIDs)
-		}
-	})
-}
-
-func Test_settingResource_igmpSnoopingSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("basic fields mapped", func(t *testing.T) {
-		setting := &settings.IgmpSnooping{
-			Enabled:    true,
-			NetworkIDs: []string{"net-a", "net-b"},
-		}
-		var diags diag.Diagnostics
-		got := r.igmpSnoopingSettingToModel(ctx, setting, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.Enabled.ValueBool() {
-			t.Error("Enabled should be true")
-		}
-		var ids []string
-		if d := got.NetworkIDs.ElementsAs(ctx, &ids, false); d.HasError() {
-			t.Fatalf("reading network_ids: %v", d)
-		}
-		if len(ids) != 2 {
-			t.Errorf("NetworkIDs len = %d, want 2", len(ids))
-		}
-	})
-
-	t.Run("empty network ids", func(t *testing.T) {
-		setting := &settings.IgmpSnooping{Enabled: false, NetworkIDs: nil}
-		var diags diag.Diagnostics
-		got := r.igmpSnoopingSettingToModel(ctx, setting, &diags)
-		if diags.HasError() {
-			t.Fatalf("unexpected diags: %v", diags)
-		}
-		if got.Enabled.ValueBool() {
-			t.Error("Enabled should be false")
-		}
-	})
-}
+// Test_settingResource_igmpSnoopingModelToSetting and
+// Test_settingResource_igmpSnoopingSettingToModel (deleted along with the
+// mappers they exercised) moved to
+// setting_igmp_snooping_descriptor_test.go's TestIgmpSnoopingSettingRoundTrip
+// and TestIgmpSnoopingSpecReadsEmptyNetworkIDs. The "overlaid onto base"/
+// "advanced fields preserved" assertions did not port: see that file's own
+// comment for what replaces them.
 
 func Test_settingResource_dohModelToSetting(t *testing.T) {
 	r := &settingResource{}
@@ -1898,63 +1819,14 @@ func Test_settingResource_ipsSettingToModel(t *testing.T) {
 	})
 }
 
-// TestIgmpSnoopingModelMerge checks that the model->setting conversion
-// overlays enabled + network_ids (the only two the site-level setting
-// exposes) onto the current remote setting, so advanced querier/flood
-// fields configured in the UI are preserved across an update.
-func TestIgmpSnoopingModelMerge(t *testing.T) {
-	ctx := context.Background()
-	r := &settingResource{}
-	var diags diag.Diagnostics
-
-	// Current remote setting with advanced fields that must survive.
-	base := &settings.IgmpSnooping{
-		Enabled:             false,
-		QuerierMode:         "CUSTOM",
-		QuerierSwitches:     []string{"aa:bb:cc:dd:ee:ff"},
-		FloodKnownProtocols: true,
-	}
-	nids, d := types.ListValueFrom(ctx, types.StringType, []string{"net-1", "net-2"})
-	if d.HasError() {
-		t.Fatalf("building network_ids: %v", d)
-	}
-	model := &settingIgmpSnoopingModel{
-		Enabled:    types.BoolValue(true),
-		NetworkIDs: nids,
-	}
-
-	out := r.igmpSnoopingModelToSetting(ctx, model, base, &diags)
-	if diags.HasError() {
-		t.Fatalf("igmpSnoopingModelToSetting: %v", diags)
-	}
-	if !out.Enabled {
-		t.Error("Enabled not applied from model")
-	}
-	if len(out.NetworkIDs) != 2 || out.NetworkIDs[0] != "net-1" {
-		t.Errorf("NetworkIDs = %v, want [net-1 net-2]", out.NetworkIDs)
-	}
-	// Advanced fields must be preserved from base (not dropped).
-	if out.QuerierMode != "CUSTOM" || len(out.QuerierSwitches) != 1 || !out.FloodKnownProtocols {
-		t.Errorf("advanced fields not preserved: querier_mode=%q querier_switches=%v flood=%v",
-			out.QuerierMode, out.QuerierSwitches, out.FloodKnownProtocols)
-	}
-
-	// Read-back conversion.
-	m := r.igmpSnoopingSettingToModel(ctx, out, &diags)
-	if diags.HasError() {
-		t.Fatalf("igmpSnoopingSettingToModel: %v", diags)
-	}
-	if !m.Enabled.ValueBool() {
-		t.Error("model Enabled = false, want true")
-	}
-	var ids []string
-	if d := m.NetworkIDs.ElementsAs(ctx, &ids, false); d.HasError() {
-		t.Fatalf("reading model network_ids: %v", d)
-	}
-	if len(ids) != 2 {
-		t.Errorf("model network_ids = %v, want 2", ids)
-	}
-}
+// TestIgmpSnoopingModelMerge (deleted along with igmpSnoopingModelToSetting/
+// igmpSnoopingSettingToModel) pinned the Go-level read-modify-write that
+// preserved advanced querier/flood fields across an update. That merge is
+// retired, not ported: setting_igmp_snooping_descriptor_test.go's
+// TestIgmpSnoopingSpecMasksOnlyEnabled and
+// TestIgmpSnoopingBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey pin its
+// replacement -- UpdateSettingFields' field mask, which needs no base read
+// at all to leave the other thirteen fields untouched.
 
 // TestAutoSpeedtestSettingRoundTrip moved to
 // setting_auto_speedtest_descriptor_test.go: it now drives

@@ -186,12 +186,8 @@ type settingResourceModel struct {
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
-// settingIgmpSnoopingModel is the nested igmp_snooping block: on UniFi 10.3.x the
-// effective toggle moved here from the per-network object (#164); advanced querier/flood fields are preserved via read-modify-write.
-type settingIgmpSnoopingModel struct {
-	Enabled    types.Bool `tfsdk:"enabled"`
-	NetworkIDs types.List `tfsdk:"network_ids"`
-}
+// settingIgmpSnoopingModel moved to setting_igmp_snooping_descriptor.go,
+// alongside the Spec that now owns it.
 
 // Shared attribute-type maps for the doh/ips nested objects, referenced from
 // both readSettings and the *SettingToModel helpers -- package level to avoid drift between the two.
@@ -261,10 +257,8 @@ var (
 			ElemType: types.ObjectType{AttrTypes: ipsAlertAttrTypes},
 		},
 	}
-	igmpSnoopingAttrTypes = map[string]attr.Type{
-		"enabled":     types.BoolType,
-		"network_ids": types.ListType{ElemType: types.StringType},
-	}
+	// igmpSnoopingAttrTypes moved to setting_igmp_snooping_descriptor.go,
+	// alongside settingIgmpSnoopingModel and the Spec that now owns it.
 )
 
 func (r *settingResource) Metadata(
@@ -924,43 +918,9 @@ func (r *settingResource) usgSettingToModel(
 	return model
 }
 
-// IGMP snooping conversion functions.
-
-// igmpSnoopingModelToSetting overlays the user-set fields (enabled, network_ids)
-// onto the current remote setting (base) so advanced querier/flood options are
-// preserved across updates.
-func (r *settingResource) igmpSnoopingModelToSetting(
-	ctx context.Context,
-	model *settingIgmpSnoopingModel,
-	base *settings.IgmpSnooping,
-	diags *diag.Diagnostics,
-) *settings.IgmpSnooping {
-	setting := base
-	if !model.Enabled.IsNull() && !model.Enabled.IsUnknown() {
-		setting.Enabled = model.Enabled.ValueBool()
-	}
-	if !model.NetworkIDs.IsNull() && !model.NetworkIDs.IsUnknown() {
-		var ids []string
-		diags.Append(model.NetworkIDs.ElementsAs(ctx, &ids, false)...)
-		setting.NetworkIDs = ids
-	}
-	return setting
-}
-
-func (r *settingResource) igmpSnoopingSettingToModel(
-	ctx context.Context,
-	setting *settings.IgmpSnooping,
-	diags *diag.Diagnostics,
-) *settingIgmpSnoopingModel {
-	model := &settingIgmpSnoopingModel{
-		Enabled: types.BoolValue(setting.Enabled),
-	}
-	ids, d := types.ListValueFrom(ctx, types.StringType, setting.NetworkIDs)
-	diags.Append(d...)
-	model.NetworkIDs = ids
-	return model
-}
-
+// igmpSnoopingModelToSetting/igmpSnoopingSettingToModel moved onto
+// resourcekit.SpecSection -- see setting_igmp_snooping_descriptor.go.
+//
 // autoSpeedtestModelToSetting/autoSpeedtestSettingToModel,
 // countryModelToSetting/countrySettingToModel,
 // dpiModelToSetting/dpiSettingToModel and
