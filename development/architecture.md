@@ -257,7 +257,7 @@ three hook points, all optional:
 
 ```go
 Prefetch     func(ctx context.Context, site string) (any, diag.Diagnostics)
-BeforeSend   func(ctx context.Context, config, effective *M, sdk *S, prefetched any) diag.Diagnostics
+BeforeSend   func(ctx context.Context, config, effective *M, prior M, sdk *S, prefetched any) diag.Diagnostics
 AfterReceive func(ctx context.Context, sdk *S, model *M, prior M, prefetched any) diag.Diagnostics
 ```
 
@@ -276,7 +276,13 @@ typed (e.g. rejecting `tagged_networkconf_ids` set together with
 `excluded_networkconf_ids`). `effective` is the model the SDK object was just
 built *from* — the plan on create, the state-with-plan-applied on update —
 used by a hook that *derives* a value and needs to see everything the object
-will carry, not only what changed.
+will carry, not only what changed. It also takes `prior`, the model as it
+stood before this apply merged the plan onto it — the zero value on create,
+since there is nothing to have held before — for a hook that needs to compare
+what changed rather than only see the new plan: `vpn_server` and `vpn_client`
+use it to find a DNS server the new list no longer covers and clear that slot
+on the controller in the same write, instead of leaving a dropped server in
+place.
 
 `AfterReceive` takes `prior`, the model as it stood before this read
 overwrote it (the plan on create, the state on read, the state-with-plan on
