@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -123,12 +121,7 @@ var settingKitSectionTable = []settingKitSectionEntry{
 	}},
 	{Kit: mgmtKitSection},
 	{Kit: radiusKitSection},
-	{Legacy: legacySection{
-		name:       "usg",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.USG) },
-		write:      (*settingResource).writeUSGSection,
-		read:       (*settingResource).readUSGSection,
-	}},
+	{Kit: usgKitSection},
 	{Kit: igmpSnoopingKitSection},
 }
 
@@ -242,135 +235,12 @@ func (r *settingResource) readIpsSection(
 	return diags
 }
 
-// mgmt and radius moved onto resourcekit.SpecSection -- see
-// setting_mgmt_descriptor.go / setting_radius_descriptor.go and
-// settingKitSectionTable, which names each back in at its own position.
-
-// -- usg --
-
-func (r *settingResource) writeUSGSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var usg settingUSGModel
-	diags.Append(plan.USG.As(ctx, &usg, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	_, currentUsg, err := ui.GetSetting[*settings.Usg](r.client.ApiClient, ctx, site)
-	if err != nil {
-		var notFound *ui.NotFoundError
-		if !errors.As(err, &notFound) {
-			diags.AddError("Error Reading USG Setting", err.Error())
-			return diags
-		}
-		currentUsg = &settings.Usg{}
-	}
-
-	setting := r.usgModelToSetting(ctx, &usg, currentUsg)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" USG Setting", err.Error())
-		return diags
-	}
-
-	r.writeUsgGeo(ctx, site, &usg, "Creating", &diags)
-	if diags.HasError() {
-		return diags
-	}
-	return diags
-}
-
-// readUSGSection reads the USG setting, plus its usg_geo document.
-func (r *settingResource) readUSGSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	usgAttrTypes := map[string]attr.Type{
-		"broadcast_ping": types.BoolType,
-		"dns_verification": types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"domain":               types.StringType,
-				"primary_dns_server":   types.StringType,
-				"secondary_dns_server": types.StringType,
-				"setting_preference":   types.StringType,
-			},
-		},
-		"ftp_module":                         types.BoolType,
-		"geo_ip_filtering_block":             types.StringType,
-		"geo_ip_filtering_countries":         types.StringType,
-		"geo_ip_filtering_enabled":           types.BoolType,
-		"geo_ip_filtering_traffic_direction": types.StringType,
-		"gre_module":                         types.BoolType,
-		"h323_module":                        types.BoolType,
-		"icmp_timeout":                       timetypes.GoDurationType{},
-		"mss_clamp":                          types.StringType,
-		"offload_accounting":                 types.BoolType,
-		"offload_l2_blocking":                types.BoolType,
-		"offload_sch":                        types.BoolType,
-		"other_timeout":                      timetypes.GoDurationType{},
-		"pptp_module":                        types.BoolType,
-		"receive_redirects":                  types.BoolType,
-		"send_redirects":                     types.BoolType,
-		"sip_module":                         types.BoolType,
-		"syn_cookies":                        types.BoolType,
-		"tcp_close_timeout":                  timetypes.GoDurationType{},
-		"tcp_close_wait_timeout":             timetypes.GoDurationType{},
-		"tcp_established_timeout":            timetypes.GoDurationType{},
-		"tcp_fin_wait_timeout":               timetypes.GoDurationType{},
-		"tcp_last_ack_timeout":               timetypes.GoDurationType{},
-		"tcp_syn_recv_timeout":               timetypes.GoDurationType{},
-		"tcp_syn_sent_timeout":               timetypes.GoDurationType{},
-		"tcp_time_wait_timeout":              timetypes.GoDurationType{},
-		"tftp_module":                        types.BoolType,
-		"timeout_setting_preference":         types.StringType,
-		"udp_other_timeout":                  timetypes.GoDurationType{},
-		"udp_stream_timeout":                 timetypes.GoDurationType{},
-		"unbind_wan_monitors":                types.BoolType,
-		"upnp_enabled":                       types.BoolType,
-		"upnp_nat_pmp_enabled":               types.BoolType,
-		"upnp_secure_mode":                   types.BoolType,
-		"upnp_wan_interface":                 types.StringType,
-	}
-
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.USG) {
-		out.USG = types.ObjectNull(usgAttrTypes)
-		return diags
-	}
-
-	var planUSG settingUSGModel
-	diags.Append(plan.USG.As(ctx, &planUSG, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-
-	_, usgSetting, err := ui.GetSetting[*settings.Usg](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading USG Setting", err.Error())
-		return diags
-	}
-
-	// Geo IP filtering lives in its own setting since UniFi Network 10.x; a site
-	// that never configured it has no object, which reads back as null rather than an error.
-	_, usgGeoSetting, err := ui.GetSetting[*settings.UsgGeo](r.client.ApiClient, ctx, site)
-	if err != nil {
-		var notFound *ui.NotFoundError
-		if !errors.As(err, &notFound) {
-			diags.AddError("Error Reading USG Geo Setting", err.Error())
-			return diags
-		}
-		usgGeoSetting = nil
-	}
-
-	usgModel := r.usgSettingToModel(ctx, usgSetting, usgGeoSetting, &planUSG)
-	objValue, d := types.ObjectValueFrom(ctx, usgAttrTypes, usgModel)
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.USG = objValue
-	return diags
-}
+// mgmt, radius and usg moved onto resourcekit.SpecSection -- see
+// setting_mgmt_descriptor.go / setting_radius_descriptor.go /
+// setting_usg_descriptor.go and settingKitSectionTable, which names each
+// back in at its own position. usg_geo (usg's own Extra) moved the same
+// way -- see setting_usg_descriptor.go's usgGeoKitSpec and
+// usgGeoKitBackend.
 
 // igmp_snooping moved onto resourcekit.SpecSection -- see
 // setting_igmp_snooping_descriptor.go.

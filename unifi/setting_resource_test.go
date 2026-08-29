@@ -1411,139 +1411,18 @@ func TestSettingNtpServersUseStateForUnknown(t *testing.T) {
 // secret plan-conditioned read is TestRadiusAfterReceiveKeepsThePlansSecretWhenNamed,
 // which ports the two radiusSettingToModel subtests exactly.
 
-// TestUsgGeoRoundTrip covers the geo IP filtering split: UniFi Network 10.x
-// moved these four attributes onto `usg_geo` and renamed
-// geo_ip_filtering_block to `action`, but the Terraform schema kept them on
-// `usg`, so nothing but this test checks the wire mapping.
-func TestUsgGeoRoundTrip(t *testing.T) {
-	ctx := context.Background()
-	r := &settingResource{}
+// TestUsgGeoRoundTrip, TestUsgGeoPreservesUnmanagedFields, TestUsgGeoAbsentSetting
+// and Test_settingResource_usgSettingToModel (deleted along with the mappers
+// they exercised) moved to setting_usg_descriptor_test.go:
+// TestUsgGeoRenamesBlockToActionOnTheWire and TestUsgGeoIsWrittenOnlyWhenConfigured
+// (the wire-rename and write-only-when-configured behaviours),
+// TestUsgGeoBackendPreservesUnmanagedSubFieldsOnAPartialWrite (the
+// read-modify-write merge), TestUsgGeoBackendReadTreatsAnAbsentDocumentAsZero
+// and TestUsgAfterReceiveNullsWhatThePlanDidNotName (the absent-usg_geo and
+// null-plan read-side behaviours).
 
-	model := &settingUSGModel{
-		GeoIPFilteringBlock:            types.StringValue("block"),
-		GeoIPFilteringCountries:        types.StringValue("NZ,AU"),
-		GeoIPFilteringEnabled:          types.BoolValue(true),
-		GeoIPFilteringTrafficDirection: types.StringValue("both"),
-	}
-
-	if !usgGeoConfigured(model) {
-		t.Fatal("geo attributes should be reported as configured")
-	}
-
-	setting := r.usgGeoModelToSetting(model, nil)
-	if setting == nil || setting.IPFiltering == nil {
-		t.Fatal("expected an allocated IPFiltering object")
-	}
-	if setting.IPFiltering.Action != "block" {
-		t.Errorf("Action = %q, want block", setting.IPFiltering.Action)
-	}
-	if setting.IPFiltering.Countries != "NZ,AU" {
-		t.Errorf("Countries = %q, want NZ,AU", setting.IPFiltering.Countries)
-	}
-	if !setting.IPFiltering.Enabled {
-		t.Error("Enabled should be true")
-	}
-	if setting.IPFiltering.TrafficDirection != "both" {
-		t.Errorf("TrafficDirection = %q, want both", setting.IPFiltering.TrafficDirection)
-	}
-
-	out := r.usgSettingToModel(ctx, &settings.Usg{}, setting, model)
-	if out.GeoIPFilteringBlock.ValueString() != "block" {
-		t.Errorf("read-back block = %q, want block", out.GeoIPFilteringBlock.ValueString())
-	}
-	if out.GeoIPFilteringCountries.ValueString() != "NZ,AU" {
-		t.Errorf("read-back countries = %q", out.GeoIPFilteringCountries.ValueString())
-	}
-	if !out.GeoIPFilteringEnabled.ValueBool() {
-		t.Error("read-back enabled should be true")
-	}
-	if out.GeoIPFilteringTrafficDirection.ValueString() != "both" {
-		t.Errorf("read-back direction = %q", out.GeoIPFilteringTrafficDirection.ValueString())
-	}
-}
-
-// usg_geo is written as a whole object and its `enabled` field has no
-// omitempty, so a blind full replace would silently disable filtering
-// configured in the controller UI.
-func TestUsgGeoPreservesUnmanagedFields(t *testing.T) {
-	r := &settingResource{}
-
-	current := &settings.UsgGeo{
-		IPFiltering: &settings.SettingUsgGeoIPFiltering{
-			Action:           "allow",
-			Countries:        "NZ",
-			Enabled:          true,
-			TrafficDirection: "ingress",
-		},
-	}
-
-	// Only the country list is managed here.
-	model := &settingUSGModel{
-		GeoIPFilteringBlock:            types.StringNull(),
-		GeoIPFilteringCountries:        types.StringValue("NZ,AU"),
-		GeoIPFilteringEnabled:          types.BoolNull(),
-		GeoIPFilteringTrafficDirection: types.StringNull(),
-	}
-
-	got := r.usgGeoModelToSetting(model, current)
-	if got.IPFiltering.Countries != "NZ,AU" {
-		t.Errorf("Countries = %q, want the managed value NZ,AU", got.IPFiltering.Countries)
-	}
-	if got.IPFiltering.Action != "allow" {
-		t.Errorf("Action = %q, want the stored value allow", got.IPFiltering.Action)
-	}
-	if !got.IPFiltering.Enabled {
-		t.Error("Enabled was reset; the stored value should survive")
-	}
-	if got.IPFiltering.TrafficDirection != "ingress" {
-		t.Errorf("TrafficDirection = %q, want the stored value ingress",
-			got.IPFiltering.TrafficDirection)
-	}
-}
-
-// TestUsgGeoAbsentSetting covers a controller that does not expose usg_geo:
-// the read path passes nil through, which must produce nulls rather than
-// panic on the IPFiltering pointer.
-func TestUsgGeoAbsentSetting(t *testing.T) {
-	ctx := context.Background()
-	r := &settingResource{}
-
-	t.Run("nothing configured", func(t *testing.T) {
-		model := &settingUSGModel{}
-		if usgGeoConfigured(model) {
-			t.Error("an unconfigured model must not trigger a usg_geo write")
-		}
-		out := r.usgSettingToModel(ctx, &settings.Usg{}, nil, model)
-		if !out.GeoIPFilteringEnabled.IsNull() || !out.GeoIPFilteringBlock.IsNull() {
-			t.Error("absent usg_geo should read back as null")
-		}
-	})
-
-	t.Run("configured but setting absent", func(t *testing.T) {
-		model := &settingUSGModel{
-			GeoIPFilteringEnabled: types.BoolValue(true),
-			GeoIPFilteringBlock:   types.StringValue("block"),
-		}
-		out := r.usgSettingToModel(ctx, &settings.Usg{}, nil, model)
-		if out.GeoIPFilteringEnabled.ValueBool() {
-			t.Error("absent usg_geo should read back as disabled, not the planned value")
-		}
-		if !out.GeoIPFilteringBlock.IsNull() {
-			t.Error("absent usg_geo should read back block as null")
-		}
-	})
-
-	t.Run("setting present but IPFiltering nil", func(t *testing.T) {
-		model := &settingUSGModel{GeoIPFilteringEnabled: types.BoolValue(true)}
-		out := r.usgSettingToModel(ctx, &settings.Usg{}, &settings.UsgGeo{}, model)
-		if out.GeoIPFilteringEnabled.ValueBool() {
-			t.Error("nil IPFiltering should read back as disabled")
-		}
-	})
-}
-
-// TestIpsSuppressionAbsentSetting mirrors TestUsgGeoAbsentSetting for the
-// ips_suppression split.
+// TestIpsSuppressionAbsentSetting mirrors usg_geo's own absent-document
+// behaviour (setting_usg_descriptor_test.go) for the ips_suppression split.
 func TestIpsSuppressionAbsentSetting(t *testing.T) {
 	ctx := context.Background()
 	r := &settingResource{}
@@ -1568,41 +1447,6 @@ func TestIpsSuppressionAbsentSetting(t *testing.T) {
 	if !out.SuppressionAlerts.IsNull() || !out.SuppressionWhitelist.IsNull() {
 		t.Error("absent ips_suppression should read back as null lists")
 	}
-}
-
-func Test_settingResource_usgSettingToModel(t *testing.T) {
-	r := &settingResource{}
-	ctx := context.Background()
-
-	t.Run("null plan fields produce null model fields", func(t *testing.T) {
-		setting := &settings.Usg{FtpModule: true, SipModule: true}
-		plan := &settingUSGModel{
-			FtpModule: types.BoolNull(),
-			SipModule: types.BoolNull(),
-		}
-		got := r.usgSettingToModel(ctx, setting, nil, plan)
-		if got == nil {
-			t.Fatal("expected non-nil result")
-		}
-		if !got.FtpModule.IsNull() {
-			t.Error("FtpModule should be null when plan is null")
-		}
-	})
-
-	t.Run("non-null plan fields reflect remote value", func(t *testing.T) {
-		setting := &settings.Usg{FtpModule: true, GreModule: false}
-		plan := &settingUSGModel{
-			FtpModule: types.BoolValue(false),
-			GreModule: types.BoolValue(true),
-		}
-		got := r.usgSettingToModel(ctx, setting, nil, plan)
-		if !got.FtpModule.ValueBool() {
-			t.Error("FtpModule should be true (remote value)")
-		}
-		if got.GreModule.ValueBool() {
-			t.Error("GreModule should be false (remote value)")
-		}
-	})
 }
 
 // Test_settingResource_igmpSnoopingModelToSetting and

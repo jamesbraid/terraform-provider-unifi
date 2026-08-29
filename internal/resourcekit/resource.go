@@ -103,6 +103,18 @@ type Spec[M any, S any] struct {
 	// hook-derived values; a practitioner-set field belongs in Fields.
 	AlwaysWire []string
 
+	// MappedElsewhere names wires this Spec's own mapping.json declares
+	// managed that a SIBLING document actually carries -- an Extra sharing
+	// this section's model, with its own Spec and its own SDK type (usg_geo's
+	// "action" while this Spec's own SDKType is Usg). It exists only so
+	// TestEveryDescriptorAgreesWithItsSources can treat them as accounted
+	// for without checking them against THIS Spec's SDK struct, which would
+	// be the wrong struct to ask; unlike AlwaysWire it never joins the wire
+	// mask and WireNameProblems does not validate it against this Spec's own
+	// SDK tags. The sibling's own Spec is what actually proves these wires
+	// round-trip -- this field only silences a false positive here.
+	MappedElsewhere []string
+
 	// ID, Site and Timeouts reach the three attributes every managed surface
 	// has and no policy declares as a field -- they are provider_owned in the
 	// mapping, which is why they are here rather than in Fields.
@@ -210,10 +222,23 @@ func (s Spec[M, S]) ToModel(ctx context.Context, sdk *S, model *M, site string) 
 
 // ApplyPlanToState moves the plan's set values onto the state, leaving the rest.
 func (s Spec[M, S]) ApplyPlanToState(plan, state *M) {
+	s.applyOwnFieldsToState(plan, state)
+	s.copyUncoveredPlanValues(plan, state)
+}
+
+// applyOwnFieldsToState runs CopyPlanToState for exactly this spec's own
+// Fields, with no catch-all for the rest of M. It is what SpecDocument.Write
+// uses instead of ApplyPlanToState: an Extra's Fields cover only a slice of
+// the section model it shares with the primary and any sibling Extras, so
+// copyUncoveredPlanValues' "no Field claims this" premise is false for
+// everything outside that slice -- applied from an Extra, it would treat the
+// primary's own attributes as uncovered and overwrite whatever the primary's
+// (possibly merge-aware, e.g. ObjectField's) CopyPlanToState just produced
+// with a wholesale plan copy, unknown members included.
+func (s Spec[M, S]) applyOwnFieldsToState(plan, state *M) {
 	for _, field := range s.Fields {
 		field.CopyPlanToState(plan, state)
 	}
-	s.copyUncoveredPlanValues(plan, state)
 }
 
 // copyUncoveredPlanValues moves every set plan value no Field claims -- needed

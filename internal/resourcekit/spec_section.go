@@ -104,8 +104,13 @@ func (d SpecDocument[SM, S]) Write(ctx context.Context, site string, plan, prior
 		return diags
 	}
 	// The response doesn't outrank the plan for a value the plan set -- the
-	// same rule the primary applies via Spec.ApplyPlanToState.
-	d.Spec.ApplyPlanToState(plan, prior)
+	// same rule the primary applies via Spec.ApplyPlanToState. Only this
+	// document's OWN fields, not the section-wide uncovered-value catch-up
+	// ApplyPlanToState also runs: an Extra's Fields are a slice of a model it
+	// shares with the primary (and any sibling Extras), so applying the
+	// catch-up here would treat the primary's own attributes as uncovered
+	// and overwrite them -- see applyOwnFieldsToState's own comment.
+	d.Spec.applyOwnFieldsToState(plan, prior)
 	return diags
 }
 

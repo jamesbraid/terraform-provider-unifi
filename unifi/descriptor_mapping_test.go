@@ -77,9 +77,15 @@ type descriptor struct {
 	// field can round-trip through it instead of through a Fields entry, which
 	// is how a write-only secret and a translated set are carried.
 	AlwaysWire map[string]bool
-	SDKType    string            // the Spec's second type argument, e.g. ClientGroup
-	ModelTags  map[string]string // model Go field -> tfsdk tag
-	Fields     []descriptorField
+	// MappedElsewhere is the Spec's list of wires a sibling document actually
+	// carries -- an Extra sharing this section's model, with its own Spec and
+	// its own SDK type (unifi_setting's usg and usg_geo share one mapping
+	// file). Accounted for without the per-wire SDK-member check below, which
+	// asks this descriptor's own SDKType and would be the wrong struct.
+	MappedElsewhere map[string]bool
+	SDKType         string            // the Spec's second type argument, e.g. ClientGroup
+	ModelTags       map[string]string // model Go field -> tfsdk tag
+	Fields          []descriptorField
 }
 
 // mappingField is one entry of a *.mapping.json.
@@ -161,17 +167,19 @@ func TestEveryDescriptorAgreesWithItsSources(t *testing.T) {
 			}
 			// A managed field can also be carried by AlwaysWire alone, with no
 			// Fields entry -- e.g. a write-only secret set by a BeforeSend
-			// hook, or a field derived from another.
+			// hook, or a field derived from another -- or by MappedElsewhere,
+			// when a sibling document (an Extra sharing this section) carries
+			// it under its own Spec instead.
 			for wire, want := range expected {
 				if _, ok := got[wire]; ok {
 					continue
 				}
-				if desc.AlwaysWire[wire] {
+				if desc.AlwaysWire[wire] || desc.MappedElsewhere[wire] {
 					continue
 				}
 				t.Errorf("%s.mapping.json declares %q managed (terraform name %q) and no "+
-					"descriptor field carries it, nor is it in AlwaysWire, so that attribute "+
-					"does not round-trip", name, wire, want.TerraformName)
+					"descriptor field carries it, nor is it in AlwaysWire or MappedElsewhere, "+
+					"so that attribute does not round-trip", name, wire, want.TerraformName)
 			}
 
 			for wire, f := range got {
@@ -384,7 +392,11 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 			if exprName(lit.Type) != "Spec" {
 				return true
 			}
-			desc := descriptor{ModelTags: map[string]string{}, AlwaysWire: map[string]bool{}}
+			desc := descriptor{
+				ModelTags:       map[string]string{},
+				AlwaysWire:      map[string]bool{},
+				MappedElsewhere: map[string]bool{},
+			}
 			if args, ok := lit.Type.(*ast.IndexListExpr); ok && len(args.Indices) == 2 {
 				desc.SDKType = resolveAlias(aliases, exprName(args.Indices[1]))
 				desc.ModelTags = modelTags[resolveAlias(aliases, exprName(args.Indices[0]))]
@@ -417,6 +429,21 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 						}
 						wire, _ := strconv.Unquote(bl.Value)
 						desc.AlwaysWire[wire] = true
+					}
+				case "MappedElsewhere":
+					lit, ok := kv.Value.(*ast.CompositeLit)
+					if !ok {
+						t.Fatalf("%s: MappedElsewhere is %T, not a composite literal", path, kv.Value)
+					}
+					for _, item := range lit.Elts {
+						bl, ok := item.(*ast.BasicLit)
+						if !ok {
+							t.Fatalf("%s: a MappedElsewhere entry is %T, not a string literal; "+
+								"skipping it would let a dropped field look accounted for",
+								path, item)
+						}
+						wire, _ := strconv.Unquote(bl.Value)
+						desc.MappedElsewhere[wire] = true
 					}
 				case "Fields":
 					slice, ok := kv.Value.(*ast.CompositeLit)
