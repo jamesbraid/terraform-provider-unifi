@@ -19,41 +19,50 @@ type Document[SM any] interface {
 	// plan set; an empty mask is a no-op, not an error (the document is
 	// unconfigured). prior accumulates the fields this document's own
 	// response covers -- the same model Extra shares with the primary and
-	// with each other, since they map disjoint fields of it. NotFound is
-	// reported through OnNotFound, the same as Read.
+	// with each other, since they map disjoint fields of it. A write-time
+	// not-found is reported through OnWriteNotFound (see SpecDocument).
 	Write(ctx context.Context, site string, plan *SM, prior *SM) diag.Diagnostics
 	// Read decodes this document's fields into model, leaving every other
-	// field untouched. NotFound is reported through OnNotFound.
+	// field untouched. A read-time not-found is reported through
+	// OnReadNotFound (see SpecDocument).
 	Read(ctx context.Context, site string, model *SM) diag.Diagnostics
 }
 
 // SpecDocument adapts a Spec[SM, S] + Backend[S] into a Document[SM]. It is
 // what an Extra is made of; the primary Spec on a SpecSection is one too.
+//
+// Read and Write not-found default to opposite things, because the two
+// mean different things by default: a read-time not-found is ordinarily
+// benign (the document simply doesn't exist yet on this controller --
+// usg_geo, ips_suppression on a site that never configured either), while
+// a write-time not-found means the plan's own write failed to land
+// anywhere, the same as any other write error. Hence two separate hooks
+// rather than one shared by both paths with a caller-side switch on which
+// path is calling.
 type SpecDocument[SM any, S any] struct {
 	Spec Spec[SM, S]
-	// OnNotFound turns the backend's not-found -- on either Write or Read --
-	// into diagnostics, carrying the error so a caller that needs its text
-	// can use it (usg_geo's own "Geo IP Filtering Not Supported By This
-	// Controller" comes from a masked write's not-found this way). nil means
-	// "leave the model's fields as they are, no diagnostic" -- the natural
-	// default for a document that may simply not exist yet on this
-	// controller (usg_geo, ips_suppression on a site that never configured
-	// either).
-	OnNotFound func(err error) diag.Diagnostics
+	// OnReadNotFound turns a Read's not-found into diagnostics; nil means
+	// "leave the model's fields as they are, no diagnostic".
+	OnReadNotFound func(err error) diag.Diagnostics
+	// OnWriteNotFound turns a Write's not-found into diagnostics; nil means
+	// today's behaviour -- the same "Error Writing <Subject>" diagnostic any
+	// other write failure produces (usg_geo's own "Geo IP Filtering Not
+	// Supported By This Controller" is what a document sets this to
+	// instead).
+	OnWriteNotFound func(err error) diag.Diagnostics
 }
 
 // specDocumentWrite is the mask/send/merge machinery a document's write
 // needs, shared by SpecDocument.Write and SpecSection.Write's own primary
 // step: build the SDK struct from plan, mask it down to what the plan
 // actually set, send it, and merge the response's fields onto model. The
-// returned *S is nil when the mask was empty, or when the send reported
-// not-found -- neither is an error, so the primary can tell "there is
-// nothing to hand my own AfterReceive hook" apart from a real failure.
-// UpdateFields' own not-found routes through onNotFound exactly as a
-// document's Read does; every other error keeps using errSummary, which is
-// how the primary -- passing a not-found handler that just reproduces
-// errSummary -- keeps today's unconditional "any error is an error"
-// behaviour.
+// returned *S is nil when the mask was empty, or when the send failed --
+// neither is treated as a reason to run the primary's own AfterReceive
+// hook. UpdateFields' own not-found routes through onNotFound only when
+// it's set; nil falls through to the same errSummary diagnostic every
+// other write error produces, which is both the primary's permanent
+// behaviour (it has no hook of its own) and an Extra's default until it
+// opts into something else.
 func specDocumentWrite[SM any, S any](
 	ctx context.Context, spec Spec[SM, S], site, errSummary string, plan, model *SM,
 	onNotFound func(error) diag.Diagnostics,
@@ -77,10 +86,8 @@ func specDocumentWrite[SM any, S any](
 	updated, err := spec.Backend.UpdateFields(ctx, site, sdk, fields...)
 	if err != nil {
 		var notFound *ui.NotFoundError
-		if errors.As(err, &notFound) {
-			if onNotFound != nil {
-				diags.Append(onNotFound(err)...)
-			}
+		if errors.As(err, &notFound) && onNotFound != nil {
+			diags.Append(onNotFound(err)...)
 			return nil, diags
 		}
 		diags.AddError(errSummary, err.Error())
@@ -92,7 +99,7 @@ func specDocumentWrite[SM any, S any](
 }
 
 func (d SpecDocument[SM, S]) Write(ctx context.Context, site string, plan, prior *SM) diag.Diagnostics {
-	_, diags := specDocumentWrite(ctx, d.Spec, site, "Error Writing "+d.Spec.Subject, plan, prior, d.OnNotFound)
+	_, diags := specDocumentWrite(ctx, d.Spec, site, "Error Writing "+d.Spec.Subject, plan, prior, d.OnWriteNotFound)
 	if diags.HasError() {
 		return diags
 	}
@@ -106,6 +113,11 @@ func (d SpecDocument[SM, S]) Write(ctx context.Context, site string, plan, prior
 // shared by SpecDocument.Read and SpecSection.Read's own primary step. The
 // returned *S is nil on any error, not-found included, since only a
 // successful fetch has one to hand the primary's own AfterReceive hook.
+// UpdateFields' not-found routes through onNotFound only when it's set;
+// nil means silence -- model is left exactly as ToModel would leave it
+// untouched, which is the right default for a document that may simply not
+// exist yet. The primary always supplies its own onNotFound to keep its
+// permanent "any error is an error" behaviour instead.
 func specDocumentRead[SM any, S any](
 	ctx context.Context, spec Spec[SM, S], site string, model *SM,
 	onNotFound func(error) diag.Diagnostics,
@@ -128,7 +140,7 @@ func specDocumentRead[SM any, S any](
 }
 
 func (d SpecDocument[SM, S]) Read(ctx context.Context, site string, model *SM) diag.Diagnostics {
-	_, diags := specDocumentRead(ctx, d.Spec, site, model, d.OnNotFound)
+	_, diags := specDocumentRead(ctx, d.Spec, site, model, d.OnReadNotFound)
 	return diags
 }
 
@@ -199,13 +211,14 @@ func (s SpecSection[M, SM, S]) runAfterReceive(
 	return s.AfterReceive(ctx, sdk, model, prior)
 }
 
-// primaryNotFoundText is the primary's own not-found handler for both Write
-// and Read: it reproduces the plain "any error is an error" diagnostic the
-// primary has always reported, so routing the primary through the same
-// specDocumentWrite/specDocumentRead machinery as an Extra changes nothing
-// about its own observable behaviour -- only an Extra opts into a quieter
-// (or differently worded) not-found by setting its own OnNotFound.
-func primaryNotFoundText(summary string) func(error) diag.Diagnostics {
+// primaryReadNotFoundText is the primary's own OnReadNotFound: it
+// reproduces the plain "Error Reading <Subject>" diagnostic the primary
+// has always reported on any error, so routing its Read through the same
+// specDocumentRead machinery an Extra uses does not turn a read-time
+// not-found silent -- the primary has no hook of its own to opt into that.
+// Write needs no equivalent: specDocumentWrite's own nil-onNotFound default
+// already reproduces the primary's write behaviour exactly.
+func primaryReadNotFoundText(summary string) func(error) diag.Diagnostics {
 	return func(err error) diag.Diagnostics {
 		var diags diag.Diagnostics
 		diags.AddError(summary, err.Error())
@@ -235,7 +248,9 @@ func (s SpecSection[M, SM, S]) Write(
 	// contributes the controller's.
 	fresh := planModel
 	errSummary := "Error " + verb + " " + s.Spec.Subject
-	updated, d := specDocumentWrite(ctx, s.Spec, site, errSummary, &planModel, &fresh, primaryNotFoundText(errSummary))
+	// No onNotFound: specDocumentWrite's own nil default already reproduces
+	// the primary's permanent "any error is an error" behaviour.
+	updated, d := specDocumentWrite(ctx, s.Spec, site, errSummary, &planModel, &fresh, nil)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -294,7 +309,7 @@ func (s SpecSection[M, SM, S]) Read(
 
 	var model SM
 	sdk, d := specDocumentRead(ctx, s.Spec, site, &model,
-		primaryNotFoundText("Error Reading "+s.Spec.Subject))
+		primaryReadNotFoundText("Error Reading "+s.Spec.Subject))
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
