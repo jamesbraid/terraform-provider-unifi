@@ -110,12 +110,7 @@ var settingKitSectionTable = []settingKitSectionEntry{
 	{Kit: autoSpeedtestKitSection},
 	{Kit: countryKitSection},
 	{Kit: dpiKitSection},
-	{Legacy: legacySection{
-		name:       "lcm",
-		configured: func(plan *settingResourceModel) bool { return settingSectionConfigured(plan.Lcm) },
-		write:      (*settingResource).writeLcmSection,
-		read:       (*settingResource).readLcmSection,
-	}},
+	{Kit: lcmKitSection},
 	{Kit: networkOptimizationKitSection},
 	{Kit: ntpKitSection},
 	{Legacy: legacySection{
@@ -176,52 +171,11 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 	return sections
 }
 
-// -- lcm --
-
-func (r *settingResource) writeLcmSection(
-	ctx context.Context, site string, plan, _ *settingResourceModel, verb string,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	var m settingLcmModel
-	diags.Append(plan.Lcm.As(ctx, &m, basetypes.ObjectAsOptions{})...)
-	if diags.HasError() {
-		return diags
-	}
-	setting := r.lcmModelToSetting(&m)
-	if err := r.client.UpdateSetting(ctx, site, setting); err != nil {
-		diags.AddError("Error "+verb+" LCM Setting", err.Error())
-		return diags
-	}
-	return diags
-}
-
-// readLcmSection reads the LCM setting.
-func (r *settingResource) readLcmSection(
-	ctx context.Context, site string, plan, out *settingResourceModel,
-) diag.Diagnostics {
-	var diags diag.Diagnostics
-	if !settingSectionConfigured(plan.Lcm) {
-		out.Lcm = types.ObjectNull(lcmAttrTypes)
-		return diags
-	}
-	_, s, err := ui.GetSetting[*settings.Lcm](r.client.ApiClient, ctx, site)
-	if err != nil {
-		diags.AddError("Error Reading LCM Setting", err.Error())
-		return diags
-	}
-	objValue, d := types.ObjectValueFrom(ctx, lcmAttrTypes, r.lcmSettingToModel(s))
-	diags.Append(d...)
-	if diags.HasError() {
-		return diags
-	}
-	out.Lcm = objValue
-	return diags
-}
-
-// auto_speedtest, country, dpi, network_optimization and ntp moved onto
+// auto_speedtest, country, dpi, lcm, network_optimization and ntp moved onto
 // resourcekit.SpecSection -- see setting_auto_speedtest_descriptor.go,
 // setting_country_descriptor.go, setting_dpi_descriptor.go,
-// setting_network_optimization_descriptor.go and setting_ntp_descriptor.go.
+// setting_lcm_descriptor.go, setting_network_optimization_descriptor.go and
+// setting_ntp_descriptor.go.
 
 // -- syslog --
 

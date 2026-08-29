@@ -1,0 +1,44 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.lcm",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "brightness",
+      "terraform_name": "brightness",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "idle_timeout",
+      "terraform_name": "idle_timeout",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "sync",
+      "terraform_name": "sync",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "touch_event",
+      "terraform_name": "touch_event",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

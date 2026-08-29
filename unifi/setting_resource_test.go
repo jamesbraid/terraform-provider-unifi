@@ -2047,16 +2047,6 @@ func TestSyslogOmitsUnsetPorts(t *testing.T) {
 	}
 }
 
-// TestLcmOmitsUnsetInts checks the same omit-not-zero pattern for the lcm block.
-func TestLcmOmitsUnsetInts(t *testing.T) {
-	r := &settingResource{}
-	setting := r.lcmModelToSetting(&settingLcmModel{
-		Enabled:     types.BoolValue(true),
-		Brightness:  types.Int64Null(),
-		IdleTimeout: types.Int64Unknown(),
-	})
-	if setting.Brightness != nil || setting.IDleTimeout != nil {
-		t.Errorf("unset lcm ints must be omitted: brightness=%v idle=%v",
-			setting.Brightness, setting.IDleTimeout)
-	}
-}
+// TestLcmOmitsUnsetInts moved to setting_lcm_descriptor_test.go's
+// TestLcmSpecOmitsAnUnsetBrightness: it now drives lcmKitSpec's own ToSDK
+// instead of the deleted lcmModelToSetting.

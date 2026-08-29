@@ -114,18 +114,11 @@ type settingDohCustomServerModel struct {
 	ServerName types.String `tfsdk:"server_name"`
 }
 
-// settingAutoSpeedtestModel, settingCountryModel, settingDpiModel and
-// settingNetworkOptimizationModel moved to their own *_descriptor.go files,
-// alongside the Specs that now own them: descriptor_mapping_test.go's
-// loadDescriptors reads a descriptor's model tags from the same file.
-
-type settingLcmModel struct {
-	Enabled     types.Bool  `tfsdk:"enabled"`
-	Brightness  types.Int64 `tfsdk:"brightness"`
-	IdleTimeout types.Int64 `tfsdk:"idle_timeout"`
-	Sync        types.Bool  `tfsdk:"sync"`
-	TouchEvent  types.Bool  `tfsdk:"touch_event"`
-}
+// settingAutoSpeedtestModel, settingCountryModel, settingDpiModel,
+// settingNetworkOptimizationModel and settingLcmModel moved to their own
+// *_descriptor.go files, alongside the Specs that now own them:
+// descriptor_mapping_test.go's loadDescriptors reads a descriptor's model
+// tags from the same file.
 
 // settingNtpModel moved to setting_ntp_descriptor.go, alongside the Spec
 // that now owns it.
@@ -225,13 +218,8 @@ var (
 	// alongside the models and Specs that now own them.
 	// mgmtSSHKeyAttrTypes and mgmtAttrTypes moved to
 	// setting_mgmt_descriptor.go, alongside sshKeyModel/settingMgmtModel.
-	lcmAttrTypes = map[string]attr.Type{
-		"enabled":      types.BoolType,
-		"brightness":   types.Int64Type,
-		"idle_timeout": types.Int64Type,
-		"sync":         types.BoolType,
-		"touch_event":  types.BoolType,
-	}
+	// lcmAttrTypes moved to setting_lcm_descriptor.go, alongside
+	// settingLcmModel and the Spec that now owns it.
 	// ntpAttrTypes moved to setting_ntp_descriptor.go, alongside
 	// settingNtpModel and the Spec that now owns it.
 	syslogAttrTypes = map[string]attr.Type{
@@ -1009,37 +997,11 @@ func (r *settingResource) igmpSnoopingSettingToModel(
 // setting_country_descriptor.go, setting_dpi_descriptor.go and
 // setting_network_optimization_descriptor.go.
 //
-// Simple 1:1 conversion functions: LCM and syslog.
-func (r *settingResource) lcmModelToSetting(m *settingLcmModel) *settings.Lcm {
-	setting := &settings.Lcm{
-		Enabled:    m.Enabled.ValueBool(),
-		Sync:       m.Sync.ValueBool(),
-		TouchEvent: m.TouchEvent.ValueBool(),
-	}
-	// Guard the optional ints: an unknown (unset Optional+Computed) value yields a
-	// 0 pointer, which the controller rejects as out of range (cf. #288/#303).
-	if !m.Brightness.IsNull() && !m.Brightness.IsUnknown() {
-		setting.Brightness = m.Brightness.ValueInt64Pointer()
-	}
-	if !m.IdleTimeout.IsNull() && !m.IdleTimeout.IsUnknown() {
-		setting.IDleTimeout = m.IdleTimeout.ValueInt64Pointer()
-	}
-	return setting
-}
-
-func (r *settingResource) lcmSettingToModel(s *settings.Lcm) settingLcmModel {
-	return settingLcmModel{
-		Enabled:     types.BoolValue(s.Enabled),
-		Brightness:  types.Int64PointerValue(s.Brightness),
-		IdleTimeout: types.Int64PointerValue(s.IDleTimeout),
-		Sync:        types.BoolValue(s.Sync),
-		TouchEvent:  types.BoolValue(s.TouchEvent),
-	}
-}
-
-// ntpModelToSetting/ntpSettingToModel moved onto resourcekit.SpecSection --
-// see setting_ntp_descriptor.go.
-
+// lcmModelToSetting/lcmSettingToModel and ntpModelToSetting/ntpSettingToModel
+// moved onto resourcekit.SpecSection -- see setting_lcm_descriptor.go and
+// setting_ntp_descriptor.go.
+//
+// Simple 1:1 conversion functions: syslog.
 func (r *settingResource) syslogModelToSetting(
 	ctx context.Context,
 	m *settingSyslogModel,
