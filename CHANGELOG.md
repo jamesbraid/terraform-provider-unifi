@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.107.0] - DRAFT, unreleased
+## [v0.107.0] - 2026-08-28
 
 ### ⚠️ Breaking Changes
 
