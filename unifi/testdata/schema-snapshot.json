@@ -6016,7 +6016,7 @@
           "type": "\"bool\"",
           "optional": true,
           "computed": true,
-          "description": "Enable express checkout for guest payment.",
+          "description": "Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.",
           "description_kind": "markdown"
         },
         "guest_access.expire": {

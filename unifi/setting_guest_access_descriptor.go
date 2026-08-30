@@ -25,19 +25,24 @@ package unifi
 // rather than a rewrite of this file's member list. See that policy file's
 // "guest_access" grouping.
 //
-// Two fields carry a fact worth flagging rather than assuming, both recorded
-// in the plan's "Known risks": ec_enabled is modelled on the claim that it
-// is the guest portal's TLS crypto-mode flag, a claim from prior work never
-// verified against controller documentation -- the SDK's own field carries
-// no comment. radiusprofile_id is a cross-resource reference into
-// unifi_radius_profile, unrelated to this resource's own "radius" section
-// despite the shared name; the provider does not check the ID exists,
-// matching every other cross-resource reference in this codebase. A third,
-// smaller one: redirect_https and redirect_to_https are two distinct SDK
-// fields with adjacent names and no controller documentation distinguishing
-// them: this file assumes the former governs the post-auth redirect target
-// and the latter forces the portal page itself to HTTPS, purely from the
-// field names, and echoes that same assumption in each one's description.
+// Three fields carry a fact worth flagging rather than assuming. The plan's
+// "Known risks" names a claim for ec_enabled inherited from an abandoned
+// prior design -- that it is the guest portal's TLS crypto-mode flag -- but
+// that is not what this file ships: the SDK's own field carries no
+// comment, and "express checkout" (below) is this task's own inference
+// from the field name and its position beside payment_enabled/gateway, not
+// a controller-documented fact either. Since the description states it as
+// settled where a practitioner would read and act on it, the description
+// itself hedges too, not just this comment. radiusprofile_id is a
+// cross-resource reference into unifi_radius_profile, unrelated to this
+// resource's own "radius" section despite the shared name; the provider
+// does not check the ID exists, matching every other cross-resource
+// reference in this codebase. A third, smaller one: redirect_https and
+// redirect_to_https are two distinct SDK fields with adjacent names and no
+// controller documentation distinguishing them: this file assumes the
+// former governs the post-auth redirect target and the latter forces the
+// portal page itself to HTTPS, purely from the field names, and echoes
+// that same assumption in each one's description.
 //
 // auth, expire, expire_unit, gateway, portal_hostname and radius_auth_type
 // carry a validator the compiler derives from the SDK's own constraint

@@ -430,8 +430,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"ec_enabled": schema.BoolAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Enable express checkout for guest payment.",
-						MarkdownDescription: "Enable express checkout for guest payment.",
+						Description:         "Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.",
+						MarkdownDescription: "Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.",
 					},
 					"expire": schema.StringAttribute{
 						Optional:            true,

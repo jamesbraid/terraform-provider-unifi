@@ -3652,7 +3652,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Enable express checkout for guest payment."
+            "description": "Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation."
           },
           "disposition": "managed",
           "structural_name": "ec_enabled",

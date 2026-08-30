@@ -259,7 +259,7 @@ Required:
 Optional:
 
 - `auth` (String) Guest portal authentication method: `none`, `hotspot`, or `custom`.
-- `ec_enabled` (Boolean) Enable express checkout for guest payment.
+- `ec_enabled` (Boolean) Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.
 - `expire` (String) Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.
 - `expire_number` (Number) Session length, combined with `expire_unit`, when `expire` is `custom`.
 - `expire_unit` (Number) Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.
