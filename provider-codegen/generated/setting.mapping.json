@@ -26,6 +26,20 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "Dashboard.layout_preference",
+      "terraform_name": "dashboard.layout_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Dashboard.widgets",
+      "terraform_name": "dashboard.widgets",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Doh.custom_servers",
       "terraform_name": "doh.custom_servers",
       "structural_type": "array<object>",

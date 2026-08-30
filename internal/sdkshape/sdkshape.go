@@ -47,6 +47,14 @@ type Package struct {
 	// which is a fact the SDK states; guessing it from the resource name is
 	// wrong for any resource whose name differs from its type.
 	operates map[string]string
+	// qualified is members' counterpart keyed "<package name>.<struct name>"
+	// instead of bare name, populated for every struct in every loaded
+	// package regardless of a same-named collision elsewhere. Load's own
+	// "path always wins" rule governs the bare members map alone, because
+	// that rule exists for callers with no way to say which package they
+	// mean; a caller that names the package gets the real answer instead of
+	// path's guess.
+	qualified map[string]map[string]Member
 }
 
 // Member is what a JSON member resolves to in the Go struct that carries it.
@@ -66,21 +74,25 @@ type Member struct {
 // their SDK type argument from go-unifi/unifi/settings, a subpackage of
 // path, and Members would otherwise never find it.
 //
-// path always wins a name collision; extra only fills in names path does not
-// already have. go-unifi's settings package and its root package both
-// declare Dashboard, Setting and FieldConstraint (three legacy types the
-// settings redesign renamed around, not shadowed) -- none of them is any
-// descriptor's SDK type argument today, and resolving path first keeps every
-// descriptor loaded before extra existed pointed at exactly what it always
-// resolved to.
+// path always wins a name collision on the bare-name lookup Members serves
+// by default; extra only fills in names path does not already have.
+// go-unifi's settings package and its root package both declare Dashboard,
+// Setting and FieldConstraint (three legacy types the settings redesign
+// renamed around, not shadowed). Dashboard became a descriptor's own SDK
+// type argument once unifi_setting grew a dashboard section; that
+// descriptor's own test resolves it unambiguously through the qualified
+// "settings.Dashboard" form Members also accepts -- see Members' own
+// comment -- rather than fighting path's bare-name precedence, which every
+// descriptor loaded before that one still depends on unchanged.
 func Load(path string, extra ...string) (*Package, error) {
 	resolved := &Package{
-		path:     path,
-		structs:  map[string]map[string]bool{},
-		members:  map[string]map[string]Member{},
-		fields:   map[string][]string{},
-		backing:  map[string]map[string]string{},
-		operates: map[string]string{},
+		path:      path,
+		structs:   map[string]map[string]bool{},
+		members:   map[string]map[string]Member{},
+		fields:    map[string][]string{},
+		backing:   map[string]map[string]string{},
+		operates:  map[string]string{},
+		qualified: map[string]map[string]Member{},
 	}
 	for _, p := range append([]string{path}, extra...) {
 		if err := resolved.merge(p); err != nil {
@@ -91,13 +103,17 @@ func Load(path string, extra ...string) (*Package, error) {
 }
 
 // merge imports one package and folds its exported structs into p. A struct
-// name already resolved from an earlier package is left alone -- see Load's
-// doc comment for why that, not an error, is the right call here.
+// name already resolved from an earlier package is left alone on the
+// bare-name maps -- see Load's doc comment for why that, not an error, is
+// the right call there -- but every struct is still recorded on the
+// package-qualified map regardless, since that lookup is unambiguous by
+// construction and has no "earlier package wins" question to answer.
 func (p *Package) merge(path string) error {
 	imported, err := importer.ForCompiler(token.NewFileSet(), "source", nil).Import(path)
 	if err != nil {
 		return fmt.Errorf("import %s: %w", path, err)
 	}
+	pkgName := imported.Name()
 	scope := imported.Scope()
 	for _, name := range scope.Names() {
 		named, ok := scope.Lookup(name).Type().(*types.Named)
@@ -105,9 +121,7 @@ func (p *Package) merge(path string) error {
 			continue
 		}
 		if structure, ok := named.Underlying().(*types.Struct); ok {
-			if _, exists := p.structs[name]; !exists {
-				p.record(name, structure)
-			}
+			p.record(pkgName, name, structure)
 		}
 		p.recordMethods(named)
 	}
@@ -163,7 +177,12 @@ func (p *Package) RootFor(methods []string) (string, bool) {
 	return "", false
 }
 
-func (p *Package) record(name string, structure *types.Struct) {
+// record resolves one struct's members, references and backing, then writes
+// them onto the bare-name maps only when no earlier-loaded package already
+// claimed the name (Load's "path always wins" rule), and onto the
+// qualified map unconditionally, keyed by pkgName so a caller who names the
+// package always gets that package's own shape.
+func (p *Package) record(pkgName, name string, structure *types.Struct) {
 	members := map[string]bool{}
 	resolved := map[string]Member{}
 	references := []string{}
@@ -185,10 +204,13 @@ func (p *Package) record(name string, structure *types.Struct) {
 			backing[member] = referenced
 		}
 	}
-	p.structs[name] = members
-	p.members[name] = resolved
-	p.fields[name] = references
-	p.backing[name] = backing
+	if _, exists := p.structs[name]; !exists {
+		p.structs[name] = members
+		p.members[name] = resolved
+		p.fields[name] = references
+		p.backing[name] = backing
+	}
+	p.qualified[pkgName+"."+name] = resolved
 }
 
 // Members returns each JSON member of a struct with the Go identifier and
@@ -198,7 +220,15 @@ func (p *Package) record(name string, structure *types.Struct) {
 // in Go. Matching text over source cannot supply it -- that is the failure this
 // package exists to avoid -- and neither can any naming convention, because the
 // SDK and the provider model spell the same field differently.
+//
+// root may be package-qualified ("settings.Dashboard"), which is checked
+// first and always resolves that exact package's shape; a bare name
+// ("Dashboard") falls back to Load's "path always wins" precedence, same as
+// before qualification existed.
 func (p *Package) Members(root string) (map[string]Member, bool) {
+	if resolved, ok := p.qualified[root]; ok {
+		return resolved, true
+	}
 	resolved, ok := p.members[root]
 	return resolved, ok
 }

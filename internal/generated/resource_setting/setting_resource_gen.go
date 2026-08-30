@@ -65,6 +65,49 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"dashboard": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"layout_preference": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Dashboard layout mode: `auto` or `manual`.",
+						MarkdownDescription: "Dashboard layout mode: `auto` or `manual`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "manual"),
+						},
+					},
+					"widgets": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"enabled": schema.BoolAttribute{
+									Required:            true,
+									Description:         "Whether this widget is shown on the dashboard.",
+									MarkdownDescription: "Whether this widget is shown on the dashboard.",
+								},
+								"name": schema.StringAttribute{
+									Required:            true,
+									Description:         "Which dashboard widget this override applies to.",
+									MarkdownDescription: "Which dashboard widget this override applies to.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("critical_traffic_prioritization", "cybersecure", "traffic_identification", "wifi_technology", "wifi_channels", "wifi_client_experience", "wifi_tx_retries", "most_active_apps_aps_clients", "most_active_apps_clients", "most_active_aps_clients", "most_active_apps_aps", "most_active_apps", "v2_most_active_aps", "v2_most_active_clients", "wifi_connectivity", "ap_radio_density", "wifi_channel_preset_configuration", "most_common_client_fingerprints", "wan_activity"),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Dashboard widget visibility overrides.",
+						MarkdownDescription: "Dashboard widget visibility overrides.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Dashboard layout and widget visibility settings.",
+				MarkdownDescription: "Dashboard layout and widget visibility settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"doh": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"custom_servers": schema.ListNestedAttribute{

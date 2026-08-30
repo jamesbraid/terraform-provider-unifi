@@ -1620,6 +1620,100 @@ resource "unifi_setting" "test" {
 `
 }
 
+func TestAccSettingResource_dashboard(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_dashboard(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.layout_preference",
+						"manual",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.widgets.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.widgets.0.name",
+						"cybersecure",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.widgets.0.enabled",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"dashboard.%",
+					"dashboard.layout_preference",
+					"dashboard.widgets.#",
+					"dashboard.widgets.0.%",
+					"dashboard.widgets.0.name",
+					"dashboard.widgets.0.enabled",
+				},
+			},
+			{
+				Config: testAccSettingConfig_dashboardUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.layout_preference",
+						"auto",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.widgets.0.enabled",
+						"false",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_dashboard() string {
+	return `
+resource "unifi_setting" "test" {
+  dashboard = {
+    layout_preference = "manual"
+    widgets = [
+      {
+        name    = "cybersecure"
+        enabled = true
+      },
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_dashboardUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  dashboard = {
+    layout_preference = "auto"
+    widgets = [
+      {
+        name    = "cybersecure"
+        enabled = false
+      },
+    ]
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

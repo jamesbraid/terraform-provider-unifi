@@ -47,6 +47,7 @@ var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[se
 	globalNatKitSection,
 	sslInspectionKitSection,
 	ipsecKitSection,
+	dashboardKitSection,
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -75,8 +76,9 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // ipsSuppressionKitBackend and setting_usg_descriptor.go's usgGeoKitSpec/
 // usgGeoKitBackend.
 //
-// locale, global_nat, ssl_inspection and ipsec moved the same way too, each
-// from the controller's own Locale/GlobalNat/SslInspection/Ipsec
-// definition -- see setting_locale_descriptor.go,
-// setting_global_nat_descriptor.go, setting_ssl_inspection_descriptor.go
-// and setting_ipsec_descriptor.go.
+// locale, global_nat, ssl_inspection, ipsec and dashboard moved the same
+// way too, each from the controller's own
+// Locale/GlobalNat/SslInspection/Ipsec/Dashboard definition -- see
+// setting_locale_descriptor.go, setting_global_nat_descriptor.go,
+// setting_ssl_inspection_descriptor.go, setting_ipsec_descriptor.go and
+// setting_dashboard_descriptor.go.

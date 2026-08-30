@@ -79,6 +79,7 @@ type settingResourceModel struct {
 	GlobalNat     types.Object   `tfsdk:"global_nat"`
 	SslInspection types.Object   `tfsdk:"ssl_inspection"`
 	Ipsec         types.Object   `tfsdk:"ipsec"`
+	Dashboard     types.Object   `tfsdk:"dashboard"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 

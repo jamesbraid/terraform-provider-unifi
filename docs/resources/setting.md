@@ -78,6 +78,7 @@ resource "unifi_setting" "radius_only" {
 
 - `auto_speedtest` (Attributes) Periodic automated internet speed test settings. (see [below for nested schema](#nestedatt--auto_speedtest))
 - `country` (Attributes) Regulatory country settings. (see [below for nested schema](#nestedatt--country))
+- `dashboard` (Attributes) Dashboard layout and widget visibility settings. (see [below for nested schema](#nestedatt--dashboard))
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
 - `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
@@ -115,6 +116,24 @@ Optional:
 Required:
 
 - `code` (Number) Regulatory country code (ISO 3166-1 numeric).
+
+
+<a id="nestedatt--dashboard"></a>
+### Nested Schema for `dashboard`
+
+Optional:
+
+- `layout_preference` (String) Dashboard layout mode: `auto` or `manual`.
+- `widgets` (Attributes List) Dashboard widget visibility overrides. (see [below for nested schema](#nestedatt--dashboard--widgets))
+
+<a id="nestedatt--dashboard--widgets"></a>
+### Nested Schema for `dashboard.widgets`
+
+Required:
+
+- `enabled` (Boolean) Whether this widget is shown on the dashboard.
+- `name` (String) Which dashboard widget this override applies to.
+
 
 
 <a id="nestedatt--doh"></a>

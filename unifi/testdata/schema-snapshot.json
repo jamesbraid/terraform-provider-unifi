@@ -5587,6 +5587,53 @@
           "description": "Regulatory country code (ISO 3166-1 numeric).",
           "description_kind": "markdown"
         },
+        "dashboard": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Dashboard layout and widget visibility settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "dashboard.layout_preference": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Dashboard layout mode: `auto` or `manual`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"manual\"]"
+          ]
+        },
+        "dashboard.widgets": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "computed": true,
+          "description": "Dashboard widget visibility overrides.",
+          "description_kind": "markdown"
+        },
+        "dashboard.widgets.enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "required": true,
+          "description": "Whether this widget is shown on the dashboard.",
+          "description_kind": "markdown"
+        },
+        "dashboard.widgets.name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "Which dashboard widget this override applies to.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"critical_traffic_prioritization\" \"cybersecure\" \"traffic_identification\" \"wifi_technology\" \"wifi_channels\" \"wifi_client_experience\" \"wifi_tx_retries\" \"most_active_apps_aps_clients\" \"most_active_apps_clients\" \"most_active_aps_clients\" \"most_active_apps_aps\" \"most_active_apps\" \"v2_most_active_aps\" \"v2_most_active_clients\" \"wifi_connectivity\" \"ap_radio_density\" \"wifi_channel_preset_configuration\" \"most_common_client_fingerprints\" \"wan_activity\"]"
+          ]
+        },
         "doh": {
           "kind": "attribute",
           "nesting_mode": "single",
