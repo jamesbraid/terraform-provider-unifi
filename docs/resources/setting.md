@@ -89,6 +89,7 @@ resource "unifi_setting" "radius_only" {
 - `ipsec` (Attributes) IPsec settings for site-to-site VPNs. (see [below for nested schema](#nestedatt--ipsec))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
 - `locale` (Attributes) Site locale settings. (see [below for nested schema](#nestedatt--locale))
+- `mdns` (Attributes) mDNS (multicast DNS / Bonjour) repeater settings. (see [below for nested schema](#nestedatt--mdns))
 - `mgmt` (Attributes) Management settings. (see [below for nested schema](#nestedatt--mgmt))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
@@ -311,6 +312,33 @@ Optional:
 Optional:
 
 - `timezone` (String) Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).
+
+
+<a id="nestedatt--mdns"></a>
+### Nested Schema for `mdns`
+
+Optional:
+
+- `custom_services` (Attributes List) Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`. (see [below for nested schema](#nestedatt--mdns--custom_services))
+- `mode` (String) mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).
+- `predefined_services` (Attributes List) Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`. (see [below for nested schema](#nestedatt--mdns--predefined_services))
+
+<a id="nestedatt--mdns--custom_services"></a>
+### Nested Schema for `mdns.custom_services`
+
+Required:
+
+- `address` (String) mDNS service type, e.g. `_myservice._tcp.local`.
+- `name` (String) Display name for this custom service.
+
+
+<a id="nestedatt--mdns--predefined_services"></a>
+### Nested Schema for `mdns.predefined_services`
+
+Required:
+
+- `code` (String) Code identifying a predefined mDNS service.
+
 
 
 <a id="nestedatt--mgmt"></a>

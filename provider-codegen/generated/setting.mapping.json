@@ -250,6 +250,27 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "Mdns.mode",
+      "terraform_name": "mdns.mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mdns.custom_services",
+      "terraform_name": "mdns.custom_services",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Mdns.predefined_services",
+      "terraform_name": "mdns.predefined_services",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Mgmt.advanced_feature_enabled",
       "terraform_name": "mgmt.advanced_feature_enabled",
       "structural_type": "bool",

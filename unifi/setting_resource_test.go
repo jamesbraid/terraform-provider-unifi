@@ -2062,6 +2062,127 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_mdns exercises mode = "custom" with both
+// custom_services and predefined_services populated, then an update that
+// switches mode to "auto" and clears both lists -- the shape a
+// mode-driven transition takes in HCL: the practitioner explicitly empties
+// the lists that stop being authoritative rather than leaving them set
+// under a mode that no longer consults them, since this section applies no
+// plan-time coupling between mode and the lists (see mdnsKitSpec's own
+// comment).
+func TestAccSettingResource_mdns(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_mdns(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.mode",
+						"custom",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.custom_services.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.custom_services.0.address",
+						"_myservice._tcp.local",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.custom_services.0.name",
+						"my service",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.predefined_services.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.predefined_services.0.code",
+						"printers",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"mdns.%",
+					"mdns.mode",
+					"mdns.custom_services.#",
+					"mdns.custom_services.0.%",
+					"mdns.custom_services.0.address",
+					"mdns.custom_services.0.name",
+					"mdns.predefined_services.#",
+					"mdns.predefined_services.0.%",
+					"mdns.predefined_services.0.code",
+				},
+			},
+			{
+				Config: testAccSettingConfig_mdnsUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.mode",
+						"auto",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.custom_services.#",
+						"0",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.predefined_services.#",
+						"0",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_mdns() string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode = "custom"
+    custom_services = [
+      {
+        address = "_myservice._tcp.local"
+        name    = "my service"
+      },
+    ]
+    predefined_services = [
+      {
+        code = "printers"
+      },
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_mdnsUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode                = "auto"
+    custom_services     = []
+    predefined_services = []
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

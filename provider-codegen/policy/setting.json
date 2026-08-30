@@ -193,7 +193,14 @@
     "TrafficFlow.attr_no_delete",
     "TrafficFlow.attr_no_edit",
     "TrafficFlow.key",
-    "TrafficFlow.site_id"
+    "TrafficFlow.site_id",
+    "Mdns._id",
+    "Mdns.attr_hidden",
+    "Mdns.attr_hidden_id",
+    "Mdns.attr_no_delete",
+    "Mdns.attr_no_edit",
+    "Mdns.key",
+    "Mdns.site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2523,6 +2530,103 @@
       ],
       "terraform_name": "traffic_flow",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "mDNS (multicast DNS / Bonjour) repeater settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"all\", \"auto\", \"custom\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "mode",
+          "structural_source": "Mdns",
+          "terraform_name": "mode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "mDNS service type, e.g. `_myservice._tcp.local`."
+              },
+              "disposition": "managed",
+              "structural_name": "address",
+              "terraform_name": "address"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Display name for this custom service."
+              },
+              "disposition": "managed",
+              "structural_name": "name",
+              "terraform_name": "name"
+            }
+          ],
+          "structural_name": "custom_services",
+          "structural_source": "Mdns",
+          "terraform_name": "custom_services",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Code identifying a predefined mDNS service."
+              },
+              "disposition": "managed",
+              "structural_name": "code",
+              "terraform_name": "code"
+            }
+          ],
+          "structural_name": "predefined_services",
+          "structural_source": "Mdns",
+          "terraform_name": "predefined_services",
+          "terraform_type": "list_nested"
+        }
+      ],
+      "terraform_name": "mdns",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -2587,6 +2691,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "0ed712c2fee40f4160961d31f6551d8f90dba5c2c8e4baef194f2ad67cc016fd",
+  "source_specification_sha256": "8e31c721034a832813824189acd8ba87487735ad38cfdb1c634b14265d85f002",
   "surface_kind": "managed_resource"
 }

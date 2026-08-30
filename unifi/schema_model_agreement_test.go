@@ -112,6 +112,8 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		"unifi_setting.ether_lighting.speed_overrides":   "settingEtherLightingNetworkOverrideModel settingEtherLightingSpeedOverrideModel",
 		"unifi_setting.ips.suppression_alerts.tracking":  "settingIpsTrackingModel settingIpsWhitelistModel",
 		"unifi_setting.ips.suppression_whitelist":        "settingIpsTrackingModel settingIpsWhitelistModel",
+		"unifi_setting.country":                          "settingCountryModel settingMdnsPredefinedServiceModel",
+		"unifi_setting.mdns.predefined_services":         "settingCountryModel settingMdnsPredefinedServiceModel",
 		"unifi_vpn_server.dns":                           "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"data.unifi_network.dhcp_guarding":               "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"data.unifi_network.dhcp_relay":                  "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",

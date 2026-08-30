@@ -618,6 +618,67 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"mdns": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"custom_services": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"address": schema.StringAttribute{
+									Required:            true,
+									Description:         "mDNS service type, e.g. `_myservice._tcp.local`.",
+									MarkdownDescription: "mDNS service type, e.g. `_myservice._tcp.local`.",
+									Validators: []validator.String{
+										stringvalidator.RegexMatches(regexp.MustCompile(`^_[a-zA-Z0-9._-]+\._(tcp|udp)(\.local)?$`), ""),
+									},
+								},
+								"name": schema.StringAttribute{
+									Required:            true,
+									Description:         "Display name for this custom service.",
+									MarkdownDescription: "Display name for this custom service.",
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+						MarkdownDescription: "Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+					},
+					"mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).",
+						MarkdownDescription: "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).",
+						Validators: []validator.String{
+							stringvalidator.OneOf("all", "auto", "custom"),
+						},
+					},
+					"predefined_services": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"code": schema.StringAttribute{
+									Required:            true,
+									Description:         "Code identifying a predefined mDNS service.",
+									MarkdownDescription: "Code identifying a predefined mDNS service.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("amazon_devices", "android_tv_remote", "apple_airDrop", "apple_airPlay", "apple_file_sharing", "apple_iChat", "apple_iTunes", "aqara", "bose", "dns_service_discovery", "ftp_servers", "google_chromecast", "homeKit", "matter_network", "philips_hue", "printers", "roku", "scanners", "shelly", "sonos", "spotify_connect", "ssh_servers", "time_capsule", "web_servers", "windows_file_sharing_samba"),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+						MarkdownDescription: "Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "mDNS (multicast DNS / Bonjour) repeater settings.",
+				MarkdownDescription: "mDNS (multicast DNS / Bonjour) repeater settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"mgmt": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"advanced_feature_enabled": schema.BoolAttribute{

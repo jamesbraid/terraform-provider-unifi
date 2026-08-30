@@ -6217,6 +6217,71 @@
           "description": "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).",
           "description_kind": "markdown"
         },
+        "mdns": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "mDNS (multicast DNS / Bonjour) repeater settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "mdns.custom_services": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "computed": true,
+          "description": "Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+          "description_kind": "markdown"
+        },
+        "mdns.custom_services.address": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "mDNS service type, e.g. `_myservice._tcp.local`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^_[a-zA-Z0-9._-]+\\._(tcp|udp)(\\.local)?$'"
+          ]
+        },
+        "mdns.custom_services.name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "Display name for this custom service.",
+          "description_kind": "markdown"
+        },
+        "mdns.mode": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"all\" \"auto\" \"custom\"]"
+          ]
+        },
+        "mdns.predefined_services": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "computed": true,
+          "description": "Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+          "description_kind": "markdown"
+        },
+        "mdns.predefined_services.code": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "Code identifying a predefined mDNS service.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"amazon_devices\" \"android_tv_remote\" \"apple_airDrop\" \"apple_airPlay\" \"apple_file_sharing\" \"apple_iChat\" \"apple_iTunes\" \"aqara\" \"bose\" \"dns_service_discovery\" \"ftp_servers\" \"google_chromecast\" \"homeKit\" \"matter_network\" \"philips_hue\" \"printers\" \"roku\" \"scanners\" \"shelly\" \"sonos\" \"spotify_connect\" \"ssh_servers\" \"time_capsule\" \"web_servers\" \"windows_file_sharing_samba\"]"
+          ]
+        },
         "mgmt": {
           "kind": "attribute",
           "nesting_mode": "single",
