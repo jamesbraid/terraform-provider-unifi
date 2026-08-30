@@ -89,6 +89,25 @@ func composeEnv() map[string]string {
 	return map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": effectiveControllerImage()}
 }
 
+// verifyControllerVersion fails the run when the version the controller
+// itself reports disagrees with unifi.UnifiVersion, the SDK pin
+// DefaultControllerImage derives the image tag from. The tag cannot drift
+// from the pin, but nothing before this checked that the image that actually
+// booted agrees with its own tag — a mismatch here means the published image
+// was built from the wrong controller release. Start logs what it asked for
+// (effectiveControllerImage) before it starts anything; this logs what it
+// got, once there is a logged-in client to ask.
+func verifyControllerVersion(logger Logger, reported string) error {
+	logger.Printf("UniFi controller version: %s", reported)
+	if reported != unifi.UnifiVersion {
+		return fmt.Errorf(
+			"controller reported version %q, the SDK is pinned to %q: the running image does not match its own tag",
+			reported, unifi.UnifiVersion,
+		)
+	}
+	return nil
+}
+
 // Start brings up the controller, waits for its API, then starts the device
 // fleet and publishes each device's MAC to the variable its tests read.
 //
@@ -149,6 +168,9 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 		return c, err
 	}
 	c.Client = client
+	if err := verifyControllerVersion(logger, client.Version()); err != nil {
+		return c, err
+	}
 
 	// Every device the suite drives comes from the herder, which owns device
 	// planning and device-container lifecycle only: the network, the
