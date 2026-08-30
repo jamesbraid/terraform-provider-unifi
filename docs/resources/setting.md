@@ -295,9 +295,9 @@ Optional:
 - `portal_customized_authentication_text` (String) Text displayed on the guest portal's authentication step.
 - `portal_customized_bg_color` (String) Background color of the guest portal page, as a hex color.
 - `portal_customized_bg_image_enabled` (Boolean) Use a background image for the guest portal page.
-- `portal_customized_bg_image_filename` (String) Filename of the guest portal's background image, previously uploaded to the controller.
+- `portal_customized_bg_image_filename` (String) Filename of the guest portal's background image. The controller accepts any string here and does not verify that a file by this name exists.
 - `portal_customized_bg_image_tile` (Boolean) Tile (repeat) the guest portal's background image instead of stretching it to fill the page.
-- `portal_customized_bg_type` (String) Guest portal background type: `color`, `image`, or a rotating `gallery`.
+- `portal_customized_bg_type` (String) Guest portal background type: `color`, `image`, or `gallery`.
 - `portal_customized_box_color` (String) Background color of the guest portal's content box, as a hex color.
 - `portal_customized_box_link_color` (String) Color of links inside the guest portal's content box, as a hex color.
 - `portal_customized_box_opacity` (Number) Opacity of the guest portal's content box, as a percentage (1-100).
@@ -309,7 +309,7 @@ Optional:
 - `portal_customized_languages` (List of String) Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).
 - `portal_customized_link_color` (String) Color of links on the guest portal page, as a hex color.
 - `portal_customized_logo_enabled` (Boolean) Display a logo on the guest portal page.
-- `portal_customized_logo_filename` (String) Filename of the guest portal's logo image, previously uploaded to the controller.
+- `portal_customized_logo_filename` (String) Filename of the guest portal's logo image. The controller accepts any string here and does not verify that a file by this name exists.
 - `portal_customized_logo_position` (String) Position of the guest portal's logo: `left`, `center`, or `right`.
 - `portal_customized_logo_size` (Number) Size of the guest portal's logo, in pixels (64-192).
 - `portal_customized_success_text` (String) Text displayed on the guest portal after a successful login.

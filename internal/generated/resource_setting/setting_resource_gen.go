@@ -674,8 +674,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"portal_customized_bg_image_filename": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Filename of the guest portal's background image, previously uploaded to the controller.",
-						MarkdownDescription: "Filename of the guest portal's background image, previously uploaded to the controller.",
+						Description:         "Filename of the guest portal's background image. The controller accepts any string here and does not verify that a file by this name exists.",
+						MarkdownDescription: "Filename of the guest portal's background image. The controller accepts any string here and does not verify that a file by this name exists.",
 					},
 					"portal_customized_bg_image_tile": schema.BoolAttribute{
 						Optional:            true,
@@ -686,8 +686,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"portal_customized_bg_type": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Guest portal background type: `color`, `image`, or a rotating `gallery`.",
-						MarkdownDescription: "Guest portal background type: `color`, `image`, or a rotating `gallery`.",
+						Description:         "Guest portal background type: `color`, `image`, or `gallery`.",
+						MarkdownDescription: "Guest portal background type: `color`, `image`, or `gallery`.",
 						Validators: []validator.String{
 							stringvalidator.OneOf("color", "image", "gallery"),
 						},
@@ -792,8 +792,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"portal_customized_logo_filename": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Filename of the guest portal's logo image, previously uploaded to the controller.",
-						MarkdownDescription: "Filename of the guest portal's logo image, previously uploaded to the controller.",
+						Description:         "Filename of the guest portal's logo image. The controller accepts any string here and does not verify that a file by this name exists.",
+						MarkdownDescription: "Filename of the guest portal's logo image. The controller accepts any string here and does not verify that a file by this name exists.",
 					},
 					"portal_customized_logo_position": schema.StringAttribute{
 						Optional:            true,
