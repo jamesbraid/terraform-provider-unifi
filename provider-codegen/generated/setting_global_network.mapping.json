@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.global_network",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "default_security_posture",
+      "terraform_name": "default_security_posture",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

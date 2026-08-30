@@ -5824,6 +5824,25 @@
             "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"custom\" \"off\"]"
           ]
         },
+        "global_network": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Global network settings for zone-based firewalling.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "global_network.default_security_posture": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).",
+          "description_kind": "markdown"
+        },
         "id": {
           "kind": "attribute",
           "type": "\"string\"",

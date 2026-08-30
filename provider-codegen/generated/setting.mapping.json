@@ -103,6 +103,13 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "GlobalNetwork.default_security_posture",
+      "terraform_name": "global_network.default_security_posture",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "IgmpSnooping.enabled",
       "terraform_name": "igmp_snooping.enabled",
       "structural_type": "bool",

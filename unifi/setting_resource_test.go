@@ -1898,6 +1898,69 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_globalNetwork exercises default_security_posture
+// with the one value the SDK's own comment records as observed
+// (ALLOW_ALL) plus a second plausible posture for the update step; the
+// schema carries no validator, so the controller itself is what could
+// refuse the second value, not the provider.
+func TestAccSettingResource_globalNetwork(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalNetwork(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_network.default_security_posture",
+						"ALLOW_ALL",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"global_network.%",
+					"global_network.default_security_posture",
+				},
+			},
+			{
+				Config: testAccSettingConfig_globalNetworkUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_network.default_security_posture",
+						"BLOCK_ALL",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalNetwork() string {
+	return `
+resource "unifi_setting" "test" {
+  global_network = {
+    default_security_posture = "ALLOW_ALL"
+  }
+}
+`
+}
+
+func testAccSettingConfig_globalNetworkUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  global_network = {
+    default_security_posture = "BLOCK_ALL"
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

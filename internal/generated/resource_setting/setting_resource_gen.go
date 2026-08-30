@@ -280,6 +280,23 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"global_network": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"default_security_posture": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).",
+						MarkdownDescription: "Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Global network settings for zone-based firewalling.",
+				MarkdownDescription: "Global network settings for zone-based firewalling.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"id": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The ID of the settings.",

@@ -83,6 +83,7 @@ resource "unifi_setting" "radius_only" {
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
 - `ether_lighting` (Attributes) Ethernet port lighting color settings. (see [below for nested schema](#nestedatt--ether_lighting))
 - `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
+- `global_network` (Attributes) Global network settings for zone-based firewalling. (see [below for nested schema](#nestedatt--global_network))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `ipsec` (Attributes) IPsec settings for site-to-site VPNs. (see [below for nested schema](#nestedatt--ipsec))
@@ -203,6 +204,14 @@ Optional:
 
 - `excluded_network_ids` (List of String) IDs of networks excluded from global NAT.
 - `mode` (String) Global NAT mode: `auto`, `custom`, or `off`.
+
+
+<a id="nestedatt--global_network"></a>
+### Nested Schema for `global_network`
+
+Optional:
+
+- `default_security_posture` (String) Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).
 
 
 <a id="nestedatt--igmp_snooping"></a>

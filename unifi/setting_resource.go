@@ -81,6 +81,7 @@ type settingResourceModel struct {
 	Ipsec         types.Object   `tfsdk:"ipsec"`
 	Dashboard     types.Object   `tfsdk:"dashboard"`
 	EtherLighting types.Object   `tfsdk:"ether_lighting"`
+	GlobalNetwork types.Object   `tfsdk:"global_network"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
