@@ -1961,6 +1961,107 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_trafficFlow exercises all four of traffic_flow's
+// force-emitted bools together, flipping every one on the update step to
+// prove the masked write carries whichever subset the plan actually
+// touches.
+func TestAccSettingResource_trafficFlow(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_trafficFlow(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.enabled_allowed_traffic",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.gateway_dns_enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.unifi_device_management_enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.unifi_services_enabled",
+						"false",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"traffic_flow.%",
+					"traffic_flow.enabled_allowed_traffic",
+					"traffic_flow.gateway_dns_enabled",
+					"traffic_flow.unifi_device_management_enabled",
+					"traffic_flow.unifi_services_enabled",
+				},
+			},
+			{
+				Config: testAccSettingConfig_trafficFlowUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.enabled_allowed_traffic",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.gateway_dns_enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.unifi_device_management_enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.unifi_services_enabled",
+						"true",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_trafficFlow() string {
+	return `
+resource "unifi_setting" "test" {
+  traffic_flow = {
+    enabled_allowed_traffic         = true
+    gateway_dns_enabled             = false
+    unifi_device_management_enabled = true
+    unifi_services_enabled          = false
+  }
+}
+`
+}
+
+func testAccSettingConfig_trafficFlowUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  traffic_flow = {
+    enabled_allowed_traffic         = false
+    gateway_dns_enabled             = true
+    unifi_device_management_enabled = false
+    unifi_services_enabled          = true
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

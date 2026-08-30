@@ -983,6 +983,41 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"traffic_flow": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"enabled_allowed_traffic": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable the allowed-traffic list for traffic flow classification.",
+						MarkdownDescription: "Enable the allowed-traffic list for traffic flow classification.",
+					},
+					"gateway_dns_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Route traffic flow classification through the gateway's own DNS.",
+						MarkdownDescription: "Route traffic flow classification through the gateway's own DNS.",
+					},
+					"unifi_device_management_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Classify traffic to and from UniFi device management as its own traffic flow.",
+						MarkdownDescription: "Classify traffic to and from UniFi device management as its own traffic flow.",
+					},
+					"unifi_services_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Classify traffic to and from UniFi cloud services as its own traffic flow.",
+						MarkdownDescription: "Classify traffic to and from UniFi cloud services as its own traffic flow.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Traffic flow classification settings.",
+				MarkdownDescription: "Traffic flow classification settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"usg": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"broadcast_ping": schema.BoolAttribute{

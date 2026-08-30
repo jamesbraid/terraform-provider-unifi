@@ -6706,6 +6706,49 @@
             "validators.timeDurationValidator: must be a string containing a sequence of decimal numbers, each with optional fraction and a unit suffix, such as \"300ms\", \"-1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
           ]
         },
+        "traffic_flow": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Traffic flow classification settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "traffic_flow.enabled_allowed_traffic": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable the allowed-traffic list for traffic flow classification.",
+          "description_kind": "markdown"
+        },
+        "traffic_flow.gateway_dns_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Route traffic flow classification through the gateway's own DNS.",
+          "description_kind": "markdown"
+        },
+        "traffic_flow.unifi_device_management_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Classify traffic to and from UniFi device management as its own traffic flow.",
+          "description_kind": "markdown"
+        },
+        "traffic_flow.unifi_services_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Classify traffic to and from UniFi cloud services as its own traffic flow.",
+          "description_kind": "markdown"
+        },
         "usg": {
           "kind": "attribute",
           "nesting_mode": "single",

@@ -50,9 +50,9 @@ func TestEverySettingSectionIsServedByExactlyOneSpecSection(t *testing.T) {
 	// A schema that stopped declaring any nested section (a generator
 	// regression, or built.Attributes silently coming back empty) would
 	// otherwise pass the loop above with nothing to check -- this pins that
-	// the walk actually saw the twenty sections it's meant to.
-	if sawNested != 20 {
-		t.Errorf("resource_setting.SettingResourceSchema declares %d non-timeouts SingleNestedAttribute(s), want 20",
+	// the walk actually saw the twenty-one sections it's meant to.
+	if sawNested != 21 {
+		t.Errorf("resource_setting.SettingResourceSchema declares %d non-timeouts SingleNestedAttribute(s), want 21",
 			sawNested)
 	}
 
@@ -180,9 +180,12 @@ func TestEverySettingSectionPassesTheConformanceInstruments(t *testing.T) {
 		{"global_network", func(t *testing.T) {
 			checkSectionConformance(t, globalNetworkKitSpec(), globalNetworkNestedSchema(ctx))
 		}},
+		{"traffic_flow", func(t *testing.T) {
+			checkSectionConformance(t, trafficFlowKitSpec(), trafficFlowNestedSchema(ctx))
+		}},
 	}
-	if len(cases) != 22 {
-		t.Fatalf("settingSectionConformanceCase table has %d row(s), want 22 (twenty sections plus "+
+	if len(cases) != 23 {
+		t.Fatalf("settingSectionConformanceCase table has %d row(s), want 23 (twenty-one sections plus "+
 			"ips_suppression and usg_geo)", len(cases))
 	}
 

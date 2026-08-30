@@ -82,6 +82,7 @@ type settingResourceModel struct {
 	Dashboard     types.Object   `tfsdk:"dashboard"`
 	EtherLighting types.Object   `tfsdk:"ether_lighting"`
 	GlobalNetwork types.Object   `tfsdk:"global_network"`
+	TrafficFlow   types.Object   `tfsdk:"traffic_flow"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 

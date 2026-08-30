@@ -97,6 +97,7 @@ resource "unifi_setting" "radius_only" {
 - `ssl_inspection` (Attributes) SSL inspection settings. (see [below for nested schema](#nestedatt--ssl_inspection))
 - `syslog` (Attributes) Remote syslog (rsyslogd) settings. (see [below for nested schema](#nestedatt--syslog))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
+- `traffic_flow` (Attributes) Traffic flow classification settings. (see [below for nested schema](#nestedatt--traffic_flow))
 - `usg` (Attributes) USG settings. (see [below for nested schema](#nestedatt--usg))
 
 ### Read-Only
@@ -413,6 +414,17 @@ Optional:
 - `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
 - `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+
+<a id="nestedatt--traffic_flow"></a>
+### Nested Schema for `traffic_flow`
+
+Optional:
+
+- `enabled_allowed_traffic` (Boolean) Enable the allowed-traffic list for traffic flow classification.
+- `gateway_dns_enabled` (Boolean) Route traffic flow classification through the gateway's own DNS.
+- `unifi_device_management_enabled` (Boolean) Classify traffic to and from UniFi device management as its own traffic flow.
+- `unifi_services_enabled` (Boolean) Classify traffic to and from UniFi cloud services as its own traffic flow.
 
 
 <a id="nestedatt--usg"></a>

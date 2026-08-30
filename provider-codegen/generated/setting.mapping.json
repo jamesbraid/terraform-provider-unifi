@@ -502,6 +502,34 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "TrafficFlow.enabled_allowed_traffic",
+      "terraform_name": "traffic_flow.enabled_allowed_traffic",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "TrafficFlow.gateway_dns_enabled",
+      "terraform_name": "traffic_flow.gateway_dns_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "TrafficFlow.unifi_device_management_enabled",
+      "terraform_name": "traffic_flow.unifi_device_management_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "TrafficFlow.unifi_services_enabled",
+      "terraform_name": "traffic_flow.unifi_services_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "broadcast_ping",
       "terraform_name": "usg.broadcast_ping",
       "structural_type": "bool",
