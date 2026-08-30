@@ -678,8 +678,8 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						"op_mode": schema.StringAttribute{
 							Optional:            true,
 							Computed:            true,
-							Description:         "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.",
-							MarkdownDescription: "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.",
+							Description:         "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update -- which also means setting this back to `switch` has no effect on the controller; remove the aggregation there directly.",
+							MarkdownDescription: "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update -- which also means setting this back to `switch` has no effect on the controller; remove the aggregation there directly.",
 							Validators: []validator.String{
 								stringvalidator.OneOf("switch", "mirror", "aggregate", "routed", "routed_aggregate"),
 							},
@@ -838,8 +838,8 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						},
 					},
 				},
-				Description:         "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration — the provider merges your declared ports (by `index`) into the device's current overrides rather than replacing the whole set. Removing a block stops managing that port but does not reset it; clear a port by overriding it back to the defaults instead.",
-				MarkdownDescription: "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration — the provider merges your declared ports (by `index`) into the device's current overrides rather than replacing the whole set. Removing a block stops managing that port but does not reset it; clear a port by overriding it back to the defaults instead.",
+				Description:         "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration, and each declared block writes only the attributes it names — an attribute you never set, or later remove from the block, keeps whatever the controller currently holds rather than reverting to a default. To change a value set it explicitly; to clear one, set it to the value you want rather than deleting the line. Removing a block entirely stops managing that port but does not reset it either.",
+				MarkdownDescription: "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration, and each declared block writes only the attributes it names — an attribute you never set, or later remove from the block, keeps whatever the controller currently holds rather than reverting to a default. To change a value set it explicitly; to clear one, set it to the value you want rather than deleting the line. Removing a block entirely stops managing that port but does not reset it either.",
 			},
 		},
 		MarkdownDescription: "`unifi_device` manages a device of the network.\n\nDevices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.",

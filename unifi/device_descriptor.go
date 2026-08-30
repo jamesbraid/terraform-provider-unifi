@@ -357,16 +357,26 @@ func deviceKitBeforeSend(
 		// written through its own keyed overlay
 		// (updateDevicePortOverridesGrouped), one UpdateDevicePortOverrides
 		// call per distinct declared member set, never through the general
-		// masked device write. An update that declares no port_override
-		// block sends no port-overrides call at all, which is what leaves an
-		// unconfigured port untouched -- see task 1 of the port-overrides
-		// plan for why a single call carrying every declared field is unsafe.
+		// masked device write. Measured against a live controller: a single
+		// call carrying every declared member forces each port's undeclared
+		// members to their Go zero value, so ports with different declared
+		// member sets can never share a call, and an update that declares no
+		// port_override block sends no port-overrides call at all, which is
+		// what leaves an unconfigured port untouched.
 		declared, d := devicePortOverridesDeclaredFromConfig(ctx, config.PortOverride)
 		diags.Append(d...)
 		if diags.HasError() {
 			return diags
 		}
 		declared = dedupeDeclaredPortOverrides(declared)
+		// A block that declares no writable member -- port_override { index
+		// = 1 }, or one naming only index and the default op_mode -- means
+		// "manage this port, change nothing" under a masked write, so it is
+		// dropped here rather than sent: UpdateDevicePortOverrides refuses an
+		// empty mask outright, and letting that error through would abort
+		// every other declared port's write too, mid-apply, after some of
+		// them had already gone out.
+		declared = declaredPortOverridesWithFields(declared)
 		if len(declared) > 0 {
 			if _, err := updateDevicePortOverridesGrouped(ctx, client, site, sdk, declared); err != nil {
 				diags.AddError("Error Updating Port Overrides", err.Error())
@@ -466,7 +476,19 @@ func devicePortOverrideEncode(
 		diags.Append(model.PortSecurityMACAddress.ElementsAs(
 			ctx, &po.PortSecurityMACAddress, true)...)
 	}
-	return po, devicePortOverrideDeclaredFields(model), diags
+
+	fields := devicePortOverrideDeclaredFields(model)
+	if model.Index.IsUnknown() {
+		// An index Terraform has not resolved yet cannot address a real
+		// port: ValueInt64Pointer() returns a pointer to 0 for an unknown
+		// value rather than nil, so leaving this alone would aim the write
+		// at port 0. Report nothing declared instead -- the caller drops an
+		// empty-fields entry (see the F1 fix in deviceKitBeforeSend), and
+		// the block takes effect on a later apply once index is known.
+		po.PortIDX = nil
+		fields = nil
+	}
+	return po, fields, diags
 }
 
 // devicePortOverrideDeclaredFields lists the wire names of the members this
@@ -474,13 +496,19 @@ func devicePortOverrideEncode(
 // (updateDevicePortOverridesGrouped, driven from
 // devicePortOverridesDeclaredFromConfig).
 //
-// It reads model's own null-ness, not the po struct devicePortOverrideEncode
-// just built: every member of ui.DevicePortOverrides sits at its Go zero
-// value when the config left it alone, indistinguishable from a member the
-// config set to that same zero value. Inferring "declared" from po would
-// reintroduce, one layer up, the exact bug task 1 of the port-overrides plan
-// measured against a live controller: a member two ports disagree on gets
-// forced to its zero value on whichever port didn't name it.
+// It reads model's own null-ness and known-ness, not the po struct
+// devicePortOverrideEncode just built: every member of
+// ui.DevicePortOverrides sits at its Go zero value when the config left it
+// alone, indistinguishable from a member the config set to that same zero
+// value. Inferring "declared" from po would reintroduce, one layer up, the
+// exact bug measured against a live controller: a member two ports
+// disagree on gets forced to its zero value on whichever port didn't name
+// it. Unknown is checked alongside null for the same reason resourcekit's
+// own Field implementations do (field.go, object_field.go,
+// conditional_field.go, elide_check.go): a value Terraform has not
+// resolved yet has no value to write, and the unsafe ValueString/
+// ValueBool/ValueInt64Pointer accessors return the Go zero for it just
+// like they do for null.
 //
 // index and tagged_networkconf_ids never appear here: index addresses the
 // entry rather than configuring it, and tagged_networkconf_ids is
@@ -492,63 +520,69 @@ func devicePortOverrideEncode(
 // full set so that gap fails a test instead of shipping quietly.
 func devicePortOverrideDeclaredFields(model portOverrideModel) []string {
 	var fields []string
-	declare := func(wire string, notNull bool) {
-		if notNull {
+	declare := func(wire string, v attr.Value) {
+		if !v.IsNull() && !v.IsUnknown() {
 			fields = append(fields, wire)
 		}
 	}
 
-	declare("name", !model.Name.IsNull())
-	declare("portconf_id", !model.PortProfileID.IsNull())
-	declare("poe_mode", !model.PoeMode.IsNull())
-	declare("dot1x_ctrl", !model.Dot1XCtrl.IsNull())
-	declare("fec_mode", !model.FecMode.IsNull())
-	declare("forward", !model.Forward.IsNull())
-	declare("native_networkconf_id", !model.NativeNetworkID.IsNull())
-	declare("setting_preference", !model.SettingPreference.IsNull())
-	declare("stormctrl_type", !model.StormctrlType.IsNull())
-	declare("tagged_vlan_mgmt", !model.TaggedVLANMgmt.IsNull())
-	declare("voice_networkconf_id", !model.VoiceNetworkID.IsNull())
+	declare("name", model.Name)
+	declare("portconf_id", model.PortProfileID)
+	declare("poe_mode", model.PoeMode)
+	declare("dot1x_ctrl", model.Dot1XCtrl)
+	declare("fec_mode", model.FecMode)
+	declare("forward", model.Forward)
+	declare("native_networkconf_id", model.NativeNetworkID)
+	declare("setting_preference", model.SettingPreference)
+	declare("stormctrl_type", model.StormctrlType)
+	declare("tagged_vlan_mgmt", model.TaggedVLANMgmt)
+	declare("voice_networkconf_id", model.VoiceNetworkID)
 
-	declare("autoneg", !model.Autoneg.IsNull())
-	declare("egress_rate_limit_kbps_enabled", !model.EgressRateLimitKbpsEnabled.IsNull())
-	declare("flow_control_enabled", !model.FlowControlEnabled.IsNull())
-	declare("full_duplex", !model.FullDuplex.IsNull())
-	declare("isolation", !model.Isolation.IsNull())
-	declare("lldpmed_enabled", !model.LldpmedEnabled.IsNull())
-	declare("lldpmed_notify_enabled", !model.LldpmedNotifyEnabled.IsNull())
-	declare("port_keepalive_enabled", !model.PortKeepaliveEnabled.IsNull())
-	declare("port_security_enabled", !model.PortSecurityEnabled.IsNull())
-	declare("stormctrl_bcast_enabled", !model.StormctrlBroadcastEnabled.IsNull())
-	declare("stormctrl_mcast_enabled", !model.StormctrlMcastEnabled.IsNull())
-	declare("stormctrl_ucast_enabled", !model.StormctrlUcastEnabled.IsNull())
-	declare("stp_port_mode", !model.StpPortMode.IsNull())
+	declare("autoneg", model.Autoneg)
+	declare("egress_rate_limit_kbps_enabled", model.EgressRateLimitKbpsEnabled)
+	declare("flow_control_enabled", model.FlowControlEnabled)
+	declare("full_duplex", model.FullDuplex)
+	declare("isolation", model.Isolation)
+	declare("lldpmed_enabled", model.LldpmedEnabled)
+	declare("lldpmed_notify_enabled", model.LldpmedNotifyEnabled)
+	declare("port_keepalive_enabled", model.PortKeepaliveEnabled)
+	declare("port_security_enabled", model.PortSecurityEnabled)
+	declare("stormctrl_bcast_enabled", model.StormctrlBroadcastEnabled)
+	declare("stormctrl_mcast_enabled", model.StormctrlMcastEnabled)
+	declare("stormctrl_ucast_enabled", model.StormctrlUcastEnabled)
+	declare("stp_port_mode", model.StpPortMode)
 
-	declare("egress_rate_limit_kbps", !model.EgressRateLimitKbps.IsNull())
-	declare("mirror_port_idx", !model.MirrorPortIDX.IsNull())
-	declare("priority_queue1_level", !model.PriorityQueue1Level.IsNull())
-	declare("priority_queue2_level", !model.PriorityQueue2Level.IsNull())
-	declare("priority_queue3_level", !model.PriorityQueue3Level.IsNull())
-	declare("priority_queue4_level", !model.PriorityQueue4Level.IsNull())
-	declare("speed", !model.Speed.IsNull())
-	declare("stormctrl_bcast_level", !model.StormctrlBroadcastLevel.IsNull())
-	declare("stormctrl_bcast_rate", !model.StormctrlBroadcastRate.IsNull())
-	declare("stormctrl_mcast_level", !model.StormctrlMcastLevel.IsNull())
-	declare("stormctrl_mcast_rate", !model.StormctrlMcastRate.IsNull())
-	declare("stormctrl_ucast_level", !model.StormctrlUcastLevel.IsNull())
-	declare("stormctrl_ucast_rate", !model.StormctrlUcastRate.IsNull())
+	declare("egress_rate_limit_kbps", model.EgressRateLimitKbps)
+	declare("mirror_port_idx", model.MirrorPortIDX)
+	declare("priority_queue1_level", model.PriorityQueue1Level)
+	declare("priority_queue2_level", model.PriorityQueue2Level)
+	declare("priority_queue3_level", model.PriorityQueue3Level)
+	declare("priority_queue4_level", model.PriorityQueue4Level)
+	declare("speed", model.Speed)
+	declare("stormctrl_bcast_level", model.StormctrlBroadcastLevel)
+	declare("stormctrl_bcast_rate", model.StormctrlBroadcastRate)
+	declare("stormctrl_mcast_level", model.StormctrlMcastLevel)
+	declare("stormctrl_mcast_rate", model.StormctrlMcastRate)
+	declare("stormctrl_ucast_level", model.StormctrlUcastLevel)
+	declare("stormctrl_ucast_rate", model.StormctrlUcastRate)
 
-	// Same non-default rule devicePortOverrideEncode applies to op_mode above:
-	// a config value of "switch" is the default and must stay off the wire on
-	// gateway devices, so it isn't treated as declared either.
-	if opMode := model.OpMode.ValueString(); opMode != "" && opMode != "switch" {
-		declare("op_mode", true)
+	// Same non-default rule devicePortOverrideEncode applies to op_mode
+	// above: a config value of "switch" is the default and must stay off
+	// the wire on gateway devices, so it isn't treated as declared either.
+	// Unknown is excluded explicitly rather than through declare(): an
+	// unknown ValueString() also returns "", so opMode != "" already
+	// excludes it, but that's incidental to the != "" check rather than a
+	// stated rule, and this makes it one.
+	if !model.OpMode.IsUnknown() {
+		if opMode := model.OpMode.ValueString(); opMode != "" && opMode != "switch" {
+			fields = append(fields, "op_mode")
+		}
 	}
-	declare("dot1x_idle_timeout", !model.Dot1XIDleTimeout.IsNull())
-	declare("aggregate_members", !model.AggregateMembers.IsNull())
-	declare("excluded_networkconf_ids", !model.ExcludedNetworkIDs.IsNull())
-	declare("multicast_router_networkconf_ids", !model.MulticastRouterNetworkIDs.IsNull())
-	declare("port_security_mac_address", !model.PortSecurityMACAddress.IsNull())
+	declare("dot1x_idle_timeout", model.Dot1XIDleTimeout)
+	declare("aggregate_members", model.AggregateMembers)
+	declare("excluded_networkconf_ids", model.ExcludedNetworkIDs)
+	declare("multicast_router_networkconf_ids", model.MulticastRouterNetworkIDs)
+	declare("port_security_mac_address", model.PortSecurityMACAddress)
 
 	return fields
 }
@@ -573,6 +607,24 @@ func dedupeDeclaredPortOverrides(declared []declaredPortOverride) []declaredPort
 			continue
 		}
 		seen[*d.Override.PortIDX] = len(out)
+		out = append(out, d)
+	}
+	return out
+}
+
+// declaredPortOverridesWithFields drops entries whose config declared no
+// writable member: an unknown index also lands here, since
+// devicePortOverrideEncode clears Fields for it rather than address a
+// still-unresolved port (see the comment there). Writing nothing is the
+// correct answer for "manage this port, change nothing" under a masked
+// write, and it also has to happen before grouping -- an empty mask is not
+// a valid UpdateDevicePortOverrides call, it is a refused one.
+func declaredPortOverridesWithFields(declared []declaredPortOverride) []declaredPortOverride {
+	out := make([]declaredPortOverride, 0, len(declared))
+	for _, d := range declared {
+		if len(d.Fields) == 0 {
+			continue
+		}
 		out = append(out, d)
 	}
 	return out
@@ -688,35 +740,6 @@ func deviceReconcilePortOverrides(
 		return prior, diags
 	}
 	return setValue, diags
-}
-
-// devicePortOverridesFromModel encodes the declared blocks into SDK overrides.
-func devicePortOverridesFromModel(
-	ctx context.Context, set types.Set,
-) ([]ui.DevicePortOverrides, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	if set.IsNull() || set.IsUnknown() {
-		return nil, diags
-	}
-	elements := set.Elements()
-	out := make([]ui.DevicePortOverrides, 0, len(elements))
-	for _, elem := range elements {
-		object, ok := elem.(types.Object)
-		if !ok {
-			diags.Append(diag.NewErrorDiagnostic(
-				"Invalid port override model",
-				"Error casting `portOverrideModel` to `types.Object`",
-			))
-			continue
-		}
-		po, _, d := devicePortOverrideEncode(ctx, object)
-		diags.Append(d...)
-		if diags.HasError() {
-			return nil, diags
-		}
-		out = append(out, po)
-	}
-	return out, diags
 }
 
 // devicePortOverridesDeclaredFromConfig encodes port_override blocks

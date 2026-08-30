@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.109.0] - DRAFT, unreleased
+
+### ⚠️ Breaking Changes
+
+- **`unifi_device`: a `port_override` block now writes only the attributes
+  it names, not the whole port array.** Previously any change to a
+  device's `port_override` blocks re-sent the entire port-override array
+  on every apply. A declared port's entry was rebuilt from this
+  provider's own model, so any attribute the block left unset reverted
+  to its default, and any controller-side field this provider doesn't
+  model (e.g. `eee_enabled`) was cleared outright — a port with no block
+  at all was unaffected, since its entry passed through unchanged. Each
+  apply now issues one write per distinct set of declared attributes,
+  naming only those attributes, so a member a block doesn't set, a port
+  with no block, and unmodeled controller fields all keep their current
+  value. A `port_override` block that names no attribute besides `index`
+  is now a no-op ("manage this port, change nothing") rather than an
+  incomplete write.
+- **Removing an attribute from a `port_override` block no longer clears
+  it on the controller.** The old whole-array write cleared a removed
+  attribute as a side effect of resending the array without it; the new
+  write simply stops mentioning it, and the controller keeps whatever it
+  last held. To clear a value, set it explicitly instead of deleting the
+  line. `op_mode` is the sharpest case: setting it back to `"switch"`
+  (the default) has no effect on the wire, because the default is never
+  written — remove a link aggregation on the controller directly instead.
+- **An apply touching ports with different declared attributes now
+  issues one API call per distinct set of attributes, not one call for
+  the whole array.** This is what makes the two changes above safe; a
+  config declaring many differently-shaped `port_override` blocks now
+  issues more requests per apply than before.
+
 ## [v0.108.0] - 2026-08-29
 
 ### ⚠️ Breaking Changes

@@ -467,7 +467,7 @@
     },
     {
       "attribute": {
-        "description": "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration \u2014 the provider merges your declared ports (by `index`) into the device's current overrides rather than replacing the whole set. Removing a block stops managing that port but does not reset it; clear a port by overriding it back to the defaults instead."
+        "description": "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration, and each declared block writes only the attributes it names \u2014 an attribute you never set, or later remove from the block, keeps whatever the controller currently holds rather than reverting to a default. To change a value set it explicitly; to clear one, set it to the value you want rather than deleting the line. Removing a block entirely stops managing that port but does not reset it either."
       },
       "disposition": "managed",
       "fields": [
@@ -696,7 +696,7 @@
             "default": {
               "static": "switch"
             },
-            "description": "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update."
+            "description": "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update -- which also means setting this back to `switch` has no effect on the controller; remove the aggregation there directly."
           },
           "disposition": "managed",
           "structural_name": "op_mode",

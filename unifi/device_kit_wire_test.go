@@ -91,20 +91,62 @@ func Test_deviceMask_meshStaVapEnabled(t *testing.T) {
 	})
 }
 
-// port_overrides must never be in the general device write mask, on any
-// plan -- it is written through its own keyed overlay
-// (updateDevicePortOverridesGrouped, driven from deviceKitBeforeSend), never
-// through the masked device PUT that carries this mask. Regressing this
-// would resurrect the whole-array write the port-overrides plan exists to
-// remove: unifi.Device.PortOverrides carries no omitempty (pinned by
-// Test_deviceForceEmittedFieldsAreStillJustThree below), so naming it in
-// the mask force-emits whatever *ui.Device.PortOverrides happens to hold --
-// nil marshals to [], which the controller reads as clearing every port.
+// port_overrides must never be in the general device write mask, on an
+// empty plan or a populated one -- it is written through its own keyed
+// overlay (updateDevicePortOverridesGrouped, driven from
+// deviceKitBeforeSend), never through the masked device PUT that carries
+// this mask. Regressing this would resurrect the whole-array write the
+// port-overrides fix exists to remove: unifi.Device.PortOverrides carries
+// no omitempty (pinned by Test_deviceForceEmittedFieldsAreStillJustThree
+// below), so naming it in the mask force-emits whatever
+// *ui.Device.PortOverrides happens to hold -- nil marshals to [], which
+// the controller reads as clearing every port.
 func Test_devicePortOverridesNeverInTheGeneralWireMask(t *testing.T) {
-	mask := deviceMaskFor(t, deviceKitModel{})
-	if deviceMaskHas(mask, "port_overrides") {
-		t.Fatalf("port_overrides is in the general write mask: %v", mask)
-	}
+	t.Run("empty plan", func(t *testing.T) {
+		mask := deviceMaskFor(t, deviceKitModel{})
+		if deviceMaskHas(mask, "port_overrides") {
+			t.Fatalf("port_overrides is in the general write mask: %v", mask)
+		}
+	})
+	// A populated plan drives every ordinary Field's SetInPlan branch, the
+	// same code path a future Field wrongly wired to "port_overrides" would
+	// have to go through -- an empty plan alone would only prove this holds
+	// when nothing else is set.
+	t.Run("fully populated plan", func(t *testing.T) {
+		mask := deviceMaskFor(t, deviceKitModel{
+			Name:                       types.StringValue("device-1"),
+			Disabled:                   types.BoolValue(true),
+			AllowAdoption:              types.BoolValue(true),
+			ForgetOnDestroy:            types.BoolValue(true),
+			LedOverride:                types.StringValue("on"),
+			LedOverrideColor:           types.StringValue("#ffffff"),
+			LedOverrideColorBrightness: types.Int64Value(80),
+			BandsteeringMode:           types.StringValue("off"),
+			FlowctrlEnabled:            types.BoolValue(true),
+			JumboframeEnabled:          types.BoolValue(true),
+			StpVersion:                 types.StringValue("rstp"),
+			StpPriority:                types.Int64Value(32768),
+			Locked:                     types.BoolValue(true),
+			PoeMode:                    types.StringValue("auto"),
+			SwitchVLANEnabled:          types.BoolValue(true),
+			MeshStaVapEnabled:          types.BoolValue(true),
+			OutdoorModeOverride:        types.StringValue("default"),
+			Volume:                     types.Int64Value(50),
+			BaresipPassword:            types.StringValue("secret"),
+			LcmBrightness:              types.Int64Value(100),
+			LcmBrightnessOverride:      types.BoolValue(true),
+			LcmIDleTimeoutOverride:     types.BoolValue(true),
+			LcmNightModeBegins:         types.StringValue("22:00"),
+			LcmNightModeEnds:           types.StringValue("06:00"),
+			OutletEnabled:              types.BoolValue(true),
+			MgmtNetworkID:              types.StringValue("net-1"),
+			Type:                       types.StringValue("usw"),
+		})
+		if deviceMaskHas(mask, "port_overrides") {
+			t.Fatalf("port_overrides is in the general write mask of a fully "+
+				"populated plan: %v", mask)
+		}
+	})
 
 	body, err := json.Marshal(unifi.Device{ID: "d1"})
 	if err != nil {

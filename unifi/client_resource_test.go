@@ -1443,14 +1443,14 @@ func TestFrameworkToPortOverrides_AggregateOpMode(t *testing.T) {
 		"aggregate_members": members,
 	})
 
-	pos, diags := devicePortOverridesFromModel(ctx, set)
+	pos, diags := devicePortOverridesDeclaredFromConfig(ctx, set)
 	if diags.HasError() {
-		t.Fatalf("devicePortOverridesFromModel errored: %v", diags)
+		t.Fatalf("devicePortOverridesDeclaredFromConfig errored: %v", diags)
 	}
 	if len(pos) != 1 {
 		t.Fatalf("got %d port overrides, want 1", len(pos))
 	}
-	po := pos[0]
+	po := pos[0].Override
 	if po.OpMode != "aggregate" {
 		t.Errorf("OpMode = %q, want aggregate (LAG would not engage)", po.OpMode)
 	}
@@ -1471,15 +1471,15 @@ func TestFrameworkToPortOverrides_SwitchOpModeOmitted(t *testing.T) {
 		"op_mode": types.StringValue("switch"),
 	})
 
-	pos, diags := devicePortOverridesFromModel(ctx, set)
+	pos, diags := devicePortOverridesDeclaredFromConfig(ctx, set)
 	if diags.HasError() {
-		t.Fatalf("devicePortOverridesFromModel errored: %v", diags)
+		t.Fatalf("devicePortOverridesDeclaredFromConfig errored: %v", diags)
 	}
 	if len(pos) != 1 {
 		t.Fatalf("got %d port overrides, want 1", len(pos))
 	}
-	if pos[0].OpMode != "" {
-		t.Errorf("OpMode = %q, want empty (omitted) for the switch default", pos[0].OpMode)
+	if pos[0].Override.OpMode != "" {
+		t.Errorf("OpMode = %q, want empty (omitted) for the switch default", pos[0].Override.OpMode)
 	}
 }
 

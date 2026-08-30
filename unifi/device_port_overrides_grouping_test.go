@@ -77,13 +77,13 @@ func TestGroupPortOverridesByFieldSet(t *testing.T) {
 	})
 }
 
-// TestUpdateDevicePortOverridesGrouped_DisjointSetsLoseNoMember pins task 1's
-// ruling: UpdateDevicePortOverrides takes one member mask for the whole
-// call, so port 1 declaring only "name" and port 2 declaring only
-// "poe_mode" cannot share a call -- a union mask would carry poe_mode onto
-// port 1's write and name onto port 2's, both at their Go zero value,
-// clobbering whatever the controller held. Measured against a live
-// controller: see task-1-report.md in the port-overrides plan.
+// TestUpdateDevicePortOverridesGrouped_DisjointSetsLoseNoMember pins the
+// ruling groupPortOverridesByFieldSet documents: UpdateDevicePortOverrides
+// takes one member mask for the whole call, so port 1 declaring only
+// "name" and port 2 declaring only "poe_mode" cannot share a call -- a
+// union mask would carry poe_mode onto port 1's write and name onto port
+// 2's, both at their Go zero value, clobbering whatever the controller
+// held. Measured against a live controller.
 //
 // This fails on either regression: the call count drops to one, or either
 // port loses the member it did not declare.
