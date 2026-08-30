@@ -190,6 +190,66 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"ether_lighting": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"network_overrides": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"key": schema.StringAttribute{
+									Required:            true,
+									Description:         "ID of the network this color override applies to.",
+									MarkdownDescription: "ID of the network this color override applies to.",
+								},
+								"raw_color_hex": schema.StringAttribute{
+									Required:            true,
+									Description:         "Hex color code for this override (e.g. `FF0000`).",
+									MarkdownDescription: "Hex color code for this override (e.g. `FF0000`).",
+									Validators: []validator.String{
+										stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[0-9A-Fa-f]{6})$`), ""),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Per-network Ethernet port lighting color overrides.",
+						MarkdownDescription: "Per-network Ethernet port lighting color overrides.",
+					},
+					"speed_overrides": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"key": schema.StringAttribute{
+									Required:            true,
+									Description:         "Link speed this color override applies to.",
+									MarkdownDescription: "Link speed this color override applies to.",
+									Validators: []validator.String{
+										stringvalidator.RegexMatches(regexp.MustCompile(`^(?:FE|GbE|2.5GbE|5GbE|10GbE|25GbE|40GbE|100GbE)$`), ""),
+									},
+								},
+								"raw_color_hex": schema.StringAttribute{
+									Required:            true,
+									Description:         "Hex color code for this override (e.g. `FF0000`).",
+									MarkdownDescription: "Hex color code for this override (e.g. `FF0000`).",
+									Validators: []validator.String{
+										stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[0-9A-Fa-f]{6})$`), ""),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Per-link-speed Ethernet port lighting color overrides.",
+						MarkdownDescription: "Per-link-speed Ethernet port lighting color overrides.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Ethernet port lighting color settings.",
+				MarkdownDescription: "Ethernet port lighting color settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"global_nat": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"excluded_network_ids": schema.ListAttribute{

@@ -80,6 +80,7 @@ type settingResourceModel struct {
 	SslInspection types.Object   `tfsdk:"ssl_inspection"`
 	Ipsec         types.Object   `tfsdk:"ipsec"`
 	Dashboard     types.Object   `tfsdk:"dashboard"`
+	EtherLighting types.Object   `tfsdk:"ether_lighting"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 

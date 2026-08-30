@@ -29,6 +29,7 @@ func TestSettingKitSectionsOrder(t *testing.T) {
 		"ssl_inspection",
 		"ipsec",
 		"dashboard",
+		"ether_lighting",
 	}
 
 	r := &settingResource{client: &Client{}}

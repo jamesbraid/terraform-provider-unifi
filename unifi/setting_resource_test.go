@@ -1714,6 +1714,129 @@ resource "unifi_setting" "test" {
 `
 }
 
+func TestAccSettingResource_etherLighting(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_etherLighting(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.speed_overrides.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.speed_overrides.0.key",
+						"GbE",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.speed_overrides.0.raw_color_hex",
+						"00FF00",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.network_overrides.#",
+						"1",
+					),
+					resource.TestCheckResourceAttrPair(
+						"unifi_setting.test", "ether_lighting.network_overrides.0.key",
+						"unifi_network.test", "id",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.network_overrides.0.raw_color_hex",
+						"FF0000",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"ether_lighting.%",
+					"ether_lighting.speed_overrides.#",
+					"ether_lighting.speed_overrides.0.%",
+					"ether_lighting.speed_overrides.0.key",
+					"ether_lighting.speed_overrides.0.raw_color_hex",
+					"ether_lighting.network_overrides.#",
+					"ether_lighting.network_overrides.0.%",
+					"ether_lighting.network_overrides.0.key",
+					"ether_lighting.network_overrides.0.raw_color_hex",
+				},
+			},
+			{
+				Config: testAccSettingConfig_etherLightingUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.speed_overrides.0.raw_color_hex",
+						"0000FF",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_etherLighting() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-ether-lighting-network"
+  subnet = "10.3.12.1/24"
+  vlan   = 32
+}
+
+resource "unifi_setting" "test" {
+  ether_lighting = {
+    speed_overrides = [
+      {
+        key           = "GbE"
+        raw_color_hex = "00FF00"
+      },
+    ]
+    network_overrides = [
+      {
+        key           = unifi_network.test.id
+        raw_color_hex = "FF0000"
+      },
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_etherLightingUpdate() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-ether-lighting-network"
+  subnet = "10.3.12.1/24"
+  vlan   = 32
+}
+
+resource "unifi_setting" "test" {
+  ether_lighting = {
+    speed_overrides = [
+      {
+        key           = "GbE"
+        raw_color_hex = "0000FF"
+      },
+    ]
+    network_overrides = [
+      {
+        key           = unifi_network.test.id
+        raw_color_hex = "FF0000"
+      },
+    ]
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

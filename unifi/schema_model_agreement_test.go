@@ -106,13 +106,15 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 	// that actually serves it and a sibling still matches. Declared here and
 	// compared as a set so a new or resolved ambiguity can't pass unnoticed.
 	declaredAmbiguous := map[string]string{
-		"unifi_network.dhcp_guarding":                   "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
-		"unifi_network.dhcp_relay":                      "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
-		"unifi_setting.ips.suppression_alerts.tracking": "settingIpsTrackingModel settingIpsWhitelistModel",
-		"unifi_setting.ips.suppression_whitelist":       "settingIpsTrackingModel settingIpsWhitelistModel",
-		"unifi_vpn_server.dns":                          "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
-		"data.unifi_network.dhcp_guarding":              "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
-		"data.unifi_network.dhcp_relay":                 "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"unifi_network.dhcp_guarding":                    "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"unifi_network.dhcp_relay":                       "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"unifi_setting.ether_lighting.network_overrides": "settingEtherLightingNetworkOverrideModel settingEtherLightingSpeedOverrideModel",
+		"unifi_setting.ether_lighting.speed_overrides":   "settingEtherLightingNetworkOverrideModel settingEtherLightingSpeedOverrideModel",
+		"unifi_setting.ips.suppression_alerts.tracking":  "settingIpsTrackingModel settingIpsWhitelistModel",
+		"unifi_setting.ips.suppression_whitelist":        "settingIpsTrackingModel settingIpsWhitelistModel",
+		"unifi_vpn_server.dns":                           "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"data.unifi_network.dhcp_guarding":               "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
+		"data.unifi_network.dhcp_relay":                  "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 	}
 	for path, candidates := range ambiguous {
 		declared, ok := declaredAmbiguous[path]

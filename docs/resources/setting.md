@@ -81,6 +81,7 @@ resource "unifi_setting" "radius_only" {
 - `dashboard` (Attributes) Dashboard layout and widget visibility settings. (see [below for nested schema](#nestedatt--dashboard))
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
+- `ether_lighting` (Attributes) Ethernet port lighting color settings. (see [below for nested schema](#nestedatt--ether_lighting))
 - `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
@@ -166,6 +167,33 @@ Optional:
 
 - `enabled` (Boolean) Whether DPI is enabled.
 - `fingerprinting_enabled` (Boolean) Whether device fingerprinting is enabled.
+
+
+<a id="nestedatt--ether_lighting"></a>
+### Nested Schema for `ether_lighting`
+
+Optional:
+
+- `network_overrides` (Attributes List) Per-network Ethernet port lighting color overrides. (see [below for nested schema](#nestedatt--ether_lighting--network_overrides))
+- `speed_overrides` (Attributes List) Per-link-speed Ethernet port lighting color overrides. (see [below for nested schema](#nestedatt--ether_lighting--speed_overrides))
+
+<a id="nestedatt--ether_lighting--network_overrides"></a>
+### Nested Schema for `ether_lighting.network_overrides`
+
+Required:
+
+- `key` (String) ID of the network this color override applies to.
+- `raw_color_hex` (String) Hex color code for this override (e.g. `FF0000`).
+
+
+<a id="nestedatt--ether_lighting--speed_overrides"></a>
+### Nested Schema for `ether_lighting.speed_overrides`
+
+Required:
+
+- `key` (String) Link speed this color override applies to.
+- `raw_color_hex` (String) Hex color code for this override (e.g. `FF0000`).
+
 
 
 <a id="nestedatt--global_nat"></a>

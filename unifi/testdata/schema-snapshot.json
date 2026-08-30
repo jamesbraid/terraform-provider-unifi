@@ -5727,6 +5727,70 @@
           "description_kind": "markdown",
           "default": "booldefault.staticBoolDefault: value defaults to false"
         },
+        "ether_lighting": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Ethernet port lighting color settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "ether_lighting.network_overrides": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "computed": true,
+          "description": "Per-network Ethernet port lighting color overrides.",
+          "description_kind": "markdown"
+        },
+        "ether_lighting.network_overrides.key": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "ID of the network this color override applies to.",
+          "description_kind": "markdown"
+        },
+        "ether_lighting.network_overrides.raw_color_hex": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "Hex color code for this override (e.g. `FF0000`).",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9A-Fa-f]{6})$'"
+          ]
+        },
+        "ether_lighting.speed_overrides": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "computed": true,
+          "description": "Per-link-speed Ethernet port lighting color overrides.",
+          "description_kind": "markdown"
+        },
+        "ether_lighting.speed_overrides.key": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "Link speed this color override applies to.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:FE|GbE|2.5GbE|5GbE|10GbE|25GbE|40GbE|100GbE)$'"
+          ]
+        },
+        "ether_lighting.speed_overrides.raw_color_hex": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "Hex color code for this override (e.g. `FF0000`).",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9A-Fa-f]{6})$'"
+          ]
+        },
         "global_nat": {
           "kind": "attribute",
           "nesting_mode": "single",

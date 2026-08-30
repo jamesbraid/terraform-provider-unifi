@@ -75,6 +75,20 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "EtherLighting.network_overrides",
+      "terraform_name": "ether_lighting.network_overrides",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "EtherLighting.speed_overrides",
+      "terraform_name": "ether_lighting.speed_overrides",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "GlobalNat.excluded_network_ids",
       "terraform_name": "global_nat.excluded_network_ids",
       "structural_type": "array<string>",

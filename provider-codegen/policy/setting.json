@@ -172,7 +172,14 @@
     "Dashboard.attr_no_delete",
     "Dashboard.attr_no_edit",
     "Dashboard.key",
-    "Dashboard.site_id"
+    "Dashboard.site_id",
+    "EtherLighting._id",
+    "EtherLighting.attr_hidden",
+    "EtherLighting.attr_hidden_id",
+    "EtherLighting.attr_no_delete",
+    "EtherLighting.attr_no_edit",
+    "EtherLighting.key",
+    "EtherLighting.site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2324,6 +2331,90 @@
       ],
       "terraform_name": "dashboard",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Ethernet port lighting color settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Per-network Ethernet port lighting color overrides."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "ID of the network this color override applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "key",
+              "terraform_name": "key"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Hex color code for this override (e.g. `FF0000`)."
+              },
+              "disposition": "managed",
+              "structural_name": "raw_color_hex",
+              "terraform_name": "raw_color_hex"
+            }
+          ],
+          "structural_name": "network_overrides",
+          "structural_source": "EtherLighting",
+          "terraform_name": "network_overrides",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Per-link-speed Ethernet port lighting color overrides."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Link speed this color override applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "key",
+              "terraform_name": "key"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Hex color code for this override (e.g. `FF0000`)."
+              },
+              "disposition": "managed",
+              "structural_name": "raw_color_hex",
+              "terraform_name": "raw_color_hex"
+            }
+          ],
+          "structural_name": "speed_overrides",
+          "structural_source": "EtherLighting",
+          "terraform_name": "speed_overrides",
+          "terraform_type": "list_nested"
+        }
+      ],
+      "terraform_name": "ether_lighting",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -2388,6 +2479,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "73216e3dca07a258dab5fe6bfd3a5deb4662da09d74913dec56cb90cb21a315f",
+  "source_specification_sha256": "03521cfdfb173c6c2cfa2a5d604248e40362a3d7af354a57cfe9d25db3502fd9",
   "surface_kind": "managed_resource"
 }
