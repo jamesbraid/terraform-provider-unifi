@@ -355,6 +355,132 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "GuestAccess.x_password",
+      "terraform_name": "guest_access.password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_facebook_app_secret",
+      "terraform_name": "guest_access.facebook_app_secret",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_google_client_secret",
+      "terraform_name": "guest_access.google_client_secret",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_wechat_app_secret",
+      "terraform_name": "guest_access.wechat_app_secret",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_wechat_secret_key",
+      "terraform_name": "guest_access.wechat_secret_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_authorize_loginid",
+      "terraform_name": "guest_access.authorize_loginid",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_authorize_transactionkey",
+      "terraform_name": "guest_access.authorize_transactionkey",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_paypal_username",
+      "terraform_name": "guest_access.paypal_username",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_paypal_password",
+      "terraform_name": "guest_access.paypal_password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_paypal_signature",
+      "terraform_name": "guest_access.paypal_signature",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_quickpay_agreementid",
+      "terraform_name": "guest_access.quickpay_agreementid",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_quickpay_merchantid",
+      "terraform_name": "guest_access.quickpay_merchantid",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_quickpay_apikey",
+      "terraform_name": "guest_access.quickpay_apikey",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_merchantwarrior_merchantuuid",
+      "terraform_name": "guest_access.merchantwarrior_merchantuuid",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_merchantwarrior_apikey",
+      "terraform_name": "guest_access.merchantwarrior_apikey",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_merchantwarrior_apipassphrase",
+      "terraform_name": "guest_access.merchantwarrior_apipassphrase",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_ippay_terminalid",
+      "terraform_name": "guest_access.ippay_terminalid",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.x_stripe_api_key",
+      "terraform_name": "guest_access.stripe_api_key",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "IgmpSnooping.enabled",
       "terraform_name": "igmp_snooping.enabled",
       "structural_type": "bool",

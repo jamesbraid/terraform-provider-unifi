@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -265,8 +266,9 @@ func TestGuestAccessKitSpecConformance(t *testing.T) {
 // guestAccessNestedSchema's type assertion against a generator regression:
 // "guest_access" moving off SingleNestedAttribute would panic every
 // conformance test above instead of naming the actual problem, so this
-// pins the shape ahead of that. The count is this task's own 21 -- the
-// other 71 of settings.GuestAccess's 92 fields are still deferred (see
+// pins the shape ahead of that. The count is Task 2's 21 plus Task 3's 18
+// x_-prefixed fields (guestAccessSecret) -- the other 53 of
+// settings.GuestAccess's 92 fields are still deferred (see
 // setting_guest_access_descriptor.go's own comment).
 func TestGuestAccessNestedSchemaHasExactlyItsAttributes(t *testing.T) {
 	ctx := context.Background()
@@ -275,8 +277,189 @@ func TestGuestAccessNestedSchemaHasExactlyItsAttributes(t *testing.T) {
 		t.Fatal(`the generated setting schema has no "guest_access" attribute`)
 	}
 	nested := guestAccessNestedSchema(ctx)
-	if len(nested.Attributes) != 21 {
-		t.Errorf("guest_access has %d attribute(s), want 21; update guestAccessKitSpec and this count together",
+	if len(nested.Attributes) != 39 {
+		t.Errorf("guest_access has %d attribute(s), want 39; update guestAccessKitSpec and this count together",
 			len(nested.Attributes))
+	}
+}
+
+// guestAccessSecretAccessor is one x_-prefixed StringField's Model/SDK pair,
+// as guestAccessKitSpec itself declares it -- derived from the spec rather
+// than transcribed a second time, so a field the spec ever drops, renames or
+// re-orders is reflected here automatically instead of two lists silently
+// drifting apart.
+type guestAccessSecretAccessor struct {
+	Wire  string
+	Model func(*settingGuestAccessModel) *types.String
+	SDK   func(*settings.GuestAccess) *string
+}
+
+// guestAccessSecretFieldAccessors extracts every x_-prefixed StringField out
+// of spec.Fields. Used by the three tests below so each iterates the same 18
+// fields Task 0 measured, with no hand-maintained field list of its own to
+// go stale.
+func guestAccessSecretFieldAccessors(
+	spec resourcekit.Spec[settingGuestAccessModel, settings.GuestAccess],
+) []guestAccessSecretAccessor {
+	var out []guestAccessSecretAccessor
+	for _, field := range spec.Fields {
+		sf, ok := field.(resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess])
+		if !ok || !strings.HasPrefix(sf.Wire, "x_") {
+			continue
+		}
+		out = append(out, guestAccessSecretAccessor{Wire: sf.Wire, Model: sf.Model, SDK: sf.SDK})
+	}
+	return out
+}
+
+// TestGuestAccessAfterReceiveKeepsThePlansSecretWhenNamed is
+// TestSnmpAfterReceiveKeepsThePlansSecretWhenNamed's shape run across all 18
+// of guest_access's x_-prefixed fields instead of two: an unconfigured field
+// (prior null or unknown) always comes back null, no matter what the
+// controller echoed for it, and a configured one surfaces whatever
+// Spec.ToModel already decoded off the wire -- the controller's own echo --
+// not the prior string. Every one of the 18 gets its own subtest pair so a
+// mistake in one field's Wire/Model/SDK wiring cannot hide behind the other
+// 17 passing.
+func TestGuestAccessAfterReceiveKeepsThePlansSecretWhenNamed(t *testing.T) {
+	ctx := context.Background()
+	spec := guestAccessKitSpec()
+	fields := guestAccessSecretFieldAccessors(spec)
+	if len(fields) != 18 {
+		t.Fatalf("found %d x_-prefixed StringField(s) in guestAccessKitSpec, want 18 "+
+			"(guestAccessSecret's own count)", len(fields))
+	}
+
+	for _, f := range fields {
+		t.Run(f.Wire, func(t *testing.T) {
+			t.Run("unconfigured comes back null regardless of the controller's echo", func(t *testing.T) {
+				sdk := &settings.GuestAccess{}
+				*f.SDK(sdk) = "remote-value"
+				var model settingGuestAccessModel
+				if diags := spec.ToModel(ctx, sdk, &model, ""); diags.HasError() {
+					t.Fatalf("ToModel: %v", diags)
+				}
+				var prior settingGuestAccessModel // every types.String zero value is null
+				if diags := guestAccessAfterReceive(ctx, sdk, &model, prior); diags.HasError() {
+					t.Fatalf("guestAccessAfterReceive: %v", diags)
+				}
+				if got := f.Model(&model); !got.IsNull() {
+					t.Errorf("%s = %q, want null when unconfigured (regardless of the controller's live value)",
+						f.Wire, got.ValueString())
+				}
+			})
+
+			t.Run("configured surfaces the controller's own echo, not the prior string", func(t *testing.T) {
+				sdk := &settings.GuestAccess{}
+				*f.SDK(sdk) = "the-value"
+				var model settingGuestAccessModel
+				if diags := spec.ToModel(ctx, sdk, &model, ""); diags.HasError() {
+					t.Fatalf("ToModel: %v", diags)
+				}
+				// prior names the field with a DIFFERENT string than the wire
+				// holds -- the point of this case is that guestAccessAfterReceive
+				// does not restore "old"; it leaves the controller's own decoded
+				// echo alone, the same distinction radiusAfterReceive's and
+				// snmpAfterReceive's own comments make.
+				var prior settingGuestAccessModel
+				*f.Model(&prior) = types.StringValue("old-value")
+				if diags := guestAccessAfterReceive(ctx, sdk, &model, prior); diags.HasError() {
+					t.Fatalf("guestAccessAfterReceive: %v", diags)
+				}
+				if got := f.Model(&model).ValueString(); got != "the-value" {
+					t.Errorf("%s = %q, want %q (the controller's own echo, not the prior string)",
+						f.Wire, got, "the-value")
+				}
+			})
+		})
+	}
+}
+
+// TestGuestAccessSecretElideKeepsAnExplicitEmptyString pins the one place
+// the section's 18 x_-prefixed fields diverge from radius.secret and snmp's
+// community/password: none of the 18 has any entry at all in
+// SettingGuestAccess's own constraint table (go-unifi's
+// settings/validation.generated.go), so none carries a validator that would
+// reject "", and guestAccessKitSpec's Elide: KeepZero (not NullZero) is what
+// resourcekit.ElideProblems' schema-driven rule demands as a result -- also
+// asserted indirectly by TestGuestAccessKitSpecConformance's own
+// ElideProblems check, which would fail if this were ever set to NullZero.
+// So an explicit empty string the controller echoes back is a real,
+// distinguishable value here, not folded into null. A non-empty value is
+// asserted too, so a KeepZero regression to NullZero would fail this test
+// even if the conformance check somehow didn't.
+func TestGuestAccessSecretElideKeepsAnExplicitEmptyString(t *testing.T) {
+	ctx := context.Background()
+	spec := guestAccessKitSpec()
+	fields := guestAccessSecretFieldAccessors(spec)
+	if len(fields) != 18 {
+		t.Fatalf("found %d x_-prefixed StringField(s) in guestAccessKitSpec, want 18", len(fields))
+	}
+
+	for _, f := range fields {
+		t.Run(f.Wire, func(t *testing.T) {
+			sdk := &settings.GuestAccess{}
+			*f.SDK(sdk) = ""
+			var model settingGuestAccessModel
+			if diags := spec.ToModel(ctx, sdk, &model, ""); diags.HasError() {
+				t.Fatalf("ToModel: %v", diags)
+			}
+			got := f.Model(&model)
+			if got.IsNull() {
+				t.Errorf("%s decoded from an empty wire value is null, want the real empty string "+
+					"(KeepZero, not NullZero -- none of the 18 carries a validator that rejects \"\")", f.Wire)
+			} else if got.ValueString() != "" {
+				t.Errorf("%s = %q, want the empty string", f.Wire, got.ValueString())
+			}
+
+			*f.SDK(sdk) = "a-real-value"
+			var model2 settingGuestAccessModel
+			if diags := spec.ToModel(ctx, sdk, &model2, ""); diags.HasError() {
+				t.Fatalf("ToModel: %v", diags)
+			}
+			if got := f.Model(&model2).ValueString(); got != "a-real-value" {
+				t.Errorf("%s = %q, want %q", f.Wire, got, "a-real-value")
+			}
+		})
+	}
+}
+
+// TestGuestAccessSecretFieldsWriteOnlyTheirOwnSDKSlot guards against the
+// exact copy-paste risk this section's 18 near-identical StringField entries
+// invite: each field's own value, set alone, must land on its own SDK struct
+// field and nowhere else. A swapped Model/SDK accessor pair between two
+// fields -- indistinguishable from the correct form by eye in a review of
+// the generated diff -- would otherwise go unnoticed until a practitioner's
+// payment gateway key silently overwrote a sibling field on the wire.
+func TestGuestAccessSecretFieldsWriteOnlyTheirOwnSDKSlot(t *testing.T) {
+	ctx := context.Background()
+	spec := guestAccessKitSpec()
+	fields := guestAccessSecretFieldAccessors(spec)
+	if len(fields) != 18 {
+		t.Fatalf("found %d x_-prefixed StringField(s) in guestAccessKitSpec, want 18", len(fields))
+	}
+
+	for _, f := range fields {
+		t.Run(f.Wire, func(t *testing.T) {
+			want := "value-for-" + f.Wire
+			var model settingGuestAccessModel
+			*f.Model(&model) = types.StringValue(want)
+			sdk, diags := spec.ToSDK(ctx, &model)
+			if diags.HasError() {
+				t.Fatalf("ToSDK: %v", diags)
+			}
+			if got := *f.SDK(sdk); got != want {
+				t.Errorf("%s landed as %q on its own SDK field, want %q", f.Wire, got, want)
+			}
+			for _, other := range fields {
+				if other.Wire == f.Wire {
+					continue
+				}
+				if got := *other.SDK(sdk); got != "" {
+					t.Errorf("setting only %s also wrote %q onto %s's SDK field -- accessor collision",
+						f.Wire, got, other.Wire)
+				}
+			}
+		})
 	}
 }

@@ -305,25 +305,7 @@
     "GuestAccess.voucher_customized",
     "GuestAccess.wechat_app_id",
     "GuestAccess.wechat_enabled",
-    "GuestAccess.wechat_shop_id",
-    "GuestAccess.x_authorize_loginid",
-    "GuestAccess.x_authorize_transactionkey",
-    "GuestAccess.x_facebook_app_secret",
-    "GuestAccess.x_google_client_secret",
-    "GuestAccess.x_ippay_terminalid",
-    "GuestAccess.x_merchantwarrior_apikey",
-    "GuestAccess.x_merchantwarrior_apipassphrase",
-    "GuestAccess.x_merchantwarrior_merchantuuid",
-    "GuestAccess.x_password",
-    "GuestAccess.x_paypal_password",
-    "GuestAccess.x_paypal_signature",
-    "GuestAccess.x_paypal_username",
-    "GuestAccess.x_quickpay_agreementid",
-    "GuestAccess.x_quickpay_apikey",
-    "GuestAccess.x_quickpay_merchantid",
-    "GuestAccess.x_stripe_api_key",
-    "GuestAccess.x_wechat_app_secret",
-    "GuestAccess.x_wechat_secret_key"
+    "GuestAccess.wechat_shop_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -3434,7 +3416,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Guest network portal, authentication and payment settings.",
+        "description": "Guest network portal, authentication and payment settings. Its eighteen `x_`-prefixed fields (payment gateway credentials and identifiers, social-login secrets, and the portal password) are Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated.",
         "plan_modifiers": [
           {
             "custom": {
@@ -3658,6 +3640,204 @@
           "structural_name": "ec_enabled",
           "structural_source": "GuestAccess",
           "terraform_name": "ec_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Guest portal password, used when `password_enabled` is set.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_password",
+          "structural_source": "GuestAccess",
+          "terraform_name": "password"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Facebook app secret, used for guest portal social login via Facebook.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_facebook_app_secret",
+          "structural_source": "GuestAccess",
+          "terraform_name": "facebook_app_secret"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Google OAuth client secret, used for guest portal social login via Google.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_google_client_secret",
+          "structural_source": "GuestAccess",
+          "terraform_name": "google_client_secret"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "WeChat app secret, used for guest portal social login via WeChat.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_wechat_app_secret",
+          "structural_source": "GuestAccess",
+          "terraform_name": "wechat_app_secret"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate (both persist unchanged across every go-unifi capture regeneration; see Task 1's guestAccessSecret classification).",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_wechat_secret_key",
+          "structural_source": "GuestAccess",
+          "terraform_name": "wechat_secret_key"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Authorize.Net API login ID, used when `gateway` is `authorize`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_authorize_loginid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "authorize_loginid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Authorize.Net API transaction key, used when `gateway` is `authorize`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_authorize_transactionkey",
+          "structural_source": "GuestAccess",
+          "terraform_name": "authorize_transactionkey"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "PayPal API username, used when `gateway` is `paypal`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_paypal_username",
+          "structural_source": "GuestAccess",
+          "terraform_name": "paypal_username"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "PayPal API password, used when `gateway` is `paypal`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_paypal_password",
+          "structural_source": "GuestAccess",
+          "terraform_name": "paypal_password"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "PayPal API signature, used when `gateway` is `paypal`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_paypal_signature",
+          "structural_source": "GuestAccess",
+          "terraform_name": "paypal_signature"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "QuickPay agreement ID, used when `gateway` is `quickpay`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_quickpay_agreementid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "quickpay_agreementid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "QuickPay merchant ID, used when `gateway` is `quickpay`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_quickpay_merchantid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "quickpay_merchantid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "QuickPay API key, used when `gateway` is `quickpay`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_quickpay_apikey",
+          "structural_source": "GuestAccess",
+          "terraform_name": "quickpay_apikey"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_merchantwarrior_merchantuuid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "merchantwarrior_merchantuuid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Merchant Warrior API key, used when `gateway` is `merchantwarrior`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_merchantwarrior_apikey",
+          "structural_source": "GuestAccess",
+          "terraform_name": "merchantwarrior_apikey"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Merchant Warrior API passphrase, used when `gateway` is `merchantwarrior`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_merchantwarrior_apipassphrase",
+          "structural_source": "GuestAccess",
+          "terraform_name": "merchantwarrior_apipassphrase"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IPpay terminal ID, used when `gateway` is `ippay`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_ippay_terminalid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "ippay_terminalid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Stripe API key, used when `gateway` is `stripe`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_stripe_api_key",
+          "structural_source": "GuestAccess",
+          "terraform_name": "stripe_api_key"
         }
       ],
       "terraform_name": "guest_access",

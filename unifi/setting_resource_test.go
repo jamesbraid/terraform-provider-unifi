@@ -2924,18 +2924,26 @@ resource "unifi_setting" "test" {
 `
 }
 
-// TestAccSettingResource_guestAccess exercises Task 2's 21 core scalars
-// (.superpowers/sdd/plan-r2b-guest-access) live: portal access/mode,
-// post-auth redirect, session expiry (including the two #303-guarded ints,
-// expire_number/expire_unit), the RADIUS guest-auth group (including its own
-// #303-guarded radius_disconnect_port), password_enabled, voucher_enabled,
-// payment_enabled and gateway. A real apply against a validating controller
-// is what the unit-level OmitZero tests
-// (setting_guest_access_descriptor_test.go) cannot prove on their own: if
-// the write guard ever regressed and let a literal 0 reach the wire for
-// expire_number, expire_unit or radius_disconnect_port, this step would fail
-// outright against the controller's own rejection of that value, not just
-// leave a Go assertion red.
+// TestAccSettingResource_guestAccess exercises Task 2's 21 core scalars and
+// Task 3's 18 x_-prefixed fields (.superpowers/sdd/plan-r2b-guest-access)
+// live: portal access/mode, post-auth redirect, session expiry (including
+// the two #303-guarded ints, expire_number/expire_unit), the RADIUS
+// guest-auth group (including its own #303-guarded radius_disconnect_port),
+// password_enabled, voucher_enabled, payment_enabled, gateway, and every one
+// of the section's 18 secrets/identifiers (the portal password, four
+// social-login secrets, and thirteen payment-gateway credentials across six
+// gateways). A real apply against a validating controller is what the
+// unit-level OmitZero and Elide tests (setting_guest_access_descriptor_test.go)
+// cannot prove on their own: if the write guard ever regressed and let a
+// literal 0 reach the wire for expire_number, expire_unit or
+// radius_disconnect_port, this step would fail outright against the
+// controller's own rejection of that value, not just leave a Go assertion
+// red. Per the brief, this test never asserts any of the 18 secrets'
+// echoed values -- Task 0's live probe already pinned that behaviour once,
+// and re-asserting it here would only turn a future controller change into
+// a false failure. The update step's config (testAccSettingConfig_guestAccessUpdate)
+// omits every one of the 18, which is what proves an unconfigured secret is
+// forced null rather than carrying the controller's prior value into state.
 func TestAccSettingResource_guestAccess(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -2979,16 +2987,31 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					// section's import step ignores its own attributes.
 					"guest_access.%",
 					"guest_access.auth",
+					"guest_access.authorize_loginid",
+					"guest_access.authorize_transactionkey",
 					"guest_access.ec_enabled",
 					"guest_access.expire",
 					"guest_access.expire_number",
 					"guest_access.expire_unit",
+					"guest_access.facebook_app_secret",
 					"guest_access.gateway",
+					"guest_access.google_client_secret",
+					"guest_access.ippay_terminalid",
+					"guest_access.merchantwarrior_apikey",
+					"guest_access.merchantwarrior_apipassphrase",
+					"guest_access.merchantwarrior_merchantuuid",
+					"guest_access.password",
 					"guest_access.password_enabled",
 					"guest_access.payment_enabled",
+					"guest_access.paypal_password",
+					"guest_access.paypal_signature",
+					"guest_access.paypal_username",
 					"guest_access.portal_enabled",
 					"guest_access.portal_hostname",
 					"guest_access.portal_use_hostname",
+					"guest_access.quickpay_agreementid",
+					"guest_access.quickpay_apikey",
+					"guest_access.quickpay_merchantid",
 					"guest_access.radius_auth_type",
 					"guest_access.radius_disconnect_enabled",
 					"guest_access.radius_disconnect_port",
@@ -2998,7 +3021,10 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					"guest_access.redirect_https",
 					"guest_access.redirect_to_https",
 					"guest_access.redirect_url",
+					"guest_access.stripe_api_key",
 					"guest_access.voucher_enabled",
+					"guest_access.wechat_app_secret",
+					"guest_access.wechat_secret_key",
 				},
 			},
 			{
@@ -3015,6 +3041,20 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					// expire_unit is the enum 1/60/1440,
 					// radius_disconnect_port has a minimum of 1).
 					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.radius_enabled", "false"),
+					// This step's config (testAccSettingConfig_guestAccessUpdate)
+					// omits every one of the 18 secrets the previous step set --
+					// the live proof that guestAccessAfterReceive forces an
+					// unconfigured secret null rather than carrying the
+					// controller's previously-written value into state. One
+					// representative from each of the three groups (the portal
+					// password, a social-login secret, and a payment-gateway
+					// credential/identifier) stands in for all 18; the unit-level
+					// TestGuestAccessAfterReceiveKeepsThePlansSecretWhenNamed
+					// already covers every one of them in isolation.
+					resource.TestCheckNoResourceAttr("unifi_setting.test", "guest_access.password"),
+					resource.TestCheckNoResourceAttr("unifi_setting.test", "guest_access.wechat_app_secret"),
+					resource.TestCheckNoResourceAttr("unifi_setting.test", "guest_access.stripe_api_key"),
+					resource.TestCheckNoResourceAttr("unifi_setting.test", "guest_access.authorize_loginid"),
 				),
 			},
 		},
@@ -3040,6 +3080,29 @@ resource "unifi_setting" "test" {
     radius_auth_type           = "chap"
     radius_disconnect_enabled  = true
     radius_disconnect_port     = 3799
+
+    # Task 3's 18 x_-prefixed fields. Values are synthetic acceptance-test
+    # markers, not real credentials -- per the brief, this test never asserts
+    # any of them back (see the Check list above and this function's own doc
+    # comment), only that the apply is clean.
+    password                      = "acctest-password-9f2b1e"
+    facebook_app_secret           = "acctest-facebook-app-secret-9f2b1e"
+    google_client_secret          = "acctest-google-client-secret-9f2b1e"
+    wechat_app_secret             = "acctest-wechat-app-secret-9f2b1e"
+    wechat_secret_key             = "acctest-wechat-secret-key-9f2b1e"
+    authorize_loginid             = "acctest-authorize-loginid-9f2b1e"
+    authorize_transactionkey      = "acctest-authorize-transactionkey-9f2b1e"
+    paypal_username               = "acctest-paypal-username-9f2b1e"
+    paypal_password               = "acctest-paypal-password-9f2b1e"
+    paypal_signature              = "acctest-paypal-signature-9f2b1e"
+    quickpay_agreementid          = "acctest-quickpay-agreementid-9f2b1e"
+    quickpay_merchantid           = "acctest-quickpay-merchantid-9f2b1e"
+    quickpay_apikey               = "acctest-quickpay-apikey-9f2b1e"
+    merchantwarrior_merchantuuid  = "acctest-merchantwarrior-merchantuuid-9f2b1e"
+    merchantwarrior_apikey        = "acctest-merchantwarrior-apikey-9f2b1e"
+    merchantwarrior_apipassphrase = "acctest-merchantwarrior-apipassphrase-9f2b1e"
+    ippay_terminalid              = "acctest-ippay-terminalid-9f2b1e"
+    stripe_api_key                = "acctest-stripe-api-key-9f2b1e"
   }
 }
 `

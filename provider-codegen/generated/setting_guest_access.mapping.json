@@ -150,6 +150,132 @@
       "structural_type": "bool",
       "terraform_type": "bool",
       "disposition": "managed"
+    },
+    {
+      "structural_name": "x_password",
+      "terraform_name": "password",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_facebook_app_secret",
+      "terraform_name": "facebook_app_secret",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_google_client_secret",
+      "terraform_name": "google_client_secret",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_wechat_app_secret",
+      "terraform_name": "wechat_app_secret",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_wechat_secret_key",
+      "terraform_name": "wechat_secret_key",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_authorize_loginid",
+      "terraform_name": "authorize_loginid",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_authorize_transactionkey",
+      "terraform_name": "authorize_transactionkey",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_paypal_username",
+      "terraform_name": "paypal_username",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_paypal_password",
+      "terraform_name": "paypal_password",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_paypal_signature",
+      "terraform_name": "paypal_signature",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_quickpay_agreementid",
+      "terraform_name": "quickpay_agreementid",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_quickpay_merchantid",
+      "terraform_name": "quickpay_merchantid",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_quickpay_apikey",
+      "terraform_name": "quickpay_apikey",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_merchantwarrior_merchantuuid",
+      "terraform_name": "merchantwarrior_merchantuuid",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_merchantwarrior_apikey",
+      "terraform_name": "merchantwarrior_apikey",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_merchantwarrior_apipassphrase",
+      "terraform_name": "merchantwarrior_apipassphrase",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_ippay_terminalid",
+      "terraform_name": "ippay_terminalid",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "x_stripe_api_key",
+      "terraform_name": "stripe_api_key",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
     }
   ],
   "provider_owned": []

@@ -5994,7 +5994,7 @@
           "nesting_mode": "single",
           "optional": true,
           "computed": true,
-          "description": "Guest network portal, authentication and payment settings.",
+          "description": "Guest network portal, authentication and payment settings. Its eighteen `x_`-prefixed fields (payment gateway credentials and identifiers, social-login secrets, and the portal password) are Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated.",
           "description_kind": "markdown",
           "plan_modifiers": [
             "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
@@ -6010,6 +6010,24 @@
           "validators": [
             "stringvalidator.oneOfValidator: value must be one of: [\"none\" \"hotspot\" \"custom\"]"
           ]
+        },
+        "guest_access.authorize_loginid": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Authorize.Net API login ID, used when `gateway` is `authorize`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.authorize_transactionkey": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Authorize.Net API transaction key, used when `gateway` is `authorize`.",
+          "description_kind": "markdown"
         },
         "guest_access.ec_enabled": {
           "kind": "attribute",
@@ -6049,6 +6067,15 @@
             "int64validator.oneOfValidator: value must be one of: [\"1\" \"60\" \"1440\"]"
           ]
         },
+        "guest_access.facebook_app_secret": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Facebook app secret, used for guest portal social login via Facebook.",
+          "description_kind": "markdown"
+        },
         "guest_access.gateway": {
           "kind": "attribute",
           "type": "\"string\"",
@@ -6059,6 +6086,60 @@
           "validators": [
             "stringvalidator.oneOfValidator: value must be one of: [\"paypal\" \"stripe\" \"authorize\" \"quickpay\" \"merchantwarrior\" \"ippay\"]"
           ]
+        },
+        "guest_access.google_client_secret": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Google OAuth client secret, used for guest portal social login via Google.",
+          "description_kind": "markdown"
+        },
+        "guest_access.ippay_terminalid": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "IPpay terminal ID, used when `gateway` is `ippay`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.merchantwarrior_apikey": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Merchant Warrior API key, used when `gateway` is `merchantwarrior`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.merchantwarrior_apipassphrase": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Merchant Warrior API passphrase, used when `gateway` is `merchantwarrior`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.merchantwarrior_merchantuuid": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.password": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Guest portal password, used when `password_enabled` is set.",
+          "description_kind": "markdown"
         },
         "guest_access.password_enabled": {
           "kind": "attribute",
@@ -6074,6 +6155,33 @@
           "optional": true,
           "computed": true,
           "description": "Enable paid guest access via `gateway`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.paypal_password": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "PayPal API password, used when `gateway` is `paypal`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.paypal_signature": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "PayPal API signature, used when `gateway` is `paypal`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.paypal_username": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "PayPal API username, used when `gateway` is `paypal`.",
           "description_kind": "markdown"
         },
         "guest_access.portal_enabled": {
@@ -6101,6 +6209,33 @@
           "optional": true,
           "computed": true,
           "description": "Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.",
+          "description_kind": "markdown"
+        },
+        "guest_access.quickpay_agreementid": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "QuickPay agreement ID, used when `gateway` is `quickpay`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.quickpay_apikey": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "QuickPay API key, used when `gateway` is `quickpay`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.quickpay_merchantid": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "QuickPay merchant ID, used when `gateway` is `quickpay`.",
           "description_kind": "markdown"
         },
         "guest_access.radius_auth_type": {
@@ -6178,12 +6313,39 @@
           "description": "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.",
           "description_kind": "markdown"
         },
+        "guest_access.stripe_api_key": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "Stripe API key, used when `gateway` is `stripe`.",
+          "description_kind": "markdown"
+        },
         "guest_access.voucher_enabled": {
           "kind": "attribute",
           "type": "\"bool\"",
           "optional": true,
           "computed": true,
           "description": "Enable voucher-based guest access.",
+          "description_kind": "markdown"
+        },
+        "guest_access.wechat_app_secret": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "WeChat app secret, used for guest portal social login via WeChat.",
+          "description_kind": "markdown"
+        },
+        "guest_access.wechat_secret_key": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate (both persist unchanged across every go-unifi capture regeneration; see Task 1's guestAccessSecret classification).",
           "description_kind": "markdown"
         },
         "id": {
