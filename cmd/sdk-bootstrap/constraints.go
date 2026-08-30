@@ -25,10 +25,27 @@ type fieldConstraint struct {
 // tests can stub it without the real generated tables.
 type constraintLookup func(goType, wire string) (unifi.FieldConstraint, bool)
 
-// sdkConstraints is production's constraintLookup: unifi.FieldConstraints
-// covers the top-level package, settings.FieldConstraints covers settings
-// types. A Go type name lives in at most one of the two, so trying both is
-// enough -- there's no ambiguity to resolve.
+// settingsPackagePath is the -package value an sdk-bootstrap invocation must
+// be given for newSDKConstraints to try settings.FieldConstraints at all --
+// see newSDKConstraints for why that gate exists.
+const settingsPackagePath = "github.com/ubiquiti-community/go-unifi/unifi/settings"
+
+// newSDKConstraints builds production's constraintLookup for one
+// invocation, gated on pkgPath (the -package flag that invocation was
+// given): unifi.FieldConstraints covers the top-level package and is always
+// tried; settings.FieldConstraints, tried bare then "Setting"-prefixed, is
+// tried at all ONLY when pkgPath is settingsPackagePath.
+//
+// That gate exists because the prefixed fallback is a real source of
+// ambiguity, not a theoretical one. unifi.Dashboard is a real top-level SDK
+// struct (unifi/dashboard.generated.go) sitting alongside
+// settings.FieldConstraints["SettingDashboard"]; an ungated invocation
+// against the top-level package (-package .../unifi -struct Dashboard)
+// would silently apply settings constraints to that unrelated struct's
+// fields if any of its wire names happened to collide with
+// SettingDashboard's. It is inert only by chance today -- unifi.Dashboard
+// has no layout_preference field -- and gating on the invoked package
+// removes the chance rather than relying on it.
 //
 // settings.FieldConstraints is keyed by the SDK generator's canonical
 // resource name, which for every settings type carries a "Setting" prefix
@@ -46,19 +63,25 @@ type constraintLookup func(goType, wire string) (unifi.FieldConstraint, bool)
 // convention rather than reusing the generator's own code. That is a second
 // copy of a fact this package doesn't own; if the SDK ever changes how it
 // strips the prefix, this must change with it.
-func sdkConstraints(goType, wire string) (unifi.FieldConstraint, bool) {
-	if byWire, ok := unifi.FieldConstraints[goType]; ok {
-		if constraint, ok := byWire[wire]; ok {
+func newSDKConstraints(pkgPath string) constraintLookup {
+	settingsPackage := pkgPath == settingsPackagePath
+	return func(goType, wire string) (unifi.FieldConstraint, bool) {
+		if byWire, ok := unifi.FieldConstraints[goType]; ok {
+			if constraint, ok := byWire[wire]; ok {
+				return constraint, true
+			}
+		}
+		if !settingsPackage {
+			return unifi.FieldConstraint{}, false
+		}
+		if constraint, ok := settingsConstraint(goType, wire); ok {
 			return constraint, true
 		}
+		if constraint, ok := settingsConstraint("Setting"+goType, wire); ok {
+			return constraint, true
+		}
+		return unifi.FieldConstraint{}, false
 	}
-	if constraint, ok := settingsConstraint(goType, wire); ok {
-		return constraint, true
-	}
-	if constraint, ok := settingsConstraint("Setting"+goType, wire); ok {
-		return constraint, true
-	}
-	return unifi.FieldConstraint{}, false
 }
 
 // settingsConstraint looks goType up in settings.FieldConstraints exactly as
