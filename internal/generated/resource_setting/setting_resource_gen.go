@@ -431,8 +431,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"auth_url": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "External authentication server URL, required together with `custom_ip` when `auth` is `custom` -- the controller rejects the write with only one of the pair set, and silently discards `auth_url` when `auth` is not `custom` -- confirmed live against the pinned controller.",
-						MarkdownDescription: "External authentication server URL, required together with `custom_ip` when `auth` is `custom` -- the controller rejects the write with only one of the pair set, and silently discards `auth_url` when `auth` is not `custom` -- confirmed live against the pinned controller.",
+						Description:         "External authentication server URL. Optional at all times -- the controller silently discards it unless `auth` is `custom` -- confirmed live against the pinned controller.",
+						MarkdownDescription: "External authentication server URL. Optional at all times -- the controller silently discards it unless `auth` is `custom` -- confirmed live against the pinned controller.",
 					},
 					"authorize_loginid": schema.StringAttribute{
 						Optional:            true,
@@ -457,8 +457,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"custom_ip": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "IP address of the external authentication server, required together with `auth_url` when `auth` is `custom` -- confirmed live against the pinned controller.",
-						MarkdownDescription: "IP address of the external authentication server, required together with `auth_url` when `auth` is `custom` -- confirmed live against the pinned controller.",
+						Description:         "IP address of the external authentication server, required when `auth` is `custom` -- the controller rejects the write without it (`api.err.CustomAuthMissingExternalServer`) -- confirmed live against the pinned controller.",
+						MarkdownDescription: "IP address of the external authentication server, required when `auth` is `custom` -- the controller rejects the write without it (`api.err.CustomAuthMissingExternalServer`) -- confirmed live against the pinned controller.",
 						Validators: []validator.String{
 							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, ""),
 						},

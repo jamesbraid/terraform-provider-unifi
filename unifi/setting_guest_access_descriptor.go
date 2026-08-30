@@ -52,16 +52,19 @@ package unifi
 // still lists them, not because this controller honours them. Neither
 // field's purpose was ever confirmed against controller documentation
 // either, for what that is worth now that both are unmodelled again.
-// auth_url and custom_ip are not a hedge any more: a live probe against the
-// pinned controller confirmed both are required together when auth is
-// custom (the controller rejects a write naming only one of the pair with
-// api.err.CustomAuthMissingExternalServer) and that the controller silently
-// discards auth_url whenever auth is not custom, rather than rejecting or
-// storing it -- exactly what each one's shipped description already said,
-// now measured rather than inferred. wechat_shop_id's and
-// voucher_customized's purpose is still not confirmed against controller
-// documentation; each hedges in its own shipped description exactly the way
-// ec_enabled's already does, not just in this comment.
+// auth_url and custom_ip are not a hedge any more, but the measured fact is
+// asymmetric, not a pair requirement: a live probe against the pinned
+// controller found custom_ip alone (auth=custom, auth_url unset) writes
+// cleanly, while auth_url alone (auth=custom, custom_ip unset) is rejected
+// with api.err.CustomAuthMissingExternalServer -- so custom_ip is what auth
+// = custom actually requires; auth_url carries no requirement of its own,
+// it is simply meaningless (and silently discarded, not rejected) outside
+// auth = custom. Each field's own shipped description now states its own
+// half of this, not a shared "required together" claim the controller
+// never enforced. wechat_shop_id's and voucher_customized's purpose is
+// still not confirmed against controller documentation; each hedges in its
+// own shipped description exactly the way ec_enabled's already does, not
+// just in this comment.
 // restricted_dns_servers is this policy corpus's
 // first per-element-validated string collection: policy/setting.json
 // composes listvalidator.ValueStringsAre with controllerregex.Matches, the

@@ -259,11 +259,11 @@ Required:
 Optional:
 
 - `auth` (String) Guest portal authentication method: `none`, `hotspot`, or `custom`.
-- `auth_url` (String) External authentication server URL, required together with `custom_ip` when `auth` is `custom` -- the controller rejects the write with only one of the pair set, and silently discards `auth_url` when `auth` is not `custom` -- confirmed live against the pinned controller.
+- `auth_url` (String) External authentication server URL. Optional at all times -- the controller silently discards it unless `auth` is `custom` -- confirmed live against the pinned controller.
 - `authorize_loginid` (String, Sensitive) Authorize.Net API login ID, used when `gateway` is `authorize`.
 - `authorize_transactionkey` (String, Sensitive) Authorize.Net API transaction key, used when `gateway` is `authorize`.
 - `authorize_use_sandbox` (Boolean) Use Authorize.Net's sandbox environment for guest payment, rather than live processing, when `gateway` is `authorize`.
-- `custom_ip` (String) IP address of the external authentication server, required together with `auth_url` when `auth` is `custom` -- confirmed live against the pinned controller.
+- `custom_ip` (String) IP address of the external authentication server, required when `auth` is `custom` -- the controller rejects the write without it (`api.err.CustomAuthMissingExternalServer`) -- confirmed live against the pinned controller.
 - `ec_enabled` (Boolean) Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.
 - `expire` (String) Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.
 - `expire_number` (Number) Session length, combined with `expire_unit`, when `expire` is `custom`.
