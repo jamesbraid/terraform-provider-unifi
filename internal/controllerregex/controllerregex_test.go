@@ -14,10 +14,12 @@ import (
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 )
 
-// --- Anchored: ported from providercompiler's TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped
-// / TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace /
-// TestCompileWrapsAPatternWithAnUnparenthesizedTopLevelAlternation /
-// TestCompileLeavesSelfAnchoredTopLevelBranchesUnwrapped, and resourcekit's
+// --- Anchored: ported from providercompiler's TestCompileEmitsAnAlreadyAnchoredPatternVerbatim
+// / TestCompileEmitsAPatternThatStillRejectsALeadingSpace /
+// TestCompileEmitsAnUnparenthesizedTopLevelAlternationThatStillForcesAFullMatch /
+// TestCompileLeavesSelfAnchoredTopLevelBranchesUnwrapped (renamed since,
+// when derive_validators.go stopped doing its own anchoring -- Task 2), and
+// resourcekit's
 // TestAnchoredControllerPatternWrapsAnUnparenthesizedTopLevelAlternation /
 // TestAnchoredControllerPatternLeavesSelfAnchoredBranchesAlone -- both call
 // sites tested the same rule against their own copy; this is the one copy

@@ -560,14 +560,14 @@ func TestCompileSkipsPatternDerivationForAGoDurationTypedAttributeWithAHandValid
 	}
 }
 
-// TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped confirms this file no
+// TestCompileEmitsAnAlreadyAnchoredPatternVerbatim confirms this file no
 // longer rewrites a pattern's anchoring at all: a pattern that already
 // anchors both ends (like x_uplink_password's real `^.{0,256}$`) is emitted
 // exactly as the SDK published it, not wrapped into `^(?:^.{0,256}$)$` --
 // that whole decision moved into controllerregex.Compile's own,
 // unconditional `\A(?:...)\z` wrap (internal/controllerregex's own tests
 // cover it; see TestAnchoredPatternRejectsATrailingNewline there).
-func TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped(t *testing.T) {
+func TestCompileEmitsAnAlreadyAnchoredPatternVerbatim(t *testing.T) {
 	pattern := `^.{0,256}$`
 	result, err := Compile(CompileInput{
 		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": pattern}),
@@ -587,7 +587,7 @@ func TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped(t *testing.T) {
 	}
 }
 
-// TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace is the
+// TestCompileEmitsAPatternThatStillRejectsALeadingSpace is the
 // anchoring path's behavioural proof, using site_to_site_vpn's real
 // x_ipsec_pre_shared_key pattern. The controller validates the pattern as a
 // full match; the schema definition now carries the raw, unanchored pattern
@@ -597,7 +597,7 @@ func TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped(t *testing.T) {
 // the controller rejects) the same way the old RE2-anchored form did. This
 // is the ledgered gap the original RegexMatches derivation closed; this
 // task only changed which engine enforces it.
-func TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace(t *testing.T) {
+func TestCompileEmitsAPatternThatStillRejectsALeadingSpace(t *testing.T) {
 	pattern := `[^\"\' ]+`
 	result, err := Compile(CompileInput{
 		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": pattern}),
@@ -631,7 +631,7 @@ func TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace(t *testing.T) 
 	}
 }
 
-// TestCompileWrapsAPatternWithAnUnparenthesizedTopLevelAlternation is the
+// TestCompileEmitsAnUnparenthesizedTopLevelAlternationThatStillForcesAFullMatch is the
 // anchoring path's other behavioural proof: a leading ^ and a trailing $ on
 // the pattern as a whole are not enough to force a full match under partial
 // matching. "^A|B$" is the alternation of "^A" (no end anchor) and "B$" (no
@@ -640,7 +640,7 @@ func TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace(t *testing.T) 
 // leading garbage under the pre-RegexMatches-derivation provider. This test
 // proves controllerregex.Compile's unconditional \A(?:...)\z wrap (not any
 // rewriting in this package) is what forces the full match now.
-func TestCompileWrapsAPatternWithAnUnparenthesizedTopLevelAlternation(t *testing.T) {
+func TestCompileEmitsAnUnparenthesizedTopLevelAlternationThatStillForcesAFullMatch(t *testing.T) {
 	pattern := `^A|B$`
 	result, err := Compile(CompileInput{
 		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": pattern}),

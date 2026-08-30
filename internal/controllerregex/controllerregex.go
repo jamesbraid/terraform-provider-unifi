@@ -63,13 +63,20 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-// MatchTimeout bounds a single MatchString call. The engine study's worst
-// observed match time, across the controller's ten most complex patterns
-// (1000 iterations each against a 300-character non-matching input), was
-// 159.92us; this is an order of magnitude above that. It is not a measured
-// bound on adversarial input -- the study did not fuzz for one -- only a
-// backstop against a pattern/input pair that backtracks catastrophically.
-const MatchTimeout = 1600 * time.Microsecond
+// MatchTimeout bounds a single MatchString call. It is not sized off match
+// cost -- the worst measured match across every shipped pattern is tens of
+// microseconds, several orders of magnitude below this bound -- because
+// match cost is not what the deadline has to clear. MatchTimeout is
+// wall-clock, so scheduler and GC jitter alone can consume it on a busy
+// host even when the match itself is trivial: a 1.6ms bound (this
+// constant's original value) produced spurious timeouts on ordinary,
+// perfectly valid input under CPU contention -- a hard "Controller Pattern
+// Match Timeout" error a practitioner cannot explain or reproduce. 250ms
+// clears realistic jitter by a wide margin while still being roughly
+// 13,000x the worst legitimate match, so it still bounds a pattern/input
+// pair that backtracks catastrophically -- the hazard this timeout exists
+// for in the first place.
+const MatchTimeout = 250 * time.Millisecond
 
 // Anchored returns pattern wrapped so that a match means what the controller
 // means -- a full match -- unless it already anchors both ends. A leading ^

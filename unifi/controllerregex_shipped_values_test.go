@@ -52,6 +52,17 @@ const controllerregexPkgPath = "github.com/ubiquiti-community/terraform-provider
 // since it is very likely an unexpanded format verb, not a real value) --
 // Config values built through more elaborate string composition are not
 // recovered. What is recovered is real, not synthetic.
+//
+// The value count is not a coverage number by itself: only some of the
+// pattern-validated attributes the schema walk finds have any shipped value
+// at all, and most of the values found come from the acceptance-test half
+// rather than the exhaustive examples/ half -- see the two "coverage:" log
+// lines below. minChecked exists so a future change that breaks the path-key
+// alignment between collectResourcePatternValidators (paths built from the
+// schema) and walkHCLBody (paths built from HCL) -- a nested-attribute
+// reshape, a rename, a switch from block syntax to object-constructor syntax
+// -- makes the walk stop finding values and this test fail loudly, instead
+// of silently checking nothing and staying green.
 func TestControllerregexShippedValuesAreAccepted(t *testing.T) {
 	ctx := context.Background()
 
@@ -63,18 +74,24 @@ func TestControllerregexShippedValuesAreAccepted(t *testing.T) {
 
 	checked := 0
 	rejected := 0
+	totalAttrs := 0
+	coveredAttrs := 0
 
 	type sourcedValue struct{ value, source string }
 
-	checkSurface := func(kind string, byType map[string]map[string][]validator.String, examples, acc map[string]map[string][]string) {
+	checkSurface := func(kind string, byType map[string]map[string][]validator.String, examples, acc map[string]map[string][]string) (surfaceTotal, surfaceCovered int) {
 		for typeName, byPath := range byType {
 			for path, validators := range byPath {
+				surfaceTotal++
 				var values []sourcedValue
 				for _, v := range examples[typeName][path] {
 					values = append(values, sourcedValue{v, "examples/"})
 				}
 				for _, v := range acc[typeName][path] {
 					values = append(values, sourcedValue{v, "acceptance-test config"})
+				}
+				if len(values) > 0 {
+					surfaceCovered++
 				}
 				for _, sv := range values {
 					checked++
@@ -93,12 +110,27 @@ func TestControllerregexShippedValuesAreAccepted(t *testing.T) {
 				}
 			}
 		}
+		return surfaceTotal, surfaceCovered
 	}
 
-	checkSurface("resource", resourceValidators, resourceExamples, resourceAcc)
-	checkSurface("data source", dataSourceValidators, dataSourceExamples, dataSourceAcc)
+	resTotal, resCovered := checkSurface("resource", resourceValidators, resourceExamples, resourceAcc)
+	dsTotal, dsCovered := checkSurface("data source", dataSourceValidators, dataSourceExamples, dataSourceAcc)
+	totalAttrs, coveredAttrs = resTotal+dsTotal, resCovered+dsCovered
 
 	t.Logf("checked %d shipped value(s) against their controller-pattern validator(s); %d rejected", checked, rejected)
+	t.Logf("coverage: %d of %d pattern-validated attributes have at least one shipped value (resources %d/%d, data sources %d/%d)",
+		coveredAttrs, totalAttrs, resCovered, resTotal, dsCovered, dsTotal)
+
+	// A floor near the value count this test currently finds (444) -- not a
+	// tight equality, so a legitimate small change to examples/ or the
+	// acceptance-test corpus doesn't break the build, but a collapse toward
+	// zero (the silent-failure mode this check exists to catch) does.
+	const minChecked = 400
+	if checked < minChecked {
+		t.Fatalf("only checked %d shipped value(s) against %d pattern-validated attribute(s), want at least %d -- "+
+			"the walk may have stopped finding real values (a path-key mismatch between the schema walk and the "+
+			"HCL walk), not that the corpus genuinely shrank", checked, totalAttrs, minChecked)
+	}
 }
 
 // isControllerregexValidator reports whether v is a validator.String built
