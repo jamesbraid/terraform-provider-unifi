@@ -1077,19 +1077,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "IPS operating mode: ids (detect only), ips (detect and block), ipsInline, or disabled.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"ids\", \"ips\", \"ipsInline\", \"disabled\")"
-                }
-              }
-            ]
+            "description": "IPS operating mode: ids (detect only), ips (detect and block), ipsInline, or disabled."
           },
           "disposition": "managed",
           "structural_name": "ips_mode",
@@ -1454,32 +1442,7 @@
           "attribute": {
             "computed_optional_required": "computed_optional",
             "description": "RADIUS shared secret.",
-            "sensitive": true,
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.LengthBetween(1, 48)"
-                }
-              },
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^[^\\\\\\ \"']+$`), \"must not contain backslashes, spaces, single quotes, or double quotes\")"
-                }
-              }
-            ]
+            "sensitive": true
           },
           "disposition": "managed",
           "structural_name": "x_secret",
@@ -1580,19 +1543,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Encrypted DNS state: off, auto, manual, or custom.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"off\", \"auto\", \"manual\", \"custom\")"
-                }
-              }
-            ]
+            "description": "Encrypted DNS state: off, auto, manual, or custom."
           },
           "disposition": "managed",
           "structural_name": "state",
@@ -1964,19 +1915,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Configuration mode: `auto` or `manual`.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-                }
-              }
-            ]
+            "description": "Configuration mode: `auto` or `manual`."
           },
           "disposition": "managed",
           "structural_name": "setting_preference",
@@ -2224,19 +2163,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Global NAT mode: `auto`, `custom`, or `off`.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"custom\", \"off\")"
-                }
-              }
-            ]
+            "description": "Global NAT mode: `auto`, `custom`, or `off`."
           },
           "disposition": "managed",
           "structural_name": "mode",
@@ -2268,19 +2195,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "SSL inspection state: `off`, `simple`, or `advanced`.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"off\", \"simple\", \"advanced\")"
-                }
-              }
-            ]
+            "description": "SSL inspection state: `off`, `simple`, or `advanced`."
           },
           "disposition": "managed",
           "structural_name": "state",
@@ -2344,19 +2259,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Dashboard layout mode: `auto` or `manual`.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-                }
-              }
-            ]
+            "description": "Dashboard layout mode: `auto` or `manual`."
           },
           "disposition": "managed",
           "structural_name": "layout_preference",
@@ -2597,19 +2500,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"all\", \"auto\", \"custom\")"
-                }
-              }
-            ]
+            "description": "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services)."
           },
           "disposition": "managed",
           "structural_name": "mode",
@@ -2704,22 +2595,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([8-9]|[1-2][0-9]|3[0-2])$|^$`), \"\")"
-                }
-              }
-            ]
+            "description": "CIDR subnet Teleport clients are assigned from. Empty when unconfigured."
           },
           "disposition": "managed",
           "structural_name": "subnet_cidr",
@@ -2838,22 +2714,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\\d\\w-]+|)$`), \"\")"
-                }
-              }
-            ]
+            "description": "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured."
           },
           "disposition": "managed",
           "structural_name": "dot1x_fallback_networkconf_id",
@@ -2923,19 +2784,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "PoE staging delay in milliseconds.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.OneOf(0, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000)"
-                }
-              }
-            ]
+            "description": "PoE staging delay in milliseconds."
           },
           "disposition": "managed",
           "structural_name": "poe_staging_delay_msec",
@@ -2955,19 +2804,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "STP (spanning tree protocol) version.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"stp\", \"rstp\", \"disabled\")"
-                }
-              }
-            ]
+            "description": "STP (spanning tree protocol) version."
           },
           "disposition": "managed",
           "structural_name": "stp_version",
@@ -3111,19 +2948,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "NetFlow sampling mode.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"off\", \"hash\", \"random\", \"deterministic\")"
-                }
-              }
-            ]
+            "description": "NetFlow sampling mode."
           },
           "disposition": "managed",
           "structural_name": "sampling_mode",
@@ -3155,22 +2980,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "NetFlow collector hostname or IP address.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,252}[^\\.]$)$`), \"\")"
-                }
-              }
-            ]
+            "description": "NetFlow collector hostname or IP address."
           },
           "disposition": "managed",
           "structural_name": "server",
@@ -3180,19 +2990,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "NetFlow protocol version.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-                    }
-                  ],
-                  "schema_definition": "int64validator.OneOf(5, 9, 10)"
-                }
-              }
-            ]
+            "description": "NetFlow protocol version."
           },
           "disposition": "managed",
           "structural_name": "version",
@@ -3234,19 +3032,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Channel optimization preset.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"maximum_speed\", \"conservative\", \"custom\")"
-                }
-              }
-            ]
+            "description": "Channel optimization preset."
           },
           "disposition": "managed",
           "structural_name": "auto_channel_presets_type",
@@ -3482,19 +3268,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Channel/power optimization preference.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-                }
-              }
-            ]
+            "description": "Channel/power optimization preference."
           },
           "disposition": "managed",
           "structural_name": "setting_preference",
@@ -3527,22 +3301,7 @@
           "attribute": {
             "computed_optional_required": "computed_optional",
             "description": "SNMP community string, used for SNMPv1/v2c. Sensitive \u2014 on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
-            "sensitive": true,
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,256})$`), \"\")"
-                }
-              }
-            ]
+            "sensitive": true
           },
           "disposition": "managed",
           "structural_name": "community",
@@ -3572,22 +3331,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "SNMPv3 username.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[a-zA-Z0-9_-]{1,30})$`), \"\")"
-                }
-              }
-            ]
+            "description": "SNMPv3 username."
           },
           "disposition": "managed",
           "structural_name": "username",
@@ -3598,22 +3342,7 @@
           "attribute": {
             "computed_optional_required": "computed_optional",
             "description": "SNMPv3 authentication password. Sensitive \u2014 on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
-            "sensitive": true,
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[^'\"]{8,32})$`), \"\")"
-                }
-              }
-            ]
+            "sensitive": true
           },
           "disposition": "managed",
           "structural_name": "x_password",

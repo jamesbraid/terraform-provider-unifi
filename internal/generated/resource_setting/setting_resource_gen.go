@@ -457,6 +457,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Advanced filtering mode: manual or disabled.",
 						Validators: []validator.String{
 							stringvalidator.OneOf("manual", "disabled"),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:|manual|disabled)$`), ""),
 						},
 					},
 					"content_filtering_blocking_page_enabled": schema.BoolAttribute{
@@ -900,12 +901,18 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
 						MarkdownDescription: "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+						},
 					},
 					"ssh_username": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "SSH username for device access.",
 						MarkdownDescription: "SSH username for device access.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^[_A-Za-z0-9][-_.A-Za-z0-9]{0,29}$`), ""),
+						},
 					},
 					"unifi_idp_enabled": schema.BoolAttribute{
 						Optional:            true,
@@ -1322,8 +1329,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "RADIUS shared secret.",
 						MarkdownDescription: "RADIUS shared secret.",
 						Validators: []validator.String{
-							stringvalidator.LengthBetween(1, 48),
-							stringvalidator.RegexMatches(regexp.MustCompile(`^[^\\\ "']+$`), "must not contain backslashes, spaces, single quotes, or double quotes"),
+							stringvalidator.RegexMatches(regexp.MustCompile(`^[^\\"' ]{1,48}$`), ""),
 						},
 					},
 				},
@@ -1674,6 +1680,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "MSS clamping mode: auto, custom, or disabled.",
 						MarkdownDescription: "MSS clamping mode: auto, custom, or disabled.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "custom", "disabled"),
+						},
 					},
 					"offload_accounting": schema.BoolAttribute{
 						Optional:            true,
@@ -1797,6 +1806,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "Timeout setting preference: auto or manual.",
 						MarkdownDescription: "Timeout setting preference: auto or manual.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "reduced", "manual"),
+						},
 					},
 					"udp_other_timeout": schema.StringAttribute{
 						CustomType:          timetypes.GoDurationType{},
@@ -1841,6 +1853,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "UPnP WAN interface (e.g., WAN, WAN2).",
 						MarkdownDescription: "UPnP WAN interface (e.g., WAN, WAN2).",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[2-9]?)$`), ""),
+						},
 					},
 				},
 				Optional:            true,

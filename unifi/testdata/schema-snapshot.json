@@ -6044,7 +6044,8 @@
           "description": "Advanced filtering mode: manual or disabled.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.oneOfValidator: value must be one of: [\"manual\" \"disabled\"]"
+            "stringvalidator.oneOfValidator: value must be one of: [\"manual\" \"disabled\"]",
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:|manual|disabled)$'"
           ]
         },
         "ips.content_filtering_blocking_page_enabled": {
@@ -6561,7 +6562,10 @@
           "optional": true,
           "sensitive": true,
           "description": "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+          ]
         },
         "mgmt.ssh_username": {
           "kind": "attribute",
@@ -6569,7 +6573,10 @@
           "optional": true,
           "computed": true,
           "description": "SSH username for device access.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[_A-Za-z0-9][-_.A-Za-z0-9]{0,29}$'"
+          ]
         },
         "mgmt.unifi_idp_enabled": {
           "kind": "attribute",
@@ -7059,8 +7066,7 @@
           "description": "RADIUS shared secret.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.lengthBetweenValidator: string length must be between 1 and 48",
-            "stringvalidator.regexMatchesValidator: must not contain backslashes, spaces, single quotes, or double quotes"
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\\\\\"' ]{1,48}$'"
           ]
         },
         "site": {
@@ -7532,7 +7538,10 @@
           "optional": true,
           "computed": true,
           "description": "MSS clamping mode: auto, custom, or disabled.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"custom\" \"disabled\"]"
+          ]
         },
         "usg.offload_accounting": {
           "kind": "attribute",
@@ -7693,7 +7702,10 @@
           "optional": true,
           "computed": true,
           "description": "Timeout setting preference: auto or manual.",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"reduced\" \"manual\"]"
+          ]
         },
         "usg.udp_other_timeout": {
           "kind": "attribute",
@@ -7751,7 +7763,10 @@
           "optional": true,
           "computed": true,
           "description": "UPnP WAN interface (e.g., WAN, WAN2).",
-          "description_kind": "markdown"
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:WAN[2-9]?)$'"
+          ]
         }
       }
     },
