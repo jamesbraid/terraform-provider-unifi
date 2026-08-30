@@ -5,7 +5,6 @@ package resource_wlan
 
 import (
 	"context"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
@@ -25,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/planmodifiers"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 
@@ -282,7 +282,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The SSID of the network.",
 				MarkdownDescription: "The SSID of the network.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,32})$`), ""),
+					controllerregex.Matches(`.{1,32}`, ""),
 				},
 			},
 			"nas_identifier_type": schema.StringAttribute{
@@ -317,7 +317,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The passphrase for the network, only required if `security` is not `open`. Stored in state — use `passphrase_wo` to avoid persisting the secret.",
 				MarkdownDescription: "The passphrase for the network, only required if `security` is not `open`. Stored in state — use `passphrase_wo` to avoid persisting the secret.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\x20-\x7E]{8,255}|[0-9a-fA-F]{64})$`), ""),
+					controllerregex.Matches(`[\x20-\x7E]{8,255}|[0-9a-fA-F]{64}`, ""),
 				},
 			},
 			"pmf_mode": schema.StringAttribute{
@@ -347,7 +347,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 							MarkdownDescription: "The passphrase for this key (8-255 characters).",
 							Validators: []validator.String{
 								stringvalidator.LengthBetween(8, 255),
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\x20-\x7E]{8,255})$`), ""),
+								controllerregex.Matches(`[\x20-\x7E]{8,255}`, ""),
 							},
 						},
 					},
@@ -570,7 +570,7 @@ func WlanResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Name of the block.",
 							MarkdownDescription: "Name of the block.",
 							Validators: []validator.String{
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.*)$`), ""),
+								controllerregex.Matches(`.*`, ""),
 							},
 						},
 						"start_hour": schema.Int64Attribute{

@@ -5,13 +5,13 @@ package resource_dynamic_dns
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -24,7 +24,7 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The host name to update in the dynamic DNS service.",
 				MarkdownDescription: "The host name to update in the dynamic DNS service.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$`), ""),
+					controllerregex.Matches(`^[^"' ]+$`, ""),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -45,7 +45,7 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("wan", "wan2"),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
+					controllerregex.Matches(`wan[2-9]?`, ""),
 				},
 				Default: stringdefault.StaticString("wan"),
 			},
@@ -54,7 +54,7 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The login for the dynamic DNS service.",
 				MarkdownDescription: "The login for the dynamic DNS service.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$`), ""),
+					controllerregex.Matches(`^[^"' ]+$`, ""),
 				},
 			},
 			"password": schema.StringAttribute{
@@ -63,7 +63,7 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The password for the dynamic DNS service.",
 				MarkdownDescription: "The password for the dynamic DNS service.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$`), ""),
+					controllerregex.Matches(`^[^"' ]+$`, ""),
 				},
 			},
 			"server": schema.StringAttribute{
@@ -71,7 +71,7 @@ func DynamicDnsResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The server for the dynamic DNS service.",
 				MarkdownDescription: "The server for the dynamic DNS service.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$|^$`), ""),
+					controllerregex.Matches(`^[^"' ]+$|^$`, ""),
 				},
 			},
 			"service": schema.StringAttribute{

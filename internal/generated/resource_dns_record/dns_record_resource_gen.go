@@ -5,7 +5,6 @@ package resource_dns_record
 
 import (
 	"context"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -46,7 +46,7 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.RequiresReplace(),
 				},
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+					controllerregex.Matches(`.{1,128}`, ""),
 				},
 			},
 			"port": schema.Int64Attribute{
@@ -98,7 +98,7 @@ func DnsRecordResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The value of the DNS record.",
 				MarkdownDescription: "The value of the DNS record.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,256})$`), ""),
+					controllerregex.Matches(`.{1,256}`, ""),
 				},
 			},
 			"weight": schema.Int64Attribute{

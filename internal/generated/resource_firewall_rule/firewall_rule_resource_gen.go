@@ -5,7 +5,6 @@ package resource_firewall_rule
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -16,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -52,7 +52,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The destination network ID of the firewall rule.",
 				MarkdownDescription: "The destination network ID of the firewall rule.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\d\w-]+|^$)$`), ""),
+					controllerregex.Matches(`[\d\w-]+|^$`, ""),
 				},
 			},
 			"dst_network_type": schema.StringAttribute{
@@ -82,7 +82,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "ICMP type name.",
 				MarkdownDescription: "ICMP type name.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^$|address-mask-reply|address-mask-request|any|communication-prohibited|destination-unreachable|echo-reply|echo-request|fragmentation-needed|host-precedence-violation|host-prohibited|host-redirect|host-unknown|host-unreachable|ip-header-bad|network-prohibited|network-redirect|network-unknown|network-unreachable|parameter-problem|port-unreachable|precedence-cutoff|protocol-unreachable|redirect|required-option-missing|router-advertisement|router-solicitation|source-quench|source-route-failed|time-exceeded|timestamp-reply|timestamp-request|TOS-host-redirect|TOS-host-unreachable|TOS-network-redirect|TOS-network-unreachable|ttl-zero-during-reassembly|ttl-zero-during-transit)$`), ""),
+					controllerregex.Matches(`^$|address-mask-reply|address-mask-request|any|communication-prohibited|destination-unreachable|echo-reply|echo-request|fragmentation-needed|host-precedence-violation|host-prohibited|host-redirect|host-unknown|host-unreachable|ip-header-bad|network-prohibited|network-redirect|network-unknown|network-unreachable|parameter-problem|port-unreachable|precedence-cutoff|protocol-unreachable|redirect|required-option-missing|router-advertisement|router-solicitation|source-quench|source-route-failed|time-exceeded|timestamp-reply|timestamp-request|TOS-host-redirect|TOS-host-unreachable|TOS-network-redirect|TOS-network-unreachable|ttl-zero-during-reassembly|ttl-zero-during-transit`, ""),
 				},
 			},
 			"icmp_v6_typename": schema.StringAttribute{
@@ -90,7 +90,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "ICMPv6 type name.",
 				MarkdownDescription: "ICMPv6 type name.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^$|address-unreachable|bad-header|beyond-scope|communication-prohibited|destination-unreachable|echo-reply|echo-request|failed-policy|neighbor-advertisement|neighbor-solicitation|no-route|packet-too-big|parameter-problem|port-unreachable|redirect|reject-route|router-advertisement|router-solicitation|time-exceeded|ttl-zero-during-reassembly|ttl-zero-during-transit|unknown-header-type|unknown-option)$`), ""),
+					controllerregex.Matches(`^$|address-unreachable|bad-header|beyond-scope|communication-prohibited|destination-unreachable|echo-reply|echo-request|failed-policy|neighbor-advertisement|neighbor-solicitation|no-route|packet-too-big|parameter-problem|port-unreachable|redirect|reject-route|router-advertisement|router-solicitation|time-exceeded|ttl-zero-during-reassembly|ttl-zero-during-transit|unknown-header-type|unknown-option`, ""),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -107,7 +107,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "Specify whether the rule matches on IPsec packets. Can be one of `match-ipset` or `match-none`.",
 				Validators: []validator.String{
 					stringvalidator.OneOf("match-ipsec", "match-none"),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:match-ipsec|match-none|^$)$`), ""),
+					controllerregex.Matches(`match-ipsec|match-none|^$`, ""),
 				},
 			},
 			"logging": schema.BoolAttribute{
@@ -122,7 +122,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the firewall rule.",
 				MarkdownDescription: "The name of the firewall rule.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+					controllerregex.Matches(`.{1,128}`, ""),
 				},
 			},
 			"protocol": schema.StringAttribute{
@@ -130,7 +130,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The protocol of the rule.",
 				MarkdownDescription: "The protocol of the rule.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^$|all|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|tcp_udp|ah|ax.25|dccp|ddp|egp|eigrp|encap|esp|etherip|fc|ggp|gre|hip|hmp|icmp|idpr-cmtp|idrp|igmp|igp|ip|ipcomp|ipencap|ipip|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|iso-tp4|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|pup|rdp|rohc|rspf|rsvp|sctp|shim6|skip|st|tcp|udp|udplite|vmtp|vrrp|wesp|xns-idp|xtp)$`), ""),
+					controllerregex.Matches(`^$|all|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|tcp_udp|ah|ax.25|dccp|ddp|egp|eigrp|encap|esp|etherip|fc|ggp|gre|hip|hmp|icmp|idpr-cmtp|idrp|igmp|igp|ip|ipcomp|ipencap|ipip|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|iso-tp4|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|pup|rdp|rohc|rspf|rsvp|sctp|shim6|skip|st|tcp|udp|udplite|vmtp|vrrp|wesp|xns-idp|xtp`, ""),
 				},
 			},
 			"protocol_match_excepted": schema.BoolAttribute{
@@ -145,7 +145,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The IPv6 protocol of the rule.",
 				MarkdownDescription: "The IPv6 protocol of the rule.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^$|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|ah|all|dccp|eigrp|esp|gre|icmpv6|ipcomp|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|rsvp|sctp|shim6|tcp|tcp_udp|udp|vrrp)$`), ""),
+					controllerregex.Matches(`^$|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|ah|all|dccp|eigrp|esp|gre|icmpv6|ipcomp|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|rsvp|sctp|shim6|tcp|tcp_udp|udp|vrrp`, ""),
 				},
 			},
 			"rule_index": schema.Int64Attribute{
@@ -205,7 +205,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The source MAC address of the firewall rule.",
 				MarkdownDescription: "The source MAC address of the firewall rule.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$|^$`), ""),
+					controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$|^$`, ""),
 				},
 			},
 			"src_network_id": schema.StringAttribute{
@@ -213,7 +213,7 @@ func FirewallRuleResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The source network ID for the firewall rule.",
 				MarkdownDescription: "The source network ID for the firewall rule.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\d\w-]+|^$)$`), ""),
+					controllerregex.Matches(`[\d\w-]+|^$`, ""),
 				},
 			},
 			"src_network_type": schema.StringAttribute{

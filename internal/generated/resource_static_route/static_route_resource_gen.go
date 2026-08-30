@@ -5,7 +5,6 @@ package resource_static_route
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -44,7 +44,7 @@ func StaticRouteResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The MAC address of the gateway device, used when `gateway_type` is `switch`.",
 				Validators: []validator.String{
 					validators.MACAddressValidator(),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$`), ""),
+					controllerregex.Matches(`^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$`, ""),
 				},
 			},
 			"gateway_type": schema.StringAttribute{
@@ -70,7 +70,7 @@ func StaticRouteResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The interface of the static route (only valid for `interface-route` type). This can be `WAN1`, `WAN2`, or a network ID.",
 				MarkdownDescription: "The interface of the static route (only valid for `interface-route` type). This can be `WAN1`, `WAN2`, or a network ID.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[1-9]?|[\d\w-]+|^$)$`), ""),
+					controllerregex.Matches(`WAN[1-9]?|[\d\w-]+|^$`, ""),
 				},
 			},
 			"name": schema.StringAttribute{
@@ -78,7 +78,7 @@ func StaticRouteResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the static route.",
 				MarkdownDescription: "The name of the static route.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+					controllerregex.Matches(`.{1,128}`, ""),
 				},
 			},
 			"network": schema.StringAttribute{
@@ -87,7 +87,7 @@ func StaticRouteResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The network subnet address.",
 				Validators: []validator.String{
 					validators.CIDRValidator(),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$|^([a-fA-F0-9:]+\/(([1-9]|[1-8][0-9]|9[0-9]|1[01][0-9]|12[0-8])))$`), ""),
+					controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$|^([a-fA-F0-9:]+\/(([1-9]|[1-8][0-9]|9[0-9]|1[01][0-9]|12[0-8])))$`, ""),
 				},
 			},
 			"next_hop": schema.StringAttribute{
@@ -97,7 +97,7 @@ func StaticRouteResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The next hop of the static route (only valid for `nexthop-route` type). Accepts IPv4 or IPv6 addresses.",
 				Validators: []validator.String{
 					stringvalidator.Any(validators.IPv4Validator(), validators.IPv6Validator()),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^([a-fA-F0-9:]+)$|^$`), ""),
+					controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([1-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^([a-fA-F0-9:]+)$|^$`, ""),
 				},
 			},
 			"site": schema.StringAttribute{

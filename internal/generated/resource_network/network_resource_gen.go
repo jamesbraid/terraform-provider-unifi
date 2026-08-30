@@ -5,7 +5,6 @@ package resource_network
 
 import (
 	"context"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
@@ -25,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -203,7 +203,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						},
 						Validators: []validator.String{
 							validators.IPv4Validator(),
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, ""),
 						},
 					},
 					"stop": schema.StringAttribute{
@@ -216,7 +216,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						},
 						Validators: []validator.String{
 							validators.IPv4Validator(),
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, ""),
 						},
 					},
 					"tftp_server": schema.StringAttribute{
@@ -237,7 +237,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "UniFi controller IP address.",
 						Validators: []validator.String{
 							validators.IPv4Validator(),
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, ""),
 						},
 					},
 					"wins": schema.SingleNestedAttribute{
@@ -348,6 +348,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				},
 				Validators: []validator.String{
 					validators.DomainNameValidator(),
+					controllerregex.Matches(`(?=^.{3,253}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)|^$|[a-zA-Z0-9-]{1,63}`, ""),
 				},
 			},
 			"enabled": schema.BoolAttribute{
@@ -456,7 +457,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The IPv6 Prefix Delegation WAN interface (e.g., `wan`, `wan2`).",
 				MarkdownDescription: "The IPv6 Prefix Delegation WAN interface (e.g., `wan`, `wan2`).",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
+					controllerregex.Matches(`wan[2-9]?`, ""),
 				},
 			},
 			"ipv6_pd_prefixid": schema.StringAttribute{
@@ -468,7 +469,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^$|[a-fA-F0-9]{1,4})$`), ""),
+					controllerregex.Matches(`^$|[a-fA-F0-9]{1,4}`, ""),
 				},
 			},
 			"ipv6_pd_start": schema.StringAttribute{
@@ -570,7 +571,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the network.",
 				MarkdownDescription: "The name of the network.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+					controllerregex.Matches(`.{1,128}`, ""),
 				},
 			},
 			"nat_outbound_ip_addresses": schema.ListNestedAttribute{
@@ -581,7 +582,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "The IP address.",
 							MarkdownDescription: "The IP address.",
 							Validators: []validator.String{
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+								controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, ""),
 							},
 						},
 						"ip_address_pool": schema.ListAttribute{
@@ -603,7 +604,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "The WAN network group.",
 							MarkdownDescription: "The WAN network group.",
 							Validators: []validator.String{
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[2-9]?)$`), ""),
+								controllerregex.Matches(`WAN[2-9]?`, ""),
 							},
 						},
 					},
@@ -663,7 +664,7 @@ func NetworkResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The network's gateway IP and prefix in CIDR notation. The host portion is the gateway address the controller assigns — it need not be the first usable address: `10.0.10.1/24` uses gateway `10.0.10.1`, while `10.0.10.254/24` uses gateway `10.0.10.254` on the same subnet. Optional: it is not required for `vlan_only` networks (`third_party_gateway = true`), where the UniFi controller does not manage the subnet.",
 				MarkdownDescription: "The network's gateway IP and prefix in CIDR notation. The host portion is the gateway address the controller assigns — it need not be the first usable address: `10.0.10.1/24` uses gateway `10.0.10.1`, while `10.0.10.254/24` uses gateway `10.0.10.254` on the same subnet. Optional: it is not required for `vlan_only` networks (`third_party_gateway = true`), where the UniFi controller does not manage the subnet.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$`), ""),
+					controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$`, ""),
 				},
 			},
 			"third_party_gateway": schema.BoolAttribute{

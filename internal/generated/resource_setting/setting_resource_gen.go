@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -842,7 +843,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Comma-separated list of country codes for geo IP filtering.",
 						MarkdownDescription: "Comma-separated list of country codes for geo IP filtering.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^([A-Z]{2})?(,[A-Z]{2}){0,149}$`), ""),
+							controllerregex.Matches(`^([A-Z]{2})?(,[A-Z]{2}){0,149}$`, ""),
 						},
 					},
 					"geo_ip_filtering_enabled": schema.BoolAttribute{

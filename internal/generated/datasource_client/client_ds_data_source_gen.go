@@ -5,13 +5,12 @@ package datasource_client
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
@@ -35,7 +34,7 @@ func ClientDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The MAC address of the access point to which this client should be fixed.",
 				MarkdownDescription: "The MAC address of the access point to which this client should be fixed.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`), ""),
+					controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, ""),
 				},
 			},
 			"fixed_ip": schema.StringAttribute{
@@ -71,7 +70,7 @@ func ClientDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The MAC address of the client.",
 				MarkdownDescription: "The MAC address of the client.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`), ""),
+					controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, ""),
 				},
 			},
 			"name": schema.StringAttribute{
@@ -111,7 +110,7 @@ func ClientDsDataSourceSchema(ctx context.Context) schema.Schema {
 						Description:         "The name of the client group.",
 						MarkdownDescription: "The name of the client group.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+							controllerregex.Matches(`.{1,128}`, ""),
 						},
 					},
 				},

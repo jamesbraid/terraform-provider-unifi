@@ -5,7 +5,6 @@ package resource_client
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -17,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -64,7 +64,7 @@ func ClientResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`), ""),
+					controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, ""),
 				},
 			},
 			"fixed_ip": schema.StringAttribute{
@@ -131,7 +131,7 @@ func ClientResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.RequiresReplace(),
 				},
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`), ""),
+					controllerregex.Matches(`^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$`, ""),
 				},
 			},
 			"name": schema.StringAttribute{

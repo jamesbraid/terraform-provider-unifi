@@ -2,9 +2,11 @@ package providercompiler
 
 import (
 	"encoding/json"
-	"regexp"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 )
 
 // oneOfBootstrap builds the dns_record bootstrap fixture with one field's
@@ -250,10 +252,12 @@ func TestCompileAppendsDerivedOneOfBesideAHandNonOneOfValidator(t *testing.T) {
 
 // TestCompileDerivesRegexMatchesFromConstraint is RegexMatches' positive
 // control: a bootstrap field carries a pattern and no value set, policy has
-// no hand validator, the compiler derives a RegexMatches from it. The
-// pattern mirrors site_to_site_vpn's real x_ipsec_pre_shared_key constraint
-// (unanchored, excludes quotes/apostrophe/space) -- the field this task's
-// ledgered gap is about.
+// no hand validator, the compiler derives a controllerregex.Matches call from
+// it -- the pattern verbatim, no anchoring or rewriting in this file, plus
+// exactly the one import that expression needs. The pattern mirrors
+// site_to_site_vpn's real x_ipsec_pre_shared_key constraint (unanchored,
+// excludes quotes/apostrophe/space) -- the field this task's ledgered gap is
+// about.
 func TestCompileDerivesRegexMatchesFromConstraint(t *testing.T) {
 	pattern := `[^\"\' ]+`
 	result, err := Compile(CompileInput{
@@ -268,19 +272,17 @@ func TestCompileDerivesRegexMatchesFromConstraint(t *testing.T) {
 		t.Fatalf("validators = %v, want exactly 1 derived entry", validators)
 	}
 	custom := jsonObject(validators[0]["custom"])
-	wantDefinition := "stringvalidator.RegexMatches(regexp.MustCompile(`^(?:" + pattern + ")$`), \"\")"
+	wantDefinition := "controllerregex.Matches(`" + pattern + "`, \"\")"
 	if got := jsonString(custom["schema_definition"]); got != wantDefinition {
-		t.Fatalf("schema_definition = %q, want %q", got, wantDefinition)
+		t.Fatalf("schema_definition = %q, want %q (pattern verbatim, unanchored)", got, wantDefinition)
 	}
 	imports := jsonArray(custom["imports"])
-	if len(imports) != 2 {
-		t.Fatalf("imports = %v, want exactly 2 (regexp, stringvalidator)", imports)
+	if len(imports) != 1 {
+		t.Fatalf("imports = %v, want exactly 1 (controllerregex)", imports)
 	}
-	wantImports := []string{"regexp", "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"}
-	for i, want := range wantImports {
-		if got := jsonString(jsonObject(imports[i])["path"]); got != want {
-			t.Fatalf("imports[%d] = %q, want %q", i, got, want)
-		}
+	wantImport := "github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
+	if got := jsonString(jsonObject(imports[0])["path"]); got != wantImport {
+		t.Fatalf("imports[0] = %q, want %q", got, wantImport)
 	}
 }
 
@@ -313,7 +315,7 @@ func TestCompileRefusesAHandRegexMatchesShadowingAConstraint(t *testing.T) {
 		"unifi_dns_record", // surface
 		"key",              // field
 		"stringvalidator.RegexMatches(regexp.MustCompile(`^.{1,64}$`), \"too long\")", // hand
-		"stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), \"\")",    // derived
+		"controllerregex.Matches(`.{1,128}`, \"\")",                                   // derived
 	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("Compile() error = %v, want it to contain %q", err, want)
@@ -343,14 +345,18 @@ func TestCompileSuppressesRegexDerivationWhenValidatorsIsNone(t *testing.T) {
 	}
 }
 
-// TestCompileRefusesAPatternGoRegexCannotCompile is the non-RE2 refusal
-// path: the controller's own regex dialect allows lookaround, which Go's
-// RE2-based regexp package does not support. The compiler must refuse
-// (naming the surface, field, and pattern) rather than let a bad
-// MustCompile panic at runtime -- mirrors DHCPOption.code's real negative
-// lookahead constraint in the SDK.
-func TestCompileRefusesAPatternGoRegexCannotCompile(t *testing.T) {
-	pattern := `^(?!(?:15|42)$)([0-9]|[1-4][0-9])$`
+// TestCompileRefusesAPatternControllerregexCannotCompile is the refusal
+// path now that lookaround patterns compile fine (controllerregex, unlike
+// Go's RE2-based regexp package, understands them -- DHCPOption.code's real
+// negative-lookahead constraint, the pattern this test used before this
+// task, is no longer a usable fixture for "the compiler refuses"). What
+// controllerregex still refuses is an escape outside its translated
+// grammar -- \s here, never present in the real corpus (see
+// internal/controllerregex's own positive control for the same fixture).
+// The compiler must refuse, naming the surface, field, and pattern, rather
+// than let a bad build panic at runtime.
+func TestCompileRefusesAPatternControllerregexCannotCompile(t *testing.T) {
+	pattern := `[\s]+`
 	_, err := Compile(CompileInput{
 		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": pattern}),
 		Policy:    oneOfPolicy(t, "key", nil),
@@ -358,7 +364,9 @@ func TestCompileRefusesAPatternGoRegexCannotCompile(t *testing.T) {
 	if err == nil {
 		t.Fatal("Compile() error = nil, want a refusal naming the uncompilable pattern")
 	}
-	for _, want := range []string{"unifi_dns_record", "key", pattern} {
+	// The error renders the pattern with %q, which doubles its backslash --
+	// compare against the same rendering rather than the raw pattern string.
+	for _, want := range []string{"unifi_dns_record", "key", fmt.Sprintf("%q", pattern), `\s`} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("Compile() error = %v, want it to contain %q", err, want)
 		}
@@ -366,19 +374,25 @@ func TestCompileRefusesAPatternGoRegexCannotCompile(t *testing.T) {
 }
 
 // TestCompileSkipsAnUncompilablePatternAlreadyCoveredByAHandValidator is the
-// non-RE2 path's other half: when the field already carries a hand
-// validator, an uncompilable pattern is skipped rather than refused, and
-// the hand validator survives untouched. This mirrors the real case this
-// task found: network.json's domain_name has a hand-written
-// validators.DomainNameValidator() that is itself an RE2-safe reimplementation
-// of the SDK's lookaround domain pattern -- refusing here would force
-// "validators": "none", which would delete that validator too (the
+// uncompilable-pattern path's other half: when the field already carries a
+// hand validator, an uncompilable pattern is skipped rather than refused,
+// and the hand validator survives untouched. This mirrored a real case
+// before this task -- network.json's domain_name has a hand-written
+// validators.DomainNameValidator() that was an RE2-safe reimplementation of
+// the SDK's lookaround domain pattern, back when Go's RE2 engine could not
+// compile it. controllerregex can, so that real pattern no longer exercises
+// this path (see TestCompileAppendsDerivedRegexMatchesBesideAHandNonRegexValidator
+// for what happens to it now: a second, derived validator appended beside
+// the hand one); the fixture below is synthetic, the same kind of
+// translator-grammar escape as the refusal test above, chosen only to keep
+// this fallback covered as a fail-safe. Refusing here would force
+// "validators": "none", which would delete the hand validator too (the
 // suppression marker replaces the whole array, not just the derivation).
 // The skip is not silent: it leaves a Notices entry naming the field, so a
 // plain go generate run (and its CI log) shows it without anyone having to
 // know this fallback exists.
 func TestCompileSkipsAnUncompilablePatternAlreadyCoveredByAHandValidator(t *testing.T) {
-	pattern := `(?=^.{3,253}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)|^$|[a-zA-Z0-9-]{1,63}`
+	pattern := `[\S]{1,10}`
 	result, err := Compile(CompileInput{
 		Bootstrap: oneOfBootstrap(t, "key", map[string]any{"pattern": pattern}),
 		Policy: oneOfPolicy(t, "key", func(attribute map[string]any) {
@@ -444,7 +458,7 @@ func TestCompileAppendsDerivedRegexMatchesBesideAHandNonRegexValidator(t *testin
 		definitions = append(definitions, jsonString(jsonObject(v["custom"])["schema_definition"]))
 	}
 	wantHand := "stringvalidator.LengthBetween(1, 256)"
-	wantDerived := "stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,256})$`), \"\")"
+	wantDerived := "controllerregex.Matches(`.{1,256}`, \"\")"
 	hasHand := definitions[0] == wantHand || definitions[1] == wantHand
 	hasDerived := definitions[0] == wantDerived || definitions[1] == wantDerived
 	if !hasHand || !hasDerived {
@@ -546,10 +560,13 @@ func TestCompileSkipsPatternDerivationForAGoDurationTypedAttributeWithAHandValid
 	}
 }
 
-// TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped confirms the anchoring
-// rule's other half: a pattern that already anchors both ends (like
-// x_uplink_password's real `^.{0,256}$`) is used verbatim, not
-// double-wrapped into `^(?:^.{0,256}$)$`.
+// TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped confirms this file no
+// longer rewrites a pattern's anchoring at all: a pattern that already
+// anchors both ends (like x_uplink_password's real `^.{0,256}$`) is emitted
+// exactly as the SDK published it, not wrapped into `^(?:^.{0,256}$)$` --
+// that whole decision moved into controllerregex.Compile's own,
+// unconditional `\A(?:...)\z` wrap (internal/controllerregex's own tests
+// cover it; see TestAnchoredPatternRejectsATrailingNewline there).
 func TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped(t *testing.T) {
 	pattern := `^.{0,256}$`
 	result, err := Compile(CompileInput{
@@ -564,19 +581,22 @@ func TestCompileLeavesAnAlreadyAnchoredPatternUnwrapped(t *testing.T) {
 		t.Fatalf("validators = %v, want exactly 1 derived entry", validators)
 	}
 	custom := jsonObject(validators[0]["custom"])
-	wantDefinition := "stringvalidator.RegexMatches(regexp.MustCompile(`^.{0,256}$`), \"\")"
+	wantDefinition := "controllerregex.Matches(`^.{0,256}$`, \"\")"
 	if got := jsonString(custom["schema_definition"]); got != wantDefinition {
-		t.Fatalf("schema_definition = %q, want %q (pattern must not be re-anchored)", got, wantDefinition)
+		t.Fatalf("schema_definition = %q, want %q (pattern must not be rewritten)", got, wantDefinition)
 	}
 }
 
 // TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace is the
 // anchoring path's behavioural proof, using site_to_site_vpn's real
 // x_ipsec_pre_shared_key pattern. The controller validates the pattern as a
-// full match; Go's RegexMatches validator calls MatchString, a partial
-// match, so the compiler must anchor an unanchored pattern or a value with a
-// leading space (which the controller rejects) would pass Terraform's
-// validation. This is the ledgered gap this task closes.
+// full match; the schema definition now carries the raw, unanchored pattern
+// verbatim and leaves anchoring to controllerregex.Compile internally
+// (\A(?:...)\z) -- this test proves that pipeline, end to end through this
+// package's own emission, still rejects a value with a leading space (which
+// the controller rejects) the same way the old RE2-anchored form did. This
+// is the ledgered gap the original RegexMatches derivation closed; this
+// task only changed which engine enforces it.
 func TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace(t *testing.T) {
 	pattern := `[^\"\' ]+`
 	result, err := Compile(CompileInput{
@@ -592,30 +612,34 @@ func TestCompileAnchorsAPatternSoRegexMatchesRejectsALeadingSpace(t *testing.T) 
 	}
 	custom := jsonObject(validators[0]["custom"])
 	definition := jsonString(custom["schema_definition"])
-	anchored := "^(?:" + pattern + ")$"
-	wantDefinition := "stringvalidator.RegexMatches(regexp.MustCompile(`" + anchored + "`), \"\")"
+	wantDefinition := "controllerregex.Matches(`" + pattern + "`, \"\")"
 	if definition != wantDefinition {
 		t.Fatalf("schema_definition = %q, want %q", definition, wantDefinition)
 	}
-	re := regexp.MustCompile(anchored)
-	if re.MatchString(" leaked-with-leading-space") {
-		t.Fatalf("anchored pattern %q matched a value with a leading space, want rejected", anchored)
+	compiled, err := controllerregex.Compile(pattern)
+	if err != nil {
+		t.Fatalf("controllerregex.Compile(%q) error = %v", pattern, err)
 	}
-	if !re.MatchString("a-real-key") {
-		t.Fatalf("anchored pattern %q rejected a plain value, want accepted", anchored)
+	if matched, err := compiled.MatchString(" leaked-with-leading-space"); err != nil || matched {
+		t.Fatalf("pattern %q matched a value with a leading space (err=%v), want rejected", pattern, err)
 	}
-	if re.MatchString(`has"quote`) {
-		t.Fatalf("anchored pattern %q matched a value containing a double quote, want rejected", anchored)
+	if matched, err := compiled.MatchString("a-real-key"); err != nil || !matched {
+		t.Fatalf("pattern %q rejected a plain value (err=%v), want accepted", pattern, err)
+	}
+	if matched, err := compiled.MatchString(`has"quote`); err != nil || matched {
+		t.Fatalf("pattern %q matched a value containing a double quote (err=%v), want rejected", pattern, err)
 	}
 }
 
 // TestCompileWrapsAPatternWithAnUnparenthesizedTopLevelAlternation is the
 // anchoring path's other behavioural proof: a leading ^ and a trailing $ on
-// the pattern as a whole are not enough to call it anchored. "^A|B$" is the
-// alternation of "^A" (no end anchor) and "B$" (no start anchor), the exact
-// shape of go-unifi's DeviceConfigNetwork.netmask and Network.wan_netmask
-// patterns -- both were left unwrapped and matched a value with trailing or
-// leading garbage before this fix.
+// the pattern as a whole are not enough to force a full match under partial
+// matching. "^A|B$" is the alternation of "^A" (no end anchor) and "B$" (no
+// start anchor), the exact shape of go-unifi's DeviceConfigNetwork.netmask
+// and Network.wan_netmask patterns -- both matched a value with trailing or
+// leading garbage under the pre-RegexMatches-derivation provider. This test
+// proves controllerregex.Compile's unconditional \A(?:...)\z wrap (not any
+// rewriting in this package) is what forces the full match now.
 func TestCompileWrapsAPatternWithAnUnparenthesizedTopLevelAlternation(t *testing.T) {
 	pattern := `^A|B$`
 	result, err := Compile(CompileInput{
@@ -631,27 +655,33 @@ func TestCompileWrapsAPatternWithAnUnparenthesizedTopLevelAlternation(t *testing
 	}
 	custom := jsonObject(validators[0]["custom"])
 	definition := jsonString(custom["schema_definition"])
-	anchored := "^(?:" + pattern + ")$"
-	wantDefinition := "stringvalidator.RegexMatches(regexp.MustCompile(`" + anchored + "`), \"\")"
+	wantDefinition := "controllerregex.Matches(`" + pattern + "`, \"\")"
 	if definition != wantDefinition {
-		t.Fatalf("schema_definition = %q, want %q (pattern must be wrapped)", definition, wantDefinition)
+		t.Fatalf("schema_definition = %q, want %q (pattern must not be rewritten)", definition, wantDefinition)
 	}
-	re := regexp.MustCompile(anchored)
-	if re.MatchString("Agarbage") {
-		t.Fatalf("wrapped pattern %q matched %q on the unanchored first branch, want rejected", anchored, "Agarbage")
+	compiled, err := controllerregex.Compile(pattern)
+	if err != nil {
+		t.Fatalf("controllerregex.Compile(%q) error = %v", pattern, err)
 	}
-	if re.MatchString("garbageB") {
-		t.Fatalf("wrapped pattern %q matched %q on the unanchored second branch, want rejected", anchored, "garbageB")
+	if matched, err := compiled.MatchString("Agarbage"); err != nil || matched {
+		t.Fatalf("pattern %q matched %q on the unanchored first branch (err=%v), want rejected", pattern, "Agarbage", err)
 	}
-	if !re.MatchString("A") || !re.MatchString("B") {
-		t.Fatalf("wrapped pattern %q rejected a real value, want both %q and %q accepted", anchored, "A", "B")
+	if matched, err := compiled.MatchString("garbageB"); err != nil || matched {
+		t.Fatalf("pattern %q matched %q on the unanchored second branch (err=%v), want rejected", pattern, "garbageB", err)
+	}
+	if matched, err := compiled.MatchString("A"); err != nil || !matched {
+		t.Fatalf("pattern %q rejected %q (err=%v), want accepted", pattern, "A", err)
+	}
+	if matched, err := compiled.MatchString("B"); err != nil || !matched {
+		t.Fatalf("pattern %q rejected %q (err=%v), want accepted", pattern, "B", err)
 	}
 }
 
 // A pattern whose top-level branches are each already self-anchored (the
-// real shape of go-unifi's DeviceIPv4.netmask, "^digits$|^$") must not be
-// re-wrapped: double-wrapping is harmless for correctness but would move
-// every such attribute's generated pattern for no reason.
+// real shape of go-unifi's DeviceIPv4.netmask, "^digits$|^$") is emitted
+// exactly as published too -- this package makes no distinction between
+// this shape and any other, now that anchoring is entirely
+// controllerregex.Compile's job.
 func TestCompileLeavesSelfAnchoredTopLevelBranchesUnwrapped(t *testing.T) {
 	pattern := `^(0|[1-9]|1[0-9]|2[0-9]|3[0-2])$|^$`
 	result, err := Compile(CompileInput{
@@ -666,8 +696,8 @@ func TestCompileLeavesSelfAnchoredTopLevelBranchesUnwrapped(t *testing.T) {
 		t.Fatalf("validators = %v, want exactly 1 derived entry", validators)
 	}
 	custom := jsonObject(validators[0]["custom"])
-	wantDefinition := "stringvalidator.RegexMatches(regexp.MustCompile(`" + pattern + "`), \"\")"
+	wantDefinition := "controllerregex.Matches(`" + pattern + "`, \"\")"
 	if got := jsonString(custom["schema_definition"]); got != wantDefinition {
-		t.Fatalf("schema_definition = %q, want %q (pattern must not be re-anchored)", got, wantDefinition)
+		t.Fatalf("schema_definition = %q, want %q (pattern must not be rewritten)", got, wantDefinition)
 	}
 }
