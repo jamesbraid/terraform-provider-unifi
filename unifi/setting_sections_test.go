@@ -35,6 +35,7 @@ func TestSettingKitSectionsOrder(t *testing.T) {
 		"mdns",
 		"teleport",
 		"magic_site_to_site_vpn",
+		"global_switch",
 	}
 
 	r := &settingResource{client: &Client{}}

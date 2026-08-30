@@ -110,6 +110,104 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "GlobalSwitch.acl_l3_isolation",
+      "terraform_name": "global_switch.acl_l3_isolation",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.auto_stp_edge_detection_enabled",
+      "terraform_name": "global_switch.auto_stp_edge_detection_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.dhcp_snoop",
+      "terraform_name": "global_switch.dhcp_snoop",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.dot1x_fallback_networkconf_id",
+      "terraform_name": "global_switch.dot1x_fallback_networkconf_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.dot1x_portctrl_enabled",
+      "terraform_name": "global_switch.dot1x_portctrl_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.flood_known_protocols",
+      "terraform_name": "global_switch.flood_known_protocols",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.flowctrl_enabled",
+      "terraform_name": "global_switch.flowctrl_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.forward_unknown_mcast_router_ports",
+      "terraform_name": "global_switch.forward_unknown_mcast_router_ports",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.jumboframe_enabled",
+      "terraform_name": "global_switch.jumboframe_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.link_debounce",
+      "terraform_name": "global_switch.link_debounce",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.poe_staging_delay_msec",
+      "terraform_name": "global_switch.poe_staging_delay_msec",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.radiusprofile_id",
+      "terraform_name": "global_switch.radiusprofile_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.stp_version",
+      "terraform_name": "global_switch.stp_version",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalSwitch.switch_exclusions",
+      "terraform_name": "global_switch.switch_exclusions",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "IgmpSnooping.enabled",
       "terraform_name": "igmp_snooping.enabled",
       "structural_type": "bool",

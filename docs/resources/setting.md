@@ -84,6 +84,7 @@ resource "unifi_setting" "radius_only" {
 - `ether_lighting` (Attributes) Ethernet port lighting color settings. (see [below for nested schema](#nestedatt--ether_lighting))
 - `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
 - `global_network` (Attributes) Global network settings for zone-based firewalling. (see [below for nested schema](#nestedatt--global_network))
+- `global_switch` (Attributes) Global switch (wired network) settings. (see [below for nested schema](#nestedatt--global_switch))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `ipsec` (Attributes) IPsec settings for site-to-site VPNs. (see [below for nested schema](#nestedatt--ipsec))
@@ -216,6 +217,36 @@ Optional:
 Optional:
 
 - `default_security_posture` (String) Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).
+
+
+<a id="nestedatt--global_switch"></a>
+### Nested Schema for `global_switch`
+
+Optional:
+
+- `acl_l3_isolation` (Attributes List) Layer 3 ACL isolation rules restricting traffic between networks. (see [below for nested schema](#nestedatt--global_switch--acl_l3_isolation))
+- `auto_stp_edge_detection_enabled` (Boolean) Automatically detect STP (spanning tree protocol) edge ports.
+- `dhcp_snoop` (Boolean) Enable DHCP snooping.
+- `dot1x_fallback_networkconf_id` (String) Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.
+- `dot1x_portctrl_enabled` (Boolean) Enable 802.1X port-based network access control.
+- `flood_known_protocols` (Boolean) Flood traffic for known protocols to every switch port.
+- `flowctrl_enabled` (Boolean) Enable switch flow control (802.3x).
+- `forward_unknown_mcast_router_ports` (Boolean) Forward unknown multicast traffic to router ports.
+- `jumboframe_enabled` (Boolean) Enable jumbo frame support.
+- `link_debounce` (Number) Link debounce time in milliseconds: `0`, a multiple of 100 up to 4900, or `5000`.
+- `poe_staging_delay_msec` (Number) PoE staging delay in milliseconds.
+- `radiusprofile_id` (String) RADIUS profile ID used for 802.1X authentication.
+- `stp_version` (String) STP (spanning tree protocol) version.
+- `switch_exclusions` (List of String) MAC addresses of switches excluded from these global settings.
+
+<a id="nestedatt--global_switch--acl_l3_isolation"></a>
+### Nested Schema for `global_switch.acl_l3_isolation`
+
+Required:
+
+- `destination_networks` (List of String) Destination network IDs this isolation rule blocks traffic to.
+- `source_network` (String) Source network ID this isolation rule applies to.
+
 
 
 <a id="nestedatt--igmp_snooping"></a>

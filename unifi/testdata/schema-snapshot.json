@@ -5843,6 +5843,152 @@
           "description": "Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).",
           "description_kind": "markdown"
         },
+        "global_switch": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Global switch (wired network) settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "global_switch.acl_l3_isolation": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "computed": true,
+          "description": "Layer 3 ACL isolation rules restricting traffic between networks.",
+          "description_kind": "markdown"
+        },
+        "global_switch.acl_l3_isolation.destination_networks": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "required": true,
+          "description": "Destination network IDs this isolation rule blocks traffic to.",
+          "description_kind": "markdown"
+        },
+        "global_switch.acl_l3_isolation.source_network": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "required": true,
+          "description": "Source network ID this isolation rule applies to.",
+          "description_kind": "markdown"
+        },
+        "global_switch.auto_stp_edge_detection_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Automatically detect STP (spanning tree protocol) edge ports.",
+          "description_kind": "markdown"
+        },
+        "global_switch.dhcp_snoop": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable DHCP snooping.",
+          "description_kind": "markdown"
+        },
+        "global_switch.dot1x_fallback_networkconf_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\d\\w-]+|)$'"
+          ]
+        },
+        "global_switch.dot1x_portctrl_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable 802.1X port-based network access control.",
+          "description_kind": "markdown"
+        },
+        "global_switch.flood_known_protocols": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Flood traffic for known protocols to every switch port.",
+          "description_kind": "markdown"
+        },
+        "global_switch.flowctrl_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable switch flow control (802.3x).",
+          "description_kind": "markdown"
+        },
+        "global_switch.forward_unknown_mcast_router_ports": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Forward unknown multicast traffic to router ports.",
+          "description_kind": "markdown"
+        },
+        "global_switch.jumboframe_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable jumbo frame support.",
+          "description_kind": "markdown"
+        },
+        "global_switch.link_debounce": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Link debounce time in milliseconds: `0`, a multiple of 100 up to 4900, or `5000`.",
+          "description_kind": "markdown"
+        },
+        "global_switch.poe_staging_delay_msec": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "PoE staging delay in milliseconds.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.oneOfValidator: value must be one of: [\"0\" \"200\" \"400\" \"600\" \"800\" \"1000\" \"1200\" \"1400\" \"1600\" \"1800\" \"2000\"]"
+          ]
+        },
+        "global_switch.radiusprofile_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "RADIUS profile ID used for 802.1X authentication.",
+          "description_kind": "markdown"
+        },
+        "global_switch.stp_version": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "STP (spanning tree protocol) version.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"stp\" \"rstp\" \"disabled\"]"
+          ]
+        },
+        "global_switch.switch_exclusions": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "MAC addresses of switches excluded from these global settings.",
+          "description_kind": "markdown"
+        },
         "id": {
           "kind": "attribute",
           "type": "\"string\"",

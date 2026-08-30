@@ -297,6 +297,126 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"global_switch": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"acl_l3_isolation": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"destination_networks": schema.ListAttribute{
+									ElementType:         types.StringType,
+									Required:            true,
+									Description:         "Destination network IDs this isolation rule blocks traffic to.",
+									MarkdownDescription: "Destination network IDs this isolation rule blocks traffic to.",
+								},
+								"source_network": schema.StringAttribute{
+									Required:            true,
+									Description:         "Source network ID this isolation rule applies to.",
+									MarkdownDescription: "Source network ID this isolation rule applies to.",
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Layer 3 ACL isolation rules restricting traffic between networks.",
+						MarkdownDescription: "Layer 3 ACL isolation rules restricting traffic between networks.",
+					},
+					"auto_stp_edge_detection_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Automatically detect STP (spanning tree protocol) edge ports.",
+						MarkdownDescription: "Automatically detect STP (spanning tree protocol) edge ports.",
+					},
+					"dhcp_snoop": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable DHCP snooping.",
+						MarkdownDescription: "Enable DHCP snooping.",
+					},
+					"dot1x_fallback_networkconf_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
+						MarkdownDescription: "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\d\w-]+|)$`), ""),
+						},
+					},
+					"dot1x_portctrl_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable 802.1X port-based network access control.",
+						MarkdownDescription: "Enable 802.1X port-based network access control.",
+					},
+					"flood_known_protocols": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Flood traffic for known protocols to every switch port.",
+						MarkdownDescription: "Flood traffic for known protocols to every switch port.",
+					},
+					"flowctrl_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable switch flow control (802.3x).",
+						MarkdownDescription: "Enable switch flow control (802.3x).",
+					},
+					"forward_unknown_mcast_router_ports": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Forward unknown multicast traffic to router ports.",
+						MarkdownDescription: "Forward unknown multicast traffic to router ports.",
+					},
+					"jumboframe_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable jumbo frame support.",
+						MarkdownDescription: "Enable jumbo frame support.",
+					},
+					"link_debounce": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Link debounce time in milliseconds: `0`, a multiple of 100 up to 4900, or `5000`.",
+						MarkdownDescription: "Link debounce time in milliseconds: `0`, a multiple of 100 up to 4900, or `5000`.",
+					},
+					"poe_staging_delay_msec": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "PoE staging delay in milliseconds.",
+						MarkdownDescription: "PoE staging delay in milliseconds.",
+						Validators: []validator.Int64{
+							int64validator.OneOf(0, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000),
+						},
+					},
+					"radiusprofile_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "RADIUS profile ID used for 802.1X authentication.",
+						MarkdownDescription: "RADIUS profile ID used for 802.1X authentication.",
+					},
+					"stp_version": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "STP (spanning tree protocol) version.",
+						MarkdownDescription: "STP (spanning tree protocol) version.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("stp", "rstp", "disabled"),
+						},
+					},
+					"switch_exclusions": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "MAC addresses of switches excluded from these global settings.",
+						MarkdownDescription: "MAC addresses of switches excluded from these global settings.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Global switch (wired network) settings.",
+				MarkdownDescription: "Global switch (wired network) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"id": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The ID of the settings.",

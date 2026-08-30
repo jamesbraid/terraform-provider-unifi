@@ -2338,6 +2338,155 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_globalSwitch exercises a representative subset of
+// global_switch's fourteen exposed attributes: a plain bool
+// (dot1x_portctrl_enabled), the stp_version enum, both Int64PtrFields
+// (link_debounce set to 0 -- proving the controller accepts the literal
+// zero its own pattern allows and confirming this section needs no
+// OmitZero, the finding recorded in the task report -- and
+// poe_staging_delay_msec set to a non-zero member of its own OneOf), a
+// StringListField (switch_exclusions) and the ObjectListField
+// (acl_l3_isolation, pointed at a real network so its network-FK members
+// get a fair test the same way igmp_snooping's own test does).
+func TestAccSettingResource_globalSwitch(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalSwitch(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.dot1x_portctrl_enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.stp_version",
+						"rstp",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.link_debounce",
+						"0",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.poe_staging_delay_msec",
+						"800",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.switch_exclusions.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.switch_exclusions.0",
+						"aa:bb:cc:dd:ee:ff",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.acl_l3_isolation.#",
+						"1",
+					),
+					resource.TestCheckResourceAttrPair(
+						"unifi_setting.test", "global_switch.acl_l3_isolation.0.source_network",
+						"unifi_network.test", "id",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"global_switch.%",
+					"global_switch.dot1x_portctrl_enabled",
+					"global_switch.stp_version",
+					"global_switch.link_debounce",
+					"global_switch.poe_staging_delay_msec",
+					"global_switch.switch_exclusions.#",
+					"global_switch.switch_exclusions.0",
+					"global_switch.acl_l3_isolation.#",
+					"global_switch.acl_l3_isolation.0.%",
+					"global_switch.acl_l3_isolation.0.source_network",
+					"global_switch.acl_l3_isolation.0.destination_networks.#",
+					"global_switch.acl_l3_isolation.0.destination_networks.0",
+				},
+			},
+			{
+				Config: testAccSettingConfig_globalSwitchUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.dot1x_portctrl_enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.stp_version",
+						"disabled",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalSwitch() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-global-switch-network"
+  subnet = "10.4.10.1/24"
+  vlan   = 40
+}
+
+resource "unifi_setting" "test" {
+  global_switch = {
+    dot1x_portctrl_enabled  = true
+    stp_version             = "rstp"
+    link_debounce           = 0
+    poe_staging_delay_msec  = 800
+    switch_exclusions       = ["aa:bb:cc:dd:ee:ff"]
+    acl_l3_isolation = [
+      {
+        source_network       = unifi_network.test.id
+        destination_networks = [unifi_network.test.id]
+      }
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_globalSwitchUpdate() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-global-switch-network"
+  subnet = "10.4.10.1/24"
+  vlan   = 40
+}
+
+resource "unifi_setting" "test" {
+  global_switch = {
+    dot1x_portctrl_enabled  = false
+    stp_version             = "disabled"
+    link_debounce           = 0
+    poe_staging_delay_msec  = 800
+    switch_exclusions       = ["aa:bb:cc:dd:ee:ff"]
+    acl_l3_isolation = [
+      {
+        source_network       = unifi_network.test.id
+        destination_networks = [unifi_network.test.id]
+      }
+    ]
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {
