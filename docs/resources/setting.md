@@ -96,7 +96,7 @@ resource "unifi_setting" "radius_only" {
 - `netflow` (Attributes) NetFlow traffic export settings. (see [below for nested schema](#nestedatt--netflow))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
-- `radio_ai` (Attributes) AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. (see [below for nested schema](#nestedatt--radio_ai))
+- `radio_ai` (Attributes) AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. On this controller generation, enabling this section (`enabled = true`) alone -- with no channel or radio constraints also configured -- can make the controller rewrite a channel list such as `channels_na` within the same apply, which Terraform reports as an inconsistent-result error rather than a later drift. (see [below for nested schema](#nestedatt--radio_ai))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
 - `site` (String) The name of the site to associate the settings with.
 - `ssl_inspection` (Attributes) SSL inspection settings. (see [below for nested schema](#nestedatt--ssl_inspection))

@@ -1270,8 +1270,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 				},
 				Optional:            true,
 				Computed:            true,
-				Description:         "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug.",
-				MarkdownDescription: "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug.",
+				Description:         "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. On this controller generation, enabling this section (`enabled = true`) alone -- with no channel or radio constraints also configured -- can make the controller rewrite a channel list such as `channels_na` within the same apply, which Terraform reports as an inconsistent-result error rather than a later drift.",
+				MarkdownDescription: "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. On this controller generation, enabling this section (`enabled = true`) alone -- with no channel or radio constraints also configured -- can make the controller rewrite a channel list such as `channels_na` within the same apply, which Terraform reports as an inconsistent-result error rather than a later drift.",
 				PlanModifiers: []planmodifier.Object{
 					objectplanmodifier.UseStateForUnknown(),
 				},

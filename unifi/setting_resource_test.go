@@ -2407,6 +2407,12 @@ resource "unifi_setting" "test" {
 // zero its own pattern allows and confirming this section needs no
 // OmitZero, the finding recorded in the task report -- and
 // poe_staging_delay_msec set to a non-zero member of its own OneOf).
+// jumboframe_enabled substitutes for dot1x_portctrl_enabled, the bool
+// originally intended here: measured directly against the pinned
+// controller, dot1x_portctrl_enabled = true with no radiusprofile_id
+// configured is refused with api.err.MissingRadiusProfileId -- 802.1X
+// port control needs a RADIUS profile to authenticate against, a
+// precondition out of scope for this representative-subset test.
 //
 // Neither list field is exercised live. switch_exclusions: measured
 // directly against the pinned controller, a synthetic MAC not belonging to
