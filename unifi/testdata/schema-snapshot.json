@@ -7701,7 +7701,7 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "Timeout setting preference: auto or manual.",
+          "description": "Timeout setting preference: auto, reduced, or manual.",
           "description_kind": "markdown",
           "validators": [
             "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"reduced\" \"manual\"]"
@@ -7762,7 +7762,7 @@
           "type": "\"string\"",
           "optional": true,
           "computed": true,
-          "description": "UPnP WAN interface (e.g., WAN, WAN2).",
+          "description": "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).",
           "description_kind": "markdown",
           "validators": [
             "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:WAN[2-9]?)$'"

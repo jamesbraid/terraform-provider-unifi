@@ -1804,8 +1804,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"timeout_setting_preference": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Timeout setting preference: auto or manual.",
-						MarkdownDescription: "Timeout setting preference: auto or manual.",
+						Description:         "Timeout setting preference: auto, reduced, or manual.",
+						MarkdownDescription: "Timeout setting preference: auto, reduced, or manual.",
 						Validators: []validator.String{
 							stringvalidator.OneOf("auto", "reduced", "manual"),
 						},
@@ -1851,8 +1851,8 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"upnp_wan_interface": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "UPnP WAN interface (e.g., WAN, WAN2).",
-						MarkdownDescription: "UPnP WAN interface (e.g., WAN, WAN2).",
+						Description:         "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).",
+						MarkdownDescription: "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).",
 						Validators: []validator.String{
 							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[2-9]?)$`), ""),
 						},

@@ -81,10 +81,12 @@ var (
 // every attribute here is Optional+Computed with no validator rejecting an
 // empty value, so KeepZero is what the check demands for all but
 // ssh_password (Optional, not Computed -- NullZero), ssh_username (an
-// SDK-derived RegexMatches now rejects "" -- NullZero; mgmtAfterReceive's
-// own stringOrNull already plan-conditions it on the unconfigured path, so
-// this only brings the descriptor into agreement with the check) and the
-// eight plain bools (BoolField carries no Elide at all). The plan-conditioned
+// SDK-derived RegexMatches now rejects "" -- NullZero) and the eight plain
+// bools (BoolField carries no Elide at all). ssh_username's flip is a real
+// behaviour change: mgmtAfterReceive only nulls it when the prior is null
+// or unknown (unconfigured); for a configured prior it leaves the model
+// value untouched, so a configured ssh_username whose controller read
+// comes back "" now surfaces as null rather than "". The plan-conditioned
 // nulls mgmtSettingToModel applied on top of that live in mgmtAfterReceive
 // instead, attribute by attribute -- see its own comment.
 func mgmtKitSpec() resourcekit.Spec[settingMgmtModel, settings.Mgmt] {

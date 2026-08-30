@@ -643,7 +643,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Timeout setting preference: auto or manual."
+            "description": "Timeout setting preference: auto, reduced, or manual."
           },
           "disposition": "managed",
           "structural_name": "timeout_setting_preference",
@@ -722,7 +722,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "UPnP WAN interface (e.g., WAN, WAN2)."
+            "description": "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`)."
           },
           "disposition": "managed",
           "structural_name": "upnp_wan_interface",

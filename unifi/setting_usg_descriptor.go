@@ -169,15 +169,18 @@ var (
 // schema-driven rule, not a transcription of the old usgSettingToModel:
 // mss_clamp (OneOf), timeout_setting_preference (OneOf) and
 // upnp_wan_interface (RegexMatches `WAN[2-9]?`) each gained an SDK-derived
-// validator that rejects "", so they want NullZero -- usgAfterReceive's own
-// stringOrNull already plan-conditions all three on the unconfigured path,
-// so this only brings the descriptor into agreement with the check, it does
-// not change what a Read or Write actually produces. icmp_timeout and the
-// eleven other Duration fields carry a CustomType, which routes
-// ElideProblems' zeroIsRejected through a check this field kind never
-// triggers, so they want KeepZero regardless of any validator.
-// geo_ip_filtering_block/countries/enabled/traffic_direction aren't Fields
-// here at all -- see usgGeoKitSpec and this file's own top comment.
+// validator that rejects "", so they want NullZero. This is a real
+// behaviour change, not just a descriptor correction: usgAfterReceive's own
+// stringOrNull only nulls these on the *unconfigured* path (prior null or
+// unknown); for a configured prior it passes the model value through
+// unchanged, so a configured attribute whose controller read comes back ""
+// now surfaces as null rather than "" -- the intended, acknowledgeable
+// diff, not a no-op. icmp_timeout and the eleven other Duration fields
+// carry a CustomType, which routes ElideProblems' zeroIsRejected through a
+// check this field kind never triggers, so they want KeepZero regardless of
+// any validator. geo_ip_filtering_block/countries/enabled/traffic_direction
+// aren't Fields here at all -- see usgGeoKitSpec and this file's own top
+// comment.
 func usgKitSpec() resourcekit.Spec[settingUSGModel, settings.Usg] {
 	return resourcekit.Spec[settingUSGModel, settings.Usg]{
 		TypeName: "setting_usg",

@@ -615,14 +615,14 @@ Optional:
 - `tcp_syn_sent_timeout` (String) TCP SYN sent timeout, as a Go duration string (e.g. `120s`, `2m`).
 - `tcp_time_wait_timeout` (String) TCP time wait timeout, as a Go duration string (e.g. `120s`, `2m`).
 - `tftp_module` (Boolean) Enable TFTP module.
-- `timeout_setting_preference` (String) Timeout setting preference: auto or manual.
+- `timeout_setting_preference` (String) Timeout setting preference: auto, reduced, or manual.
 - `udp_other_timeout` (String) UDP other timeout, as a Go duration string (e.g. `30s`).
 - `udp_stream_timeout` (String) UDP stream timeout, as a Go duration string (e.g. `180s`, `3m`).
 - `unbind_wan_monitors` (Boolean) Unbind WAN monitors.
 - `upnp_enabled` (Boolean) Enable UPnP.
 - `upnp_nat_pmp_enabled` (Boolean) Enable UPnP NAT-PMP.
 - `upnp_secure_mode` (Boolean) Enable UPnP secure mode.
-- `upnp_wan_interface` (String) UPnP WAN interface (e.g., WAN, WAN2).
+- `upnp_wan_interface` (String) UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).
 
 <a id="nestedatt--usg--dns_verification"></a>
 ### Nested Schema for `usg.dns_verification`
