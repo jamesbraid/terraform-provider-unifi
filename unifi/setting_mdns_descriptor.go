@@ -1,28 +1,27 @@
 package unifi
 
-// The mdns section descriptor: an unconditional-mirror hydration with no
-// specials, shaped like setting_doh_descriptor.go -- both sections have a
-// String discriminator (doh's state, mdns's mode) whose values change what
-// the controller does with the section's other members. doh's own
-// descriptor (and its dohAfterReceive comment) sets the precedent this one
-// follows: the section sends and reads back whatever the plan/controller
-// carry, unconditionally, for every attribute including the ones a given
-// discriminator value renders inert. custom_services and predefined_services
-// are mdns's own ObjectListFields, the same kind doh's custom_servers uses.
+// The mdns section descriptor: shaped like setting_doh_descriptor.go for
+// its String discriminator (doh's state, mdns's mode), but mdns needs an
+// AfterReceive doh's own doesn't -- see mdnsAfterReceive's own comment for
+// the measured reason. custom_services and predefined_services are mdns's
+// own ObjectListFields, the same kind doh's custom_servers uses.
 //
 // mode's three values ("all", "auto", "custom") gate whether the controller
 // itself consults custom_services/predefined_services -- per settings.Mdns's
-// own doc comment and the go-unifi capture this section derives from, only
-// "custom" makes them authoritative; "all" and "auto" repeat services the
-// controller decides on its own. This repo does not layer a plan-time
-// cross-field validator or plan modifier on top of that (no other section
-// with an analogous discriminator -- doh's state/custom_servers is the
-// closest precedent -- carries one either): the controller is the
-// authoritative source for what mode actually does with the lists, and
-// resourcekit's masked write already sends only what the plan configures,
-// so a practitioner who sets custom_services under mode = "all" gets
-// whatever the controller does with that, not a provider-invented refusal
-// of a shape the controller itself accepts on the wire.
+// own doc comment, only "custom" makes them authoritative. This repo does
+// not layer a plan-time cross-field validator on top of that (no section in
+// this dispatch adds one; the controller is treated as authoritative for
+// what a write under a given mode actually does with the lists, and
+// resourcekit's masked write already sends only what the plan configures).
+// What it does need, on the READ side, is mdnsAfterReceive: measured
+// directly against the pinned controller (TestAccSettingResource_mdns's own
+// "auto" transition step), predefined_services does not read back empty
+// under "auto" -- the controller returns its full catalog of known
+// predefined services instead, which is a real value the controller
+// invented, not one the plan set. Left unmasked, that fails Terraform's own
+// plan/apply consistency check the moment a config explicitly sets
+// predefined_services = [] under a non-custom mode, since state after apply
+// would disagree with what was planned.
 import (
 	"context"
 
@@ -165,6 +164,42 @@ func mdnsPredefinedServiceDecode(
 	})
 }
 
+// mdnsAfterReceive normalizes custom_services/predefined_services to an
+// empty (not null) list whenever the section's own mode, as just read back
+// from the controller, is not "custom" -- overriding whatever ToModel
+// already decoded from the SDK response for those two fields. Gated on
+// model.Mode (the value now in effect after this write or read), not
+// prior.Mode (what the plan asked for): the two agree on every ordinary
+// apply, but this is the one that is actually true right after a
+// mode-changing write.
+//
+// Measured, not assumed: TestAccSettingResource_mdns's "custom" -> "auto"
+// step configures predefined_services = [] and custom_services = [], and
+// against the pinned controller, predefined_services comes back holding
+// every predefined service code the controller knows about (25 elements)
+// -- not empty, not the prior "custom" list. custom_services was observed
+// empty in this same run, but both attributes are normalized here rather
+// than only the one that showed the problem: sending the controller's own
+// synthesized content back as if it were the practitioner's config is the
+// class of bug, not a fact specific to predefined_services, and the
+// symmetry costs nothing since resourcekit's masked write never sends a
+// list the plan didn't set regardless of what this hook decodes.
+func mdnsAfterReceive(
+	_ context.Context, _ *settings.Mdns, model *settingMdnsModel, _ settingMdnsModel,
+) diag.Diagnostics {
+	if model.Mode.ValueString() == "custom" {
+		return nil
+	}
+	var diags diag.Diagnostics
+	customServices, d := types.ListValue(types.ObjectType{AttrTypes: mdnsCustomServiceAttrTypes}, []attr.Value{})
+	diags.Append(d...)
+	predefinedServices, d := types.ListValue(types.ObjectType{AttrTypes: mdnsPredefinedServiceAttrTypes}, []attr.Value{})
+	diags.Append(d...)
+	model.CustomServices = customServices
+	model.PredefinedServices = predefinedServices
+	return diags
+}
+
 // mdnsNestedSchema is the mdns SingleNestedAttribute's own Attributes,
 // wrapped as a schema.Schema so resourcekit's conformance checks -- built
 // for a whole resource's top-level schema -- can run against one section of
@@ -205,10 +240,11 @@ func mdnsKitSection(client *ui.ApiClient) resourcekit.Section[settingResourceMod
 	spec := mdnsKitSpec()
 	spec.Backend = mdnsKitBackend(client)
 	return resourcekit.SpecSection[settingResourceModel, settingMdnsModel, settings.Mdns]{
-		SectionName: "mdns",
-		Get:         func(m *settingResourceModel) *types.Object { return &m.Mdns },
-		Set:         func(m *settingResourceModel, o types.Object) { m.Mdns = o },
-		AttrTypes:   mdnsAttrTypes,
-		Spec:        spec,
+		SectionName:  "mdns",
+		Get:          func(m *settingResourceModel) *types.Object { return &m.Mdns },
+		Set:          func(m *settingResourceModel, o types.Object) { m.Mdns = o },
+		AttrTypes:    mdnsAttrTypes,
+		Spec:         spec,
+		AfterReceive: mdnsAfterReceive,
 	}
 }
