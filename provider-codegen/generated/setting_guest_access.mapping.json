@@ -276,6 +276,146 @@
       "structural_type": "string",
       "terraform_type": "string",
       "disposition": "managed"
+    },
+    {
+      "structural_name": "restricted_dns_enabled",
+      "terraform_name": "restricted_dns_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "restricted_dns_servers",
+      "terraform_name": "restricted_dns_servers",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "facebook_enabled",
+      "terraform_name": "facebook_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "facebook_app_id",
+      "terraform_name": "facebook_app_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "facebook_scope_email",
+      "terraform_name": "facebook_scope_email",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "google_enabled",
+      "terraform_name": "google_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "google_client_id",
+      "terraform_name": "google_client_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "google_domain",
+      "terraform_name": "google_domain",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "google_scope_email",
+      "terraform_name": "google_scope_email",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wechat_enabled",
+      "terraform_name": "wechat_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wechat_app_id",
+      "terraform_name": "wechat_app_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "wechat_shop_id",
+      "terraform_name": "wechat_shop_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "authorize_use_sandbox",
+      "terraform_name": "authorize_use_sandbox",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ippay_use_sandbox",
+      "terraform_name": "ippay_use_sandbox",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "merchantwarrior_use_sandbox",
+      "terraform_name": "merchantwarrior_use_sandbox",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "paypal_use_sandbox",
+      "terraform_name": "paypal_use_sandbox",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "quickpay_testmode",
+      "terraform_name": "quickpay_testmode",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "auth_url",
+      "terraform_name": "auth_url",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "custom_ip",
+      "terraform_name": "custom_ip",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "voucher_customized",
+      "terraform_name": "voucher_customized",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
     }
   ],
   "provider_owned": []

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
@@ -427,6 +428,12 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 							stringvalidator.OneOf("none", "hotspot", "custom"),
 						},
 					},
+					"auth_url": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "External authentication server URL, required together with `custom_ip` when `auth` is `custom` -- the controller rejects the write with only one of the pair set, and silently discards `auth_url` when `auth` is not `custom` -- confirmed live against the pinned controller.",
+						MarkdownDescription: "External authentication server URL, required together with `custom_ip` when `auth` is `custom` -- the controller rejects the write with only one of the pair set, and silently discards `auth_url` when `auth` is not `custom` -- confirmed live against the pinned controller.",
+					},
 					"authorize_loginid": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
@@ -440,6 +447,21 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "Authorize.Net API transaction key, used when `gateway` is `authorize`.",
 						MarkdownDescription: "Authorize.Net API transaction key, used when `gateway` is `authorize`.",
+					},
+					"authorize_use_sandbox": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use Authorize.Net's sandbox environment for guest payment, rather than live processing, when `gateway` is `authorize`.",
+						MarkdownDescription: "Use Authorize.Net's sandbox environment for guest payment, rather than live processing, when `gateway` is `authorize`.",
+					},
+					"custom_ip": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "IP address of the external authentication server, required together with `auth_url` when `auth` is `custom` -- confirmed live against the pinned controller.",
+						MarkdownDescription: "IP address of the external authentication server, required together with `auth_url` when `auth` is `custom` -- confirmed live against the pinned controller.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, ""),
+						},
 					},
 					"ec_enabled": schema.BoolAttribute{
 						Optional:            true,
@@ -471,12 +493,30 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 							int64validator.OneOf(1, 60, 1440),
 						},
 					},
+					"facebook_app_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Facebook app ID, used for guest portal social login via Facebook.",
+						MarkdownDescription: "Facebook app ID, used for guest portal social login via Facebook.",
+					},
 					"facebook_app_secret": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Sensitive:           true,
 						Description:         "Facebook app secret, used for guest portal social login via Facebook.",
 						MarkdownDescription: "Facebook app secret, used for guest portal social login via Facebook.",
+					},
+					"facebook_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable guest portal login via Facebook.",
+						MarkdownDescription: "Enable guest portal login via Facebook.",
+					},
+					"facebook_scope_email": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Request the guest's email address as part of Facebook login.",
+						MarkdownDescription: "Request the guest's email address as part of Facebook login.",
 					},
 					"gateway": schema.StringAttribute{
 						Optional:            true,
@@ -487,6 +527,12 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 							stringvalidator.OneOf("paypal", "stripe", "authorize", "quickpay", "merchantwarrior", "ippay"),
 						},
 					},
+					"google_client_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Google OAuth client ID, used for guest portal social login via Google.",
+						MarkdownDescription: "Google OAuth client ID, used for guest portal social login via Google.",
+					},
 					"google_client_secret": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
@@ -494,12 +540,36 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Google OAuth client secret, used for guest portal social login via Google.",
 						MarkdownDescription: "Google OAuth client secret, used for guest portal social login via Google.",
 					},
+					"google_domain": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Restrict Google guest portal login to accounts in this domain.",
+						MarkdownDescription: "Restrict Google guest portal login to accounts in this domain.",
+					},
+					"google_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable guest portal login via Google.",
+						MarkdownDescription: "Enable guest portal login via Google.",
+					},
+					"google_scope_email": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Request the guest's email address as part of Google login.",
+						MarkdownDescription: "Request the guest's email address as part of Google login.",
+					},
 					"ippay_terminalid": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Sensitive:           true,
 						Description:         "IPpay terminal ID, used when `gateway` is `ippay`.",
 						MarkdownDescription: "IPpay terminal ID, used when `gateway` is `ippay`.",
+					},
+					"ippay_use_sandbox": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use IPpay's sandbox environment for guest payment, rather than live processing, when `gateway` is `ippay`.",
+						MarkdownDescription: "Use IPpay's sandbox environment for guest payment, rather than live processing, when `gateway` is `ippay`.",
 					},
 					"merchantwarrior_apikey": schema.StringAttribute{
 						Optional:            true,
@@ -521,6 +591,12 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.",
 						MarkdownDescription: "Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.",
+					},
+					"merchantwarrior_use_sandbox": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use Merchant Warrior's sandbox environment for guest payment, rather than live processing, when `gateway` is `merchantwarrior`.",
+						MarkdownDescription: "Use Merchant Warrior's sandbox environment for guest payment, rather than live processing, when `gateway` is `merchantwarrior`.",
 					},
 					"password": schema.StringAttribute{
 						Optional:            true,
@@ -554,6 +630,12 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "PayPal API signature, used when `gateway` is `paypal`.",
 						MarkdownDescription: "PayPal API signature, used when `gateway` is `paypal`.",
+					},
+					"paypal_use_sandbox": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use PayPal's sandbox environment for guest payment, rather than live processing, when `gateway` is `paypal`.",
+						MarkdownDescription: "Use PayPal's sandbox environment for guest payment, rather than live processing, when `gateway` is `paypal`.",
 					},
 					"paypal_username": schema.StringAttribute{
 						Optional:            true,
@@ -603,6 +685,12 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "QuickPay merchant ID, used when `gateway` is `quickpay`.",
 						MarkdownDescription: "QuickPay merchant ID, used when `gateway` is `quickpay`.",
+					},
+					"quickpay_testmode": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use QuickPay's test mode for guest payment, rather than live processing, when `gateway` is `quickpay`.",
+						MarkdownDescription: "Use QuickPay's test mode for guest payment, rather than live processing, when `gateway` is `quickpay`.",
 					},
 					"radius_auth_type": schema.StringAttribute{
 						Optional:            true,
@@ -661,6 +749,25 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.",
 						MarkdownDescription: "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.",
 					},
+					"restricted_dns_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Restrict guest DNS resolution to the servers in `restricted_dns_servers`.",
+						MarkdownDescription: "Restrict guest DNS resolution to the servers in `restricted_dns_servers`.",
+					},
+					"restricted_dns_servers": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "DNS servers guest clients are restricted to when `restricted_dns_enabled` is set.",
+						MarkdownDescription: "DNS servers guest clients are restricted to when `restricted_dns_enabled` is set.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, "")),
+						},
+					},
 					"stripe_api_key": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
@@ -668,11 +775,23 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Stripe API key, used when `gateway` is `stripe`.",
 						MarkdownDescription: "Stripe API key, used when `gateway` is `stripe`.",
 					},
+					"voucher_customized": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable custom appearance for the guest portal's voucher entry form -- purpose inferred from the field name; the SDK carries no further voucher-appearance fields to confirm against.",
+						MarkdownDescription: "Enable custom appearance for the guest portal's voucher entry form -- purpose inferred from the field name; the SDK carries no further voucher-appearance fields to confirm against.",
+					},
 					"voucher_enabled": schema.BoolAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "Enable voucher-based guest access.",
 						MarkdownDescription: "Enable voucher-based guest access.",
+					},
+					"wechat_app_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "WeChat app ID, used for guest portal social login via WeChat.",
+						MarkdownDescription: "WeChat app ID, used for guest portal social login via WeChat.",
 					},
 					"wechat_app_secret": schema.StringAttribute{
 						Optional:            true,
@@ -681,12 +800,24 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "WeChat app secret, used for guest portal social login via WeChat.",
 						MarkdownDescription: "WeChat app secret, used for guest portal social login via WeChat.",
 					},
+					"wechat_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable guest portal login via WeChat.",
+						MarkdownDescription: "Enable guest portal login via WeChat.",
+					},
 					"wechat_secret_key": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Sensitive:           true,
 						Description:         "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.",
 						MarkdownDescription: "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.",
+					},
+					"wechat_shop_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "WeChat shop ID, used for guest payment via WeChat -- purpose inferred from the field name and its pairing with `wechat_secret_key`; the controller documents no further detail.",
+						MarkdownDescription: "WeChat shop ID, used for guest payment via WeChat -- purpose inferred from the field name and its pairing with `wechat_secret_key`; the controller documents no further detail.",
 					},
 				},
 				Optional:            true,

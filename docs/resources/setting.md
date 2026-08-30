@@ -259,24 +259,37 @@ Required:
 Optional:
 
 - `auth` (String) Guest portal authentication method: `none`, `hotspot`, or `custom`.
+- `auth_url` (String) External authentication server URL, required together with `custom_ip` when `auth` is `custom` -- the controller rejects the write with only one of the pair set, and silently discards `auth_url` when `auth` is not `custom` -- confirmed live against the pinned controller.
 - `authorize_loginid` (String, Sensitive) Authorize.Net API login ID, used when `gateway` is `authorize`.
 - `authorize_transactionkey` (String, Sensitive) Authorize.Net API transaction key, used when `gateway` is `authorize`.
+- `authorize_use_sandbox` (Boolean) Use Authorize.Net's sandbox environment for guest payment, rather than live processing, when `gateway` is `authorize`.
+- `custom_ip` (String) IP address of the external authentication server, required together with `auth_url` when `auth` is `custom` -- confirmed live against the pinned controller.
 - `ec_enabled` (Boolean) Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.
 - `expire` (String) Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.
 - `expire_number` (Number) Session length, combined with `expire_unit`, when `expire` is `custom`.
 - `expire_unit` (Number) Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.
+- `facebook_app_id` (String) Facebook app ID, used for guest portal social login via Facebook.
 - `facebook_app_secret` (String, Sensitive) Facebook app secret, used for guest portal social login via Facebook.
+- `facebook_enabled` (Boolean) Enable guest portal login via Facebook.
+- `facebook_scope_email` (Boolean) Request the guest's email address as part of Facebook login.
 - `gateway` (String) Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.
+- `google_client_id` (String) Google OAuth client ID, used for guest portal social login via Google.
 - `google_client_secret` (String, Sensitive) Google OAuth client secret, used for guest portal social login via Google.
+- `google_domain` (String) Restrict Google guest portal login to accounts in this domain.
+- `google_enabled` (Boolean) Enable guest portal login via Google.
+- `google_scope_email` (Boolean) Request the guest's email address as part of Google login.
 - `ippay_terminalid` (String, Sensitive) IPpay terminal ID, used when `gateway` is `ippay`.
+- `ippay_use_sandbox` (Boolean) Use IPpay's sandbox environment for guest payment, rather than live processing, when `gateway` is `ippay`.
 - `merchantwarrior_apikey` (String, Sensitive) Merchant Warrior API key, used when `gateway` is `merchantwarrior`.
 - `merchantwarrior_apipassphrase` (String, Sensitive) Merchant Warrior API passphrase, used when `gateway` is `merchantwarrior`.
 - `merchantwarrior_merchantuuid` (String, Sensitive) Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.
+- `merchantwarrior_use_sandbox` (Boolean) Use Merchant Warrior's sandbox environment for guest payment, rather than live processing, when `gateway` is `merchantwarrior`.
 - `password` (String, Sensitive) Guest portal password, used when `password_enabled` is set.
 - `password_enabled` (Boolean) Require a password for the guest portal.
 - `payment_enabled` (Boolean) Enable paid guest access via `gateway`.
 - `paypal_password` (String, Sensitive) PayPal API password, used when `gateway` is `paypal`.
 - `paypal_signature` (String, Sensitive) PayPal API signature, used when `gateway` is `paypal`.
+- `paypal_use_sandbox` (Boolean) Use PayPal's sandbox environment for guest payment, rather than live processing, when `gateway` is `paypal`.
 - `paypal_username` (String, Sensitive) PayPal API username, used when `gateway` is `paypal`.
 - `portal_enabled` (Boolean) Enable the guest portal.
 - `portal_hostname` (String) Guest portal hostname, used when `portal_use_hostname` is enabled.
@@ -284,6 +297,7 @@ Optional:
 - `quickpay_agreementid` (String, Sensitive) QuickPay agreement ID, used when `gateway` is `quickpay`.
 - `quickpay_apikey` (String, Sensitive) QuickPay API key, used when `gateway` is `quickpay`.
 - `quickpay_merchantid` (String, Sensitive) QuickPay merchant ID, used when `gateway` is `quickpay`.
+- `quickpay_testmode` (Boolean) Use QuickPay's test mode for guest payment, rather than live processing, when `gateway` is `quickpay`.
 - `radius_auth_type` (String) RADIUS authentication type: `chap` or `mschapv2`.
 - `radius_disconnect_enabled` (Boolean) Enable RADIUS Disconnect (RFC 3576) for the guest portal.
 - `radius_disconnect_port` (Number) RADIUS Disconnect (RFC 3576) listening port.
@@ -293,10 +307,16 @@ Optional:
 - `redirect_https` (Boolean) Serve the post-authentication redirect over HTTPS.
 - `redirect_to_https` (Boolean) Redirect an HTTP request to the guest portal to HTTPS.
 - `redirect_url` (String) URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.
+- `restricted_dns_enabled` (Boolean) Restrict guest DNS resolution to the servers in `restricted_dns_servers`.
+- `restricted_dns_servers` (List of String) DNS servers guest clients are restricted to when `restricted_dns_enabled` is set.
 - `stripe_api_key` (String, Sensitive) Stripe API key, used when `gateway` is `stripe`.
+- `voucher_customized` (Boolean) Enable custom appearance for the guest portal's voucher entry form -- purpose inferred from the field name; the SDK carries no further voucher-appearance fields to confirm against.
 - `voucher_enabled` (Boolean) Enable voucher-based guest access.
+- `wechat_app_id` (String) WeChat app ID, used for guest portal social login via WeChat.
 - `wechat_app_secret` (String, Sensitive) WeChat app secret, used for guest portal social login via WeChat.
+- `wechat_enabled` (Boolean) Enable guest portal login via WeChat.
 - `wechat_secret_key` (String, Sensitive) WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.
+- `wechat_shop_id` (String) WeChat shop ID, used for guest payment via WeChat -- purpose inferred from the field name and its pairing with `wechat_secret_key`; the controller documents no further detail.
 
 
 <a id="nestedatt--igmp_snooping"></a>

@@ -481,6 +481,146 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "GuestAccess.restricted_dns_enabled",
+      "terraform_name": "guest_access.restricted_dns_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.restricted_dns_servers",
+      "terraform_name": "guest_access.restricted_dns_servers",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.facebook_enabled",
+      "terraform_name": "guest_access.facebook_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.facebook_app_id",
+      "terraform_name": "guest_access.facebook_app_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.facebook_scope_email",
+      "terraform_name": "guest_access.facebook_scope_email",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.google_enabled",
+      "terraform_name": "guest_access.google_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.google_client_id",
+      "terraform_name": "guest_access.google_client_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.google_domain",
+      "terraform_name": "guest_access.google_domain",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.google_scope_email",
+      "terraform_name": "guest_access.google_scope_email",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.wechat_enabled",
+      "terraform_name": "guest_access.wechat_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.wechat_app_id",
+      "terraform_name": "guest_access.wechat_app_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.wechat_shop_id",
+      "terraform_name": "guest_access.wechat_shop_id",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.authorize_use_sandbox",
+      "terraform_name": "guest_access.authorize_use_sandbox",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.ippay_use_sandbox",
+      "terraform_name": "guest_access.ippay_use_sandbox",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.merchantwarrior_use_sandbox",
+      "terraform_name": "guest_access.merchantwarrior_use_sandbox",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.paypal_use_sandbox",
+      "terraform_name": "guest_access.paypal_use_sandbox",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.quickpay_testmode",
+      "terraform_name": "guest_access.quickpay_testmode",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.auth_url",
+      "terraform_name": "guest_access.auth_url",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.custom_ip",
+      "terraform_name": "guest_access.custom_ip",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GuestAccess.voucher_customized",
+      "terraform_name": "guest_access.voucher_customized",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "IgmpSnooping.enabled",
       "terraform_name": "igmp_snooping.enabled",
       "structural_type": "bool",

@@ -6,9 +6,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/go-unifi/unifi/settings"
@@ -266,9 +271,11 @@ func TestGuestAccessKitSpecConformance(t *testing.T) {
 // guestAccessNestedSchema's type assertion against a generator regression:
 // "guest_access" moving off SingleNestedAttribute would panic every
 // conformance test above instead of naming the actual problem, so this
-// pins the shape ahead of that. The count is Task 2's 21 plus Task 3's 18
-// x_-prefixed fields (guestAccessSecret) -- the other 53 of
-// settings.GuestAccess's 92 fields are still deferred (see
+// pins the shape ahead of that. The count is Task 2's 21, Task 3's 18
+// x_-prefixed fields (guestAccessSecret) and Task 4's 20 -- the other 33 of
+// settings.GuestAccess's 92 fields (every portal_customized_* field, plus
+// allowed_subnet_ and restricted_subnet_, withdrawn after a live apply
+// against the pinned controller rejected both) are still deferred (see
 // setting_guest_access_descriptor.go's own comment).
 func TestGuestAccessNestedSchemaHasExactlyItsAttributes(t *testing.T) {
 	ctx := context.Background()
@@ -277,9 +284,163 @@ func TestGuestAccessNestedSchemaHasExactlyItsAttributes(t *testing.T) {
 		t.Fatal(`the generated setting schema has no "guest_access" attribute`)
 	}
 	nested := guestAccessNestedSchema(ctx)
-	if len(nested.Attributes) != 39 {
-		t.Errorf("guest_access has %d attribute(s), want 39; update guestAccessKitSpec and this count together",
+	if len(nested.Attributes) != 59 {
+		t.Errorf("guest_access has %d attribute(s), want 59; update guestAccessKitSpec and this count together",
 			len(nested.Attributes))
+	}
+}
+
+// TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip
+// exercises Task 4's 20 fields through the Spec's own ToSDK/ToModel: model ->
+// go-unifi setting -> model preserves every field. Shaped like
+// TestGuestAccessSettingRoundTrip, Task 2's own version of this test, kept
+// separate rather than folded into it so each task's own round trip stays
+// readable against its own field list. allowed_subnet_ and restricted_subnet_
+// are not here: the brief's original 22 named them, but a live apply against
+// the pinned controller (10.6.101) rejected both with api.err.InvalidKey, so
+// setting_guest_access_descriptor.go withdrew them back to
+// policy/setting.json's omitted list rather than ship a write that always
+// fails.
+func TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	spec := guestAccessKitSpec()
+
+	restrictedDNSServers, diags := types.ListValueFrom(ctx, types.StringType, []string{"1.1.1.1", "8.8.8.8"})
+	if diags.HasError() {
+		t.Fatalf("building restricted_dns_servers: %v", diags)
+	}
+
+	in := &settingGuestAccessModel{
+		AuthUrl:                   types.StringValue("https://auth.example.com/login"),
+		AuthorizeUseSandbox:       types.BoolValue(true),
+		CustomIP:                  types.StringValue("203.0.113.5"),
+		FacebookAppID:             types.StringValue("fb-app-id"),
+		FacebookEnabled:           types.BoolValue(true),
+		FacebookScopeEmail:        types.BoolValue(true),
+		GoogleClientID:            types.StringValue("google-client-id"),
+		GoogleDomain:              types.StringValue("example.com"),
+		GoogleEnabled:             types.BoolValue(true),
+		GoogleScopeEmail:          types.BoolValue(true),
+		IPpayUseSandbox:           types.BoolValue(true),
+		MerchantwarriorUseSandbox: types.BoolValue(true),
+		PaypalUseSandbox:          types.BoolValue(true),
+		QuickpayTestmode:          types.BoolValue(true),
+		RestrictedDNSEnabled:      types.BoolValue(true),
+		RestrictedDNSServers:      restrictedDNSServers,
+		VoucherCustomized:         types.BoolValue(true),
+		WechatAppID:               types.StringValue("wechat-app-id"),
+		WechatEnabled:             types.BoolValue(true),
+		WechatShopID:              types.StringValue("wechat-shop-id"),
+	}
+	sdk, diags := spec.ToSDK(ctx, in)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+
+	want := &settings.GuestAccess{
+		AuthUrl:                   "https://auth.example.com/login",
+		AuthorizeUseSandbox:       true,
+		CustomIP:                  "203.0.113.5",
+		FacebookAppID:             "fb-app-id",
+		FacebookEnabled:           true,
+		FacebookScopeEmail:        true,
+		GoogleClientID:            "google-client-id",
+		GoogleDomain:              "example.com",
+		GoogleEnabled:             true,
+		GoogleScopeEmail:          true,
+		IPpayUseSandbox:           true,
+		MerchantwarriorUseSandbox: true,
+		PaypalUseSandbox:          true,
+		QuickpayTestmode:          true,
+		RestrictedDNSEnabled:      true,
+		RestrictedDNSServers:      []string{"1.1.1.1", "8.8.8.8"},
+		VoucherCustomized:         true,
+		WechatAppID:               "wechat-app-id",
+		WechatEnabled:             true,
+		WechatShopID:              "wechat-shop-id",
+	}
+	if sdk.AuthUrl != want.AuthUrl ||
+		sdk.AuthorizeUseSandbox != want.AuthorizeUseSandbox || sdk.CustomIP != want.CustomIP ||
+		sdk.FacebookAppID != want.FacebookAppID || sdk.FacebookEnabled != want.FacebookEnabled ||
+		sdk.FacebookScopeEmail != want.FacebookScopeEmail || sdk.GoogleClientID != want.GoogleClientID ||
+		sdk.GoogleDomain != want.GoogleDomain || sdk.GoogleEnabled != want.GoogleEnabled ||
+		sdk.GoogleScopeEmail != want.GoogleScopeEmail || sdk.IPpayUseSandbox != want.IPpayUseSandbox ||
+		sdk.MerchantwarriorUseSandbox != want.MerchantwarriorUseSandbox ||
+		sdk.PaypalUseSandbox != want.PaypalUseSandbox || sdk.QuickpayTestmode != want.QuickpayTestmode ||
+		sdk.RestrictedDNSEnabled != want.RestrictedDNSEnabled ||
+		!slices.Equal(sdk.RestrictedDNSServers, want.RestrictedDNSServers) ||
+		sdk.VoucherCustomized != want.VoucherCustomized ||
+		sdk.WechatAppID != want.WechatAppID || sdk.WechatEnabled != want.WechatEnabled ||
+		sdk.WechatShopID != want.WechatShopID {
+		t.Fatalf("ToSDK = %+v, want %+v", sdk, want)
+	}
+
+	var out settingGuestAccessModel
+	if diags := spec.ToModel(ctx, sdk, &out, ""); diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if out.AuthUrl != in.AuthUrl ||
+		out.AuthorizeUseSandbox != in.AuthorizeUseSandbox || out.CustomIP != in.CustomIP ||
+		out.FacebookAppID != in.FacebookAppID || out.FacebookEnabled != in.FacebookEnabled ||
+		out.FacebookScopeEmail != in.FacebookScopeEmail || out.GoogleClientID != in.GoogleClientID ||
+		out.GoogleDomain != in.GoogleDomain || out.GoogleEnabled != in.GoogleEnabled ||
+		out.GoogleScopeEmail != in.GoogleScopeEmail || out.IPpayUseSandbox != in.IPpayUseSandbox ||
+		out.MerchantwarriorUseSandbox != in.MerchantwarriorUseSandbox ||
+		out.PaypalUseSandbox != in.PaypalUseSandbox || out.QuickpayTestmode != in.QuickpayTestmode ||
+		out.RestrictedDNSEnabled != in.RestrictedDNSEnabled ||
+		!out.RestrictedDNSServers.Equal(in.RestrictedDNSServers) ||
+		out.VoucherCustomized != in.VoucherCustomized ||
+		out.WechatAppID != in.WechatAppID || out.WechatEnabled != in.WechatEnabled ||
+		out.WechatShopID != in.WechatShopID {
+		t.Errorf("guest_access Task 4 round-trip mismatch: %+v", out)
+	}
+}
+
+// TestGuestAccessRestrictedDNSServersValidatorRejectsAndAcceptsIPAddresses
+// pins restricted_dns_servers' per-element validator against the generated
+// schema itself, not just the Spec: an element that is not an IP address (or
+// the empty string SettingGuestAccess's own constraint pattern also admits)
+// is rejected, and a list of real IP addresses passes. Shaped like
+// TestVpnServerKitResource_dns_servers_length (vpn_server_resource_test.go),
+// the established way this codebase probes a schema-level list validator
+// directly rather than through the Spec.
+func TestGuestAccessRestrictedDNSServersValidatorRejectsAndAcceptsIPAddresses(t *testing.T) {
+	ctx := context.Background()
+	nested := guestAccessNestedSchema(ctx)
+	attr, ok := nested.Attributes["restricted_dns_servers"]
+	if !ok {
+		t.Fatal(`guest_access is missing attribute "restricted_dns_servers"`)
+	}
+	listAttr, ok := attr.(schema.ListAttribute)
+	if !ok {
+		t.Fatalf("restricted_dns_servers is a %T, want schema.ListAttribute", attr)
+	}
+
+	validate := func(t *testing.T, elements []string) diag.Diagnostics {
+		t.Helper()
+		list, d := types.ListValueFrom(ctx, types.StringType, elements)
+		if d.HasError() {
+			t.Fatalf("building the list value: %v", d)
+		}
+		var diags diag.Diagnostics
+		for _, v := range listAttr.Validators {
+			resp := &validator.ListResponse{}
+			v.ValidateList(ctx, validator.ListRequest{
+				Path:        path.Root("restricted_dns_servers"),
+				ConfigValue: list,
+			}, resp)
+			diags.Append(resp.Diagnostics...)
+		}
+		return diags
+	}
+
+	if diags := validate(t, []string{"1.1.1.1", "not-an-ip"}); !diags.HasError() {
+		t.Error("[\"1.1.1.1\", \"not-an-ip\"] passed validation; want an error, " +
+			"\"not-an-ip\" is not an IP address")
+	}
+	if diags := validate(t, []string{"1.1.1.1", "8.8.8.8", ""}); diags.HasError() {
+		t.Errorf("[\"1.1.1.1\", \"8.8.8.8\", \"\"] failed validation: %v; the controller's own "+
+			"constraint pattern admits the empty string via its own \"|^$\" alternation", diags)
 	}
 }
 

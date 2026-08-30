@@ -2924,26 +2924,36 @@ resource "unifi_setting" "test" {
 `
 }
 
-// TestAccSettingResource_guestAccess exercises Task 2's 21 core scalars and
-// Task 3's 18 x_-prefixed fields (.superpowers/sdd/plan-r2b-guest-access)
-// live: portal access/mode, post-auth redirect, session expiry (including
-// the two #303-guarded ints, expire_number/expire_unit), the RADIUS
-// guest-auth group (including its own #303-guarded radius_disconnect_port),
-// password_enabled, voucher_enabled, payment_enabled, gateway, and every one
-// of the section's 18 secrets/identifiers (the portal password, four
-// social-login secrets, and thirteen payment-gateway credentials across six
-// gateways). A real apply against a validating controller is what the
+// TestAccSettingResource_guestAccess exercises Task 2's 21 core scalars,
+// Task 3's 18 x_-prefixed fields and Task 4's 20 fields
+// (.superpowers/sdd/plan-r2b-guest-access) live: portal access/mode,
+// post-auth redirect, session expiry (including the two #303-guarded ints,
+// expire_number/expire_unit), the RADIUS guest-auth group (including its own
+// #303-guarded radius_disconnect_port), password_enabled, voucher_enabled,
+// payment_enabled, gateway, every one of the section's 18 secrets/identifiers
+// (the portal password, four social-login secrets, and thirteen
+// payment-gateway credentials across six gateways), and Task 4's network
+// scoping, social-login companions, payment-gateway sandbox switches and
+// three stragglers. A real apply against a validating controller is what the
 // unit-level OmitZero and Elide tests (setting_guest_access_descriptor_test.go)
 // cannot prove on their own: if the write guard ever regressed and let a
 // literal 0 reach the wire for expire_number, expire_unit or
 // radius_disconnect_port, this step would fail outright against the
 // controller's own rejection of that value, not just leave a Go assertion
-// red. Per the brief, this test never asserts any of the 18 secrets'
-// echoed values -- Task 0's live probe already pinned that behaviour once,
-// and re-asserting it here would only turn a future controller change into
-// a false failure. The update step's config (testAccSettingConfig_guestAccessUpdate)
-// omits every one of the 18, which is what proves an unconfigured secret is
-// forced null rather than carrying the controller's prior value into state.
+// red. This is in fact exactly how Task 4's own allowed_subnet_ and
+// restricted_subnet_ were caught and withdrawn: both were in the brief's
+// original 22, both passed every unit-level check (nothing in this
+// codebase's own conformance tooling can know a controller's write-side
+// schema rejects a key its read-side type still declares), and only this
+// live step's api.err.InvalidKey exposed it. Per the brief, this test never
+// asserts any of the 18 secrets' echoed values -- Task 0's live probe
+// already pinned that behaviour once, and re-asserting it here would only
+// turn a future controller change into a false failure. The update step's
+// config (testAccSettingConfig_guestAccessUpdate) omits every one of the 18,
+// which is what proves an unconfigured secret is forced null rather than
+// carrying the controller's prior value into state. Task 4's 20 fields are
+// none of them secrets, so they are asserted directly in the Check block
+// below, the same way Task 2's 21 are.
 func TestAccSettingResource_guestAccess(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -2973,6 +2983,67 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"unifi_setting.test", "guest_access.radius_disconnect_port", "3799",
 					),
+					// Task 4's 20 fields. allowed_subnet_ and restricted_subnet_
+					// are not here: a live apply against the pinned controller
+					// rejected both with api.err.InvalidKey (see
+					// setting_guest_access_descriptor.go's own comment), so
+					// they were withdrawn back to omitted rather than shipped.
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.restricted_dns_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.restricted_dns_servers.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.restricted_dns_servers.0", "1.1.1.1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.restricted_dns_servers.1", "8.8.8.8",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.facebook_enabled", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.facebook_app_id", "acctest-facebook-app-id-9f2b1e",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.facebook_scope_email", "true",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.google_enabled", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.google_client_id", "acctest-google-client-id-9f2b1e",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.google_domain", "example.com",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.google_scope_email", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.wechat_enabled", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.wechat_app_id", "acctest-wechat-app-id-9f2b1e",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.wechat_shop_id", "acctest-wechat-shop-id-9f2b1e",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.authorize_use_sandbox", "true",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.ippay_use_sandbox", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.merchantwarrior_use_sandbox", "true",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.paypal_use_sandbox", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.quickpay_testmode", "true"),
+					// auth_url is not configured or asserted here: a live probe
+					// found the controller silently discards it unless `auth`
+					// is `custom` (api.err.CustomAuthMissingExternalServer
+					// otherwise names custom_ip as the other field that
+					// combination needs) -- this step's own auth is `hotspot`,
+					// the same reason expire_number/expire_unit need expire =
+					// custom below. auth_url's round trip is still covered at
+					// the unit level
+					// (TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip).
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.custom_ip", "203.0.113.5"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.voucher_customized", "true",
+					),
 				),
 			},
 			{
@@ -2987,24 +3058,37 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					// section's import step ignores its own attributes.
 					"guest_access.%",
 					"guest_access.auth",
+					"guest_access.auth_url",
 					"guest_access.authorize_loginid",
 					"guest_access.authorize_transactionkey",
+					"guest_access.authorize_use_sandbox",
+					"guest_access.custom_ip",
 					"guest_access.ec_enabled",
 					"guest_access.expire",
 					"guest_access.expire_number",
 					"guest_access.expire_unit",
+					"guest_access.facebook_app_id",
 					"guest_access.facebook_app_secret",
+					"guest_access.facebook_enabled",
+					"guest_access.facebook_scope_email",
 					"guest_access.gateway",
+					"guest_access.google_client_id",
 					"guest_access.google_client_secret",
+					"guest_access.google_domain",
+					"guest_access.google_enabled",
+					"guest_access.google_scope_email",
 					"guest_access.ippay_terminalid",
+					"guest_access.ippay_use_sandbox",
 					"guest_access.merchantwarrior_apikey",
 					"guest_access.merchantwarrior_apipassphrase",
 					"guest_access.merchantwarrior_merchantuuid",
+					"guest_access.merchantwarrior_use_sandbox",
 					"guest_access.password",
 					"guest_access.password_enabled",
 					"guest_access.payment_enabled",
 					"guest_access.paypal_password",
 					"guest_access.paypal_signature",
+					"guest_access.paypal_use_sandbox",
 					"guest_access.paypal_username",
 					"guest_access.portal_enabled",
 					"guest_access.portal_hostname",
@@ -3012,6 +3096,7 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					"guest_access.quickpay_agreementid",
 					"guest_access.quickpay_apikey",
 					"guest_access.quickpay_merchantid",
+					"guest_access.quickpay_testmode",
 					"guest_access.radius_auth_type",
 					"guest_access.radius_disconnect_enabled",
 					"guest_access.radius_disconnect_port",
@@ -3021,10 +3106,16 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					"guest_access.redirect_https",
 					"guest_access.redirect_to_https",
 					"guest_access.redirect_url",
+					"guest_access.restricted_dns_enabled",
+					"guest_access.restricted_dns_servers",
 					"guest_access.stripe_api_key",
+					"guest_access.voucher_customized",
 					"guest_access.voucher_enabled",
+					"guest_access.wechat_app_id",
 					"guest_access.wechat_app_secret",
+					"guest_access.wechat_enabled",
 					"guest_access.wechat_secret_key",
+					"guest_access.wechat_shop_id",
 				},
 			},
 			{
@@ -3103,6 +3194,36 @@ resource "unifi_setting" "test" {
     merchantwarrior_apipassphrase = "acctest-merchantwarrior-apipassphrase-9f2b1e"
     ippay_terminalid              = "acctest-ippay-terminalid-9f2b1e"
     stripe_api_key                = "acctest-stripe-api-key-9f2b1e"
+
+    # Task 4's 20 fields: network scoping, social-login companions,
+    # payment-gateway sandbox/test switches and three stragglers. None of
+    # these are secrets, so the Check block above asserts every one of them
+    # back. allowed_subnet_ and restricted_subnet_ are not here -- a live
+    # apply against the pinned controller rejected both with
+    # api.err.InvalidKey, so they were withdrawn (see
+    # setting_guest_access_descriptor.go's own comment).
+    restricted_dns_enabled      = true
+    restricted_dns_servers      = ["1.1.1.1", "8.8.8.8"]
+    facebook_enabled            = true
+    facebook_app_id             = "acctest-facebook-app-id-9f2b1e"
+    facebook_scope_email        = true
+    google_enabled              = true
+    google_client_id            = "acctest-google-client-id-9f2b1e"
+    google_domain               = "example.com"
+    google_scope_email          = true
+    wechat_enabled              = true
+    wechat_app_id               = "acctest-wechat-app-id-9f2b1e"
+    wechat_shop_id              = "acctest-wechat-shop-id-9f2b1e"
+    authorize_use_sandbox       = true
+    ippay_use_sandbox           = true
+    merchantwarrior_use_sandbox = true
+    paypal_use_sandbox          = true
+    quickpay_testmode           = true
+    # auth_url is deliberately absent: the controller only stores it when
+    # auth is custom (see the Check block's own comment above), which this
+    # step's auth = "hotspot" is not.
+    custom_ip                   = "203.0.113.5"
+    voucher_customized          = true
   }
 }
 `

@@ -13,20 +13,68 @@ package unifi
 // setting_mgmt_descriptor.go for the shape every section descriptor
 // follows.
 //
-// This is Task 2 of a five-task rollout (.superpowers/sdd/plan-r2b-guest-access):
-// the 21 core scalars named by this task's own brief -- portal access and
-// mode, post-auth redirect, session and voucher expiry, the RADIUS
-// guest-auth group without secrets, password_enabled without its secret,
-// voucher_enabled, payment_enabled, gateway and ec_enabled. settings.GuestAccess
-// carries 92 fields total (unifi/setting_guest_access_fieldsplit.go); the other
-// 71 -- the 18 x_-prefixed secrets (Task 3), the four subnet/DNS-scoping
-// fields (Task 4) and the 36-field portal-appearance group (Task 5) -- are
-// named in provider-codegen/policy/setting.json's top-level "omitted" list
-// as "GuestAccess.<field>" for now, not as omitted members of this grouping:
-// that keeps this dispatch's diff to exactly its own 21 fields, and lets each
-// later task's diff be exactly "move its fields from omitted to managed"
-// rather than a rewrite of this file's member list. See that policy file's
-// "guest_access" grouping.
+// This is a five-task rollout (.superpowers/sdd/plan-r2b-guest-access).
+// Task 2 modelled the 21 core scalars -- portal access and mode, post-auth
+// redirect, session and voucher expiry, the RADIUS guest-auth group without
+// secrets, password_enabled without its secret, voucher_enabled,
+// payment_enabled, gateway and ec_enabled. settings.GuestAccess carries 92
+// fields total (unifi/setting_guest_access_fieldsplit.go). Task 3 added the
+// 18 x_-prefixed secrets. Task 4's brief named 22 more, but two --
+// allowed_subnet_ and restricted_subnet_ -- were withdrawn after a live
+// apply against the pinned controller (10.6.101) rejected both with
+// api.err.InvalidKey; every other field in the brief wrote cleanly. See this
+// file's own note below and setting_guest_access_descriptor_test.go's
+// TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip for
+// where that live check happened. So Task 4 actually added 20: the
+// facebook_*, google_* and wechat_* non-secret companions of Task 3's
+// social-login secrets (10); authorize_use_sandbox, ippay_use_sandbox,
+// merchantwarrior_use_sandbox, paypal_use_sandbox and quickpay_testmode (the
+// payment-gateway sandbox/test switches beside Task 3's credentials);
+// restricted_dns_enabled and restricted_dns_servers (network scoping, minus
+// the two withdrawn subnet fields); and three stragglers -- auth_url,
+// custom_ip (both under portal access and mode, missed by Task 2's own
+// brief) and voucher_customized. That totals 59 of the 92; the remaining 33
+// -- every portal_customized_* field (31, Task 5's) plus the two withdrawn
+// subnet fields -- are still named in provider-codegen/policy/setting.json's
+// top-level "omitted" list as "GuestAccess.<field>" rather than as omitted
+// members of this grouping, so Task 5's own diff is exactly "move its fields
+// from omitted to managed" rather than a rewrite of this file's member list.
+// See that policy file's "guest_access" grouping.
+//
+// Task 4's own notes: allowed_subnet_ and restricted_subnet_'s withdrawal is
+// the first case in this policy corpus where the SDK's own generated struct
+// -- itself derived from a captured controller schema -- named a field the
+// running controller does not actually accept a write for. Both carry a
+// trailing underscore on the wire, unlike every other field this task
+// modelled, which is itself a signal (shared with several genuinely
+// deprecated UniFi settings) that these predate the controller generation
+// pinned here; go-unifi keeps them because its capture lock's schema source
+// still lists them, not because this controller honours them. Neither
+// field's purpose was ever confirmed against controller documentation
+// either, for what that is worth now that both are unmodelled again.
+// auth_url and custom_ip are not a hedge any more: a live probe against the
+// pinned controller confirmed both are required together when auth is
+// custom (the controller rejects a write naming only one of the pair with
+// api.err.CustomAuthMissingExternalServer) and that the controller silently
+// discards auth_url whenever auth is not custom, rather than rejecting or
+// storing it -- exactly what each one's shipped description already said,
+// now measured rather than inferred. wechat_shop_id's and
+// voucher_customized's purpose is still not confirmed against controller
+// documentation; each hedges in its own shipped description exactly the way
+// ec_enabled's already does, not just in this comment.
+// restricted_dns_servers is this policy corpus's
+// first per-element-validated string collection: policy/setting.json
+// composes listvalidator.ValueStringsAre with controllerregex.Matches, the
+// same composition site_to_site_vpn's remote_subnets and firewall_policy's
+// connection_states already use with their own per-element validators, over
+// the exact IP-address pattern SettingGuestAccess's constraint table gives
+// restricted_dns_servers -- the same pattern custom_ip carries as a scalar.
+// It ships as a list, not a set: no shipped section had made this call yet
+// for a plain string collection, and doh's server_names is the nearest
+// precedent, list over set, list plan modifier included. None of Task 4's
+// 20 fields are nullable integers, so the #303 OmitZero guard below
+// (expire_number, expire_unit, radius_disconnect_port) has nothing new to
+// extend to.
 //
 // Three fields carry a fact worth flagging rather than assuming. The plan's
 // "Known risks" names a claim for ec_enabled inherited from an abandoned
@@ -108,24 +156,37 @@ import (
 // follows.
 type settingGuestAccessModel struct {
 	Auth                         types.String `tfsdk:"auth"`
+	AuthUrl                      types.String `tfsdk:"auth_url"`
 	AuthorizeLoginid             types.String `tfsdk:"authorize_loginid"`
 	AuthorizeTransactionkey      types.String `tfsdk:"authorize_transactionkey"`
+	AuthorizeUseSandbox          types.Bool   `tfsdk:"authorize_use_sandbox"`
+	CustomIP                     types.String `tfsdk:"custom_ip"`
 	EcEnabled                    types.Bool   `tfsdk:"ec_enabled"`
 	Expire                       types.String `tfsdk:"expire"`
 	ExpireNumber                 types.Int64  `tfsdk:"expire_number"`
 	ExpireUnit                   types.Int64  `tfsdk:"expire_unit"`
+	FacebookAppID                types.String `tfsdk:"facebook_app_id"`
 	FacebookAppSecret            types.String `tfsdk:"facebook_app_secret"`
+	FacebookEnabled              types.Bool   `tfsdk:"facebook_enabled"`
+	FacebookScopeEmail           types.Bool   `tfsdk:"facebook_scope_email"`
 	Gateway                      types.String `tfsdk:"gateway"`
+	GoogleClientID               types.String `tfsdk:"google_client_id"`
 	GoogleClientSecret           types.String `tfsdk:"google_client_secret"`
+	GoogleDomain                 types.String `tfsdk:"google_domain"`
+	GoogleEnabled                types.Bool   `tfsdk:"google_enabled"`
+	GoogleScopeEmail             types.Bool   `tfsdk:"google_scope_email"`
 	IPpayTerminalid              types.String `tfsdk:"ippay_terminalid"`
+	IPpayUseSandbox              types.Bool   `tfsdk:"ippay_use_sandbox"`
 	MerchantwarriorApikey        types.String `tfsdk:"merchantwarrior_apikey"`
 	MerchantwarriorApipassphrase types.String `tfsdk:"merchantwarrior_apipassphrase"`
 	MerchantwarriorMerchantuuid  types.String `tfsdk:"merchantwarrior_merchantuuid"`
+	MerchantwarriorUseSandbox    types.Bool   `tfsdk:"merchantwarrior_use_sandbox"`
 	Password                     types.String `tfsdk:"password"`
 	PasswordEnabled              types.Bool   `tfsdk:"password_enabled"`
 	PaymentEnabled               types.Bool   `tfsdk:"payment_enabled"`
 	PaypalPassword               types.String `tfsdk:"paypal_password"`
 	PaypalSignature              types.String `tfsdk:"paypal_signature"`
+	PaypalUseSandbox             types.Bool   `tfsdk:"paypal_use_sandbox"`
 	PaypalUsername               types.String `tfsdk:"paypal_username"`
 	PortalEnabled                types.Bool   `tfsdk:"portal_enabled"`
 	PortalHostname               types.String `tfsdk:"portal_hostname"`
@@ -133,6 +194,7 @@ type settingGuestAccessModel struct {
 	QuickpayAgreementid          types.String `tfsdk:"quickpay_agreementid"`
 	QuickpayApikey               types.String `tfsdk:"quickpay_apikey"`
 	QuickpayMerchantid           types.String `tfsdk:"quickpay_merchantid"`
+	QuickpayTestmode             types.Bool   `tfsdk:"quickpay_testmode"`
 	RADIUSAuthType               types.String `tfsdk:"radius_auth_type"`
 	RADIUSDisconnectEnabled      types.Bool   `tfsdk:"radius_disconnect_enabled"`
 	RADIUSDisconnectPort         types.Int64  `tfsdk:"radius_disconnect_port"`
@@ -142,34 +204,53 @@ type settingGuestAccessModel struct {
 	RedirectHttps                types.Bool   `tfsdk:"redirect_https"`
 	RedirectToHttps              types.Bool   `tfsdk:"redirect_to_https"`
 	RedirectUrl                  types.String `tfsdk:"redirect_url"`
+	RestrictedDNSEnabled         types.Bool   `tfsdk:"restricted_dns_enabled"`
+	RestrictedDNSServers         types.List   `tfsdk:"restricted_dns_servers"`
 	StripeApiKey                 types.String `tfsdk:"stripe_api_key"`
+	VoucherCustomized            types.Bool   `tfsdk:"voucher_customized"`
 	VoucherEnabled               types.Bool   `tfsdk:"voucher_enabled"`
+	WechatAppID                  types.String `tfsdk:"wechat_app_id"`
 	WechatAppSecret              types.String `tfsdk:"wechat_app_secret"`
+	WechatEnabled                types.Bool   `tfsdk:"wechat_enabled"`
 	WechatSecretKey              types.String `tfsdk:"wechat_secret_key"`
+	WechatShopID                 types.String `tfsdk:"wechat_shop_id"`
 }
 
 // guestAccessAttrTypes types guest_access's own object in state; it must
 // match the generated schema exactly.
 var guestAccessAttrTypes = map[string]attr.Type{
 	"auth":                          types.StringType,
+	"auth_url":                      types.StringType,
 	"authorize_loginid":             types.StringType,
 	"authorize_transactionkey":      types.StringType,
+	"authorize_use_sandbox":         types.BoolType,
+	"custom_ip":                     types.StringType,
 	"ec_enabled":                    types.BoolType,
 	"expire":                        types.StringType,
 	"expire_number":                 types.Int64Type,
 	"expire_unit":                   types.Int64Type,
+	"facebook_app_id":               types.StringType,
 	"facebook_app_secret":           types.StringType,
+	"facebook_enabled":              types.BoolType,
+	"facebook_scope_email":          types.BoolType,
 	"gateway":                       types.StringType,
+	"google_client_id":              types.StringType,
 	"google_client_secret":          types.StringType,
+	"google_domain":                 types.StringType,
+	"google_enabled":                types.BoolType,
+	"google_scope_email":            types.BoolType,
 	"ippay_terminalid":              types.StringType,
+	"ippay_use_sandbox":             types.BoolType,
 	"merchantwarrior_apikey":        types.StringType,
 	"merchantwarrior_apipassphrase": types.StringType,
 	"merchantwarrior_merchantuuid":  types.StringType,
+	"merchantwarrior_use_sandbox":   types.BoolType,
 	"password":                      types.StringType,
 	"password_enabled":              types.BoolType,
 	"payment_enabled":               types.BoolType,
 	"paypal_password":               types.StringType,
 	"paypal_signature":              types.StringType,
+	"paypal_use_sandbox":            types.BoolType,
 	"paypal_username":               types.StringType,
 	"portal_enabled":                types.BoolType,
 	"portal_hostname":               types.StringType,
@@ -177,6 +258,7 @@ var guestAccessAttrTypes = map[string]attr.Type{
 	"quickpay_agreementid":          types.StringType,
 	"quickpay_apikey":               types.StringType,
 	"quickpay_merchantid":           types.StringType,
+	"quickpay_testmode":             types.BoolType,
 	"radius_auth_type":              types.StringType,
 	"radius_disconnect_enabled":     types.BoolType,
 	"radius_disconnect_port":        types.Int64Type,
@@ -186,10 +268,16 @@ var guestAccessAttrTypes = map[string]attr.Type{
 	"redirect_https":                types.BoolType,
 	"redirect_to_https":             types.BoolType,
 	"redirect_url":                  types.StringType,
+	"restricted_dns_enabled":        types.BoolType,
+	"restricted_dns_servers":        types.ListType{ElemType: types.StringType},
 	"stripe_api_key":                types.StringType,
+	"voucher_customized":            types.BoolType,
 	"voucher_enabled":               types.BoolType,
+	"wechat_app_id":                 types.StringType,
 	"wechat_app_secret":             types.StringType,
+	"wechat_enabled":                types.BoolType,
 	"wechat_secret_key":             types.StringType,
+	"wechat_shop_id":                types.StringType,
 }
 
 // guestAccessKitSpec maps this section's attributes of the generated
@@ -228,6 +316,25 @@ var guestAccessAttrTypes = map[string]attr.Type{
 // practitioner never set -- is handled separately by guestAccessAfterReceive
 // below, exactly the way radiusAfterReceive and snmpAfterReceive plan-
 // condition their own secrets independent of Elide.
+//
+// Task 4's 20 fields are every one KeepZero, and every one a plain
+// Optional+Computed StringField or BoolField (bools carry no Elide at all,
+// matching resourcekit's own elideExempt) except restricted_dns_servers, a
+// StringListField. 19 of the 20 have no entry in the constraint table, so
+// the same "no validator rejects empty" reasoning the 18 secrets get above
+// applies unchanged. custom_ip is the exception with an entry: its pattern
+// carries a "|^$" alternation that explicitly admits "", the same shape
+// portal_hostname's own derived pattern has above, so it wants KeepZero for
+// the same reason, not despite having a validator at all. restricted_dns_servers
+// carries the identical pattern as a per-element validator (see this file's
+// own top comment), but ElideProblems' zeroIsRejected only ever inspects a
+// schema.StringAttribute's validators, never a collection's element
+// validators, so it always returns false for a ListAttribute regardless of
+// what the elements require -- KeepZero is what that check demands here too,
+// matching doh's server_names. None of the 20 needed guestAccessAfterReceive's
+// treatment: unlike the 18 secrets, nothing here is a credential the
+// controller might echo back for a section the practitioner never
+// configured, so there is no leak to guard against.
 func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.GuestAccess] {
 	return resourcekit.Spec[settingGuestAccessModel, settings.GuestAccess]{
 		TypeName: "setting_guest_access",
@@ -241,6 +348,12 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				Elide: resourcekit.NullZero,
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "auth_url",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.AuthUrl },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.AuthUrl },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_authorize_loginid",
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.AuthorizeLoginid },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.AuthorizeLoginid },
@@ -250,6 +363,17 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				Wire:  "x_authorize_transactionkey",
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.AuthorizeTransactionkey },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.AuthorizeTransactionkey },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "authorize_use_sandbox",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.AuthorizeUseSandbox },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.AuthorizeUseSandbox },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "custom_ip",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.CustomIP },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.CustomIP },
 				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
@@ -278,10 +402,26 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				OmitZero: true,
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "facebook_app_id",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.FacebookAppID },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.FacebookAppID },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_facebook_app_secret",
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.FacebookAppSecret },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.FacebookAppSecret },
 				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "facebook_enabled",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.FacebookEnabled },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.FacebookEnabled },
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "facebook_scope_email",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.FacebookScopeEmail },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.FacebookScopeEmail },
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "gateway",
@@ -290,16 +430,43 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				Elide: resourcekit.NullZero,
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "google_client_id",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.GoogleClientID },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.GoogleClientID },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_google_client_secret",
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.GoogleClientSecret },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.GoogleClientSecret },
 				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "google_domain",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.GoogleDomain },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.GoogleDomain },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "google_enabled",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.GoogleEnabled },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.GoogleEnabled },
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "google_scope_email",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.GoogleScopeEmail },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.GoogleScopeEmail },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_ippay_terminalid",
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.IPpayTerminalid },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.IPpayTerminalid },
 				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "ippay_use_sandbox",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.IPpayUseSandbox },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.IPpayUseSandbox },
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_merchantwarrior_apikey",
@@ -318,6 +485,11 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.MerchantwarriorMerchantuuid },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.MerchantwarriorMerchantuuid },
 				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "merchantwarrior_use_sandbox",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.MerchantwarriorUseSandbox },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.MerchantwarriorUseSandbox },
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_password",
@@ -346,6 +518,11 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.PaypalSignature },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.PaypalSignature },
 				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "paypal_use_sandbox",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.PaypalUseSandbox },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.PaypalUseSandbox },
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_paypal_username",
@@ -386,6 +563,11 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.QuickpayMerchantid },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.QuickpayMerchantid },
 				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "quickpay_testmode",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.QuickpayTestmode },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.QuickpayTestmode },
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "radius_auth_type",
@@ -437,6 +619,17 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				SDK:   func(s *settings.GuestAccess) *string { return &s.RedirectUrl },
 				Elide: resourcekit.KeepZero,
 			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "restricted_dns_enabled",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.RestrictedDNSEnabled },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.RestrictedDNSEnabled },
+			},
+			resourcekit.StringListField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "restricted_dns_servers",
+				Model: func(m *settingGuestAccessModel) *types.List { return &m.RestrictedDNSServers },
+				SDK:   func(s *settings.GuestAccess) *[]string { return &s.RestrictedDNSServers },
+				Elide: resourcekit.KeepZero,
+			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_stripe_api_key",
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.StripeApiKey },
@@ -444,9 +637,20 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "voucher_customized",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.VoucherCustomized },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.VoucherCustomized },
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "voucher_enabled",
 				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.VoucherEnabled },
 				SDK:   func(s *settings.GuestAccess) *bool { return &s.VoucherEnabled },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "wechat_app_id",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.WechatAppID },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.WechatAppID },
+				Elide: resourcekit.KeepZero,
 			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_wechat_app_secret",
@@ -454,10 +658,21 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				SDK:   func(s *settings.GuestAccess) *string { return &s.WechatAppSecret },
 				Elide: resourcekit.KeepZero,
 			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "wechat_enabled",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.WechatEnabled },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.WechatEnabled },
+			},
 			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "x_wechat_secret_key",
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.WechatSecretKey },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.WechatSecretKey },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "wechat_shop_id",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.WechatShopID },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.WechatShopID },
 				Elide: resourcekit.KeepZero,
 			},
 		},
