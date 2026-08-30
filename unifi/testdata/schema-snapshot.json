@@ -5760,7 +5760,7 @@
           "description": "Hex color code for this override (e.g. `FF0000`).",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9A-Fa-f]{6})$'"
+            "controllerregex.matchesValidator: value must match regular expression '[0-9A-Fa-f]{6}'"
           ]
         },
         "ether_lighting.speed_overrides": {
@@ -5778,7 +5778,7 @@
           "description": "Link speed this color override applies to.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:FE|GbE|2.5GbE|5GbE|10GbE|25GbE|40GbE|100GbE)$'"
+            "controllerregex.matchesValidator: value must match regular expression 'FE|GbE|2.5GbE|5GbE|10GbE|25GbE|40GbE|100GbE'"
           ]
         },
         "ether_lighting.speed_overrides.raw_color_hex": {
@@ -5788,7 +5788,7 @@
           "description": "Hex color code for this override (e.g. `FF0000`).",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[0-9A-Fa-f]{6})$'"
+            "controllerregex.matchesValidator: value must match regular expression '[0-9A-Fa-f]{6}'"
           ]
         },
         "global_nat": {
@@ -5900,7 +5900,7 @@
           "description": "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[\\d\\w-]+|)$'"
+            "controllerregex.matchesValidator: value must match regular expression '[\\d\\w-]+|'"
           ]
         },
         "global_switch.dot1x_portctrl_enabled": {
@@ -6045,7 +6045,7 @@
           "description_kind": "markdown",
           "validators": [
             "stringvalidator.oneOfValidator: value must be one of: [\"manual\" \"disabled\"]",
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:|manual|disabled)$'"
+            "controllerregex.matchesValidator: value must match regular expression '|manual|disabled'"
           ]
         },
         "ips.content_filtering_blocking_page_enabled": {
@@ -6409,7 +6409,7 @@
           "description": "mDNS service type, e.g. `_myservice._tcp.local`.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^_[a-zA-Z0-9._-]+\\._(tcp|udp)(\\.local)?$'"
+            "controllerregex.matchesValidator: value must match regular expression '^_[a-zA-Z0-9._-]+\\._(tcp|udp)(\\.local)?$'"
           ]
         },
         "mdns.custom_services.name": {
@@ -6564,7 +6564,7 @@
           "description": "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,128})$'"
+            "controllerregex.matchesValidator: value must match regular expression '.{1,128}'"
           ]
         },
         "mgmt.ssh_username": {
@@ -6575,7 +6575,7 @@
           "description": "SSH username for device access.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^[_A-Za-z0-9][-_.A-Za-z0-9]{0,29}$'"
+            "controllerregex.matchesValidator: value must match regular expression '^[_A-Za-z0-9][-_.A-Za-z0-9]{0,29}$'"
           ]
         },
         "mgmt.unifi_idp_enabled": {
@@ -6697,7 +6697,7 @@
           "description": "NetFlow collector hostname or IP address.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{0,252}[^\\.]$)$'"
+            "controllerregex.matchesValidator: value must match regular expression '.{0,252}[^\\.]$'"
           ]
         },
         "netflow.version": {
@@ -7066,7 +7066,7 @@
           "description": "RADIUS shared secret.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^[^\\\\\"' ]{1,48}$'"
+            "controllerregex.matchesValidator: value must match regular expression '^[^\\\\\"' ]{1,48}$'"
           ]
         },
         "site": {
@@ -7101,7 +7101,7 @@
           "description": "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,256})$'"
+            "controllerregex.matchesValidator: value must match regular expression '.{1,256}'"
           ]
         },
         "snmp.enabled": {
@@ -7129,7 +7129,7 @@
           "description": "SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[^'\"]{8,32})$'"
+            "controllerregex.matchesValidator: value must match regular expression '[^'\"]{8,32}'"
           ]
         },
         "snmp.username": {
@@ -7140,7 +7140,7 @@
           "description": "SNMPv3 username.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[a-zA-Z0-9_-]{1,30})$'"
+            "controllerregex.matchesValidator: value must match regular expression '[a-zA-Z0-9_-]{1,30}'"
           ]
         },
         "ssl_inspection": {
@@ -7306,7 +7306,7 @@
           "description": "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([8-9]|[1-2][0-9]|3[0-2])$|^$'"
+            "controllerregex.matchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([8-9]|[1-2][0-9]|3[0-2])$|^$'"
           ]
         },
         "timeouts": {
@@ -7765,7 +7765,7 @@
           "description": "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).",
           "description_kind": "markdown",
           "validators": [
-            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:WAN[2-9]?)$'"
+            "controllerregex.matchesValidator: value must match regular expression 'WAN[2-9]?'"
           ]
         }
       }

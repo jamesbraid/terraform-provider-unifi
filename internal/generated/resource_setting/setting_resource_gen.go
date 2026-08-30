@@ -5,7 +5,6 @@ package resource_setting
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -205,7 +204,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 									Description:         "Hex color code for this override (e.g. `FF0000`).",
 									MarkdownDescription: "Hex color code for this override (e.g. `FF0000`).",
 									Validators: []validator.String{
-										stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[0-9A-Fa-f]{6})$`), ""),
+										controllerregex.Matches(`[0-9A-Fa-f]{6}`, ""),
 									},
 								},
 							},
@@ -223,7 +222,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 									Description:         "Link speed this color override applies to.",
 									MarkdownDescription: "Link speed this color override applies to.",
 									Validators: []validator.String{
-										stringvalidator.RegexMatches(regexp.MustCompile(`^(?:FE|GbE|2.5GbE|5GbE|10GbE|25GbE|40GbE|100GbE)$`), ""),
+										controllerregex.Matches(`FE|GbE|2.5GbE|5GbE|10GbE|25GbE|40GbE|100GbE`, ""),
 									},
 								},
 								"raw_color_hex": schema.StringAttribute{
@@ -231,7 +230,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 									Description:         "Hex color code for this override (e.g. `FF0000`).",
 									MarkdownDescription: "Hex color code for this override (e.g. `FF0000`).",
 									Validators: []validator.String{
-										stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[0-9A-Fa-f]{6})$`), ""),
+										controllerregex.Matches(`[0-9A-Fa-f]{6}`, ""),
 									},
 								},
 							},
@@ -338,7 +337,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
 						MarkdownDescription: "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\d\w-]+|)$`), ""),
+							controllerregex.Matches(`[\d\w-]+|`, ""),
 						},
 					},
 					"dot1x_portctrl_enabled": schema.BoolAttribute{
@@ -457,7 +456,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Advanced filtering mode: manual or disabled.",
 						Validators: []validator.String{
 							stringvalidator.OneOf("manual", "disabled"),
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:|manual|disabled)$`), ""),
+							controllerregex.Matches(`|manual|disabled`, ""),
 						},
 					},
 					"content_filtering_blocking_page_enabled": schema.BoolAttribute{
@@ -766,7 +765,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 									Description:         "mDNS service type, e.g. `_myservice._tcp.local`.",
 									MarkdownDescription: "mDNS service type, e.g. `_myservice._tcp.local`.",
 									Validators: []validator.String{
-										stringvalidator.RegexMatches(regexp.MustCompile(`^_[a-zA-Z0-9._-]+\._(tcp|udp)(\.local)?$`), ""),
+										controllerregex.Matches(`^_[a-zA-Z0-9._-]+\._(tcp|udp)(\.local)?$`, ""),
 									},
 								},
 								"name": schema.StringAttribute{
@@ -902,7 +901,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
 						MarkdownDescription: "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+							controllerregex.Matches(`.{1,128}`, ""),
 						},
 					},
 					"ssh_username": schema.StringAttribute{
@@ -911,7 +910,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "SSH username for device access.",
 						MarkdownDescription: "SSH username for device access.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^[_A-Za-z0-9][-_.A-Za-z0-9]{0,29}$`), ""),
+							controllerregex.Matches(`^[_A-Za-z0-9][-_.A-Za-z0-9]{0,29}$`, ""),
 						},
 					},
 					"unifi_idp_enabled": schema.BoolAttribute{
@@ -1010,7 +1009,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "NetFlow collector hostname or IP address.",
 						MarkdownDescription: "NetFlow collector hostname or IP address.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,252}[^\.]$)$`), ""),
+							controllerregex.Matches(`.{0,252}[^\.]$`, ""),
 						},
 					},
 					"version": schema.Int64Attribute{
@@ -1329,7 +1328,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "RADIUS shared secret.",
 						MarkdownDescription: "RADIUS shared secret.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^[^\\"' ]{1,48}$`), ""),
+							controllerregex.Matches(`^[^\\"' ]{1,48}$`, ""),
 						},
 					},
 				},
@@ -1357,7 +1356,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
 						MarkdownDescription: "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,256})$`), ""),
+							controllerregex.Matches(`.{1,256}`, ""),
 						},
 					},
 					"enabled": schema.BoolAttribute{
@@ -1379,7 +1378,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
 						MarkdownDescription: "SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[^'"]{8,32})$`), ""),
+							controllerregex.Matches(`[^'"]{8,32}`, ""),
 						},
 					},
 					"username": schema.StringAttribute{
@@ -1388,7 +1387,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "SNMPv3 username.",
 						MarkdownDescription: "SNMPv3 username.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[a-zA-Z0-9_-]{1,30})$`), ""),
+							controllerregex.Matches(`[a-zA-Z0-9_-]{1,30}`, ""),
 						},
 					},
 				},
@@ -1527,7 +1526,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
 						MarkdownDescription: "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([8-9]|[1-2][0-9]|3[0-2])$|^$`), ""),
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([8-9]|[1-2][0-9]|3[0-2])$|^$`, ""),
 						},
 					},
 				},
@@ -1854,7 +1853,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).",
 						MarkdownDescription: "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:WAN[2-9]?)$`), ""),
+							controllerregex.Matches(`WAN[2-9]?`, ""),
 						},
 					},
 				},
