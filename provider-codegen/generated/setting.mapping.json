@@ -579,6 +579,118 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "RadioAi.auto_adjust_channels_to_country",
+      "terraform_name": "radio_ai.auto_adjust_channels_to_country",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.auto_channel_presets_type",
+      "terraform_name": "radio_ai.auto_channel_presets_type",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.channels_6e",
+      "terraform_name": "radio_ai.channels_6e",
+      "structural_type": "array<int64>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.channels_blacklist",
+      "terraform_name": "radio_ai.channels_blacklist",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.channels_na",
+      "terraform_name": "radio_ai.channels_na",
+      "structural_type": "array<int64>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.channels_ng",
+      "terraform_name": "radio_ai.channels_ng",
+      "structural_type": "array<int64>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.cron_expr",
+      "terraform_name": "radio_ai.cron_expr",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.enabled",
+      "terraform_name": "radio_ai.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.exclude_devices",
+      "terraform_name": "radio_ai.exclude_devices",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.high_priority_devices",
+      "terraform_name": "radio_ai.high_priority_devices",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.ht_modes_na",
+      "terraform_name": "radio_ai.ht_modes_na",
+      "structural_type": "array<int64>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.ht_modes_ng",
+      "terraform_name": "radio_ai.ht_modes_ng",
+      "structural_type": "array<int64>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.optimize",
+      "terraform_name": "radio_ai.optimize",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.radios",
+      "terraform_name": "radio_ai.radios",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.radios_configuration",
+      "terraform_name": "radio_ai.radios_configuration",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "RadioAi.setting_preference",
+      "terraform_name": "radio_ai.setting_preference",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Radius.accounting_enabled",
       "terraform_name": "radius.accounting_enabled",
       "structural_type": "bool",

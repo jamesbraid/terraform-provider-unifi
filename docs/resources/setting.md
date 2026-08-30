@@ -96,6 +96,7 @@ resource "unifi_setting" "radius_only" {
 - `netflow` (Attributes) NetFlow traffic export settings. (see [below for nested schema](#nestedatt--netflow))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
+- `radio_ai` (Attributes) AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. (see [below for nested schema](#nestedatt--radio_ai))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
 - `site` (String) The name of the site to associate the settings with.
 - `ssl_inspection` (Attributes) SSL inspection settings. (see [below for nested schema](#nestedatt--ssl_inspection))
@@ -452,6 +453,49 @@ Optional:
 - `ntp_server_3` (String) Third NTP server. An empty string clears it — the controller stores and returns the literal empty value.
 - `ntp_server_4` (String) Fourth NTP server. An empty string clears it — the controller stores and returns the literal empty value.
 - `setting_preference` (String) Configuration mode: `auto` or `manual`.
+
+
+<a id="nestedatt--radio_ai"></a>
+### Nested Schema for `radio_ai`
+
+Optional:
+
+- `auto_adjust_channels_to_country` (Boolean) Automatically adjust channel selection to the configured country's regulatory domain.
+- `auto_channel_presets_type` (String) Channel optimization preset.
+- `channels_6e` (List of Number) 6 GHz channels eligible for AI channel selection.
+- `channels_blacklist` (Attributes List) Channels excluded from AI channel selection, per radio. (see [below for nested schema](#nestedatt--radio_ai--channels_blacklist))
+- `channels_na` (List of Number) 5 GHz channels eligible for AI channel selection.
+- `channels_ng` (List of Number) 2.4 GHz channels eligible for AI channel selection.
+- `cron_expr` (String) Cron expression scheduling AI channel/power optimization runs.
+- `enabled` (Boolean) Enable AI-driven channel and power optimization.
+- `exclude_devices` (List of String) MAC addresses of devices excluded from AI optimization.
+- `high_priority_devices` (List of String) MAC addresses of devices given priority by AI optimization.
+- `ht_modes_na` (List of Number) 5 GHz HT (channel bonding) widths eligible for AI channel selection.
+- `ht_modes_ng` (List of Number) 2.4 GHz HT (channel bonding) widths eligible for AI channel selection.
+- `optimize` (List of String) What AI optimization adjusts.
+- `radios` (List of String) Radio bands AI optimization applies to.
+- `radios_configuration` (Attributes List) Per-radio AI optimization configuration. (see [below for nested schema](#nestedatt--radio_ai--radios_configuration))
+- `setting_preference` (String) Channel/power optimization preference.
+
+<a id="nestedatt--radio_ai--channels_blacklist"></a>
+### Nested Schema for `radio_ai.channels_blacklist`
+
+Optional:
+
+- `channel` (Number) Channel number to exclude.
+- `channel_width` (Number) Channel width, in MHz, this exclusion applies to.
+- `radio` (String) Radio band this exclusion applies to.
+
+
+<a id="nestedatt--radio_ai--radios_configuration"></a>
+### Nested Schema for `radio_ai.radios_configuration`
+
+Optional:
+
+- `channel_width` (Number) Channel width, in MHz, for this radio.
+- `dfs` (Boolean) Allow DFS (dynamic frequency selection) channels for this radio.
+- `radio` (String) Radio band this configuration applies to.
+
 
 
 <a id="nestedatt--radius"></a>

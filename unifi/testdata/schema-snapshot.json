@@ -6790,6 +6790,211 @@
             "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"manual\"]"
           ]
         },
+        "radio_ai": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "radio_ai.auto_adjust_channels_to_country": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Automatically adjust channel selection to the configured country's regulatory domain.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.auto_channel_presets_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Channel optimization preset.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"maximum_speed\" \"conservative\" \"custom\"]"
+          ]
+        },
+        "radio_ai.channels_6e": {
+          "kind": "attribute",
+          "type": "[\"list\",\"number\"]",
+          "optional": true,
+          "computed": true,
+          "description": "6 GHz channels eligible for AI channel selection.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.channels_blacklist": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "computed": true,
+          "description": "Channels excluded from AI channel selection, per radio.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.channels_blacklist.channel": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Channel number to exclude.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.channels_blacklist.channel_width": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Channel width, in MHz, this exclusion applies to.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.oneOfValidator: value must be one of: [\"20\" \"40\" \"80\" \"160\" \"240\" \"320\"]"
+          ]
+        },
+        "radio_ai.channels_blacklist.radio": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Radio band this exclusion applies to.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"na\" \"ng\" \"6e\"]"
+          ]
+        },
+        "radio_ai.channels_na": {
+          "kind": "attribute",
+          "type": "[\"list\",\"number\"]",
+          "optional": true,
+          "computed": true,
+          "description": "5 GHz channels eligible for AI channel selection.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.channels_ng": {
+          "kind": "attribute",
+          "type": "[\"list\",\"number\"]",
+          "optional": true,
+          "computed": true,
+          "description": "2.4 GHz channels eligible for AI channel selection.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.cron_expr": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Cron expression scheduling AI channel/power optimization runs.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable AI-driven channel and power optimization.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.exclude_devices": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "MAC addresses of devices excluded from AI optimization.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.high_priority_devices": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "MAC addresses of devices given priority by AI optimization.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.ht_modes_na": {
+          "kind": "attribute",
+          "type": "[\"list\",\"number\"]",
+          "optional": true,
+          "computed": true,
+          "description": "5 GHz HT (channel bonding) widths eligible for AI channel selection.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.ht_modes_ng": {
+          "kind": "attribute",
+          "type": "[\"list\",\"number\"]",
+          "optional": true,
+          "computed": true,
+          "description": "2.4 GHz HT (channel bonding) widths eligible for AI channel selection.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.optimize": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "What AI optimization adjusts.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.radios": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "Radio bands AI optimization applies to.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.radios_configuration": {
+          "kind": "attribute",
+          "nesting_mode": "list",
+          "optional": true,
+          "computed": true,
+          "description": "Per-radio AI optimization configuration.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.radios_configuration.channel_width": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Channel width, in MHz, for this radio.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.oneOfValidator: value must be one of: [\"20\" \"40\" \"80\" \"160\" \"320\"]"
+          ]
+        },
+        "radio_ai.radios_configuration.dfs": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Allow DFS (dynamic frequency selection) channels for this radio.",
+          "description_kind": "markdown"
+        },
+        "radio_ai.radios_configuration.radio": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Radio band this configuration applies to.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"na\" \"ng\" \"6e\"]"
+          ]
+        },
+        "radio_ai.setting_preference": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Channel/power optimization preference.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"manual\"]"
+          ]
+        },
         "radius": {
           "kind": "attribute",
           "nesting_mode": "single",

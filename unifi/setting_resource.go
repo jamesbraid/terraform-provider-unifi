@@ -88,6 +88,7 @@ type settingResourceModel struct {
 	MagicSiteToSiteVpn types.Object   `tfsdk:"magic_site_to_site_vpn"`
 	GlobalSwitch       types.Object   `tfsdk:"global_switch"`
 	Netflow            types.Object   `tfsdk:"netflow"`
+	RadioAi            types.Object   `tfsdk:"radio_ai"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 

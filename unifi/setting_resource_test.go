@@ -2630,6 +2630,193 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_radioAi exercises radio_ai's CoManaged shape: this
+// section is co-managed by the controller's own AI channel/power
+// optimization, so radioAiAfterReceive plan-conditions every attribute
+// rather than mirroring unconditionally (see
+// setting_radio_ai_descriptor.go's own comment). Per this dispatch's brief,
+// the test asserts only the attributes it configured -- enabled,
+// setting_preference, one Int64ListField (channels_na), one StringListField
+// (radios), and one entry each of both ObjectListFields
+// (channels_blacklist, radios_configuration), covering every Field kind
+// this section introduces or reuses, including the two nested Int64
+// members (channels_blacklist.channel_width, radios_configuration.channel_width)
+// whose compiler-derived OneOf and this section's own zero-guard both get a
+// live round trip here.
+func TestAccSettingResource_radioAi(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_radioAi(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.setting_preference",
+						"manual",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_na.#",
+						"3",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.radios.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.radios.0",
+						"na",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.0.channel",
+						"100",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.0.channel_width",
+						"20",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.0.radio",
+						"na",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.radios_configuration.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.radios_configuration.0.channel_width",
+						"80",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.radios_configuration.0.dfs",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.radios_configuration.0.radio",
+						"na",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"radio_ai.%",
+					"radio_ai.enabled",
+					"radio_ai.setting_preference",
+					"radio_ai.channels_na.#",
+					"radio_ai.channels_na.0",
+					"radio_ai.channels_na.1",
+					"radio_ai.channels_na.2",
+					"radio_ai.radios.#",
+					"radio_ai.radios.0",
+					"radio_ai.channels_blacklist.#",
+					"radio_ai.channels_blacklist.0.%",
+					"radio_ai.channels_blacklist.0.channel",
+					"radio_ai.channels_blacklist.0.channel_width",
+					"radio_ai.channels_blacklist.0.radio",
+					"radio_ai.radios_configuration.#",
+					"radio_ai.radios_configuration.0.%",
+					"radio_ai.radios_configuration.0.channel_width",
+					"radio_ai.radios_configuration.0.dfs",
+					"radio_ai.radios_configuration.0.radio",
+				},
+			},
+			{
+				Config: testAccSettingConfig_radioAiUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.setting_preference",
+						"auto",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_na.#",
+						"2",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_radioAi() string {
+	return `
+resource "unifi_setting" "test" {
+  radio_ai = {
+    enabled            = true
+    setting_preference = "manual"
+    channels_na        = [36, 40, 44]
+    radios             = ["na"]
+    channels_blacklist = [
+      {
+        channel       = 100
+        channel_width = 20
+        radio         = "na"
+      }
+    ]
+    radios_configuration = [
+      {
+        channel_width = 80
+        dfs           = true
+        radio         = "na"
+      }
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_radioAiUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  radio_ai = {
+    enabled            = true
+    setting_preference = "auto"
+    channels_na        = [36, 40]
+    radios             = ["na"]
+    channels_blacklist = [
+      {
+        channel       = 100
+        channel_width = 20
+        radio         = "na"
+      }
+    ]
+    radios_configuration = [
+      {
+        channel_width = 80
+        dfs           = true
+        radio         = "na"
+      }
+    ]
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

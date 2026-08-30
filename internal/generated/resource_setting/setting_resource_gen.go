@@ -1098,6 +1098,184 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"radio_ai": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"auto_adjust_channels_to_country": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Automatically adjust channel selection to the configured country's regulatory domain.",
+						MarkdownDescription: "Automatically adjust channel selection to the configured country's regulatory domain.",
+					},
+					"auto_channel_presets_type": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Channel optimization preset.",
+						MarkdownDescription: "Channel optimization preset.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("maximum_speed", "conservative", "custom"),
+						},
+					},
+					"channels_6e": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "6 GHz channels eligible for AI channel selection.",
+						MarkdownDescription: "6 GHz channels eligible for AI channel selection.",
+					},
+					"channels_blacklist": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"channel": schema.Int64Attribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Channel number to exclude.",
+									MarkdownDescription: "Channel number to exclude.",
+								},
+								"channel_width": schema.Int64Attribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Channel width, in MHz, this exclusion applies to.",
+									MarkdownDescription: "Channel width, in MHz, this exclusion applies to.",
+									Validators: []validator.Int64{
+										int64validator.OneOf(20, 40, 80, 160, 240, 320),
+									},
+								},
+								"radio": schema.StringAttribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Radio band this exclusion applies to.",
+									MarkdownDescription: "Radio band this exclusion applies to.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("na", "ng", "6e"),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Channels excluded from AI channel selection, per radio.",
+						MarkdownDescription: "Channels excluded from AI channel selection, per radio.",
+					},
+					"channels_na": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "5 GHz channels eligible for AI channel selection.",
+						MarkdownDescription: "5 GHz channels eligible for AI channel selection.",
+					},
+					"channels_ng": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "2.4 GHz channels eligible for AI channel selection.",
+						MarkdownDescription: "2.4 GHz channels eligible for AI channel selection.",
+					},
+					"cron_expr": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Cron expression scheduling AI channel/power optimization runs.",
+						MarkdownDescription: "Cron expression scheduling AI channel/power optimization runs.",
+					},
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable AI-driven channel and power optimization.",
+						MarkdownDescription: "Enable AI-driven channel and power optimization.",
+					},
+					"exclude_devices": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "MAC addresses of devices excluded from AI optimization.",
+						MarkdownDescription: "MAC addresses of devices excluded from AI optimization.",
+					},
+					"high_priority_devices": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "MAC addresses of devices given priority by AI optimization.",
+						MarkdownDescription: "MAC addresses of devices given priority by AI optimization.",
+					},
+					"ht_modes_na": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "5 GHz HT (channel bonding) widths eligible for AI channel selection.",
+						MarkdownDescription: "5 GHz HT (channel bonding) widths eligible for AI channel selection.",
+					},
+					"ht_modes_ng": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "2.4 GHz HT (channel bonding) widths eligible for AI channel selection.",
+						MarkdownDescription: "2.4 GHz HT (channel bonding) widths eligible for AI channel selection.",
+					},
+					"optimize": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "What AI optimization adjusts.",
+						MarkdownDescription: "What AI optimization adjusts.",
+					},
+					"radios": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "Radio bands AI optimization applies to.",
+						MarkdownDescription: "Radio bands AI optimization applies to.",
+					},
+					"radios_configuration": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"channel_width": schema.Int64Attribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Channel width, in MHz, for this radio.",
+									MarkdownDescription: "Channel width, in MHz, for this radio.",
+									Validators: []validator.Int64{
+										int64validator.OneOf(20, 40, 80, 160, 320),
+									},
+								},
+								"dfs": schema.BoolAttribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Allow DFS (dynamic frequency selection) channels for this radio.",
+									MarkdownDescription: "Allow DFS (dynamic frequency selection) channels for this radio.",
+								},
+								"radio": schema.StringAttribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Radio band this configuration applies to.",
+									MarkdownDescription: "Radio band this configuration applies to.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("na", "ng", "6e"),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Per-radio AI optimization configuration.",
+						MarkdownDescription: "Per-radio AI optimization configuration.",
+					},
+					"setting_preference": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Channel/power optimization preference.",
+						MarkdownDescription: "Channel/power optimization preference.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "manual"),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug.",
+				MarkdownDescription: "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"radius": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"accounting_enabled": schema.BoolAttribute{
