@@ -85,7 +85,7 @@ resource "unifi_device" "us_24_poe" {
 - `locked` (Boolean) Specifies whether the device is locked.
 - `mac` (String) The MAC address of the device. This can be specified so that the provider can take control of a device (since devices are created through adoption).
 - `mesh_sta_vap_enabled` (Boolean) Enable the mesh station VAP (the UI "Mesh Connect" toggle), letting this AP uplink wirelessly to a mesh parent.
-- `mgmt_network_id` (String) Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink (a port_override tagged_networkconf_ids entry) first, then set mgmt_network_id. Leave unset to manage on the uplink's native (untagged) network.
+- `mgmt_network_id` (String) Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink first, then set mgmt_network_id. Measured on this controller generation: port_override's tagged_networkconf_ids does not achieve the first step -- it is accepted and discarded -- so tag the VLAN through the controller's own UI until a working provider path exists. Leave unset to manage on the uplink's native (untagged) network.
 - `name` (String) The name of the device.
 - `outdoor_mode_override` (String) Outdoor mode override; valid values are `default`, `on`, and `off`.
 - `outlet_enabled` (Boolean) Enable outlet control.
@@ -188,7 +188,7 @@ Optional:
 - `stormctrl_ucast_level` (Number) Unicast storm control level.
 - `stormctrl_ucast_rate` (Number) Unicast storm control rate.
 - `stp_port_mode` (Boolean) STP port mode.
-- `tagged_networkconf_ids` (Set of String) List of network IDs to tag on this port.
+- `tagged_networkconf_ids` (Set of String) List of network IDs to tag on this port. Measured on this controller generation: a declared value is accepted (`200`/`rc:ok`) and discarded, and `forward` is additionally reverted to `"all"` -- so setting this attribute currently has no effect. This is scoped to this controller generation, not asserted as a permanent property of the field; a different or newer controller may honor it.
 - `tagged_vlan_mgmt` (String) Tagged VLAN management.
 - `voice_networkconf_id` (String) Voice network ID.
 

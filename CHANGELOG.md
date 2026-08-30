@@ -34,6 +34,26 @@ All notable changes to this project will be documented in this file.
   config declaring many differently-shaped `port_override` blocks now
   issues more requests per apply than before.
 
+### 📖 Documentation
+
+- **`unifi_device`: `port_override.tagged_networkconf_ids` and
+  `mgmt_network_id` now say what this controller generation actually
+  does with them.** A live-controller measurement found that setting
+  `tagged_networkconf_ids` is accepted (`200`/`rc:ok`) and then
+  discarded, with `forward` additionally reverted to `"all"` — the
+  value never takes effect. Setting it now also produces a plan-time
+  warning naming the attribute. It stays a warning, not an error,
+  since a different or future controller generation may honor it.
+  `mgmt_network_id`'s own description told practitioners to tag the
+  VLAN on the uplink with a `tagged_networkconf_ids` entry before
+  setting `mgmt_network_id` — advice that, given the above, tags
+  nothing, so the following `mgmt_network_id` apply could still drop
+  the device's management path. It now says to tag the VLAN through
+  the controller's own UI instead, until a provider path that works is
+  found. The device side of this — whether an adopted device would
+  apply a tag the controller did accept — remains unmeasured; nothing
+  here claims otherwise.
+
 ## [v0.108.0] - 2026-08-29
 
 ### ⚠️ Breaking Changes

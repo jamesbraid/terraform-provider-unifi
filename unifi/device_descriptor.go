@@ -399,7 +399,14 @@ func deviceKitBeforeSend(
 //
 // tagged_networkconf_ids is declarable-but-inert: this Encode never writes
 // it, even though the SDK has DevicePortOverrides.TaggedNetworkIDs, because
-// wiring only one direction would create a permanent diff.
+// wiring only one direction would create a permanent diff. Wiring both
+// directions would not fix the practitioner-visible problem either: measured
+// directly against this controller generation (bypassing this dead code
+// path, straight through UpdateDevicePortOverrides), a value placed on the
+// wire is accepted and discarded, and forward is additionally reverted to
+// "all". See the tagged_networkconf_ids description in
+// provider-codegen/policy/device.json and this resource's ValidateConfig
+// (device_validate.go) for the practitioner-facing side of that finding.
 func devicePortOverrideEncode(
 	ctx context.Context, object types.Object,
 ) (ui.DevicePortOverrides, []string, diag.Diagnostics) {
