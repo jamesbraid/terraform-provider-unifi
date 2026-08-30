@@ -9,10 +9,11 @@
 // mode, so the rule becomes "what the controller wrote is what we
 // enforce."
 //
-// Default mode is not identical to Java, in exactly three ways, each
-// mechanical, each pinned by this package's tests, and -- per the plan this
-// package implements -- a closed list: nothing else is touched, and a
-// pattern is never rewritten beyond it.
+// regexp2's default mode is not identical to Java in every respect -- see
+// the note on "." at the end of this comment, a known divergence this
+// package does not correct. What it does correct is a closed, mechanical
+// list of exactly three differences, each pinned by this package's tests.
+// A pattern is never rewritten beyond this list:
 //
 //  1. Anchoring wraps a pattern in \A(?:...)\z, not ^(?:...)$. regexp2's
 //     default $ carries Perl's leniency (it also matches immediately before
@@ -30,13 +31,24 @@
 //     text substitution is not class-aware and is wrong: \d -> [0-9] inside
 //     an existing class produces [[0-9]], which Java parses as a nested
 //     union and .NET does not.
-//  3. The translation in (2) understands exactly \d and \w. \s carries the
-//     identical ASCII/Unicode divergence risk but never appears in the
-//     controller's captured patterns, so it was never characterised, and
-//     passing it through unexpanded would silently repeat the bug (2)
-//     exists to fix. Compile refuses it by name instead. Every other
-//     backslash escape passes through verbatim -- the study found nothing
-//     else in the corpus that a .NET-flavoured engine cannot already read.
+//  3. The translation in (2) understands exactly \d and \w. \s, \S, \D, \W,
+//     \b and \B carry the identical ASCII/Unicode divergence risk, but none
+//     of them appears in the controller's captured patterns, so none was
+//     ever characterised, and passing any of them through unexpanded would
+//     silently repeat the bug (2) exists to fix. Compile refuses each by
+//     name instead. Every other backslash escape passes through verbatim --
+//     the study found nothing else in the corpus that a .NET-flavoured
+//     engine cannot already read.
+//
+// Known, uncorrected divergence: "." under regexp2's default mode excludes
+// only "\n". Java's "." (without DOTALL) also excludes "\r", U+0085,
+// U+2028 and U+2029. 23 of the corpus's patterns carry an unescaped "."
+// outside a character class, so Compile(".{0,128}").MatchString("a\rb")
+// returns true where the controller's own Matcher.matches() would return
+// false. This is an over-accept, and it is identical to what Go's RE2
+// already does for the same patterns today, so it is not a regression --
+// it simply falls outside the closed list above: unmeasured against the
+// controller until now, and not translated.
 package controllerregex
 
 import (
@@ -134,9 +146,9 @@ func splitTopLevelAlternatives(pattern string) []string {
 
 // translateClasses expands \d and \w to their ASCII-only forms, class-aware
 // -- deviation (2) in the package doc. Every other escape passes through
-// untouched, except \s, which this package's grammar does not cover:
-// deviation (3) says refuse it by name rather than risk a silent
-// mistranslation of a construct nobody has measured.
+// untouched, except \s, \S, \D, \W, \b and \B, which this package's grammar
+// does not cover: deviation (3) says refuse each by name rather than risk a
+// silent mistranslation of a construct nobody has measured.
 func translateClasses(pattern string) (string, error) {
 	var out strings.Builder
 	inClass := false
@@ -156,13 +168,14 @@ func translateClasses(pattern string) (string, error) {
 				} else {
 					out.WriteString(`[a-zA-Z_0-9]`)
 				}
-			case 's':
+			case 's', 'S', 'D', 'W', 'b', 'B':
+				escaped := pattern[i+1]
 				return "", fmt.Errorf(
-					"controllerregex: pattern %q uses \\s, which this package's translator does not "+
-						"cover -- only \\d and \\w are expanded to ASCII forms, and \\s never appeared "+
+					"controllerregex: pattern %q uses \\%c, which this package's translator does not "+
+						"cover -- only \\d and \\w are expanded to ASCII forms, and \\%c never appeared "+
 						"in the corpus that rule was measured against, so it is refused rather than "+
 						"silently left Unicode-aware",
-					pattern,
+					pattern, escaped, escaped,
 				)
 			default:
 				out.WriteByte(c)

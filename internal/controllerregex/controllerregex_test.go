@@ -1,12 +1,16 @@
 package controllerregex
 
 import (
+	"context"
 	"regexp"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/dlclark/regexp2"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 )
 
@@ -269,10 +273,62 @@ func TestDigitWordTranslationRejectsNonASCIIAndAcceptsASCII(t *testing.T) {
 	}
 }
 
+// TestDigitWordTranslationAppliesOutsideAClassToo pins the other half of
+// deviation (2). Every case above puts \d/\w inside a character class (all
+// seven fixture patterns do, and so do the four lookaround patterns' \d-free
+// shapes), so none of them can tell the class-aware translation apart from a
+// mutant that always emits the inside-a-class form (bare 0-9 / a-zA-Z_0-9)
+// even outside one -- a mutant that leaves the whole package suite green,
+// because nothing exercises that branch. These two patterns put \d and \w
+// outside a class, where the bracketed forms ([0-9] / [a-zA-Z_0-9]) are
+// required; the bare forms there mean something else entirely (0-9+ outside
+// a class is the literal digit 0, a literal hyphen, then one or more 9s).
+func TestDigitWordTranslationAppliesOutsideAClassToo(t *testing.T) {
+	digits, err := Compile(`\d+`)
+	if err != nil {
+		t.Fatalf("Compile(`\\d+`) error = %v", err)
+	}
+	if ok, err := digits.MatchString("123"); err != nil {
+		t.Fatalf("MatchString(%q) error = %v", "123", err)
+	} else if !ok {
+		t.Errorf(`\d+ rejected "123", want accepted`)
+	}
+	if ok, err := digits.MatchString("٣"); err != nil {
+		t.Fatalf("MatchString(%q) error = %v", "٣", err)
+	} else if ok {
+		t.Errorf(`\d+ accepted "٣" (U+0663), want rejected`)
+	}
+
+	word, err := Compile(`\w+`)
+	if err != nil {
+		t.Fatalf("Compile(`\\w+`) error = %v", err)
+	}
+	if ok, err := word.MatchString("abc_1"); err != nil {
+		t.Fatalf("MatchString(%q) error = %v", "abc_1", err)
+	} else if !ok {
+		t.Errorf(`\w+ rejected "abc_1", want accepted`)
+	}
+	if ok, err := word.MatchString("café"); err != nil {
+		t.Fatalf("MatchString(%q) error = %v", "café", err)
+	} else if ok {
+		t.Errorf(`\w+ accepted "café", want rejected`)
+	}
+}
+
 // TestAnchoredPatternRejectsATrailingNewline pins deviation (1): \z, not $,
 // closes the trailing-newline leak that regexp2's default mode otherwise
 // carries -- even for patterns (fixture 1, 2, 5) whose own raw text already
-// carries an internal ^/$ that survives the wrap unmodified.
+// carries an internal ^/$ that survives the wrap unmodified. None of those
+// three is fullyAnchored, though (Anchored(fixtureRaw) != fixtureRaw for all
+// three), so the skip-if-anchored branch of Anchored never fires on any of
+// them either way -- these three cases alone cannot tell this package's
+// unconditional \A(?:...)\z apart from a rule that reuses Anchored's
+// already-anchored check and skips the wrap when it says yes. macAddress
+// below is genuinely fullyAnchored (Anchored(macAddress) == macAddress), so
+// it is the case that actually discriminates the two rules: 57 of the 316
+// patterns in the live corpus are fullyAnchored this way, and 33 of them --
+// macAddress among them -- leak a trailing newline under a skip-if-anchored
+// rule. Only the unconditional wrap closes that gap.
 func TestAnchoredPatternRejectsATrailingNewline(t *testing.T) {
 	for _, id := range []string{"1", "2", "5"} {
 		raw := fixtureRaw(t, id)
@@ -289,6 +345,20 @@ func TestAnchoredPatternRejectsATrailingNewline(t *testing.T) {
 				t.Errorf("[%s] pattern %q accepted %q (trailing newline), want rejected", id, raw, in)
 			}
 		}
+	}
+
+	const macAddress = `^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$|^$`
+	if Anchored(macAddress) != macAddress {
+		t.Fatalf("test fixture %q is not fullyAnchored, and so cannot discriminate the unconditional wrap from skip-if-anchored", macAddress)
+	}
+	p, err := Compile(macAddress)
+	if err != nil {
+		t.Fatalf("Compile(%q) error = %v", macAddress, err)
+	}
+	if ok, err := p.MatchString("\n"); err != nil {
+		t.Fatalf("MatchString(%q) error = %v", "\n", err)
+	} else if ok {
+		t.Errorf("fullyAnchored pattern %q accepted %q (trailing newline), want rejected", macAddress, "\n")
 	}
 }
 
@@ -427,5 +497,73 @@ func TestCompileTimesOutOnAPathologicalPatternAndInput(t *testing.T) {
 	_, err = p.MatchString(input)
 	if err == nil {
 		t.Fatalf("MatchString on a pathological pattern/input pair succeeded instead of timing out")
+	}
+}
+
+// --- Matches: the validator.String the generated schema will construct
+// (Task 2). The brief's behavioural requirement is "a validation error
+// naming the attribute -- never a panic and never a silent pass"; these are
+// its tests. Follows the same runValidator/table shape as
+// unifi/validators/ipv4_test.go. ---
+
+func runMatchesValidator(v validator.String, value types.String) *validator.StringResponse {
+	resp := &validator.StringResponse{}
+	v.ValidateString(context.Background(), validator.StringRequest{
+		Path:        path.Root("test"),
+		ConfigValue: value,
+	}, resp)
+	return resp
+}
+
+func TestMatchesAcceptsAValueThatSatisfiesThePattern(t *testing.T) {
+	v := Matches(`^[a-z]+$`, "")
+	resp := runMatchesValidator(v, types.StringValue("abc"))
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("valid value produced diagnostics: %v", resp.Diagnostics)
+	}
+}
+
+func TestMatchesRejectsAValueThatDoesNotSatisfyThePattern(t *testing.T) {
+	v := Matches(`^[a-z]+$`, "")
+	resp := runMatchesValidator(v, types.StringValue("ABC"))
+	if !resp.Diagnostics.HasError() {
+		t.Fatalf("invalid value produced no diagnostics, want an error")
+	}
+}
+
+// TestMatchesReportsAnUncompilablePatternAsADiagnostic is the "never a
+// panic and never a silent pass" half of the brief's requirement: a pattern
+// this package's translator refuses (\s -- see the refusal tests above)
+// must still produce a usable validator.String, one that reports the
+// problem as a diagnostic naming the attribute when it is actually asked to
+// validate, rather than panicking at construction or silently accepting
+// everything.
+func TestMatchesReportsAnUncompilablePatternAsADiagnostic(t *testing.T) {
+	v := Matches(`[\s]+`, "") // constructing this must not panic
+	resp := runMatchesValidator(v, types.StringValue("anything"))
+	if !resp.Diagnostics.HasError() {
+		t.Fatalf("an uncompilable pattern produced no diagnostics, want an error naming the problem")
+	}
+}
+
+// TestMatchesSkipsNullAndUnknownValues matches every other validator.String
+// in this codebase (see runIPv4Validator's cases in
+// unifi/validators/ipv4_test.go): an unconfigured or not-yet-known value is
+// not validated at all.
+func TestMatchesSkipsNullAndUnknownValues(t *testing.T) {
+	v := Matches(`^[a-z]+$`, "")
+	for _, value := range []types.String{types.StringNull(), types.StringUnknown()} {
+		resp := runMatchesValidator(v, value)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("value %#v produced diagnostics, want null/unknown skipped: %v", value, resp.Diagnostics)
+		}
+	}
+}
+
+func TestMatchesDescriptionStatesThePatternWhenNoneIsGiven(t *testing.T) {
+	pattern := `^[a-z]+$`
+	v := Matches(pattern, "")
+	if desc := v.Description(context.Background()); !strings.Contains(desc, pattern) {
+		t.Errorf("Description() = %q, want it to contain the pattern %q", desc, pattern)
 	}
 }
