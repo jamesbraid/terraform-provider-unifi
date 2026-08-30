@@ -71,11 +71,22 @@ func DefaultControllerImage() string {
 // it's asked to set is already present there — so restating an override here
 // would collide with the value WithOsEnv just forwarded. The harness's only
 // job is supplying the default when there is nothing to forward.
+// effectiveControllerImage is the image this run actually uses: the caller's
+// override when there is one, the SDK-derived default otherwise. Start's log
+// line and composeEnv both read it, so a run's log cannot name an image
+// different from the one it started.
+func effectiveControllerImage() string {
+	if img := os.Getenv("UNIFI_TEST_CONTROLLER_IMAGE"); img != "" {
+		return img
+	}
+	return DefaultControllerImage()
+}
+
 func composeEnv() map[string]string {
 	if os.Getenv("UNIFI_TEST_CONTROLLER_IMAGE") != "" {
 		return nil
 	}
-	return map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": DefaultControllerImage()}
+	return map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": effectiveControllerImage()}
 }
 
 // Start brings up the controller, waits for its API, then starts the device
@@ -90,6 +101,11 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 		return nil, fmt.Errorf("read the compose file: %w", err)
 	}
 	c := &Controller{stack: stack}
+
+	// Named before the start, so a failed start still records what it tried.
+	// A run log that gives only an endpoint reads as though the default image
+	// produced the results, whatever actually ran.
+	logger.Printf("UniFi controller image: %s", effectiveControllerImage())
 
 	// Compose's own wait is not used: the image's healthcheck has a fixed
 	// retry budget a slow JVM can exhaust, and the failure would then be an

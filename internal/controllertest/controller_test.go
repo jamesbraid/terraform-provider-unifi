@@ -39,6 +39,17 @@ func TestComposeControllerImageComesFromTheHarnessNotALiteral(t *testing.T) {
 	}
 }
 
+func TestEffectiveControllerImageHonoursTheOverride(t *testing.T) {
+	t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", "example.invalid/unifi:pinned")
+	if got := effectiveControllerImage(); got != "example.invalid/unifi:pinned" {
+		t.Errorf("with an override set, effectiveControllerImage() = %q, want the override", got)
+	}
+	t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", "")
+	if got, want := effectiveControllerImage(), DefaultControllerImage(); got != want {
+		t.Errorf("with no override, effectiveControllerImage() = %q, want %q", got, want)
+	}
+}
+
 func TestDefaultControllerImageTracksTheSDK(t *testing.T) {
 	want := "ghcr.io/jamesbraid/unifi-network:" + unifi.UnifiVersion + "-sim"
 	if got := DefaultControllerImage(); got != want {
