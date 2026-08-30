@@ -187,6 +187,13 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "Locale.timezone",
+      "terraform_name": "locale.timezone",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Mgmt.advanced_feature_enabled",
       "terraform_name": "mgmt.advanced_feature_enabled",
       "structural_type": "bool",

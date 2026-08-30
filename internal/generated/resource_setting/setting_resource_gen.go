@@ -434,6 +434,23 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"locale": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"timezone": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).",
+						MarkdownDescription: "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Site locale settings.",
+				MarkdownDescription: "Site locale settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"mgmt": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"advanced_feature_enabled": schema.BoolAttribute{

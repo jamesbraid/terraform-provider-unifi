@@ -24,6 +24,7 @@ func TestSettingKitSectionsOrder(t *testing.T) {
 		"radius",
 		"usg",
 		"igmp_snooping",
+		"locale",
 	}
 
 	r := &settingResource{client: &Client{}}

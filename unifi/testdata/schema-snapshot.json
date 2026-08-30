@@ -6016,6 +6016,25 @@
           "description_kind": "markdown",
           "default": "booldefault.staticBoolDefault: value defaults to true"
         },
+        "locale": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Site locale settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "locale.timezone": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).",
+          "description_kind": "markdown"
+        },
         "mgmt": {
           "kind": "attribute",
           "nesting_mode": "single",

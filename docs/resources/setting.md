@@ -83,6 +83,7 @@ resource "unifi_setting" "radius_only" {
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
+- `locale` (Attributes) Site locale settings. (see [below for nested schema](#nestedatt--locale))
 - `mgmt` (Attributes) Management settings. (see [below for nested schema](#nestedatt--mgmt))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
@@ -225,6 +226,14 @@ Optional:
 - `idle_timeout` (Number) Seconds of inactivity before the display turns off (10-3600).
 - `sync` (Boolean) Sync display settings across devices.
 - `touch_event` (Boolean) Whether touch events on the display are enabled.
+
+
+<a id="nestedatt--locale"></a>
+### Nested Schema for `locale`
+
+Optional:
+
+- `timezone` (String) Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).
 
 
 <a id="nestedatt--mgmt"></a>

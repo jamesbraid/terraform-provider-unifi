@@ -137,7 +137,14 @@
     "lldp_enable_all",
     "mdns_enabled",
     "mss_clamp_mss",
-    "site_id"
+    "site_id",
+    "Locale._id",
+    "Locale.attr_hidden",
+    "Locale.attr_hidden_id",
+    "Locale.attr_no_delete",
+    "Locale.attr_no_edit",
+    "Locale.key",
+    "Locale.site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2036,6 +2043,38 @@
       ],
       "terraform_name": "network_optimization",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Site locale settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`)."
+          },
+          "disposition": "managed",
+          "structural_name": "timezone",
+          "structural_source": "Locale",
+          "terraform_name": "timezone"
+        }
+      ],
+      "terraform_name": "locale",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -2100,6 +2139,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "945076940732476a2206ddedfce72eb3c9c14d06d27838d76b3e34e8579c6f53",
+  "source_specification_sha256": "6af850c15c52788fc6a93c16bf40da53f89390b0d71d23fd765459bcbdc1d13c",
   "surface_kind": "managed_resource"
 }

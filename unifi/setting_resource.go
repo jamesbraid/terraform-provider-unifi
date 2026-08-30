@@ -75,6 +75,7 @@ type settingResourceModel struct {
 	Radius        types.Object   `tfsdk:"radius"`
 	USG           types.Object   `tfsdk:"usg"`
 	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
+	Locale        types.Object   `tfsdk:"locale"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 

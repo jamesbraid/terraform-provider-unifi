@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.locale",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "timezone",
+      "terraform_name": "timezone",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

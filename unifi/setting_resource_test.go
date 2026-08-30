@@ -1354,6 +1354,64 @@ resource "unifi_setting" "test" {
 `
 }
 
+func TestAccSettingResource_locale(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_locale(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"locale.timezone",
+						"America/Los_Angeles",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"locale.%",
+					"locale.timezone",
+				},
+			},
+			{
+				Config: testAccSettingConfig_localeUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"locale.timezone",
+						"America/New_York",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_locale() string {
+	return `
+resource "unifi_setting" "test" {
+  locale = {
+    timezone = "America/Los_Angeles"
+  }
+}
+`
+}
+
+func testAccSettingConfig_localeUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  locale = {
+    timezone = "America/New_York"
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {
