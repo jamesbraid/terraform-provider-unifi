@@ -1562,7 +1562,20 @@ resource "unifi_setting" "test" {
 // (make-before-break) plus IKEv2's other named rekey strategy
 // (break-before-make); the schema carries no validator, so the controller
 // itself is what could refuse the second value, not the provider.
+//
+// The simulation controller refuses the ipsec setting outright, matching
+// settings.Ipsec's own doc comment that it is a newer-controller feature
+// ahead of the locked field spec:
+//
+//	api.err.Invalid (400) for PUT https://localhost:34631/api/s/default/set/setting/ipsec
+//	payload: {"ikev2_reauthentication_method":"make-before-break","key":"ipsec"}
 func TestAccSettingResource_ipsec(t *testing.T) {
+	// ipsec requires controller support beyond simulation/demo mode: the
+	// simulation controller returns a 400 on the very first write.
+	if os.Getenv("UNIFI_SKIP_CONTAINER") == "" {
+		t.Skip("the ipsec setting requires a real controller; set UNIFI_SKIP_CONTAINER to run")
+	}
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -1620,6 +1633,10 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_dashboard exercises layout_preference's full
+// create/import/update lifecycle without touching widgets at all: see
+// TestAccSettingResource_dashboardWidgets and dashboardKitSpec's own
+// comment for why widgets cannot share this same update step.
 func TestAccSettingResource_dashboard(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -1633,6 +1650,83 @@ func TestAccSettingResource_dashboard(t *testing.T) {
 						"dashboard.layout_preference",
 						"manual",
 					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"dashboard.%",
+					"dashboard.layout_preference",
+				},
+			},
+			{
+				Config: testAccSettingConfig_dashboardUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.layout_preference",
+						"auto",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_dashboard() string {
+	return `
+resource "unifi_setting" "test" {
+  dashboard = {
+    layout_preference = "manual"
+  }
+}
+`
+}
+
+func testAccSettingConfig_dashboardUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  dashboard = {
+    layout_preference = "auto"
+  }
+}
+`
+}
+
+// TestAccSettingResource_dashboardWidgets exercises widgets create and
+// import only, deliberately with no update step: the controller was
+// measured (with UpdateSettingFields, outside Terraform) accepting a
+// widgets write only on a dashboard document's first write ever, then
+// silently dropping the whole array on every write after that -- not just
+// the entry that changed, and not just when the value actually changes;
+// even a write naming only layout_preference clears it. No error is
+// returned either time, so this cannot be told apart from success at the
+// wire level; it can only be told apart by reading back what the
+// controller actually stored:
+//
+//	after the first write: {"layout_preference":"manual","widgets":[{"enabled":true,"name":"cybersecure"}]}
+//	after any write after that: {"layout_preference":"auto"} -- widgets is gone
+//
+// A second Terraform apply that touches this resource in any way, even to
+// change an unrelated attribute, would therefore always report "provider
+// produced inconsistent result after apply" against this controller,
+// regardless of what the provider sends -- which is why this test has no
+// update step. See dashboardKitSpec's own comment.
+func TestAccSettingResource_dashboardWidgets(t *testing.T) {
+	if os.Getenv("UNIFI_SKIP_CONTAINER") == "" {
+		t.Skip("dashboard widgets do not survive a second write on the simulation controller; " +
+			"set UNIFI_SKIP_CONTAINER to run against a real controller")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_dashboardWidgets(),
+				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"unifi_setting.test",
 						"dashboard.widgets.#",
@@ -1656,57 +1750,24 @@ func TestAccSettingResource_dashboard(t *testing.T) {
 				ImportStateVerify: true,
 				ImportStateVerifyIgnore: []string{
 					"dashboard.%",
-					"dashboard.layout_preference",
 					"dashboard.widgets.#",
 					"dashboard.widgets.0.%",
 					"dashboard.widgets.0.name",
 					"dashboard.widgets.0.enabled",
 				},
 			},
-			{
-				Config: testAccSettingConfig_dashboardUpdate(),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(
-						"unifi_setting.test",
-						"dashboard.layout_preference",
-						"auto",
-					),
-					resource.TestCheckResourceAttr(
-						"unifi_setting.test",
-						"dashboard.widgets.0.enabled",
-						"false",
-					),
-				),
-			},
 		},
 	})
 }
 
-func testAccSettingConfig_dashboard() string {
+func testAccSettingConfig_dashboardWidgets() string {
 	return `
 resource "unifi_setting" "test" {
   dashboard = {
-    layout_preference = "manual"
     widgets = [
       {
         name    = "cybersecure"
         enabled = true
-      },
-    ]
-  }
-}
-`
-}
-
-func testAccSettingConfig_dashboardUpdate() string {
-	return `
-resource "unifi_setting" "test" {
-  dashboard = {
-    layout_preference = "auto"
-    widgets = [
-      {
-        name    = "cybersecure"
-        enabled = false
       },
     ]
   }

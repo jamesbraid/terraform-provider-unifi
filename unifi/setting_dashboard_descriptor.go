@@ -57,6 +57,19 @@ var (
 // resourcekit.ElideProblems' schema-driven rule demands NullZero; widgets
 // is Optional+Computed with no zero-rejecting validator of its own kind, so
 // it wants KeepZero, same as doh's custom_servers.
+//
+// Controller fact, not a provider behaviour (measured directly against the
+// pinned controller with UpdateSettingFields, outside Terraform, across
+// several shapes: a changed value, an unchanged value, and a write that
+// doesn't name widgets at all): the first write to dashboard.widgets on a
+// document is stored; every write to that document after that drops
+// widgets entirely, silently and with no error, no matter which fields
+// that later write names. This descriptor sends exactly what the plan
+// configures either way; no provider-side write can make a second widgets
+// round-trip on this controller, so TestAccSettingResource_dashboardWidgets
+// (setting_resource_test.go) covers create and import only, and the
+// ordinary create/update/import lifecycle test
+// (TestAccSettingResource_dashboard) never configures widgets at all.
 func dashboardKitSpec() resourcekit.Spec[settingDashboardModel, settings.Dashboard] {
 	return resourcekit.Spec[settingDashboardModel, settings.Dashboard]{
 		TypeName: "setting_dashboard",
