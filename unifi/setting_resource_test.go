@@ -2924,6 +2924,146 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_guestAccess exercises Task 2's 21 core scalars
+// (.superpowers/sdd/plan-r2b-guest-access) live: portal access/mode,
+// post-auth redirect, session expiry (including the two #303-guarded ints,
+// expire_number/expire_unit), the RADIUS guest-auth group (including its own
+// #303-guarded radius_disconnect_port), password_enabled, voucher_enabled,
+// payment_enabled and gateway. A real apply against a validating controller
+// is what the unit-level OmitZero tests
+// (setting_guest_access_descriptor_test.go) cannot prove on their own: if
+// the write guard ever regressed and let a literal 0 reach the wire for
+// expire_number, expire_unit or radius_disconnect_port, this step would fail
+// outright against the controller's own rejection of that value, not just
+// leave a Go assertion red.
+func TestAccSettingResource_guestAccess(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_guestAccess(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.portal_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.password_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.voucher_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.payment_enabled", "false"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.ec_enabled", "false"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.redirect_enabled", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.redirect_url", "https://example.com/welcome",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.expire", "custom"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.expire_number", "30"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.expire_unit", "60"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.radius_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.radius_auth_type", "chap"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.radius_disconnect_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.radius_disconnect_port", "3799",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// SpecSection.Read only fetches a section when
+					// Configured(plan) is true; import's state has just id
+					// set, so guest_access reads back null instead of the
+					// applied values -- the same reason every other
+					// section's import step ignores its own attributes.
+					"guest_access.%",
+					"guest_access.auth",
+					"guest_access.ec_enabled",
+					"guest_access.expire",
+					"guest_access.expire_number",
+					"guest_access.expire_unit",
+					"guest_access.gateway",
+					"guest_access.password_enabled",
+					"guest_access.payment_enabled",
+					"guest_access.portal_enabled",
+					"guest_access.portal_hostname",
+					"guest_access.portal_use_hostname",
+					"guest_access.radius_auth_type",
+					"guest_access.radius_disconnect_enabled",
+					"guest_access.radius_disconnect_port",
+					"guest_access.radius_enabled",
+					"guest_access.radiusprofile_id",
+					"guest_access.redirect_enabled",
+					"guest_access.redirect_https",
+					"guest_access.redirect_to_https",
+					"guest_access.redirect_url",
+					"guest_access.voucher_enabled",
+				},
+			},
+			{
+				Config: testAccSettingConfig_guestAccessUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.auth", "none"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.payment_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.gateway", "stripe"),
+					// expire_number, expire_unit and radius_disconnect_port
+					// are absent from this step's config -- the #303 write
+					// guard means that must apply cleanly rather than send a
+					// literal 0 the controller's own validators reject
+					// (expire_number wants a leading 1-9 or 1000000,
+					// expire_unit is the enum 1/60/1440,
+					// radius_disconnect_port has a minimum of 1).
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.radius_enabled", "false"),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_guestAccess() string {
+	return `
+resource "unifi_setting" "test" {
+  guest_access = {
+    portal_enabled             = true
+    auth                       = "hotspot"
+    password_enabled           = true
+    voucher_enabled            = true
+    payment_enabled            = false
+    ec_enabled                 = false
+    redirect_enabled           = true
+    redirect_url               = "https://example.com/welcome"
+    expire                     = "custom"
+    expire_number               = 30
+    expire_unit                = 60
+    radius_enabled             = true
+    radius_auth_type           = "chap"
+    radius_disconnect_enabled  = true
+    radius_disconnect_port     = 3799
+  }
+}
+`
+}
+
+func testAccSettingConfig_guestAccessUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  guest_access = {
+    portal_enabled    = true
+    auth              = "none"
+    password_enabled  = true
+    voucher_enabled   = true
+    payment_enabled   = true
+    gateway           = "stripe"
+    ec_enabled        = false
+    redirect_enabled  = true
+    redirect_url      = "https://example.com/welcome"
+    radius_enabled    = false
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

@@ -85,6 +85,7 @@ resource "unifi_setting" "radius_only" {
 - `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
 - `global_network` (Attributes) Global network settings for zone-based firewalling. (see [below for nested schema](#nestedatt--global_network))
 - `global_switch` (Attributes) Global switch (wired network) settings. (see [below for nested schema](#nestedatt--global_switch))
+- `guest_access` (Attributes) Guest network portal, authentication and payment settings. (see [below for nested schema](#nestedatt--guest_access))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `ipsec` (Attributes) IPsec settings for site-to-site VPNs. (see [below for nested schema](#nestedatt--ipsec))
@@ -250,6 +251,34 @@ Required:
 - `destination_networks` (List of String) Destination network IDs this isolation rule blocks traffic to.
 - `source_network` (String) Source network ID this isolation rule applies to.
 
+
+
+<a id="nestedatt--guest_access"></a>
+### Nested Schema for `guest_access`
+
+Optional:
+
+- `auth` (String) Guest portal authentication method: `none`, `hotspot`, or `custom`.
+- `ec_enabled` (Boolean) Enable express checkout for guest payment.
+- `expire` (String) Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.
+- `expire_number` (Number) Session length, combined with `expire_unit`, when `expire` is `custom`.
+- `expire_unit` (Number) Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.
+- `gateway` (String) Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.
+- `password_enabled` (Boolean) Require a password for the guest portal.
+- `payment_enabled` (Boolean) Enable paid guest access via `gateway`.
+- `portal_enabled` (Boolean) Enable the guest portal.
+- `portal_hostname` (String) Guest portal hostname, used when `portal_use_hostname` is enabled.
+- `portal_use_hostname` (Boolean) Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.
+- `radius_auth_type` (String) RADIUS authentication type: `chap` or `mschapv2`.
+- `radius_disconnect_enabled` (Boolean) Enable RADIUS Disconnect (RFC 3576) for the guest portal.
+- `radius_disconnect_port` (Number) RADIUS Disconnect (RFC 3576) listening port.
+- `radius_enabled` (Boolean) Enable RADIUS authentication for the guest portal.
+- `radiusprofile_id` (String) ID of the `unifi_radius_profile` used for guest portal RADIUS authentication.
+- `redirect_enabled` (Boolean) Redirect a guest to `redirect_url` after successful authentication.
+- `redirect_https` (Boolean) Serve the post-authentication redirect over HTTPS.
+- `redirect_to_https` (Boolean) Redirect an HTTP request to the guest portal to HTTPS.
+- `redirect_url` (String) URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.
+- `voucher_enabled` (Boolean) Enable voucher-based guest access.
 
 
 <a id="nestedatt--igmp_snooping"></a>

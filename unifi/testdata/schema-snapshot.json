@@ -5989,6 +5989,203 @@
           "description": "MAC addresses of switches excluded from these global settings.",
           "description_kind": "markdown"
         },
+        "guest_access": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Guest network portal, authentication and payment settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "guest_access.auth": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Guest portal authentication method: `none`, `hotspot`, or `custom`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"none\" \"hotspot\" \"custom\"]"
+          ]
+        },
+        "guest_access.ec_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable express checkout for guest payment.",
+          "description_kind": "markdown"
+        },
+        "guest_access.expire": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '[\\d]+|custom'"
+          ]
+        },
+        "guest_access.expire_number": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Session length, combined with `expire_unit`, when `expire` is `custom`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.expire_unit": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.oneOfValidator: value must be one of: [\"1\" \"60\" \"1440\"]"
+          ]
+        },
+        "guest_access.gateway": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"paypal\" \"stripe\" \"authorize\" \"quickpay\" \"merchantwarrior\" \"ippay\"]"
+          ]
+        },
+        "guest_access.password_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Require a password for the guest portal.",
+          "description_kind": "markdown"
+        },
+        "guest_access.payment_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable paid guest access via `gateway`.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable the guest portal.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_hostname": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Guest portal hostname, used when `portal_use_hostname` is enabled.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^[a-zA-Z0-9.-]+$|^$'"
+          ]
+        },
+        "guest_access.portal_use_hostname": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.",
+          "description_kind": "markdown"
+        },
+        "guest_access.radius_auth_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "RADIUS authentication type: `chap` or `mschapv2`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"chap\" \"mschapv2\"]"
+          ]
+        },
+        "guest_access.radius_disconnect_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable RADIUS Disconnect (RFC 3576) for the guest portal.",
+          "description_kind": "markdown"
+        },
+        "guest_access.radius_disconnect_port": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "RADIUS Disconnect (RFC 3576) listening port.",
+          "description_kind": "markdown"
+        },
+        "guest_access.radius_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable RADIUS authentication for the guest portal.",
+          "description_kind": "markdown"
+        },
+        "guest_access.radiusprofile_id": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "ID of the `unifi_radius_profile` used for guest portal RADIUS authentication.",
+          "description_kind": "markdown"
+        },
+        "guest_access.redirect_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Redirect a guest to `redirect_url` after successful authentication.",
+          "description_kind": "markdown"
+        },
+        "guest_access.redirect_https": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Serve the post-authentication redirect over HTTPS.",
+          "description_kind": "markdown"
+        },
+        "guest_access.redirect_to_https": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Redirect an HTTP request to the guest portal to HTTPS.",
+          "description_kind": "markdown"
+        },
+        "guest_access.redirect_url": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.",
+          "description_kind": "markdown"
+        },
+        "guest_access.voucher_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable voucher-based guest access.",
+          "description_kind": "markdown"
+        },
         "id": {
           "kind": "attribute",
           "type": "\"string\"",

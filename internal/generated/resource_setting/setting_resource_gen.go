@@ -416,6 +416,161 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"guest_access": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"auth": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Guest portal authentication method: `none`, `hotspot`, or `custom`.",
+						MarkdownDescription: "Guest portal authentication method: `none`, `hotspot`, or `custom`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("none", "hotspot", "custom"),
+						},
+					},
+					"ec_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable express checkout for guest payment.",
+						MarkdownDescription: "Enable express checkout for guest payment.",
+					},
+					"expire": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.",
+						MarkdownDescription: "Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.",
+						Validators: []validator.String{
+							controllerregex.Matches(`[\d]+|custom`, ""),
+						},
+					},
+					"expire_number": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Session length, combined with `expire_unit`, when `expire` is `custom`.",
+						MarkdownDescription: "Session length, combined with `expire_unit`, when `expire` is `custom`.",
+					},
+					"expire_unit": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.",
+						MarkdownDescription: "Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.",
+						Validators: []validator.Int64{
+							int64validator.OneOf(1, 60, 1440),
+						},
+					},
+					"gateway": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.",
+						MarkdownDescription: "Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("paypal", "stripe", "authorize", "quickpay", "merchantwarrior", "ippay"),
+						},
+					},
+					"password_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Require a password for the guest portal.",
+						MarkdownDescription: "Require a password for the guest portal.",
+					},
+					"payment_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable paid guest access via `gateway`.",
+						MarkdownDescription: "Enable paid guest access via `gateway`.",
+					},
+					"portal_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable the guest portal.",
+						MarkdownDescription: "Enable the guest portal.",
+					},
+					"portal_hostname": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Guest portal hostname, used when `portal_use_hostname` is enabled.",
+						MarkdownDescription: "Guest portal hostname, used when `portal_use_hostname` is enabled.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^[a-zA-Z0-9.-]+$|^$`, ""),
+						},
+					},
+					"portal_use_hostname": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.",
+						MarkdownDescription: "Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.",
+					},
+					"radius_auth_type": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "RADIUS authentication type: `chap` or `mschapv2`.",
+						MarkdownDescription: "RADIUS authentication type: `chap` or `mschapv2`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("chap", "mschapv2"),
+						},
+					},
+					"radius_disconnect_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable RADIUS Disconnect (RFC 3576) for the guest portal.",
+						MarkdownDescription: "Enable RADIUS Disconnect (RFC 3576) for the guest portal.",
+					},
+					"radius_disconnect_port": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "RADIUS Disconnect (RFC 3576) listening port.",
+						MarkdownDescription: "RADIUS Disconnect (RFC 3576) listening port.",
+					},
+					"radius_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable RADIUS authentication for the guest portal.",
+						MarkdownDescription: "Enable RADIUS authentication for the guest portal.",
+					},
+					"radiusprofile_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "ID of the `unifi_radius_profile` used for guest portal RADIUS authentication.",
+						MarkdownDescription: "ID of the `unifi_radius_profile` used for guest portal RADIUS authentication.",
+					},
+					"redirect_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Redirect a guest to `redirect_url` after successful authentication.",
+						MarkdownDescription: "Redirect a guest to `redirect_url` after successful authentication.",
+					},
+					"redirect_https": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Serve the post-authentication redirect over HTTPS.",
+						MarkdownDescription: "Serve the post-authentication redirect over HTTPS.",
+					},
+					"redirect_to_https": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Redirect an HTTP request to the guest portal to HTTPS.",
+						MarkdownDescription: "Redirect an HTTP request to the guest portal to HTTPS.",
+					},
+					"redirect_url": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.",
+						MarkdownDescription: "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.",
+					},
+					"voucher_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable voucher-based guest access.",
+						MarkdownDescription: "Enable voucher-based guest access.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Guest network portal, authentication and payment settings.",
+				MarkdownDescription: "Guest network portal, authentication and payment settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"id": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The ID of the settings.",

@@ -39,6 +39,7 @@ func TestSettingKitSectionsOrder(t *testing.T) {
 		"netflow",
 		"radio_ai",
 		"snmp",
+		"guest_access",
 	}
 
 	r := &settingResource{client: &Client{}}

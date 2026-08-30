@@ -90,6 +90,7 @@ type settingResourceModel struct {
 	Netflow            types.Object   `tfsdk:"netflow"`
 	RadioAi            types.Object   `tfsdk:"radio_ai"`
 	Snmp               types.Object   `tfsdk:"snmp"`
+	GuestAccess        types.Object   `tfsdk:"guest_access"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 

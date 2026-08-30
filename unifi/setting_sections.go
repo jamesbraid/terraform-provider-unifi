@@ -58,6 +58,7 @@ var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[se
 	netflowKitSection,
 	radioAiKitSection,
 	snmpKitSection,
+	guestAccessKitSection,
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -109,3 +110,9 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // (pinned by this dispatch's own live-controller probe, Task 0), so
 // snmpAfterReceive plan-conditions both the same way radiusAfterReceive
 // plan-conditions radius.secret.
+//
+// guest_access is new, not migrated -- it never had a hand-written
+// write/readGuestAccessSection. Task 2 of
+// .superpowers/sdd/plan-r2b-guest-access lands its 21 core scalars only;
+// see setting_guest_access_descriptor.go's own comment for what the
+// remaining 71 of settings.GuestAccess's 92 fields wait on.
