@@ -2,12 +2,22 @@ package unifi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
+	"sort"
+	"strconv"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	fwlist "github.com/hashicorp/terraform-plugin-framework/list"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
@@ -17,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/acctestenv"
@@ -42,57 +53,6 @@ list "unifi_device" "test" {
 				querycheck.ExpectLengthAtLeast("unifi_device.test", 1),
 			},
 		}},
-	})
-}
-
-// TestMergePortOverridesByIndex guards a rule: declaring a subset of
-// port_override blocks must not wipe the device's other ports. The UniFi
-// PUT replaces the whole port_overrides array, so the provider merges the
-// declared ports (by port_idx) onto the device's current overrides before
-// sending.
-func TestMergePortOverridesByIndex(t *testing.T) {
-	current := []unifi.DevicePortOverrides{
-		{PortIDX: ptrInt64(3), NATiveNetworkID: "vlan-a"},
-		{PortIDX: ptrInt64(4), NATiveNetworkID: "vlan-b"},
-		{PortIDX: ptrInt64(5), NATiveNetworkID: "vlan-c"},
-	}
-
-	t.Run("subset replaces only its port, keeps the rest", func(t *testing.T) {
-		declared := []unifi.DevicePortOverrides{
-			{PortIDX: ptrInt64(5), NATiveNetworkID: "vlan-z"},
-		}
-		got := mergePortOverridesByIndex(current, declared)
-		byIdx := indexOverrides(got)
-		if len(got) != 3 {
-			t.Fatalf("merged length = %d, want 3 (ports 3,4 must survive): %+v", len(got), got)
-		}
-		if byIdx[3].NATiveNetworkID != "vlan-a" || byIdx[4].NATiveNetworkID != "vlan-b" {
-			t.Errorf("undeclared ports were altered: %+v", got)
-		}
-		if byIdx[5].NATiveNetworkID != "vlan-z" {
-			t.Errorf("declared port 5 = %q, want vlan-z", byIdx[5].NATiveNetworkID)
-		}
-	})
-
-	t.Run("declared new port is appended", func(t *testing.T) {
-		declared := []unifi.DevicePortOverrides{
-			{PortIDX: ptrInt64(7), NATiveNetworkID: "vlan-new"},
-		}
-		got := mergePortOverridesByIndex(current, declared)
-		byIdx := indexOverrides(got)
-		if len(got) != 4 {
-			t.Fatalf("merged length = %d, want 4: %+v", len(got), got)
-		}
-		if byIdx[7].NATiveNetworkID != "vlan-new" {
-			t.Errorf("new port 7 not appended: %+v", got)
-		}
-	})
-
-	t.Run("no declared overrides returns current unchanged", func(t *testing.T) {
-		got := mergePortOverridesByIndex(current, nil)
-		if len(got) != 3 {
-			t.Errorf("merged length = %d, want 3", len(got))
-		}
 	})
 }
 
@@ -140,6 +100,135 @@ func TestAccDeviceFramework_basic(t *testing.T) {
 			},
 		},
 	})
+}
+
+// testAccRawDeviceClient builds an ApiClient straight from the same env vars
+// preCheck requires, for assertions Terraform state cannot make:
+// port_override state only ever holds the ports a config block declares
+// (deviceReconcilePortOverrides' whole reason to exist), so "did an
+// undeclared port change" has to be answered by reading the controller
+// directly.
+func testAccRawDeviceClient(t *testing.T) *unifi.ApiClient {
+	t.Helper()
+	client, err := unifi.New(context.Background(), &unifi.Config{
+		BaseURL:       os.Getenv("UNIFI_API"),
+		Username:      os.Getenv("UNIFI_USERNAME"),
+		Password:      os.Getenv("UNIFI_PASSWORD"),
+		AllowInsecure: os.Getenv("UNIFI_INSECURE") != "",
+	})
+	if err != nil {
+		t.Fatalf("building a raw API client: %v", err)
+	}
+	return client
+}
+
+func testAccDeviceSite() string {
+	if site := os.Getenv("UNIFI_SITE"); site != "" {
+		return site
+	}
+	return "default"
+}
+
+// TestAccDeviceFramework_portOverrideLeavesOtherPortsAlone is task 2's live
+// counterpart to the fake-controller tests above (Test_deviceUpdate_*): it
+// declares a port_override block for one port on a real controller and
+// checks, by reading the device directly rather than through Terraform
+// state, that a second, undeclared port comes out byte-for-byte the same
+// as it went in.
+func TestAccDeviceFramework_portOverrideLeavesOtherPortsAlone(t *testing.T) {
+	mac := os.Getenv(acctestenv.EnvAccDeviceMAC)
+	if mac == "" {
+		t.Skipf("%s not set; skipping device acceptance test", acctestenv.EnvAccDeviceMAC)
+	}
+
+	const declaredPortIDX = 1
+	const otherPortIDX = 2
+
+	client := testAccRawDeviceClient(t)
+	site := testAccDeviceSite()
+	ctx := context.Background()
+
+	// A freshly adopted device reports no port_overrides at all -- there is
+	// nothing to compare against until something has been written -- so
+	// both ports are seeded first, the same way task 1's live measurement
+	// did (task-1-report.md), before the "before" snapshot is taken.
+	seedDevice, err := client.GetDeviceByMAC(ctx, site, mac)
+	if err != nil {
+		t.Fatalf("reading the device to seed it: %v", err)
+	}
+	if _, err := client.UpdateDevicePortOverrides(ctx, site, seedDevice, []unifi.DevicePortOverrides{
+		{PortIDX: ptrInt64(declaredPortIDX), Name: "seed-one", PoeMode: "auto"},
+		{PortIDX: ptrInt64(otherPortIDX), Name: "seed-two", PoeMode: "auto"},
+	}, "name", "poe_mode"); err != nil {
+		t.Fatalf("seeding both ports: %v", err)
+	}
+
+	before, err := client.GetDeviceByMAC(ctx, site, mac)
+	if err != nil {
+		t.Fatalf("reading the device before apply: %v", err)
+	}
+	beforeOther, ok := indexOverrides(before.PortOverrides)[otherPortIDX]
+	if !ok {
+		t.Fatalf("port %d is not among the device's current overrides even "+
+			"after seeding it", otherPortIDX)
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDeviceFrameworkConfig_onePortOverride(mac, declaredPortIDX),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_device.test", "id"),
+					resource.TestCheckResourceAttr("unifi_device.test", "port_override.#", "1"),
+					func(*terraform.State) error {
+						after, err := client.GetDeviceByMAC(context.Background(), site, mac)
+						if err != nil {
+							return fmt.Errorf("reading the device after apply: %w", err)
+						}
+
+						declared, ok := indexOverrides(after.PortOverrides)[declaredPortIDX]
+						if !ok {
+							return fmt.Errorf("port %d is missing after apply", declaredPortIDX)
+						}
+						if declared.Name != "port-overrides-task2" {
+							return fmt.Errorf("port %d name = %q, want port-overrides-task2 "+
+								"(the declared write itself did not take effect)",
+								declaredPortIDX, declared.Name)
+						}
+
+						afterOther, ok := indexOverrides(after.PortOverrides)[otherPortIDX]
+						if !ok {
+							return fmt.Errorf("port %d is missing after apply", otherPortIDX)
+						}
+						if !reflect.DeepEqual(beforeOther, afterOther) {
+							return fmt.Errorf("port %d changed by an update that only declared "+
+								"port %d:\nbefore: %+v\nafter:  %+v",
+								otherPortIDX, declaredPortIDX, beforeOther, afterOther)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func testAccDeviceFrameworkConfig_onePortOverride(mac string, index int) string {
+	return fmt.Sprintf(`
+resource "unifi_device" "test" {
+	mac  = %q
+	name = "Test Device"
+	allow_adoption = true
+	forget_on_destroy = false
+
+	port_override {
+		index = %d
+		name  = "port-overrides-task2"
+	}
+}
+`, mac, index)
 }
 
 func testAccDeviceFrameworkConfig_basic(mac string) string {
@@ -669,49 +758,6 @@ func Test_deviceRestoreCreateValues_keepsControllerNameWhenUnset(t *testing.T) {
 	}
 }
 
-func Test_mergePortOverridesByIndex(t *testing.T) {
-	type args struct {
-		current  []unifi.DevicePortOverrides
-		declared []unifi.DevicePortOverrides
-	}
-	tests := []struct {
-		name string
-		args args
-		want []unifi.DevicePortOverrides
-	}{
-		{
-			name: "nil current and nil declared returns nil",
-			args: args{current: nil, declared: nil},
-			want: nil,
-		},
-		{
-			name: "nil current with declared returns declared",
-			args: args{
-				current: nil,
-				declared: []unifi.DevicePortOverrides{
-					{PortIDX: ptrInt64(1), NATiveNetworkID: "net-a"},
-				},
-			},
-			want: []unifi.DevicePortOverrides{
-				{PortIDX: ptrInt64(1), NATiveNetworkID: "net-a"},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := mergePortOverridesByIndex(
-				tt.args.current,
-				tt.args.declared,
-			); !reflect.DeepEqual(
-				got,
-				tt.want,
-			) {
-				t.Errorf("mergePortOverridesByIndex() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_cleanMAC(t *testing.T) {
 	type args struct {
 		mac string
@@ -743,6 +789,100 @@ func Test_cleanMAC(t *testing.T) {
 				t.Errorf("cleanMAC() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+// Test_devicePortOverrideDeclaredFields_matchesEveryModeledMember pins the
+// full set of wire names devicePortOverrideDeclaredFields can produce,
+// against every attribute portOverrideAttrTypes models except index (it
+// addresses the entry rather than configuring it) and
+// tagged_networkconf_ids (declarable-but-inert, never written -- see the
+// comment on devicePortOverrideEncode). devicePortOverrideDeclaredFields has
+// no compiler-checked link to that attribute set -- it is a second,
+// hand-written pass over the same model -- so this is what catches a member
+// added to one without the other.
+func Test_devicePortOverrideDeclaredFields_matchesEveryModeledMember(t *testing.T) {
+	members, d := types.ListValue(types.Int64Type, []attr.Value{types.Int64Value(9)})
+	if d.HasError() {
+		t.Fatalf("building aggregate_members: %v", d)
+	}
+	idSet, d := types.SetValue(types.StringType, []attr.Value{types.StringValue("net-1")})
+	if d.HasError() {
+		t.Fatalf("building a network id set: %v", d)
+	}
+	macList, d := types.ListValue(types.StringType, []attr.Value{types.StringValue("aa:bb:cc:dd:ee:ff")})
+	if d.HasError() {
+		t.Fatalf("building port_security_mac_address: %v", d)
+	}
+
+	model := portOverrideModel{
+		Index:                      types.Int64Value(1), // excluded regardless -- see the test comment
+		Name:                       types.StringValue("x"),
+		PortProfileID:              types.StringValue("prof"),
+		OpMode:                     types.StringValue("aggregate"), // non-default, so it counts as declared
+		PoeMode:                    types.StringValue("auto"),
+		AggregateMembers:           members,
+		Autoneg:                    types.BoolValue(false), // null-vs-false is the point; not-null is what matters here
+		Dot1XCtrl:                  types.StringValue("auto"),
+		Dot1XIDleTimeout:           timetypes.NewGoDurationValue(30 * time.Second),
+		EgressRateLimitKbps:        types.Int64Value(100),
+		EgressRateLimitKbpsEnabled: types.BoolValue(true),
+		ExcludedNetworkIDs:         idSet,
+		FecMode:                    types.StringValue("default"),
+		FlowControlEnabled:         types.BoolValue(true),
+		Forward:                    types.StringValue("all"),
+		FullDuplex:                 types.BoolValue(true),
+		Isolation:                  types.BoolValue(false),
+		LldpmedEnabled:             types.BoolValue(true),
+		LldpmedNotifyEnabled:       types.BoolValue(true),
+		MirrorPortIDX:              types.Int64Value(2),
+		MulticastRouterNetworkIDs:  idSet,
+		NativeNetworkID:            types.StringValue("net"),
+		PortKeepaliveEnabled:       types.BoolValue(true),
+		PortSecurityEnabled:        types.BoolValue(true),
+		PortSecurityMACAddress:     macList,
+		PriorityQueue1Level:        types.Int64Value(1),
+		PriorityQueue2Level:        types.Int64Value(2),
+		PriorityQueue3Level:        types.Int64Value(3),
+		PriorityQueue4Level:        types.Int64Value(4),
+		SettingPreference:          types.StringValue("auto"),
+		Speed:                      types.Int64Value(1000),
+		StormctrlBroadcastEnabled:  types.BoolValue(true),
+		StormctrlBroadcastLevel:    types.Int64Value(10),
+		StormctrlBroadcastRate:     types.Int64Value(10),
+		StormctrlMcastEnabled:      types.BoolValue(true),
+		StormctrlMcastLevel:        types.Int64Value(10),
+		StormctrlMcastRate:         types.Int64Value(10),
+		StormctrlType:              types.StringValue("level"),
+		StormctrlUcastEnabled:      types.BoolValue(true),
+		StormctrlUcastLevel:        types.Int64Value(10),
+		StormctrlUcastRate:         types.Int64Value(10),
+		StpPortMode:                types.BoolValue(true),
+		TaggedNetworkIDs:           idSet, // must never appear in the result
+		TaggedVLANMgmt:             types.StringValue("auto"),
+		VoiceNetworkID:             types.StringValue("voice-net"),
+	}
+
+	got := devicePortOverrideDeclaredFields(model)
+	sort.Strings(got)
+
+	// portOverrideAttrTypes' keys are tfsdk attribute names, which match the
+	// wire name for every attribute except this one -- SDK field
+	// PortProfileID carries json:"portconf_id".
+	want := make([]string, 0, len(portOverrideAttrTypes()))
+	for name := range portOverrideAttrTypes() {
+		switch name {
+		case "index", "tagged_networkconf_ids":
+			continue
+		case "port_profile_id":
+			name = "portconf_id"
+		}
+		want = append(want, name)
+	}
+	sort.Strings(want)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("declared fields = %v,\nwant             %v", got, want)
 	}
 }
 
@@ -864,58 +1004,417 @@ func Test_deviceResource_ListResourceConfigSchema(t *testing.T) {
 	}
 }
 
-// Test_portOverridesForUpdate_noDeclaredBlocks guards a case the merge fix
-// left open: a device managed with no port_override blocks at all.
+// deviceFakePortOverridesController is a minimal in-memory stand-in for the
+// controller endpoints deviceKitBeforeSend and Backend.UpdateFields touch,
+// so a test can drive the real Resource.Update sequence
+// (deviceRunUpdateSequence, below) and inspect the actual outgoing PUT
+// bodies and the resulting stored state -- not a mock of the SDK, an
+// httptest server underneath it.
 //
-// The merge was gated on len(declared) > 0, so that case skipped it and
-// the body carried deviceReq's own empty slice -- mergePortOverridesByIndex
-// has always returned `current` for an empty declared set, and there's a
-// test asserting exactly that, but the gate meant production never
-// reached it. The tested path and the taken path were different paths.
-func Test_portOverridesForUpdate_noDeclaredBlocks(t *testing.T) {
-	current := &unifi.Device{
-		ID: "d1",
-		PortOverrides: []unifi.DevicePortOverrides{
-			{PortIDX: ptrInt64(1), Name: "uplink"},
-			{PortIDX: ptrInt64(2), Name: "camera"},
-		},
+// Its PUT handling reproduces the one controller behaviour task 1 of the
+// port-overrides plan measured against a live controller (see
+// task-1-report.md): a top-level key present in the body replaces the whole
+// port_overrides array, entry by entry and member by member; a top-level
+// key the body omits leaves the stored device untouched. That is also
+// exactly what unifi.UpdateDevicePortOverrides's own doc comment says the
+// real controller does.
+type deviceFakePortOverridesController struct {
+	mu    sync.Mutex
+	id    string
+	mac   string
+	typ   string
+	ports map[string]map[string]any // port_idx (as a string key) -> raw stored fields
+	puts  []json.RawMessage
+}
+
+// deviceFakeID and deviceFakeMAC are the same for every scenario below --
+// none of them cares about the device's own identity, only about what
+// happens to its port overrides.
+const (
+	deviceFakeID  = "dev1"
+	deviceFakeMAC = "00:00:00:00:00:01"
+)
+
+func newDeviceFakePortOverridesController(
+	ports map[string]map[string]any,
+) *deviceFakePortOverridesController {
+	return &deviceFakePortOverridesController{id: deviceFakeID, mac: deviceFakeMAC, typ: "usw", ports: ports}
+}
+
+func (f *deviceFakePortOverridesController) port(idx int64) (map[string]any, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	entry, ok := f.ports[strconv.FormatInt(idx, 10)]
+	return entry, ok
+}
+
+func (f *deviceFakePortOverridesController) puttedBodies() []json.RawMessage {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]json.RawMessage, len(f.puts))
+	copy(out, f.puts)
+	return out
+}
+
+func (f *deviceFakePortOverridesController) deviceJSON() map[string]any {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	keys := make([]string, 0, len(f.ports))
+	for k := range f.ports {
+		keys = append(keys, k)
 	}
-
-	t.Run("nil declared keeps every controller override", func(t *testing.T) {
-		got := portOverridesForUpdate(current, nil)
-		if len(got) != 2 {
-			t.Fatalf("kept %d override(s), want 2; an update that declares no "+
-				"port_override block must not clear the ones the controller holds", len(got))
-		}
+	sort.Slice(keys, func(i, j int) bool {
+		a, _ := strconv.Atoi(keys[i])
+		b, _ := strconv.Atoi(keys[j])
+		return a < b
 	})
+	entries := make([]map[string]any, 0, len(keys))
+	for _, k := range keys {
+		entries = append(entries, f.ports[k])
+	}
+	return map[string]any{
+		"_id": f.id, "mac": f.mac, "type": f.typ, "adopted": true,
+		"port_overrides": entries,
+	}
+}
 
-	t.Run("empty non-nil declared keeps them too", func(t *testing.T) {
-		// A SetNestedBlock with no elements converts to an allocated empty
-		// slice rather than nil, so both spellings have to be covered.
-		got := portOverridesForUpdate(current, []unifi.DevicePortOverrides{})
-		if len(got) != 2 {
-			t.Fatalf("kept %d override(s), want 2", len(got))
-		}
-	})
+func (f *deviceFakePortOverridesController) server(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/":
+			w.WriteHeader(http.StatusOK) // new-style API probe
+			return
+		case r.URL.Path == "/proxy/network/status":
+			_, _ = w.Write([]byte(`{"meta":{"server_version":"8.0.0"}}`))
+			return
+		case r.Method == http.MethodPut:
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Fatalf("reading PUT body: %v", err)
+			}
+			f.mu.Lock()
+			f.puts = append(f.puts, json.RawMessage(append([]byte(nil), body...)))
+			f.mu.Unlock()
 
-	t.Run("declared blocks still merge by index", func(t *testing.T) {
-		got := portOverridesForUpdate(current, []unifi.DevicePortOverrides{
-			{PortIDX: ptrInt64(2), Name: "printer"},
-			{PortIDX: ptrInt64(9), Name: "new"},
-		})
-		if len(got) != 3 {
-			t.Fatalf("merged to %d, want 3 (1 kept, 2 replaced, 9 appended)", len(got))
+			// A pointer, not a plain slice: nil after decode means the key
+			// was absent, [] means it was present but empty -- the same
+			// distinction overlayKeyedEntries/maskedBody rely on.
+			var decoded struct {
+				PortOverrides *[]map[string]any `json:"port_overrides"`
+			}
+			if err := json.Unmarshal(body, &decoded); err != nil {
+				t.Fatalf("decode PUT body: %v\nbody: %s", err, body)
+			}
+			if decoded.PortOverrides != nil {
+				next := make(map[string]map[string]any, len(*decoded.PortOverrides))
+				for _, entry := range *decoded.PortOverrides {
+					idx, _ := entry["port_idx"].(float64)
+					next[strconv.Itoa(int(idx))] = entry
+				}
+				f.mu.Lock()
+				f.ports = next
+				f.mu.Unlock()
+			}
+			_, _ = w.Write([]byte(`{"meta":{"rc":"ok"},"data":[]}`))
+			return
+		default:
+			raw, err := json.Marshal(map[string]any{
+				"meta": map[string]any{"rc": "ok"},
+				"data": []any{f.deviceJSON()},
+			})
+			if err != nil {
+				t.Fatalf("marshalling fake device: %v", err)
+			}
+			_, _ = w.Write(raw)
 		}
-		for _, po := range got {
-			if po.PortIDX != nil && *po.PortIDX == 2 && po.Name != "printer" {
-				t.Errorf("port 2 was not replaced by the declared block: %+v", po)
+	}))
+}
+
+// devicePortOverrideFromPUTs decodes every captured PUT body's
+// port_overrides array (if it has one) and returns the last entry seen for
+// portIdx across all of them, in call order -- a later call's view of the
+// port is the one that ends up stored. ok is false if no captured PUT ever
+// named that port at all.
+func devicePortOverrideFromPUTs(t *testing.T, puts []json.RawMessage, portIdx float64) (map[string]any, bool) {
+	t.Helper()
+	var found map[string]any
+	var ok bool
+	for _, raw := range puts {
+		var body struct {
+			PortOverrides []map[string]any `json:"port_overrides"`
+		}
+		if err := json.Unmarshal(raw, &body); err != nil {
+			t.Fatalf("decoding a captured PUT body: %v\nbody: %s", err, raw)
+		}
+		for _, entry := range body.PortOverrides {
+			if idx, _ := entry["port_idx"].(float64); idx == portIdx {
+				found, ok = entry, true
 			}
 		}
+	}
+	return found, ok
+}
+
+// anyPUTNamesPortOverrides reports whether any captured PUT body's top level
+// carries a port_overrides key at all, present or empty.
+func anyPUTNamesPortOverrides(t *testing.T, puts []json.RawMessage) bool {
+	t.Helper()
+	for _, raw := range puts {
+		var body map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &body); err != nil {
+			t.Fatalf("decoding a captured PUT body: %v\nbody: %s", err, raw)
+		}
+		if _, ok := body["port_overrides"]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// deviceRunUpdateSequence drives resourcekit's own Update() sequence for
+// deviceKitSpec by hand -- ApplyPlanToState, WireFields from the raw plan,
+// ToSDK from the merged state, SetID, Prefetch, BeforeSend, then
+// Backend.UpdateFields -- in the exact order internal/resourcekit.
+// Resource.Update follows, without the tfprotov6 request/response plumbing
+// around it. Mirrors vpnServerRunDNSMaskScenario's pattern
+// (vpn_server_resource_test.go).
+//
+// config is threaded through separately from plan because that is what
+// Resource.Update itself does, and what deviceKitBeforeSend now depends on:
+// BeforeSend needs the practitioner's raw config specifically to tell
+// "declared" from "computed but currently holds a value", which plan/state
+// cannot (see devicePortOverridesDeclaredFromConfig).
+func deviceRunUpdateSequence(
+	t *testing.T, client *unifi.ApiClient, prior, plan, config deviceKitModel,
+) {
+	t.Helper()
+	ctx := context.Background()
+	spec := deviceKitSpec()
+	spec.Backend = deviceKitBackend(client)
+	spec.BeforeSend = deviceKitBeforeSend(client)
+
+	state := prior
+	spec.ApplyPlanToState(&plan, &state)
+	site := state.Site.ValueString()
+
+	fields, err := spec.WireFields(&plan)
+	if err != nil {
+		t.Fatalf("WireFields: %v", err)
+	}
+
+	sdk, diags := spec.ToSDK(ctx, &state)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+	spec.Backend.SetID(sdk, state.ID.ValueString())
+
+	prefetched, prefetchDiags := spec.Prefetch(ctx, site)
+	if prefetchDiags.HasError() {
+		t.Fatalf("Prefetch: %v", prefetchDiags)
+	}
+
+	diags = spec.BeforeSend(ctx, &config, &state, prior, sdk, prefetched)
+	if diags.HasError() {
+		t.Fatalf("BeforeSend: %v", diags)
+	}
+
+	if _, err := spec.Backend.UpdateFields(ctx, site, sdk, fields...); err != nil {
+		t.Fatalf("Backend.UpdateFields: %v", err)
+	}
+}
+
+// deviceUpdateSequenceModel builds the minimum deviceKitModel a device
+// update needs to run: an id and mac matching the fake controller, and a
+// site.
+func deviceUpdateSequenceModel(id, mac string) deviceKitModel {
+	return deviceKitModel{
+		ID:   types.StringValue(id),
+		Site: types.StringValue("default"),
+		MAC:  hwtypes.NewMACAddressValue(mac),
+		Type: types.StringValue("usw"),
+	}
+}
+
+// Test_deviceUpdate_configuredPortKeepsUnmodelledMember pins the first of
+// task 2's four fixed defects: a port with a port_override block that
+// declares only "name" must not disturb eee_enabled, a member
+// unifi.DevicePortOverrides carries but portOverrideModel never models at
+// all. Against today's whole-array encode this is RED -- the merged struct
+// devicePortOverrideEncode builds starts from the Go zero value for every
+// member it does not know about, and that zero (an omitted, "false" bool)
+// replaces whatever the controller held once the whole array goes back out.
+func Test_deviceUpdate_configuredPortKeepsUnmodelledMember(t *testing.T) {
+	fake := newDeviceFakePortOverridesController(map[string]map[string]any{
+		"1": {"port_idx": float64(1), "name": "uplink", "poe_mode": "auto", "eee_enabled": true},
+	})
+	srv := fake.server(t)
+	defer srv.Close()
+	client, err := unifi.New(context.Background(), &unifi.Config{BaseURL: srv.URL, APIKey: "test-key"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	config := portOverrideSetWith(t, map[string]attr.Value{
+		"index": types.Int64Value(1),
+		"name":  types.StringValue("renamed"),
 	})
 
-	t.Run("no current device leaves the declared set alone", func(t *testing.T) {
-		if got := portOverridesForUpdate(nil, nil); got != nil {
-			t.Errorf("with no fetched device there is nothing to preserve, got %v", got)
-		}
+	prior := deviceUpdateSequenceModel(fake.id, fake.mac)
+	plan := prior
+	plan.PortOverride = config
+	planConfig := prior
+	planConfig.PortOverride = config
+
+	deviceRunUpdateSequence(t, client, prior, plan, planConfig)
+
+	got, ok := fake.port(1)
+	if !ok {
+		t.Fatalf("port 1 is gone from the controller's stored overrides")
+	}
+	if got["name"] != "renamed" {
+		t.Errorf("port 1 name = %v, want renamed (the write itself did not take effect)", got["name"])
+	}
+	if eee, ok := got["eee_enabled"]; !ok || eee != true {
+		t.Errorf("port 1 eee_enabled = %v (present=%v), want true -- "+
+			"a member this provider never models must survive a write that "+
+			"only declares name", eee, ok)
+	}
+}
+
+// Test_deviceUpdate_unconfiguredPortKeepsItsMembers pins the second of task
+// 2's four fixed defects: a port with no port_override block at all -- port
+// 2 here, while port 1 is declared -- must keep every member exactly as it
+// was, an explicit "false" (autoneg) included. Port 2's raw entry
+// legitimately still travels on the wire under the fix
+// (updateDevicePortOverridesGrouped overlays onto the full stored array so
+// the controller's whole-array replace doesn't drop it), so the invariant
+// this checks is its content, not its absence.
+//
+// Against today's whole-array encode this is RED: current.PortOverrides is
+// decoded straight from a GET, so port 2's Autoneg field holds a real Go
+// false either way -- but a Go bool has no "unset" state, so re-marshalling
+// that struct for the resend drops the member via omitempty regardless of
+// whether the controller's own JSON had it explicitly. The fake controller
+// then stores whatever it was sent, key and all -- an explicit false becomes
+// no key at all.
+func Test_deviceUpdate_unconfiguredPortKeepsItsMembers(t *testing.T) {
+	fake := newDeviceFakePortOverridesController(map[string]map[string]any{
+		"1": {"port_idx": float64(1), "name": "uplink", "poe_mode": "auto"},
+		"2": {"port_idx": float64(2), "name": "desk", "poe_mode": "auto", "autoneg": false},
 	})
+	srv := fake.server(t)
+	defer srv.Close()
+	client, err := unifi.New(context.Background(), &unifi.Config{BaseURL: srv.URL, APIKey: "test-key"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	config := portOverrideSetWith(t, map[string]attr.Value{
+		"index": types.Int64Value(1),
+		"name":  types.StringValue("renamed"),
+	})
+
+	prior := deviceUpdateSequenceModel(fake.id, fake.mac)
+	plan := prior
+	plan.PortOverride = config
+	planConfig := prior
+	planConfig.PortOverride = config
+
+	deviceRunUpdateSequence(t, client, prior, plan, planConfig)
+
+	got, ok := fake.port(2)
+	if !ok {
+		t.Fatalf("port 2 is gone from the controller's stored overrides")
+	}
+	if got["autoneg"] != false || got["name"] != "desk" || got["poe_mode"] != "auto" {
+		t.Errorf("port 2 = %+v, want it byte-for-byte unchanged", got)
+	}
+}
+
+// Test_deviceUpdate_explicitFalseReachesTheWire pins the third of task 2's
+// four fixed defects: a port_override block that sets autoneg = false must
+// send that false explicitly, not omit the member. Against today's
+// whole-array encode this is RED: a Go bool has no "unset" state, so
+// model.Autoneg.ValueBool() on a null attribute and on an explicit false
+// both produce the same zero value, and the JSON encoder's omitempty then
+// drops it either way -- an explicit false is wire-indistinguishable from
+// never having named the member at all.
+func Test_deviceUpdate_explicitFalseReachesTheWire(t *testing.T) {
+	fake := newDeviceFakePortOverridesController(map[string]map[string]any{
+		"1": {"port_idx": float64(1), "name": "uplink", "poe_mode": "auto", "autoneg": true},
+	})
+	srv := fake.server(t)
+	defer srv.Close()
+	client, err := unifi.New(context.Background(), &unifi.Config{BaseURL: srv.URL, APIKey: "test-key"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	config := portOverrideSetWith(t, map[string]attr.Value{
+		"index":   types.Int64Value(1),
+		"autoneg": types.BoolValue(false),
+	})
+
+	prior := deviceUpdateSequenceModel(fake.id, fake.mac)
+	plan := prior
+	plan.PortOverride = config
+	planConfig := prior
+	planConfig.PortOverride = config
+
+	deviceRunUpdateSequence(t, client, prior, plan, planConfig)
+
+	entry, ok := devicePortOverrideFromPUTs(t, fake.puttedBodies(), 1)
+	if !ok {
+		t.Fatalf("port 1 never appeared in any outgoing port-overrides write")
+	}
+	if v, present := entry["autoneg"]; !present || v != false {
+		t.Errorf("port 1's wire entry autoneg = %v (present=%v), want the "+
+			"literal key \"autoneg\":false -- an explicit false must not be "+
+			"an omission", v, present)
+	}
+
+	got, ok := fake.port(1)
+	if !ok {
+		t.Fatalf("port 1 is gone from the controller's stored overrides")
+	}
+	if got["autoneg"] != false {
+		t.Errorf("port 1 autoneg = %v after the update, want false to have taken effect", got["autoneg"])
+	}
+}
+
+// Test_deviceUpdate_noDeclaredPorts_sendsNoPortArray pins the fourth of task
+// 2's four fixed defects: an update that declares no port_override block at
+// all must never put port_overrides on the wire, in any call. Against
+// today's whole-array encode this is RED: port_overrides is unconditionally
+// in AlwaysWire, so the general masked write carries the whole current port
+// array on every update regardless of what config says.
+func Test_deviceUpdate_noDeclaredPorts_sendsNoPortArray(t *testing.T) {
+	fake := newDeviceFakePortOverridesController(map[string]map[string]any{
+		"1": {"port_idx": float64(1), "name": "uplink", "poe_mode": "auto"},
+	})
+	srv := fake.server(t)
+	defer srv.Close()
+	client, err := unifi.New(context.Background(), &unifi.Config{BaseURL: srv.URL, APIKey: "test-key"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	prior := deviceUpdateSequenceModel(fake.id, fake.mac)
+	plan := prior
+	plan.Name = types.StringValue("renamed-device") // something to write, unrelated to ports
+	config := prior
+	config.Name = plan.Name
+
+	deviceRunUpdateSequence(t, client, prior, plan, config)
+
+	if anyPUTNamesPortOverrides(t, fake.puttedBodies()) {
+		t.Errorf("an update declaring no port_override block put port_overrides " +
+			"on the wire; it must send no port array at all")
+	}
+	got, ok := fake.port(1)
+	if !ok || got["name"] != "uplink" {
+		t.Errorf("port 1 = %+v (present=%v), want it untouched", got, ok)
+	}
 }

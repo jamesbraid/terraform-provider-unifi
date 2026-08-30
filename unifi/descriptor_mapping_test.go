@@ -77,11 +77,15 @@ type descriptor struct {
 	// field can round-trip through it instead of through a Fields entry, which
 	// is how a write-only secret and a translated set are carried.
 	AlwaysWire map[string]bool
-	// MappedElsewhere is the Spec's list of wires a sibling document actually
-	// carries -- an Extra sharing this section's model, with its own Spec and
-	// its own SDK type (unifi_setting's usg and usg_geo share one mapping
-	// file). Accounted for without the per-wire SDK-member check below, which
-	// asks this descriptor's own SDKType and would be the wrong struct.
+	// MappedElsewhere is the Spec's list of wires that round-trip through
+	// something other than a Fields entry on this Spec: a sibling document --
+	// an Extra sharing this section's model, with its own Spec and its own
+	// SDK type (unifi_setting's usg and usg_geo share one mapping file) -- or
+	// this same Spec writing the wire through a dedicated SDK method instead
+	// of the general masked write (unifi_device's "port_overrides"). Either
+	// way it's accounted for without the per-wire SDK-member check below,
+	// which asks this descriptor's own SDKType and, for the sibling case,
+	// would be the wrong struct.
 	MappedElsewhere map[string]bool
 	SDKType         string            // the Spec's second type argument, e.g. ClientGroup
 	ModelTags       map[string]string // model Go field -> tfsdk tag

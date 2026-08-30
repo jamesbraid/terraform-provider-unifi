@@ -111,14 +111,21 @@ type Spec[M any, S any] struct {
 	AlwaysWire []string
 
 	// MappedElsewhere names wires this Spec's own mapping.json declares
-	// managed that a SIBLING document actually carries -- an Extra sharing
-	// this section's model, with its own Spec and its own SDK type (usg_geo's
-	// "action" while this Spec's own SDKType is Usg). It exists only so
-	// TestEveryDescriptorAgreesWithItsSources can treat them as accounted
-	// for without checking them against THIS Spec's SDK struct, which would
-	// be the wrong struct to ask; unlike AlwaysWire it never joins the wire
-	// mask and WireNameProblems does not validate it against this Spec's own
-	// SDK tags. The sibling's own Spec is what actually proves these wires
+	// managed that round-trip through something other than a Fields entry on
+	// this Spec. Two cases: a SIBLING document actually carries it -- an
+	// Extra sharing this section's model, with its own Spec and its own SDK
+	// type (usg_geo's "action" while this Spec's own SDKType is Usg) -- or
+	// this Spec itself writes it through a dedicated SDK method instead of
+	// the general masked write (unifi_device's "port_overrides", through
+	// UpdateDevicePortOverrides rather than UpdateDeviceFields, because the
+	// general masked write's whole-array replace can silently clobber a port
+	// the caller never declared -- see updateDevicePortOverridesGrouped).
+	// It exists only so TestEveryDescriptorAgreesWithItsSources can treat
+	// them as accounted for without checking them against THIS Spec's SDK
+	// struct, which would be the wrong struct to ask for the sibling case;
+	// unlike AlwaysWire it never joins the wire mask and WireNameProblems
+	// does not validate it against this Spec's own SDK tags. Whichever code
+	// path actually performs the write is what proves these wires
 	// round-trip -- this field only silences a false positive here.
 	MappedElsewhere []string
 

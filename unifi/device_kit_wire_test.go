@@ -91,17 +91,19 @@ func Test_deviceMask_meshStaVapEnabled(t *testing.T) {
 	})
 }
 
-// port_overrides is always in the mask, which is what makes the merge
-// load-bearing rather than an optimisation: it's derived by BeforeSend
-// rather than mapped from a Field, so nothing in the plan can name it and
-// AlwaysWire has to. Being in the mask means it's always in the body, and
-// a nil slice marshals to [] -- which the controller reads as a full
-// replace with nothing. If either half stops holding,
-// mergePortOverridesByIndex is no longer protecting anything.
-func Test_devicePortOverridesAreAlwaysOnTheWire(t *testing.T) {
+// port_overrides must never be in the general device write mask, on any
+// plan -- it is written through its own keyed overlay
+// (updateDevicePortOverridesGrouped, driven from deviceKitBeforeSend), never
+// through the masked device PUT that carries this mask. Regressing this
+// would resurrect the whole-array write the port-overrides plan exists to
+// remove: unifi.Device.PortOverrides carries no omitempty (pinned by
+// Test_deviceForceEmittedFieldsAreStillJustThree below), so naming it in
+// the mask force-emits whatever *ui.Device.PortOverrides happens to hold --
+// nil marshals to [], which the controller reads as clearing every port.
+func Test_devicePortOverridesNeverInTheGeneralWireMask(t *testing.T) {
 	mask := deviceMaskFor(t, deviceKitModel{})
-	if !deviceMaskHas(mask, "port_overrides") {
-		t.Fatalf("port_overrides is not in the mask of an otherwise empty plan: %v", mask)
+	if deviceMaskHas(mask, "port_overrides") {
+		t.Fatalf("port_overrides is in the general write mask: %v", mask)
 	}
 
 	body, err := json.Marshal(unifi.Device{ID: "d1"})
@@ -115,9 +117,10 @@ func Test_devicePortOverridesAreAlwaysOnTheWire(t *testing.T) {
 
 // Test_deviceForceEmittedFieldsAreStillJustThree pins the fields of
 // unifi.Device that carry no omitempty. Force-emitted plus in the mask is
-// the combination that writes a zero: port_overrides is exactly that
-// today, by way of AlwaysWire, which is why the merge above exists. A
-// fourth entry appearing here is a new candidate for the same treatment.
+// the combination that writes a zero on every update: adopted and state are
+// Fields, so they carry what the last read returned rather than a zero.
+// port_overrides must stay out of the mask entirely (see the test above) --
+// a fourth entry appearing here is a new candidate for the same care.
 func Test_deviceForceEmittedFieldsAreStillJustThree(t *testing.T) {
 	_, forceEmits := wireTagsOf(unifi.Device{})
 
@@ -134,9 +137,9 @@ func Test_deviceForceEmittedFieldsAreStillJustThree(t *testing.T) {
 		t.Fatalf("unifi.Device force-emits %v, not %v.\n\n"+
 			"A force-emitted field writes a Go zero whenever the mask names it. "+
 			"adopted and state are Fields, so they carry what the last read "+
-			"returned; port_overrides is derived and always masked, which is what "+
-			"the merge protects. A new entry here needs the same decision made "+
-			"about it, then update this list.",
+			"returned; port_overrides must never be in the mask at all -- see "+
+			"Test_devicePortOverridesNeverInTheGeneralWireMask. A new entry here "+
+			"needs the same decision made about it, then update this list.",
 			got, want)
 	}
 }
