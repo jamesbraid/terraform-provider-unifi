@@ -9,6 +9,40 @@ import (
 	unifi "github.com/ubiquiti-community/go-unifi/unifi"
 )
 
+// Test_sdkConstraintsResolvesATopLevelSettingsType pins that production's
+// lookup finds the SDK's own constraint for a top-level settings field.
+// settings.FieldConstraints keys every entry with a "Setting" prefix
+// ("SettingGlobalSwitch"), but the emitted Go struct is named "GlobalSwitch"
+// -- the prefix is stripped when the type is generated. A lookup keyed by
+// the bare Go type name therefore misses the table entirely, for every
+// top-level settings type, silently: sdkConstraints returns ok=false and no
+// validator is ever derived.
+func Test_sdkConstraintsResolvesATopLevelSettingsType(t *testing.T) {
+	got, ok := sdkConstraints("GlobalSwitch", "stp_version")
+	if !ok {
+		t.Fatalf("sdkConstraints(%q, %q) ok = false, want true: the SDK's settings.FieldConstraints[\"SettingGlobalSwitch\"][\"stp_version\"] entry exists but is never found", "GlobalSwitch", "stp_version")
+	}
+	want := []string{"stp", "rstp", "disabled"}
+	if !reflect.DeepEqual(got.Values, want) {
+		t.Errorf("sdkConstraints(%q, %q).Values = %v, want %v", "GlobalSwitch", "stp_version", got.Values, want)
+	}
+}
+
+// Test_sdkConstraintsResolvesANestedSettingsType pins the case that already
+// works: a nested settings struct's own Go type name already carries the
+// "Setting<Parent><Child>" prefix baked in by the generator (it is never
+// stripped for anything but the top-level type), so it matches the table
+// key as-is. A fix to the top-level case must not regress this.
+func Test_sdkConstraintsResolvesANestedSettingsType(t *testing.T) {
+	got, ok := sdkConstraints("SettingDashboardWidgets", "name")
+	if !ok {
+		t.Fatalf("sdkConstraints(%q, %q) ok = false, want true", "SettingDashboardWidgets", "name")
+	}
+	if len(got.Values) == 0 {
+		t.Errorf("sdkConstraints(%q, %q).Values is empty, want the widget-name enumeration", "SettingDashboardWidgets", "name")
+	}
+}
+
 // stubLookup builds a constraintLookup over a plain table, standing in for
 // the real merged unifi/settings tables in these tests.
 func stubLookup(table map[string]map[string]unifi.FieldConstraint) constraintLookup {
