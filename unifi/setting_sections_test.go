@@ -38,6 +38,7 @@ func TestSettingKitSectionsOrder(t *testing.T) {
 		"global_switch",
 		"netflow",
 		"radio_ai",
+		"snmp",
 	}
 
 	r := &settingResource{client: &Client{}}

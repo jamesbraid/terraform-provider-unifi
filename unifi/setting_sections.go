@@ -57,6 +57,7 @@ var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[se
 	globalSwitchKitSection,
 	netflowKitSection,
 	radioAiKitSection,
+	snmpKitSection,
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -100,3 +101,11 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // setting_radio_ai_descriptor.go. radio_ai is the one section whose
 // AfterReceive is NOT a plain unconditional mirror -- see
 // setting_radio_ai_descriptor.go's own comment.
+//
+// snmp moved the same way too, from the controller's own Snmp definition --
+// see setting_snmp_descriptor.go. Its AfterReceive is radius-shaped, not a
+// plain unconditional mirror either: community and password are
+// Optional+Computed+Sensitive secrets the controller echoes back verbatim
+// (pinned by this dispatch's own live-controller probe, Task 0), so
+// snmpAfterReceive plan-conditions both the same way radiusAfterReceive
+// plan-conditions radius.secret.

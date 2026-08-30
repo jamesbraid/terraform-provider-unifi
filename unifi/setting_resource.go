@@ -89,6 +89,7 @@ type settingResourceModel struct {
 	GlobalSwitch       types.Object   `tfsdk:"global_switch"`
 	Netflow            types.Object   `tfsdk:"netflow"`
 	RadioAi            types.Object   `tfsdk:"radio_ai"`
+	Snmp               types.Object   `tfsdk:"snmp"`
 	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 

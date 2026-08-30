@@ -733,6 +733,41 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "Snmp.community",
+      "terraform_name": "snmp.community",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Snmp.enabled",
+      "terraform_name": "snmp.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Snmp.enabledV3",
+      "terraform_name": "snmp.enabled_v3",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Snmp.username",
+      "terraform_name": "snmp.username",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Snmp.x_password",
+      "terraform_name": "snmp.password",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "SslInspection.state",
       "terraform_name": "ssl_inspection.state",
       "structural_type": "string",

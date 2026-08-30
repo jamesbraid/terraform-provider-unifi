@@ -2852,6 +2852,78 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_snmp exercises snmp's whole surface -- Task 0's
+// live-controller probe (this dispatch's own, run before this file was
+// written) found the controller echoes community and password back
+// verbatim, no mask and no hash, so both are radius-shaped secrets rather
+// than mgmt-shaped ones. That is exactly why this test never asserts either
+// value: per the brief, an acceptance test over a secret the controller
+// echoes must prove the apply is clean and that a non-secret attribute
+// (username) round-trips, not pin the echoed bytes in a check a future
+// controller change could turn into a false pass. Every attribute is
+// configured so the apply itself proves the write reaches the wire and the
+// read decodes without error.
+func TestAccSettingResource_snmp(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_snmp(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"snmp.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"snmp.enabled_v3",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"snmp.username",
+						"test-user",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// SpecSection.Read only fetches a section when
+					// Configured(plan) is true; import's state has just id
+					// set, so snmp reads back null instead of the applied
+					// values -- the same reason radius's own import step
+					// ignores every one of its attributes, not only secret.
+					"snmp.%",
+					"snmp.community", // Sensitive, and never asserted anyway.
+					"snmp.enabled",
+					"snmp.enabled_v3",
+					"snmp.password", // Sensitive, and never asserted anyway.
+					"snmp.username",
+				},
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_snmp() string {
+	return `
+resource "unifi_setting" "test" {
+  snmp = {
+    enabled    = true
+    enabled_v3 = true
+    community  = "test-community-9f2b1e"
+    username   = "test-user"
+    password   = "test-password-9f2b1e"
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

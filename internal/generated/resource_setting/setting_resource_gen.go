@@ -1342,6 +1342,58 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"snmp": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"community": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+						MarkdownDescription: "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,256})$`), ""),
+						},
+					},
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable SNMP (v1/v2c).",
+						MarkdownDescription: "Enable SNMP (v1/v2c).",
+					},
+					"enabled_v3": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable SNMPv3.",
+						MarkdownDescription: "Enable SNMPv3.",
+					},
+					"password": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+						MarkdownDescription: "SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[^'"]{8,32})$`), ""),
+						},
+					},
+					"username": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "SNMPv3 username.",
+						MarkdownDescription: "SNMPv3 username.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[a-zA-Z0-9_-]{1,30})$`), ""),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "SNMP (Simple Network Management Protocol) settings.",
+				MarkdownDescription: "SNMP (Simple Network Management Protocol) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"ssl_inspection": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"state": schema.StringAttribute{

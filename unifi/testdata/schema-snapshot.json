@@ -7075,6 +7075,68 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ]
         },
+        "snmp": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "SNMP (Simple Network Management Protocol) settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "snmp.community": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{1,256})$'"
+          ]
+        },
+        "snmp.enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable SNMP (v1/v2c).",
+          "description_kind": "markdown"
+        },
+        "snmp.enabled_v3": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable SNMPv3.",
+          "description_kind": "markdown"
+        },
+        "snmp.password": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "sensitive": true,
+          "description": "SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[^'\"]{8,32})$'"
+          ]
+        },
+        "snmp.username": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "SNMPv3 username.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:[a-zA-Z0-9_-]{1,30})$'"
+          ]
+        },
         "ssl_inspection": {
           "kind": "attribute",
           "nesting_mode": "single",

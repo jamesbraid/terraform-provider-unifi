@@ -99,6 +99,7 @@ resource "unifi_setting" "radius_only" {
 - `radio_ai` (Attributes) AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. On this controller generation, enabling this section (`enabled = true`) alone -- with no channel or radio constraints also configured -- can make the controller rewrite a channel list such as `channels_na` within the same apply, which Terraform reports as an inconsistent-result error rather than a later drift. (see [below for nested schema](#nestedatt--radio_ai))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
 - `site` (String) The name of the site to associate the settings with.
+- `snmp` (Attributes) SNMP (Simple Network Management Protocol) settings. (see [below for nested schema](#nestedatt--snmp))
 - `ssl_inspection` (Attributes) SSL inspection settings. (see [below for nested schema](#nestedatt--ssl_inspection))
 - `syslog` (Attributes) Remote syslog (rsyslogd) settings. (see [below for nested schema](#nestedatt--syslog))
 - `teleport` (Attributes) Teleport (self-hosted VPN gateway discovery) settings. (see [below for nested schema](#nestedatt--teleport))
@@ -509,6 +510,18 @@ Optional:
 - `enabled` (Boolean) Enable the site's RADIUS server. A VPN server that authenticates against RADIUS (`unifi_vpn_server` with `openvpn` or `l2tp`) is rejected with `api.err.RadiusServerNotEnabled` while this is off.
 - `interim_update_interval` (String) Interim update interval, as a Go duration string (e.g. `1h`, `3600s`).
 - `secret` (String, Sensitive) RADIUS shared secret.
+
+
+<a id="nestedatt--snmp"></a>
+### Nested Schema for `snmp`
+
+Optional:
+
+- `community` (String, Sensitive) SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.
+- `enabled` (Boolean) Enable SNMP (v1/v2c).
+- `enabled_v3` (Boolean) Enable SNMPv3.
+- `password` (String, Sensitive) SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.
+- `username` (String) SNMPv3 username.
 
 
 <a id="nestedatt--ssl_inspection"></a>
