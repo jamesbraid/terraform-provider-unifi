@@ -44,6 +44,7 @@ var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[se
 	usgKitSection,
 	igmpSnoopingKitSection,
 	localeKitSection,
+	globalNatKitSection,
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -72,5 +73,6 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // ipsSuppressionKitBackend and setting_usg_descriptor.go's usgGeoKitSpec/
 // usgGeoKitBackend.
 //
-// locale moved the same way too, from the controller's own Locale
-// definition -- see setting_locale_descriptor.go.
+// locale and global_nat moved the same way too, each from the controller's
+// own Locale/GlobalNat definition -- see setting_locale_descriptor.go and
+// setting_global_nat_descriptor.go.

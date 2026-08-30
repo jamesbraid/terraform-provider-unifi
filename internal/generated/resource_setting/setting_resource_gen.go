@@ -147,6 +147,36 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"global_nat": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"excluded_network_ids": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "IDs of networks excluded from global NAT.",
+						MarkdownDescription: "IDs of networks excluded from global NAT.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Global NAT mode: `auto`, `custom`, or `off`.",
+						MarkdownDescription: "Global NAT mode: `auto`, `custom`, or `off`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "custom", "off"),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Global NAT (network address translation) settings.",
+				MarkdownDescription: "Global NAT (network address translation) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"id": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The ID of the settings.",

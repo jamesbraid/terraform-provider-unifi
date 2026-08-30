@@ -1412,6 +1412,93 @@ resource "unifi_setting" "test" {
 `
 }
 
+func TestAccSettingResource_globalNat(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalNat(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_nat.mode",
+						"auto",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_nat.excluded_network_ids.#",
+						"1",
+					),
+					resource.TestCheckResourceAttrPair(
+						"unifi_setting.test", "global_nat.excluded_network_ids.0",
+						"unifi_network.test", "id",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"global_nat.%",
+					"global_nat.mode",
+					"global_nat.excluded_network_ids",
+				},
+			},
+			{
+				Config: testAccSettingConfig_globalNatUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_nat.mode",
+						"off",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_nat.excluded_network_ids.#",
+						"1",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalNat() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-global-nat-network"
+  subnet = "10.3.11.1/24"
+  vlan   = 31
+}
+
+resource "unifi_setting" "test" {
+  global_nat = {
+    mode                 = "auto"
+    excluded_network_ids = [unifi_network.test.id]
+  }
+}
+`
+}
+
+func testAccSettingConfig_globalNatUpdate() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-global-nat-network"
+  subnet = "10.3.11.1/24"
+  vlan   = 31
+}
+
+resource "unifi_setting" "test" {
+  global_nat = {
+    mode                 = "off"
+    excluded_network_ids = [unifi_network.test.id]
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

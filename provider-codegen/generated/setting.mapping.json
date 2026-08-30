@@ -61,6 +61,20 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "GlobalNat.excluded_network_ids",
+      "terraform_name": "global_nat.excluded_network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "GlobalNat.mode",
+      "terraform_name": "global_nat.mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "IgmpSnooping.enabled",
       "terraform_name": "igmp_snooping.enabled",
       "structural_type": "bool",

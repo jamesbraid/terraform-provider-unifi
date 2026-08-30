@@ -5680,6 +5680,39 @@
           "description_kind": "markdown",
           "default": "booldefault.staticBoolDefault: value defaults to false"
         },
+        "global_nat": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Global NAT (network address translation) settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "global_nat.excluded_network_ids": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "IDs of networks excluded from global NAT.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "global_nat.mode": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Global NAT mode: `auto`, `custom`, or `off`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"auto\" \"custom\" \"off\"]"
+          ]
+        },
         "id": {
           "kind": "attribute",
           "type": "\"string\"",

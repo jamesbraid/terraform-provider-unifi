@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.global_nat",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "excluded_network_ids",
+      "terraform_name": "excluded_network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "mode",
+      "terraform_name": "mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

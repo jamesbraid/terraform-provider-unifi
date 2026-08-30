@@ -80,6 +80,7 @@ resource "unifi_setting" "radius_only" {
 - `country` (Attributes) Regulatory country settings. (see [below for nested schema](#nestedatt--country))
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
+- `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
@@ -144,6 +145,15 @@ Optional:
 
 - `enabled` (Boolean) Whether DPI is enabled.
 - `fingerprinting_enabled` (Boolean) Whether device fingerprinting is enabled.
+
+
+<a id="nestedatt--global_nat"></a>
+### Nested Schema for `global_nat`
+
+Optional:
+
+- `excluded_network_ids` (List of String) IDs of networks excluded from global NAT.
+- `mode` (String) Global NAT mode: `auto`, `custom`, or `off`.
 
 
 <a id="nestedatt--igmp_snooping"></a>
