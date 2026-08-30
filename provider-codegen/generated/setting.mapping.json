@@ -250,6 +250,13 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "MagicSiteToSiteVpn.enabled",
+      "terraform_name": "magic_site_to_site_vpn.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Mdns.mode",
       "terraform_name": "mdns.mode",
       "structural_type": "string",

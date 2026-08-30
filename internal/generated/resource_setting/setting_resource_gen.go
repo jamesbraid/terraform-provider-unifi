@@ -618,6 +618,23 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"magic_site_to_site_vpn": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable magic site-to-site VPN.",
+						MarkdownDescription: "Enable magic site-to-site VPN.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Magic site-to-site VPN settings.",
+				MarkdownDescription: "Magic site-to-site VPN settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"mdns": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"custom_services": schema.ListNestedAttribute{

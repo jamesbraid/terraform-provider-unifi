@@ -89,6 +89,7 @@ resource "unifi_setting" "radius_only" {
 - `ipsec` (Attributes) IPsec settings for site-to-site VPNs. (see [below for nested schema](#nestedatt--ipsec))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
 - `locale` (Attributes) Site locale settings. (see [below for nested schema](#nestedatt--locale))
+- `magic_site_to_site_vpn` (Attributes) Magic site-to-site VPN settings. (see [below for nested schema](#nestedatt--magic_site_to_site_vpn))
 - `mdns` (Attributes) mDNS (multicast DNS / Bonjour) repeater settings. (see [below for nested schema](#nestedatt--mdns))
 - `mgmt` (Attributes) Management settings. (see [below for nested schema](#nestedatt--mgmt))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
@@ -313,6 +314,14 @@ Optional:
 Optional:
 
 - `timezone` (String) Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).
+
+
+<a id="nestedatt--magic_site_to_site_vpn"></a>
+### Nested Schema for `magic_site_to_site_vpn`
+
+Optional:
+
+- `enabled` (Boolean) Enable magic site-to-site VPN.
 
 
 <a id="nestedatt--mdns"></a>

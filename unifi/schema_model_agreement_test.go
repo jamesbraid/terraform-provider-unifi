@@ -114,6 +114,8 @@ func TestServedSchemaAgreesWithItsRuntimeModel(t *testing.T) {
 		"unifi_setting.ips.suppression_whitelist":        "settingIpsTrackingModel settingIpsWhitelistModel",
 		"unifi_setting.country":                          "settingCountryModel settingMdnsPredefinedServiceModel",
 		"unifi_setting.mdns.predefined_services":         "settingCountryModel settingMdnsPredefinedServiceModel",
+		"unifi_setting.magic_site_to_site_vpn":           "settingMagicSiteToSiteVpnModel settingNetworkOptimizationModel",
+		"unifi_setting.network_optimization":             "settingMagicSiteToSiteVpnModel settingNetworkOptimizationModel",
 		"unifi_vpn_server.dns":                           "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"data.unifi_network.dhcp_guarding":               "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",
 		"data.unifi_network.dhcp_relay":                  "dhcpGuardingModel dhcpRelayModel vpnServerDNSModel",

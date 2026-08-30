@@ -60,32 +60,33 @@ type settingResource struct {
 // alongside the Specs that now own them.
 
 type settingResourceModel struct {
-	ID            types.String   `tfsdk:"id"`
-	Site          types.String   `tfsdk:"site"`
-	AutoSpeedtest types.Object   `tfsdk:"auto_speedtest"`
-	Country       types.Object   `tfsdk:"country"`
-	Dpi           types.Object   `tfsdk:"dpi"`
-	Lcm           types.Object   `tfsdk:"lcm"`
-	NetworkOpt    types.Object   `tfsdk:"network_optimization"`
-	Ntp           types.Object   `tfsdk:"ntp"`
-	Syslog        types.Object   `tfsdk:"syslog"`
-	Doh           types.Object   `tfsdk:"doh"`
-	Ips           types.Object   `tfsdk:"ips"`
-	Mgmt          types.Object   `tfsdk:"mgmt"`
-	Radius        types.Object   `tfsdk:"radius"`
-	USG           types.Object   `tfsdk:"usg"`
-	IgmpSnooping  types.Object   `tfsdk:"igmp_snooping"`
-	Locale        types.Object   `tfsdk:"locale"`
-	GlobalNat     types.Object   `tfsdk:"global_nat"`
-	SslInspection types.Object   `tfsdk:"ssl_inspection"`
-	Ipsec         types.Object   `tfsdk:"ipsec"`
-	Dashboard     types.Object   `tfsdk:"dashboard"`
-	EtherLighting types.Object   `tfsdk:"ether_lighting"`
-	GlobalNetwork types.Object   `tfsdk:"global_network"`
-	TrafficFlow   types.Object   `tfsdk:"traffic_flow"`
-	Mdns          types.Object   `tfsdk:"mdns"`
-	Teleport      types.Object   `tfsdk:"teleport"`
-	Timeouts      timeouts.Value `tfsdk:"timeouts"`
+	ID                 types.String   `tfsdk:"id"`
+	Site               types.String   `tfsdk:"site"`
+	AutoSpeedtest      types.Object   `tfsdk:"auto_speedtest"`
+	Country            types.Object   `tfsdk:"country"`
+	Dpi                types.Object   `tfsdk:"dpi"`
+	Lcm                types.Object   `tfsdk:"lcm"`
+	NetworkOpt         types.Object   `tfsdk:"network_optimization"`
+	Ntp                types.Object   `tfsdk:"ntp"`
+	Syslog             types.Object   `tfsdk:"syslog"`
+	Doh                types.Object   `tfsdk:"doh"`
+	Ips                types.Object   `tfsdk:"ips"`
+	Mgmt               types.Object   `tfsdk:"mgmt"`
+	Radius             types.Object   `tfsdk:"radius"`
+	USG                types.Object   `tfsdk:"usg"`
+	IgmpSnooping       types.Object   `tfsdk:"igmp_snooping"`
+	Locale             types.Object   `tfsdk:"locale"`
+	GlobalNat          types.Object   `tfsdk:"global_nat"`
+	SslInspection      types.Object   `tfsdk:"ssl_inspection"`
+	Ipsec              types.Object   `tfsdk:"ipsec"`
+	Dashboard          types.Object   `tfsdk:"dashboard"`
+	EtherLighting      types.Object   `tfsdk:"ether_lighting"`
+	GlobalNetwork      types.Object   `tfsdk:"global_network"`
+	TrafficFlow        types.Object   `tfsdk:"traffic_flow"`
+	Mdns               types.Object   `tfsdk:"mdns"`
+	Teleport           types.Object   `tfsdk:"teleport"`
+	MagicSiteToSiteVpn types.Object   `tfsdk:"magic_site_to_site_vpn"`
+	Timeouts           timeouts.Value `tfsdk:"timeouts"`
 }
 
 // settingIgmpSnoopingModel moved to setting_igmp_snooping_descriptor.go,

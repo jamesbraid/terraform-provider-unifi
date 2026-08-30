@@ -207,7 +207,14 @@
     "Teleport.attr_no_delete",
     "Teleport.attr_no_edit",
     "Teleport.key",
-    "Teleport.site_id"
+    "Teleport.site_id",
+    "MagicSiteToSiteVpn._id",
+    "MagicSiteToSiteVpn.attr_hidden",
+    "MagicSiteToSiteVpn.attr_hidden_id",
+    "MagicSiteToSiteVpn.attr_no_delete",
+    "MagicSiteToSiteVpn.attr_no_edit",
+    "MagicSiteToSiteVpn.key",
+    "MagicSiteToSiteVpn.site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2691,6 +2698,38 @@
       ],
       "terraform_name": "teleport",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Magic site-to-site VPN settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable magic site-to-site VPN."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "MagicSiteToSiteVpn",
+          "terraform_name": "enabled"
+        }
+      ],
+      "terraform_name": "magic_site_to_site_vpn",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -2755,6 +2794,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "d02733ae146ce5d2e9a41dd3158033b6a2f523449f34f9e1f8755524dca25852",
+  "source_specification_sha256": "0e0b8e5f92b59c8851524298358634429a38a0c3eb4189429b41b1d0734e1788",
   "surface_kind": "managed_resource"
 }

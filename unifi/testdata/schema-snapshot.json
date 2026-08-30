@@ -6217,6 +6217,25 @@
           "description": "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).",
           "description_kind": "markdown"
         },
+        "magic_site_to_site_vpn": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Magic site-to-site VPN settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "magic_site_to_site_vpn.enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable magic site-to-site VPN.",
+          "description_kind": "markdown"
+        },
         "mdns": {
           "kind": "attribute",
           "nesting_mode": "single",

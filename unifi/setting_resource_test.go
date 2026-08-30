@@ -2259,6 +2259,70 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_magicSiteToSiteVpn exercises the one field
+// settings.MagicSiteToSiteVpn actually carries -- enabled -- through a
+// create/import/update lifecycle. See
+// setting_magic_site_to_site_vpn_descriptor.go's own comment: the dispatch
+// brief's premise of a controller-generated secret field does not hold
+// against the pinned SDK's generated struct.
+func TestAccSettingResource_magicSiteToSiteVpn(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_magicSiteToSiteVpn(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"magic_site_to_site_vpn.enabled",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"magic_site_to_site_vpn.%",
+					"magic_site_to_site_vpn.enabled",
+				},
+			},
+			{
+				Config: testAccSettingConfig_magicSiteToSiteVpnUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"magic_site_to_site_vpn.enabled",
+						"false",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_magicSiteToSiteVpn() string {
+	return `
+resource "unifi_setting" "test" {
+  magic_site_to_site_vpn = {
+    enabled = true
+  }
+}
+`
+}
+
+func testAccSettingConfig_magicSiteToSiteVpnUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  magic_site_to_site_vpn = {
+    enabled = false
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {
