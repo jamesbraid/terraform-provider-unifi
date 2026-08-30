@@ -222,7 +222,14 @@
     "GlobalSwitch.attr_no_edit",
     "GlobalSwitch.key",
     "GlobalSwitch.site_id",
-    "GlobalSwitch.acl_device_isolation"
+    "GlobalSwitch.acl_device_isolation",
+    "Netflow._id",
+    "Netflow.attr_hidden",
+    "Netflow.attr_hidden_id",
+    "Netflow.attr_no_delete",
+    "Netflow.attr_no_edit",
+    "Netflow.key",
+    "Netflow.site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2968,6 +2975,217 @@
       ],
       "terraform_name": "global_switch",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "NetFlow traffic export settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Automatically generate the NetFlow engine ID."
+          },
+          "disposition": "managed",
+          "structural_name": "auto_engine_id_enabled",
+          "structural_source": "Netflow",
+          "terraform_name": "auto_engine_id_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable NetFlow traffic export. Requires at least one network in `network_ids`."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Netflow",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow engine ID."
+          },
+          "disposition": "managed",
+          "structural_name": "engine_id",
+          "structural_source": "Netflow",
+          "terraform_name": "engine_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow export frequency."
+          },
+          "disposition": "managed",
+          "structural_name": "export_frequency",
+          "structural_source": "Netflow",
+          "terraform_name": "export_frequency"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Network IDs NetFlow export applies to.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "network_ids",
+          "structural_source": "Netflow",
+          "terraform_name": "network_ids",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow collector port.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1024, 65535)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "port",
+          "structural_source": "Netflow",
+          "terraform_name": "port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow template refresh rate."
+          },
+          "disposition": "managed",
+          "structural_name": "refresh_rate",
+          "structural_source": "Netflow",
+          "terraform_name": "refresh_rate"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow sampling mode.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"off\", \"hash\", \"random\", \"deterministic\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "sampling_mode",
+          "structural_source": "Netflow",
+          "terraform_name": "sampling_mode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow sampling rate.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(2, 16383)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "sampling_rate",
+          "structural_source": "Netflow",
+          "terraform_name": "sampling_rate"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow collector hostname or IP address.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    },
+                    {
+                      "path": "regexp"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,252}[^\\.]$)$`), \"\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "server",
+          "structural_source": "Netflow",
+          "terraform_name": "server"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow protocol version.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.OneOf(5, 9, 10)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "version",
+          "structural_source": "Netflow",
+          "terraform_name": "version"
+        }
+      ],
+      "terraform_name": "netflow",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -3032,6 +3250,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "79106d1ca434845f127cecb8487e9dd3d6598a22b9fe7eef56add3c3a4da1aba",
+  "source_specification_sha256": "9366327931c9d140836e014b9709eb92a496c170c2b768547f4fe3efc1d0dc9a",
   "surface_kind": "managed_resource"
 }

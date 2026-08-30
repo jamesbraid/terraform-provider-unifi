@@ -93,6 +93,7 @@ resource "unifi_setting" "radius_only" {
 - `magic_site_to_site_vpn` (Attributes) Magic site-to-site VPN settings. (see [below for nested schema](#nestedatt--magic_site_to_site_vpn))
 - `mdns` (Attributes) mDNS (multicast DNS / Bonjour) repeater settings. (see [below for nested schema](#nestedatt--mdns))
 - `mgmt` (Attributes) Management settings. (see [below for nested schema](#nestedatt--mgmt))
+- `netflow` (Attributes) NetFlow traffic export settings. (see [below for nested schema](#nestedatt--netflow))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
@@ -413,6 +414,24 @@ Optional:
 - `comment` (String) Comment.
 - `key` (String) Public SSH key.
 
+
+
+<a id="nestedatt--netflow"></a>
+### Nested Schema for `netflow`
+
+Optional:
+
+- `auto_engine_id_enabled` (Boolean) Automatically generate the NetFlow engine ID.
+- `enabled` (Boolean) Enable NetFlow traffic export. Requires at least one network in `network_ids`.
+- `engine_id` (Number) NetFlow engine ID.
+- `export_frequency` (Number) NetFlow export frequency.
+- `network_ids` (List of String) Network IDs NetFlow export applies to.
+- `port` (Number) NetFlow collector port.
+- `refresh_rate` (Number) NetFlow template refresh rate.
+- `sampling_mode` (String) NetFlow sampling mode.
+- `sampling_rate` (Number) NetFlow sampling rate.
+- `server` (String) NetFlow collector hostname or IP address.
+- `version` (Number) NetFlow protocol version.
 
 
 <a id="nestedatt--network_optimization"></a>

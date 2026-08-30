@@ -460,6 +460,83 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "Netflow.auto_engine_id_enabled",
+      "terraform_name": "netflow.auto_engine_id_enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.enabled",
+      "terraform_name": "netflow.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.engine_id",
+      "terraform_name": "netflow.engine_id",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.export_frequency",
+      "terraform_name": "netflow.export_frequency",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.network_ids",
+      "terraform_name": "netflow.network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.port",
+      "terraform_name": "netflow.port",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.refresh_rate",
+      "terraform_name": "netflow.refresh_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.sampling_mode",
+      "terraform_name": "netflow.sampling_mode",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.sampling_rate",
+      "terraform_name": "netflow.sampling_rate",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.server",
+      "terraform_name": "netflow.server",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Netflow.version",
+      "terraform_name": "netflow.version",
+      "structural_type": "int64",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "NetworkOptimization.enabled",
       "terraform_name": "network_optimization.enabled",
       "structural_type": "bool",

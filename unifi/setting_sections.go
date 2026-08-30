@@ -55,6 +55,7 @@ var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[se
 	teleportKitSection,
 	magicSiteToSiteVpnKitSection,
 	globalSwitchKitSection,
+	netflowKitSection,
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -84,13 +85,14 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // usgGeoKitBackend.
 //
 // locale, global_nat, ssl_inspection, ipsec, dashboard, ether_lighting,
-// global_network, traffic_flow, mdns, teleport, magic_site_to_site_vpn and
-// global_switch moved the same way too, each from the controller's own
-// Locale/GlobalNat/SslInspection/Ipsec/Dashboard/EtherLighting/GlobalNetwork/TrafficFlow/Mdns/Teleport/MagicSiteToSiteVpn/GlobalSwitch
+// global_network, traffic_flow, mdns, teleport, magic_site_to_site_vpn,
+// global_switch and netflow moved the same way too, each from the
+// controller's own
+// Locale/GlobalNat/SslInspection/Ipsec/Dashboard/EtherLighting/GlobalNetwork/TrafficFlow/Mdns/Teleport/MagicSiteToSiteVpn/GlobalSwitch/Netflow
 // definition -- see setting_locale_descriptor.go,
 // setting_global_nat_descriptor.go, setting_ssl_inspection_descriptor.go,
 // setting_ipsec_descriptor.go, setting_dashboard_descriptor.go,
 // setting_ether_lighting_descriptor.go, setting_global_network_descriptor.go,
 // setting_traffic_flow_descriptor.go, setting_mdns_descriptor.go,
-// setting_teleport_descriptor.go, setting_magic_site_to_site_vpn_descriptor.go
-// and setting_global_switch_descriptor.go.
+// setting_teleport_descriptor.go, setting_magic_site_to_site_vpn_descriptor.go,
+// setting_global_switch_descriptor.go and setting_netflow_descriptor.go.

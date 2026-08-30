@@ -6587,6 +6587,123 @@
           "description": "Enable WiFiman.",
           "description_kind": "markdown"
         },
+        "netflow": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow traffic export settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "netflow.auto_engine_id_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Automatically generate the NetFlow engine ID.",
+          "description_kind": "markdown"
+        },
+        "netflow.enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable NetFlow traffic export. Requires at least one network in `network_ids`.",
+          "description_kind": "markdown"
+        },
+        "netflow.engine_id": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow engine ID.",
+          "description_kind": "markdown"
+        },
+        "netflow.export_frequency": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow export frequency.",
+          "description_kind": "markdown"
+        },
+        "netflow.network_ids": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "Network IDs NetFlow export applies to.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "netflow.port": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow collector port.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 1024 and 65535"
+          ]
+        },
+        "netflow.refresh_rate": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow template refresh rate.",
+          "description_kind": "markdown"
+        },
+        "netflow.sampling_mode": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow sampling mode.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"off\" \"hash\" \"random\" \"deterministic\"]"
+          ]
+        },
+        "netflow.sampling_rate": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow sampling rate.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 2 and 16383"
+          ]
+        },
+        "netflow.server": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow collector hostname or IP address.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(?:.{0,252}[^\\.]$)$'"
+          ]
+        },
+        "netflow.version": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "NetFlow protocol version.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.oneOfValidator: value must be one of: [\"5\" \"9\" \"10\"]"
+          ]
+        },
         "network_optimization": {
           "kind": "attribute",
           "nesting_mode": "single",

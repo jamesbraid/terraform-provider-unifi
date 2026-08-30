@@ -51,8 +51,8 @@ func TestEverySettingSectionIsServedByExactlyOneSpecSection(t *testing.T) {
 	// regression, or built.Attributes silently coming back empty) would
 	// otherwise pass the loop above with nothing to check -- this pins that
 	// the walk actually saw the twenty-four sections it's meant to.
-	if sawNested != 25 {
-		t.Errorf("resource_setting.SettingResourceSchema declares %d non-timeouts SingleNestedAttribute(s), want 25",
+	if sawNested != 26 {
+		t.Errorf("resource_setting.SettingResourceSchema declares %d non-timeouts SingleNestedAttribute(s), want 26",
 			sawNested)
 	}
 
@@ -195,9 +195,12 @@ func TestEverySettingSectionPassesTheConformanceInstruments(t *testing.T) {
 		{"global_switch", func(t *testing.T) {
 			checkSectionConformance(t, globalSwitchKitSpec(), globalSwitchNestedSchema(ctx))
 		}},
+		{"netflow", func(t *testing.T) {
+			checkSectionConformance(t, netflowKitSpec(), netflowNestedSchema(ctx))
+		}},
 	}
-	if len(cases) != 27 {
-		t.Fatalf("settingSectionConformanceCase table has %d row(s), want 27 (twenty-five sections plus "+
+	if len(cases) != 28 {
+		t.Fatalf("settingSectionConformanceCase table has %d row(s), want 28 (twenty-six sections plus "+
 			"ips_suppression and usg_geo)", len(cases))
 	}
 

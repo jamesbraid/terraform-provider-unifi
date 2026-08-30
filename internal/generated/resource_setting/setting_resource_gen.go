@@ -928,6 +928,102 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"netflow": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"auto_engine_id_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Automatically generate the NetFlow engine ID.",
+						MarkdownDescription: "Automatically generate the NetFlow engine ID.",
+					},
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable NetFlow traffic export. Requires at least one network in `network_ids`.",
+						MarkdownDescription: "Enable NetFlow traffic export. Requires at least one network in `network_ids`.",
+					},
+					"engine_id": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow engine ID.",
+						MarkdownDescription: "NetFlow engine ID.",
+					},
+					"export_frequency": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow export frequency.",
+						MarkdownDescription: "NetFlow export frequency.",
+					},
+					"network_ids": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "Network IDs NetFlow export applies to.",
+						MarkdownDescription: "Network IDs NetFlow export applies to.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"port": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow collector port.",
+						MarkdownDescription: "NetFlow collector port.",
+						Validators: []validator.Int64{
+							int64validator.Between(1024, 65535),
+						},
+					},
+					"refresh_rate": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow template refresh rate.",
+						MarkdownDescription: "NetFlow template refresh rate.",
+					},
+					"sampling_mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow sampling mode.",
+						MarkdownDescription: "NetFlow sampling mode.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("off", "hash", "random", "deterministic"),
+						},
+					},
+					"sampling_rate": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow sampling rate.",
+						MarkdownDescription: "NetFlow sampling rate.",
+						Validators: []validator.Int64{
+							int64validator.Between(2, 16383),
+						},
+					},
+					"server": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow collector hostname or IP address.",
+						MarkdownDescription: "NetFlow collector hostname or IP address.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,252}[^\.]$)$`), ""),
+						},
+					},
+					"version": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow protocol version.",
+						MarkdownDescription: "NetFlow protocol version.",
+						Validators: []validator.Int64{
+							int64validator.OneOf(5, 9, 10),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "NetFlow traffic export settings.",
+				MarkdownDescription: "NetFlow traffic export settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"network_optimization": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"enabled": schema.BoolAttribute{

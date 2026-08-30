@@ -2487,6 +2487,149 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_netflow exercises a representative subset of
+// netflow's eleven exposed attributes: enabled paired with network_ids (the
+// controller refuses `enabled = true` with no networks named --
+// api.err.NetflowNetworkIdsRequired, the partial-exercisability finding
+// this dispatch's own plan recorded -- so every step here names a real
+// network alongside enabled), the sampling_mode and version enums, and two
+// of the four OmitZero-guarded Int64PtrFields (port, sampling_rate) set to
+// non-zero legal values -- global_switch's own test already proves the
+// "0 is legal" side of this class, so this one proves the "reaches the
+// wire, accepted" side for a field where 0 is NOT legal.
+func TestAccSettingResource_netflow(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_netflow(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.network_ids.#",
+						"1",
+					),
+					resource.TestCheckResourceAttrPair(
+						"unifi_setting.test", "netflow.network_ids.0",
+						"unifi_network.test", "id",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.sampling_mode",
+						"random",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.sampling_rate",
+						"100",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.port",
+						"2055",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.version",
+						"9",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.server",
+						"10.5.10.5",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"netflow.%",
+					"netflow.enabled",
+					"netflow.network_ids.#",
+					"netflow.network_ids.0",
+					"netflow.sampling_mode",
+					"netflow.sampling_rate",
+					"netflow.port",
+					"netflow.version",
+					"netflow.server",
+				},
+			},
+			{
+				Config: testAccSettingConfig_netflowUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.sampling_mode",
+						"deterministic",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.version",
+						"10",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.port",
+						"2056",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_netflow() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-netflow-network"
+  subnet = "10.5.10.1/24"
+  vlan   = 50
+}
+
+resource "unifi_setting" "test" {
+  netflow = {
+    enabled       = true
+    network_ids   = [unifi_network.test.id]
+    sampling_mode = "random"
+    sampling_rate = 100
+    port          = 2055
+    version       = 9
+    server        = "10.5.10.5"
+  }
+}
+`
+}
+
+func testAccSettingConfig_netflowUpdate() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-netflow-network"
+  subnet = "10.5.10.1/24"
+  vlan   = 50
+}
+
+resource "unifi_setting" "test" {
+  netflow = {
+    enabled       = true
+    network_ids   = [unifi_network.test.id]
+    sampling_mode = "deterministic"
+    sampling_rate = 100
+    port          = 2056
+    version       = 10
+    server        = "10.5.10.5"
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {
