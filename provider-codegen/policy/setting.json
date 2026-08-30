@@ -158,7 +158,14 @@
     "SslInspection.attr_no_delete",
     "SslInspection.attr_no_edit",
     "SslInspection.key",
-    "SslInspection.site_id"
+    "SslInspection.site_id",
+    "Ipsec._id",
+    "Ipsec.attr_hidden",
+    "Ipsec.attr_hidden_id",
+    "Ipsec.attr_no_delete",
+    "Ipsec.attr_no_edit",
+    "Ipsec.key",
+    "Ipsec.site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2203,6 +2210,38 @@
       ],
       "terraform_name": "ssl_inspection",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "IPsec settings for site-to-site VPNs.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`)."
+          },
+          "disposition": "managed",
+          "structural_name": "ikev2_reauthentication_method",
+          "structural_source": "Ipsec",
+          "terraform_name": "ikev2_reauthentication_method"
+        }
+      ],
+      "terraform_name": "ipsec",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -2267,6 +2306,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "37c97f67631390b06efbe7d552f2204aeec7063f5611e802f18ea2412a0107fa",
+  "source_specification_sha256": "17a9968c9bc5082675c5a428bb4ba30e8a58cbdd7e4153f2b0ce3bd15f04f341",
   "surface_kind": "managed_resource"
 }

@@ -166,6 +166,13 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "Ipsec.ikev2_reauthentication_method",
+      "terraform_name": "ipsec.ikev2_reauthentication_method",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Lcm.brightness",
       "terraform_name": "lcm.brightness",
       "structural_type": "int64",

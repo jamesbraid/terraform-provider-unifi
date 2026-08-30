@@ -27,6 +27,7 @@ func TestSettingKitSectionsOrder(t *testing.T) {
 		"locale",
 		"global_nat",
 		"ssl_inspection",
+		"ipsec",
 	}
 
 	r := &settingResource{client: &Client{}}

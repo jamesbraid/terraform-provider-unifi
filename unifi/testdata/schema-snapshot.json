@@ -5989,6 +5989,25 @@
           "description": "IP address, CIDR subnet, or network ID to whitelist.",
           "description_kind": "markdown"
         },
+        "ipsec": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "IPsec settings for site-to-site VPNs.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "ipsec.ikev2_reauthentication_method": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`).",
+          "description_kind": "markdown"
+        },
         "lcm": {
           "kind": "attribute",
           "nesting_mode": "single",

@@ -83,6 +83,7 @@ resource "unifi_setting" "radius_only" {
 - `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
+- `ipsec` (Attributes) IPsec settings for site-to-site VPNs. (see [below for nested schema](#nestedatt--ipsec))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
 - `locale` (Attributes) Site locale settings. (see [below for nested schema](#nestedatt--locale))
 - `mgmt` (Attributes) Management settings. (see [below for nested schema](#nestedatt--mgmt))
@@ -225,6 +226,14 @@ Required:
 - `mode` (String) Match mode: ip, subnet, or network.
 - `value` (String) IP address, CIDR subnet, or network ID to whitelist.
 
+
+
+<a id="nestedatt--ipsec"></a>
+### Nested Schema for `ipsec`
+
+Optional:
+
+- `ikev2_reauthentication_method` (String) IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`).
 
 
 <a id="nestedatt--lcm"></a>

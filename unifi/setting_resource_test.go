@@ -1557,6 +1557,69 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_ipsec exercises ikev2_reauthentication_method with
+// the one value the SDK's own comment records as observed
+// (make-before-break) plus IKEv2's other named rekey strategy
+// (break-before-make); the schema carries no validator, so the controller
+// itself is what could refuse the second value, not the provider.
+func TestAccSettingResource_ipsec(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_ipsec(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ipsec.ikev2_reauthentication_method",
+						"make-before-break",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"ipsec.%",
+					"ipsec.ikev2_reauthentication_method",
+				},
+			},
+			{
+				Config: testAccSettingConfig_ipsecUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ipsec.ikev2_reauthentication_method",
+						"break-before-make",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_ipsec() string {
+	return `
+resource "unifi_setting" "test" {
+  ipsec = {
+    ikev2_reauthentication_method = "make-before-break"
+  }
+}
+`
+}
+
+func testAccSettingConfig_ipsecUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  ipsec = {
+    ikev2_reauthentication_method = "break-before-make"
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

@@ -414,6 +414,23 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"ipsec": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"ikev2_reauthentication_method": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`).",
+						MarkdownDescription: "IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`).",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "IPsec settings for site-to-site VPNs.",
+				MarkdownDescription: "IPsec settings for site-to-site VPNs.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"lcm": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"brightness": schema.Int64Attribute{

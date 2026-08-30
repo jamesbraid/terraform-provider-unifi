@@ -78,6 +78,7 @@ type settingResourceModel struct {
 	Locale        types.Object   `tfsdk:"locale"`
 	GlobalNat     types.Object   `tfsdk:"global_nat"`
 	SslInspection types.Object   `tfsdk:"ssl_inspection"`
+	Ipsec         types.Object   `tfsdk:"ipsec"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 
