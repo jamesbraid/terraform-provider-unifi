@@ -65,7 +65,7 @@ func (r *Resource[M, S]) List(
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
 		var diags diag.Diagnostics
-		diags.AddError("Error Listing "+r.Spec.Subject, err.Error())
+		diags.AddError("Error Listing "+r.Spec.Subject, diagErrorText(err))
 		stream.Results = list.ListResultsStreamDiagnostics(diags)
 		return
 	}
@@ -111,7 +111,7 @@ func (r *Resource[M, S]) List(
 	objects, err := r.Spec.Backend.List(ctx, site)
 	if err != nil {
 		var diags diag.Diagnostics
-		diags.AddError("Error Listing "+r.Spec.Subject, err.Error())
+		diags.AddError("Error Listing "+r.Spec.Subject, diagErrorText(err))
 		stream.Results = list.ListResultsStreamDiagnostics(diags)
 		return
 	}

@@ -182,6 +182,54 @@ func TestSpecSectionWriteSkipsAnEmptyMaskInsteadOfErroring(t *testing.T) {
 	}
 }
 
+// TestSpecSectionWriteDiagnosticDropsTheSDKsRequestPayload pins the
+// guest_access-secrets-review finding: go-unifi's client appends the raw
+// request body to every non-2xx error ("... \npayload: {...}"), redacted by
+// a fixed substring list keyed on field NAME that the SDK guesses at
+// without ever consulting this provider's own schema. Eleven of
+// guest_access's 18 Sensitive wire names (and snmp's community) are outside
+// that list, so a failed write printed them verbatim into a
+// practitioner-visible diagnostic -- the console, CI logs, TF_LOG files,
+// Terraform Cloud run logs. The fix has to live in the one place every
+// section's write error becomes a diagnostic (specDocumentWrite), not in a
+// per-field substring list the next field name can miss again.
+func TestSpecSectionWriteDiagnosticDropsTheSDKsRequestPayload(t *testing.T) {
+	// Shaped exactly like the real error unifi.go's doRequest returns on a
+	// non-2xx response, with the payload carrying a value the SDK's own
+	// redaction missed -- the same failure mode as x_stripe_api_key,
+	// x_paypal_signature and every guest_access identifier today.
+	sdkErr := errors.New(
+		"api.err.InvalidPayload (400 Bad Request) for PUT https://example.invalid/api/s/default/set/setting/guest_access\n" +
+			`payload: {"key":"guest_access","name":"LEAKMARK-should-never-reach-a-diagnostic"}`,
+	)
+	section := SpecSection[ssModel, ssSectionModel, ssSDK]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   ssAttrTypes(),
+		Spec: ssSpec(Backend[ssSDK]{
+			UpdateFields: func(_ context.Context, _ string, _ *ssSDK, _ ...string) (*ssSDK, error) {
+				return nil, sdkErr
+			},
+		}),
+	}
+
+	name := "foo"
+	plan := ssModel{Section: ssSectionObject(t, &name)}
+	diags := section.Write(context.Background(), "site-1", &plan, nil, "Creating")
+	if !diags.HasError() {
+		t.Fatal("expected the backend's error to produce a diagnostic")
+	}
+	for _, d := range diags.Errors() {
+		if strings.Contains(d.Detail(), "LEAKMARK") {
+			t.Errorf("diagnostic detail carries the SDK's request payload verbatim: %q", d.Detail())
+		}
+		if strings.Contains(d.Detail(), "payload:") {
+			t.Errorf("diagnostic detail still carries a payload tail: %q", d.Detail())
+		}
+	}
+}
+
 func TestSpecSectionWriteAfterReceiveSeesPriorAndOutranksTheResponse(t *testing.T) {
 	var sawPriorName, sawPriorExtra string
 	var sawPriorExtraNull bool

@@ -380,7 +380,7 @@ func (r *Resource[M, S]) Create(
 	resp *resource.CreateResponse,
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
-		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	var data M
@@ -429,7 +429,7 @@ func (r *Resource[M, S]) Create(
 	}
 	created, err := r.createObject(ctx, site, sdk, &data)
 	if err != nil {
-		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	// prior is the plan here, before ToModel overwrites data.
@@ -454,7 +454,7 @@ func (r *Resource[M, S]) Read(
 	resp *resource.ReadResponse,
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
-		resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	var data M
@@ -481,7 +481,7 @@ func (r *Resource[M, S]) Read(
 		found, err = r.Spec.Backend.ReadByName(ctx, site, name)
 		if err != nil {
 			resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject,
-				"Could not read "+r.Spec.Subject+" with name "+name+": "+err.Error())
+				"Could not read "+r.Spec.Subject+" with name "+name+": "+diagErrorText(err))
 			return
 		}
 	} else {
@@ -495,7 +495,7 @@ func (r *Resource[M, S]) Read(
 				return
 			}
 			resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject,
-				"Could not read "+r.Spec.Subject+" with ID "+id+": "+err.Error())
+				"Could not read "+r.Spec.Subject+" with ID "+id+": "+diagErrorText(err))
 			return
 		}
 	}
@@ -521,7 +521,7 @@ func (r *Resource[M, S]) Update(
 	resp *resource.UpdateResponse,
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
-		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	var state, plan M
@@ -566,7 +566,7 @@ func (r *Resource[M, S]) Update(
 
 	fields, err := r.Spec.WireFields(&plan)
 	if err != nil {
-		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	sdk, sdkDiags := r.Spec.ToSDK(ctx, &state)
@@ -623,7 +623,7 @@ func (r *Resource[M, S]) Update(
 
 	updated, err := r.Spec.Backend.UpdateFields(ctx, site, sdk, fields...)
 	if err != nil {
-		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	// prior is state (with plan applied) here, not the raw plan: an attribute
@@ -645,7 +645,7 @@ func (r *Resource[M, S]) Delete(
 	resp *resource.DeleteResponse,
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
-		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	var data M
@@ -684,7 +684,7 @@ func (r *Resource[M, S]) Delete(
 		if errors.As(err, &notFound) {
 			return
 		}
-		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 }
