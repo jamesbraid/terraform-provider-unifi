@@ -523,6 +523,20 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "Teleport.enabled",
+      "terraform_name": "teleport.enabled",
+      "structural_type": "bool",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "Teleport.subnet_cidr",
+      "terraform_name": "teleport.subnet_cidr",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "TrafficFlow.enabled_allowed_traffic",
       "terraform_name": "traffic_flow.enabled_allowed_traffic",
       "structural_type": "bool",

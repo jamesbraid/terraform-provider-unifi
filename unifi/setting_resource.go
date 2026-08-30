@@ -84,6 +84,7 @@ type settingResourceModel struct {
 	GlobalNetwork types.Object   `tfsdk:"global_network"`
 	TrafficFlow   types.Object   `tfsdk:"traffic_flow"`
 	Mdns          types.Object   `tfsdk:"mdns"`
+	Teleport      types.Object   `tfsdk:"teleport"`
 	Timeouts      timeouts.Value `tfsdk:"timeouts"`
 }
 

@@ -2183,6 +2183,82 @@ resource "unifi_setting" "test" {
 `
 }
 
+// TestAccSettingResource_teleport exercises enabled and subnet_cidr
+// together, then an update that disables teleport while clearing
+// subnet_cidr back to empty -- the shape subnet_cidr's own wire pattern
+// accepts either way, since this section applies no plan-time coupling
+// between the two attributes (see teleportKitSpec's own comment).
+func TestAccSettingResource_teleport(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_teleport(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"teleport.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"teleport.subnet_cidr",
+						"10.200.0.0/24",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"teleport.%",
+					"teleport.enabled",
+					"teleport.subnet_cidr",
+				},
+			},
+			{
+				Config: testAccSettingConfig_teleportUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"teleport.enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"teleport.subnet_cidr",
+						"",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_teleport() string {
+	return `
+resource "unifi_setting" "test" {
+  teleport = {
+    enabled     = true
+    subnet_cidr = "10.200.0.0/24"
+  }
+}
+`
+}
+
+func testAccSettingConfig_teleportUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  teleport = {
+    enabled     = false
+    subnet_cidr = ""
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

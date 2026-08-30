@@ -1044,6 +1044,32 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"teleport": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable Teleport.",
+						MarkdownDescription: "Enable Teleport.",
+					},
+					"subnet_cidr": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
+						MarkdownDescription: "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([8-9]|[1-2][0-9]|3[0-2])$|^$`), ""),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Teleport (self-hosted VPN gateway discovery) settings.",
+				MarkdownDescription: "Teleport (self-hosted VPN gateway discovery) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"traffic_flow": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"enabled_allowed_traffic": schema.BoolAttribute{

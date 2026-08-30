@@ -97,6 +97,7 @@ resource "unifi_setting" "radius_only" {
 - `site` (String) The name of the site to associate the settings with.
 - `ssl_inspection` (Attributes) SSL inspection settings. (see [below for nested schema](#nestedatt--ssl_inspection))
 - `syslog` (Attributes) Remote syslog (rsyslogd) settings. (see [below for nested schema](#nestedatt--syslog))
+- `teleport` (Attributes) Teleport (self-hosted VPN gateway discovery) settings. (see [below for nested schema](#nestedatt--teleport))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `traffic_flow` (Attributes) Traffic flow classification settings. (see [below for nested schema](#nestedatt--traffic_flow))
 - `usg` (Attributes) USG settings. (see [below for nested schema](#nestedatt--usg))
@@ -431,6 +432,15 @@ Optional:
 - `port` (Number) Remote syslog server port (1-65535).
 - `this_controller` (Boolean) Also log this controller's events.
 - `this_controller_encrypted_only` (Boolean) Only send this controller's logs over an encrypted channel.
+
+
+<a id="nestedatt--teleport"></a>
+### Nested Schema for `teleport`
+
+Optional:
+
+- `enabled` (Boolean) Enable Teleport.
+- `subnet_cidr` (String) CIDR subnet Teleport clients are assigned from. Empty when unconfigured.
 
 
 <a id="nestedatt--timeouts"></a>

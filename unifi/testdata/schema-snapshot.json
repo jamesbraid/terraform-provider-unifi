@@ -6724,6 +6724,36 @@
           "description_kind": "markdown",
           "default": "booldefault.staticBoolDefault: value defaults to false"
         },
+        "teleport": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "Teleport (self-hosted VPN gateway discovery) settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "teleport.enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Enable Teleport.",
+          "description_kind": "markdown"
+        },
+        "teleport.subnet_cidr": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.regexMatchesValidator: value must match regular expression '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([8-9]|[1-2][0-9]|3[0-2])$|^$'"
+          ]
+        },
         "timeouts": {
           "kind": "attribute",
           "nesting_mode": "single",

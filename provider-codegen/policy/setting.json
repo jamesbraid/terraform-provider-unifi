@@ -200,7 +200,14 @@
     "Mdns.attr_no_delete",
     "Mdns.attr_no_edit",
     "Mdns.key",
-    "Mdns.site_id"
+    "Mdns.site_id",
+    "Teleport._id",
+    "Teleport.attr_hidden",
+    "Teleport.attr_hidden_id",
+    "Teleport.attr_no_delete",
+    "Teleport.attr_no_edit",
+    "Teleport.key",
+    "Teleport.site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2627,6 +2634,63 @@
       ],
       "terraform_name": "mdns",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Teleport (self-hosted VPN gateway discovery) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable Teleport."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Teleport",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    },
+                    {
+                      "path": "regexp"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\/([8-9]|[1-2][0-9]|3[0-2])$|^$`), \"\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "subnet_cidr",
+          "structural_source": "Teleport",
+          "terraform_name": "subnet_cidr"
+        }
+      ],
+      "terraform_name": "teleport",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -2691,6 +2755,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "8e31c721034a832813824189acd8ba87487735ad38cfdb1c634b14265d85f002",
+  "source_specification_sha256": "d02733ae146ce5d2e9a41dd3158033b6a2f523449f34f9e1f8755524dca25852",
   "surface_kind": "managed_resource"
 }
