@@ -1499,6 +1499,64 @@ resource "unifi_setting" "test" {
 `
 }
 
+func TestAccSettingResource_sslInspection(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_sslInspection(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ssl_inspection.state",
+						"simple",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"ssl_inspection.%",
+					"ssl_inspection.state",
+				},
+			},
+			{
+				Config: testAccSettingConfig_sslInspectionUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ssl_inspection.state",
+						"off",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_sslInspection() string {
+	return `
+resource "unifi_setting" "test" {
+  ssl_inspection = {
+    state = "simple"
+  }
+}
+`
+}
+
+func testAccSettingConfig_sslInspectionUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  ssl_inspection = {
+    state = "off"
+  }
+}
+`
+}
+
 func TestNewSettingResource(t *testing.T) {
 	r := NewSettingResource()
 	if r == nil {

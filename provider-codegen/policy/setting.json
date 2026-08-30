@@ -151,7 +151,14 @@
     "GlobalNat.attr_no_delete",
     "GlobalNat.attr_no_edit",
     "GlobalNat.key",
-    "GlobalNat.site_id"
+    "GlobalNat.site_id",
+    "SslInspection._id",
+    "SslInspection.attr_hidden",
+    "SslInspection.attr_hidden_id",
+    "SslInspection.attr_no_delete",
+    "SslInspection.attr_no_edit",
+    "SslInspection.key",
+    "SslInspection.site_id"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -2152,6 +2159,50 @@
       ],
       "terraform_name": "global_nat",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "SSL inspection settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "SSL inspection state: `off`, `simple`, or `advanced`.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+                    }
+                  ],
+                  "schema_definition": "stringvalidator.OneOf(\"off\", \"simple\", \"advanced\")"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "state",
+          "structural_source": "SslInspection",
+          "terraform_name": "state"
+        }
+      ],
+      "terraform_name": "ssl_inspection",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -2216,6 +2267,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "9b6bb9a1a77a53721904ee57cea921b776b5c27b46b3e82b8b72be59f2caa3a8",
+  "source_specification_sha256": "37c97f67631390b06efbe7d552f2204aeec7063f5611e802f18ea2412a0107fa",
   "surface_kind": "managed_resource"
 }

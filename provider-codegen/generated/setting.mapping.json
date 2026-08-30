@@ -376,6 +376,13 @@
       "disposition": "managed"
     },
     {
+      "structural_name": "SslInspection.state",
+      "terraform_name": "ssl_inspection.state",
+      "structural_type": "string",
+      "terraform_type": "",
+      "disposition": "managed"
+    },
+    {
       "structural_name": "Rsyslogd.contents",
       "terraform_name": "syslog.contents",
       "structural_type": "array<string>",

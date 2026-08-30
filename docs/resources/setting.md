@@ -90,6 +90,7 @@ resource "unifi_setting" "radius_only" {
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
 - `site` (String) The name of the site to associate the settings with.
+- `ssl_inspection` (Attributes) SSL inspection settings. (see [below for nested schema](#nestedatt--ssl_inspection))
 - `syslog` (Attributes) Remote syslog (rsyslogd) settings. (see [below for nested schema](#nestedatt--syslog))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `usg` (Attributes) USG settings. (see [below for nested schema](#nestedatt--usg))
@@ -310,6 +311,14 @@ Optional:
 - `enabled` (Boolean) Enable the site's RADIUS server. A VPN server that authenticates against RADIUS (`unifi_vpn_server` with `openvpn` or `l2tp`) is rejected with `api.err.RadiusServerNotEnabled` while this is off.
 - `interim_update_interval` (String) Interim update interval, as a Go duration string (e.g. `1h`, `3600s`).
 - `secret` (String, Sensitive) RADIUS shared secret.
+
+
+<a id="nestedatt--ssl_inspection"></a>
+### Nested Schema for `ssl_inspection`
+
+Optional:
+
+- `state` (String) SSL inspection state: `off`, `simple`, or `advanced`.
 
 
 <a id="nestedatt--syslog"></a>

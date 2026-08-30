@@ -6374,6 +6374,28 @@
             "stringplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
           ]
         },
+        "ssl_inspection": {
+          "kind": "attribute",
+          "nesting_mode": "single",
+          "optional": true,
+          "computed": true,
+          "description": "SSL inspection settings.",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "objectplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ]
+        },
+        "ssl_inspection.state": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "SSL inspection state: `off`, `simple`, or `advanced`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"off\" \"simple\" \"advanced\"]"
+          ]
+        },
         "syslog": {
           "kind": "attribute",
           "nesting_mode": "single",

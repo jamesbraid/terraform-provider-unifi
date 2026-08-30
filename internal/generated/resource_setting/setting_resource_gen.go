@@ -733,6 +733,26 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"ssl_inspection": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"state": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "SSL inspection state: `off`, `simple`, or `advanced`.",
+						MarkdownDescription: "SSL inspection state: `off`, `simple`, or `advanced`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("off", "simple", "advanced"),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "SSL inspection settings.",
+				MarkdownDescription: "SSL inspection settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"syslog": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"contents": schema.ListAttribute{
