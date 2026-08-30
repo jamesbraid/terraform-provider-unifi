@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -289,7 +290,7 @@ func FirewallPolicyResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`, or an IANA protocol name/number. Defaults to `all`. Gated against `ip_version` at plan time (measured against UniFi Network 10.6.101): some names are IPv4-only (e.g. `icmp`) or IPv6-only (e.g. `icmpv6`), while `all`/`tcp`/`udp`/`tcp_udp` and most numbered protocols work under any `ip_version`. Numeric protocol numbers are accepted for every `ip_version` even where the equivalent name is gated — `58` (icmpv6's protocol number) is accepted under `IPV4`, where the name `icmpv6` is not. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
 				MarkdownDescription: "The protocol to match: `all`, `tcp`, `udp`, `tcp_udp`, `icmp`, or `icmpv6`, or an IANA protocol name/number. Defaults to `all`. Gated against `ip_version` at plan time (measured against UniFi Network 10.6.101): some names are IPv4-only (e.g. `icmp`) or IPv6-only (e.g. `icmpv6`), while `all`/`tcp`/`udp`/`tcp_udp` and most numbered protocols work under any `ip_version`. Numeric protocol numbers are accepted for every `ip_version` even where the equivalent name is gated — `58` (icmpv6's protocol number) is accepted under `IPV4`, where the name `icmpv6` is not. Note: for `icmp`/`icmpv6` policies the controller rejects `create_allow_respond = true` (`FirewallPolicyCreateRespondTrafficPolicyNotAllowed`) — keep it `false` and add an explicit reverse policy if you need the reply.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:all|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|tcp|udp|tcp_udp|ah|ax\.25|dccp|ddp|egp|eigrp|encap|esp|etherip|fc|ggp|gre|hip|hmp|icmp|idpr-cmtp|idrp|igmp|igp|ip|ipcomp|ipencap|ipip|isis|iso-tp4|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|pup|rdp|rohc|rspf|rsvp|sctp|shim6|skip|st|udplite|vmtp|vrrp|wesp|xns-idp|xtp|ipv6|ipv6-frag|ipv6-nonxt|ipv6-opts|ipv6-route|icmpv6)$`), ""),
+					controllerregex.Matches(`all|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|tcp|udp|tcp_udp|ah|ax\.25|dccp|ddp|egp|eigrp|encap|esp|etherip|fc|ggp|gre|hip|hmp|icmp|idpr-cmtp|idrp|igmp|igp|ip|ipcomp|ipencap|ipip|isis|iso-tp4|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|pup|rdp|rohc|rspf|rsvp|sctp|shim6|skip|st|udplite|vmtp|vrrp|wesp|xns-idp|xtp|ipv6|ipv6-frag|ipv6-nonxt|ipv6-opts|ipv6-route|icmpv6`, ""),
 				},
 				Default: stringdefault.StaticString("all"),
 			},
