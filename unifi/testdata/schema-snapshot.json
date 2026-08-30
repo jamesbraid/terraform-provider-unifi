@@ -6291,6 +6291,302 @@
           "description": "PayPal API username, used when `gateway` is `paypal`.",
           "description_kind": "markdown"
         },
+        "guest_access.portal_customized": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Use a customized guest portal page instead of the controller's default.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_authentication_text": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Text displayed on the guest portal's authentication step.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_bg_color": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Background color of the guest portal page, as a hex color.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$'"
+          ]
+        },
+        "guest_access.portal_customized_bg_image_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Use a background image for the guest portal page.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_bg_image_filename": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Filename of the guest portal's background image, previously uploaded to the controller.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_bg_image_tile": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Tile (repeat) the guest portal's background image instead of stretching it to fill the page.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_bg_type": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Guest portal background type: `color`, `image`, or a rotating `gallery`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"color\" \"image\" \"gallery\"]"
+          ]
+        },
+        "guest_access.portal_customized_box_color": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Background color of the guest portal's content box, as a hex color.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$'"
+          ]
+        },
+        "guest_access.portal_customized_box_link_color": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Color of links inside the guest portal's content box, as a hex color.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$'"
+          ]
+        },
+        "guest_access.portal_customized_box_opacity": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Opacity of the guest portal's content box, as a percentage (1-100).",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 1 and 100"
+          ]
+        },
+        "guest_access.portal_customized_box_radius": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Corner radius of the guest portal's content box, in pixels (0-50). `0` is a legal value: square corners.",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 0 and 50"
+          ]
+        },
+        "guest_access.portal_customized_box_text_color": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Color of text inside the guest portal's content box, as a hex color.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$'"
+          ]
+        },
+        "guest_access.portal_customized_button_color": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Background color of the guest portal's button, as a hex color.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$'"
+          ]
+        },
+        "guest_access.portal_customized_button_text": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Text displayed on the guest portal's button.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_button_text_color": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Color of the guest portal's button text, as a hex color.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$'"
+          ]
+        },
+        "guest_access.portal_customized_languages": {
+          "kind": "attribute",
+          "type": "[\"list\",\"string\"]",
+          "optional": true,
+          "computed": true,
+          "description": "Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).",
+          "description_kind": "markdown",
+          "plan_modifiers": [
+            "listplanmodifier.useStateForUnknownModifier: Once set, the value of this attribute in state will not change."
+          ],
+          "validators": [
+            "listvalidator.valueStringsAreValidator: element value must satisfy all validations: value must match regular expression '^[a-z]{2}([_-][a-zA-Z]{2,4})*$'"
+          ]
+        },
+        "guest_access.portal_customized_link_color": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Color of links on the guest portal page, as a hex color.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$'"
+          ]
+        },
+        "guest_access.portal_customized_logo_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Display a logo on the guest portal page.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_logo_filename": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Filename of the guest portal's logo image, previously uploaded to the controller.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_logo_position": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Position of the guest portal's logo: `left`, `center`, or `right`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"left\" \"center\" \"right\"]"
+          ]
+        },
+        "guest_access.portal_customized_logo_size": {
+          "kind": "attribute",
+          "type": "\"number\"",
+          "optional": true,
+          "computed": true,
+          "description": "Size of the guest portal's logo, in pixels (64-192).",
+          "description_kind": "markdown",
+          "validators": [
+            "int64validator.betweenValidator: value must be between 64 and 192"
+          ]
+        },
+        "guest_access.portal_customized_success_text": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Text displayed on the guest portal after a successful login.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_text_color": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Color of the guest portal page's body text, as a hex color.",
+          "description_kind": "markdown",
+          "validators": [
+            "controllerregex.matchesValidator: value must match regular expression '^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$'"
+          ]
+        },
+        "guest_access.portal_customized_title": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Title displayed on the guest portal page.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_tos": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Guest portal terms of service text.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_tos_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Require guests to accept the guest portal's terms of service before continuing.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_unsplash_author_name": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Display name of the Unsplash photographer credited for the guest portal's background image.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_unsplash_author_username": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Unsplash username of the photographer credited for the guest portal's background image.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_welcome_text": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Welcome text displayed on the guest portal page.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_welcome_text_enabled": {
+          "kind": "attribute",
+          "type": "\"bool\"",
+          "optional": true,
+          "computed": true,
+          "description": "Display the guest portal's welcome text.",
+          "description_kind": "markdown"
+        },
+        "guest_access.portal_customized_welcome_text_position": {
+          "kind": "attribute",
+          "type": "\"string\"",
+          "optional": true,
+          "computed": true,
+          "description": "Position of the guest portal's welcome text: `under_logo` or `above_boxes`.",
+          "description_kind": "markdown",
+          "validators": [
+            "stringvalidator.oneOfValidator: value must be one of: [\"under_logo\" \"above_boxes\"]"
+          ]
+        },
         "guest_access.portal_enabled": {
           "kind": "attribute",
           "type": "\"bool\"",

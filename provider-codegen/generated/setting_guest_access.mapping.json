@@ -416,6 +416,223 @@
       "structural_type": "bool",
       "terraform_type": "bool",
       "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized",
+      "terraform_name": "portal_customized",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_authentication_text",
+      "terraform_name": "portal_customized_authentication_text",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_bg_color",
+      "terraform_name": "portal_customized_bg_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_bg_image_enabled",
+      "terraform_name": "portal_customized_bg_image_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_bg_image_filename",
+      "terraform_name": "portal_customized_bg_image_filename",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_bg_image_tile",
+      "terraform_name": "portal_customized_bg_image_tile",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_bg_type",
+      "terraform_name": "portal_customized_bg_type",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_box_color",
+      "terraform_name": "portal_customized_box_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_box_link_color",
+      "terraform_name": "portal_customized_box_link_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_box_opacity",
+      "terraform_name": "portal_customized_box_opacity",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_box_radius",
+      "terraform_name": "portal_customized_box_radius",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_box_text_color",
+      "terraform_name": "portal_customized_box_text_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_button_color",
+      "terraform_name": "portal_customized_button_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_button_text",
+      "terraform_name": "portal_customized_button_text",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_button_text_color",
+      "terraform_name": "portal_customized_button_text_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_languages",
+      "terraform_name": "portal_customized_languages",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_link_color",
+      "terraform_name": "portal_customized_link_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_logo_enabled",
+      "terraform_name": "portal_customized_logo_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_logo_filename",
+      "terraform_name": "portal_customized_logo_filename",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_logo_position",
+      "terraform_name": "portal_customized_logo_position",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_logo_size",
+      "terraform_name": "portal_customized_logo_size",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_success_text",
+      "terraform_name": "portal_customized_success_text",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_text_color",
+      "terraform_name": "portal_customized_text_color",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_title",
+      "terraform_name": "portal_customized_title",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_tos",
+      "terraform_name": "portal_customized_tos",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_tos_enabled",
+      "terraform_name": "portal_customized_tos_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_unsplash_author_name",
+      "terraform_name": "portal_customized_unsplash_author_name",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_unsplash_author_username",
+      "terraform_name": "portal_customized_unsplash_author_username",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_welcome_text",
+      "terraform_name": "portal_customized_welcome_text",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_welcome_text_enabled",
+      "terraform_name": "portal_customized_welcome_text_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "portal_customized_welcome_text_position",
+      "terraform_name": "portal_customized_welcome_text_position",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
     }
   ],
   "provider_owned": []

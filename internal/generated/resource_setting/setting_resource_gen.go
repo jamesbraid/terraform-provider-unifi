@@ -644,6 +644,241 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "PayPal API username, used when `gateway` is `paypal`.",
 						MarkdownDescription: "PayPal API username, used when `gateway` is `paypal`.",
 					},
+					"portal_customized": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use a customized guest portal page instead of the controller's default.",
+						MarkdownDescription: "Use a customized guest portal page instead of the controller's default.",
+					},
+					"portal_customized_authentication_text": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Text displayed on the guest portal's authentication step.",
+						MarkdownDescription: "Text displayed on the guest portal's authentication step.",
+					},
+					"portal_customized_bg_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Background color of the guest portal page, as a hex color.",
+						MarkdownDescription: "Background color of the guest portal page, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_bg_image_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use a background image for the guest portal page.",
+						MarkdownDescription: "Use a background image for the guest portal page.",
+					},
+					"portal_customized_bg_image_filename": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Filename of the guest portal's background image, previously uploaded to the controller.",
+						MarkdownDescription: "Filename of the guest portal's background image, previously uploaded to the controller.",
+					},
+					"portal_customized_bg_image_tile": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Tile (repeat) the guest portal's background image instead of stretching it to fill the page.",
+						MarkdownDescription: "Tile (repeat) the guest portal's background image instead of stretching it to fill the page.",
+					},
+					"portal_customized_bg_type": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Guest portal background type: `color`, `image`, or a rotating `gallery`.",
+						MarkdownDescription: "Guest portal background type: `color`, `image`, or a rotating `gallery`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("color", "image", "gallery"),
+						},
+					},
+					"portal_customized_box_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Background color of the guest portal's content box, as a hex color.",
+						MarkdownDescription: "Background color of the guest portal's content box, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_box_link_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of links inside the guest portal's content box, as a hex color.",
+						MarkdownDescription: "Color of links inside the guest portal's content box, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_box_opacity": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Opacity of the guest portal's content box, as a percentage (1-100).",
+						MarkdownDescription: "Opacity of the guest portal's content box, as a percentage (1-100).",
+						Validators: []validator.Int64{
+							int64validator.Between(1, 100),
+						},
+					},
+					"portal_customized_box_radius": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Corner radius of the guest portal's content box, in pixels (0-50). `0` is a legal value: square corners.",
+						MarkdownDescription: "Corner radius of the guest portal's content box, in pixels (0-50). `0` is a legal value: square corners.",
+						Validators: []validator.Int64{
+							int64validator.Between(0, 50),
+						},
+					},
+					"portal_customized_box_text_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of text inside the guest portal's content box, as a hex color.",
+						MarkdownDescription: "Color of text inside the guest portal's content box, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_button_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Background color of the guest portal's button, as a hex color.",
+						MarkdownDescription: "Background color of the guest portal's button, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_button_text": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Text displayed on the guest portal's button.",
+						MarkdownDescription: "Text displayed on the guest portal's button.",
+					},
+					"portal_customized_button_text_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of the guest portal's button text, as a hex color.",
+						MarkdownDescription: "Color of the guest portal's button text, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_languages": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).",
+						MarkdownDescription: "Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`^[a-z]{2}([_-][a-zA-Z]{2,4})*$`, "")),
+						},
+					},
+					"portal_customized_link_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of links on the guest portal page, as a hex color.",
+						MarkdownDescription: "Color of links on the guest portal page, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_logo_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Display a logo on the guest portal page.",
+						MarkdownDescription: "Display a logo on the guest portal page.",
+					},
+					"portal_customized_logo_filename": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Filename of the guest portal's logo image, previously uploaded to the controller.",
+						MarkdownDescription: "Filename of the guest portal's logo image, previously uploaded to the controller.",
+					},
+					"portal_customized_logo_position": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Position of the guest portal's logo: `left`, `center`, or `right`.",
+						MarkdownDescription: "Position of the guest portal's logo: `left`, `center`, or `right`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("left", "center", "right"),
+						},
+					},
+					"portal_customized_logo_size": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Size of the guest portal's logo, in pixels (64-192).",
+						MarkdownDescription: "Size of the guest portal's logo, in pixels (64-192).",
+						Validators: []validator.Int64{
+							int64validator.Between(64, 192),
+						},
+					},
+					"portal_customized_success_text": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Text displayed on the guest portal after a successful login.",
+						MarkdownDescription: "Text displayed on the guest portal after a successful login.",
+					},
+					"portal_customized_text_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of the guest portal page's body text, as a hex color.",
+						MarkdownDescription: "Color of the guest portal page's body text, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_title": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Title displayed on the guest portal page.",
+						MarkdownDescription: "Title displayed on the guest portal page.",
+					},
+					"portal_customized_tos": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Guest portal terms of service text.",
+						MarkdownDescription: "Guest portal terms of service text.",
+					},
+					"portal_customized_tos_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Require guests to accept the guest portal's terms of service before continuing.",
+						MarkdownDescription: "Require guests to accept the guest portal's terms of service before continuing.",
+					},
+					"portal_customized_unsplash_author_name": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Display name of the Unsplash photographer credited for the guest portal's background image.",
+						MarkdownDescription: "Display name of the Unsplash photographer credited for the guest portal's background image.",
+					},
+					"portal_customized_unsplash_author_username": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Unsplash username of the photographer credited for the guest portal's background image.",
+						MarkdownDescription: "Unsplash username of the photographer credited for the guest portal's background image.",
+					},
+					"portal_customized_welcome_text": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Welcome text displayed on the guest portal page.",
+						MarkdownDescription: "Welcome text displayed on the guest portal page.",
+					},
+					"portal_customized_welcome_text_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Display the guest portal's welcome text.",
+						MarkdownDescription: "Display the guest portal's welcome text.",
+					},
+					"portal_customized_welcome_text_position": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Position of the guest portal's welcome text: `under_logo` or `above_boxes`.",
+						MarkdownDescription: "Position of the guest portal's welcome text: `under_logo` or `above_boxes`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("under_logo", "above_boxes"),
+						},
+					},
 					"portal_enabled": schema.BoolAttribute{
 						Optional:            true,
 						Computed:            true,

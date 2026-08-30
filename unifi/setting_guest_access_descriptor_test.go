@@ -184,6 +184,122 @@ func TestGuestAccessSpecOmitsUnsetOmitZeroInts(t *testing.T) {
 	})
 }
 
+// TestGuestAccessPortalAppearanceOmitsAZeroTheControllerRejects is Task 5's
+// own version of the #303 write-side guard, and the one test in this group
+// nothing else would catch: portal_customized_box_opacity (minimum 1) and
+// portal_customized_logo_size (minimum 64) both reject a literal zero at the
+// controller, so a null, unknown or explicit-zero plan value must never
+// reach the wire as a pointer to zero -- but portal_customized_box_radius's
+// own constraint has a minimum of 0, so an explicit 0 is a legal, meaningful
+// corner radius (square corners) that must reach the wire rather than being
+// silently elided. Getting the third field wrong produces no error at any
+// layer: the value simply never arrives at the controller. See
+// TestGuestAccessSpecOmitsUnsetOmitZeroInts above for Task 2's three
+// (expire_number, expire_unit, radius_disconnect_port), which all reject
+// zero and all set OmitZero; this task's three do not behave alike.
+func TestGuestAccessPortalAppearanceOmitsAZeroTheControllerRejects(t *testing.T) {
+	ctx := context.Background()
+	spec := guestAccessKitSpec()
+
+	cases := []struct {
+		name  string
+		value types.Int64
+	}{
+		{"null", types.Int64Null()},
+		{"unknown", types.Int64Unknown()},
+		{"explicit zero", types.Int64Value(0)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			in := &settingGuestAccessModel{
+				PortalCustomizedBoxOpacity: tc.value,
+				PortalCustomizedLogoSize:   tc.value,
+			}
+			sdk, diags := spec.ToSDK(ctx, in)
+			if diags.HasError() {
+				t.Fatalf("ToSDK: %v", diags)
+			}
+			if sdk.PortalCustomizedBoxOpacity != nil {
+				t.Errorf("portal_customized_box_opacity = %v, want omitted (never a literal 0) for a %s "+
+					"plan value", *sdk.PortalCustomizedBoxOpacity, tc.name)
+			}
+			if sdk.PortalCustomizedLogoSize != nil {
+				t.Errorf("portal_customized_logo_size = %v, want omitted (never a literal 0) for a %s "+
+					"plan value", *sdk.PortalCustomizedLogoSize, tc.name)
+			}
+		})
+	}
+
+	// Unlike box_opacity and logo_size, box_radius sets no OmitZero, so its
+	// ToSDK behaves like any plain Int64PtrField (see that type's own ToSDK
+	// comment): null stays nil, but unknown collapses to a pointer to 0, the
+	// same as an explicit zero -- Int64PtrField has no way to tell "the plan
+	// left this alone" from "the plan set this to 0" once OmitZero is off.
+	// That collapse is harmless here specifically because it is legal:
+	// SetInPlan still reports false for both null and unknown, so the masked
+	// write's own field list leaves portal_customized_box_radius out
+	// regardless of what value sits in the SDK struct -- the point this
+	// subtest actually pins is the explicit-zero case, which SetInPlan does
+	// report true, and which must reach the wire as 0 rather than being
+	// dropped the way box_opacity's and logo_size's would be.
+	t.Run("box_radius's own zero is legal and must reach the wire", func(t *testing.T) {
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				in := &settingGuestAccessModel{PortalCustomizedBoxRADIUS: tc.value}
+				sdk, diags := spec.ToSDK(ctx, in)
+				if diags.HasError() {
+					t.Fatalf("ToSDK: %v", diags)
+				}
+				switch tc.name {
+				case "null":
+					if sdk.PortalCustomizedBoxRADIUS != nil {
+						t.Errorf("portal_customized_box_radius = %v, want nil for a null plan value",
+							*sdk.PortalCustomizedBoxRADIUS)
+					}
+				default: // "unknown" and "explicit zero" both collapse to a pointer to 0
+					if sdk.PortalCustomizedBoxRADIUS == nil || *sdk.PortalCustomizedBoxRADIUS != 0 {
+						t.Errorf("portal_customized_box_radius = %v, want a pointer to 0 for a %s plan "+
+							"value -- square corners is a legal, distinguishable value the controller "+
+							"accepts, not something to omit", sdk.PortalCustomizedBoxRADIUS, tc.name)
+					}
+				}
+				// Int64PtrField.SetInPlan (field.go) is exactly this: a value
+				// counts as "in plan" only when neither null nor unknown. The
+				// masked write includes portal_customized_box_radius only when
+				// this is true, which is what keeps the unknown case's harmless
+				// wire zero (above) from ever reaching the controller.
+				if got, want := !tc.value.IsNull() && !tc.value.IsUnknown(), tc.name == "explicit zero"; got != want {
+					t.Errorf("SetInPlan for a %s plan value = %v, want %v -- the masked write includes "+
+						"portal_customized_box_radius only when SetInPlan is true", tc.name, got, want)
+				}
+			})
+		}
+	})
+
+	t.Run("a real value reaches the wire for all three", func(t *testing.T) {
+		in := &settingGuestAccessModel{
+			PortalCustomizedBoxOpacity: types.Int64Value(80),
+			PortalCustomizedBoxRADIUS:  types.Int64Value(12),
+			PortalCustomizedLogoSize:   types.Int64Value(96),
+		}
+		sdk, diags := spec.ToSDK(ctx, in)
+		if diags.HasError() {
+			t.Fatalf("ToSDK: %v", diags)
+		}
+		if sdk.PortalCustomizedBoxOpacity == nil || *sdk.PortalCustomizedBoxOpacity != 80 {
+			t.Errorf("portal_customized_box_opacity = %v, want 80 (OmitZero must not suppress a real value)",
+				sdk.PortalCustomizedBoxOpacity)
+		}
+		if sdk.PortalCustomizedBoxRADIUS == nil || *sdk.PortalCustomizedBoxRADIUS != 12 {
+			t.Errorf("portal_customized_box_radius = %v, want 12", sdk.PortalCustomizedBoxRADIUS)
+		}
+		if sdk.PortalCustomizedLogoSize == nil || *sdk.PortalCustomizedLogoSize != 96 {
+			t.Errorf("portal_customized_logo_size = %v, want 96 (OmitZero must not suppress a real value)",
+				sdk.PortalCustomizedLogoSize)
+		}
+	})
+}
+
 // TestGuestAccessBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey is the
 // unit half of guest_access's masked-write gate, shaped exactly like
 // TestMgmtBackendUpdateFieldsSendsOnlyTheNamedWiresPlusKey
@@ -272,11 +388,11 @@ func TestGuestAccessKitSpecConformance(t *testing.T) {
 // "guest_access" moving off SingleNestedAttribute would panic every
 // conformance test above instead of naming the actual problem, so this
 // pins the shape ahead of that. The count is Task 2's 21, Task 3's 18
-// x_-prefixed fields (guestAccessSecret) and Task 4's 20 -- the other 33 of
-// settings.GuestAccess's 92 fields (every portal_customized_* field, plus
-// allowed_subnet_ and restricted_subnet_, withdrawn after a live apply
-// against the pinned controller rejected both) are still deferred (see
-// setting_guest_access_descriptor.go's own comment).
+// x_-prefixed fields (guestAccessSecret), Task 4's 20 and Task 5's 31
+// portal_customized_* fields -- the only two of settings.GuestAccess's 92
+// fields still deferred are allowed_subnet_ and restricted_subnet_,
+// withdrawn after a live apply against the pinned controller rejected both
+// (see setting_guest_access_descriptor.go's own comment).
 func TestGuestAccessNestedSchemaHasExactlyItsAttributes(t *testing.T) {
 	ctx := context.Background()
 	built := resource_setting.SettingResourceSchema(ctx)
@@ -284,8 +400,8 @@ func TestGuestAccessNestedSchemaHasExactlyItsAttributes(t *testing.T) {
 		t.Fatal(`the generated setting schema has no "guest_access" attribute`)
 	}
 	nested := guestAccessNestedSchema(ctx)
-	if len(nested.Attributes) != 59 {
-		t.Errorf("guest_access has %d attribute(s), want 59; update guestAccessKitSpec and this count together",
+	if len(nested.Attributes) != 90 {
+		t.Errorf("guest_access has %d attribute(s), want 90; update guestAccessKitSpec and this count together",
 			len(nested.Attributes))
 	}
 }
@@ -393,6 +509,166 @@ func TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip(t *te
 		out.WechatAppID != in.WechatAppID || out.WechatEnabled != in.WechatEnabled ||
 		out.WechatShopID != in.WechatShopID {
 		t.Errorf("guest_access Task 4 round-trip mismatch: %+v", out)
+	}
+}
+
+// TestGuestAccessPortalAppearanceRoundTrip exercises Task 5's 31
+// portal_customized_* fields through the Spec's own ToSDK/ToModel: model ->
+// go-unifi setting -> model preserves every field. Shaped like
+// TestGuestAccessSettingRoundTrip and
+// TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip, kept
+// separate so each task's own round trip stays readable against its own
+// field list.
+func TestGuestAccessPortalAppearanceRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	spec := guestAccessKitSpec()
+
+	languages, diags := types.ListValueFrom(ctx, types.StringType, []string{"en", "zh-CN"})
+	if diags.HasError() {
+		t.Fatalf("building portal_customized_languages: %v", diags)
+	}
+
+	in := &settingGuestAccessModel{
+		PortalCustomized:                       types.BoolValue(true),
+		PortalCustomizedAuthenticationText:     types.StringValue("Please sign in to continue"),
+		PortalCustomizedBgColor:                types.StringValue("#ffffff"),
+		PortalCustomizedBgImageEnabled:         types.BoolValue(true),
+		PortalCustomizedBgImageFilename:        types.StringValue("background.jpg"),
+		PortalCustomizedBgImageTile:            types.BoolValue(true),
+		PortalCustomizedBgType:                 types.StringValue("image"),
+		PortalCustomizedBoxColor:               types.StringValue("#000000"),
+		PortalCustomizedBoxLinkColor:           types.StringValue("#111111"),
+		PortalCustomizedBoxOpacity:             types.Int64Value(80),
+		PortalCustomizedBoxRADIUS:              types.Int64Value(12),
+		PortalCustomizedBoxTextColor:           types.StringValue("#222222"),
+		PortalCustomizedButtonColor:            types.StringValue("#333333"),
+		PortalCustomizedButtonText:             types.StringValue("Continue"),
+		PortalCustomizedButtonTextColor:        types.StringValue("#444444"),
+		PortalCustomizedLanguages:              languages,
+		PortalCustomizedLinkColor:              types.StringValue("#555555"),
+		PortalCustomizedLogoEnabled:            types.BoolValue(true),
+		PortalCustomizedLogoFilename:           types.StringValue("logo.png"),
+		PortalCustomizedLogoPosition:           types.StringValue("center"),
+		PortalCustomizedLogoSize:               types.Int64Value(96),
+		PortalCustomizedSuccessText:            types.StringValue("You're connected"),
+		PortalCustomizedTextColor:              types.StringValue("#666666"),
+		PortalCustomizedTitle:                  types.StringValue("Welcome"),
+		PortalCustomizedTos:                    types.StringValue("Terms apply"),
+		PortalCustomizedTosEnabled:             types.BoolValue(true),
+		PortalCustomizedUnsplashAuthorName:     types.StringValue("Jane Doe"),
+		PortalCustomizedUnsplashAuthorUsername: types.StringValue("janedoe"),
+		PortalCustomizedWelcomeText:            types.StringValue("Welcome to our guest network"),
+		PortalCustomizedWelcomeTextEnabled:     types.BoolValue(true),
+		PortalCustomizedWelcomeTextPosition:    types.StringValue("under_logo"),
+	}
+	sdk, diags := spec.ToSDK(ctx, in)
+	if diags.HasError() {
+		t.Fatalf("ToSDK: %v", diags)
+	}
+
+	want := &settings.GuestAccess{
+		PortalCustomized:                       true,
+		PortalCustomizedAuthenticationText:     "Please sign in to continue",
+		PortalCustomizedBgColor:                "#ffffff",
+		PortalCustomizedBgImageEnabled:         true,
+		PortalCustomizedBgImageFilename:        "background.jpg",
+		PortalCustomizedBgImageTile:            true,
+		PortalCustomizedBgType:                 "image",
+		PortalCustomizedBoxColor:               "#000000",
+		PortalCustomizedBoxLinkColor:           "#111111",
+		PortalCustomizedBoxOpacity:             int64Ptr(80),
+		PortalCustomizedBoxRADIUS:              int64Ptr(12),
+		PortalCustomizedBoxTextColor:           "#222222",
+		PortalCustomizedButtonColor:            "#333333",
+		PortalCustomizedButtonText:             "Continue",
+		PortalCustomizedButtonTextColor:        "#444444",
+		PortalCustomizedLanguages:              []string{"en", "zh-CN"},
+		PortalCustomizedLinkColor:              "#555555",
+		PortalCustomizedLogoEnabled:            true,
+		PortalCustomizedLogoFilename:           "logo.png",
+		PortalCustomizedLogoPosition:           "center",
+		PortalCustomizedLogoSize:               int64Ptr(96),
+		PortalCustomizedSuccessText:            "You're connected",
+		PortalCustomizedTextColor:              "#666666",
+		PortalCustomizedTitle:                  "Welcome",
+		PortalCustomizedTos:                    "Terms apply",
+		PortalCustomizedTosEnabled:             true,
+		PortalCustomizedUnsplashAuthorName:     "Jane Doe",
+		PortalCustomizedUnsplashAuthorUsername: "janedoe",
+		PortalCustomizedWelcomeText:            "Welcome to our guest network",
+		PortalCustomizedWelcomeTextEnabled:     true,
+		PortalCustomizedWelcomeTextPosition:    "under_logo",
+	}
+	if sdk.PortalCustomized != want.PortalCustomized ||
+		sdk.PortalCustomizedAuthenticationText != want.PortalCustomizedAuthenticationText ||
+		sdk.PortalCustomizedBgColor != want.PortalCustomizedBgColor ||
+		sdk.PortalCustomizedBgImageEnabled != want.PortalCustomizedBgImageEnabled ||
+		sdk.PortalCustomizedBgImageFilename != want.PortalCustomizedBgImageFilename ||
+		sdk.PortalCustomizedBgImageTile != want.PortalCustomizedBgImageTile ||
+		sdk.PortalCustomizedBgType != want.PortalCustomizedBgType ||
+		sdk.PortalCustomizedBoxColor != want.PortalCustomizedBoxColor ||
+		sdk.PortalCustomizedBoxLinkColor != want.PortalCustomizedBoxLinkColor ||
+		sdk.PortalCustomizedBoxOpacity == nil || *sdk.PortalCustomizedBoxOpacity != *want.PortalCustomizedBoxOpacity ||
+		sdk.PortalCustomizedBoxRADIUS == nil || *sdk.PortalCustomizedBoxRADIUS != *want.PortalCustomizedBoxRADIUS ||
+		sdk.PortalCustomizedBoxTextColor != want.PortalCustomizedBoxTextColor ||
+		sdk.PortalCustomizedButtonColor != want.PortalCustomizedButtonColor ||
+		sdk.PortalCustomizedButtonText != want.PortalCustomizedButtonText ||
+		sdk.PortalCustomizedButtonTextColor != want.PortalCustomizedButtonTextColor ||
+		!slices.Equal(sdk.PortalCustomizedLanguages, want.PortalCustomizedLanguages) ||
+		sdk.PortalCustomizedLinkColor != want.PortalCustomizedLinkColor ||
+		sdk.PortalCustomizedLogoEnabled != want.PortalCustomizedLogoEnabled ||
+		sdk.PortalCustomizedLogoFilename != want.PortalCustomizedLogoFilename ||
+		sdk.PortalCustomizedLogoPosition != want.PortalCustomizedLogoPosition ||
+		sdk.PortalCustomizedLogoSize == nil || *sdk.PortalCustomizedLogoSize != *want.PortalCustomizedLogoSize ||
+		sdk.PortalCustomizedSuccessText != want.PortalCustomizedSuccessText ||
+		sdk.PortalCustomizedTextColor != want.PortalCustomizedTextColor ||
+		sdk.PortalCustomizedTitle != want.PortalCustomizedTitle ||
+		sdk.PortalCustomizedTos != want.PortalCustomizedTos ||
+		sdk.PortalCustomizedTosEnabled != want.PortalCustomizedTosEnabled ||
+		sdk.PortalCustomizedUnsplashAuthorName != want.PortalCustomizedUnsplashAuthorName ||
+		sdk.PortalCustomizedUnsplashAuthorUsername != want.PortalCustomizedUnsplashAuthorUsername ||
+		sdk.PortalCustomizedWelcomeText != want.PortalCustomizedWelcomeText ||
+		sdk.PortalCustomizedWelcomeTextEnabled != want.PortalCustomizedWelcomeTextEnabled ||
+		sdk.PortalCustomizedWelcomeTextPosition != want.PortalCustomizedWelcomeTextPosition {
+		t.Fatalf("ToSDK = %+v, want %+v", sdk, want)
+	}
+
+	var out settingGuestAccessModel
+	if diags := spec.ToModel(ctx, sdk, &out, ""); diags.HasError() {
+		t.Fatalf("ToModel: %v", diags)
+	}
+	if out.PortalCustomized != in.PortalCustomized ||
+		out.PortalCustomizedAuthenticationText != in.PortalCustomizedAuthenticationText ||
+		out.PortalCustomizedBgColor != in.PortalCustomizedBgColor ||
+		out.PortalCustomizedBgImageEnabled != in.PortalCustomizedBgImageEnabled ||
+		out.PortalCustomizedBgImageFilename != in.PortalCustomizedBgImageFilename ||
+		out.PortalCustomizedBgImageTile != in.PortalCustomizedBgImageTile ||
+		out.PortalCustomizedBgType != in.PortalCustomizedBgType ||
+		out.PortalCustomizedBoxColor != in.PortalCustomizedBoxColor ||
+		out.PortalCustomizedBoxLinkColor != in.PortalCustomizedBoxLinkColor ||
+		out.PortalCustomizedBoxOpacity != in.PortalCustomizedBoxOpacity ||
+		out.PortalCustomizedBoxRADIUS != in.PortalCustomizedBoxRADIUS ||
+		out.PortalCustomizedBoxTextColor != in.PortalCustomizedBoxTextColor ||
+		out.PortalCustomizedButtonColor != in.PortalCustomizedButtonColor ||
+		out.PortalCustomizedButtonText != in.PortalCustomizedButtonText ||
+		out.PortalCustomizedButtonTextColor != in.PortalCustomizedButtonTextColor ||
+		!out.PortalCustomizedLanguages.Equal(in.PortalCustomizedLanguages) ||
+		out.PortalCustomizedLinkColor != in.PortalCustomizedLinkColor ||
+		out.PortalCustomizedLogoEnabled != in.PortalCustomizedLogoEnabled ||
+		out.PortalCustomizedLogoFilename != in.PortalCustomizedLogoFilename ||
+		out.PortalCustomizedLogoPosition != in.PortalCustomizedLogoPosition ||
+		out.PortalCustomizedLogoSize != in.PortalCustomizedLogoSize ||
+		out.PortalCustomizedSuccessText != in.PortalCustomizedSuccessText ||
+		out.PortalCustomizedTextColor != in.PortalCustomizedTextColor ||
+		out.PortalCustomizedTitle != in.PortalCustomizedTitle ||
+		out.PortalCustomizedTos != in.PortalCustomizedTos ||
+		out.PortalCustomizedTosEnabled != in.PortalCustomizedTosEnabled ||
+		out.PortalCustomizedUnsplashAuthorName != in.PortalCustomizedUnsplashAuthorName ||
+		out.PortalCustomizedUnsplashAuthorUsername != in.PortalCustomizedUnsplashAuthorUsername ||
+		out.PortalCustomizedWelcomeText != in.PortalCustomizedWelcomeText ||
+		out.PortalCustomizedWelcomeTextEnabled != in.PortalCustomizedWelcomeTextEnabled ||
+		out.PortalCustomizedWelcomeTextPosition != in.PortalCustomizedWelcomeTextPosition {
+		t.Errorf("guest_access Task 5 round-trip mismatch: %+v", out)
 	}
 }
 

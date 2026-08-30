@@ -33,13 +33,72 @@ package unifi
 // restricted_dns_enabled and restricted_dns_servers (network scoping, minus
 // the two withdrawn subnet fields); and three stragglers -- auth_url,
 // custom_ip (both under portal access and mode, missed by Task 2's own
-// brief) and voucher_customized. That totals 59 of the 92; the remaining 33
-// -- every portal_customized_* field (31, Task 5's) plus the two withdrawn
-// subnet fields -- are still named in provider-codegen/policy/setting.json's
-// top-level "omitted" list as "GuestAccess.<field>" rather than as omitted
-// members of this grouping, so Task 5's own diff is exactly "move its fields
+// brief) and voucher_customized. That totals 59 of the 92. Task 5 added the
+// remaining 31 portal_customized_* fields, leaving only allowed_subnet_ and
+// restricted_subnet_ (the two withdrawn subnet fields) in
+// provider-codegen/policy/setting.json's top-level "omitted" list as
+// "GuestAccess.<field>" -- Task 5's own diff was exactly "move its 31 fields
 // from omitted to managed" rather than a rewrite of this file's member list.
-// See that policy file's "guest_access" grouping.
+// See that policy file's "guest_access" grouping. Task 5's own brief also
+// named five already-shipped fields (facebook_scope_email,
+// google_scope_email, google_domain, wechat_shop_id, voucher_customized) as
+// part of its scope; all five were already managed by Task 4 above, so
+// Task 5's actual diff is exactly the 31 portal_customized_* fields, not 36.
+//
+// Task 5's 31 portal_customized_* fields are 8 hex-colour strings, 3 enum
+// strings, 10 free-text strings, 6 bools, 1 string list
+// (portal_customized_languages) and 3 nullable integers. All 8 hex-colour
+// fields and all 3 enum fields carry a derived validator: the hex pattern
+// (`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`) admits an empty string via its
+// own alternation, so those 8 want KeepZero; the 3 enums
+// (portal_customized_bg_type, portal_customized_logo_position,
+// portal_customized_welcome_text_position) have no empty option in their
+// value set, so they want NullZero. None of the 10 free-text fields or 6
+// bools carries a constraint-table entry, matching every other
+// non-validated field in this section. portal_customized_languages follows
+// restricted_dns_servers' own precedent (Task 4, above): a per-element
+// pattern (`^[a-z]{2}([_-][a-zA-Z]{2,4})*$`) hand-composed as
+// listvalidator.ValueStringsAre(controllerregex.Matches(...)) in
+// policy/setting.json, because the compiler's deriver is scoped to scalar
+// attributes (internal/providercompiler/compile.go) and never reaches a
+// collection's element type.
+//
+// The 3 nullable integers do not behave alike, and this is the one fact in
+// the group nothing but a direct check of SettingGuestAccess's constraint
+// table would catch: portal_customized_box_opacity's pattern
+// (`^[1-9][0-9]?$|^100$|^$`) and portal_customized_logo_size's pattern
+// (`6[4-9]|[7-9][0-9]|1[0-8][0-9]|19[0-2]`) both reject a literal "0", so
+// both set OmitZero -- the same #303 write-side guard as expire_number,
+// expire_unit and radius_disconnect_port above. portal_customized_box_radius's
+// pattern (`[0-9]|[1-4][0-9]|50`) accepts "0" (its Min is 0, not 1), so it
+// sets no OmitZero at all: eliding its zero would silently discard a
+// practitioner's explicit "square corners" with no error at any layer, the
+// value would simply never reach the controller. All three still carry
+// Elide: KeepZero, matching every other Int64PtrField in this section:
+// resourcekit.ElideProblems' zeroIsRejected only ever inspects a
+// schema.StringAttribute's validators, so it can't drive NullZero for an
+// Int64Attribute regardless of what its own pattern says -- setting NullZero
+// on any of the three fails TestGuestAccessKitSpecConformance's own
+// ElideProblems check. Like box_opacity and logo_size, all three get no
+// derived validator either (int64validator.Between(1, 100),
+// int64validator.Between(0, 50) and int64validator.Between(64, 192) are
+// hand-written in policy/setting.json instead), following the same
+// established precedent as lcm's brightness and idle_timeout
+// (setting_lcm_descriptor.go) -- a hand int64validator.Between never
+// conflicts with the compiler's redundancy gate, which only refuses a hand
+// validator of the same *kind* the deriver would also produce
+// (int64validator.OneOf from an enumerated value set, never .Between from
+// bounds).
+//
+// TestGuestAccessPortalAppearanceOmitsAZeroTheControllerRejects pins all
+// three: an explicit 0 (and a null or unknown plan value) never reaches the
+// wire for box_opacity or logo_size, and an explicit 0 always does for
+// box_radius. See that test's own comment for why box_radius's *unknown*
+// case still writes a literal 0 into the SDK struct (Int64PtrField's own
+// ToSDK behaviour absent OmitZero) without that ever reaching the
+// controller: SetInPlan reports false for both null and unknown, so the
+// masked write's field list leaves portal_customized_box_radius out
+// regardless of what sits in the struct.
 //
 // Task 4's own notes: allowed_subnet_ and restricted_subnet_'s withdrawal is
 // the first case in this policy corpus where the SDK's own generated struct
@@ -158,129 +217,191 @@ import (
 // the same convention every other section descriptor in this package
 // follows.
 type settingGuestAccessModel struct {
-	Auth                         types.String `tfsdk:"auth"`
-	AuthUrl                      types.String `tfsdk:"auth_url"`
-	AuthorizeLoginid             types.String `tfsdk:"authorize_loginid"`
-	AuthorizeTransactionkey      types.String `tfsdk:"authorize_transactionkey"`
-	AuthorizeUseSandbox          types.Bool   `tfsdk:"authorize_use_sandbox"`
-	CustomIP                     types.String `tfsdk:"custom_ip"`
-	EcEnabled                    types.Bool   `tfsdk:"ec_enabled"`
-	Expire                       types.String `tfsdk:"expire"`
-	ExpireNumber                 types.Int64  `tfsdk:"expire_number"`
-	ExpireUnit                   types.Int64  `tfsdk:"expire_unit"`
-	FacebookAppID                types.String `tfsdk:"facebook_app_id"`
-	FacebookAppSecret            types.String `tfsdk:"facebook_app_secret"`
-	FacebookEnabled              types.Bool   `tfsdk:"facebook_enabled"`
-	FacebookScopeEmail           types.Bool   `tfsdk:"facebook_scope_email"`
-	Gateway                      types.String `tfsdk:"gateway"`
-	GoogleClientID               types.String `tfsdk:"google_client_id"`
-	GoogleClientSecret           types.String `tfsdk:"google_client_secret"`
-	GoogleDomain                 types.String `tfsdk:"google_domain"`
-	GoogleEnabled                types.Bool   `tfsdk:"google_enabled"`
-	GoogleScopeEmail             types.Bool   `tfsdk:"google_scope_email"`
-	IPpayTerminalid              types.String `tfsdk:"ippay_terminalid"`
-	IPpayUseSandbox              types.Bool   `tfsdk:"ippay_use_sandbox"`
-	MerchantwarriorApikey        types.String `tfsdk:"merchantwarrior_apikey"`
-	MerchantwarriorApipassphrase types.String `tfsdk:"merchantwarrior_apipassphrase"`
-	MerchantwarriorMerchantuuid  types.String `tfsdk:"merchantwarrior_merchantuuid"`
-	MerchantwarriorUseSandbox    types.Bool   `tfsdk:"merchantwarrior_use_sandbox"`
-	Password                     types.String `tfsdk:"password"`
-	PasswordEnabled              types.Bool   `tfsdk:"password_enabled"`
-	PaymentEnabled               types.Bool   `tfsdk:"payment_enabled"`
-	PaypalPassword               types.String `tfsdk:"paypal_password"`
-	PaypalSignature              types.String `tfsdk:"paypal_signature"`
-	PaypalUseSandbox             types.Bool   `tfsdk:"paypal_use_sandbox"`
-	PaypalUsername               types.String `tfsdk:"paypal_username"`
-	PortalEnabled                types.Bool   `tfsdk:"portal_enabled"`
-	PortalHostname               types.String `tfsdk:"portal_hostname"`
-	PortalUseHostname            types.Bool   `tfsdk:"portal_use_hostname"`
-	QuickpayAgreementid          types.String `tfsdk:"quickpay_agreementid"`
-	QuickpayApikey               types.String `tfsdk:"quickpay_apikey"`
-	QuickpayMerchantid           types.String `tfsdk:"quickpay_merchantid"`
-	QuickpayTestmode             types.Bool   `tfsdk:"quickpay_testmode"`
-	RADIUSAuthType               types.String `tfsdk:"radius_auth_type"`
-	RADIUSDisconnectEnabled      types.Bool   `tfsdk:"radius_disconnect_enabled"`
-	RADIUSDisconnectPort         types.Int64  `tfsdk:"radius_disconnect_port"`
-	RADIUSEnabled                types.Bool   `tfsdk:"radius_enabled"`
-	RADIUSProfileID              types.String `tfsdk:"radiusprofile_id"`
-	RedirectEnabled              types.Bool   `tfsdk:"redirect_enabled"`
-	RedirectHttps                types.Bool   `tfsdk:"redirect_https"`
-	RedirectToHttps              types.Bool   `tfsdk:"redirect_to_https"`
-	RedirectUrl                  types.String `tfsdk:"redirect_url"`
-	RestrictedDNSEnabled         types.Bool   `tfsdk:"restricted_dns_enabled"`
-	RestrictedDNSServers         types.List   `tfsdk:"restricted_dns_servers"`
-	StripeApiKey                 types.String `tfsdk:"stripe_api_key"`
-	VoucherCustomized            types.Bool   `tfsdk:"voucher_customized"`
-	VoucherEnabled               types.Bool   `tfsdk:"voucher_enabled"`
-	WechatAppID                  types.String `tfsdk:"wechat_app_id"`
-	WechatAppSecret              types.String `tfsdk:"wechat_app_secret"`
-	WechatEnabled                types.Bool   `tfsdk:"wechat_enabled"`
-	WechatSecretKey              types.String `tfsdk:"wechat_secret_key"`
-	WechatShopID                 types.String `tfsdk:"wechat_shop_id"`
+	Auth                                   types.String `tfsdk:"auth"`
+	AuthUrl                                types.String `tfsdk:"auth_url"`
+	AuthorizeLoginid                       types.String `tfsdk:"authorize_loginid"`
+	AuthorizeTransactionkey                types.String `tfsdk:"authorize_transactionkey"`
+	AuthorizeUseSandbox                    types.Bool   `tfsdk:"authorize_use_sandbox"`
+	CustomIP                               types.String `tfsdk:"custom_ip"`
+	EcEnabled                              types.Bool   `tfsdk:"ec_enabled"`
+	Expire                                 types.String `tfsdk:"expire"`
+	ExpireNumber                           types.Int64  `tfsdk:"expire_number"`
+	ExpireUnit                             types.Int64  `tfsdk:"expire_unit"`
+	FacebookAppID                          types.String `tfsdk:"facebook_app_id"`
+	FacebookAppSecret                      types.String `tfsdk:"facebook_app_secret"`
+	FacebookEnabled                        types.Bool   `tfsdk:"facebook_enabled"`
+	FacebookScopeEmail                     types.Bool   `tfsdk:"facebook_scope_email"`
+	Gateway                                types.String `tfsdk:"gateway"`
+	GoogleClientID                         types.String `tfsdk:"google_client_id"`
+	GoogleClientSecret                     types.String `tfsdk:"google_client_secret"`
+	GoogleDomain                           types.String `tfsdk:"google_domain"`
+	GoogleEnabled                          types.Bool   `tfsdk:"google_enabled"`
+	GoogleScopeEmail                       types.Bool   `tfsdk:"google_scope_email"`
+	IPpayTerminalid                        types.String `tfsdk:"ippay_terminalid"`
+	IPpayUseSandbox                        types.Bool   `tfsdk:"ippay_use_sandbox"`
+	MerchantwarriorApikey                  types.String `tfsdk:"merchantwarrior_apikey"`
+	MerchantwarriorApipassphrase           types.String `tfsdk:"merchantwarrior_apipassphrase"`
+	MerchantwarriorMerchantuuid            types.String `tfsdk:"merchantwarrior_merchantuuid"`
+	MerchantwarriorUseSandbox              types.Bool   `tfsdk:"merchantwarrior_use_sandbox"`
+	Password                               types.String `tfsdk:"password"`
+	PasswordEnabled                        types.Bool   `tfsdk:"password_enabled"`
+	PaymentEnabled                         types.Bool   `tfsdk:"payment_enabled"`
+	PaypalPassword                         types.String `tfsdk:"paypal_password"`
+	PaypalSignature                        types.String `tfsdk:"paypal_signature"`
+	PaypalUseSandbox                       types.Bool   `tfsdk:"paypal_use_sandbox"`
+	PaypalUsername                         types.String `tfsdk:"paypal_username"`
+	PortalCustomized                       types.Bool   `tfsdk:"portal_customized"`
+	PortalCustomizedAuthenticationText     types.String `tfsdk:"portal_customized_authentication_text"`
+	PortalCustomizedBgColor                types.String `tfsdk:"portal_customized_bg_color"`
+	PortalCustomizedBgImageEnabled         types.Bool   `tfsdk:"portal_customized_bg_image_enabled"`
+	PortalCustomizedBgImageFilename        types.String `tfsdk:"portal_customized_bg_image_filename"`
+	PortalCustomizedBgImageTile            types.Bool   `tfsdk:"portal_customized_bg_image_tile"`
+	PortalCustomizedBgType                 types.String `tfsdk:"portal_customized_bg_type"`
+	PortalCustomizedBoxColor               types.String `tfsdk:"portal_customized_box_color"`
+	PortalCustomizedBoxLinkColor           types.String `tfsdk:"portal_customized_box_link_color"`
+	PortalCustomizedBoxOpacity             types.Int64  `tfsdk:"portal_customized_box_opacity"`
+	PortalCustomizedBoxRADIUS              types.Int64  `tfsdk:"portal_customized_box_radius"`
+	PortalCustomizedBoxTextColor           types.String `tfsdk:"portal_customized_box_text_color"`
+	PortalCustomizedButtonColor            types.String `tfsdk:"portal_customized_button_color"`
+	PortalCustomizedButtonText             types.String `tfsdk:"portal_customized_button_text"`
+	PortalCustomizedButtonTextColor        types.String `tfsdk:"portal_customized_button_text_color"`
+	PortalCustomizedLanguages              types.List   `tfsdk:"portal_customized_languages"`
+	PortalCustomizedLinkColor              types.String `tfsdk:"portal_customized_link_color"`
+	PortalCustomizedLogoEnabled            types.Bool   `tfsdk:"portal_customized_logo_enabled"`
+	PortalCustomizedLogoFilename           types.String `tfsdk:"portal_customized_logo_filename"`
+	PortalCustomizedLogoPosition           types.String `tfsdk:"portal_customized_logo_position"`
+	PortalCustomizedLogoSize               types.Int64  `tfsdk:"portal_customized_logo_size"`
+	PortalCustomizedSuccessText            types.String `tfsdk:"portal_customized_success_text"`
+	PortalCustomizedTextColor              types.String `tfsdk:"portal_customized_text_color"`
+	PortalCustomizedTitle                  types.String `tfsdk:"portal_customized_title"`
+	PortalCustomizedTos                    types.String `tfsdk:"portal_customized_tos"`
+	PortalCustomizedTosEnabled             types.Bool   `tfsdk:"portal_customized_tos_enabled"`
+	PortalCustomizedUnsplashAuthorName     types.String `tfsdk:"portal_customized_unsplash_author_name"`
+	PortalCustomizedUnsplashAuthorUsername types.String `tfsdk:"portal_customized_unsplash_author_username"`
+	PortalCustomizedWelcomeText            types.String `tfsdk:"portal_customized_welcome_text"`
+	PortalCustomizedWelcomeTextEnabled     types.Bool   `tfsdk:"portal_customized_welcome_text_enabled"`
+	PortalCustomizedWelcomeTextPosition    types.String `tfsdk:"portal_customized_welcome_text_position"`
+	PortalEnabled                          types.Bool   `tfsdk:"portal_enabled"`
+	PortalHostname                         types.String `tfsdk:"portal_hostname"`
+	PortalUseHostname                      types.Bool   `tfsdk:"portal_use_hostname"`
+	QuickpayAgreementid                    types.String `tfsdk:"quickpay_agreementid"`
+	QuickpayApikey                         types.String `tfsdk:"quickpay_apikey"`
+	QuickpayMerchantid                     types.String `tfsdk:"quickpay_merchantid"`
+	QuickpayTestmode                       types.Bool   `tfsdk:"quickpay_testmode"`
+	RADIUSAuthType                         types.String `tfsdk:"radius_auth_type"`
+	RADIUSDisconnectEnabled                types.Bool   `tfsdk:"radius_disconnect_enabled"`
+	RADIUSDisconnectPort                   types.Int64  `tfsdk:"radius_disconnect_port"`
+	RADIUSEnabled                          types.Bool   `tfsdk:"radius_enabled"`
+	RADIUSProfileID                        types.String `tfsdk:"radiusprofile_id"`
+	RedirectEnabled                        types.Bool   `tfsdk:"redirect_enabled"`
+	RedirectHttps                          types.Bool   `tfsdk:"redirect_https"`
+	RedirectToHttps                        types.Bool   `tfsdk:"redirect_to_https"`
+	RedirectUrl                            types.String `tfsdk:"redirect_url"`
+	RestrictedDNSEnabled                   types.Bool   `tfsdk:"restricted_dns_enabled"`
+	RestrictedDNSServers                   types.List   `tfsdk:"restricted_dns_servers"`
+	StripeApiKey                           types.String `tfsdk:"stripe_api_key"`
+	VoucherCustomized                      types.Bool   `tfsdk:"voucher_customized"`
+	VoucherEnabled                         types.Bool   `tfsdk:"voucher_enabled"`
+	WechatAppID                            types.String `tfsdk:"wechat_app_id"`
+	WechatAppSecret                        types.String `tfsdk:"wechat_app_secret"`
+	WechatEnabled                          types.Bool   `tfsdk:"wechat_enabled"`
+	WechatSecretKey                        types.String `tfsdk:"wechat_secret_key"`
+	WechatShopID                           types.String `tfsdk:"wechat_shop_id"`
 }
 
 // guestAccessAttrTypes types guest_access's own object in state; it must
 // match the generated schema exactly.
 var guestAccessAttrTypes = map[string]attr.Type{
-	"auth":                          types.StringType,
-	"auth_url":                      types.StringType,
-	"authorize_loginid":             types.StringType,
-	"authorize_transactionkey":      types.StringType,
-	"authorize_use_sandbox":         types.BoolType,
-	"custom_ip":                     types.StringType,
-	"ec_enabled":                    types.BoolType,
-	"expire":                        types.StringType,
-	"expire_number":                 types.Int64Type,
-	"expire_unit":                   types.Int64Type,
-	"facebook_app_id":               types.StringType,
-	"facebook_app_secret":           types.StringType,
-	"facebook_enabled":              types.BoolType,
-	"facebook_scope_email":          types.BoolType,
-	"gateway":                       types.StringType,
-	"google_client_id":              types.StringType,
-	"google_client_secret":          types.StringType,
-	"google_domain":                 types.StringType,
-	"google_enabled":                types.BoolType,
-	"google_scope_email":            types.BoolType,
-	"ippay_terminalid":              types.StringType,
-	"ippay_use_sandbox":             types.BoolType,
-	"merchantwarrior_apikey":        types.StringType,
-	"merchantwarrior_apipassphrase": types.StringType,
-	"merchantwarrior_merchantuuid":  types.StringType,
-	"merchantwarrior_use_sandbox":   types.BoolType,
-	"password":                      types.StringType,
-	"password_enabled":              types.BoolType,
-	"payment_enabled":               types.BoolType,
-	"paypal_password":               types.StringType,
-	"paypal_signature":              types.StringType,
-	"paypal_use_sandbox":            types.BoolType,
-	"paypal_username":               types.StringType,
-	"portal_enabled":                types.BoolType,
-	"portal_hostname":               types.StringType,
-	"portal_use_hostname":           types.BoolType,
-	"quickpay_agreementid":          types.StringType,
-	"quickpay_apikey":               types.StringType,
-	"quickpay_merchantid":           types.StringType,
-	"quickpay_testmode":             types.BoolType,
-	"radius_auth_type":              types.StringType,
-	"radius_disconnect_enabled":     types.BoolType,
-	"radius_disconnect_port":        types.Int64Type,
-	"radius_enabled":                types.BoolType,
-	"radiusprofile_id":              types.StringType,
-	"redirect_enabled":              types.BoolType,
-	"redirect_https":                types.BoolType,
-	"redirect_to_https":             types.BoolType,
-	"redirect_url":                  types.StringType,
-	"restricted_dns_enabled":        types.BoolType,
-	"restricted_dns_servers":        types.ListType{ElemType: types.StringType},
-	"stripe_api_key":                types.StringType,
-	"voucher_customized":            types.BoolType,
-	"voucher_enabled":               types.BoolType,
-	"wechat_app_id":                 types.StringType,
-	"wechat_app_secret":             types.StringType,
-	"wechat_enabled":                types.BoolType,
-	"wechat_secret_key":             types.StringType,
-	"wechat_shop_id":                types.StringType,
+	"auth":                                       types.StringType,
+	"auth_url":                                   types.StringType,
+	"authorize_loginid":                          types.StringType,
+	"authorize_transactionkey":                   types.StringType,
+	"authorize_use_sandbox":                      types.BoolType,
+	"custom_ip":                                  types.StringType,
+	"ec_enabled":                                 types.BoolType,
+	"expire":                                     types.StringType,
+	"expire_number":                              types.Int64Type,
+	"expire_unit":                                types.Int64Type,
+	"facebook_app_id":                            types.StringType,
+	"facebook_app_secret":                        types.StringType,
+	"facebook_enabled":                           types.BoolType,
+	"facebook_scope_email":                       types.BoolType,
+	"gateway":                                    types.StringType,
+	"google_client_id":                           types.StringType,
+	"google_client_secret":                       types.StringType,
+	"google_domain":                              types.StringType,
+	"google_enabled":                             types.BoolType,
+	"google_scope_email":                         types.BoolType,
+	"ippay_terminalid":                           types.StringType,
+	"ippay_use_sandbox":                          types.BoolType,
+	"merchantwarrior_apikey":                     types.StringType,
+	"merchantwarrior_apipassphrase":              types.StringType,
+	"merchantwarrior_merchantuuid":               types.StringType,
+	"merchantwarrior_use_sandbox":                types.BoolType,
+	"password":                                   types.StringType,
+	"password_enabled":                           types.BoolType,
+	"payment_enabled":                            types.BoolType,
+	"paypal_password":                            types.StringType,
+	"paypal_signature":                           types.StringType,
+	"paypal_use_sandbox":                         types.BoolType,
+	"paypal_username":                            types.StringType,
+	"portal_customized":                          types.BoolType,
+	"portal_customized_authentication_text":      types.StringType,
+	"portal_customized_bg_color":                 types.StringType,
+	"portal_customized_bg_image_enabled":         types.BoolType,
+	"portal_customized_bg_image_filename":        types.StringType,
+	"portal_customized_bg_image_tile":            types.BoolType,
+	"portal_customized_bg_type":                  types.StringType,
+	"portal_customized_box_color":                types.StringType,
+	"portal_customized_box_link_color":           types.StringType,
+	"portal_customized_box_opacity":              types.Int64Type,
+	"portal_customized_box_radius":               types.Int64Type,
+	"portal_customized_box_text_color":           types.StringType,
+	"portal_customized_button_color":             types.StringType,
+	"portal_customized_button_text":              types.StringType,
+	"portal_customized_button_text_color":        types.StringType,
+	"portal_customized_languages":                types.ListType{ElemType: types.StringType},
+	"portal_customized_link_color":               types.StringType,
+	"portal_customized_logo_enabled":             types.BoolType,
+	"portal_customized_logo_filename":            types.StringType,
+	"portal_customized_logo_position":            types.StringType,
+	"portal_customized_logo_size":                types.Int64Type,
+	"portal_customized_success_text":             types.StringType,
+	"portal_customized_text_color":               types.StringType,
+	"portal_customized_title":                    types.StringType,
+	"portal_customized_tos":                      types.StringType,
+	"portal_customized_tos_enabled":              types.BoolType,
+	"portal_customized_unsplash_author_name":     types.StringType,
+	"portal_customized_unsplash_author_username": types.StringType,
+	"portal_customized_welcome_text":             types.StringType,
+	"portal_customized_welcome_text_enabled":     types.BoolType,
+	"portal_customized_welcome_text_position":    types.StringType,
+	"portal_enabled":                             types.BoolType,
+	"portal_hostname":                            types.StringType,
+	"portal_use_hostname":                        types.BoolType,
+	"quickpay_agreementid":                       types.StringType,
+	"quickpay_apikey":                            types.StringType,
+	"quickpay_merchantid":                        types.StringType,
+	"quickpay_testmode":                          types.BoolType,
+	"radius_auth_type":                           types.StringType,
+	"radius_disconnect_enabled":                  types.BoolType,
+	"radius_disconnect_port":                     types.Int64Type,
+	"radius_enabled":                             types.BoolType,
+	"radiusprofile_id":                           types.StringType,
+	"redirect_enabled":                           types.BoolType,
+	"redirect_https":                             types.BoolType,
+	"redirect_to_https":                          types.BoolType,
+	"redirect_url":                               types.StringType,
+	"restricted_dns_enabled":                     types.BoolType,
+	"restricted_dns_servers":                     types.ListType{ElemType: types.StringType},
+	"stripe_api_key":                             types.StringType,
+	"voucher_customized":                         types.BoolType,
+	"voucher_enabled":                            types.BoolType,
+	"wechat_app_id":                              types.StringType,
+	"wechat_app_secret":                          types.StringType,
+	"wechat_enabled":                             types.BoolType,
+	"wechat_secret_key":                          types.StringType,
+	"wechat_shop_id":                             types.StringType,
 }
 
 // guestAccessKitSpec maps this section's attributes of the generated
@@ -532,6 +653,188 @@ func guestAccessKitSpec() resourcekit.Spec[settingGuestAccessModel, settings.Gue
 				Model: func(m *settingGuestAccessModel) *types.String { return &m.PaypalUsername },
 				SDK:   func(s *settings.GuestAccess) *string { return &s.PaypalUsername },
 				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.PortalCustomized },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.PortalCustomized },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_authentication_text",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedAuthenticationText },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedAuthenticationText },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_bg_color",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedBgColor },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedBgColor },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_bg_image_enabled",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.PortalCustomizedBgImageEnabled },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.PortalCustomizedBgImageEnabled },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_bg_image_filename",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedBgImageFilename },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedBgImageFilename },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_bg_image_tile",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.PortalCustomizedBgImageTile },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.PortalCustomizedBgImageTile },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_bg_type",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedBgType },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedBgType },
+				Elide: resourcekit.NullZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_box_color",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedBoxColor },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedBoxColor },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_box_link_color",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedBoxLinkColor },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedBoxLinkColor },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.Int64PtrField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:     "portal_customized_box_opacity",
+				Model:    func(m *settingGuestAccessModel) *types.Int64 { return &m.PortalCustomizedBoxOpacity },
+				SDK:      func(s *settings.GuestAccess) **int64 { return &s.PortalCustomizedBoxOpacity },
+				Elide:    resourcekit.KeepZero,
+				OmitZero: true,
+			},
+			resourcekit.Int64PtrField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_box_radius",
+				Model: func(m *settingGuestAccessModel) *types.Int64 { return &m.PortalCustomizedBoxRADIUS },
+				SDK:   func(s *settings.GuestAccess) **int64 { return &s.PortalCustomizedBoxRADIUS },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_box_text_color",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedBoxTextColor },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedBoxTextColor },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_button_color",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedButtonColor },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedButtonColor },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_button_text",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedButtonText },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedButtonText },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_button_text_color",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedButtonTextColor },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedButtonTextColor },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringListField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_languages",
+				Model: func(m *settingGuestAccessModel) *types.List { return &m.PortalCustomizedLanguages },
+				SDK:   func(s *settings.GuestAccess) *[]string { return &s.PortalCustomizedLanguages },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_link_color",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedLinkColor },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedLinkColor },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_logo_enabled",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.PortalCustomizedLogoEnabled },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.PortalCustomizedLogoEnabled },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_logo_filename",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedLogoFilename },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedLogoFilename },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_logo_position",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedLogoPosition },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedLogoPosition },
+				Elide: resourcekit.NullZero,
+			},
+			resourcekit.Int64PtrField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:     "portal_customized_logo_size",
+				Model:    func(m *settingGuestAccessModel) *types.Int64 { return &m.PortalCustomizedLogoSize },
+				SDK:      func(s *settings.GuestAccess) **int64 { return &s.PortalCustomizedLogoSize },
+				Elide:    resourcekit.KeepZero,
+				OmitZero: true,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_success_text",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedSuccessText },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedSuccessText },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_text_color",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedTextColor },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedTextColor },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_title",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedTitle },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedTitle },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_tos",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedTos },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedTos },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_tos_enabled",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.PortalCustomizedTosEnabled },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.PortalCustomizedTosEnabled },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_unsplash_author_name",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedUnsplashAuthorName },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedUnsplashAuthorName },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_unsplash_author_username",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedUnsplashAuthorUsername },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedUnsplashAuthorUsername },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_welcome_text",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedWelcomeText },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedWelcomeText },
+				Elide: resourcekit.KeepZero,
+			},
+			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_welcome_text_enabled",
+				Model: func(m *settingGuestAccessModel) *types.Bool { return &m.PortalCustomizedWelcomeTextEnabled },
+				SDK:   func(s *settings.GuestAccess) *bool { return &s.PortalCustomizedWelcomeTextEnabled },
+			},
+			resourcekit.StringField[settingGuestAccessModel, settings.GuestAccess]{
+				Wire:  "portal_customized_welcome_text_position",
+				Model: func(m *settingGuestAccessModel) *types.String { return &m.PortalCustomizedWelcomeTextPosition },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.PortalCustomizedWelcomeTextPosition },
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.BoolField[settingGuestAccessModel, settings.GuestAccess]{
 				Wire:  "portal_enabled",

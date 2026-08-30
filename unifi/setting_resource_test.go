@@ -2925,8 +2925,9 @@ resource "unifi_setting" "test" {
 }
 
 // TestAccSettingResource_guestAccess exercises Task 2's 21 core scalars,
-// Task 3's 18 x_-prefixed fields and Task 4's 20 fields
-// (.superpowers/sdd/plan-r2b-guest-access) live: portal access/mode,
+// Task 3's 18 x_-prefixed fields, Task 4's 20 fields and Task 5's 31
+// portal_customized_* fields (.superpowers/sdd/plan-r2b-guest-access) live:
+// portal access/mode,
 // post-auth redirect, session expiry (including the two #303-guarded ints,
 // expire_number/expire_unit), the RADIUS guest-auth group (including its own
 // #303-guarded radius_disconnect_port), password_enabled, voucher_enabled,
@@ -2951,9 +2952,15 @@ resource "unifi_setting" "test" {
 // turn a future controller change into a false failure. The update step's
 // config (testAccSettingConfig_guestAccessUpdate) omits every one of the 18,
 // which is what proves an unconfigured secret is forced null rather than
-// carrying the controller's prior value into state. Task 4's 20 fields are
-// none of them secrets, so they are asserted directly in the Check block
-// below, the same way Task 2's 21 are.
+// carrying the controller's prior value into state. Task 4's 20 fields and
+// Task 5's 31 are none of them secrets, so they are asserted directly in the
+// Check block below, the same way Task 2's 21 are. Task 5's own
+// portal_customized_box_radius is deliberately configured as an explicit 0
+// (a legal corner radius, unlike box_opacity's and logo_size's own
+// controller-rejected zero): a real apply is the only way to prove that
+// value actually reaches the controller and round-trips back, rather than
+// being silently dropped the way it would be if this field wrongly carried
+// the #303 OmitZero guard.
 func TestAccSettingResource_guestAccess(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheck(t) },
@@ -3044,6 +3051,115 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"unifi_setting.test", "guest_access.voucher_customized", "true",
 					),
+					// Task 5's 31 portal_customized_* fields.
+					// portal_customized_box_radius is deliberately 0: its own
+					// constraint has a minimum of 0, unlike box_opacity (min 1)
+					// and logo_size (min 64), so this is the live proof that an
+					// explicit 0 reaches the controller and round-trips back,
+					// rather than being silently elided the way it would be if
+					// this field wrongly carried an OmitZero guard.
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.portal_customized", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_authentication_text",
+						"Please sign in to continue",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_color", "#f5f5f5",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_image_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_image_filename",
+						"acctest-background-9f2b1e.jpg",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_image_tile", "false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_type", "image",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_color", "#ffffff",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_link_color", "#0066cc",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_opacity", "90",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_radius", "0",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_text_color", "#222222",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_button_color", "#0066cc",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_button_text", "Continue",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_button_text_color", "#ffffff",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_languages.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_languages.0", "en",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_languages.1", "zh-CN",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_link_color", "#0066cc",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_logo_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_logo_filename",
+						"acctest-logo-9f2b1e.png",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_logo_position", "center",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_logo_size", "96",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_success_text", "You're connected",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_text_color", "#333333",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_title", "Guest Wi-Fi",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_tos",
+						"By connecting you agree to acceptable use.",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_tos_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_unsplash_author_name", "Jane Doe",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_unsplash_author_username", "janedoe",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_welcome_text",
+						"Welcome to our guest network",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_welcome_text_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_welcome_text_position", "under_logo",
+					),
 				),
 			},
 			{
@@ -3090,6 +3206,37 @@ func TestAccSettingResource_guestAccess(t *testing.T) {
 					"guest_access.paypal_signature",
 					"guest_access.paypal_use_sandbox",
 					"guest_access.paypal_username",
+					"guest_access.portal_customized",
+					"guest_access.portal_customized_authentication_text",
+					"guest_access.portal_customized_bg_color",
+					"guest_access.portal_customized_bg_image_enabled",
+					"guest_access.portal_customized_bg_image_filename",
+					"guest_access.portal_customized_bg_image_tile",
+					"guest_access.portal_customized_bg_type",
+					"guest_access.portal_customized_box_color",
+					"guest_access.portal_customized_box_link_color",
+					"guest_access.portal_customized_box_opacity",
+					"guest_access.portal_customized_box_radius",
+					"guest_access.portal_customized_box_text_color",
+					"guest_access.portal_customized_button_color",
+					"guest_access.portal_customized_button_text",
+					"guest_access.portal_customized_button_text_color",
+					"guest_access.portal_customized_languages",
+					"guest_access.portal_customized_link_color",
+					"guest_access.portal_customized_logo_enabled",
+					"guest_access.portal_customized_logo_filename",
+					"guest_access.portal_customized_logo_position",
+					"guest_access.portal_customized_logo_size",
+					"guest_access.portal_customized_success_text",
+					"guest_access.portal_customized_text_color",
+					"guest_access.portal_customized_title",
+					"guest_access.portal_customized_tos",
+					"guest_access.portal_customized_tos_enabled",
+					"guest_access.portal_customized_unsplash_author_name",
+					"guest_access.portal_customized_unsplash_author_username",
+					"guest_access.portal_customized_welcome_text",
+					"guest_access.portal_customized_welcome_text_enabled",
+					"guest_access.portal_customized_welcome_text_position",
 					"guest_access.portal_enabled",
 					"guest_access.portal_hostname",
 					"guest_access.portal_use_hostname",
@@ -3224,6 +3371,43 @@ resource "unifi_setting" "test" {
     # step's auth = "hotspot" is not.
     custom_ip                   = "203.0.113.5"
     voucher_customized          = true
+
+    # Task 5's 31 portal_customized_* fields. portal_customized_box_radius
+    # is deliberately 0: its own constraint's minimum is 0 (unlike
+    # box_opacity's 1 and logo_size's 64), so this is the live proof that an
+    # explicit 0 reaches the controller rather than being silently elided
+    # (see the Check block's own comment above).
+    portal_customized                          = true
+    portal_customized_authentication_text      = "Please sign in to continue"
+    portal_customized_bg_color                 = "#f5f5f5"
+    portal_customized_bg_image_enabled         = true
+    portal_customized_bg_image_filename        = "acctest-background-9f2b1e.jpg"
+    portal_customized_bg_image_tile            = false
+    portal_customized_bg_type                  = "image"
+    portal_customized_box_color                = "#ffffff"
+    portal_customized_box_link_color           = "#0066cc"
+    portal_customized_box_opacity              = 90
+    portal_customized_box_radius               = 0
+    portal_customized_box_text_color           = "#222222"
+    portal_customized_button_color             = "#0066cc"
+    portal_customized_button_text              = "Continue"
+    portal_customized_button_text_color        = "#ffffff"
+    portal_customized_languages                = ["en", "zh-CN"]
+    portal_customized_link_color               = "#0066cc"
+    portal_customized_logo_enabled             = true
+    portal_customized_logo_filename            = "acctest-logo-9f2b1e.png"
+    portal_customized_logo_position            = "center"
+    portal_customized_logo_size                = 96
+    portal_customized_success_text             = "You're connected"
+    portal_customized_text_color               = "#333333"
+    portal_customized_title                    = "Guest Wi-Fi"
+    portal_customized_tos                      = "By connecting you agree to acceptable use."
+    portal_customized_tos_enabled              = true
+    portal_customized_unsplash_author_name     = "Jane Doe"
+    portal_customized_unsplash_author_username = "janedoe"
+    portal_customized_welcome_text             = "Welcome to our guest network"
+    portal_customized_welcome_text_enabled     = true
+    portal_customized_welcome_text_position    = "under_logo"
   }
 }
 `

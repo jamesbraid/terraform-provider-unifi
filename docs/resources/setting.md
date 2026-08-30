@@ -291,6 +291,37 @@ Optional:
 - `paypal_signature` (String, Sensitive) PayPal API signature, used when `gateway` is `paypal`.
 - `paypal_use_sandbox` (Boolean) Use PayPal's sandbox environment for guest payment, rather than live processing, when `gateway` is `paypal`.
 - `paypal_username` (String, Sensitive) PayPal API username, used when `gateway` is `paypal`.
+- `portal_customized` (Boolean) Use a customized guest portal page instead of the controller's default.
+- `portal_customized_authentication_text` (String) Text displayed on the guest portal's authentication step.
+- `portal_customized_bg_color` (String) Background color of the guest portal page, as a hex color.
+- `portal_customized_bg_image_enabled` (Boolean) Use a background image for the guest portal page.
+- `portal_customized_bg_image_filename` (String) Filename of the guest portal's background image, previously uploaded to the controller.
+- `portal_customized_bg_image_tile` (Boolean) Tile (repeat) the guest portal's background image instead of stretching it to fill the page.
+- `portal_customized_bg_type` (String) Guest portal background type: `color`, `image`, or a rotating `gallery`.
+- `portal_customized_box_color` (String) Background color of the guest portal's content box, as a hex color.
+- `portal_customized_box_link_color` (String) Color of links inside the guest portal's content box, as a hex color.
+- `portal_customized_box_opacity` (Number) Opacity of the guest portal's content box, as a percentage (1-100).
+- `portal_customized_box_radius` (Number) Corner radius of the guest portal's content box, in pixels (0-50). `0` is a legal value: square corners.
+- `portal_customized_box_text_color` (String) Color of text inside the guest portal's content box, as a hex color.
+- `portal_customized_button_color` (String) Background color of the guest portal's button, as a hex color.
+- `portal_customized_button_text` (String) Text displayed on the guest portal's button.
+- `portal_customized_button_text_color` (String) Color of the guest portal's button text, as a hex color.
+- `portal_customized_languages` (List of String) Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).
+- `portal_customized_link_color` (String) Color of links on the guest portal page, as a hex color.
+- `portal_customized_logo_enabled` (Boolean) Display a logo on the guest portal page.
+- `portal_customized_logo_filename` (String) Filename of the guest portal's logo image, previously uploaded to the controller.
+- `portal_customized_logo_position` (String) Position of the guest portal's logo: `left`, `center`, or `right`.
+- `portal_customized_logo_size` (Number) Size of the guest portal's logo, in pixels (64-192).
+- `portal_customized_success_text` (String) Text displayed on the guest portal after a successful login.
+- `portal_customized_text_color` (String) Color of the guest portal page's body text, as a hex color.
+- `portal_customized_title` (String) Title displayed on the guest portal page.
+- `portal_customized_tos` (String) Guest portal terms of service text.
+- `portal_customized_tos_enabled` (Boolean) Require guests to accept the guest portal's terms of service before continuing.
+- `portal_customized_unsplash_author_name` (String) Display name of the Unsplash photographer credited for the guest portal's background image.
+- `portal_customized_unsplash_author_username` (String) Unsplash username of the photographer credited for the guest portal's background image.
+- `portal_customized_welcome_text` (String) Welcome text displayed on the guest portal page.
+- `portal_customized_welcome_text_enabled` (Boolean) Display the guest portal's welcome text.
+- `portal_customized_welcome_text_position` (String) Position of the guest portal's welcome text: `under_logo` or `above_boxes`.
 - `portal_enabled` (Boolean) Enable the guest portal.
 - `portal_hostname` (String) Guest portal hostname, used when `portal_use_hostname` is enabled.
 - `portal_use_hostname` (Boolean) Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.
