@@ -130,7 +130,7 @@ Required:
 Optional:
 
 - `layout_preference` (String) Dashboard layout mode: `auto` or `manual`.
-- `widgets` (Attributes List) Dashboard widget visibility overrides. (see [below for nested schema](#nestedatt--dashboard--widgets))
+- `widgets` (Attributes List) Dashboard widget visibility overrides. The controller generation this provider is built against accepts this value on the first write to the dashboard section and silently discards it on every write after that. (see [below for nested schema](#nestedatt--dashboard--widgets))
 
 <a id="nestedatt--dashboard--widgets"></a>
 ### Nested Schema for `dashboard.widgets`

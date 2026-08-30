@@ -5614,7 +5614,7 @@
           "nesting_mode": "list",
           "optional": true,
           "computed": true,
-          "description": "Dashboard widget visibility overrides.",
+          "description": "Dashboard widget visibility overrides. The controller generation this provider is built against accepts this value on the first write to the dashboard section and silently discards it on every write after that.",
           "description_kind": "markdown"
         },
         "dashboard.widgets.enabled": {
