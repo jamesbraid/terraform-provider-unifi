@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 )
 
 // OmitZeroProblems reports every Int64PtrField whose wire name resolves to a
@@ -57,7 +58,7 @@ func OmitZeroProblems[M any, S any](spec Spec[M, S], constraints map[string]ui.F
 		if !ok || constraint.Pattern == "" {
 			continue
 		}
-		re, err := regexp.Compile(anchoredControllerPattern(constraint.Pattern))
+		re, err := regexp.Compile(controllerregex.Anchored(constraint.Pattern))
 		if err != nil {
 			problems = append(problems, fmt.Sprintf(
 				"%s.%s: constraint pattern %q does not compile as RE2: %v",
@@ -79,74 +80,6 @@ func OmitZeroProblems[M any, S any](spec Spec[M, S], constraints map[string]ui.F
 	}
 	sort.Strings(problems)
 	return problems
-}
-
-// anchoredControllerPattern full-matches a controller pattern the way the
-// controller itself does: wrapped ^(?:...)$ unless it is already anchored at
-// both ends. Matches the anchoring rule provider-codegen's own derived
-// validators use for these same constraint tables.
-func anchoredControllerPattern(pattern string) string {
-	if fullyAnchored(pattern) {
-		return pattern
-	}
-	return "^(?:" + pattern + ")$"
-}
-
-// fullyAnchored reports whether pattern, matched with Go's regexp
-// MatchString (a partial match), can only ever match the whole input --
-// equivalent to the controller's own full-match semantics. A leading ^ and
-// trailing $ on the pattern as a whole are not sufficient: regexp's `|`
-// binds looser than either anchor, so "^A|B$" is the alternation of "^A"
-// (matches anything starting with A, no end anchor) and "B$" (matches
-// anything ending with B, no start anchor) -- neither branch alone forces a
-// full match, and go-unifi's DeviceConfigNetwork.netmask /
-// Network.wan_netmask patterns are exactly this shape. What's actually
-// required is that every top-level alternative -- split on a `|` outside
-// any group or character class -- independently starts with ^ and ends
-// with $; "^A$|^B$" is fine as-is, because both branches are self-anchored.
-func fullyAnchored(pattern string) bool {
-	for _, alternative := range splitTopLevelAlternatives(pattern) {
-		if !strings.HasPrefix(alternative, "^") || !strings.HasSuffix(alternative, "$") {
-			return false
-		}
-	}
-	return true
-}
-
-// splitTopLevelAlternatives splits pattern on every `|` that sits outside a
-// group, a character class, and an escape sequence -- the points where a
-// regex engine treats the pattern as a genuine top-level alternation, as
-// opposed to a `|` inside `(...)` or `[...]` that only alternates within
-// that piece.
-func splitTopLevelAlternatives(pattern string) []string {
-	var alternatives []string
-	depth := 0
-	inClass := false
-	start := 0
-	for i := 0; i < len(pattern); i++ {
-		switch pattern[i] {
-		case '\\':
-			i++ // the next byte is escaped, whatever it is; skip it too
-		case '[':
-			inClass = true
-		case ']':
-			inClass = false
-		case '(':
-			if !inClass {
-				depth++
-			}
-		case ')':
-			if !inClass && depth > 0 {
-				depth--
-			}
-		case '|':
-			if !inClass && depth == 0 {
-				alternatives = append(alternatives, pattern[start:i])
-				start = i + 1
-			}
-		}
-	}
-	return append(alternatives, pattern[start:])
 }
 
 // OmitZeroProblems on the resource binds the spec to its own SDK struct's
