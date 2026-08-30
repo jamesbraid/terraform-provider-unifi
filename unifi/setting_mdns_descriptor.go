@@ -1,27 +1,33 @@
 package unifi
 
 // The mdns section descriptor: shaped like setting_doh_descriptor.go for
-// its String discriminator (doh's state, mdns's mode), but mdns needs an
-// AfterReceive doh's own doesn't -- see mdnsAfterReceive's own comment for
-// the measured reason. custom_services and predefined_services are mdns's
-// own ObjectListFields, the same kind doh's custom_servers uses.
+// its String discriminator (doh's state, mdns's mode), but mdns needs two
+// things doh's own doesn't -- see mdnsAfterReceive's own comment and
+// setting_mdns_validate.go's validateMdnsConfig for the measured reasons.
+// custom_services and predefined_services are mdns's own ObjectListFields,
+// the same kind doh's custom_servers uses.
 //
 // mode's three values ("all", "auto", "custom") gate whether the controller
-// itself consults custom_services/predefined_services -- per settings.Mdns's
-// own doc comment, only "custom" makes them authoritative. This repo does
-// not layer a plan-time cross-field validator on top of that (no section in
-// this dispatch adds one; the controller is treated as authoritative for
-// what a write under a given mode actually does with the lists, and
-// resourcekit's masked write already sends only what the plan configures).
-// What it does need, on the READ side, is mdnsAfterReceive: measured
-// directly against the pinned controller (TestAccSettingResource_mdns's own
-// "auto" transition step), predefined_services does not read back empty
-// under "auto" -- the controller returns its full catalog of known
-// predefined services instead, which is a real value the controller
-// invented, not one the plan set. Left unmasked, that fails Terraform's own
-// plan/apply consistency check the moment a config explicitly sets
-// predefined_services = [] under a non-custom mode, since state after apply
-// would disagree with what was planned.
+// consults custom_services/predefined_services at all. settings.Mdns's own
+// generated comment on the Mode field only gives the enum
+// ("all|auto|custom"); it says nothing about what each value does with the
+// two lists. That behavior was measured directly, with a raw
+// UpdateSettingFields/GetSetting probe against the pinned simulation
+// controller, bypassing this descriptor entirely: only "custom" honors
+// either list. Two consequences follow from that, at two different layers:
+//
+//   - Read side: predefined_services does not read back empty under "auto"
+//     -- the controller returns its full catalog of known predefined
+//     services instead, a value it invented, not one the plan set.
+//     mdnsAfterReceive normalizes both lists to empty whenever the current
+//     mode isn't "custom", so state doesn't echo controller-invented
+//     content back as if it were live config.
+//   - Plan side: a config that sets mode != "custom" while leaving either
+//     list non-empty asks the provider to apply a value the controller
+//     will never actually store. validateMdnsConfig
+//     (setting_mdns_validate.go) rejects that at plan time instead of
+//     letting it reach apply as an opaque "Provider produced inconsistent
+//     result after apply".
 import (
 	"context"
 

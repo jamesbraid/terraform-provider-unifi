@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
@@ -2193,6 +2194,67 @@ resource "unifi_setting" "test" {
     mode                = "auto"
     custom_services     = []
     predefined_services = []
+  }
+}
+`
+}
+
+// TestAccSettingResource_mdnsRejectsNonCustomModeWithServices proves the
+// shape reproduced against the live controller in review -- mode changed
+// away from "custom" while custom_services (or predefined_services) is
+// left non-empty -- is refused at plan time, naming the offending
+// attribute, instead of reaching the controller and failing afterwards as
+// an inconsistent result that looks like a provider bug (validateMdnsConfig,
+// setting_mdns_validate.go).
+//
+// PlanOnly is the assertion that matters here: it never reaches the
+// controller, the same idiom TestAccNetworkFramework_purposeConflict uses
+// (network_resource_test.go).
+func TestAccSettingResource_mdnsRejectsNonCustomModeWithServices(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccSettingConfig_mdnsAutoWithCustomServices(),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`mDNS Custom Services Requires mode`),
+			},
+			{
+				Config:      testAccSettingConfig_mdnsAutoWithPredefinedServices(),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`mDNS Predefined Services Requires mode`),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_mdnsAutoWithCustomServices() string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode = "auto"
+    custom_services = [
+      {
+        address = "_myservice._tcp.local"
+        name    = "my service"
+      },
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_mdnsAutoWithPredefinedServices() string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode = "auto"
+    predefined_services = [
+      {
+        code = "printers"
+      },
+    ]
   }
 }
 `
