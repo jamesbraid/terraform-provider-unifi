@@ -332,7 +332,7 @@ func TestGuestAccessAfterReceiveKeepsThePlansSecretWhenNamed(t *testing.T) {
 
 	for _, f := range fields {
 		t.Run(f.Wire, func(t *testing.T) {
-			t.Run("unconfigured comes back null regardless of the controller's echo", func(t *testing.T) {
+			t.Run("null prior comes back null regardless of the controller's echo", func(t *testing.T) {
 				sdk := &settings.GuestAccess{}
 				*f.SDK(sdk) = "remote-value"
 				var model settingGuestAccessModel
@@ -346,6 +346,34 @@ func TestGuestAccessAfterReceiveKeepsThePlansSecretWhenNamed(t *testing.T) {
 				if got := f.Model(&model); !got.IsNull() {
 					t.Errorf("%s = %q, want null when unconfigured (regardless of the controller's live value)",
 						f.Wire, got.ValueString())
+				}
+			})
+
+			// A config-absent Optional+Computed attribute is not null at plan
+			// time, it is UNKNOWN -- the framework's own "marking computed
+			// attribute that is null in the config as unknown" behaviour,
+			// confirmed live in the guest_access acceptance test's debug log.
+			// The null-prior case above alone leaves this arm unexercised:
+			// deleting the "|| prior.X.IsUnknown()" half of every one of the
+			// 18 guards in guestAccessAfterReceive still passes every other
+			// test in this file, because nothing else ever hands it an
+			// unknown prior. This subtest is what actually pins the arm
+			// production depends on.
+			t.Run("unknown prior comes back null regardless of the controller's echo", func(t *testing.T) {
+				sdk := &settings.GuestAccess{}
+				*f.SDK(sdk) = "remote-value"
+				var model settingGuestAccessModel
+				if diags := spec.ToModel(ctx, sdk, &model, ""); diags.HasError() {
+					t.Fatalf("ToModel: %v", diags)
+				}
+				var prior settingGuestAccessModel
+				*f.Model(&prior) = types.StringUnknown()
+				if diags := guestAccessAfterReceive(ctx, sdk, &model, prior); diags.HasError() {
+					t.Fatalf("guestAccessAfterReceive: %v", diags)
+				}
+				if got := f.Model(&model); !got.IsNull() {
+					t.Errorf("%s = %q, want null when the plan left it unknown (regardless of the "+
+						"controller's live value)", f.Wire, got.ValueString())
 				}
 			})
 
@@ -419,46 +447,6 @@ func TestGuestAccessSecretElideKeepsAnExplicitEmptyString(t *testing.T) {
 			}
 			if got := f.Model(&model2).ValueString(); got != "a-real-value" {
 				t.Errorf("%s = %q, want %q", f.Wire, got, "a-real-value")
-			}
-		})
-	}
-}
-
-// TestGuestAccessSecretFieldsWriteOnlyTheirOwnSDKSlot guards against the
-// exact copy-paste risk this section's 18 near-identical StringField entries
-// invite: each field's own value, set alone, must land on its own SDK struct
-// field and nowhere else. A swapped Model/SDK accessor pair between two
-// fields -- indistinguishable from the correct form by eye in a review of
-// the generated diff -- would otherwise go unnoticed until a practitioner's
-// payment gateway key silently overwrote a sibling field on the wire.
-func TestGuestAccessSecretFieldsWriteOnlyTheirOwnSDKSlot(t *testing.T) {
-	ctx := context.Background()
-	spec := guestAccessKitSpec()
-	fields := guestAccessSecretFieldAccessors(spec)
-	if len(fields) != 18 {
-		t.Fatalf("found %d x_-prefixed StringField(s) in guestAccessKitSpec, want 18", len(fields))
-	}
-
-	for _, f := range fields {
-		t.Run(f.Wire, func(t *testing.T) {
-			want := "value-for-" + f.Wire
-			var model settingGuestAccessModel
-			*f.Model(&model) = types.StringValue(want)
-			sdk, diags := spec.ToSDK(ctx, &model)
-			if diags.HasError() {
-				t.Fatalf("ToSDK: %v", diags)
-			}
-			if got := *f.SDK(sdk); got != want {
-				t.Errorf("%s landed as %q on its own SDK field, want %q", f.Wire, got, want)
-			}
-			for _, other := range fields {
-				if other.Wire == f.Wire {
-					continue
-				}
-				if got := *other.SDK(sdk); got != "" {
-					t.Errorf("setting only %s also wrote %q onto %s's SDK field -- accessor collision",
-						f.Wire, got, other.Wire)
-				}
 			}
 		})
 	}

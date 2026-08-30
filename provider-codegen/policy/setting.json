@@ -3416,7 +3416,7 @@
     {
       "attribute": {
         "computed_optional_required": "computed_optional",
-        "description": "Guest network portal, authentication and payment settings. Its eighteen `x_`-prefixed fields (payment gateway credentials and identifiers, social-login secrets, and the portal password) are Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated.",
+        "description": "Guest network portal, authentication and payment settings. The eighteen credential and identifier attributes below (payment gateway keys and identifiers, social-login secrets, and the portal password) are all marked Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated.",
         "plan_modifiers": [
           {
             "custom": {
@@ -3688,7 +3688,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate (both persist unchanged across every go-unifi capture regeneration; see Task 1's guestAccessSecret classification).",
+            "description": "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.",
             "sensitive": true
           },
           "disposition": "managed",

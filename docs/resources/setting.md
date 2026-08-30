@@ -85,7 +85,7 @@ resource "unifi_setting" "radius_only" {
 - `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
 - `global_network` (Attributes) Global network settings for zone-based firewalling. (see [below for nested schema](#nestedatt--global_network))
 - `global_switch` (Attributes) Global switch (wired network) settings. (see [below for nested schema](#nestedatt--global_switch))
-- `guest_access` (Attributes) Guest network portal, authentication and payment settings. Its eighteen `x_`-prefixed fields (payment gateway credentials and identifiers, social-login secrets, and the portal password) are Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated. (see [below for nested schema](#nestedatt--guest_access))
+- `guest_access` (Attributes) Guest network portal, authentication and payment settings. The eighteen credential and identifier attributes below (payment gateway keys and identifiers, social-login secrets, and the portal password) are all marked Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated. (see [below for nested schema](#nestedatt--guest_access))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
 - `ipsec` (Attributes) IPsec settings for site-to-site VPNs. (see [below for nested schema](#nestedatt--ipsec))
@@ -296,7 +296,7 @@ Optional:
 - `stripe_api_key` (String, Sensitive) Stripe API key, used when `gateway` is `stripe`.
 - `voucher_enabled` (Boolean) Enable voucher-based guest access.
 - `wechat_app_secret` (String, Sensitive) WeChat app secret, used for guest portal social login via WeChat.
-- `wechat_secret_key` (String, Sensitive) WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate (both persist unchanged across every go-unifi capture regeneration; see Task 1's guestAccessSecret classification).
+- `wechat_secret_key` (String, Sensitive) WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.
 
 
 <a id="nestedatt--igmp_snooping"></a>
