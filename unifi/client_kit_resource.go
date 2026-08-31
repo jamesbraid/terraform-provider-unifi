@@ -183,7 +183,7 @@ func (r *clientKitResource) ImportState(
 		existing, err := r.api.GetClientByMAC(ctx, r.DefaultSite, handle)
 		if err != nil {
 			resp.Diagnostics.AddError("Error Importing Client",
-				fmt.Sprintf("Could not find a client with MAC %q: %s", handle, err.Error()))
+				fmt.Sprintf("Could not find a client with MAC %q: %s", handle, resourcekit.DiagErrorText(err)))
 			return
 		}
 		handle = existing.ID

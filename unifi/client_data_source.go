@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -99,7 +100,7 @@ func (d *clientDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Client by MAC",
-			"Could not read client with MAC "+mac+": "+err.Error(),
+			"Could not read client with MAC "+mac+": "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -108,7 +109,7 @@ func (d *clientDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Client",
-			"Could not read client with ID "+macResp.ID+": "+err.Error(),
+			"Could not read client with ID "+macResp.ID+": "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -141,7 +142,7 @@ func (d *clientDataSource) Read(
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error Reading Client Group",
-				fmt.Sprintf("Could not read client group %q: %s", client.UserGroupID, err.Error()),
+				fmt.Sprintf("Could not read client group %q: %s", client.UserGroupID, resourcekit.DiagErrorText(err)),
 			)
 			return
 		}
@@ -175,7 +176,7 @@ func (d *clientDataSource) Read(
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error Listing Groups",
-				"Could not list network members groups: "+err.Error(),
+				"Could not list network members groups: "+resourcekit.DiagErrorText(err),
 			)
 			return
 		}

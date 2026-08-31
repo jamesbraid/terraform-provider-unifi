@@ -89,7 +89,7 @@ func (r *radiusProfileKitResource) UpgradeState(
 					},
 				)
 				if err != nil {
-					resp.Diagnostics.AddError("Failed to upgrade RADIUS profile state", err.Error())
+					resp.Diagnostics.AddError("Failed to upgrade RADIUS profile state", resourcekit.DiagErrorText(err))
 					return
 				}
 				resp.DynamicValue = dv

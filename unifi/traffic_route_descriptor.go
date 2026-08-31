@@ -632,7 +632,7 @@ func trafficRouteBeforeSend(
 	}
 	id, err := lookup(ctx)
 	if err != nil {
-		diags.AddError("Error Finding Default WAN Network", err.Error())
+		diags.AddError("Error Finding Default WAN Network", resourcekit.DiagErrorText(err))
 		return diags
 	}
 	sdk.NetworkID = id

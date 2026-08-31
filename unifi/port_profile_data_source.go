@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_port_profile"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 var _ datasource.DataSource = &portProfileDataSource{}
@@ -83,7 +84,7 @@ func (d *portProfileDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Port Profiles",
-			"Could not read port profiles: "+err.Error(),
+			"Could not read port profiles: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -124,7 +125,7 @@ func (d *portProfileDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Networks for Port Profile",
-			"Could not read the site network inventory: "+err.Error(),
+			"Could not read the site network inventory: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}

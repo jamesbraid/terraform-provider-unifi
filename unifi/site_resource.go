@@ -16,6 +16,7 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_site"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_site"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -139,7 +140,7 @@ func (r *siteFrameworkResource) Create(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Creating Site",
-			"Could not create site: "+err.Error(),
+			"Could not create site: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -198,7 +199,7 @@ func (r *siteFrameworkResource) Read(
 			} else {
 				resp.Diagnostics.AddError(
 					"Error Reading Site",
-					"Could not read site with ID "+state.ID.ValueString()+": "+err.Error(),
+					"Could not read site with ID "+state.ID.ValueString()+": "+resourcekit.DiagErrorText(err),
 				)
 				return
 			}
@@ -212,7 +213,7 @@ func (r *siteFrameworkResource) Read(
 			}
 			resp.Diagnostics.AddError(
 				"Error Reading Site",
-				"Could not read site with Name "+state.Name.ValueString()+": "+err.Error(),
+				"Could not read site with Name "+state.Name.ValueString()+": "+resourcekit.DiagErrorText(err),
 			)
 			return
 		}
@@ -266,7 +267,7 @@ func (r *siteFrameworkResource) Update(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Site",
-			"Could not update site with ID "+id+": "+err.Error(),
+			"Could not update site with ID "+id+": "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -330,7 +331,7 @@ func (r *siteFrameworkResource) Delete(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting Site",
-			"Could not delete site with ID "+id+": "+err.Error(),
+			"Could not delete site with ID "+id+": "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -424,7 +425,7 @@ func (r *siteFrameworkResource) List(
 		var d diag.Diagnostics
 		d.AddError(
 			"Error Listing Sites",
-			"Could not list sites: "+err.Error(),
+			"Could not list sites: "+resourcekit.DiagErrorText(err),
 		)
 		stream.Results = list.ListResultsStreamDiagnostics(d)
 		return

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/action_port"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // Ensure the implementation satisfies framework interfaces.
@@ -128,7 +129,7 @@ func (a *portAction) Invoke(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Finding Device",
-			fmt.Sprintf("Could not find device with MAC address %s: %s", deviceMAC, err.Error()),
+			fmt.Sprintf("Could not find device with MAC address %s: %s", deviceMAC, resourcekit.DiagErrorText(err)),
 		)
 		return
 	}
@@ -146,8 +147,7 @@ func (a *portAction) Invoke(
 			fmt.Sprintf(
 				"Could not update port %d on device %s: %s",
 				portNumber,
-				deviceMAC,
-				err.Error(),
+				deviceMAC, resourcekit.DiagErrorText(err),
 			),
 		)
 		return

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_ap_group"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 var _ datasource.DataSource = &apGroupDataSource{}
@@ -78,7 +79,7 @@ func (d *apGroupDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading AP Groups",
-			"Could not read AP groups: "+err.Error(),
+			"Could not read AP groups: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}

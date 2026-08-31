@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_radius_user"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 var _ datasource.DataSource = &radiusUserDataSource{}
@@ -82,7 +83,7 @@ func (d *radiusUserDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Radius Users",
-			"Could not read radius users: "+err.Error(),
+			"Could not read radius users: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}

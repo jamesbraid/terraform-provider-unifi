@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 const (
@@ -103,7 +104,7 @@ func (r *clientKitResource) List(
 		groupID, err := r.resolveGroupID(ctx, site, config.Group.ValueString())
 		if err != nil {
 			var d diag.Diagnostics
-			d.AddError("Error Resolving Group", err.Error())
+			d.AddError("Error Resolving Group", resourcekit.DiagErrorText(err))
 			stream.Results = list.ListResultsStreamDiagnostics(d)
 			return
 		}
@@ -137,7 +138,7 @@ func (r *clientKitResource) List(
 	}
 	if err != nil {
 		var d diag.Diagnostics
-		d.AddError("Error Listing Clients", "Could not list clients: "+err.Error())
+		d.AddError("Error Listing Clients", "Could not list clients: "+resourcekit.DiagErrorText(err))
 		stream.Results = list.ListResultsStreamDiagnostics(d)
 		return
 	}

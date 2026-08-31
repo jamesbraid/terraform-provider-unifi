@@ -78,7 +78,7 @@ func specDocumentWrite[SM any, S any](
 
 	fields, err := spec.maskFields(plan)
 	if err != nil {
-		diags.AddError(errSummary, diagErrorText(err))
+		diags.AddError(errSummary, DiagErrorText(err))
 		return nil, diags
 	}
 	if len(fields) == 0 {
@@ -92,7 +92,7 @@ func specDocumentWrite[SM any, S any](
 			diags.Append(onNotFound(err)...)
 			return nil, diags
 		}
-		diags.AddError(errSummary, diagErrorText(err))
+		diags.AddError(errSummary, DiagErrorText(err))
 		return nil, diags
 	}
 
@@ -139,7 +139,7 @@ func specDocumentRead[SM any, S any](
 			}
 			return nil, diags
 		}
-		diags.AddError("Error Reading "+spec.Subject, diagErrorText(err))
+		diags.AddError("Error Reading "+spec.Subject, DiagErrorText(err))
 		return nil, diags
 	}
 	diags.Append(spec.ToModel(ctx, sdk, model, "")...)
@@ -228,7 +228,7 @@ func (s SpecSection[M, SM, S]) runAfterReceive(
 func primaryReadNotFoundText(summary string) func(error) diag.Diagnostics {
 	return func(err error) diag.Diagnostics {
 		var diags diag.Diagnostics
-		diags.AddError(summary, diagErrorText(err))
+		diags.AddError(summary, DiagErrorText(err))
 		return diags
 	}
 }

@@ -77,7 +77,7 @@ func deviceKitSchema() resourcekit.SchemaSpec {
 					)
 					if err != nil {
 						resp.Diagnostics.AddError(
-							"Failed to upgrade device state", err.Error())
+							"Failed to upgrade device state", resourcekit.DiagErrorText(err))
 						return
 					}
 					resp.DynamicValue = dv
@@ -95,7 +95,7 @@ func deviceKitSchema() resourcekit.SchemaSpec {
 					)
 					if err != nil {
 						resp.Diagnostics.AddError(
-							"Failed to upgrade device state", err.Error())
+							"Failed to upgrade device state", resourcekit.DiagErrorText(err))
 						return
 					}
 					resp.DynamicValue = dv
@@ -118,7 +118,7 @@ func deviceKitSchema() resourcekit.SchemaSpec {
 					)
 					if err != nil {
 						resp.Diagnostics.AddError(
-							"Failed to upgrade device state", err.Error())
+							"Failed to upgrade device state", resourcekit.DiagErrorText(err))
 						return
 					}
 					resp.DynamicValue = dv

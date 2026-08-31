@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_bgp"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -217,8 +218,7 @@ func (r *bgpResource) Create(
 		}
 
 		resp.Diagnostics.AddError(
-			"Error Creating BGP Configuration",
-			err.Error(),
+			"Error Creating BGP Configuration", resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -261,7 +261,7 @@ func (r *bgpResource) Read(
 		}
 		resp.Diagnostics.AddError(
 			"Error Reading BGP Configuration",
-			"Could not read BGP configuration: "+err.Error(),
+			"Could not read BGP configuration: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -314,8 +314,7 @@ func (r *bgpResource) Update(
 	updatedBGPConfig, err := r.client.UpdateBGPConfig(ctx, site, bgpConfig)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Updating BGP Configuration",
-			err.Error(),
+			"Error Updating BGP Configuration", resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -358,8 +357,7 @@ func (r *bgpResource) Delete(
 			return
 		}
 		resp.Diagnostics.AddError(
-			"Error Deleting BGP Configuration",
-			err.Error(),
+			"Error Deleting BGP Configuration", resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -446,7 +444,7 @@ func (r *bgpResource) renderFRRConfig(
 
 	var buf bytes.Buffer
 	if err := frrConfigTemplate.Execute(&buf, data); err != nil {
-		diags.AddError("Error Rendering FRR Config", err.Error())
+		diags.AddError("Error Rendering FRR Config", resourcekit.DiagErrorText(err))
 		return "", diags
 	}
 

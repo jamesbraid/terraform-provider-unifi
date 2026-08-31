@@ -135,7 +135,7 @@ func dnsRecordKitSchema() resourcekit.SchemaSpec {
 						},
 					)
 					if err != nil {
-						resp.Diagnostics.AddError("Failed to upgrade DNS record state", err.Error())
+						resp.Diagnostics.AddError("Failed to upgrade DNS record state", resourcekit.DiagErrorText(err))
 						return
 					}
 					resp.DynamicValue = dv

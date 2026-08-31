@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_firewall_zone"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 var _ datasource.DataSource = &firewallZoneDataSource{}
@@ -103,7 +104,7 @@ func (d *firewallZoneDataSource) Read(
 		default:
 			resp.Diagnostics.AddError(
 				"Error Reading Firewall Zones",
-				"Could not list firewall zones: "+err.Error(),
+				"Could not list firewall zones: "+resourcekit.DiagErrorText(err),
 			)
 		}
 		return

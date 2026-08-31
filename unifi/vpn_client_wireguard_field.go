@@ -185,7 +185,7 @@ func encodeVPNClientWireguard(
 		parsed, err := parseWireGuardBase64Config(config.Content.ValueString())
 		if err != nil {
 			diags.AddError("Invalid WireGuard Configuration File",
-				"Failed to parse WireGuard configuration: "+err.Error())
+				"Failed to parse WireGuard configuration: "+resourcekit.DiagErrorText(err))
 			return diags
 		}
 		network.WireguardClientMode = util.Ptr("manual")

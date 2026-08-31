@@ -422,7 +422,7 @@ func vpnServerBeforeSendBody(ctx context.Context, effective *vpnServerKitModel, 
 		(sdk.WireguardPrivateKey == nil || *sdk.WireguardPrivateKey == "") {
 		key, err := generateWireGuardPrivateKey()
 		if err != nil {
-			diags.AddError("Unable to generate WireGuard private key", err.Error())
+			diags.AddError("Unable to generate WireGuard private key", resourcekit.DiagErrorText(err))
 			return diags
 		}
 		sdk.WireguardPrivateKey = &key
@@ -519,7 +519,7 @@ func vpnServerDerivePublicKey(ctx context.Context, current *types.Object) diag.D
 		diags.AddError(
 			"Cannot derive the WireGuard public key",
 			"The controller does not return wireguard_public_key, so the provider "+
-				"derives it from the private key. That failed: "+err.Error(),
+				"derives it from the private key. That failed: "+resourcekit.DiagErrorText(err),
 		)
 		return diags
 	}

@@ -19,6 +19,7 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_power_supervisor"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_power_supervisor"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -153,8 +154,7 @@ func (r *powerSupervisorResource) UpgradeState(
 				)
 				if err != nil {
 					resp.Diagnostics.AddError(
-						"Failed to upgrade power supervisor state",
-						err.Error(),
+						"Failed to upgrade power supervisor state", resourcekit.DiagErrorText(err),
 					)
 					return
 				}
@@ -204,7 +204,7 @@ func (r *powerSupervisorResource) Create(
 
 	created, err := r.client.CreatePowerSupervisor(ctx, site, r.modelToPowerSupervisor(&data))
 	if err != nil {
-		resp.Diagnostics.AddError("Error Creating Power Supervisor", err.Error())
+		resp.Diagnostics.AddError("Error Creating Power Supervisor", resourcekit.DiagErrorText(err))
 		return
 	}
 
@@ -246,7 +246,7 @@ func (r *powerSupervisorResource) Read(
 		}
 		resp.Diagnostics.AddError(
 			"Error Reading Power Supervisor",
-			"Could not read power supervisor with ID "+data.ID.ValueString()+": "+err.Error(),
+			"Could not read power supervisor with ID "+data.ID.ValueString()+": "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -286,7 +286,7 @@ func (r *powerSupervisorResource) Update(
 
 	updated, err := r.client.UpdatePowerSupervisor(ctx, site, supervisor)
 	if err != nil {
-		resp.Diagnostics.AddError("Error Updating Power Supervisor", err.Error())
+		resp.Diagnostics.AddError("Error Updating Power Supervisor", resourcekit.DiagErrorText(err))
 		return
 	}
 
@@ -325,7 +325,7 @@ func (r *powerSupervisorResource) Delete(
 		if _, ok := err.(*unifi.NotFoundError); ok {
 			return
 		}
-		resp.Diagnostics.AddError("Error Deleting Power Supervisor", err.Error())
+		resp.Diagnostics.AddError("Error Deleting Power Supervisor", resourcekit.DiagErrorText(err))
 		return
 	}
 }
@@ -354,7 +354,7 @@ func (r *powerSupervisorResource) ImportState(
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error Importing Power Supervisor",
-				"Could not find a power supervisor for device MAC "+identifier+": "+err.Error(),
+				"Could not find a power supervisor for device MAC "+identifier+": "+resourcekit.DiagErrorText(err),
 			)
 			return
 		}
@@ -473,7 +473,7 @@ func (r *powerSupervisorResource) List(
 		var d diag.Diagnostics
 		d.AddError(
 			"Error Listing Power Supervisors",
-			"Could not list power supervisors: "+err.Error(),
+			"Could not list power supervisors: "+resourcekit.DiagErrorText(err),
 		)
 		stream.Results = list.ListResultsStreamDiagnostics(d)
 		return

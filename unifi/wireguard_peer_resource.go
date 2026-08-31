@@ -15,6 +15,7 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_wireguard_peer"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wireguard_peer"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -153,8 +154,7 @@ func (r *wireguardPeerResource) Create(
 	createdPeer, err := r.client.CreateWireGuardPeer(ctx, site, data.NetworkID.ValueString(), peer)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Creating WireGuard Peer",
-			err.Error(),
+			"Error Creating WireGuard Peer", resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -202,7 +202,7 @@ func (r *wireguardPeerResource) Read(
 		}
 		resp.Diagnostics.AddError(
 			"Error Reading WireGuard Peer",
-			"Could not read WireGuard peer with ID "+data.ID.ValueString()+": "+err.Error(),
+			"Could not read WireGuard peer with ID "+data.ID.ValueString()+": "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -247,8 +247,7 @@ func (r *wireguardPeerResource) Update(
 	updatedPeer, err := r.client.UpdateWireGuardPeer(ctx, site, data.NetworkID.ValueString(), peer)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Updating WireGuard Peer",
-			err.Error(),
+			"Error Updating WireGuard Peer", resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -291,8 +290,7 @@ func (r *wireguardPeerResource) Delete(
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Deleting WireGuard Peer",
-			err.Error(),
+			"Error Deleting WireGuard Peer", resourcekit.DiagErrorText(err),
 		)
 	}
 }
@@ -407,7 +405,7 @@ func (r *wireguardPeerResource) List(
 		var d diag.Diagnostics
 		d.AddError(
 			"Error Listing WireGuard Peers",
-			"Could not list WireGuard peers: "+err.Error(),
+			"Could not list WireGuard peers: "+resourcekit.DiagErrorText(err),
 		)
 		stream.Results = list.ListResultsStreamDiagnostics(d)
 		return

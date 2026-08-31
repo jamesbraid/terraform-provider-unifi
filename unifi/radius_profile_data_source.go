@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_radius_profile"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -87,7 +88,7 @@ func (d *radiusProfileDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading RADIUS Profiles",
-			"Could not read RADIUS profiles: "+err.Error(),
+			"Could not read RADIUS profiles: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}

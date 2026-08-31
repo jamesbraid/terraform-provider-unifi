@@ -181,7 +181,7 @@ func (r *settingResource) UpgradeState(
 					},
 				)
 				if err != nil {
-					resp.Diagnostics.AddError("Failed to upgrade settings state", err.Error())
+					resp.Diagnostics.AddError("Failed to upgrade settings state", resourcekit.DiagErrorText(err))
 					return
 				}
 				resp.DynamicValue = dv

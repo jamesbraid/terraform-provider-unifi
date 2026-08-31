@@ -379,7 +379,7 @@ func deviceKitBeforeSend(
 		declared = declaredPortOverridesWithFields(declared)
 		if len(declared) > 0 {
 			if _, err := updateDevicePortOverridesGrouped(ctx, client, site, sdk, declared); err != nil {
-				diags.AddError("Error Updating Port Overrides", err.Error())
+				diags.AddError("Error Updating Port Overrides", resourcekit.DiagErrorText(err))
 				return diags
 			}
 		}

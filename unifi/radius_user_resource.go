@@ -125,7 +125,7 @@ func resolveRadiusUserVLAN(
 		diags.AddError(
 			"Error Deriving VLAN from network_id",
 			"Could not look up network "+networkID+
-				" to derive the account VLAN: "+err.Error(),
+				" to derive the account VLAN: "+resourcekit.DiagErrorText(err),
 		)
 		return nil, diags
 	}

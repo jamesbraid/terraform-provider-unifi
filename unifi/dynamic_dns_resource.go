@@ -14,6 +14,7 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_dynamic_dns"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_dynamic_dns"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -153,8 +154,7 @@ func (r *dynamicDNSResource) Create(
 	createdDynamicDNS, err := r.client.CreateDynamicDNS(ctx, site, dynamicDNS)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Creating Dynamic DNS",
-			err.Error(),
+			"Error Creating Dynamic DNS", resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -216,7 +216,7 @@ func (r *dynamicDNSResource) Read(
 		}
 		resp.Diagnostics.AddError(
 			"Error Reading Dynamic DNS",
-			"Could not read dynamic DNS with ID "+id+": "+err.Error(),
+			"Could not read dynamic DNS with ID "+id+": "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -282,8 +282,7 @@ func (r *dynamicDNSResource) Update(
 	updatedDynamicDNS, err := r.client.UpdateDynamicDNS(ctx, site, dynamicDNS)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Updating Dynamic DNS",
-			err.Error(),
+			"Error Updating Dynamic DNS", resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -342,8 +341,7 @@ func (r *dynamicDNSResource) Delete(
 			return
 		}
 		resp.Diagnostics.AddError(
-			"Error Deleting Dynamic DNS",
-			err.Error(),
+			"Error Deleting Dynamic DNS", resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -476,7 +474,7 @@ func (r *dynamicDNSResource) List(
 		var d diag.Diagnostics
 		d.AddError(
 			"Error Listing Dynamic DNS",
-			"Could not list dynamic DNS configurations: "+err.Error(),
+			"Could not list dynamic DNS configurations: "+resourcekit.DiagErrorText(err),
 		)
 		stream.Results = list.ListResultsStreamDiagnostics(d)
 		return

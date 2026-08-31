@@ -226,12 +226,12 @@ func wlanPrefetch(client *ui.ApiClient) func(context.Context, string) (any, diag
 		var diags diag.Diagnostics
 		wlanGroups, err := client.ListWLANGroup(ctx, site)
 		if err != nil {
-			diags.AddError("Error Listing WLAN Groups", "Could not list WLAN groups: "+err.Error())
+			diags.AddError("Error Listing WLAN Groups", "Could not list WLAN groups: "+resourcekit.DiagErrorText(err))
 			return nil, diags
 		}
 		apGroups, err := client.ListAPGroup(ctx, site)
 		if err != nil {
-			diags.AddError("Error Listing AP Groups", "Could not list AP groups: "+err.Error())
+			diags.AddError("Error Listing AP Groups", "Could not list AP groups: "+resourcekit.DiagErrorText(err))
 			return nil, diags
 		}
 		return wlanPrefetched{wlanGroups: wlanGroups, apGroups: apGroups}, diags

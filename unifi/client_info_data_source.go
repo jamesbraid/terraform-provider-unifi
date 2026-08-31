@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_info"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -125,7 +126,7 @@ func (d *clientInfoDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Client Info",
-			fmt.Sprintf("Could not read client info for MAC %s: %s", mac, err.Error()),
+			fmt.Sprintf("Could not read client info for MAC %s: %s", mac, resourcekit.DiagErrorText(err)),
 		)
 		return
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -261,8 +262,7 @@ func (p *unifiProvider) Configure(
 				"controller may have rate-limited the login (UniFi throttles "+
 				"POST /api/auth/login under rapid or back-to-back runs); using API-key "+
 				"authentication (the `api_key` argument or `UNIFI_API_KEY`) skips the "+
-				"per-run login entirely and avoids this. Underlying error: "+
-				err.Error(),
+				"per-run login entirely and avoids this. Underlying error: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}

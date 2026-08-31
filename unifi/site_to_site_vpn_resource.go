@@ -179,8 +179,7 @@ func (r *siteToSiteVPNKitResource) UpgradeState(
 				)
 				if err != nil {
 					resp.Diagnostics.AddError(
-						"Failed to upgrade site-to-site VPN state",
-						err.Error(),
+						"Failed to upgrade site-to-site VPN state", resourcekit.DiagErrorText(err),
 					)
 					return
 				}

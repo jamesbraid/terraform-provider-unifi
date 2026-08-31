@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	gounifi "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_info_list"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/models"
 )
 
@@ -85,13 +86,13 @@ func (d *clientInfoListDataSource) Read(
 				"Active Clients Endpoint Not Available",
 				"The active clients API endpoint returned 404. This may mean the feature "+
 					"is not enabled or supported on your controller. An empty client list will be returned. "+
-					"Original error: "+err.Error(),
+					"Original error: "+resourcekit.DiagErrorText(err),
 			)
 			clientInfoList = gounifi.ClientList{}
 		} else {
 			resp.Diagnostics.AddError(
 				"Error Reading Clients",
-				"Could not read active clients: "+err.Error(),
+				"Could not read active clients: "+resourcekit.DiagErrorText(err),
 			)
 			return
 		}

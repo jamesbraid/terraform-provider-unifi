@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	gounifi "github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_list"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -177,8 +178,7 @@ func (d *clientListDataSource) Read(
 		groupID, err := d.resolveGroupID(ctx, site, data.Group.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Error Resolving Group",
-				err.Error(),
+				"Error Resolving Group", resourcekit.DiagErrorText(err),
 			)
 			return
 		}
@@ -209,7 +209,7 @@ func (d *clientListDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Clients",
-			"Could not read clients: "+err.Error(),
+			"Could not read clients: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}
@@ -222,7 +222,7 @@ func (d *clientListDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Unable to Fetch Active Client Info",
-			"Client info enrichment will be skipped: "+err.Error(),
+			"Client info enrichment will be skipped: "+resourcekit.DiagErrorText(err),
 		)
 	} else {
 		for i := range activeClients {
@@ -238,7 +238,7 @@ func (d *clientListDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Unable to Fetch Client History",
-			"Historical client enrichment will be skipped: "+err.Error(),
+			"Historical client enrichment will be skipped: "+resourcekit.DiagErrorText(err),
 		)
 	} else {
 		for i := range historyClients {

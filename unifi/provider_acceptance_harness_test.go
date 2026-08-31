@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-log/tflogtest"
+
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllertest"
 )
 

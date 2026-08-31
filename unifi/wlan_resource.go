@@ -168,7 +168,7 @@ func (r *wlanFrameworkResource) UpgradeState(
 					},
 				)
 				if err != nil {
-					resp.Diagnostics.AddError("Failed to upgrade WLAN state", err.Error())
+					resp.Diagnostics.AddError("Failed to upgrade WLAN state", resourcekit.DiagErrorText(err))
 					return
 				}
 				resp.DynamicValue = dv

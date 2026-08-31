@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_client_qos_rate"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 )
 
 var _ datasource.DataSource = &clientQosRateDataSource{}
@@ -79,7 +80,7 @@ func (d *clientQosRateDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Client QOS Rates",
-			"Could not read client QOS rates: "+err.Error(),
+			"Could not read client QOS rates: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}

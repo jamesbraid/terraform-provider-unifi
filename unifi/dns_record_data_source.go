@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/datasource_dns_record"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -84,7 +85,7 @@ func (d *dnsRecordDataSource) Read(
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading DNS Records",
-			"Could not read DNS records: "+err.Error(),
+			"Could not read DNS records: "+resourcekit.DiagErrorText(err),
 		)
 		return
 	}

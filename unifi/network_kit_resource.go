@@ -83,7 +83,7 @@ func networkKitSchema() resourcekit.SchemaSpec {
 					)
 					if err != nil {
 						resp.Diagnostics.AddError(
-							"Failed to upgrade network state", err.Error())
+							"Failed to upgrade network state", resourcekit.DiagErrorText(err))
 						return
 					}
 					resp.DynamicValue = dv

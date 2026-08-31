@@ -102,7 +102,7 @@ func portProfilePrefetchNetworks(
 		networks, err := client.ListNetwork(ctx, site)
 		if err != nil {
 			diags.AddError("Error Reading Networks for Port Profile",
-				"Could not read the site network inventory: "+err.Error())
+				"Could not read the site network inventory: "+resourcekit.DiagErrorText(err))
 			return nil, diags
 		}
 		return networks, diags
@@ -128,7 +128,7 @@ func portProfileBeforeSend(
 		portProfileTaggedNetworkUniverse(networks, sdk.NATiveNetworkID),
 		sdk,
 	); err != nil {
-		diags.AddError("Invalid tagged network selection", err.Error())
+		diags.AddError("Invalid tagged network selection", resourcekit.DiagErrorText(err))
 	}
 	return diags
 }
@@ -374,13 +374,13 @@ func portProfileVLANConfigFromModel(
 		config.Mode,
 	)
 	if err != nil {
-		diags.AddError("Invalid tagged VLAN configuration", err.Error())
+		diags.AddError("Invalid tagged VLAN configuration", resourcekit.DiagErrorText(err))
 		return config, diags
 	}
 	config.Mode = mode
 	forward, err := resolvePortProfileForward(config.Mode, config.Forward)
 	if err != nil {
-		diags.AddError("Invalid tagged VLAN configuration", err.Error())
+		diags.AddError("Invalid tagged VLAN configuration", resourcekit.DiagErrorText(err))
 		return config, diags
 	}
 	config.Forward = forward
@@ -507,7 +507,7 @@ func (v *portProfileVLANConfigValidator) ValidateResource(
 		configuredMode,
 	)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid tagged VLAN configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid tagged VLAN configuration", resourcekit.DiagErrorText(err))
 		return
 	}
 	configuredForward := ""
@@ -515,7 +515,7 @@ func (v *portProfileVLANConfigValidator) ValidateResource(
 		configuredForward = forward.ValueString()
 	}
 	if _, err := resolvePortProfileForward(resolvedMode, configuredForward); err != nil {
-		resp.Diagnostics.AddError("Invalid tagged VLAN configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid tagged VLAN configuration", resourcekit.DiagErrorText(err))
 	}
 }
 
@@ -548,7 +548,7 @@ func (r *portProfileKitResource) UpgradeState(
 					},
 				)
 				if err != nil {
-					resp.Diagnostics.AddError("Failed to upgrade port profile state", err.Error())
+					resp.Diagnostics.AddError("Failed to upgrade port profile state", resourcekit.DiagErrorText(err))
 					return
 				}
 				resp.DynamicValue = dv

@@ -19,6 +19,7 @@ import (
 	"github.com/ubiquiti-community/go-unifi/unifi"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/listresource_wan"
 	"github.com/ubiquiti-community/terraform-provider-unifi/internal/generated/resource_wan"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/resourcekit"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/util"
 )
 
@@ -1450,7 +1451,7 @@ func (r *wanResource) List(
 	networks, err := r.client.ListNetwork(ctx, site)
 	if err != nil {
 		var d diag.Diagnostics
-		d.AddError("Error Listing WAN Networks", "Could not list WAN networks: "+err.Error())
+		d.AddError("Error Listing WAN Networks", "Could not list WAN networks: "+resourcekit.DiagErrorText(err))
 		stream.Results = list.ListResultsStreamDiagnostics(d)
 		return
 	}

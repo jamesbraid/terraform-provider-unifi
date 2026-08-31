@@ -110,7 +110,7 @@ func clientKitPrefetch(client *ui.ApiClient) func(context.Context, string) (any,
 		}
 		userGroups, err := client.ListClientGroup(ctx, site)
 		if err != nil {
-			diags.AddError("Error Listing Client Groups", err.Error())
+			diags.AddError("Error Listing Client Groups", resourcekit.DiagErrorText(err))
 			return groups, diags
 		}
 		for _, g := range userGroups {
@@ -119,7 +119,7 @@ func clientKitPrefetch(client *ui.ApiClient) func(context.Context, string) (any,
 		}
 		memberGroups, err := client.ListNetworkMembersGroups(ctx, site)
 		if err != nil {
-			diags.AddError("Error Listing Network Members Groups", err.Error())
+			diags.AddError("Error Listing Network Members Groups", resourcekit.DiagErrorText(err))
 			return groups, diags
 		}
 		for _, g := range memberGroups {
@@ -248,7 +248,7 @@ func clientResolveMemberGroupsLocked(
 	list, err := client.ListNetworkMembersGroups(ctx, site)
 	if err != nil {
 		diags.AddError("Error Listing Network Members Groups",
-			fmt.Sprintf("Could not list network members groups: %s", err.Error()))
+			fmt.Sprintf("Could not list network members groups: %s", resourcekit.DiagErrorText(err)))
 		return nil, diags
 	}
 	fresh := make(map[string]string, len(list))
@@ -269,7 +269,7 @@ func clientResolveMemberGroupsLocked(
 			&ui.NetworkMembersGroup{Name: name, Members: []string{}, Type: "CLIENTS"})
 		if err != nil {
 			diags.AddError("Error Creating Network Members Group",
-				fmt.Sprintf("Could not create network members group %q: %s", name, err.Error()))
+				fmt.Sprintf("Could not create network members group %q: %s", name, resourcekit.DiagErrorText(err)))
 			continue
 		}
 		fresh[name] = created.ID
@@ -420,7 +420,7 @@ func clientResolveGroupLocked(
 	list, err := client.ListClientGroup(ctx, site)
 	if err != nil {
 		diags.AddError("Error Listing Client Groups",
-			fmt.Sprintf("Could not list client groups: %s", err.Error()))
+			fmt.Sprintf("Could not list client groups: %s", resourcekit.DiagErrorText(err)))
 		return "", diags
 	}
 	for _, existing := range list {
@@ -441,7 +441,7 @@ func clientResolveGroupLocked(
 	made, err := client.CreateClientGroup(ctx, site, created)
 	if err != nil {
 		diags.AddError("Error Creating Client Group",
-			fmt.Sprintf("Could not create client group %q: %s", name, err.Error()))
+			fmt.Sprintf("Could not create client group %q: %s", name, resourcekit.DiagErrorText(err)))
 		return "", diags
 	}
 	return made.ID, diags
@@ -477,7 +477,7 @@ func clientUpdateGroupIfNeeded(
 	if update {
 		if _, err := client.UpdateClientGroup(ctx, site, &existing); err != nil {
 			diags.AddError("Error Updating Client Group",
-				fmt.Sprintf("Could not update client group %q: %s", existing.Name, err.Error()))
+				fmt.Sprintf("Could not update client group %q: %s", existing.Name, resourcekit.DiagErrorText(err)))
 			return "", diags
 		}
 	}
