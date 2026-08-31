@@ -58,6 +58,12 @@ func (f Finding) String() string {
 // methods on *testing.T that can actually fail a test. Skip and Log are
 // deliberately absent: a test that only logs cannot fail, and that is the
 // point of the audit.
+//
+// "Error" is the one name here that collides with something ubiquitous: the
+// error interface's own Error() string. Matching it on any receiver scored
+// every function containing err.Error() as asserting, and reachability is
+// transitive, so a test that checked nothing passed this audit as long as some
+// production function it called formatted an error. See errorIsFailMethod.
 var failMethods = map[string]bool{
 	"Error": true, "Errorf": true,
 	"Fatal": true, "Fatalf": true,
@@ -67,6 +73,46 @@ var failMethods = map[string]bool{
 // Assertion helper packages. require.NoError(t, err) fails the test without
 // ever naming a fail method.
 var assertPackages = map[string]bool{"require": true, "assert": true}
+
+// testingParams collects the parameter names declared as *testing.T, *testing.B,
+// *testing.F or testing.TB, so a call on one can be told from a call on an error.
+func testingParams(decl *ast.FuncDecl) map[string]bool {
+	names := map[string]bool{}
+	if decl.Type.Params == nil {
+		return names
+	}
+	for _, field := range decl.Type.Params.List {
+		t := field.Type
+		if star, ok := t.(*ast.StarExpr); ok {
+			t = star.X
+		}
+		sel, ok := t.(*ast.SelectorExpr)
+		if !ok {
+			continue
+		}
+		if id, ok := sel.X.(*ast.Ident); !ok || id.Name != "testing" {
+			continue
+		}
+		switch sel.Sel.Name {
+		case "T", "B", "F", "TB":
+			for _, n := range field.Names {
+				names[n.Name] = true
+			}
+		}
+	}
+	return names
+}
+
+// errorIsFailMethod reports whether a call to .Error() is t.Error and not
+// err.Error. Only a bare identifier receiver is judged: h.t.Error(...) keeps
+// counting, since nothing there proves it is an error value.
+func errorIsFailMethod(fn *ast.SelectorExpr, params map[string]bool) bool {
+	id, ok := fn.X.(*ast.Ident)
+	if !ok {
+		return true
+	}
+	return params[id.Name]
+}
 
 // skipDirs are never descended into. testdata is here because this package's
 // own fixtures are deliberately unfailable tests; scanning them would put them
@@ -198,6 +244,7 @@ func (r *assertResolver) asserts(fi *funcInfo) bool {
 	r.visiting[fi] = true
 	defer delete(r.visiting, fi)
 
+	params := testingParams(fi.decl)
 	found := false
 	ast.Inspect(fi.decl, func(n ast.Node) bool {
 		if found {
@@ -210,8 +257,15 @@ func (r *assertResolver) asserts(fi *funcInfo) bool {
 		switch fn := call.Fun.(type) {
 		case *ast.SelectorExpr:
 			if failMethods[fn.Sel.Name] {
-				found = true
-				return false
+				if fn.Sel.Name != "Error" || errorIsFailMethod(fn, params) {
+					found = true
+					return false
+				}
+				// err.Error(). Stop here rather than falling through to
+				// the name lookup below: resolving the bare name "Error"
+				// finds any package method that happens to be called
+				// Error -- a logger's, say -- and inherits its verdict.
+				return true
 			}
 			if id, ok := fn.X.(*ast.Ident); ok && assertPackages[id.Name] {
 				found = true
