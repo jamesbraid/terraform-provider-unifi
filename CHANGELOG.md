@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### 🔒 Fixed
+
+- **The remaining resources that could print credentials in an error now
+  strip the request body too.** v0.109.0 covered resources built on the
+  shared resource kit. The rest call the controller API directly and
+  passed the error through untouched, so a failed apply could still
+  disclose whatever the SDK's own redaction missed. `unifi_dynamic_dns`
+  is the clearest case: it writes a `password`, and that value stayed
+  hidden only because the SDK's redaction list happens to contain the
+  substring `password`. The controller declares 64 sensitive fields;
+  that list matches 13 of them. All 85 places where the provider turns a
+  controller error into a Terraform message now drop the request body,
+  and a test fails the build if a new one is added without it.
+
+### 🔧 Maintenance
+
+- The check that finds tests which cannot fail no longer accepts
+  `err.Error()` as an assertion. It matched any method call named
+  `Error`, so a test that asserted nothing passed as long as some
+  function it called formatted an error. Three `unifi_device` schema
+  tests had been passing that way since they were written.
+
 ## [v0.109.0] - 2026-08-31
 
 ### ⚠️ Breaking Changes
@@ -78,9 +102,10 @@ All notable changes to this project will be documented in this file.
   Affected fields included OpenVPN CA, server, Diffie-Hellman and shared
   client private keys, and the guest portal's payment gateway credentials.
   Any failed apply could disclose them — into a terminal, a CI log, or a bug
-  report. The provider now strips the request body from every error it
-  raises, using the schema's own record of which attributes are sensitive
-  rather than guessing from field names.
+  report. The provider now strips the request body from errors raised by
+  resources built on the shared resource kit, which is most of them.
+  Resources that call the controller API directly were not covered; see
+  v0.110.0.
 
 ### ✨ Features
 
