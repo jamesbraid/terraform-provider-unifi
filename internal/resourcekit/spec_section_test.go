@@ -226,6 +226,23 @@ func TestSpecSectionWriteDiagnosticNeverCarriesTheRealSDKsPayload(t *testing.T) 
 		t.Fatalf("create the API client: %v", err)
 	}
 
+	// This test only proves DiagErrorText does anything if the SDK actually
+	// appends a request body for it to strip. jamesbraid/go-unifi v1.113.0
+	// made that opt-in, so on a later pin the assertions below would pass on
+	// an error that never carried the secret in the first place. Check the
+	// premise rather than letting the test go quietly hollow.
+	probe := &settings.GuestAccess{StripeApiKey: marker}
+	rawErr := client.UpdateSettingFields(
+		context.Background(), "default", probe, "x_stripe_api_key")
+	if rawErr == nil {
+		t.Fatal("the probe write succeeded, so the SDK never formatted an error")
+	}
+	if !strings.Contains(rawErr.Error(), marker) {
+		t.Fatalf("the SDK no longer puts the request body in its errors, so this test "+
+			"no longer exercises DiagErrorText. Set Config.IncludeRequestBodyInErrors "+
+			"to restore it, or retire the test. Raw error: %q", rawErr.Error())
+	}
+
 	// x_stripe_api_key is a real settings.GuestAccess field, and one of the
 	// five genuine credentials the review measured leaking through this
 	// exact path -- wire name unmatched by the SDK's own redaction
