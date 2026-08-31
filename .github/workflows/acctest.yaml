@@ -34,7 +34,7 @@ jobs:
       # it, not from this ref, so pinning by digest alone doesn't fix which image version installs.
       - name: Install unifi-emu-herder
         id: herder
-        uses: jamesbraid/unifi-emu/.github/actions/install-herder@0e4fc0e83dc418f3196ec5ecb580cc6085354cb1 # v0.5.1
+        uses: jamesbraid/unifi-emu/.github/actions/install-herder@cc65d6b07ece7f5776335b2e5bab3f2b6bf9fa59 # v0.5.3
 
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
