@@ -296,59 +296,32 @@ func Test_portOverrideModel_AttributeTypes(t *testing.T) {
 	}
 }
 
-func Test_deviceResource_IdentitySchema(t *testing.T) {
-	type args struct {
-		in0  context.Context
-		in1  fwresource.IdentitySchemaRequest
-		resp *fwresource.IdentitySchemaResponse
+// The three schema entry points are exercised for the failure they can
+// actually have: the framework builds each schema at plugin start, and a
+// malformed one surfaces as error diagnostics rather than a panic. A schema
+// that comes back empty means the resource registered nothing.
+func Test_deviceResource_Schema(t *testing.T) {
+	var resp fwresource.SchemaResponse
+	newDeviceKitResource().Schema(context.Background(), fwresource.SchemaRequest{}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("Schema() reported errors: %v", resp.Diagnostics.Errors())
 	}
-	tests := []struct {
-		name string
-		r    *deviceKitResource
-		args args
-	}{
-		{
-			name: "returns identity schema",
-			r:    newDeviceKitResource(),
-			args: args{
-				in0:  context.Background(),
-				in1:  fwresource.IdentitySchemaRequest{},
-				resp: &fwresource.IdentitySchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.IdentitySchema(tt.args.in0, tt.args.in1, tt.args.resp)
-		})
+	if len(resp.Schema.Attributes) == 0 && len(resp.Schema.Blocks) == 0 {
+		t.Error("Schema() returned no attributes and no blocks")
 	}
 }
 
-func Test_deviceResource_Schema(t *testing.T) {
-	type args struct {
-		ctx  context.Context
-		req  fwresource.SchemaRequest
-		resp *fwresource.SchemaResponse
+func Test_deviceResource_IdentitySchema(t *testing.T) {
+	var resp fwresource.IdentitySchemaResponse
+	newDeviceKitResource().IdentitySchema(
+		context.Background(), fwresource.IdentitySchemaRequest{}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("IdentitySchema() reported errors: %v", resp.Diagnostics.Errors())
 	}
-	tests := []struct {
-		name string
-		r    *deviceKitResource
-		args args
-	}{
-		{
-			name: "returns schema",
-			r:    newDeviceKitResource(),
-			args: args{
-				ctx:  context.Background(),
-				req:  fwresource.SchemaRequest{},
-				resp: &fwresource.SchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.Schema(tt.args.ctx, tt.args.req, tt.args.resp)
-		})
+	if len(resp.IdentitySchema.Attributes) == 0 {
+		t.Error("IdentitySchema() returned no attributes, so import by identity cannot work")
 	}
 }
 
@@ -988,30 +961,15 @@ func Test_outletOverrideAttrTypes(t *testing.T) {
 }
 
 func Test_deviceResource_ListResourceConfigSchema(t *testing.T) {
-	type args struct {
-		in0  context.Context
-		in1  fwlist.ListResourceSchemaRequest
-		resp *fwlist.ListResourceSchemaResponse
+	var resp fwlist.ListResourceSchemaResponse
+	newDeviceKitResource().ListResourceConfigSchema(
+		context.Background(), fwlist.ListResourceSchemaRequest{}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("ListResourceConfigSchema() reported errors: %v", resp.Diagnostics.Errors())
 	}
-	tests := []struct {
-		name string
-		r    *deviceKitResource
-		args args
-	}{
-		{
-			name: "returns list schema",
-			r:    newDeviceKitResource(),
-			args: args{
-				in0:  context.Background(),
-				in1:  fwlist.ListResourceSchemaRequest{},
-				resp: &fwlist.ListResourceSchemaResponse{},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.r.ListResourceConfigSchema(tt.args.in0, tt.args.in1, tt.args.resp)
-		})
+	if len(resp.Schema.Attributes) == 0 {
+		t.Error("ListResourceConfigSchema() returned no attributes")
 	}
 }
 
