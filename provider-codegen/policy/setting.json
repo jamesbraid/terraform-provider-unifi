@@ -137,7 +137,124 @@
     "lldp_enable_all",
     "mdns_enabled",
     "mss_clamp_mss",
-    "site_id"
+    "site_id",
+    "Locale._id",
+    "Locale.attr_hidden",
+    "Locale.attr_hidden_id",
+    "Locale.attr_no_delete",
+    "Locale.attr_no_edit",
+    "Locale.key",
+    "Locale.site_id",
+    "GlobalNat._id",
+    "GlobalNat.attr_hidden",
+    "GlobalNat.attr_hidden_id",
+    "GlobalNat.attr_no_delete",
+    "GlobalNat.attr_no_edit",
+    "GlobalNat.key",
+    "GlobalNat.site_id",
+    "SslInspection._id",
+    "SslInspection.attr_hidden",
+    "SslInspection.attr_hidden_id",
+    "SslInspection.attr_no_delete",
+    "SslInspection.attr_no_edit",
+    "SslInspection.key",
+    "SslInspection.site_id",
+    "Ipsec._id",
+    "Ipsec.attr_hidden",
+    "Ipsec.attr_hidden_id",
+    "Ipsec.attr_no_delete",
+    "Ipsec.attr_no_edit",
+    "Ipsec.key",
+    "Ipsec.site_id",
+    "Dashboard._id",
+    "Dashboard.attr_hidden",
+    "Dashboard.attr_hidden_id",
+    "Dashboard.attr_no_delete",
+    "Dashboard.attr_no_edit",
+    "Dashboard.key",
+    "Dashboard.site_id",
+    "EtherLighting._id",
+    "EtherLighting.attr_hidden",
+    "EtherLighting.attr_hidden_id",
+    "EtherLighting.attr_no_delete",
+    "EtherLighting.attr_no_edit",
+    "EtherLighting.key",
+    "EtherLighting.site_id",
+    "GlobalNetwork._id",
+    "GlobalNetwork.attr_hidden",
+    "GlobalNetwork.attr_hidden_id",
+    "GlobalNetwork.attr_no_delete",
+    "GlobalNetwork.attr_no_edit",
+    "GlobalNetwork.key",
+    "GlobalNetwork.site_id",
+    "TrafficFlow._id",
+    "TrafficFlow.attr_hidden",
+    "TrafficFlow.attr_hidden_id",
+    "TrafficFlow.attr_no_delete",
+    "TrafficFlow.attr_no_edit",
+    "TrafficFlow.key",
+    "TrafficFlow.site_id",
+    "Mdns._id",
+    "Mdns.attr_hidden",
+    "Mdns.attr_hidden_id",
+    "Mdns.attr_no_delete",
+    "Mdns.attr_no_edit",
+    "Mdns.key",
+    "Mdns.site_id",
+    "Teleport._id",
+    "Teleport.attr_hidden",
+    "Teleport.attr_hidden_id",
+    "Teleport.attr_no_delete",
+    "Teleport.attr_no_edit",
+    "Teleport.key",
+    "Teleport.site_id",
+    "MagicSiteToSiteVpn._id",
+    "MagicSiteToSiteVpn.attr_hidden",
+    "MagicSiteToSiteVpn.attr_hidden_id",
+    "MagicSiteToSiteVpn.attr_no_delete",
+    "MagicSiteToSiteVpn.attr_no_edit",
+    "MagicSiteToSiteVpn.key",
+    "MagicSiteToSiteVpn.site_id",
+    "GlobalSwitch._id",
+    "GlobalSwitch.attr_hidden",
+    "GlobalSwitch.attr_hidden_id",
+    "GlobalSwitch.attr_no_delete",
+    "GlobalSwitch.attr_no_edit",
+    "GlobalSwitch.key",
+    "GlobalSwitch.site_id",
+    "GlobalSwitch.acl_device_isolation",
+    "Netflow._id",
+    "Netflow.attr_hidden",
+    "Netflow.attr_hidden_id",
+    "Netflow.attr_no_delete",
+    "Netflow.attr_no_edit",
+    "Netflow.key",
+    "Netflow.site_id",
+    "RadioAi._id",
+    "RadioAi.attr_hidden",
+    "RadioAi.attr_hidden_id",
+    "RadioAi.attr_no_delete",
+    "RadioAi.attr_no_edit",
+    "RadioAi.key",
+    "RadioAi.site_id",
+    "RadioAi.default",
+    "RadioAi.useXY",
+    "Snmp._id",
+    "Snmp.attr_hidden",
+    "Snmp.attr_hidden_id",
+    "Snmp.attr_no_delete",
+    "Snmp.attr_no_edit",
+    "Snmp.key",
+    "Snmp.site_id",
+    "GuestAccess._id",
+    "GuestAccess.attr_hidden",
+    "GuestAccess.attr_hidden_id",
+    "GuestAccess.attr_no_delete",
+    "GuestAccess.attr_no_edit",
+    "GuestAccess.key",
+    "GuestAccess.site_id",
+    "GuestAccess.allowed_subnet_",
+    "GuestAccess.restricted_subnet_"
   ],
   "format_version": 1,
   "generator_name": "setting",
@@ -535,7 +652,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Timeout setting preference: auto or manual."
+            "description": "Timeout setting preference: auto, reduced, or manual."
           },
           "disposition": "managed",
           "structural_name": "timeout_setting_preference",
@@ -614,7 +731,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "UPnP WAN interface (e.g., WAN, WAN2)."
+            "description": "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`)."
           },
           "disposition": "managed",
           "structural_name": "upnp_wan_interface",
@@ -969,19 +1086,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "IPS operating mode: ids (detect only), ips (detect and block), ipsInline, or disabled.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"ids\", \"ips\", \"ipsInline\", \"disabled\")"
-                }
-              }
-            ]
+            "description": "IPS operating mode: ids (detect only), ips (detect and block), ipsInline, or disabled."
           },
           "disposition": "managed",
           "structural_name": "ips_mode",
@@ -1346,32 +1451,7 @@
           "attribute": {
             "computed_optional_required": "computed_optional",
             "description": "RADIUS shared secret.",
-            "sensitive": true,
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.LengthBetween(1, 48)"
-                }
-              },
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    },
-                    {
-                      "path": "regexp"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(`^[^\\\\\\ \"']+$`), \"must not contain backslashes, spaces, single quotes, or double quotes\")"
-                }
-              }
-            ]
+            "sensitive": true
           },
           "disposition": "managed",
           "structural_name": "x_secret",
@@ -1472,19 +1552,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Encrypted DNS state: off, auto, manual, or custom.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"off\", \"auto\", \"manual\", \"custom\")"
-                }
-              }
-            ]
+            "description": "Encrypted DNS state: off, auto, manual, or custom."
           },
           "disposition": "managed",
           "structural_name": "state",
@@ -1856,19 +1924,7 @@
         {
           "attribute": {
             "computed_optional_required": "computed_optional",
-            "description": "Configuration mode: `auto` or `manual`.",
-            "validators": [
-              {
-                "custom": {
-                  "imports": [
-                    {
-                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-                    }
-                  ],
-                  "schema_definition": "stringvalidator.OneOf(\"auto\", \"manual\")"
-                }
-              }
-            ]
+            "description": "Configuration mode: `auto` or `manual`."
           },
           "disposition": "managed",
           "structural_name": "setting_preference",
@@ -2036,6 +2092,2313 @@
       ],
       "terraform_name": "network_optimization",
       "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Site locale settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`)."
+          },
+          "disposition": "managed",
+          "structural_name": "timezone",
+          "structural_source": "Locale",
+          "terraform_name": "timezone"
+        }
+      ],
+      "terraform_name": "locale",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Global NAT (network address translation) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IDs of networks excluded from global NAT.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "excluded_network_ids",
+          "structural_source": "GlobalNat",
+          "terraform_name": "excluded_network_ids",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Global NAT mode: `auto`, `custom`, or `off`."
+          },
+          "disposition": "managed",
+          "structural_name": "mode",
+          "structural_source": "GlobalNat",
+          "terraform_name": "mode"
+        }
+      ],
+      "terraform_name": "global_nat",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "SSL inspection settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "SSL inspection state: `off`, `simple`, or `advanced`."
+          },
+          "disposition": "managed",
+          "structural_name": "state",
+          "structural_source": "SslInspection",
+          "terraform_name": "state"
+        }
+      ],
+      "terraform_name": "ssl_inspection",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "IPsec settings for site-to-site VPNs.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`)."
+          },
+          "disposition": "managed",
+          "structural_name": "ikev2_reauthentication_method",
+          "structural_source": "Ipsec",
+          "terraform_name": "ikev2_reauthentication_method"
+        }
+      ],
+      "terraform_name": "ipsec",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Dashboard layout and widget visibility settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Dashboard layout mode: `auto` or `manual`."
+          },
+          "disposition": "managed",
+          "structural_name": "layout_preference",
+          "structural_source": "Dashboard",
+          "terraform_name": "layout_preference"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Dashboard widget visibility overrides. The controller generation this provider is built against accepts this value on the first write to the dashboard section and silently discards it on every write after that."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Whether this widget is shown on the dashboard."
+              },
+              "disposition": "managed",
+              "structural_name": "enabled",
+              "terraform_name": "enabled"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Which dashboard widget this override applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "name",
+              "terraform_name": "name"
+            }
+          ],
+          "structural_name": "widgets",
+          "structural_source": "Dashboard",
+          "terraform_name": "widgets",
+          "terraform_type": "list_nested"
+        }
+      ],
+      "terraform_name": "dashboard",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Ethernet port lighting color settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Per-network Ethernet port lighting color overrides."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "ID of the network this color override applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "key",
+              "terraform_name": "key"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Hex color code for this override (e.g. `FF0000`)."
+              },
+              "disposition": "managed",
+              "structural_name": "raw_color_hex",
+              "terraform_name": "raw_color_hex"
+            }
+          ],
+          "structural_name": "network_overrides",
+          "structural_source": "EtherLighting",
+          "terraform_name": "network_overrides",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Per-link-speed Ethernet port lighting color overrides."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Link speed this color override applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "key",
+              "terraform_name": "key"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Hex color code for this override (e.g. `FF0000`)."
+              },
+              "disposition": "managed",
+              "structural_name": "raw_color_hex",
+              "terraform_name": "raw_color_hex"
+            }
+          ],
+          "structural_name": "speed_overrides",
+          "structural_source": "EtherLighting",
+          "terraform_name": "speed_overrides",
+          "terraform_type": "list_nested"
+        }
+      ],
+      "terraform_name": "ether_lighting",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Global network settings for zone-based firewalling.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`)."
+          },
+          "disposition": "managed",
+          "structural_name": "default_security_posture",
+          "structural_source": "GlobalNetwork",
+          "terraform_name": "default_security_posture"
+        }
+      ],
+      "terraform_name": "global_network",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Traffic flow classification settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable the allowed-traffic list for traffic flow classification."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled_allowed_traffic",
+          "structural_source": "TrafficFlow",
+          "terraform_name": "enabled_allowed_traffic"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Route traffic flow classification through the gateway's own DNS."
+          },
+          "disposition": "managed",
+          "structural_name": "gateway_dns_enabled",
+          "structural_source": "TrafficFlow",
+          "terraform_name": "gateway_dns_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Classify traffic to and from UniFi device management as its own traffic flow."
+          },
+          "disposition": "managed",
+          "structural_name": "unifi_device_management_enabled",
+          "structural_source": "TrafficFlow",
+          "terraform_name": "unifi_device_management_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Classify traffic to and from UniFi cloud services as its own traffic flow."
+          },
+          "disposition": "managed",
+          "structural_name": "unifi_services_enabled",
+          "structural_source": "TrafficFlow",
+          "terraform_name": "unifi_services_enabled"
+        }
+      ],
+      "terraform_name": "traffic_flow",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "mDNS (multicast DNS / Bonjour) repeater settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services)."
+          },
+          "disposition": "managed",
+          "structural_name": "mode",
+          "structural_source": "Mdns",
+          "terraform_name": "mode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "mDNS service type, e.g. `_myservice._tcp.local`."
+              },
+              "disposition": "managed",
+              "structural_name": "address",
+              "terraform_name": "address"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Display name for this custom service."
+              },
+              "disposition": "managed",
+              "structural_name": "name",
+              "terraform_name": "name"
+            }
+          ],
+          "structural_name": "custom_services",
+          "structural_source": "Mdns",
+          "terraform_name": "custom_services",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Code identifying a predefined mDNS service."
+              },
+              "disposition": "managed",
+              "structural_name": "code",
+              "terraform_name": "code"
+            }
+          ],
+          "structural_name": "predefined_services",
+          "structural_source": "Mdns",
+          "terraform_name": "predefined_services",
+          "terraform_type": "list_nested"
+        }
+      ],
+      "terraform_name": "mdns",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Teleport (self-hosted VPN gateway discovery) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable Teleport."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Teleport",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "CIDR subnet Teleport clients are assigned from. Empty when unconfigured."
+          },
+          "disposition": "managed",
+          "structural_name": "subnet_cidr",
+          "structural_source": "Teleport",
+          "terraform_name": "subnet_cidr"
+        }
+      ],
+      "terraform_name": "teleport",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Magic site-to-site VPN settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable magic site-to-site VPN."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "MagicSiteToSiteVpn",
+          "terraform_name": "enabled"
+        }
+      ],
+      "terraform_name": "magic_site_to_site_vpn",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Global switch (wired network) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Layer 3 ACL isolation rules restricting traffic between networks."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Destination network IDs this isolation rule blocks traffic to.",
+                "element_type": {
+                  "string": {}
+                }
+              },
+              "disposition": "managed",
+              "structural_name": "destination_networks",
+              "terraform_name": "destination_networks",
+              "terraform_type": "list"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "required",
+                "description": "Source network ID this isolation rule applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "source_network",
+              "terraform_name": "source_network"
+            }
+          ],
+          "structural_name": "acl_l3_isolation",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "acl_l3_isolation",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Automatically detect STP (spanning tree protocol) edge ports."
+          },
+          "disposition": "managed",
+          "structural_name": "auto_stp_edge_detection_enabled",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "auto_stp_edge_detection_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable DHCP snooping."
+          },
+          "disposition": "managed",
+          "structural_name": "dhcp_snoop",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "dhcp_snoop"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured."
+          },
+          "disposition": "managed",
+          "structural_name": "dot1x_fallback_networkconf_id",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "dot1x_fallback_networkconf_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable 802.1X port-based network access control."
+          },
+          "disposition": "managed",
+          "structural_name": "dot1x_portctrl_enabled",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "dot1x_portctrl_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Flood traffic for known protocols to every switch port."
+          },
+          "disposition": "managed",
+          "structural_name": "flood_known_protocols",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "flood_known_protocols"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable switch flow control (802.3x)."
+          },
+          "disposition": "managed",
+          "structural_name": "flowctrl_enabled",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "flowctrl_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Forward unknown multicast traffic to router ports."
+          },
+          "disposition": "managed",
+          "structural_name": "forward_unknown_mcast_router_ports",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "forward_unknown_mcast_router_ports"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable jumbo frame support."
+          },
+          "disposition": "managed",
+          "structural_name": "jumboframe_enabled",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "jumboframe_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Link debounce time in milliseconds: `0`, a multiple of 100 up to 4900, or `5000`."
+          },
+          "disposition": "managed",
+          "structural_name": "link_debounce",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "link_debounce"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "PoE staging delay in milliseconds."
+          },
+          "disposition": "managed",
+          "structural_name": "poe_staging_delay_msec",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "poe_staging_delay_msec"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "RADIUS profile ID used for 802.1X authentication."
+          },
+          "disposition": "managed",
+          "structural_name": "radiusprofile_id",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "radiusprofile_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "STP (spanning tree protocol) version."
+          },
+          "disposition": "managed",
+          "structural_name": "stp_version",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "stp_version"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "MAC addresses of switches excluded from these global settings.",
+            "element_type": {
+              "string": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "switch_exclusions",
+          "structural_source": "GlobalSwitch",
+          "terraform_name": "switch_exclusions",
+          "terraform_type": "list"
+        }
+      ],
+      "terraform_name": "global_switch",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "NetFlow traffic export settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Automatically generate the NetFlow engine ID."
+          },
+          "disposition": "managed",
+          "structural_name": "auto_engine_id_enabled",
+          "structural_source": "Netflow",
+          "terraform_name": "auto_engine_id_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable NetFlow traffic export. Requires at least one network in `network_ids`."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Netflow",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow engine ID."
+          },
+          "disposition": "managed",
+          "structural_name": "engine_id",
+          "structural_source": "Netflow",
+          "terraform_name": "engine_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow export frequency."
+          },
+          "disposition": "managed",
+          "structural_name": "export_frequency",
+          "structural_source": "Netflow",
+          "terraform_name": "export_frequency"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Network IDs NetFlow export applies to.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "network_ids",
+          "structural_source": "Netflow",
+          "terraform_name": "network_ids",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow collector port.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1024, 65535)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "port",
+          "structural_source": "Netflow",
+          "terraform_name": "port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow template refresh rate."
+          },
+          "disposition": "managed",
+          "structural_name": "refresh_rate",
+          "structural_source": "Netflow",
+          "terraform_name": "refresh_rate"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow sampling mode."
+          },
+          "disposition": "managed",
+          "structural_name": "sampling_mode",
+          "structural_source": "Netflow",
+          "terraform_name": "sampling_mode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow sampling rate.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(2, 16383)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "sampling_rate",
+          "structural_source": "Netflow",
+          "terraform_name": "sampling_rate"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow collector hostname or IP address."
+          },
+          "disposition": "managed",
+          "structural_name": "server",
+          "structural_source": "Netflow",
+          "terraform_name": "server"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "NetFlow protocol version."
+          },
+          "disposition": "managed",
+          "structural_name": "version",
+          "structural_source": "Netflow",
+          "terraform_name": "version"
+        }
+      ],
+      "terraform_name": "netflow",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. On this controller generation, enabling this section (`enabled = true`) alone -- with no channel or radio constraints also configured -- can make the controller rewrite a channel list such as `channels_na` within the same apply, which Terraform reports as an inconsistent-result error rather than a later drift.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Automatically adjust channel selection to the configured country's regulatory domain."
+          },
+          "disposition": "managed",
+          "structural_name": "auto_adjust_channels_to_country",
+          "structural_source": "RadioAi",
+          "terraform_name": "auto_adjust_channels_to_country"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Channel optimization preset."
+          },
+          "disposition": "managed",
+          "structural_name": "auto_channel_presets_type",
+          "structural_source": "RadioAi",
+          "terraform_name": "auto_channel_presets_type"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "6 GHz channels eligible for AI channel selection.",
+            "element_type": {
+              "int64": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "channels_6e",
+          "structural_source": "RadioAi",
+          "terraform_name": "channels_6e",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Channels excluded from AI channel selection, per radio."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Channel number to exclude."
+              },
+              "disposition": "managed",
+              "structural_name": "channel",
+              "terraform_name": "channel"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Channel width, in MHz, this exclusion applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "channel_width",
+              "terraform_name": "channel_width"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Radio band this exclusion applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "radio",
+              "terraform_name": "radio"
+            }
+          ],
+          "structural_name": "channels_blacklist",
+          "structural_source": "RadioAi",
+          "terraform_name": "channels_blacklist",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "5 GHz channels eligible for AI channel selection.",
+            "element_type": {
+              "int64": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "channels_na",
+          "structural_source": "RadioAi",
+          "terraform_name": "channels_na",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "2.4 GHz channels eligible for AI channel selection.",
+            "element_type": {
+              "int64": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "channels_ng",
+          "structural_source": "RadioAi",
+          "terraform_name": "channels_ng",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Cron expression scheduling AI channel/power optimization runs."
+          },
+          "disposition": "managed",
+          "structural_name": "cron_expr",
+          "structural_source": "RadioAi",
+          "terraform_name": "cron_expr"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable AI-driven channel and power optimization."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "RadioAi",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "MAC addresses of devices excluded from AI optimization.",
+            "element_type": {
+              "string": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "exclude_devices",
+          "structural_source": "RadioAi",
+          "terraform_name": "exclude_devices",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "MAC addresses of devices given priority by AI optimization.",
+            "element_type": {
+              "string": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "high_priority_devices",
+          "structural_source": "RadioAi",
+          "terraform_name": "high_priority_devices",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "5 GHz HT (channel bonding) widths eligible for AI channel selection.",
+            "element_type": {
+              "int64": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "ht_modes_na",
+          "structural_source": "RadioAi",
+          "terraform_name": "ht_modes_na",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "2.4 GHz HT (channel bonding) widths eligible for AI channel selection.",
+            "element_type": {
+              "int64": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "ht_modes_ng",
+          "structural_source": "RadioAi",
+          "terraform_name": "ht_modes_ng",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "What AI optimization adjusts.",
+            "element_type": {
+              "string": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "optimize",
+          "structural_source": "RadioAi",
+          "terraform_name": "optimize",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Radio bands AI optimization applies to.",
+            "element_type": {
+              "string": {}
+            }
+          },
+          "disposition": "managed",
+          "structural_name": "radios",
+          "structural_source": "RadioAi",
+          "terraform_name": "radios",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Per-radio AI optimization configuration."
+          },
+          "disposition": "managed",
+          "fields": [
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Channel width, in MHz, for this radio."
+              },
+              "disposition": "managed",
+              "structural_name": "channel_width",
+              "terraform_name": "channel_width"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Allow DFS (dynamic frequency selection) channels for this radio."
+              },
+              "disposition": "managed",
+              "structural_name": "dfs",
+              "terraform_name": "dfs"
+            },
+            {
+              "attribute": {
+                "computed_optional_required": "computed_optional",
+                "description": "Radio band this configuration applies to."
+              },
+              "disposition": "managed",
+              "structural_name": "radio",
+              "terraform_name": "radio"
+            }
+          ],
+          "structural_name": "radios_configuration",
+          "structural_source": "RadioAi",
+          "terraform_name": "radios_configuration",
+          "terraform_type": "list_nested"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Channel/power optimization preference."
+          },
+          "disposition": "managed",
+          "structural_name": "setting_preference",
+          "structural_source": "RadioAi",
+          "terraform_name": "setting_preference"
+        }
+      ],
+      "terraform_name": "radio_ai",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "SNMP (Simple Network Management Protocol) settings.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "SNMP community string, used for SNMPv1/v2c. Sensitive \u2014 on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "community",
+          "structural_source": "Snmp",
+          "terraform_name": "community"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable SNMP (v1/v2c)."
+          },
+          "disposition": "managed",
+          "structural_name": "enabled",
+          "structural_source": "Snmp",
+          "terraform_name": "enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable SNMPv3."
+          },
+          "disposition": "managed",
+          "structural_name": "enabledV3",
+          "structural_source": "Snmp",
+          "terraform_name": "enabled_v3"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "SNMPv3 username."
+          },
+          "disposition": "managed",
+          "structural_name": "username",
+          "structural_source": "Snmp",
+          "terraform_name": "username"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "SNMPv3 authentication password. Sensitive \u2014 on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_password",
+          "structural_source": "Snmp",
+          "terraform_name": "password"
+        }
+      ],
+      "terraform_name": "snmp",
+      "terraform_type": "single_nested"
+    },
+    {
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "Guest network portal, authentication and payment settings. The eighteen credential and identifier attributes below (payment gateway keys and identifiers, social-login secrets, and the portal password) are all marked Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+                }
+              ],
+              "schema_definition": "objectplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      },
+      "members": [
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Guest portal authentication method: `none`, `hotspot`, or `custom`."
+          },
+          "disposition": "managed",
+          "structural_name": "auth",
+          "structural_source": "GuestAccess",
+          "terraform_name": "auth"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable the guest portal."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use `portal_hostname` instead of the controller's own address as the guest portal's hostname."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_use_hostname",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_use_hostname"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Guest portal hostname, used when `portal_use_hostname` is enabled."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_hostname",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_hostname"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Redirect a guest to `redirect_url` after successful authentication."
+          },
+          "disposition": "managed",
+          "structural_name": "redirect_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "redirect_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set."
+          },
+          "disposition": "managed",
+          "structural_name": "redirect_url",
+          "structural_source": "GuestAccess",
+          "terraform_name": "redirect_url"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Serve the post-authentication redirect over HTTPS."
+          },
+          "disposition": "managed",
+          "structural_name": "redirect_https",
+          "structural_source": "GuestAccess",
+          "terraform_name": "redirect_https"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Redirect an HTTP request to the guest portal to HTTPS."
+          },
+          "disposition": "managed",
+          "structural_name": "redirect_to_https",
+          "structural_source": "GuestAccess",
+          "terraform_name": "redirect_to_https"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`."
+          },
+          "disposition": "managed",
+          "structural_name": "expire",
+          "structural_source": "GuestAccess",
+          "terraform_name": "expire"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Session length, combined with `expire_unit`, when `expire` is `custom`."
+          },
+          "disposition": "managed",
+          "structural_name": "expire_number",
+          "structural_source": "GuestAccess",
+          "terraform_name": "expire_number"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days."
+          },
+          "disposition": "managed",
+          "structural_name": "expire_unit",
+          "structural_source": "GuestAccess",
+          "terraform_name": "expire_unit"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable RADIUS authentication for the guest portal."
+          },
+          "disposition": "managed",
+          "structural_name": "radius_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "radius_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "RADIUS authentication type: `chap` or `mschapv2`."
+          },
+          "disposition": "managed",
+          "structural_name": "radius_auth_type",
+          "structural_source": "GuestAccess",
+          "terraform_name": "radius_auth_type"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable RADIUS Disconnect (RFC 3576) for the guest portal."
+          },
+          "disposition": "managed",
+          "structural_name": "radius_disconnect_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "radius_disconnect_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "RADIUS Disconnect (RFC 3576) listening port."
+          },
+          "disposition": "managed",
+          "structural_name": "radius_disconnect_port",
+          "structural_source": "GuestAccess",
+          "terraform_name": "radius_disconnect_port"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "ID of the `unifi_radius_profile` used for guest portal RADIUS authentication."
+          },
+          "disposition": "managed",
+          "structural_name": "radiusprofile_id",
+          "structural_source": "GuestAccess",
+          "terraform_name": "radiusprofile_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Require a password for the guest portal."
+          },
+          "disposition": "managed",
+          "structural_name": "password_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "password_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable voucher-based guest access."
+          },
+          "disposition": "managed",
+          "structural_name": "voucher_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "voucher_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable paid guest access via `gateway`."
+          },
+          "disposition": "managed",
+          "structural_name": "payment_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "payment_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`."
+          },
+          "disposition": "managed",
+          "structural_name": "gateway",
+          "structural_source": "GuestAccess",
+          "terraform_name": "gateway"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation."
+          },
+          "disposition": "managed",
+          "structural_name": "ec_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "ec_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Guest portal password, used when `password_enabled` is set.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_password",
+          "structural_source": "GuestAccess",
+          "terraform_name": "password"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Facebook app secret, used for guest portal social login via Facebook.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_facebook_app_secret",
+          "structural_source": "GuestAccess",
+          "terraform_name": "facebook_app_secret"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Google OAuth client secret, used for guest portal social login via Google.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_google_client_secret",
+          "structural_source": "GuestAccess",
+          "terraform_name": "google_client_secret"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "WeChat app secret, used for guest portal social login via WeChat.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_wechat_app_secret",
+          "structural_source": "GuestAccess",
+          "terraform_name": "wechat_app_secret"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_wechat_secret_key",
+          "structural_source": "GuestAccess",
+          "terraform_name": "wechat_secret_key"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Authorize.Net API login ID, used when `gateway` is `authorize`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_authorize_loginid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "authorize_loginid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Authorize.Net API transaction key, used when `gateway` is `authorize`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_authorize_transactionkey",
+          "structural_source": "GuestAccess",
+          "terraform_name": "authorize_transactionkey"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "PayPal API username, used when `gateway` is `paypal`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_paypal_username",
+          "structural_source": "GuestAccess",
+          "terraform_name": "paypal_username"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "PayPal API password, used when `gateway` is `paypal`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_paypal_password",
+          "structural_source": "GuestAccess",
+          "terraform_name": "paypal_password"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "PayPal API signature, used when `gateway` is `paypal`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_paypal_signature",
+          "structural_source": "GuestAccess",
+          "terraform_name": "paypal_signature"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "QuickPay agreement ID, used when `gateway` is `quickpay`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_quickpay_agreementid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "quickpay_agreementid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "QuickPay merchant ID, used when `gateway` is `quickpay`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_quickpay_merchantid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "quickpay_merchantid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "QuickPay API key, used when `gateway` is `quickpay`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_quickpay_apikey",
+          "structural_source": "GuestAccess",
+          "terraform_name": "quickpay_apikey"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_merchantwarrior_merchantuuid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "merchantwarrior_merchantuuid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Merchant Warrior API key, used when `gateway` is `merchantwarrior`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_merchantwarrior_apikey",
+          "structural_source": "GuestAccess",
+          "terraform_name": "merchantwarrior_apikey"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Merchant Warrior API passphrase, used when `gateway` is `merchantwarrior`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_merchantwarrior_apipassphrase",
+          "structural_source": "GuestAccess",
+          "terraform_name": "merchantwarrior_apipassphrase"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IPpay terminal ID, used when `gateway` is `ippay`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_ippay_terminalid",
+          "structural_source": "GuestAccess",
+          "terraform_name": "ippay_terminalid"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Stripe API key, used when `gateway` is `stripe`.",
+            "sensitive": true
+          },
+          "disposition": "managed",
+          "structural_name": "x_stripe_api_key",
+          "structural_source": "GuestAccess",
+          "terraform_name": "stripe_api_key"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Restrict guest DNS resolution to the servers in `restricted_dns_servers`."
+          },
+          "disposition": "managed",
+          "structural_name": "restricted_dns_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "restricted_dns_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "DNS servers guest clients are restricted to when `restricted_dns_enabled` is set.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ],
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                    },
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
+                    }
+                  ],
+                  "schema_definition": "listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, \"\"))"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "restricted_dns_servers",
+          "structural_source": "GuestAccess",
+          "terraform_name": "restricted_dns_servers",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable guest portal login via Facebook."
+          },
+          "disposition": "managed",
+          "structural_name": "facebook_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "facebook_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Facebook app ID, used for guest portal social login via Facebook."
+          },
+          "disposition": "managed",
+          "structural_name": "facebook_app_id",
+          "structural_source": "GuestAccess",
+          "terraform_name": "facebook_app_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Request the guest's email address as part of Facebook login."
+          },
+          "disposition": "managed",
+          "structural_name": "facebook_scope_email",
+          "structural_source": "GuestAccess",
+          "terraform_name": "facebook_scope_email"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable guest portal login via Google."
+          },
+          "disposition": "managed",
+          "structural_name": "google_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "google_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Google OAuth client ID, used for guest portal social login via Google."
+          },
+          "disposition": "managed",
+          "structural_name": "google_client_id",
+          "structural_source": "GuestAccess",
+          "terraform_name": "google_client_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Restrict Google guest portal login to accounts in this domain."
+          },
+          "disposition": "managed",
+          "structural_name": "google_domain",
+          "structural_source": "GuestAccess",
+          "terraform_name": "google_domain"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Request the guest's email address as part of Google login."
+          },
+          "disposition": "managed",
+          "structural_name": "google_scope_email",
+          "structural_source": "GuestAccess",
+          "terraform_name": "google_scope_email"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable guest portal login via WeChat."
+          },
+          "disposition": "managed",
+          "structural_name": "wechat_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "wechat_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "WeChat app ID, used for guest portal social login via WeChat."
+          },
+          "disposition": "managed",
+          "structural_name": "wechat_app_id",
+          "structural_source": "GuestAccess",
+          "terraform_name": "wechat_app_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "WeChat shop ID, used for guest payment via WeChat -- purpose inferred from the field name and its pairing with `wechat_secret_key`; the controller documents no further detail."
+          },
+          "disposition": "managed",
+          "structural_name": "wechat_shop_id",
+          "structural_source": "GuestAccess",
+          "terraform_name": "wechat_shop_id"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use Authorize.Net's sandbox environment for guest payment, rather than live processing, when `gateway` is `authorize`."
+          },
+          "disposition": "managed",
+          "structural_name": "authorize_use_sandbox",
+          "structural_source": "GuestAccess",
+          "terraform_name": "authorize_use_sandbox"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use IPpay's sandbox environment for guest payment, rather than live processing, when `gateway` is `ippay`."
+          },
+          "disposition": "managed",
+          "structural_name": "ippay_use_sandbox",
+          "structural_source": "GuestAccess",
+          "terraform_name": "ippay_use_sandbox"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use Merchant Warrior's sandbox environment for guest payment, rather than live processing, when `gateway` is `merchantwarrior`."
+          },
+          "disposition": "managed",
+          "structural_name": "merchantwarrior_use_sandbox",
+          "structural_source": "GuestAccess",
+          "terraform_name": "merchantwarrior_use_sandbox"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use PayPal's sandbox environment for guest payment, rather than live processing, when `gateway` is `paypal`."
+          },
+          "disposition": "managed",
+          "structural_name": "paypal_use_sandbox",
+          "structural_source": "GuestAccess",
+          "terraform_name": "paypal_use_sandbox"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use QuickPay's test mode for guest payment, rather than live processing, when `gateway` is `quickpay`."
+          },
+          "disposition": "managed",
+          "structural_name": "quickpay_testmode",
+          "structural_source": "GuestAccess",
+          "terraform_name": "quickpay_testmode"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "External authentication server URL. Optional at all times -- the controller silently discards it unless `auth` is `custom` -- confirmed live against the pinned controller."
+          },
+          "disposition": "managed",
+          "structural_name": "auth_url",
+          "structural_source": "GuestAccess",
+          "terraform_name": "auth_url"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IP address of the external authentication server, required when `auth` is `custom` -- the controller rejects the write without it (`api.err.CustomAuthMissingExternalServer`) -- confirmed live against the pinned controller."
+          },
+          "disposition": "managed",
+          "structural_name": "custom_ip",
+          "structural_source": "GuestAccess",
+          "terraform_name": "custom_ip"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Enable custom appearance for the guest portal's voucher entry form -- purpose inferred from the field name; the SDK carries no further voucher-appearance fields to confirm against."
+          },
+          "disposition": "managed",
+          "structural_name": "voucher_customized",
+          "structural_source": "GuestAccess",
+          "terraform_name": "voucher_customized"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use a customized guest portal page instead of the controller's default."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Text displayed on the guest portal's authentication step."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_authentication_text",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_authentication_text"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Background color of the guest portal page, as a hex color."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_bg_color",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_bg_color"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Use a background image for the guest portal page."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_bg_image_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_bg_image_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Filename of the guest portal's background image. The controller accepts any string here and does not verify that a file by this name exists."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_bg_image_filename",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_bg_image_filename"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Tile (repeat) the guest portal's background image instead of stretching it to fill the page."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_bg_image_tile",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_bg_image_tile"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Guest portal background type: `color`, `image`, or `gallery`."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_bg_type",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_bg_type"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Background color of the guest portal's content box, as a hex color."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_box_color",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_box_color"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Color of links inside the guest portal's content box, as a hex color."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_box_link_color",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_box_link_color"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Opacity of the guest portal's content box, as a percentage (1-100).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(1, 100)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_box_opacity",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_box_opacity"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Corner radius of the guest portal's content box, in pixels (0-50). `0` is a legal value: square corners.",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(0, 50)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_box_radius",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_box_radius"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Color of text inside the guest portal's content box, as a hex color."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_box_text_color",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_box_text_color"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Background color of the guest portal's button, as a hex color."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_button_color",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_button_color"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Text displayed on the guest portal's button."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_button_text",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_button_text"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Color of the guest portal's button text, as a hex color."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_button_text_color",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_button_text_color"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ],
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+                    },
+                    {
+                      "path": "github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
+                    }
+                  ],
+                  "schema_definition": "listvalidator.ValueStringsAre(controllerregex.Matches(`^[a-z]{2}([_-][a-zA-Z]{2,4})*$`, \"\"))"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_languages",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_languages",
+          "terraform_type": "list"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Color of links on the guest portal page, as a hex color."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_link_color",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_link_color"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Display a logo on the guest portal page."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_logo_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_logo_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Filename of the guest portal's logo image. The controller accepts any string here and does not verify that a file by this name exists."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_logo_filename",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_logo_filename"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Position of the guest portal's logo: `left`, `center`, or `right`."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_logo_position",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_logo_position"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Size of the guest portal's logo, in pixels (64-192).",
+            "validators": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+                    }
+                  ],
+                  "schema_definition": "int64validator.Between(64, 192)"
+                }
+              }
+            ]
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_logo_size",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_logo_size"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Text displayed on the guest portal after a successful login."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_success_text",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_success_text"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Color of the guest portal page's body text, as a hex color."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_text_color",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_text_color"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Title displayed on the guest portal page."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_title",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_title"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Guest portal terms of service text."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_tos",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_tos"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Require guests to accept the guest portal's terms of service before continuing."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_tos_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_tos_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Display name of the Unsplash photographer credited for the guest portal's background image."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_unsplash_author_name",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_unsplash_author_name"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Unsplash username of the photographer credited for the guest portal's background image."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_unsplash_author_username",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_unsplash_author_username"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Welcome text displayed on the guest portal page."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_welcome_text",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_welcome_text"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Display the guest portal's welcome text."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_welcome_text_enabled",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_welcome_text_enabled"
+        },
+        {
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "Position of the guest portal's welcome text: `under_logo` or `above_boxes`."
+          },
+          "disposition": "managed",
+          "structural_name": "portal_customized_welcome_text_position",
+          "structural_source": "GuestAccess",
+          "terraform_name": "portal_customized_welcome_text_position"
+        }
+      ],
+      "terraform_name": "guest_access",
+      "terraform_type": "single_nested"
     }
   ],
   "provider_owned": [
@@ -2100,6 +4463,6 @@
     }
   ],
   "resource": "unifi_setting",
-  "source_specification_sha256": "945076940732476a2206ddedfce72eb3c9c14d06d27838d76b3e34e8579c6f53",
+  "source_specification_sha256": "965d6a64aadf7622f23bf47923ec287e6ba86537918a1e05fd1478fe4df68c49",
   "surface_kind": "managed_resource"
 }

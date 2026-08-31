@@ -78,18 +78,34 @@ resource "unifi_setting" "radius_only" {
 
 - `auto_speedtest` (Attributes) Periodic automated internet speed test settings. (see [below for nested schema](#nestedatt--auto_speedtest))
 - `country` (Attributes) Regulatory country settings. (see [below for nested schema](#nestedatt--country))
+- `dashboard` (Attributes) Dashboard layout and widget visibility settings. (see [below for nested schema](#nestedatt--dashboard))
 - `doh` (Attributes) Encrypted DNS (DNS-over-HTTPS) settings. (see [below for nested schema](#nestedatt--doh))
 - `dpi` (Attributes) Deep Packet Inspection (DPI) settings. (see [below for nested schema](#nestedatt--dpi))
+- `ether_lighting` (Attributes) Ethernet port lighting color settings. (see [below for nested schema](#nestedatt--ether_lighting))
+- `global_nat` (Attributes) Global NAT (network address translation) settings. (see [below for nested schema](#nestedatt--global_nat))
+- `global_network` (Attributes) Global network settings for zone-based firewalling. (see [below for nested schema](#nestedatt--global_network))
+- `global_switch` (Attributes) Global switch (wired network) settings. (see [below for nested schema](#nestedatt--global_switch))
+- `guest_access` (Attributes) Guest network portal, authentication and payment settings. The eighteen credential and identifier attributes below (payment gateway keys and identifiers, social-login secrets, and the portal password) are all marked Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated. (see [below for nested schema](#nestedatt--guest_access))
 - `igmp_snooping` (Attributes) Site-level IGMP snooping setting. On UniFi Network 10.3.x+ the effective IGMP snooping toggle lives here rather than on each network. Advanced querier/flood options configured in the UI are preserved across updates. (see [below for nested schema](#nestedatt--igmp_snooping))
 - `ips` (Attributes) Intrusion Prevention System (IPS/IDS) and threat management settings. Basic IDS/IPS uses the built-in Emerging Threats ruleset and is free. A UniFi CyberSecure subscription adds enhanced threat intelligence from Proofpoint and Cloudflare on top of the base ruleset. (see [below for nested schema](#nestedatt--ips))
+- `ipsec` (Attributes) IPsec settings for site-to-site VPNs. (see [below for nested schema](#nestedatt--ipsec))
 - `lcm` (Attributes) LCD/display (LCM) settings for devices with a screen. (see [below for nested schema](#nestedatt--lcm))
+- `locale` (Attributes) Site locale settings. (see [below for nested schema](#nestedatt--locale))
+- `magic_site_to_site_vpn` (Attributes) Magic site-to-site VPN settings. (see [below for nested schema](#nestedatt--magic_site_to_site_vpn))
+- `mdns` (Attributes) mDNS (multicast DNS / Bonjour) repeater settings. (see [below for nested schema](#nestedatt--mdns))
 - `mgmt` (Attributes) Management settings. (see [below for nested schema](#nestedatt--mgmt))
+- `netflow` (Attributes) NetFlow traffic export settings. (see [below for nested schema](#nestedatt--netflow))
 - `network_optimization` (Attributes) Automated network optimization settings. (see [below for nested schema](#nestedatt--network_optimization))
 - `ntp` (Attributes) NTP (time server) settings. (see [below for nested schema](#nestedatt--ntp))
+- `radio_ai` (Attributes) AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. On this controller generation, enabling this section (`enabled = true`) alone -- with no channel or radio constraints also configured -- can make the controller rewrite a channel list such as `channels_na` within the same apply, which Terraform reports as an inconsistent-result error rather than a later drift. (see [below for nested schema](#nestedatt--radio_ai))
 - `radius` (Attributes) RADIUS settings. (see [below for nested schema](#nestedatt--radius))
 - `site` (String) The name of the site to associate the settings with.
+- `snmp` (Attributes) SNMP (Simple Network Management Protocol) settings. (see [below for nested schema](#nestedatt--snmp))
+- `ssl_inspection` (Attributes) SSL inspection settings. (see [below for nested schema](#nestedatt--ssl_inspection))
 - `syslog` (Attributes) Remote syslog (rsyslogd) settings. (see [below for nested schema](#nestedatt--syslog))
+- `teleport` (Attributes) Teleport (self-hosted VPN gateway discovery) settings. (see [below for nested schema](#nestedatt--teleport))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
+- `traffic_flow` (Attributes) Traffic flow classification settings. (see [below for nested schema](#nestedatt--traffic_flow))
 - `usg` (Attributes) USG settings. (see [below for nested schema](#nestedatt--usg))
 
 ### Read-Only
@@ -111,6 +127,24 @@ Optional:
 Required:
 
 - `code` (Number) Regulatory country code (ISO 3166-1 numeric).
+
+
+<a id="nestedatt--dashboard"></a>
+### Nested Schema for `dashboard`
+
+Optional:
+
+- `layout_preference` (String) Dashboard layout mode: `auto` or `manual`.
+- `widgets` (Attributes List) Dashboard widget visibility overrides. The controller generation this provider is built against accepts this value on the first write to the dashboard section and silently discards it on every write after that. (see [below for nested schema](#nestedatt--dashboard--widgets))
+
+<a id="nestedatt--dashboard--widgets"></a>
+### Nested Schema for `dashboard.widgets`
+
+Required:
+
+- `enabled` (Boolean) Whether this widget is shown on the dashboard.
+- `name` (String) Which dashboard widget this override applies to.
+
 
 
 <a id="nestedatt--doh"></a>
@@ -143,6 +177,177 @@ Optional:
 
 - `enabled` (Boolean) Whether DPI is enabled.
 - `fingerprinting_enabled` (Boolean) Whether device fingerprinting is enabled.
+
+
+<a id="nestedatt--ether_lighting"></a>
+### Nested Schema for `ether_lighting`
+
+Optional:
+
+- `network_overrides` (Attributes List) Per-network Ethernet port lighting color overrides. (see [below for nested schema](#nestedatt--ether_lighting--network_overrides))
+- `speed_overrides` (Attributes List) Per-link-speed Ethernet port lighting color overrides. (see [below for nested schema](#nestedatt--ether_lighting--speed_overrides))
+
+<a id="nestedatt--ether_lighting--network_overrides"></a>
+### Nested Schema for `ether_lighting.network_overrides`
+
+Required:
+
+- `key` (String) ID of the network this color override applies to.
+- `raw_color_hex` (String) Hex color code for this override (e.g. `FF0000`).
+
+
+<a id="nestedatt--ether_lighting--speed_overrides"></a>
+### Nested Schema for `ether_lighting.speed_overrides`
+
+Required:
+
+- `key` (String) Link speed this color override applies to.
+- `raw_color_hex` (String) Hex color code for this override (e.g. `FF0000`).
+
+
+
+<a id="nestedatt--global_nat"></a>
+### Nested Schema for `global_nat`
+
+Optional:
+
+- `excluded_network_ids` (List of String) IDs of networks excluded from global NAT.
+- `mode` (String) Global NAT mode: `auto`, `custom`, or `off`.
+
+
+<a id="nestedatt--global_network"></a>
+### Nested Schema for `global_network`
+
+Optional:
+
+- `default_security_posture` (String) Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).
+
+
+<a id="nestedatt--global_switch"></a>
+### Nested Schema for `global_switch`
+
+Optional:
+
+- `acl_l3_isolation` (Attributes List) Layer 3 ACL isolation rules restricting traffic between networks. (see [below for nested schema](#nestedatt--global_switch--acl_l3_isolation))
+- `auto_stp_edge_detection_enabled` (Boolean) Automatically detect STP (spanning tree protocol) edge ports.
+- `dhcp_snoop` (Boolean) Enable DHCP snooping.
+- `dot1x_fallback_networkconf_id` (String) Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.
+- `dot1x_portctrl_enabled` (Boolean) Enable 802.1X port-based network access control.
+- `flood_known_protocols` (Boolean) Flood traffic for known protocols to every switch port.
+- `flowctrl_enabled` (Boolean) Enable switch flow control (802.3x).
+- `forward_unknown_mcast_router_ports` (Boolean) Forward unknown multicast traffic to router ports.
+- `jumboframe_enabled` (Boolean) Enable jumbo frame support.
+- `link_debounce` (Number) Link debounce time in milliseconds: `0`, a multiple of 100 up to 4900, or `5000`.
+- `poe_staging_delay_msec` (Number) PoE staging delay in milliseconds.
+- `radiusprofile_id` (String) RADIUS profile ID used for 802.1X authentication.
+- `stp_version` (String) STP (spanning tree protocol) version.
+- `switch_exclusions` (List of String) MAC addresses of switches excluded from these global settings.
+
+<a id="nestedatt--global_switch--acl_l3_isolation"></a>
+### Nested Schema for `global_switch.acl_l3_isolation`
+
+Required:
+
+- `destination_networks` (List of String) Destination network IDs this isolation rule blocks traffic to.
+- `source_network` (String) Source network ID this isolation rule applies to.
+
+
+
+<a id="nestedatt--guest_access"></a>
+### Nested Schema for `guest_access`
+
+Optional:
+
+- `auth` (String) Guest portal authentication method: `none`, `hotspot`, or `custom`.
+- `auth_url` (String) External authentication server URL. Optional at all times -- the controller silently discards it unless `auth` is `custom` -- confirmed live against the pinned controller.
+- `authorize_loginid` (String, Sensitive) Authorize.Net API login ID, used when `gateway` is `authorize`.
+- `authorize_transactionkey` (String, Sensitive) Authorize.Net API transaction key, used when `gateway` is `authorize`.
+- `authorize_use_sandbox` (Boolean) Use Authorize.Net's sandbox environment for guest payment, rather than live processing, when `gateway` is `authorize`.
+- `custom_ip` (String) IP address of the external authentication server, required when `auth` is `custom` -- the controller rejects the write without it (`api.err.CustomAuthMissingExternalServer`) -- confirmed live against the pinned controller.
+- `ec_enabled` (Boolean) Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.
+- `expire` (String) Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.
+- `expire_number` (Number) Session length, combined with `expire_unit`, when `expire` is `custom`.
+- `expire_unit` (Number) Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.
+- `facebook_app_id` (String) Facebook app ID, used for guest portal social login via Facebook.
+- `facebook_app_secret` (String, Sensitive) Facebook app secret, used for guest portal social login via Facebook.
+- `facebook_enabled` (Boolean) Enable guest portal login via Facebook.
+- `facebook_scope_email` (Boolean) Request the guest's email address as part of Facebook login.
+- `gateway` (String) Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.
+- `google_client_id` (String) Google OAuth client ID, used for guest portal social login via Google.
+- `google_client_secret` (String, Sensitive) Google OAuth client secret, used for guest portal social login via Google.
+- `google_domain` (String) Restrict Google guest portal login to accounts in this domain.
+- `google_enabled` (Boolean) Enable guest portal login via Google.
+- `google_scope_email` (Boolean) Request the guest's email address as part of Google login.
+- `ippay_terminalid` (String, Sensitive) IPpay terminal ID, used when `gateway` is `ippay`.
+- `ippay_use_sandbox` (Boolean) Use IPpay's sandbox environment for guest payment, rather than live processing, when `gateway` is `ippay`.
+- `merchantwarrior_apikey` (String, Sensitive) Merchant Warrior API key, used when `gateway` is `merchantwarrior`.
+- `merchantwarrior_apipassphrase` (String, Sensitive) Merchant Warrior API passphrase, used when `gateway` is `merchantwarrior`.
+- `merchantwarrior_merchantuuid` (String, Sensitive) Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.
+- `merchantwarrior_use_sandbox` (Boolean) Use Merchant Warrior's sandbox environment for guest payment, rather than live processing, when `gateway` is `merchantwarrior`.
+- `password` (String, Sensitive) Guest portal password, used when `password_enabled` is set.
+- `password_enabled` (Boolean) Require a password for the guest portal.
+- `payment_enabled` (Boolean) Enable paid guest access via `gateway`.
+- `paypal_password` (String, Sensitive) PayPal API password, used when `gateway` is `paypal`.
+- `paypal_signature` (String, Sensitive) PayPal API signature, used when `gateway` is `paypal`.
+- `paypal_use_sandbox` (Boolean) Use PayPal's sandbox environment for guest payment, rather than live processing, when `gateway` is `paypal`.
+- `paypal_username` (String, Sensitive) PayPal API username, used when `gateway` is `paypal`.
+- `portal_customized` (Boolean) Use a customized guest portal page instead of the controller's default.
+- `portal_customized_authentication_text` (String) Text displayed on the guest portal's authentication step.
+- `portal_customized_bg_color` (String) Background color of the guest portal page, as a hex color.
+- `portal_customized_bg_image_enabled` (Boolean) Use a background image for the guest portal page.
+- `portal_customized_bg_image_filename` (String) Filename of the guest portal's background image. The controller accepts any string here and does not verify that a file by this name exists.
+- `portal_customized_bg_image_tile` (Boolean) Tile (repeat) the guest portal's background image instead of stretching it to fill the page.
+- `portal_customized_bg_type` (String) Guest portal background type: `color`, `image`, or `gallery`.
+- `portal_customized_box_color` (String) Background color of the guest portal's content box, as a hex color.
+- `portal_customized_box_link_color` (String) Color of links inside the guest portal's content box, as a hex color.
+- `portal_customized_box_opacity` (Number) Opacity of the guest portal's content box, as a percentage (1-100).
+- `portal_customized_box_radius` (Number) Corner radius of the guest portal's content box, in pixels (0-50). `0` is a legal value: square corners.
+- `portal_customized_box_text_color` (String) Color of text inside the guest portal's content box, as a hex color.
+- `portal_customized_button_color` (String) Background color of the guest portal's button, as a hex color.
+- `portal_customized_button_text` (String) Text displayed on the guest portal's button.
+- `portal_customized_button_text_color` (String) Color of the guest portal's button text, as a hex color.
+- `portal_customized_languages` (List of String) Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).
+- `portal_customized_link_color` (String) Color of links on the guest portal page, as a hex color.
+- `portal_customized_logo_enabled` (Boolean) Display a logo on the guest portal page.
+- `portal_customized_logo_filename` (String) Filename of the guest portal's logo image. The controller accepts any string here and does not verify that a file by this name exists.
+- `portal_customized_logo_position` (String) Position of the guest portal's logo: `left`, `center`, or `right`.
+- `portal_customized_logo_size` (Number) Size of the guest portal's logo, in pixels (64-192).
+- `portal_customized_success_text` (String) Text displayed on the guest portal after a successful login.
+- `portal_customized_text_color` (String) Color of the guest portal page's body text, as a hex color.
+- `portal_customized_title` (String) Title displayed on the guest portal page.
+- `portal_customized_tos` (String) Guest portal terms of service text.
+- `portal_customized_tos_enabled` (Boolean) Require guests to accept the guest portal's terms of service before continuing.
+- `portal_customized_unsplash_author_name` (String) Display name of the Unsplash photographer credited for the guest portal's background image.
+- `portal_customized_unsplash_author_username` (String) Unsplash username of the photographer credited for the guest portal's background image.
+- `portal_customized_welcome_text` (String) Welcome text displayed on the guest portal page.
+- `portal_customized_welcome_text_enabled` (Boolean) Display the guest portal's welcome text.
+- `portal_customized_welcome_text_position` (String) Position of the guest portal's welcome text: `under_logo` or `above_boxes`.
+- `portal_enabled` (Boolean) Enable the guest portal.
+- `portal_hostname` (String) Guest portal hostname, used when `portal_use_hostname` is enabled.
+- `portal_use_hostname` (Boolean) Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.
+- `quickpay_agreementid` (String, Sensitive) QuickPay agreement ID, used when `gateway` is `quickpay`.
+- `quickpay_apikey` (String, Sensitive) QuickPay API key, used when `gateway` is `quickpay`.
+- `quickpay_merchantid` (String, Sensitive) QuickPay merchant ID, used when `gateway` is `quickpay`.
+- `quickpay_testmode` (Boolean) Use QuickPay's test mode for guest payment, rather than live processing, when `gateway` is `quickpay`.
+- `radius_auth_type` (String) RADIUS authentication type: `chap` or `mschapv2`.
+- `radius_disconnect_enabled` (Boolean) Enable RADIUS Disconnect (RFC 3576) for the guest portal.
+- `radius_disconnect_port` (Number) RADIUS Disconnect (RFC 3576) listening port.
+- `radius_enabled` (Boolean) Enable RADIUS authentication for the guest portal.
+- `radiusprofile_id` (String) ID of the `unifi_radius_profile` used for guest portal RADIUS authentication.
+- `redirect_enabled` (Boolean) Redirect a guest to `redirect_url` after successful authentication.
+- `redirect_https` (Boolean) Serve the post-authentication redirect over HTTPS.
+- `redirect_to_https` (Boolean) Redirect an HTTP request to the guest portal to HTTPS.
+- `redirect_url` (String) URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.
+- `restricted_dns_enabled` (Boolean) Restrict guest DNS resolution to the servers in `restricted_dns_servers`.
+- `restricted_dns_servers` (List of String) DNS servers guest clients are restricted to when `restricted_dns_enabled` is set.
+- `stripe_api_key` (String, Sensitive) Stripe API key, used when `gateway` is `stripe`.
+- `voucher_customized` (Boolean) Enable custom appearance for the guest portal's voucher entry form -- purpose inferred from the field name; the SDK carries no further voucher-appearance fields to confirm against.
+- `voucher_enabled` (Boolean) Enable voucher-based guest access.
+- `wechat_app_id` (String) WeChat app ID, used for guest portal social login via WeChat.
+- `wechat_app_secret` (String, Sensitive) WeChat app secret, used for guest portal social login via WeChat.
+- `wechat_enabled` (Boolean) Enable guest portal login via WeChat.
+- `wechat_secret_key` (String, Sensitive) WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.
+- `wechat_shop_id` (String) WeChat shop ID, used for guest payment via WeChat -- purpose inferred from the field name and its pairing with `wechat_secret_key`; the controller documents no further detail.
 
 
 <a id="nestedatt--igmp_snooping"></a>
@@ -215,6 +420,14 @@ Required:
 
 
 
+<a id="nestedatt--ipsec"></a>
+### Nested Schema for `ipsec`
+
+Optional:
+
+- `ikev2_reauthentication_method` (String) IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`).
+
+
 <a id="nestedatt--lcm"></a>
 ### Nested Schema for `lcm`
 
@@ -225,6 +438,49 @@ Optional:
 - `idle_timeout` (Number) Seconds of inactivity before the display turns off (10-3600).
 - `sync` (Boolean) Sync display settings across devices.
 - `touch_event` (Boolean) Whether touch events on the display are enabled.
+
+
+<a id="nestedatt--locale"></a>
+### Nested Schema for `locale`
+
+Optional:
+
+- `timezone` (String) Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).
+
+
+<a id="nestedatt--magic_site_to_site_vpn"></a>
+### Nested Schema for `magic_site_to_site_vpn`
+
+Optional:
+
+- `enabled` (Boolean) Enable magic site-to-site VPN.
+
+
+<a id="nestedatt--mdns"></a>
+### Nested Schema for `mdns`
+
+Optional:
+
+- `custom_services` (Attributes List) Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`. (see [below for nested schema](#nestedatt--mdns--custom_services))
+- `mode` (String) mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).
+- `predefined_services` (Attributes List) Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`. (see [below for nested schema](#nestedatt--mdns--predefined_services))
+
+<a id="nestedatt--mdns--custom_services"></a>
+### Nested Schema for `mdns.custom_services`
+
+Required:
+
+- `address` (String) mDNS service type, e.g. `_myservice._tcp.local`.
+- `name` (String) Display name for this custom service.
+
+
+<a id="nestedatt--mdns--predefined_services"></a>
+### Nested Schema for `mdns.predefined_services`
+
+Required:
+
+- `code` (String) Code identifying a predefined mDNS service.
+
 
 
 <a id="nestedatt--mgmt"></a>
@@ -260,6 +516,24 @@ Optional:
 
 
 
+<a id="nestedatt--netflow"></a>
+### Nested Schema for `netflow`
+
+Optional:
+
+- `auto_engine_id_enabled` (Boolean) Automatically generate the NetFlow engine ID.
+- `enabled` (Boolean) Enable NetFlow traffic export. Requires at least one network in `network_ids`.
+- `engine_id` (Number) NetFlow engine ID.
+- `export_frequency` (Number) NetFlow export frequency.
+- `network_ids` (List of String) Network IDs NetFlow export applies to.
+- `port` (Number) NetFlow collector port.
+- `refresh_rate` (Number) NetFlow template refresh rate.
+- `sampling_mode` (String) NetFlow sampling mode.
+- `sampling_rate` (Number) NetFlow sampling rate.
+- `server` (String) NetFlow collector hostname or IP address.
+- `version` (Number) NetFlow protocol version.
+
+
 <a id="nestedatt--network_optimization"></a>
 ### Nested Schema for `network_optimization`
 
@@ -280,6 +554,49 @@ Optional:
 - `setting_preference` (String) Configuration mode: `auto` or `manual`.
 
 
+<a id="nestedatt--radio_ai"></a>
+### Nested Schema for `radio_ai`
+
+Optional:
+
+- `auto_adjust_channels_to_country` (Boolean) Automatically adjust channel selection to the configured country's regulatory domain.
+- `auto_channel_presets_type` (String) Channel optimization preset.
+- `channels_6e` (List of Number) 6 GHz channels eligible for AI channel selection.
+- `channels_blacklist` (Attributes List) Channels excluded from AI channel selection, per radio. (see [below for nested schema](#nestedatt--radio_ai--channels_blacklist))
+- `channels_na` (List of Number) 5 GHz channels eligible for AI channel selection.
+- `channels_ng` (List of Number) 2.4 GHz channels eligible for AI channel selection.
+- `cron_expr` (String) Cron expression scheduling AI channel/power optimization runs.
+- `enabled` (Boolean) Enable AI-driven channel and power optimization.
+- `exclude_devices` (List of String) MAC addresses of devices excluded from AI optimization.
+- `high_priority_devices` (List of String) MAC addresses of devices given priority by AI optimization.
+- `ht_modes_na` (List of Number) 5 GHz HT (channel bonding) widths eligible for AI channel selection.
+- `ht_modes_ng` (List of Number) 2.4 GHz HT (channel bonding) widths eligible for AI channel selection.
+- `optimize` (List of String) What AI optimization adjusts.
+- `radios` (List of String) Radio bands AI optimization applies to.
+- `radios_configuration` (Attributes List) Per-radio AI optimization configuration. (see [below for nested schema](#nestedatt--radio_ai--radios_configuration))
+- `setting_preference` (String) Channel/power optimization preference.
+
+<a id="nestedatt--radio_ai--channels_blacklist"></a>
+### Nested Schema for `radio_ai.channels_blacklist`
+
+Optional:
+
+- `channel` (Number) Channel number to exclude.
+- `channel_width` (Number) Channel width, in MHz, this exclusion applies to.
+- `radio` (String) Radio band this exclusion applies to.
+
+
+<a id="nestedatt--radio_ai--radios_configuration"></a>
+### Nested Schema for `radio_ai.radios_configuration`
+
+Optional:
+
+- `channel_width` (Number) Channel width, in MHz, for this radio.
+- `dfs` (Boolean) Allow DFS (dynamic frequency selection) channels for this radio.
+- `radio` (String) Radio band this configuration applies to.
+
+
+
 <a id="nestedatt--radius"></a>
 ### Nested Schema for `radius`
 
@@ -291,6 +608,26 @@ Optional:
 - `enabled` (Boolean) Enable the site's RADIUS server. A VPN server that authenticates against RADIUS (`unifi_vpn_server` with `openvpn` or `l2tp`) is rejected with `api.err.RadiusServerNotEnabled` while this is off.
 - `interim_update_interval` (String) Interim update interval, as a Go duration string (e.g. `1h`, `3600s`).
 - `secret` (String, Sensitive) RADIUS shared secret.
+
+
+<a id="nestedatt--snmp"></a>
+### Nested Schema for `snmp`
+
+Optional:
+
+- `community` (String, Sensitive) SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.
+- `enabled` (Boolean) Enable SNMP (v1/v2c).
+- `enabled_v3` (Boolean) Enable SNMPv3.
+- `password` (String, Sensitive) SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.
+- `username` (String) SNMPv3 username.
+
+
+<a id="nestedatt--ssl_inspection"></a>
+### Nested Schema for `ssl_inspection`
+
+Optional:
+
+- `state` (String) SSL inspection state: `off`, `simple`, or `advanced`.
 
 
 <a id="nestedatt--syslog"></a>
@@ -311,6 +648,15 @@ Optional:
 - `this_controller_encrypted_only` (Boolean) Only send this controller's logs over an encrypted channel.
 
 
+<a id="nestedatt--teleport"></a>
+### Nested Schema for `teleport`
+
+Optional:
+
+- `enabled` (Boolean) Enable Teleport.
+- `subnet_cidr` (String) CIDR subnet Teleport clients are assigned from. Empty when unconfigured.
+
+
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
 
@@ -320,6 +666,17 @@ Optional:
 - `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
 - `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+
+<a id="nestedatt--traffic_flow"></a>
+### Nested Schema for `traffic_flow`
+
+Optional:
+
+- `enabled_allowed_traffic` (Boolean) Enable the allowed-traffic list for traffic flow classification.
+- `gateway_dns_enabled` (Boolean) Route traffic flow classification through the gateway's own DNS.
+- `unifi_device_management_enabled` (Boolean) Classify traffic to and from UniFi device management as its own traffic flow.
+- `unifi_services_enabled` (Boolean) Classify traffic to and from UniFi cloud services as its own traffic flow.
 
 
 <a id="nestedatt--usg"></a>
@@ -356,14 +713,14 @@ Optional:
 - `tcp_syn_sent_timeout` (String) TCP SYN sent timeout, as a Go duration string (e.g. `120s`, `2m`).
 - `tcp_time_wait_timeout` (String) TCP time wait timeout, as a Go duration string (e.g. `120s`, `2m`).
 - `tftp_module` (Boolean) Enable TFTP module.
-- `timeout_setting_preference` (String) Timeout setting preference: auto or manual.
+- `timeout_setting_preference` (String) Timeout setting preference: auto, reduced, or manual.
 - `udp_other_timeout` (String) UDP other timeout, as a Go duration string (e.g. `30s`).
 - `udp_stream_timeout` (String) UDP stream timeout, as a Go duration string (e.g. `180s`, `3m`).
 - `unbind_wan_monitors` (Boolean) Unbind WAN monitors.
 - `upnp_enabled` (Boolean) Enable UPnP.
 - `upnp_nat_pmp_enabled` (Boolean) Enable UPnP NAT-PMP.
 - `upnp_secure_mode` (Boolean) Enable UPnP secure mode.
-- `upnp_wan_interface` (String) UPnP WAN interface (e.g., WAN, WAN2).
+- `upnp_wan_interface` (String) UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).
 
 <a id="nestedatt--usg--dns_verification"></a>
 ### Nested Schema for `usg.dns_verification`

@@ -111,14 +111,21 @@ type Spec[M any, S any] struct {
 	AlwaysWire []string
 
 	// MappedElsewhere names wires this Spec's own mapping.json declares
-	// managed that a SIBLING document actually carries -- an Extra sharing
-	// this section's model, with its own Spec and its own SDK type (usg_geo's
-	// "action" while this Spec's own SDKType is Usg). It exists only so
-	// TestEveryDescriptorAgreesWithItsSources can treat them as accounted
-	// for without checking them against THIS Spec's SDK struct, which would
-	// be the wrong struct to ask; unlike AlwaysWire it never joins the wire
-	// mask and WireNameProblems does not validate it against this Spec's own
-	// SDK tags. The sibling's own Spec is what actually proves these wires
+	// managed that round-trip through something other than a Fields entry on
+	// this Spec. Two cases: a SIBLING document actually carries it -- an
+	// Extra sharing this section's model, with its own Spec and its own SDK
+	// type (usg_geo's "action" while this Spec's own SDKType is Usg) -- or
+	// this Spec itself writes it through a dedicated SDK method instead of
+	// the general masked write (unifi_device's "port_overrides", through
+	// UpdateDevicePortOverrides rather than UpdateDeviceFields, because the
+	// general masked write's whole-array replace can silently clobber a port
+	// the caller never declared -- see updateDevicePortOverridesGrouped).
+	// It exists only so TestEveryDescriptorAgreesWithItsSources can treat
+	// them as accounted for without checking them against THIS Spec's SDK
+	// struct, which would be the wrong struct to ask for the sibling case;
+	// unlike AlwaysWire it never joins the wire mask and WireNameProblems
+	// does not validate it against this Spec's own SDK tags. Whichever code
+	// path actually performs the write is what proves these wires
 	// round-trip -- this field only silences a false positive here.
 	MappedElsewhere []string
 
@@ -373,7 +380,7 @@ func (r *Resource[M, S]) Create(
 	resp *resource.CreateResponse,
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
-		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	var data M
@@ -422,7 +429,7 @@ func (r *Resource[M, S]) Create(
 	}
 	created, err := r.createObject(ctx, site, sdk, &data)
 	if err != nil {
-		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Creating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	// prior is the plan here, before ToModel overwrites data.
@@ -447,7 +454,7 @@ func (r *Resource[M, S]) Read(
 	resp *resource.ReadResponse,
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
-		resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	var data M
@@ -474,7 +481,7 @@ func (r *Resource[M, S]) Read(
 		found, err = r.Spec.Backend.ReadByName(ctx, site, name)
 		if err != nil {
 			resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject,
-				"Could not read "+r.Spec.Subject+" with name "+name+": "+err.Error())
+				"Could not read "+r.Spec.Subject+" with name "+name+": "+diagErrorText(err))
 			return
 		}
 	} else {
@@ -488,7 +495,7 @@ func (r *Resource[M, S]) Read(
 				return
 			}
 			resp.Diagnostics.AddError("Error Reading "+r.Spec.Subject,
-				"Could not read "+r.Spec.Subject+" with ID "+id+": "+err.Error())
+				"Could not read "+r.Spec.Subject+" with ID "+id+": "+diagErrorText(err))
 			return
 		}
 	}
@@ -514,7 +521,7 @@ func (r *Resource[M, S]) Update(
 	resp *resource.UpdateResponse,
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
-		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	var state, plan M
@@ -559,7 +566,7 @@ func (r *Resource[M, S]) Update(
 
 	fields, err := r.Spec.WireFields(&plan)
 	if err != nil {
-		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	sdk, sdkDiags := r.Spec.ToSDK(ctx, &state)
@@ -616,7 +623,7 @@ func (r *Resource[M, S]) Update(
 
 	updated, err := r.Spec.Backend.UpdateFields(ctx, site, sdk, fields...)
 	if err != nil {
-		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Updating "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	// prior is state (with plan applied) here, not the raw plan: an attribute
@@ -638,7 +645,7 @@ func (r *Resource[M, S]) Delete(
 	resp *resource.DeleteResponse,
 ) {
 	if err := r.requireIdentitySpec(); err != nil {
-		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 	var data M
@@ -677,7 +684,7 @@ func (r *Resource[M, S]) Delete(
 		if errors.As(err, &notFound) {
 			return
 		}
-		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, err.Error())
+		resp.Diagnostics.AddError("Error Deleting "+r.Spec.Subject, diagErrorText(err))
 		return
 	}
 }

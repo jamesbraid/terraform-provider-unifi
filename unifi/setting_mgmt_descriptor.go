@@ -80,9 +80,14 @@ var (
 // schema-driven rule, not a transcription of the old mgmtSettingToModel:
 // every attribute here is Optional+Computed with no validator rejecting an
 // empty value, so KeepZero is what the check demands for all but
-// ssh_password (Optional, not Computed -- NullZero) and the eight plain
-// bools (BoolField carries no Elide at all). The plan-conditioned nulls
-// mgmtSettingToModel applied on top of that live in mgmtAfterReceive
+// ssh_password (Optional, not Computed -- NullZero), ssh_username (an
+// SDK-derived RegexMatches now rejects "" -- NullZero) and the eight plain
+// bools (BoolField carries no Elide at all). ssh_username's flip is a real
+// behaviour change: mgmtAfterReceive only nulls it when the prior is null
+// or unknown (unconfigured); for a configured prior it leaves the model
+// value untouched, so a configured ssh_username whose controller read
+// comes back "" now surfaces as null rather than "". The plan-conditioned
+// nulls mgmtSettingToModel applied on top of that live in mgmtAfterReceive
 // instead, attribute by attribute -- see its own comment.
 func mgmtKitSpec() resourcekit.Spec[settingMgmtModel, settings.Mgmt] {
 	return resourcekit.Spec[settingMgmtModel, settings.Mgmt]{
@@ -151,7 +156,7 @@ func mgmtKitSpec() resourcekit.Spec[settingMgmtModel, settings.Mgmt] {
 				Wire:  "x_ssh_username",
 				Model: func(m *settingMgmtModel) *types.String { return &m.SSHUsername },
 				SDK:   func(s *settings.Mgmt) *string { return &s.SSHUsername },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.BoolField[settingMgmtModel, settings.Mgmt]{
 				Wire:  "unifi_idp_enabled",

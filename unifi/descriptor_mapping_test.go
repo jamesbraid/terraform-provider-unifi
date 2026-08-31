@@ -77,13 +77,17 @@ type descriptor struct {
 	// field can round-trip through it instead of through a Fields entry, which
 	// is how a write-only secret and a translated set are carried.
 	AlwaysWire map[string]bool
-	// MappedElsewhere is the Spec's list of wires a sibling document actually
-	// carries -- an Extra sharing this section's model, with its own Spec and
-	// its own SDK type (unifi_setting's usg and usg_geo share one mapping
-	// file). Accounted for without the per-wire SDK-member check below, which
-	// asks this descriptor's own SDKType and would be the wrong struct.
+	// MappedElsewhere is the Spec's list of wires that round-trip through
+	// something other than a Fields entry on this Spec: a sibling document --
+	// an Extra sharing this section's model, with its own Spec and its own
+	// SDK type (unifi_setting's usg and usg_geo share one mapping file) -- or
+	// this same Spec writing the wire through a dedicated SDK method instead
+	// of the general masked write (unifi_device's "port_overrides"). Either
+	// way it's accounted for without the per-wire SDK-member check below,
+	// which asks this descriptor's own SDKType and, for the sibling case,
+	// would be the wrong struct.
 	MappedElsewhere map[string]bool
-	SDKType         string            // the Spec's second type argument, e.g. ClientGroup
+	SDKType         string            // the Spec's second type argument, package-qualified, e.g. settings.Dashboard
 	ModelTags       map[string]string // model Go field -> tfsdk tag
 	Fields          []descriptorField
 }
@@ -398,7 +402,7 @@ func loadDescriptors(t *testing.T) map[string]descriptor {
 				MappedElsewhere: map[string]bool{},
 			}
 			if args, ok := lit.Type.(*ast.IndexListExpr); ok && len(args.Indices) == 2 {
-				desc.SDKType = resolveAlias(aliases, exprName(args.Indices[1]))
+				desc.SDKType = resolveAlias(aliases, qualifiedExprName(args.Indices[1]))
 				desc.ModelTags = modelTags[resolveAlias(aliases, exprName(args.Indices[0]))]
 			}
 			for _, el := range lit.Elts {
@@ -594,13 +598,15 @@ func helpersIn(file *ast.File) map[string]helperSpec {
 }
 
 // aliasesIn resolves `type ppSDK = ui.PortProfile`, which two descriptors use to
-// keep their generic instantiations readable.
+// keep their generic instantiations readable. The target is recorded
+// qualified (qualifiedExprName, not exprName) so resolveAlias hands back the
+// same "pkg.Type" form a direct, unaliased reference would have produced.
 func aliasesIn(file *ast.File) map[string]string {
 	out := map[string]string{}
 	ast.Inspect(file, func(n ast.Node) bool {
 		spec, ok := n.(*ast.TypeSpec)
 		if ok && spec.Assign.IsValid() {
-			out[spec.Name.Name] = exprName(spec.Type)
+			out[spec.Name.Name] = qualifiedExprName(spec.Type)
 		}
 		return true
 	})
@@ -737,6 +743,48 @@ func exprName(e ast.Expr) string {
 		return t.Name
 	case *ast.StarExpr:
 		return exprName(t.X)
+	}
+	return ""
+}
+
+// sdkImportAliases maps a descriptor file's own import identifier for
+// go-unifi's root package to that package's real name, the one
+// sdkshape.Load's qualified lookup is keyed on. Descriptor files import it
+// as `ui "github.com/ubiquiti-community/go-unifi/unifi"`, but the package
+// itself declares `package unifi`; settings needs no entry because
+// descriptor files import it unaliased, so the identifier already matches.
+var sdkImportAliases = map[string]string{"ui": "unifi"}
+
+// qualifiedExprName is exprName's SDK-type-argument counterpart: it keeps a
+// SelectorExpr's package qualifier instead of dropping it, translated
+// through sdkImportAliases to the real package name. A Spec's SDK type
+// argument needs this because go-unifi's root and settings packages both
+// declare Dashboard, Setting and FieldConstraint -- bare "Dashboard" cannot
+// say which one a descriptor means, and sdkshape.Package.Members resolves
+// the ambiguity only when it is told (see that package's own comment). Every
+// other use of exprName in this file (detecting the Spec composite literal,
+// resolving helper-function calls, matching model struct names) wants the
+// bare name and is untouched.
+func qualifiedExprName(e ast.Expr) string {
+	switch t := e.(type) {
+	case *ast.IndexListExpr:
+		return qualifiedExprName(t.X)
+	case *ast.IndexExpr:
+		return qualifiedExprName(t.X)
+	case *ast.SelectorExpr:
+		pkg, ok := t.X.(*ast.Ident)
+		if !ok {
+			return t.Sel.Name
+		}
+		name := pkg.Name
+		if actual, known := sdkImportAliases[name]; known {
+			name = actual
+		}
+		return name + "." + t.Sel.Name
+	case *ast.Ident:
+		return t.Name
+	case *ast.StarExpr:
+		return qualifiedExprName(t.X)
 	}
 	return ""
 }

@@ -24,6 +24,22 @@ func TestSettingKitSectionsOrder(t *testing.T) {
 		"radius",
 		"usg",
 		"igmp_snooping",
+		"locale",
+		"global_nat",
+		"ssl_inspection",
+		"ipsec",
+		"dashboard",
+		"ether_lighting",
+		"global_network",
+		"traffic_flow",
+		"mdns",
+		"teleport",
+		"magic_site_to_site_vpn",
+		"global_switch",
+		"netflow",
+		"radio_ai",
+		"snmp",
+		"guest_access",
 	}
 
 	r := &settingResource{client: &Client{}}

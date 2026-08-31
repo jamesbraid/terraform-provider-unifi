@@ -1,0 +1,30 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.mdns",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "mode",
+      "terraform_name": "mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "custom_services",
+      "terraform_name": "custom_services",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "predefined_services",
+      "terraform_name": "predefined_services",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

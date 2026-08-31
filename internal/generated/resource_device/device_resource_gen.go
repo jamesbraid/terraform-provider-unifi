@@ -5,7 +5,6 @@ package resource_device
 
 import (
 	"context"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/hwtypes"
@@ -21,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -67,7 +67,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Primary DNS server.",
 						MarkdownDescription: "Primary DNS server.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$`), ""),
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$`, ""),
 						},
 					},
 					"dns2": schema.StringAttribute{
@@ -76,7 +76,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Secondary DNS server.",
 						MarkdownDescription: "Secondary DNS server.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$`), ""),
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$|^$`, ""),
 						},
 					},
 					"dnssuffix": schema.StringAttribute{
@@ -91,7 +91,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Gateway address (for static configuration).",
 						MarkdownDescription: "Gateway address (for static configuration).",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`), ""),
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, ""),
 						},
 					},
 					"ip": schema.StringAttribute{
@@ -100,7 +100,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "IP address (for static configuration).",
 						MarkdownDescription: "IP address (for static configuration).",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`), ""),
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`, ""),
 						},
 					},
 					"netmask": schema.StringAttribute{
@@ -109,7 +109,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Network mask (for static configuration).",
 						MarkdownDescription: "Network mask (for static configuration).",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^((128|192|224|240|248|252|254)\.0\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0)|255\.(0|128|192|224|240|248|252|254)))))$)$`), ""),
+							controllerregex.Matches(`^((128|192|224|240|248|252|254)\.0\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0\.0)|(255\.(((0|128|192|224|240|248|252|254)\.0)|255\.(0|128|192|224|240|248|252|254)))))$`, ""),
 						},
 					},
 					"type": schema.StringAttribute{
@@ -198,7 +198,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "LCM night mode begin time (HH:MM format).",
 				MarkdownDescription: "LCM night mode begin time (HH:MM format).",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:(^$)|(^(0[0-9])|(1[0-9])|(2[0-3])):([0-5][0-9]$))$`), ""),
+					controllerregex.Matches(`(^$)|(^(0[0-9])|(1[0-9])|(2[0-3])):([0-5][0-9]$)`, ""),
 				},
 			},
 			"lcm_night_mode_ends": schema.StringAttribute{
@@ -207,7 +207,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "LCM night mode end time (HH:MM format).",
 				MarkdownDescription: "LCM night mode end time (HH:MM format).",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:(^$)|(^(0[0-9])|(1[0-9])|(2[0-3])):([0-5][0-9]$))$`), ""),
+					controllerregex.Matches(`(^$)|(^(0[0-9])|(1[0-9])|(2[0-3])):([0-5][0-9]$)`, ""),
 				},
 			},
 			"led_override": schema.StringAttribute{
@@ -231,7 +231,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}){1,2}$`), ""),
+					controllerregex.Matches(`^#(?:[0-9a-fA-F]{3}){1,2}$`, ""),
 				},
 			},
 			"led_override_color_brightness": schema.Int64Attribute{
@@ -272,10 +272,10 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 			"mgmt_network_id": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink (a port_override tagged_networkconf_ids entry) first, then set mgmt_network_id. Leave unset to manage on the uplink's native (untagged) network.",
-				MarkdownDescription: "Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink (a port_override tagged_networkconf_ids entry) first, then set mgmt_network_id. Leave unset to manage on the uplink's native (untagged) network.",
+				Description:         "Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink first, then set mgmt_network_id. Measured on this controller generation: port_override's tagged_networkconf_ids does not achieve the first step -- it is accepted and discarded -- so tag the VLAN through the controller's own UI until a working provider path exists. Leave unset to manage on the uplink's native (untagged) network.",
+				MarkdownDescription: "Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink first, then set mgmt_network_id. Measured on this controller generation: port_override's tagged_networkconf_ids does not achieve the first step -- it is accepted and discarded -- so tag the VLAN through the controller's own UI until a working provider path exists. Leave unset to manage on the uplink's native (untagged) network.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\d\w-]+)$`), ""),
+					controllerregex.Matches(`[\d\w-]+`, ""),
 				},
 			},
 			"model": schema.StringAttribute{
@@ -289,7 +289,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the device.",
 				MarkdownDescription: "The name of the device.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,128})$`), ""),
+					controllerregex.Matches(`.{0,128}`, ""),
 				},
 			},
 			"outdoor_mode_override": schema.StringAttribute{
@@ -327,7 +327,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Outlet name.",
 							MarkdownDescription: "Outlet name.",
 							Validators: []validator.String{
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,128})$`), ""),
+								controllerregex.Matches(`.{0,128}`, ""),
 							},
 						},
 						"relay_state": schema.BoolAttribute{
@@ -376,7 +376,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Channel number or 'auto'.",
 							MarkdownDescription: "Channel number or 'auto'.",
 							Validators: []validator.String{
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[0-9]|[1][0-4]|1.5|2.5|3.5|4.5|5.5|6.5|5|16|17|21|25|29|33|34|36|37|38|40|41|42|44|45|46|48|49|52|53|56|57|60|61|64|65|69|73|77|81|85|89|93|97|100|101|104|105|108|109|112|113|117|116|120|121|124|125|128|129|132|133|136|137|140|141|144|145|149|153|157|161|165|169|173|177|181|183|184|185|187|188|189|192|193|196|197|201|205|209|213|217|221|225|229|233|auto)$`), ""),
+								controllerregex.Matches(`[0-9]|[1][0-4]|1.5|2.5|3.5|4.5|5.5|6.5|5|16|17|21|25|29|33|34|36|37|38|40|41|42|44|45|46|48|49|52|53|56|57|60|61|64|65|69|73|77|81|85|89|93|97|100|101|104|105|108|109|112|113|117|116|120|121|124|125|128|129|132|133|136|137|140|141|144|145|149|153|157|161|165|169|173|177|181|183|184|185|187|188|189|192|193|196|197|201|205|209|213|217|221|225|229|233|auto`, ""),
 							},
 						},
 						"dfs": schema.BoolAttribute{
@@ -457,7 +457,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Transmit power or 'auto'.",
 							MarkdownDescription: "Transmit power or 'auto'.",
 							Validators: []validator.String{
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\d]+|auto)$`), ""),
+								controllerregex.Matches(`[\d]+|auto`, ""),
 							},
 						},
 						"tx_power_mode": schema.StringAttribute{
@@ -545,7 +545,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "Baresip password.",
 				MarkdownDescription: "Baresip password.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:^[a-zA-Z0-9_.\-!~*'()]*)$`), ""),
+					controllerregex.Matches(`^[a-zA-Z0-9_.\-!~*'()]*`, ""),
 				},
 			},
 		},
@@ -667,7 +667,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "Human-readable name of the port.",
 							MarkdownDescription: "Human-readable name of the port.",
 							Validators: []validator.String{
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{0,128})$`), ""),
+								controllerregex.Matches(`.{0,128}`, ""),
 							},
 						},
 						"native_networkconf_id": schema.StringAttribute{
@@ -678,8 +678,8 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						"op_mode": schema.StringAttribute{
 							Optional:            true,
 							Computed:            true,
-							Description:         "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.",
-							MarkdownDescription: "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.",
+							Description:         "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update -- which also means setting this back to `switch` has no effect on the controller; remove the aggregation there directly.",
+							MarkdownDescription: "Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update -- which also means setting this back to `switch` has no effect on the controller; remove the aggregation there directly.",
 							Validators: []validator.String{
 								stringvalidator.OneOf("switch", "mirror", "aggregate", "routed", "routed_aggregate"),
 							},
@@ -704,7 +704,7 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 							Description:         "ID of the Port Profile used on this port.",
 							MarkdownDescription: "ID of the Port Profile used on this port.",
 							Validators: []validator.String{
-								stringvalidator.RegexMatches(regexp.MustCompile(`^(?:[\d\w-]+)$`), ""),
+								controllerregex.Matches(`[\d\w-]+`, ""),
 							},
 						},
 						"port_security_enabled": schema.BoolAttribute{
@@ -820,8 +820,8 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						"tagged_networkconf_ids": schema.SetAttribute{
 							ElementType:         types.StringType,
 							Optional:            true,
-							Description:         "List of network IDs to tag on this port.",
-							MarkdownDescription: "List of network IDs to tag on this port.",
+							Description:         "List of network IDs to tag on this port. Measured on this controller generation: a declared value is accepted (`200`/`rc:ok`) and discarded, and `forward` is additionally reverted to `\"all\"` -- so setting this attribute currently has no effect. This is scoped to this controller generation, not asserted as a permanent property of the field; a different or newer controller may honor it.",
+							MarkdownDescription: "List of network IDs to tag on this port. Measured on this controller generation: a declared value is accepted (`200`/`rc:ok`) and discarded, and `forward` is additionally reverted to `\"all\"` -- so setting this attribute currently has no effect. This is scoped to this controller generation, not asserted as a permanent property of the field; a different or newer controller may honor it.",
 						},
 						"tagged_vlan_mgmt": schema.StringAttribute{
 							Optional:            true,
@@ -838,8 +838,8 @@ func DeviceResourceSchema(ctx context.Context) schema.Schema {
 						},
 					},
 				},
-				Description:         "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration — the provider merges your declared ports (by `index`) into the device's current overrides rather than replacing the whole set. Removing a block stops managing that port but does not reset it; clear a port by overriding it back to the defaults instead.",
-				MarkdownDescription: "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration — the provider merges your declared ports (by `index`) into the device's current overrides rather than replacing the whole set. Removing a block stops managing that port but does not reset it; clear a port by overriding it back to the defaults instead.",
+				Description:         "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration, and each declared block writes only the attributes it names — an attribute you never set, or later remove from the block, keeps whatever the controller currently holds rather than reverting to a default. To change a value set it explicitly; to clear one, set it to the value you want rather than deleting the line. Removing a block entirely stops managing that port but does not reset it either.",
+				MarkdownDescription: "Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration, and each declared block writes only the attributes it names — an attribute you never set, or later remove from the block, keeps whatever the controller currently holds rather than reverting to a default. To change a value set it explicitly; to clear one, set it to the value you want rather than deleting the line. Removing a block entirely stops managing that port but does not reset it either.",
 			},
 		},
 		MarkdownDescription: "`unifi_device` manages a device of the network.\n\nDevices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.",

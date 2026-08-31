@@ -21,8 +21,8 @@ import (
 // hand-written buildMinimalUpdateDevice doesn't exist in the kit -- device
 // writes go through a masked UpdateDeviceFields instead of a whole-object
 // PUT -- and its intent (an update with no declared port_override blocks
-// must never send `port_overrides: null`) is already held by
-// Test_portOverridesForUpdate_noDeclaredBlocks against portOverridesForUpdate.
+// must never touch port_overrides at all) is held by
+// Test_deviceUpdate_noDeclaredPorts_sendsNoPortArray in device_resource_test.go.
 
 func TestSanitizeRadioForUpdate(t *testing.T) {
 	cases := []struct {

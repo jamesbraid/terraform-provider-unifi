@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/ubiquiti-community/go-unifi/unifi"
 )
 
 // portOverrideModel describes the port override data model.
@@ -116,58 +115,6 @@ func dropAssistedRoaming(state map[string]any) {
 			delete(rm, "assisted_roaming_rssi")
 		}
 	}
-}
-
-// portOverridesForUpdate decides what the PUT body carries for port_overrides.
-//
-// The UniFi PUT is a full replace with no "leave it alone" option: port_overrides
-// has no omitempty, so a nil slice still clears every override rather than dropping out of the body (#266).
-func portOverridesForUpdate(
-	currentDevice *unifi.Device,
-	declared []unifi.DevicePortOverrides,
-) []unifi.DevicePortOverrides {
-	if currentDevice == nil {
-		return declared
-	}
-	return mergePortOverridesByIndex(currentDevice.PortOverrides, declared)
-}
-
-// mergePortOverridesByIndex overlays declared port overrides onto the device's
-// current ones, keyed by port_idx, so an update touching only some ports doesn't clobber the rest (#266).
-func mergePortOverridesByIndex(
-	current, declared []unifi.DevicePortOverrides,
-) []unifi.DevicePortOverrides {
-	if len(declared) == 0 {
-		return current
-	}
-
-	declaredByIdx := make(map[int64]int, len(declared))
-	for i, po := range declared {
-		if po.PortIDX != nil {
-			declaredByIdx[*po.PortIDX] = i
-		}
-	}
-
-	merged := make([]unifi.DevicePortOverrides, 0, len(current)+len(declared))
-	used := make([]bool, len(declared))
-	for _, po := range current {
-		if po.PortIDX != nil {
-			if i, ok := declaredByIdx[*po.PortIDX]; ok {
-				merged = append(merged, declared[i])
-				used[i] = true
-				continue
-			}
-		}
-		merged = append(merged, po)
-	}
-	// Append declared ports not already merged: newly-managed ports, or any entry
-	// without a port_idx (which we cannot key on).
-	for i, po := range declared {
-		if !used[i] {
-			merged = append(merged, po)
-		}
-	}
-	return merged
 }
 
 // cleanMAC normalizes MAC address format.

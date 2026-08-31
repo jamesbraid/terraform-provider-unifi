@@ -1,6 +1,7 @@
 package controllertest
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"regexp"
@@ -9,6 +10,16 @@ import (
 
 	"github.com/ubiquiti-community/go-unifi/unifi"
 )
+
+// fakeLogger records every Printf call so tests can assert on what a run
+// would have logged.
+type fakeLogger struct {
+	lines []string
+}
+
+func (f *fakeLogger) Printf(format string, v ...any) {
+	f.lines = append(f.lines, fmt.Sprintf(format, v...))
+}
 
 func TestRemoveControllerImagesIsOptIn(t *testing.T) {
 	t.Setenv(envRemoveControllerImages, "")
@@ -36,6 +47,17 @@ func TestComposeControllerImageComesFromTheHarnessNotALiteral(t *testing.T) {
 	}
 	if !strings.Contains(contents, "${UNIFI_TEST_CONTROLLER_PULL_POLICY:-missing}") {
 		t.Error("docker-compose.yaml must keep the offline-friendly pull policy")
+	}
+}
+
+func TestEffectiveControllerImageHonoursTheOverride(t *testing.T) {
+	t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", "example.invalid/unifi:pinned")
+	if got := effectiveControllerImage(); got != "example.invalid/unifi:pinned" {
+		t.Errorf("with an override set, effectiveControllerImage() = %q, want the override", got)
+	}
+	t.Setenv("UNIFI_TEST_CONTROLLER_IMAGE", "")
+	if got, want := effectiveControllerImage(), DefaultControllerImage(); got != want {
+		t.Errorf("with no override, effectiveControllerImage() = %q, want %q", got, want)
 	}
 }
 
@@ -81,4 +103,40 @@ func TestComposePublishesControllerOnEphemeralHostPort(t *testing.T) {
 	if strings.Contains(contents, "- 8443:8443") {
 		t.Fatal("docker-compose.yaml still reserves host port 8443")
 	}
+}
+
+// TestVerifyControllerVersion guards the rider a sibling project's incident
+// motivated: a container published under the right tag is not proof it runs
+// the release that tag names. The image tag is derived from
+// unifi.UnifiVersion and cannot drift on its own, but nothing before this
+// checked that the booted controller's own report agrees with it.
+func TestVerifyControllerVersion(t *testing.T) {
+	t.Run("reported version matches the SDK pin", func(t *testing.T) {
+		logger := &fakeLogger{}
+		if err := verifyControllerVersion(logger, unifi.UnifiVersion); err != nil {
+			t.Fatalf("verifyControllerVersion() = %v, want nil for a matching version", err)
+		}
+		if len(logger.lines) != 1 || !strings.Contains(logger.lines[0], unifi.UnifiVersion) {
+			t.Errorf("verifyControllerVersion() logged %v, want one line naming %q", logger.lines, unifi.UnifiVersion)
+		}
+	})
+
+	t.Run("reported version disagrees with the SDK pin", func(t *testing.T) {
+		logger := &fakeLogger{}
+		const drifted = "1.2.3"
+		err := verifyControllerVersion(logger, drifted)
+		if err == nil {
+			t.Fatal("verifyControllerVersion() = nil, want an error for a mismatched version")
+		}
+		if !strings.Contains(err.Error(), drifted) || !strings.Contains(err.Error(), unifi.UnifiVersion) {
+			t.Errorf("verifyControllerVersion() error = %q, want it to name both %q and %q", err, drifted, unifi.UnifiVersion)
+		}
+	})
+
+	t.Run("empty report counts as a mismatch", func(t *testing.T) {
+		logger := &fakeLogger{}
+		if err := verifyControllerVersion(logger, ""); err == nil {
+			t.Fatal("verifyControllerVersion() = nil, want an error when the controller reported no version")
+		}
+	})
 }

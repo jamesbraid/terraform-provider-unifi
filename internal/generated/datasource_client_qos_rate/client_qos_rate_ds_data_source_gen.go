@@ -5,10 +5,9 @@ package datasource_client_qos_rate
 
 import (
 	"context"
-	"regexp"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
@@ -26,7 +25,7 @@ func ClientQosRateDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the client QOS rate to look up.",
 				MarkdownDescription: "The name of the client QOS rate to look up.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+					controllerregex.Matches(`.{1,128}`, ""),
 				},
 			},
 			"qos_rate_max_down": schema.Int64Attribute{

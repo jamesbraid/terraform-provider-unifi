@@ -5,7 +5,6 @@ package resource_port_profile
 
 import (
 	"context"
-	"regexp"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
@@ -19,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 	"github.com/ubiquiti-community/terraform-provider-unifi/unifi/validators"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -156,7 +156,7 @@ func PortProfileResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The operation mode for the port profile. Can only be `switch`",
 				Validators: []validator.String{
 					stringvalidator.OneOf("switch"),
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:switch)$`), ""),
+					controllerregex.Matches(`switch`, ""),
 				},
 				Default: stringdefault.StaticString("switch"),
 			},

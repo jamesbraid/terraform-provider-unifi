@@ -5,11 +5,11 @@ package datasource_dns_record
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
@@ -32,7 +32,7 @@ func DnsRecordDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the DNS record to look up.",
 				MarkdownDescription: "The name of the DNS record to look up.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+					controllerregex.Matches(`.{1,128}`, ""),
 				},
 			},
 			"site": schema.StringAttribute{
@@ -60,7 +60,7 @@ func DnsRecordDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The value of the DNS record.",
 				MarkdownDescription: "The value of the DNS record.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,256})$`), ""),
+					controllerregex.Matches(`.{1,256}`, ""),
 				},
 			},
 		},

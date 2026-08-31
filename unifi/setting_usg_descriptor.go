@@ -167,14 +167,18 @@ var (
 // (resource_setting/setting_resource_gen.go's "usg" SingleNestedAttribute)
 // onto settings.Usg. Elide judgments follow resourcekit.ElideProblems'
 // schema-driven rule, not a transcription of the old usgSettingToModel:
-// mss_clamp, timeout_setting_preference and upnp_wan_interface are
-// Optional+Computed strings with no validator rejecting "", so they want
-// KeepZero, even though the deleted mapper read each through
-// util.StringValueOrNull (a divergence -- see this task's own report).
-// icmp_timeout and the eleven other Duration fields carry a CustomType,
-// which routes ElideProblems' zeroIsRejected through a check this field
-// kind never triggers, so they too want KeepZero regardless of any
-// validator. geo_ip_filtering_block/countries/enabled/traffic_direction
+// mss_clamp (OneOf), timeout_setting_preference (OneOf) and
+// upnp_wan_interface (RegexMatches `WAN[2-9]?`) each gained an SDK-derived
+// validator that rejects "", so they want NullZero. This is a real
+// behaviour change, not just a descriptor correction: usgAfterReceive's own
+// stringOrNull only nulls these on the *unconfigured* path (prior null or
+// unknown); for a configured prior it passes the model value through
+// unchanged, so a configured attribute whose controller read comes back ""
+// now surfaces as null rather than "" -- the intended, acknowledgeable
+// diff, not a no-op. icmp_timeout and the eleven other Duration fields
+// carry a CustomType, which routes ElideProblems' zeroIsRejected through a
+// check this field kind never triggers, so they want KeepZero regardless of
+// any validator. geo_ip_filtering_block/countries/enabled/traffic_direction
 // aren't Fields here at all -- see usgGeoKitSpec and this file's own top
 // comment.
 func usgKitSpec() resourcekit.Spec[settingUSGModel, settings.Usg] {
@@ -227,7 +231,7 @@ func usgKitSpec() resourcekit.Spec[settingUSGModel, settings.Usg] {
 				Wire:  "mss_clamp",
 				Model: func(m *settingUSGModel) *types.String { return &m.MssClamp },
 				SDK:   func(s *settings.Usg) *string { return &s.MssClamp },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.BoolField[settingUSGModel, settings.Usg]{
 				Wire:  "offload_accounting",
@@ -341,7 +345,7 @@ func usgKitSpec() resourcekit.Spec[settingUSGModel, settings.Usg] {
 				Wire:  "timeout_setting_preference",
 				Model: func(m *settingUSGModel) *types.String { return &m.TimeoutSettingPreference },
 				SDK:   func(s *settings.Usg) *string { return &s.TimeoutSettingPreference },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.NullZero,
 			},
 			resourcekit.DurationField[settingUSGModel, settings.Usg]{
 				Wire:  "udp_other_timeout",
@@ -381,7 +385,7 @@ func usgKitSpec() resourcekit.Spec[settingUSGModel, settings.Usg] {
 				Wire:  "upnp_wan_interface",
 				Model: func(m *settingUSGModel) *types.String { return &m.UPnPWANInterface },
 				SDK:   func(s *settings.Usg) *string { return &s.UPnPWANInterface },
-				Elide: resourcekit.KeepZero,
+				Elide: resourcekit.NullZero,
 			},
 		},
 	}

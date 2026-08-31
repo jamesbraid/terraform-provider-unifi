@@ -264,6 +264,40 @@ func TestLoadFoldsInAnExtraPackageWithoutDisturbingTheRoot(t *testing.T) {
 	}
 }
 
+// TestMembersResolvesEitherDashboardByPackageQualifiedName is the qualified
+// map's own positive control, over the same collision
+// TestLoadFoldsInAnExtraPackageWithoutDisturbingTheRoot pins for the bare
+// name: a caller who names the package gets that package's own shape,
+// regardless of which one path's bare-name precedence would have answered.
+func TestMembersResolvesEitherDashboardByPackageQualifiedName(t *testing.T) {
+	pkg, err := Load(sdkPackage, sdkPackage+"/settings")
+	if err != nil {
+		t.Skipf("SDK package unavailable: %v", err)
+	}
+
+	root, ok := pkg.Members("unifi.Dashboard")
+	if !ok {
+		t.Fatal(`Members("unifi.Dashboard") not found`)
+	}
+	if _, ok := root["attr_hidden"]; !ok {
+		t.Errorf(`"unifi.Dashboard" has no "attr_hidden" member (the root package's own shape); got %v`, root)
+	}
+	if _, ok := root["layout_preference"]; ok {
+		t.Error(`"unifi.Dashboard" has a "layout_preference" member; that's settings' shape`)
+	}
+
+	settings, ok := pkg.Members("settings.Dashboard")
+	if !ok {
+		t.Fatal(`Members("settings.Dashboard") not found`)
+	}
+	if _, ok := settings["layout_preference"]; !ok {
+		t.Errorf(`"settings.Dashboard" has no "layout_preference" member (settings' own shape); got %v`, settings)
+	}
+	if _, ok := settings["attr_hidden"]; ok {
+		t.Error(`"settings.Dashboard" has an "attr_hidden" member; that's the root package's shape`)
+	}
+}
+
 // namedMethodReturning builds a synthetic method named methodName on recv,
 // returning a pointer to a synthetic named struct called returnTypeName --
 // enough of go/types' shape for recordMethods to record it, without needing

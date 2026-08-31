@@ -5,10 +5,10 @@ package resource_setting
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -60,6 +61,49 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Regulatory country settings.",
 				MarkdownDescription: "Regulatory country settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"dashboard": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"layout_preference": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Dashboard layout mode: `auto` or `manual`.",
+						MarkdownDescription: "Dashboard layout mode: `auto` or `manual`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "manual"),
+						},
+					},
+					"widgets": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"enabled": schema.BoolAttribute{
+									Required:            true,
+									Description:         "Whether this widget is shown on the dashboard.",
+									MarkdownDescription: "Whether this widget is shown on the dashboard.",
+								},
+								"name": schema.StringAttribute{
+									Required:            true,
+									Description:         "Which dashboard widget this override applies to.",
+									MarkdownDescription: "Which dashboard widget this override applies to.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("critical_traffic_prioritization", "cybersecure", "traffic_identification", "wifi_technology", "wifi_channels", "wifi_client_experience", "wifi_tx_retries", "most_active_apps_aps_clients", "most_active_apps_clients", "most_active_aps_clients", "most_active_apps_aps", "most_active_apps", "v2_most_active_aps", "v2_most_active_clients", "wifi_connectivity", "ap_radio_density", "wifi_channel_preset_configuration", "most_common_client_fingerprints", "wan_activity"),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Dashboard widget visibility overrides. The controller generation this provider is built against accepts this value on the first write to the dashboard section and silently discards it on every write after that.",
+						MarkdownDescription: "Dashboard widget visibility overrides. The controller generation this provider is built against accepts this value on the first write to the dashboard section and silently discards it on every write after that.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Dashboard layout and widget visibility settings.",
+				MarkdownDescription: "Dashboard layout and widget visibility settings.",
 				PlanModifiers: []planmodifier.Object{
 					objectplanmodifier.UseStateForUnknown(),
 				},
@@ -146,6 +190,879 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"ether_lighting": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"network_overrides": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"key": schema.StringAttribute{
+									Required:            true,
+									Description:         "ID of the network this color override applies to.",
+									MarkdownDescription: "ID of the network this color override applies to.",
+								},
+								"raw_color_hex": schema.StringAttribute{
+									Required:            true,
+									Description:         "Hex color code for this override (e.g. `FF0000`).",
+									MarkdownDescription: "Hex color code for this override (e.g. `FF0000`).",
+									Validators: []validator.String{
+										controllerregex.Matches(`[0-9A-Fa-f]{6}`, ""),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Per-network Ethernet port lighting color overrides.",
+						MarkdownDescription: "Per-network Ethernet port lighting color overrides.",
+					},
+					"speed_overrides": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"key": schema.StringAttribute{
+									Required:            true,
+									Description:         "Link speed this color override applies to.",
+									MarkdownDescription: "Link speed this color override applies to.",
+									Validators: []validator.String{
+										controllerregex.Matches(`FE|GbE|2.5GbE|5GbE|10GbE|25GbE|40GbE|100GbE`, ""),
+									},
+								},
+								"raw_color_hex": schema.StringAttribute{
+									Required:            true,
+									Description:         "Hex color code for this override (e.g. `FF0000`).",
+									MarkdownDescription: "Hex color code for this override (e.g. `FF0000`).",
+									Validators: []validator.String{
+										controllerregex.Matches(`[0-9A-Fa-f]{6}`, ""),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Per-link-speed Ethernet port lighting color overrides.",
+						MarkdownDescription: "Per-link-speed Ethernet port lighting color overrides.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Ethernet port lighting color settings.",
+				MarkdownDescription: "Ethernet port lighting color settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"global_nat": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"excluded_network_ids": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "IDs of networks excluded from global NAT.",
+						MarkdownDescription: "IDs of networks excluded from global NAT.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Global NAT mode: `auto`, `custom`, or `off`.",
+						MarkdownDescription: "Global NAT mode: `auto`, `custom`, or `off`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "custom", "off"),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Global NAT (network address translation) settings.",
+				MarkdownDescription: "Global NAT (network address translation) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"global_network": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"default_security_posture": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).",
+						MarkdownDescription: "Site-wide default security posture used by zone-based firewalling (observed: `ALLOW_ALL`).",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Global network settings for zone-based firewalling.",
+				MarkdownDescription: "Global network settings for zone-based firewalling.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"global_switch": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"acl_l3_isolation": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"destination_networks": schema.ListAttribute{
+									ElementType:         types.StringType,
+									Required:            true,
+									Description:         "Destination network IDs this isolation rule blocks traffic to.",
+									MarkdownDescription: "Destination network IDs this isolation rule blocks traffic to.",
+								},
+								"source_network": schema.StringAttribute{
+									Required:            true,
+									Description:         "Source network ID this isolation rule applies to.",
+									MarkdownDescription: "Source network ID this isolation rule applies to.",
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Layer 3 ACL isolation rules restricting traffic between networks.",
+						MarkdownDescription: "Layer 3 ACL isolation rules restricting traffic between networks.",
+					},
+					"auto_stp_edge_detection_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Automatically detect STP (spanning tree protocol) edge ports.",
+						MarkdownDescription: "Automatically detect STP (spanning tree protocol) edge ports.",
+					},
+					"dhcp_snoop": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable DHCP snooping.",
+						MarkdownDescription: "Enable DHCP snooping.",
+					},
+					"dot1x_fallback_networkconf_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
+						MarkdownDescription: "Network ID clients fall back to when 802.1X authentication fails. Empty when unconfigured.",
+						Validators: []validator.String{
+							controllerregex.Matches(`[\d\w-]+|`, ""),
+						},
+					},
+					"dot1x_portctrl_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable 802.1X port-based network access control.",
+						MarkdownDescription: "Enable 802.1X port-based network access control.",
+					},
+					"flood_known_protocols": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Flood traffic for known protocols to every switch port.",
+						MarkdownDescription: "Flood traffic for known protocols to every switch port.",
+					},
+					"flowctrl_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable switch flow control (802.3x).",
+						MarkdownDescription: "Enable switch flow control (802.3x).",
+					},
+					"forward_unknown_mcast_router_ports": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Forward unknown multicast traffic to router ports.",
+						MarkdownDescription: "Forward unknown multicast traffic to router ports.",
+					},
+					"jumboframe_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable jumbo frame support.",
+						MarkdownDescription: "Enable jumbo frame support.",
+					},
+					"link_debounce": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Link debounce time in milliseconds: `0`, a multiple of 100 up to 4900, or `5000`.",
+						MarkdownDescription: "Link debounce time in milliseconds: `0`, a multiple of 100 up to 4900, or `5000`.",
+					},
+					"poe_staging_delay_msec": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "PoE staging delay in milliseconds.",
+						MarkdownDescription: "PoE staging delay in milliseconds.",
+						Validators: []validator.Int64{
+							int64validator.OneOf(0, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000),
+						},
+					},
+					"radiusprofile_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "RADIUS profile ID used for 802.1X authentication.",
+						MarkdownDescription: "RADIUS profile ID used for 802.1X authentication.",
+					},
+					"stp_version": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "STP (spanning tree protocol) version.",
+						MarkdownDescription: "STP (spanning tree protocol) version.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("stp", "rstp", "disabled"),
+						},
+					},
+					"switch_exclusions": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "MAC addresses of switches excluded from these global settings.",
+						MarkdownDescription: "MAC addresses of switches excluded from these global settings.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Global switch (wired network) settings.",
+				MarkdownDescription: "Global switch (wired network) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"guest_access": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"auth": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Guest portal authentication method: `none`, `hotspot`, or `custom`.",
+						MarkdownDescription: "Guest portal authentication method: `none`, `hotspot`, or `custom`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("none", "hotspot", "custom"),
+						},
+					},
+					"auth_url": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "External authentication server URL. Optional at all times -- the controller silently discards it unless `auth` is `custom` -- confirmed live against the pinned controller.",
+						MarkdownDescription: "External authentication server URL. Optional at all times -- the controller silently discards it unless `auth` is `custom` -- confirmed live against the pinned controller.",
+					},
+					"authorize_loginid": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Authorize.Net API login ID, used when `gateway` is `authorize`.",
+						MarkdownDescription: "Authorize.Net API login ID, used when `gateway` is `authorize`.",
+					},
+					"authorize_transactionkey": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Authorize.Net API transaction key, used when `gateway` is `authorize`.",
+						MarkdownDescription: "Authorize.Net API transaction key, used when `gateway` is `authorize`.",
+					},
+					"authorize_use_sandbox": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use Authorize.Net's sandbox environment for guest payment, rather than live processing, when `gateway` is `authorize`.",
+						MarkdownDescription: "Use Authorize.Net's sandbox environment for guest payment, rather than live processing, when `gateway` is `authorize`.",
+					},
+					"custom_ip": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "IP address of the external authentication server, required when `auth` is `custom` -- the controller rejects the write without it (`api.err.CustomAuthMissingExternalServer`) -- confirmed live against the pinned controller.",
+						MarkdownDescription: "IP address of the external authentication server, required when `auth` is `custom` -- the controller rejects the write without it (`api.err.CustomAuthMissingExternalServer`) -- confirmed live against the pinned controller.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, ""),
+						},
+					},
+					"ec_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.",
+						MarkdownDescription: "Enable express checkout for guest payment -- purpose inferred from the field name, not confirmed against controller documentation.",
+					},
+					"expire": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.",
+						MarkdownDescription: "Session length: a number of minutes, or `custom` to use `expire_number`/`expire_unit`.",
+						Validators: []validator.String{
+							controllerregex.Matches(`[\d]+|custom`, ""),
+						},
+					},
+					"expire_number": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Session length, combined with `expire_unit`, when `expire` is `custom`.",
+						MarkdownDescription: "Session length, combined with `expire_unit`, when `expire` is `custom`.",
+					},
+					"expire_unit": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.",
+						MarkdownDescription: "Unit multiplier for `expire_number`: `1` for minutes, `60` for hours, or `1440` for days.",
+						Validators: []validator.Int64{
+							int64validator.OneOf(1, 60, 1440),
+						},
+					},
+					"facebook_app_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Facebook app ID, used for guest portal social login via Facebook.",
+						MarkdownDescription: "Facebook app ID, used for guest portal social login via Facebook.",
+					},
+					"facebook_app_secret": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Facebook app secret, used for guest portal social login via Facebook.",
+						MarkdownDescription: "Facebook app secret, used for guest portal social login via Facebook.",
+					},
+					"facebook_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable guest portal login via Facebook.",
+						MarkdownDescription: "Enable guest portal login via Facebook.",
+					},
+					"facebook_scope_email": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Request the guest's email address as part of Facebook login.",
+						MarkdownDescription: "Request the guest's email address as part of Facebook login.",
+					},
+					"gateway": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.",
+						MarkdownDescription: "Payment gateway used when `payment_enabled` is set: `paypal`, `stripe`, `authorize`, `quickpay`, `merchantwarrior`, or `ippay`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("paypal", "stripe", "authorize", "quickpay", "merchantwarrior", "ippay"),
+						},
+					},
+					"google_client_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Google OAuth client ID, used for guest portal social login via Google.",
+						MarkdownDescription: "Google OAuth client ID, used for guest portal social login via Google.",
+					},
+					"google_client_secret": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Google OAuth client secret, used for guest portal social login via Google.",
+						MarkdownDescription: "Google OAuth client secret, used for guest portal social login via Google.",
+					},
+					"google_domain": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Restrict Google guest portal login to accounts in this domain.",
+						MarkdownDescription: "Restrict Google guest portal login to accounts in this domain.",
+					},
+					"google_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable guest portal login via Google.",
+						MarkdownDescription: "Enable guest portal login via Google.",
+					},
+					"google_scope_email": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Request the guest's email address as part of Google login.",
+						MarkdownDescription: "Request the guest's email address as part of Google login.",
+					},
+					"ippay_terminalid": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "IPpay terminal ID, used when `gateway` is `ippay`.",
+						MarkdownDescription: "IPpay terminal ID, used when `gateway` is `ippay`.",
+					},
+					"ippay_use_sandbox": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use IPpay's sandbox environment for guest payment, rather than live processing, when `gateway` is `ippay`.",
+						MarkdownDescription: "Use IPpay's sandbox environment for guest payment, rather than live processing, when `gateway` is `ippay`.",
+					},
+					"merchantwarrior_apikey": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Merchant Warrior API key, used when `gateway` is `merchantwarrior`.",
+						MarkdownDescription: "Merchant Warrior API key, used when `gateway` is `merchantwarrior`.",
+					},
+					"merchantwarrior_apipassphrase": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Merchant Warrior API passphrase, used when `gateway` is `merchantwarrior`.",
+						MarkdownDescription: "Merchant Warrior API passphrase, used when `gateway` is `merchantwarrior`.",
+					},
+					"merchantwarrior_merchantuuid": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.",
+						MarkdownDescription: "Merchant Warrior merchant UUID, used when `gateway` is `merchantwarrior`.",
+					},
+					"merchantwarrior_use_sandbox": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use Merchant Warrior's sandbox environment for guest payment, rather than live processing, when `gateway` is `merchantwarrior`.",
+						MarkdownDescription: "Use Merchant Warrior's sandbox environment for guest payment, rather than live processing, when `gateway` is `merchantwarrior`.",
+					},
+					"password": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Guest portal password, used when `password_enabled` is set.",
+						MarkdownDescription: "Guest portal password, used when `password_enabled` is set.",
+					},
+					"password_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Require a password for the guest portal.",
+						MarkdownDescription: "Require a password for the guest portal.",
+					},
+					"payment_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable paid guest access via `gateway`.",
+						MarkdownDescription: "Enable paid guest access via `gateway`.",
+					},
+					"paypal_password": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "PayPal API password, used when `gateway` is `paypal`.",
+						MarkdownDescription: "PayPal API password, used when `gateway` is `paypal`.",
+					},
+					"paypal_signature": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "PayPal API signature, used when `gateway` is `paypal`.",
+						MarkdownDescription: "PayPal API signature, used when `gateway` is `paypal`.",
+					},
+					"paypal_use_sandbox": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use PayPal's sandbox environment for guest payment, rather than live processing, when `gateway` is `paypal`.",
+						MarkdownDescription: "Use PayPal's sandbox environment for guest payment, rather than live processing, when `gateway` is `paypal`.",
+					},
+					"paypal_username": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "PayPal API username, used when `gateway` is `paypal`.",
+						MarkdownDescription: "PayPal API username, used when `gateway` is `paypal`.",
+					},
+					"portal_customized": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use a customized guest portal page instead of the controller's default.",
+						MarkdownDescription: "Use a customized guest portal page instead of the controller's default.",
+					},
+					"portal_customized_authentication_text": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Text displayed on the guest portal's authentication step.",
+						MarkdownDescription: "Text displayed on the guest portal's authentication step.",
+					},
+					"portal_customized_bg_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Background color of the guest portal page, as a hex color.",
+						MarkdownDescription: "Background color of the guest portal page, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_bg_image_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use a background image for the guest portal page.",
+						MarkdownDescription: "Use a background image for the guest portal page.",
+					},
+					"portal_customized_bg_image_filename": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Filename of the guest portal's background image. The controller accepts any string here and does not verify that a file by this name exists.",
+						MarkdownDescription: "Filename of the guest portal's background image. The controller accepts any string here and does not verify that a file by this name exists.",
+					},
+					"portal_customized_bg_image_tile": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Tile (repeat) the guest portal's background image instead of stretching it to fill the page.",
+						MarkdownDescription: "Tile (repeat) the guest portal's background image instead of stretching it to fill the page.",
+					},
+					"portal_customized_bg_type": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Guest portal background type: `color`, `image`, or `gallery`.",
+						MarkdownDescription: "Guest portal background type: `color`, `image`, or `gallery`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("color", "image", "gallery"),
+						},
+					},
+					"portal_customized_box_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Background color of the guest portal's content box, as a hex color.",
+						MarkdownDescription: "Background color of the guest portal's content box, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_box_link_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of links inside the guest portal's content box, as a hex color.",
+						MarkdownDescription: "Color of links inside the guest portal's content box, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_box_opacity": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Opacity of the guest portal's content box, as a percentage (1-100).",
+						MarkdownDescription: "Opacity of the guest portal's content box, as a percentage (1-100).",
+						Validators: []validator.Int64{
+							int64validator.Between(1, 100),
+						},
+					},
+					"portal_customized_box_radius": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Corner radius of the guest portal's content box, in pixels (0-50). `0` is a legal value: square corners.",
+						MarkdownDescription: "Corner radius of the guest portal's content box, in pixels (0-50). `0` is a legal value: square corners.",
+						Validators: []validator.Int64{
+							int64validator.Between(0, 50),
+						},
+					},
+					"portal_customized_box_text_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of text inside the guest portal's content box, as a hex color.",
+						MarkdownDescription: "Color of text inside the guest portal's content box, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_button_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Background color of the guest portal's button, as a hex color.",
+						MarkdownDescription: "Background color of the guest portal's button, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_button_text": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Text displayed on the guest portal's button.",
+						MarkdownDescription: "Text displayed on the guest portal's button.",
+					},
+					"portal_customized_button_text_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of the guest portal's button text, as a hex color.",
+						MarkdownDescription: "Color of the guest portal's button text, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_languages": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).",
+						MarkdownDescription: "Languages offered on the guest portal, as language codes (e.g. `en`, `zh-CN`).",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`^[a-z]{2}([_-][a-zA-Z]{2,4})*$`, "")),
+						},
+					},
+					"portal_customized_link_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of links on the guest portal page, as a hex color.",
+						MarkdownDescription: "Color of links on the guest portal page, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_logo_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Display a logo on the guest portal page.",
+						MarkdownDescription: "Display a logo on the guest portal page.",
+					},
+					"portal_customized_logo_filename": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Filename of the guest portal's logo image. The controller accepts any string here and does not verify that a file by this name exists.",
+						MarkdownDescription: "Filename of the guest portal's logo image. The controller accepts any string here and does not verify that a file by this name exists.",
+					},
+					"portal_customized_logo_position": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Position of the guest portal's logo: `left`, `center`, or `right`.",
+						MarkdownDescription: "Position of the guest portal's logo: `left`, `center`, or `right`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("left", "center", "right"),
+						},
+					},
+					"portal_customized_logo_size": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Size of the guest portal's logo, in pixels (64-192).",
+						MarkdownDescription: "Size of the guest portal's logo, in pixels (64-192).",
+						Validators: []validator.Int64{
+							int64validator.Between(64, 192),
+						},
+					},
+					"portal_customized_success_text": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Text displayed on the guest portal after a successful login.",
+						MarkdownDescription: "Text displayed on the guest portal after a successful login.",
+					},
+					"portal_customized_text_color": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Color of the guest portal page's body text, as a hex color.",
+						MarkdownDescription: "Color of the guest portal page's body text, as a hex color.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^#[a-zA-Z0-9]{6}$|^#[a-zA-Z0-9]{3}$|^$`, ""),
+						},
+					},
+					"portal_customized_title": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Title displayed on the guest portal page.",
+						MarkdownDescription: "Title displayed on the guest portal page.",
+					},
+					"portal_customized_tos": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Guest portal terms of service text.",
+						MarkdownDescription: "Guest portal terms of service text.",
+					},
+					"portal_customized_tos_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Require guests to accept the guest portal's terms of service before continuing.",
+						MarkdownDescription: "Require guests to accept the guest portal's terms of service before continuing.",
+					},
+					"portal_customized_unsplash_author_name": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Display name of the Unsplash photographer credited for the guest portal's background image.",
+						MarkdownDescription: "Display name of the Unsplash photographer credited for the guest portal's background image.",
+					},
+					"portal_customized_unsplash_author_username": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Unsplash username of the photographer credited for the guest portal's background image.",
+						MarkdownDescription: "Unsplash username of the photographer credited for the guest portal's background image.",
+					},
+					"portal_customized_welcome_text": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Welcome text displayed on the guest portal page.",
+						MarkdownDescription: "Welcome text displayed on the guest portal page.",
+					},
+					"portal_customized_welcome_text_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Display the guest portal's welcome text.",
+						MarkdownDescription: "Display the guest portal's welcome text.",
+					},
+					"portal_customized_welcome_text_position": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Position of the guest portal's welcome text: `under_logo` or `above_boxes`.",
+						MarkdownDescription: "Position of the guest portal's welcome text: `under_logo` or `above_boxes`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("under_logo", "above_boxes"),
+						},
+					},
+					"portal_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable the guest portal.",
+						MarkdownDescription: "Enable the guest portal.",
+					},
+					"portal_hostname": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Guest portal hostname, used when `portal_use_hostname` is enabled.",
+						MarkdownDescription: "Guest portal hostname, used when `portal_use_hostname` is enabled.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^[a-zA-Z0-9.-]+$|^$`, ""),
+						},
+					},
+					"portal_use_hostname": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.",
+						MarkdownDescription: "Use `portal_hostname` instead of the controller's own address as the guest portal's hostname.",
+					},
+					"quickpay_agreementid": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "QuickPay agreement ID, used when `gateway` is `quickpay`.",
+						MarkdownDescription: "QuickPay agreement ID, used when `gateway` is `quickpay`.",
+					},
+					"quickpay_apikey": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "QuickPay API key, used when `gateway` is `quickpay`.",
+						MarkdownDescription: "QuickPay API key, used when `gateway` is `quickpay`.",
+					},
+					"quickpay_merchantid": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "QuickPay merchant ID, used when `gateway` is `quickpay`.",
+						MarkdownDescription: "QuickPay merchant ID, used when `gateway` is `quickpay`.",
+					},
+					"quickpay_testmode": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Use QuickPay's test mode for guest payment, rather than live processing, when `gateway` is `quickpay`.",
+						MarkdownDescription: "Use QuickPay's test mode for guest payment, rather than live processing, when `gateway` is `quickpay`.",
+					},
+					"radius_auth_type": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "RADIUS authentication type: `chap` or `mschapv2`.",
+						MarkdownDescription: "RADIUS authentication type: `chap` or `mschapv2`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("chap", "mschapv2"),
+						},
+					},
+					"radius_disconnect_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable RADIUS Disconnect (RFC 3576) for the guest portal.",
+						MarkdownDescription: "Enable RADIUS Disconnect (RFC 3576) for the guest portal.",
+					},
+					"radius_disconnect_port": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "RADIUS Disconnect (RFC 3576) listening port.",
+						MarkdownDescription: "RADIUS Disconnect (RFC 3576) listening port.",
+					},
+					"radius_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable RADIUS authentication for the guest portal.",
+						MarkdownDescription: "Enable RADIUS authentication for the guest portal.",
+					},
+					"radiusprofile_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "ID of the `unifi_radius_profile` used for guest portal RADIUS authentication.",
+						MarkdownDescription: "ID of the `unifi_radius_profile` used for guest portal RADIUS authentication.",
+					},
+					"redirect_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Redirect a guest to `redirect_url` after successful authentication.",
+						MarkdownDescription: "Redirect a guest to `redirect_url` after successful authentication.",
+					},
+					"redirect_https": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Serve the post-authentication redirect over HTTPS.",
+						MarkdownDescription: "Serve the post-authentication redirect over HTTPS.",
+					},
+					"redirect_to_https": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Redirect an HTTP request to the guest portal to HTTPS.",
+						MarkdownDescription: "Redirect an HTTP request to the guest portal to HTTPS.",
+					},
+					"redirect_url": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.",
+						MarkdownDescription: "URL a guest is redirected to after successful authentication, when `redirect_enabled` is set.",
+					},
+					"restricted_dns_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Restrict guest DNS resolution to the servers in `restricted_dns_servers`.",
+						MarkdownDescription: "Restrict guest DNS resolution to the servers in `restricted_dns_servers`.",
+					},
+					"restricted_dns_servers": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "DNS servers guest clients are restricted to when `restricted_dns_enabled` is set.",
+						MarkdownDescription: "DNS servers guest clients are restricted to when `restricted_dns_enabled` is set.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$|^$`, "")),
+						},
+					},
+					"stripe_api_key": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "Stripe API key, used when `gateway` is `stripe`.",
+						MarkdownDescription: "Stripe API key, used when `gateway` is `stripe`.",
+					},
+					"voucher_customized": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable custom appearance for the guest portal's voucher entry form -- purpose inferred from the field name; the SDK carries no further voucher-appearance fields to confirm against.",
+						MarkdownDescription: "Enable custom appearance for the guest portal's voucher entry form -- purpose inferred from the field name; the SDK carries no further voucher-appearance fields to confirm against.",
+					},
+					"voucher_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable voucher-based guest access.",
+						MarkdownDescription: "Enable voucher-based guest access.",
+					},
+					"wechat_app_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "WeChat app ID, used for guest portal social login via WeChat.",
+						MarkdownDescription: "WeChat app ID, used for guest portal social login via WeChat.",
+					},
+					"wechat_app_secret": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "WeChat app secret, used for guest portal social login via WeChat.",
+						MarkdownDescription: "WeChat app secret, used for guest portal social login via WeChat.",
+					},
+					"wechat_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable guest portal login via WeChat.",
+						MarkdownDescription: "Enable guest portal login via WeChat.",
+					},
+					"wechat_secret_key": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.",
+						MarkdownDescription: "WeChat payment signing key -- a separate credential from `wechat_app_secret`, not a duplicate.",
+					},
+					"wechat_shop_id": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "WeChat shop ID, used for guest payment via WeChat -- purpose inferred from the field name and its pairing with `wechat_secret_key`; the controller documents no further detail.",
+						MarkdownDescription: "WeChat shop ID, used for guest payment via WeChat -- purpose inferred from the field name and its pairing with `wechat_secret_key`; the controller documents no further detail.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Guest network portal, authentication and payment settings. The eighteen credential and identifier attributes below (payment gateway keys and identifiers, social-login secrets, and the portal password) are all marked Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated.",
+				MarkdownDescription: "Guest network portal, authentication and payment settings. The eighteen credential and identifier attributes below (payment gateway keys and identifiers, social-login secrets, and the portal password) are all marked Sensitive, and on this controller generation each one is echoed back verbatim on read -- not masked, hashed, or truncated.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"id": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The ID of the settings.",
@@ -186,6 +1103,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "Advanced filtering mode: manual or disabled.",
 						Validators: []validator.String{
 							stringvalidator.OneOf("manual", "disabled"),
+							controllerregex.Matches(`|manual|disabled`, ""),
 						},
 					},
 					"content_filtering_blocking_page_enabled": schema.BoolAttribute{
@@ -383,6 +1301,23 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"ipsec": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"ikev2_reauthentication_method": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`).",
+						MarkdownDescription: "IKEv2 re-authentication method for site-to-site VPNs (observed: `make-before-break`).",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "IPsec settings for site-to-site VPNs.",
+				MarkdownDescription: "IPsec settings for site-to-site VPNs.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"lcm": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"brightness": schema.Int64Attribute{
@@ -429,6 +1364,101 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "LCD/display (LCM) settings for devices with a screen.",
 				MarkdownDescription: "LCD/display (LCM) settings for devices with a screen.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"locale": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"timezone": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).",
+						MarkdownDescription: "Site timezone (IANA time zone name, e.g. `America/Los_Angeles`).",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Site locale settings.",
+				MarkdownDescription: "Site locale settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"magic_site_to_site_vpn": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable magic site-to-site VPN.",
+						MarkdownDescription: "Enable magic site-to-site VPN.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Magic site-to-site VPN settings.",
+				MarkdownDescription: "Magic site-to-site VPN settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"mdns": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"custom_services": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"address": schema.StringAttribute{
+									Required:            true,
+									Description:         "mDNS service type, e.g. `_myservice._tcp.local`.",
+									MarkdownDescription: "mDNS service type, e.g. `_myservice._tcp.local`.",
+									Validators: []validator.String{
+										controllerregex.Matches(`^_[a-zA-Z0-9._-]+\._(tcp|udp)(\.local)?$`, ""),
+									},
+								},
+								"name": schema.StringAttribute{
+									Required:            true,
+									Description:         "Display name for this custom service.",
+									MarkdownDescription: "Display name for this custom service.",
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+						MarkdownDescription: "Custom mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+					},
+					"mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).",
+						MarkdownDescription: "mDNS repeater mode: `all` (repeat every predefined service), `auto` (controller-managed discovery) or `custom` (only the services named in predefined_services/custom_services).",
+						Validators: []validator.String{
+							stringvalidator.OneOf("all", "auto", "custom"),
+						},
+					},
+					"predefined_services": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"code": schema.StringAttribute{
+									Required:            true,
+									Description:         "Code identifying a predefined mDNS service.",
+									MarkdownDescription: "Code identifying a predefined mDNS service.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("amazon_devices", "android_tv_remote", "apple_airDrop", "apple_airPlay", "apple_file_sharing", "apple_iChat", "apple_iTunes", "aqara", "bose", "dns_service_discovery", "ftp_servers", "google_chromecast", "homeKit", "matter_network", "philips_hue", "printers", "roku", "scanners", "shelly", "sonos", "spotify_connect", "ssh_servers", "time_capsule", "web_servers", "windows_file_sharing_samba"),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+						MarkdownDescription: "Predefined mDNS services to repeat. Only consulted by the controller when mode is `custom`.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "mDNS (multicast DNS / Bonjour) repeater settings.",
+				MarkdownDescription: "mDNS (multicast DNS / Bonjour) repeater settings.",
 				PlanModifiers: []planmodifier.Object{
 					objectplanmodifier.UseStateForUnknown(),
 				},
@@ -517,12 +1547,18 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Sensitive:           true,
 						Description:         "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
 						MarkdownDescription: "SSH password for device access. Sensitive — the controller stores only a hash, so this value is kept from configuration and not read back.",
+						Validators: []validator.String{
+							controllerregex.Matches(`.{1,128}`, ""),
+						},
 					},
 					"ssh_username": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
 						Description:         "SSH username for device access.",
 						MarkdownDescription: "SSH username for device access.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^[_A-Za-z0-9][-_.A-Za-z0-9]{0,29}$`, ""),
+						},
 					},
 					"unifi_idp_enabled": schema.BoolAttribute{
 						Optional:            true,
@@ -541,6 +1577,102 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "Management settings.",
 				MarkdownDescription: "Management settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"netflow": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"auto_engine_id_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Automatically generate the NetFlow engine ID.",
+						MarkdownDescription: "Automatically generate the NetFlow engine ID.",
+					},
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable NetFlow traffic export. Requires at least one network in `network_ids`.",
+						MarkdownDescription: "Enable NetFlow traffic export. Requires at least one network in `network_ids`.",
+					},
+					"engine_id": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow engine ID.",
+						MarkdownDescription: "NetFlow engine ID.",
+					},
+					"export_frequency": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow export frequency.",
+						MarkdownDescription: "NetFlow export frequency.",
+					},
+					"network_ids": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "Network IDs NetFlow export applies to.",
+						MarkdownDescription: "Network IDs NetFlow export applies to.",
+						PlanModifiers: []planmodifier.List{
+							listplanmodifier.UseStateForUnknown(),
+						},
+					},
+					"port": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow collector port.",
+						MarkdownDescription: "NetFlow collector port.",
+						Validators: []validator.Int64{
+							int64validator.Between(1024, 65535),
+						},
+					},
+					"refresh_rate": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow template refresh rate.",
+						MarkdownDescription: "NetFlow template refresh rate.",
+					},
+					"sampling_mode": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow sampling mode.",
+						MarkdownDescription: "NetFlow sampling mode.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("off", "hash", "random", "deterministic"),
+						},
+					},
+					"sampling_rate": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow sampling rate.",
+						MarkdownDescription: "NetFlow sampling rate.",
+						Validators: []validator.Int64{
+							int64validator.Between(2, 16383),
+						},
+					},
+					"server": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow collector hostname or IP address.",
+						MarkdownDescription: "NetFlow collector hostname or IP address.",
+						Validators: []validator.String{
+							controllerregex.Matches(`.{0,252}[^\.]$`, ""),
+						},
+					},
+					"version": schema.Int64Attribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "NetFlow protocol version.",
+						MarkdownDescription: "NetFlow protocol version.",
+						Validators: []validator.Int64{
+							int64validator.OneOf(5, 9, 10),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "NetFlow traffic export settings.",
+				MarkdownDescription: "NetFlow traffic export settings.",
 				PlanModifiers: []planmodifier.Object{
 					objectplanmodifier.UseStateForUnknown(),
 				},
@@ -619,6 +1751,184 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"radio_ai": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"auto_adjust_channels_to_country": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Automatically adjust channel selection to the configured country's regulatory domain.",
+						MarkdownDescription: "Automatically adjust channel selection to the configured country's regulatory domain.",
+					},
+					"auto_channel_presets_type": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Channel optimization preset.",
+						MarkdownDescription: "Channel optimization preset.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("maximum_speed", "conservative", "custom"),
+						},
+					},
+					"channels_6e": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "6 GHz channels eligible for AI channel selection.",
+						MarkdownDescription: "6 GHz channels eligible for AI channel selection.",
+					},
+					"channels_blacklist": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"channel": schema.Int64Attribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Channel number to exclude.",
+									MarkdownDescription: "Channel number to exclude.",
+								},
+								"channel_width": schema.Int64Attribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Channel width, in MHz, this exclusion applies to.",
+									MarkdownDescription: "Channel width, in MHz, this exclusion applies to.",
+									Validators: []validator.Int64{
+										int64validator.OneOf(20, 40, 80, 160, 240, 320),
+									},
+								},
+								"radio": schema.StringAttribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Radio band this exclusion applies to.",
+									MarkdownDescription: "Radio band this exclusion applies to.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("na", "ng", "6e"),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Channels excluded from AI channel selection, per radio.",
+						MarkdownDescription: "Channels excluded from AI channel selection, per radio.",
+					},
+					"channels_na": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "5 GHz channels eligible for AI channel selection.",
+						MarkdownDescription: "5 GHz channels eligible for AI channel selection.",
+					},
+					"channels_ng": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "2.4 GHz channels eligible for AI channel selection.",
+						MarkdownDescription: "2.4 GHz channels eligible for AI channel selection.",
+					},
+					"cron_expr": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Cron expression scheduling AI channel/power optimization runs.",
+						MarkdownDescription: "Cron expression scheduling AI channel/power optimization runs.",
+					},
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable AI-driven channel and power optimization.",
+						MarkdownDescription: "Enable AI-driven channel and power optimization.",
+					},
+					"exclude_devices": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "MAC addresses of devices excluded from AI optimization.",
+						MarkdownDescription: "MAC addresses of devices excluded from AI optimization.",
+					},
+					"high_priority_devices": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "MAC addresses of devices given priority by AI optimization.",
+						MarkdownDescription: "MAC addresses of devices given priority by AI optimization.",
+					},
+					"ht_modes_na": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "5 GHz HT (channel bonding) widths eligible for AI channel selection.",
+						MarkdownDescription: "5 GHz HT (channel bonding) widths eligible for AI channel selection.",
+					},
+					"ht_modes_ng": schema.ListAttribute{
+						ElementType:         types.Int64Type,
+						Optional:            true,
+						Computed:            true,
+						Description:         "2.4 GHz HT (channel bonding) widths eligible for AI channel selection.",
+						MarkdownDescription: "2.4 GHz HT (channel bonding) widths eligible for AI channel selection.",
+					},
+					"optimize": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "What AI optimization adjusts.",
+						MarkdownDescription: "What AI optimization adjusts.",
+					},
+					"radios": schema.ListAttribute{
+						ElementType:         types.StringType,
+						Optional:            true,
+						Computed:            true,
+						Description:         "Radio bands AI optimization applies to.",
+						MarkdownDescription: "Radio bands AI optimization applies to.",
+					},
+					"radios_configuration": schema.ListNestedAttribute{
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"channel_width": schema.Int64Attribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Channel width, in MHz, for this radio.",
+									MarkdownDescription: "Channel width, in MHz, for this radio.",
+									Validators: []validator.Int64{
+										int64validator.OneOf(20, 40, 80, 160, 320),
+									},
+								},
+								"dfs": schema.BoolAttribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Allow DFS (dynamic frequency selection) channels for this radio.",
+									MarkdownDescription: "Allow DFS (dynamic frequency selection) channels for this radio.",
+								},
+								"radio": schema.StringAttribute{
+									Optional:            true,
+									Computed:            true,
+									Description:         "Radio band this configuration applies to.",
+									MarkdownDescription: "Radio band this configuration applies to.",
+									Validators: []validator.String{
+										stringvalidator.OneOf("na", "ng", "6e"),
+									},
+								},
+							},
+						},
+						Optional:            true,
+						Computed:            true,
+						Description:         "Per-radio AI optimization configuration.",
+						MarkdownDescription: "Per-radio AI optimization configuration.",
+					},
+					"setting_preference": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Channel/power optimization preference.",
+						MarkdownDescription: "Channel/power optimization preference.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "manual"),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. On this controller generation, enabling this section (`enabled = true`) alone -- with no channel or radio constraints also configured -- can make the controller rewrite a channel list such as `channels_na` within the same apply, which Terraform reports as an inconsistent-result error rather than a later drift.",
+				MarkdownDescription: "AI-driven radio channel and power optimization settings. The controller actively rewrites channel/power assignments while this feature runs, so a configured attribute's state can show drift against its own config after a refresh -- that is the controller's own optimization at work, not a bug. On this controller generation, enabling this section (`enabled = true`) alone -- with no channel or radio constraints also configured -- can make the controller rewrite a channel list such as `channels_na` within the same apply, which Terraform reports as an inconsistent-result error rather than a later drift.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"radius": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"accounting_enabled": schema.BoolAttribute{
@@ -665,8 +1975,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "RADIUS shared secret.",
 						MarkdownDescription: "RADIUS shared secret.",
 						Validators: []validator.String{
-							stringvalidator.LengthBetween(1, 48),
-							stringvalidator.RegexMatches(regexp.MustCompile(`^[^\\\ "']+$`), "must not contain backslashes, spaces, single quotes, or double quotes"),
+							controllerregex.Matches(`^[^\\"' ]{1,48}$`, ""),
 						},
 					},
 				},
@@ -683,6 +1992,78 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"snmp": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"community": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+						MarkdownDescription: "SNMP community string, used for SNMPv1/v2c. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+						Validators: []validator.String{
+							controllerregex.Matches(`.{1,256}`, ""),
+						},
+					},
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable SNMP (v1/v2c).",
+						MarkdownDescription: "Enable SNMP (v1/v2c).",
+					},
+					"enabled_v3": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable SNMPv3.",
+						MarkdownDescription: "Enable SNMPv3.",
+					},
+					"password": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Sensitive:           true,
+						Description:         "SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+						MarkdownDescription: "SNMPv3 authentication password. Sensitive — on this controller generation the value is echoed back verbatim on read, not masked or hashed.",
+						Validators: []validator.String{
+							controllerregex.Matches(`[^'"]{8,32}`, ""),
+						},
+					},
+					"username": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "SNMPv3 username.",
+						MarkdownDescription: "SNMPv3 username.",
+						Validators: []validator.String{
+							controllerregex.Matches(`[a-zA-Z0-9_-]{1,30}`, ""),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "SNMP (Simple Network Management Protocol) settings.",
+				MarkdownDescription: "SNMP (Simple Network Management Protocol) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"ssl_inspection": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"state": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "SSL inspection state: `off`, `simple`, or `advanced`.",
+						MarkdownDescription: "SSL inspection state: `off`, `simple`, or `advanced`.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("off", "simple", "advanced"),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "SSL inspection settings.",
+				MarkdownDescription: "SSL inspection settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"syslog": schema.SingleNestedAttribute{
@@ -778,6 +2159,67 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"teleport": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable Teleport.",
+						MarkdownDescription: "Enable Teleport.",
+					},
+					"subnet_cidr": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
+						MarkdownDescription: "CIDR subnet Teleport clients are assigned from. Empty when unconfigured.",
+						Validators: []validator.String{
+							controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([8-9]|[1-2][0-9]|3[0-2])$|^$`, ""),
+						},
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Teleport (self-hosted VPN gateway discovery) settings.",
+				MarkdownDescription: "Teleport (self-hosted VPN gateway discovery) settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"traffic_flow": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"enabled_allowed_traffic": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Enable the allowed-traffic list for traffic flow classification.",
+						MarkdownDescription: "Enable the allowed-traffic list for traffic flow classification.",
+					},
+					"gateway_dns_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Route traffic flow classification through the gateway's own DNS.",
+						MarkdownDescription: "Route traffic flow classification through the gateway's own DNS.",
+					},
+					"unifi_device_management_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Classify traffic to and from UniFi device management as its own traffic flow.",
+						MarkdownDescription: "Classify traffic to and from UniFi device management as its own traffic flow.",
+					},
+					"unifi_services_enabled": schema.BoolAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "Classify traffic to and from UniFi cloud services as its own traffic flow.",
+						MarkdownDescription: "Classify traffic to and from UniFi cloud services as its own traffic flow.",
+					},
+				},
+				Optional:            true,
+				Computed:            true,
+				Description:         "Traffic flow classification settings.",
+				MarkdownDescription: "Traffic flow classification settings.",
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"usg": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"broadcast_ping": schema.BoolAttribute{
@@ -842,7 +2284,7 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "Comma-separated list of country codes for geo IP filtering.",
 						MarkdownDescription: "Comma-separated list of country codes for geo IP filtering.",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^([A-Z]{2})?(,[A-Z]{2}){0,149}$`), ""),
+							controllerregex.Matches(`^([A-Z]{2})?(,[A-Z]{2}){0,149}$`, ""),
 						},
 					},
 					"geo_ip_filtering_enabled": schema.BoolAttribute{
@@ -884,6 +2326,9 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 						Computed:            true,
 						Description:         "MSS clamping mode: auto, custom, or disabled.",
 						MarkdownDescription: "MSS clamping mode: auto, custom, or disabled.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "custom", "disabled"),
+						},
 					},
 					"offload_accounting": schema.BoolAttribute{
 						Optional:            true,
@@ -1005,8 +2450,11 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"timeout_setting_preference": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "Timeout setting preference: auto or manual.",
-						MarkdownDescription: "Timeout setting preference: auto or manual.",
+						Description:         "Timeout setting preference: auto, reduced, or manual.",
+						MarkdownDescription: "Timeout setting preference: auto, reduced, or manual.",
+						Validators: []validator.String{
+							stringvalidator.OneOf("auto", "reduced", "manual"),
+						},
 					},
 					"udp_other_timeout": schema.StringAttribute{
 						CustomType:          timetypes.GoDurationType{},
@@ -1049,8 +2497,11 @@ func SettingResourceSchema(ctx context.Context) schema.Schema {
 					"upnp_wan_interface": schema.StringAttribute{
 						Optional:            true,
 						Computed:            true,
-						Description:         "UPnP WAN interface (e.g., WAN, WAN2).",
-						MarkdownDescription: "UPnP WAN interface (e.g., WAN, WAN2).",
+						Description:         "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).",
+						MarkdownDescription: "UPnP WAN interface: `WAN`, or `WAN2` through `WAN9` (there is no `WAN1`).",
+						Validators: []validator.String{
+							controllerregex.Matches(`WAN[2-9]?`, ""),
+						},
 					},
 				},
 				Optional:            true,

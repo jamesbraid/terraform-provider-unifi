@@ -1,9 +1,12 @@
 package unifi
 
-// ValidateConfig enforces syslog's one plan-time rule: enabled=true with no
-// ip. Measured on 10.6.101: the controller rejects that combination with
-// api.err.Invalid at apply time, so this catches it at plan time instead,
-// the same idiom wan_resource.go's own ValidateConfig uses for its stopgap.
+// ValidateConfig dispatches to each section's own plan-time stopgap: a
+// controller-side rule the schema alone can't express (a cross-field
+// requirement, a value combination the controller rejects at apply). One
+// method satisfies resource.ResourceWithValidateConfig per type, so every
+// section that needs one registers a call here instead of defining its
+// own ValidateConfig -- syslog's was first (this file); mdns's
+// validateMdnsConfig (setting_mdns_validate.go) is the second.
 
 import (
 	"context"
@@ -23,6 +26,17 @@ func (r *settingResource) ValidateConfig(
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	validateSyslogConfig(ctx, model, resp)
+	validateMdnsConfig(ctx, model, resp)
+}
+
+// validateSyslogConfig enforces syslog's one plan-time rule: enabled=true
+// with no ip. Measured on 10.6.101: the controller rejects that
+// combination with api.err.Invalid at apply time, so this catches it at
+// plan time instead, the same idiom wan_resource.go's own ValidateConfig
+// uses for its stopgap.
+func validateSyslogConfig(ctx context.Context, model settingResourceModel, resp *resource.ValidateConfigResponse) {
 	if !settingSectionConfigured(model.Syslog) {
 		return
 	}

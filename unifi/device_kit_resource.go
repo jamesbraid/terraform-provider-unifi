@@ -197,7 +197,7 @@ func (r *deviceKitResource) Configure(
 		return
 	}
 	r.Spec.Backend = deviceKitBackend(client.ApiClient)
-	// BeforeSend needs the client: adoption and the port-override merge both
+	// BeforeSend needs the client: adoption and the port-override write both
 	// talk to the controller.
 	r.Spec.BeforeSend = deviceKitBeforeSend(client.ApiClient)
 	r.DefaultSite = client.Site

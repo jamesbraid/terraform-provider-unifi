@@ -62,21 +62,25 @@ func TestMgmtAfterReceive(t *testing.T) {
 	}
 }
 
-// TestMgmtSSHUsernameEmptyReadStaysEmptyWhenConfigured pins a deliberate
-// divergence from the deleted mgmtSettingToModel: that mapper additionally
-// nulled a *configured* ssh_username when the controller read back "" (via
-// util.StringValueOrNull), stacked on top of its plan-conditioned null.
-// mgmtKitSpec's ssh_username Field carries Elide: KeepZero -- required by
-// ElideProblems, since the schema declares ssh_username Optional+Computed
-// with no validator rejecting an empty string, so the schema's own contract
-// says an empty read is a value, not an absence. mgmtAfterReceive only
-// nulls ssh_username when the plan/prior never configured it at all; it
-// does not re-null an empty value the controller legitimately reports for
-// an attribute the practitioner DID configure. Both steps of the read path
-// are exercised here, in order: Spec.ToModel (the Field's own Elide) and
-// then mgmtAfterReceive (the plan-conditioned check) -- either one nulling
-// the empty string would be the old, superseded behaviour, not this one.
-func TestMgmtSSHUsernameEmptyReadStaysEmptyWhenConfigured(t *testing.T) {
+// TestMgmtSSHUsernameEmptyReadIsNulledEvenWhenConfigured supersedes what was
+// TestMgmtSSHUsernameEmptyReadStaysEmptyWhenConfigured: that test pinned
+// Elide: KeepZero for ssh_username on the grounds that "the schema declares
+// ssh_username Optional+Computed with no validator rejecting an empty
+// string, so the schema's own contract says an empty read is a value, not
+// an absence" (settings-validator-derivation, Task 2). ssh_username's
+// x_ssh_username now carries an SDK-derived RegexMatches
+// (`^[_A-Za-z0-9][-_.A-Za-z0-9]{0,29}$`) that rejects "", so that premise no
+// longer holds and ElideProblems now requires NullZero instead: keeping ""
+// as a value here would mean a practitioner can never write config that
+// matches a live "" state, since attempting to literally configure
+// ssh_username = "" is exactly what the new validator refuses -- a
+// permanent, unacknowledgeable diff. Both steps of the read path are
+// exercised, in order: Spec.ToModel (the Field's own Elide) and then
+// mgmtAfterReceive (the plan-conditioned check) -- mgmtAfterReceive's own
+// null-if-unconfigured branch does not fire here (prior IS configured), so
+// this also confirms ToModel's null survives it rather than being
+// resurrected.
+func TestMgmtSSHUsernameEmptyReadIsNulledEvenWhenConfigured(t *testing.T) {
 	ctx := context.Background()
 	spec := mgmtKitSpec()
 	sdk := &settings.Mgmt{SSHUsername: ""}
@@ -85,12 +89,10 @@ func TestMgmtSSHUsernameEmptyReadStaysEmptyWhenConfigured(t *testing.T) {
 	if diags := spec.ToModel(ctx, sdk, &model, ""); diags.HasError() {
 		t.Fatalf("ToModel: %v", diags)
 	}
-	if model.SSHUsername.IsNull() {
-		t.Fatal("ssh_username is null straight off ToModel; want a known empty string " +
-			"(Elide: KeepZero) -- an empty controller read is a value here, not an absence")
-	}
-	if model.SSHUsername.ValueString() != "" {
-		t.Fatalf("ssh_username = %q after ToModel, want \"\"", model.SSHUsername.ValueString())
+	if !model.SSHUsername.IsNull() {
+		t.Fatalf("ssh_username = %q after ToModel, want null (Elide: NullZero) -- the "+
+			"schema's own RegexMatches now rejects an empty string, so a live \"\" read "+
+			"must be represented as an absence, not a value", model.SSHUsername.ValueString())
 	}
 
 	// prior is configured (non-null) -- the practitioner DID manage
@@ -99,13 +101,10 @@ func TestMgmtSSHUsernameEmptyReadStaysEmptyWhenConfigured(t *testing.T) {
 	if diags := mgmtAfterReceive(ctx, sdk, &model, prior); diags.HasError() {
 		t.Fatalf("mgmtAfterReceive: %v", diags)
 	}
-	if model.SSHUsername.IsNull() {
-		t.Error("ssh_username came back null after mgmtAfterReceive; a configured " +
-			"attribute's empty read must stay a known \"\", not be renulled -- " +
-			"nulling it here would be the legacy mapper's behaviour, not this one's")
-	}
-	if model.SSHUsername.ValueString() != "" {
-		t.Errorf("ssh_username = %q after mgmtAfterReceive, want \"\"", model.SSHUsername.ValueString())
+	if !model.SSHUsername.IsNull() {
+		t.Errorf("ssh_username = %q after mgmtAfterReceive, want null -- mgmtAfterReceive's "+
+			"own null-if-unconfigured branch does not fire for a configured prior, so it must "+
+			"not have resurrected ToModel's null", model.SSHUsername.ValueString())
 	}
 }
 

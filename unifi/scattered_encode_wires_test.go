@@ -232,10 +232,16 @@ var _ = reflect.TypeOf(ui.Network{})
 
 // A BeforeSend hook can assign a field no wire name declares -- the same
 // defect as a ScatteredObjectField Encode, one level up: the hook derives
-// what no Field can express (network's purpose/vlan/networkgroup, device's
-// port_overrides), but still has to reach the mask built from Fields plus
-// AlwaysWire. This is what checks a hand-written hook now that the mask
-// itself is derived from the descriptor rather than a maintained list.
+// what no Field can express (network's purpose/vlan/networkgroup), but
+// still has to reach the mask built from Fields plus AlwaysWire. This is
+// what checks a hand-written hook now that the mask itself is derived from
+// the descriptor rather than a maintained list.
+//
+// device's port_overrides used to be the same shape (a BeforeSend-derived
+// value reaching the mask through AlwaysWire) but no longer is: it is
+// written through its own call (updateDevicePortOverridesGrouped) and is
+// never part of the general masked write at all, so it is the
+// counter-example now, not an instance -- this test only covers network.
 func TestBeforeSendAssignsOnlyDeclaredWires(t *testing.T) {
 	tags := networkJSONTags(t)
 

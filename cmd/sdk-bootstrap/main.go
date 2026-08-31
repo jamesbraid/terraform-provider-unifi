@@ -159,15 +159,19 @@ func run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	source.SpecificationSHA256 = hex.EncodeToString(sum[:])
+	// Gated on *pkgPath, not global: see newSDKConstraints for why an
+	// ungated settings.FieldConstraints fallback would be ambiguous for a
+	// non-settings invocation.
+	lookup := newSDKConstraints(*pkgPath)
 	document := bootstrapDocument{
 		FormatVersion: 1,
 		Source:        source,
-		Resource:      bootstrapResource{Name: *resource, Fields: walk(structure, structNames[0], sdkConstraints)},
+		Resource:      bootstrapResource{Name: *resource, Fields: walk(structure, structNames[0], lookup)},
 	}
 	for index, companion := range structures[1:] {
 		document.Companions = append(document.Companions, bootstrapCompanion{
 			Struct: structNames[index+1],
-			Fields: walk(companion, structNames[index+1], sdkConstraints),
+			Fields: walk(companion, structNames[index+1], lookup),
 		})
 	}
 

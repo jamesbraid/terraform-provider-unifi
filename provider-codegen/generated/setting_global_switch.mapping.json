@@ -1,0 +1,107 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.global_switch",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "acl_l3_isolation",
+      "terraform_name": "acl_l3_isolation",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "auto_stp_edge_detection_enabled",
+      "terraform_name": "auto_stp_edge_detection_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dhcp_snoop",
+      "terraform_name": "dhcp_snoop",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dot1x_fallback_networkconf_id",
+      "terraform_name": "dot1x_fallback_networkconf_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "dot1x_portctrl_enabled",
+      "terraform_name": "dot1x_portctrl_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "flood_known_protocols",
+      "terraform_name": "flood_known_protocols",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "flowctrl_enabled",
+      "terraform_name": "flowctrl_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "forward_unknown_mcast_router_ports",
+      "terraform_name": "forward_unknown_mcast_router_ports",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "jumboframe_enabled",
+      "terraform_name": "jumboframe_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "link_debounce",
+      "terraform_name": "link_debounce",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "poe_staging_delay_msec",
+      "terraform_name": "poe_staging_delay_msec",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "radiusprofile_id",
+      "terraform_name": "radiusprofile_id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "stp_version",
+      "terraform_name": "stp_version",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "switch_exclusions",
+      "terraform_name": "switch_exclusions",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

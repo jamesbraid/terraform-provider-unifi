@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.dashboard",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "layout_preference",
+      "terraform_name": "layout_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "widgets",
+      "terraform_name": "widgets",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

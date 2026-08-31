@@ -3,7 +3,7 @@
   "surface_kind": "managed_resource",
   "resource": "unifi_firewall_policy",
   "generator_name": "firewall_policy",
-  "source_specification_sha256": "ed50b24ab3645bb340e532d189f5aefa7b918b018f4014dd961e678b7be37c5f",
+  "source_specification_sha256": "d985b7b45d1003d0bd5eea2d5bad2c2c883a120212856d3b0c4221a60f21be61",
   "description": "Manages a UniFi zone-based firewall policy (UniFi Network 8.x+). Zone-based firewall policies replace the legacy firewall rules and are displayed under Settings \u2192 Security \u2192 Firewall Policies in the UniFi UI.",
   "fields": [
     {

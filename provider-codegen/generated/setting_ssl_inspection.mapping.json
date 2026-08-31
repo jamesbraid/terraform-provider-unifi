@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.ssl_inspection",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "state",
+      "terraform_name": "state",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

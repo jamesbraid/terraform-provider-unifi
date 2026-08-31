@@ -15,18 +15,20 @@ func settingSectionConfigured(o types.Object) bool {
 	return !o.IsNull() && !o.IsUnknown()
 }
 
-// settingKitSectionTable names all thirteen of unifi_setting's sections, in
-// their historical write order, each a resourcekit.SpecSection kit
-// constructor bound to the client settingKitSections is given. It replaces
-// the splice-after-"ips" approach settingKitSections used while mgmt was
-// the only section served from the kit -- that approach doesn't scale to
-// several sections migrating in one task (the R2-B part 1 report flagged
-// this: every further migration would need its own named splice point),
-// where an ordered literal just names each row once. ips (Task 5c) was the
-// last of the thirteen still hand-written; the legacySection/settingSection/
-// legacySectionAdapter machinery that adapted a hand-written section's
-// Write/Read to resourcekit.Section existed only to serve rows this table
-// no longer has, and was removed with it.
+// settingKitSectionTable names all of unifi_setting's sections, in their
+// historical write order (the original thirteen, then each later addition
+// in the order it landed), each a resourcekit.SpecSection kit constructor
+// bound to the client settingKitSections is given. It replaces the
+// splice-after-"ips" approach
+// settingKitSections used while mgmt was the only section served from the
+// kit -- that approach doesn't scale to several sections migrating in one
+// task (the R2-B part 1 report flagged this: every further migration would
+// need its own named splice point), where an ordered literal just names
+// each row once. ips (Task 5c) was the last of the original thirteen still
+// hand-written; the legacySection/settingSection/legacySectionAdapter
+// machinery that adapted a hand-written section's Write/Read to
+// resourcekit.Section existed only to serve rows this table no longer has,
+// and was removed with it.
 var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[settingResourceModel]{
 	autoSpeedtestKitSection,
 	countryKitSection,
@@ -41,6 +43,22 @@ var settingKitSectionTable = []func(client *ui.ApiClient) resourcekit.Section[se
 	radiusKitSection,
 	usgKitSection,
 	igmpSnoopingKitSection,
+	localeKitSection,
+	globalNatKitSection,
+	sslInspectionKitSection,
+	ipsecKitSection,
+	dashboardKitSection,
+	etherLightingKitSection,
+	globalNetworkKitSection,
+	trafficFlowKitSection,
+	mdnsKitSection,
+	teleportKitSection,
+	magicSiteToSiteVpnKitSection,
+	globalSwitchKitSection,
+	netflowKitSection,
+	radioAiKitSection,
+	snmpKitSection,
+	guestAccessKitSection,
 }
 
 // settingKitSections adapts settingKitSectionTable to
@@ -68,3 +86,33 @@ func settingKitSections(r *settingResource) []resourcekit.Section[settingResourc
 // same way -- see setting_ips_descriptor.go's ipsSuppressionKitSpec/
 // ipsSuppressionKitBackend and setting_usg_descriptor.go's usgGeoKitSpec/
 // usgGeoKitBackend.
+//
+// locale, global_nat, ssl_inspection, ipsec, dashboard, ether_lighting,
+// global_network, traffic_flow, mdns, teleport, magic_site_to_site_vpn,
+// global_switch, netflow and radio_ai moved the same way too, each from
+// the controller's own
+// Locale/GlobalNat/SslInspection/Ipsec/Dashboard/EtherLighting/GlobalNetwork/TrafficFlow/Mdns/Teleport/MagicSiteToSiteVpn/GlobalSwitch/Netflow/RadioAi
+// definition -- see setting_locale_descriptor.go,
+// setting_global_nat_descriptor.go, setting_ssl_inspection_descriptor.go,
+// setting_ipsec_descriptor.go, setting_dashboard_descriptor.go,
+// setting_ether_lighting_descriptor.go, setting_global_network_descriptor.go,
+// setting_traffic_flow_descriptor.go, setting_mdns_descriptor.go,
+// setting_teleport_descriptor.go, setting_magic_site_to_site_vpn_descriptor.go,
+// setting_global_switch_descriptor.go, setting_netflow_descriptor.go and
+// setting_radio_ai_descriptor.go. radio_ai is the one section whose
+// AfterReceive is NOT a plain unconditional mirror -- see
+// setting_radio_ai_descriptor.go's own comment.
+//
+// snmp moved the same way too, from the controller's own Snmp definition --
+// see setting_snmp_descriptor.go. Its AfterReceive is radius-shaped, not a
+// plain unconditional mirror either: community and password are
+// Optional+Computed+Sensitive secrets the controller echoes back verbatim
+// (pinned by this dispatch's own live-controller probe, Task 0), so
+// snmpAfterReceive plan-conditions both the same way radiusAfterReceive
+// plan-conditions radius.secret.
+//
+// guest_access is new, not migrated -- it never had a hand-written
+// write/readGuestAccessSection. Task 2 of
+// .superpowers/sdd/plan-r2b-guest-access lands its 21 core scalars only;
+// see setting_guest_access_descriptor.go's own comment for what the
+// remaining 71 of settings.GuestAccess's 92 fields wait on.

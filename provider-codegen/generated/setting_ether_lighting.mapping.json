@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.ether_lighting",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "network_overrides",
+      "terraform_name": "network_overrides",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "speed_overrides",
+      "terraform_name": "speed_overrides",
+      "structural_type": "array<object>",
+      "terraform_type": "list_nested",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

@@ -3,9 +3,10 @@ package providercompiler
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 )
 
 // customValidator mirrors one element of a code-spec attribute's
@@ -34,7 +35,8 @@ type customValidatorImport struct {
 // and suppress every derivation for the field. attribute is returned
 // unchanged when there is nothing to derive and nothing to suppress. notices
 // collects observations worth a human seeing but not worth refusing the
-// compile over -- see the RE2 fallback below, the only producer today.
+// compile over -- see the uncompilable-pattern fallback below, the only
+// producer today.
 func deriveConstraintValidators(owner, terraformType string, constraint *bootstrapFieldConstraint, attribute json.RawMessage, notices *[]string) (json.RawMessage, error) {
 	suppressed, err := validatorsSuppressed(owner, attribute)
 	if err != nil {
@@ -49,21 +51,25 @@ func deriveConstraintValidators(owner, terraformType string, constraint *bootstr
 	}
 	schemaDefinition, imports, ok, err := regexMatchesSchemaDefinition(owner, terraformType, constraint)
 	if err != nil {
-		// A pattern Go's RE2 engine cannot express only refuses when
+		// A pattern controllerregex cannot express only refuses when
 		// there's nothing else validating the field. An attribute that
 		// already carries a hand validator (of any kind) is trusted to
-		// already cover what the uncompilable pattern was expressing --
-		// e.g. network.domain_name's hand DomainNameValidator is a
-		// hand-written RE2-safe equivalent of the SDK's lookaround domain
-		// pattern. "validators": "none" replaces the whole array, so it
-		// cannot suppress just the derivation without also deleting that;
-		// skipping is what lets the hand validator stand. The skip itself
-		// is recorded in notices rather than left silent, so a plain go
-		// generate run (and its CI log) shows it without anyone having to
-		// know this fallback exists. A field with no validators at all
-		// still refuses, naming the field, so the gap becomes a recorded
-		// "validators": "none" decision instead of shipping silently
-		// unvalidated.
+		// already cover what the uncompilable pattern was expressing.
+		// controllerregex's translated grammar covers every construct the
+		// two SDK constraint tables are measured to use (regex-engine-study.md),
+		// including the four lookaround patterns RE2 could never compile, so
+		// this branch is not known to be live against any pattern today --
+		// it stays as a fail-safe for a future pattern outside that measured
+		// set (an escape outside the six this package refuses by name, or a
+		// construct regexp2 itself rejects). "validators": "none" replaces
+		// the whole array, so it cannot suppress just the derivation without
+		// also deleting a hand validator; skipping is what lets the hand
+		// validator stand instead. The skip itself is recorded in notices
+		// rather than left silent, so a plain go generate run (and its CI
+		// log) shows it without anyone having to know this fallback exists.
+		// A field with no validators at all still refuses, naming the
+		// field, so the gap becomes a recorded "validators": "none"
+		// decision instead of shipping silently unvalidated.
 		if hasHand, handErr := attributeHasValidators(attribute); handErr == nil && hasHand {
 			if notices != nil {
 				*notices = append(*notices, fmt.Sprintf(
@@ -191,23 +197,24 @@ func oneOfSchemaDefinition(terraformType string, constraint *bootstrapFieldConst
 	}
 }
 
-// regexMatchesSchemaDefinition renders a constraint's pattern into the same
-// Go expression a hand-transcribed RegexMatches used: a raw string literal
-// so the SDK's own backslash escapes need no translation, plus both imports
-// the expression needs (the standard library's regexp package for
-// MustCompile, and stringvalidator for RegexMatches itself).
+// regexMatchesSchemaDefinition renders a constraint's pattern into a call to
+// controllerregex.Matches -- the pattern verbatim, exactly as the SDK
+// publishes it, with no rewriting in this file at all. controllerregex
+// compiles it the way the controller itself reads it (Java's Pattern,
+// Matcher.matches(), a full match) and does its own internal anchoring
+// (\A(?:...)\z); this file used to anchor the pattern itself (^(?:...)$) for
+// Go's RE2-backed RegexMatches, which only calls MatchString (a partial
+// match) -- that whole responsibility, and the RE2-specific \d/\w and
+// trailing-newline hazards it carried, now lives once in controllerregex,
+// not duplicated here. See that package's doc comment for the full account.
 //
 // A pattern beside a value set is the SDK table's display form of that same
 // set, not a separate rule -- oneOfSchemaDefinition already claims the field
-// in that case, so this only fires when there is no value set at all. The
-// controller validates a pattern as a full match; Go's RegexMatches calls
-// MatchString, a partial match, so an unanchored pattern is wrapped in
-// ^(?:...)$ before it is compiled -- otherwise a value like a leading space
-// on site_to_site_vpn's pre_shared_key would pass Terraform's validation
-// even though the controller itself rejects it. A pattern Go's RE2 engine
-// cannot express (the controller's own dialect allows lookaround, which RE2
-// does not) is refused, naming the surface, field, and pattern, rather than
-// left to panic MustCompile at runtime.
+// in that case, so this only fires when there is no value set at all. A
+// pattern controllerregex cannot compile (an escape outside its translated
+// grammar, or a construct regexp2 itself refuses) is refused, naming the
+// surface, field, and pattern, rather than left to panic at schema-build
+// time.
 func regexMatchesSchemaDefinition(owner, terraformType string, constraint *bootstrapFieldConstraint) (schemaDefinition string, imports []customValidatorImport, ok bool, err error) {
 	if terraformType != "string" {
 		return "", nil, false, nil
@@ -218,88 +225,18 @@ func regexMatchesSchemaDefinition(owner, terraformType string, constraint *boots
 	if len(constraint.Values) > 0 || len(constraint.Int64Values) > 0 {
 		return "", nil, false, nil
 	}
-	anchored := anchorPattern(constraint.Pattern)
-	if _, compileErr := regexp.Compile(anchored); compileErr != nil {
+	if _, compileErr := controllerregex.Compile(constraint.Pattern); compileErr != nil {
 		return "", nil, false, fmt.Errorf(
-			"field %q constraint pattern %q is not compilable by Go's regexp package (%v); the "+
-				"controller's regex dialect includes syntax RE2 does not support (e.g. lookaround) -- "+
+			"field %q constraint pattern %q is not compilable by controllerregex (%v) -- "+
 				"set validators to \"none\" on this field to record the exception",
 			owner, constraint.Pattern, compileErr,
 		)
 	}
-	schemaDefinition = fmt.Sprintf("stringvalidator.RegexMatches(regexp.MustCompile(%s), \"\")", patternLiteral(anchored))
+	schemaDefinition = fmt.Sprintf("controllerregex.Matches(%s, \"\")", patternLiteral(constraint.Pattern))
 	imports = []customValidatorImport{
-		{Path: "regexp"},
-		{Path: "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"},
+		{Path: "github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"},
 	}
 	return schemaDefinition, imports, true, nil
-}
-
-// anchorPattern wraps a pattern in ^(?:...)$ unless it already anchors both
-// ends -- see regexMatchesSchemaDefinition for why an unanchored pattern is
-// unsafe to compile as-is.
-func anchorPattern(pattern string) string {
-	if fullyAnchored(pattern) {
-		return pattern
-	}
-	return "^(?:" + pattern + ")$"
-}
-
-// fullyAnchored reports whether pattern, matched with Go's regexp
-// MatchString (a partial match), can only ever match the whole input --
-// equivalent to the controller's own full-match semantics. A leading ^ and
-// trailing $ on the pattern as a whole are not sufficient: regexp's `|`
-// binds looser than either anchor, so "^A|B$" is the alternation of "^A"
-// (matches anything starting with A, no end anchor) and "B$" (matches
-// anything ending with B, no start anchor) -- neither branch alone forces a
-// full match, and go-unifi's DeviceConfigNetwork.netmask /
-// Network.wan_netmask patterns are exactly this shape. What's actually
-// required is that every top-level alternative -- split on a `|` outside
-// any group or character class -- independently starts with ^ and ends
-// with $; "^A$|^B$" is fine as-is, because both branches are self-anchored.
-func fullyAnchored(pattern string) bool {
-	for _, alternative := range splitTopLevelAlternatives(pattern) {
-		if !strings.HasPrefix(alternative, "^") || !strings.HasSuffix(alternative, "$") {
-			return false
-		}
-	}
-	return true
-}
-
-// splitTopLevelAlternatives splits pattern on every `|` that sits outside a
-// group, a character class, and an escape sequence -- the points where a
-// regex engine treats the pattern as a genuine top-level alternation, as
-// opposed to a `|` inside `(...)` or `[...]` that only alternates within
-// that piece.
-func splitTopLevelAlternatives(pattern string) []string {
-	var alternatives []string
-	depth := 0
-	inClass := false
-	start := 0
-	for i := 0; i < len(pattern); i++ {
-		switch pattern[i] {
-		case '\\':
-			i++ // the next byte is escaped, whatever it is; skip it too
-		case '[':
-			inClass = true
-		case ']':
-			inClass = false
-		case '(':
-			if !inClass {
-				depth++
-			}
-		case ')':
-			if !inClass && depth > 0 {
-				depth--
-			}
-		case '|':
-			if !inClass && depth == 0 {
-				alternatives = append(alternatives, pattern[start:i])
-				start = i + 1
-			}
-		}
-	}
-	return append(alternatives, pattern[start:])
 }
 
 // patternLiteral renders a pattern as a Go raw string literal so the SDK's

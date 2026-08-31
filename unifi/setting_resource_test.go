@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
@@ -1349,6 +1350,2083 @@ resource "unifi_setting" "test" {
   igmp_snooping = {
     enabled     = false
     network_ids = [unifi_network.test.id]
+  }
+}
+`
+}
+
+func TestAccSettingResource_locale(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_locale(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"locale.timezone",
+						"America/Los_Angeles",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"locale.%",
+					"locale.timezone",
+				},
+			},
+			{
+				Config: testAccSettingConfig_localeUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"locale.timezone",
+						"America/New_York",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_locale() string {
+	return `
+resource "unifi_setting" "test" {
+  locale = {
+    timezone = "America/Los_Angeles"
+  }
+}
+`
+}
+
+func testAccSettingConfig_localeUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  locale = {
+    timezone = "America/New_York"
+  }
+}
+`
+}
+
+func TestAccSettingResource_globalNat(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalNat(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_nat.mode",
+						"auto",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_nat.excluded_network_ids.#",
+						"1",
+					),
+					resource.TestCheckResourceAttrPair(
+						"unifi_setting.test", "global_nat.excluded_network_ids.0",
+						"unifi_network.test", "id",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"global_nat.%",
+					"global_nat.mode",
+					"global_nat.excluded_network_ids",
+				},
+			},
+			{
+				Config: testAccSettingConfig_globalNatUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_nat.mode",
+						"off",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_nat.excluded_network_ids.#",
+						"1",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalNat() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-global-nat-network"
+  subnet = "10.3.11.1/24"
+  vlan   = 31
+}
+
+resource "unifi_setting" "test" {
+  global_nat = {
+    mode                 = "auto"
+    excluded_network_ids = [unifi_network.test.id]
+  }
+}
+`
+}
+
+func testAccSettingConfig_globalNatUpdate() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-global-nat-network"
+  subnet = "10.3.11.1/24"
+  vlan   = 31
+}
+
+resource "unifi_setting" "test" {
+  global_nat = {
+    mode                 = "off"
+    excluded_network_ids = [unifi_network.test.id]
+  }
+}
+`
+}
+
+func TestAccSettingResource_sslInspection(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_sslInspection(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ssl_inspection.state",
+						"simple",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"ssl_inspection.%",
+					"ssl_inspection.state",
+				},
+			},
+			{
+				Config: testAccSettingConfig_sslInspectionUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ssl_inspection.state",
+						"off",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_sslInspection() string {
+	return `
+resource "unifi_setting" "test" {
+  ssl_inspection = {
+    state = "simple"
+  }
+}
+`
+}
+
+func testAccSettingConfig_sslInspectionUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  ssl_inspection = {
+    state = "off"
+  }
+}
+`
+}
+
+// TestAccSettingResource_ipsec exercises ikev2_reauthentication_method with
+// the one value the SDK's own comment records as observed
+// (make-before-break) plus IKEv2's other named rekey strategy
+// (break-before-make); the schema carries no validator, so the controller
+// itself is what could refuse the second value, not the provider.
+//
+// The simulation controller refuses the ipsec setting outright, matching
+// settings.Ipsec's own doc comment that it is a newer-controller feature
+// ahead of the locked field spec:
+//
+//	api.err.Invalid (400) for PUT https://localhost:34631/api/s/default/set/setting/ipsec
+//	payload: {"ikev2_reauthentication_method":"make-before-break","key":"ipsec"}
+func TestAccSettingResource_ipsec(t *testing.T) {
+	// ipsec requires controller support beyond simulation/demo mode: the
+	// simulation controller returns a 400 on the very first write.
+	if os.Getenv("UNIFI_SKIP_CONTAINER") == "" {
+		t.Skip("the ipsec setting requires a real controller; set UNIFI_SKIP_CONTAINER to run")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_ipsec(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ipsec.ikev2_reauthentication_method",
+						"make-before-break",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"ipsec.%",
+					"ipsec.ikev2_reauthentication_method",
+				},
+			},
+			{
+				Config: testAccSettingConfig_ipsecUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ipsec.ikev2_reauthentication_method",
+						"break-before-make",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_ipsec() string {
+	return `
+resource "unifi_setting" "test" {
+  ipsec = {
+    ikev2_reauthentication_method = "make-before-break"
+  }
+}
+`
+}
+
+func testAccSettingConfig_ipsecUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  ipsec = {
+    ikev2_reauthentication_method = "break-before-make"
+  }
+}
+`
+}
+
+// TestAccSettingResource_dashboard exercises layout_preference's full
+// create/import/update lifecycle without touching widgets at all: see
+// TestAccSettingResource_dashboardWidgets and dashboardKitSpec's own
+// comment for why widgets cannot share this same update step.
+func TestAccSettingResource_dashboard(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_dashboard(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.layout_preference",
+						"manual",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"dashboard.%",
+					"dashboard.layout_preference",
+				},
+			},
+			{
+				Config: testAccSettingConfig_dashboardUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.layout_preference",
+						"auto",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_dashboard() string {
+	return `
+resource "unifi_setting" "test" {
+  dashboard = {
+    layout_preference = "manual"
+  }
+}
+`
+}
+
+func testAccSettingConfig_dashboardUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  dashboard = {
+    layout_preference = "auto"
+  }
+}
+`
+}
+
+// TestAccSettingResource_dashboardWidgets exercises widgets create and
+// import only, deliberately with no update step: the controller was
+// measured (with UpdateSettingFields, outside Terraform) accepting a
+// widgets write only on a dashboard document's first write ever, then
+// silently dropping the whole array on every write after that -- not just
+// the entry that changed, and not just when the value actually changes;
+// even a write naming only layout_preference clears it. No error is
+// returned either time, so this cannot be told apart from success at the
+// wire level; it can only be told apart by reading back what the
+// controller actually stored:
+//
+//	after the first write: {"layout_preference":"manual","widgets":[{"enabled":true,"name":"cybersecure"}]}
+//	after any write after that: {"layout_preference":"auto"} -- widgets is gone
+//
+// A second Terraform apply that touches this resource in any way, even to
+// change an unrelated attribute, would therefore always report "provider
+// produced inconsistent result after apply" against this controller,
+// regardless of what the provider sends -- which is why this test has no
+// update step. See dashboardKitSpec's own comment.
+func TestAccSettingResource_dashboardWidgets(t *testing.T) {
+	if os.Getenv("UNIFI_SKIP_CONTAINER") == "" {
+		t.Skip("dashboard widgets do not survive a second write on the simulation controller; " +
+			"set UNIFI_SKIP_CONTAINER to run against a real controller")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_dashboardWidgets(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.widgets.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.widgets.0.name",
+						"cybersecure",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"dashboard.widgets.0.enabled",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"dashboard.%",
+					"dashboard.widgets.#",
+					"dashboard.widgets.0.%",
+					"dashboard.widgets.0.name",
+					"dashboard.widgets.0.enabled",
+				},
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_dashboardWidgets() string {
+	return `
+resource "unifi_setting" "test" {
+  dashboard = {
+    widgets = [
+      {
+        name    = "cybersecure"
+        enabled = true
+      },
+    ]
+  }
+}
+`
+}
+
+func TestAccSettingResource_etherLighting(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_etherLighting(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.speed_overrides.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.speed_overrides.0.key",
+						"GbE",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.speed_overrides.0.raw_color_hex",
+						"00FF00",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.network_overrides.#",
+						"1",
+					),
+					resource.TestCheckResourceAttrPair(
+						"unifi_setting.test", "ether_lighting.network_overrides.0.key",
+						"unifi_network.test", "id",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.network_overrides.0.raw_color_hex",
+						"FF0000",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"ether_lighting.%",
+					"ether_lighting.speed_overrides.#",
+					"ether_lighting.speed_overrides.0.%",
+					"ether_lighting.speed_overrides.0.key",
+					"ether_lighting.speed_overrides.0.raw_color_hex",
+					"ether_lighting.network_overrides.#",
+					"ether_lighting.network_overrides.0.%",
+					"ether_lighting.network_overrides.0.key",
+					"ether_lighting.network_overrides.0.raw_color_hex",
+				},
+			},
+			{
+				Config: testAccSettingConfig_etherLightingUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"ether_lighting.speed_overrides.0.raw_color_hex",
+						"0000FF",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_etherLighting() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-ether-lighting-network"
+  subnet = "10.3.12.1/24"
+  vlan   = 32
+}
+
+resource "unifi_setting" "test" {
+  ether_lighting = {
+    speed_overrides = [
+      {
+        key           = "GbE"
+        raw_color_hex = "00FF00"
+      },
+    ]
+    network_overrides = [
+      {
+        key           = unifi_network.test.id
+        raw_color_hex = "FF0000"
+      },
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_etherLightingUpdate() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-ether-lighting-network"
+  subnet = "10.3.12.1/24"
+  vlan   = 32
+}
+
+resource "unifi_setting" "test" {
+  ether_lighting = {
+    speed_overrides = [
+      {
+        key           = "GbE"
+        raw_color_hex = "0000FF"
+      },
+    ]
+    network_overrides = [
+      {
+        key           = unifi_network.test.id
+        raw_color_hex = "FF0000"
+      },
+    ]
+  }
+}
+`
+}
+
+// TestAccSettingResource_globalNetwork exercises default_security_posture
+// with the one value the SDK's own comment records as observed
+// (ALLOW_ALL) plus a second plausible posture for the update step; the
+// schema carries no validator, so the controller itself is what could
+// refuse the second value, not the provider.
+//
+// The controller generation this provider is built against refuses the
+// global_network setting outright, matching settings.GlobalNetwork's own
+// doc comment that it is a newer-controller feature ahead of the locked
+// field spec (the same story as ipsec's own skip):
+//
+//	api.err.Invalid (400) for PUT https://localhost:34680/api/s/default/set/setting/global_network
+//	payload: {"default_security_posture":"ALLOW_ALL","key":"global_network"}
+func TestAccSettingResource_globalNetwork(t *testing.T) {
+	// global_network requires controller support beyond simulation/demo
+	// mode: the simulation controller returns a 400 on the very first
+	// write.
+	if os.Getenv("UNIFI_SKIP_CONTAINER") == "" {
+		t.Skip("the global_network setting requires a real controller; set UNIFI_SKIP_CONTAINER to run")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalNetwork(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_network.default_security_posture",
+						"ALLOW_ALL",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"global_network.%",
+					"global_network.default_security_posture",
+				},
+			},
+			{
+				Config: testAccSettingConfig_globalNetworkUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_network.default_security_posture",
+						"BLOCK_ALL",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalNetwork() string {
+	return `
+resource "unifi_setting" "test" {
+  global_network = {
+    default_security_posture = "ALLOW_ALL"
+  }
+}
+`
+}
+
+func testAccSettingConfig_globalNetworkUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  global_network = {
+    default_security_posture = "BLOCK_ALL"
+  }
+}
+`
+}
+
+// TestAccSettingResource_trafficFlow exercises all four of traffic_flow's
+// force-emitted bools together, flipping every one on the update step to
+// prove the masked write carries whichever subset the plan actually
+// touches.
+func TestAccSettingResource_trafficFlow(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_trafficFlow(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.enabled_allowed_traffic",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.gateway_dns_enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.unifi_device_management_enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.unifi_services_enabled",
+						"false",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"traffic_flow.%",
+					"traffic_flow.enabled_allowed_traffic",
+					"traffic_flow.gateway_dns_enabled",
+					"traffic_flow.unifi_device_management_enabled",
+					"traffic_flow.unifi_services_enabled",
+				},
+			},
+			{
+				Config: testAccSettingConfig_trafficFlowUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.enabled_allowed_traffic",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.gateway_dns_enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.unifi_device_management_enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"traffic_flow.unifi_services_enabled",
+						"true",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_trafficFlow() string {
+	return `
+resource "unifi_setting" "test" {
+  traffic_flow = {
+    enabled_allowed_traffic         = true
+    gateway_dns_enabled             = false
+    unifi_device_management_enabled = true
+    unifi_services_enabled          = false
+  }
+}
+`
+}
+
+func testAccSettingConfig_trafficFlowUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  traffic_flow = {
+    enabled_allowed_traffic         = false
+    gateway_dns_enabled             = true
+    unifi_device_management_enabled = false
+    unifi_services_enabled          = true
+  }
+}
+`
+}
+
+// TestAccSettingResource_mdns exercises mode = "custom" with both
+// custom_services and predefined_services populated, then an update that
+// switches mode to "auto" and clears both lists -- the shape a
+// mode-driven transition takes in HCL: the practitioner explicitly empties
+// the lists that stop being authoritative rather than leaving them set
+// under a mode that no longer consults them, since this section applies no
+// plan-time coupling between mode and the lists (see mdnsKitSpec's own
+// comment).
+func TestAccSettingResource_mdns(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_mdns(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.mode",
+						"custom",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.custom_services.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.custom_services.0.address",
+						"_myservice._tcp.local",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.custom_services.0.name",
+						"my service",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.predefined_services.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.predefined_services.0.code",
+						"printers",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"mdns.%",
+					"mdns.mode",
+					"mdns.custom_services.#",
+					"mdns.custom_services.0.%",
+					"mdns.custom_services.0.address",
+					"mdns.custom_services.0.name",
+					"mdns.predefined_services.#",
+					"mdns.predefined_services.0.%",
+					"mdns.predefined_services.0.code",
+				},
+			},
+			{
+				Config: testAccSettingConfig_mdnsUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.mode",
+						"auto",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.custom_services.#",
+						"0",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"mdns.predefined_services.#",
+						"0",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_mdns() string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode = "custom"
+    custom_services = [
+      {
+        address = "_myservice._tcp.local"
+        name    = "my service"
+      },
+    ]
+    predefined_services = [
+      {
+        code = "printers"
+      },
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_mdnsUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode                = "auto"
+    custom_services     = []
+    predefined_services = []
+  }
+}
+`
+}
+
+// TestAccSettingResource_mdnsRejectsNonCustomModeWithServices proves the
+// shape reproduced against the live controller in review -- mode changed
+// away from "custom" while custom_services (or predefined_services) is
+// left non-empty -- is refused at plan time, naming the offending
+// attribute, instead of reaching the controller and failing afterwards as
+// an inconsistent result that looks like a provider bug (validateMdnsConfig,
+// setting_mdns_validate.go).
+//
+// PlanOnly is the assertion that matters here: it never reaches the
+// controller, the same idiom TestAccNetworkFramework_purposeConflict uses
+// (network_resource_test.go).
+func TestAccSettingResource_mdnsRejectsNonCustomModeWithServices(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccSettingConfig_mdnsAutoWithCustomServices(),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`mDNS Custom Services Requires mode`),
+			},
+			{
+				Config:      testAccSettingConfig_mdnsAutoWithPredefinedServices(),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`mDNS Predefined Services Requires mode`),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_mdnsAutoWithCustomServices() string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode = "auto"
+    custom_services = [
+      {
+        address = "_myservice._tcp.local"
+        name    = "my service"
+      },
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_mdnsAutoWithPredefinedServices() string {
+	return `
+resource "unifi_setting" "test" {
+  mdns = {
+    mode = "auto"
+    predefined_services = [
+      {
+        code = "printers"
+      },
+    ]
+  }
+}
+`
+}
+
+// TestAccSettingResource_teleport exercises enabled and subnet_cidr
+// together, then an update that disables teleport while clearing
+// subnet_cidr back to empty -- the shape subnet_cidr's own wire pattern
+// accepts either way, since this section applies no plan-time coupling
+// between the two attributes (see teleportKitSpec's own comment).
+func TestAccSettingResource_teleport(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_teleport(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"teleport.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"teleport.subnet_cidr",
+						"10.200.0.0/24",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"teleport.%",
+					"teleport.enabled",
+					"teleport.subnet_cidr",
+				},
+			},
+			{
+				Config: testAccSettingConfig_teleportUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"teleport.enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"teleport.subnet_cidr",
+						"",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_teleport() string {
+	return `
+resource "unifi_setting" "test" {
+  teleport = {
+    enabled     = true
+    subnet_cidr = "10.200.0.0/24"
+  }
+}
+`
+}
+
+func testAccSettingConfig_teleportUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  teleport = {
+    enabled     = false
+    subnet_cidr = ""
+  }
+}
+`
+}
+
+// TestAccSettingResource_magicSiteToSiteVpn exercises the one field
+// settings.MagicSiteToSiteVpn actually carries -- enabled -- through a
+// create/import/update lifecycle. See
+// setting_magic_site_to_site_vpn_descriptor.go's own comment: the dispatch
+// brief's premise of a controller-generated secret field does not hold
+// against the pinned SDK's generated struct.
+func TestAccSettingResource_magicSiteToSiteVpn(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_magicSiteToSiteVpn(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"magic_site_to_site_vpn.enabled",
+						"true",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"magic_site_to_site_vpn.%",
+					"magic_site_to_site_vpn.enabled",
+				},
+			},
+			{
+				Config: testAccSettingConfig_magicSiteToSiteVpnUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"magic_site_to_site_vpn.enabled",
+						"false",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_magicSiteToSiteVpn() string {
+	return `
+resource "unifi_setting" "test" {
+  magic_site_to_site_vpn = {
+    enabled = true
+  }
+}
+`
+}
+
+func testAccSettingConfig_magicSiteToSiteVpnUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  magic_site_to_site_vpn = {
+    enabled = false
+  }
+}
+`
+}
+
+// TestAccSettingResource_globalSwitch exercises a representative subset of
+// global_switch's fourteen exposed attributes: a plain bool
+// (jumboframe_enabled), the stp_version enum, and both Int64PtrFields
+// (link_debounce set to 0 -- proving the controller accepts the literal
+// zero its own pattern allows and confirming this section needs no
+// OmitZero, the finding recorded in the task report -- and
+// poe_staging_delay_msec set to a non-zero member of its own OneOf).
+// jumboframe_enabled substitutes for dot1x_portctrl_enabled, the bool
+// originally intended here: measured directly against the pinned
+// controller, dot1x_portctrl_enabled = true with no radiusprofile_id
+// configured is refused with api.err.MissingRadiusProfileId -- 802.1X
+// port control needs a RADIUS profile to authenticate against, a
+// precondition out of scope for this representative-subset test.
+//
+// Neither list field is exercised live. switch_exclusions: measured
+// directly against the pinned controller, a synthetic MAC not belonging to
+// a real, known switch device is refused with
+// api.err.InvalidDevicesInSwitchExclusions -- the field validates its own
+// MAC-shaped pattern at plan time but the controller additionally
+// validates switch-device membership at apply time, which this dispatch's
+// harness has no adopted switch device to satisfy (unifi_device with
+// UNIFI_ACC_DEVICE_MAC adopts the fleet's one switch, but pulling that
+// machinery in for one field is out of scope here). acl_l3_isolation:
+// measured directly against the pinned controller, even one entry naming
+// two genuinely distinct real networks as source and destination is
+// refused with api.err.OverMaxEntriesOfGlobalAcl -- this controller
+// generation appears to cap global L3 ACL entries below 1, or requires a
+// precondition this dispatch did not identify. Both fields' wire mapping
+// is still covered by the mask-pin and conformance tests.
+func TestAccSettingResource_globalSwitch(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_globalSwitch(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.jumboframe_enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.stp_version",
+						"rstp",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.link_debounce",
+						"0",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.poe_staging_delay_msec",
+						"800",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// global_switch has no AfterReceive (an unconditional mirror,
+				// like most sections in this batch), so every attribute reads
+				// back a real, concrete value from the controller even when
+				// this test never configured it -- a BoolField never nulls (a
+				// false is a value, per its own doc comment) and a KeepZero
+				// StringField/ObjectListField/StringListField reads an absent
+				// controller value as "" or an empty list, not null. Import
+				// cannot rehydrate section presence ahead of Read (see
+				// settingResource.ImportState's own comment), so EVERY one of
+				// those concrete values -- not just the ones this test
+				// configured -- disagrees with the null the post-import
+				// refresh produces. Every attribute the schema declares is
+				// listed here for that reason, matching traffic_flow's own
+				// all-bools section (whose test happens to configure all
+				// four, so this same shape wasn't visible there).
+				ImportStateVerifyIgnore: []string{
+					"global_switch.%",
+					"global_switch.acl_l3_isolation.#",
+					"global_switch.auto_stp_edge_detection_enabled",
+					"global_switch.dhcp_snoop",
+					"global_switch.dot1x_fallback_networkconf_id",
+					"global_switch.dot1x_portctrl_enabled",
+					"global_switch.flood_known_protocols",
+					"global_switch.flowctrl_enabled",
+					"global_switch.forward_unknown_mcast_router_ports",
+					"global_switch.jumboframe_enabled",
+					"global_switch.stp_version",
+					"global_switch.link_debounce",
+					"global_switch.poe_staging_delay_msec",
+					"global_switch.radiusprofile_id",
+					"global_switch.switch_exclusions.#",
+				},
+			},
+			{
+				Config: testAccSettingConfig_globalSwitchUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.jumboframe_enabled",
+						"false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"global_switch.stp_version",
+						"disabled",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_globalSwitch() string {
+	return `
+resource "unifi_setting" "test" {
+  global_switch = {
+    jumboframe_enabled     = true
+    stp_version            = "rstp"
+    link_debounce          = 0
+    poe_staging_delay_msec = 800
+  }
+}
+`
+}
+
+func testAccSettingConfig_globalSwitchUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  global_switch = {
+    jumboframe_enabled     = false
+    stp_version            = "disabled"
+    link_debounce          = 0
+    poe_staging_delay_msec = 800
+  }
+}
+`
+}
+
+// TestAccSettingResource_netflow exercises a representative subset of
+// netflow's eleven exposed attributes: enabled paired with network_ids (the
+// controller refuses `enabled = true` with no networks named --
+// api.err.NetflowNetworkIdsRequired, the partial-exercisability finding
+// this dispatch's own plan recorded -- so every step here names a real
+// network alongside enabled), the sampling_mode and version enums, and two
+// of the four OmitZero-guarded Int64PtrFields (port, sampling_rate) set to
+// non-zero legal values -- global_switch's own test already proves the
+// "0 is legal" side of this class, so this one proves the "reaches the
+// wire, accepted" side for a field where 0 is NOT legal.
+func TestAccSettingResource_netflow(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_netflow(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.network_ids.#",
+						"1",
+					),
+					resource.TestCheckResourceAttrPair(
+						"unifi_setting.test", "netflow.network_ids.0",
+						"unifi_network.test", "id",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.sampling_mode",
+						"random",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.sampling_rate",
+						"100",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.port",
+						"2055",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.version",
+						"9",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.server",
+						"10.5.10.5",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"netflow.%",
+					"netflow.enabled",
+					"netflow.network_ids.#",
+					"netflow.network_ids.0",
+					"netflow.sampling_mode",
+					"netflow.sampling_rate",
+					"netflow.port",
+					"netflow.version",
+					"netflow.server",
+					// Measured, not assumed: creating the netflow document at
+					// all -- even naming only the fields above -- makes the
+					// controller populate these three with its own non-zero
+					// defaults (auto_engine_id_enabled = true, export_frequency
+					// = 5, refresh_rate = 20). netflow carries no AfterReceive
+					// (unlike radio_ai, it isn't co-managed), so the
+					// unconditional mirror faithfully reads those controller
+					// defaults into state; import's own "sections aren't
+					// rehydrated ahead of Read" behaviour then makes them
+					// disagree with the pre-import state the same way every
+					// other attribute here does.
+					"netflow.auto_engine_id_enabled",
+					"netflow.export_frequency",
+					"netflow.refresh_rate",
+				},
+			},
+			{
+				Config: testAccSettingConfig_netflowUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.sampling_mode",
+						"deterministic",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.version",
+						"10",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"netflow.port",
+						"2056",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_netflow() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-netflow-network"
+  subnet = "10.5.10.1/24"
+  vlan   = 50
+}
+
+resource "unifi_setting" "test" {
+  netflow = {
+    enabled       = true
+    network_ids   = [unifi_network.test.id]
+    sampling_mode = "random"
+    sampling_rate = 100
+    port          = 2055
+    version       = 9
+    server        = "10.5.10.5"
+  }
+}
+`
+}
+
+func testAccSettingConfig_netflowUpdate() string {
+	return `
+resource "unifi_network" "test" {
+  name   = "test-netflow-network"
+  subnet = "10.5.10.1/24"
+  vlan   = 50
+}
+
+resource "unifi_setting" "test" {
+  netflow = {
+    enabled       = true
+    network_ids   = [unifi_network.test.id]
+    sampling_mode = "deterministic"
+    sampling_rate = 100
+    port          = 2056
+    version       = 10
+    server        = "10.5.10.5"
+  }
+}
+`
+}
+
+// TestAccSettingResource_radioAi exercises radio_ai's CoManaged shape: this
+// section is co-managed by the controller's own AI channel/power
+// optimization, so radioAiAfterReceive plan-conditions every attribute
+// rather than mirroring unconditionally (see
+// setting_radio_ai_descriptor.go's own comment). Per this dispatch's brief,
+// the test asserts only the attributes it configured -- enabled,
+// setting_preference, one StringListField (radios), and one
+// channels_blacklist entry, covering the ObjectListField and its nested
+// Int64 members (channel, channel_width), whose compiler-derived OneOf and
+// this section's own zero-guard both get a live round trip here.
+//
+// channels_na (and, by the same shape, the other four Int64ListFields) is
+// deliberately NOT exercised live: measured directly against the pinned
+// controller, `enabled = true` alone -- with no auto_channel_presets_type
+// and no radios_configuration configured -- makes the controller rewrite
+// channels_na to a much larger channel set on the very same apply that
+// created it. That fails Terraform's own plan/apply consistency check for
+// a CONFIGURED (not just computed) attribute: the framework requires an
+// apply to return exactly the plan's own known value unless the field was
+// Unknown at plan time, and radioAiAfterReceive's plan-conditioned nulling
+// only protects an UNCONFIGURED attribute, by design -- a configured one
+// showing drift is supposed to surface on the NEXT plan, not fail the
+// apply that set it. This is Int64ListField's own genuine live interaction
+// with the AI feature actually running, not a defect in the nulling logic;
+// this dispatch did not have the budget to fully characterize which
+// combination of fields avoids it, so channels_na's wire mapping is
+// covered by the unit/conformance tests instead
+// (TestRadioAiKitSpecConformance, TestInt64ListFieldRoundTrips) and by
+// TestRadioAiAfterReceiveNullsEveryUnconfiguredAttribute's direct proof
+// that an UNCONFIGURED channels_na is genuinely nulled.
+func TestAccSettingResource_radioAi(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_radioAi(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.setting_preference",
+						"manual",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.radios.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.radios.0",
+						"na",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.#",
+						"1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.0.channel",
+						"100",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.0.channel_width",
+						"20",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.0.radio",
+						"na",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"radio_ai.%",
+					"radio_ai.enabled",
+					"radio_ai.setting_preference",
+					"radio_ai.radios.#",
+					"radio_ai.radios.0",
+					"radio_ai.channels_blacklist.#",
+					"radio_ai.channels_blacklist.0.%",
+					"radio_ai.channels_blacklist.0.channel",
+					"radio_ai.channels_blacklist.0.channel_width",
+					"radio_ai.channels_blacklist.0.radio",
+				},
+			},
+			{
+				Config: testAccSettingConfig_radioAiUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.setting_preference",
+						"auto",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"radio_ai.channels_blacklist.0.channel",
+						"104",
+					),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_radioAi() string {
+	return `
+resource "unifi_setting" "test" {
+  radio_ai = {
+    enabled            = true
+    setting_preference = "manual"
+    radios             = ["na"]
+    channels_blacklist = [
+      {
+        channel       = 100
+        channel_width = 20
+        radio         = "na"
+      }
+    ]
+  }
+}
+`
+}
+
+func testAccSettingConfig_radioAiUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  radio_ai = {
+    enabled            = true
+    setting_preference = "auto"
+    radios             = ["na"]
+    channels_blacklist = [
+      {
+        channel       = 104
+        channel_width = 20
+        radio         = "na"
+      }
+    ]
+  }
+}
+`
+}
+
+// TestAccSettingResource_snmp exercises snmp's whole surface -- Task 0's
+// live-controller probe (this dispatch's own, run before this file was
+// written) found the controller echoes community and password back
+// verbatim, no mask and no hash, so both are radius-shaped secrets rather
+// than mgmt-shaped ones. That is exactly why this test never asserts either
+// value: per the brief, an acceptance test over a secret the controller
+// echoes must prove the apply is clean and that a non-secret attribute
+// (username) round-trips, not pin the echoed bytes in a check a future
+// controller change could turn into a false pass. Every attribute is
+// configured so the apply itself proves the write reaches the wire and the
+// read decodes without error.
+func TestAccSettingResource_snmp(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_snmp(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"snmp.enabled",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"snmp.enabled_v3",
+						"true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test",
+						"snmp.username",
+						"test-user",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// SpecSection.Read only fetches a section when
+					// Configured(plan) is true; import's state has just id
+					// set, so snmp reads back null instead of the applied
+					// values -- the same reason radius's own import step
+					// ignores every one of its attributes, not only secret.
+					"snmp.%",
+					"snmp.community", // Sensitive, and never asserted anyway.
+					"snmp.enabled",
+					"snmp.enabled_v3",
+					"snmp.password", // Sensitive, and never asserted anyway.
+					"snmp.username",
+				},
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_snmp() string {
+	return `
+resource "unifi_setting" "test" {
+  snmp = {
+    enabled    = true
+    enabled_v3 = true
+    community  = "test-community-9f2b1e"
+    username   = "test-user"
+    password   = "test-password-9f2b1e"
+  }
+}
+`
+}
+
+// TestAccSettingResource_guestAccess exercises Task 2's 21 core scalars,
+// Task 3's 18 x_-prefixed fields, Task 4's 20 fields and Task 5's 31
+// portal_customized_* fields (.superpowers/sdd/plan-r2b-guest-access) live:
+// portal access/mode,
+// post-auth redirect, session expiry (including the two #303-guarded ints,
+// expire_number/expire_unit), the RADIUS guest-auth group (including its own
+// #303-guarded radius_disconnect_port), password_enabled, voucher_enabled,
+// payment_enabled, gateway, every one of the section's 18 secrets/identifiers
+// (the portal password, four social-login secrets, and thirteen
+// payment-gateway credentials across six gateways), and Task 4's network
+// scoping, social-login companions, payment-gateway sandbox switches and
+// three stragglers. A real apply against a validating controller is what the
+// unit-level OmitZero and Elide tests (setting_guest_access_descriptor_test.go)
+// cannot prove on their own: if the write guard ever regressed and let a
+// literal 0 reach the wire for expire_number, expire_unit or
+// radius_disconnect_port, this step would fail outright against the
+// controller's own rejection of that value, not just leave a Go assertion
+// red. This is in fact exactly how Task 4's own allowed_subnet_ and
+// restricted_subnet_ were caught and withdrawn: both were in the brief's
+// original 22, both passed every unit-level check (nothing in this
+// codebase's own conformance tooling can know a controller's write-side
+// schema rejects a key its read-side type still declares), and only this
+// live step's api.err.InvalidKey exposed it. Per the brief, this test never
+// asserts any of the 18 secrets' echoed values -- Task 0's live probe
+// already pinned that behaviour once, and re-asserting it here would only
+// turn a future controller change into a false failure. The update step's
+// config (testAccSettingConfig_guestAccessUpdate) omits every one of the 18,
+// which is what proves an unconfigured secret is forced null rather than
+// carrying the controller's prior value into state. Task 4's 20 fields and
+// Task 5's 31 are none of them secrets, so they are asserted directly in the
+// Check block below, the same way Task 2's 21 are. Task 5's own
+// portal_customized_box_radius is deliberately configured as an explicit 0
+// (a legal corner radius, unlike box_opacity's and logo_size's own
+// controller-rejected zero): a real apply is the only way to prove that
+// value actually reaches the controller and round-trips back, rather than
+// being silently dropped the way it would be if this field wrongly carried
+// the #303 OmitZero guard.
+func TestAccSettingResource_guestAccess(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { preCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingConfig_guestAccess(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.portal_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.password_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.voucher_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.payment_enabled", "false"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.ec_enabled", "false"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.redirect_enabled", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.redirect_url", "https://example.com/welcome",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.expire", "custom"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.expire_number", "30"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.expire_unit", "60"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.radius_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.radius_auth_type", "chap"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.radius_disconnect_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.radius_disconnect_port", "3799",
+					),
+					// Task 4's 20 fields. allowed_subnet_ and restricted_subnet_
+					// are not here: a live apply against the pinned controller
+					// rejected both with api.err.InvalidKey (see
+					// setting_guest_access_descriptor.go's own comment), so
+					// they were withdrawn back to omitted rather than shipped.
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.restricted_dns_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.restricted_dns_servers.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.restricted_dns_servers.0", "1.1.1.1",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.restricted_dns_servers.1", "8.8.8.8",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.facebook_enabled", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.facebook_app_id", "acctest-facebook-app-id-9f2b1e",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.facebook_scope_email", "true",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.google_enabled", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.google_client_id", "acctest-google-client-id-9f2b1e",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.google_domain", "example.com",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.google_scope_email", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.wechat_enabled", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.wechat_app_id", "acctest-wechat-app-id-9f2b1e",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.wechat_shop_id", "acctest-wechat-shop-id-9f2b1e",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.authorize_use_sandbox", "true",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.ippay_use_sandbox", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.merchantwarrior_use_sandbox", "true",
+					),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.paypal_use_sandbox", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.quickpay_testmode", "true"),
+					// auth_url is not configured or asserted here: a live probe
+					// found the controller silently discards it unless `auth`
+					// is `custom` (api.err.CustomAuthMissingExternalServer
+					// otherwise names custom_ip as the other field that
+					// combination needs) -- this step's own auth is `hotspot`,
+					// the same reason expire_number/expire_unit need expire =
+					// custom below. auth_url's round trip is still covered at
+					// the unit level
+					// (TestGuestAccessNetworkScopingSocialLoginPaymentAndStragglersRoundTrip).
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.custom_ip", "203.0.113.5"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.voucher_customized", "true",
+					),
+					// Task 5's 31 portal_customized_* fields.
+					// portal_customized_box_radius is deliberately 0: its own
+					// constraint has a minimum of 0, unlike box_opacity (min 1)
+					// and logo_size (min 64), so this is the live proof that an
+					// explicit 0 reaches the controller and round-trips back,
+					// rather than being silently elided the way it would be if
+					// this field wrongly carried an OmitZero guard.
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.portal_customized", "true"),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_authentication_text",
+						"Please sign in to continue",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_color", "#f5f5f5",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_image_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_image_filename",
+						"acctest-background-9f2b1e.jpg",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_image_tile", "false",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_bg_type", "image",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_color", "#ffffff",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_link_color", "#0066cc",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_opacity", "90",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_radius", "0",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_box_text_color", "#222222",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_button_color", "#0066cc",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_button_text", "Continue",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_button_text_color", "#ffffff",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_languages.#", "2",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_languages.0", "en",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_languages.1", "zh-CN",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_link_color", "#0066cc",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_logo_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_logo_filename",
+						"acctest-logo-9f2b1e.png",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_logo_position", "center",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_logo_size", "96",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_success_text", "You're connected",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_text_color", "#333333",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_title", "Guest Wi-Fi",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_tos",
+						"By connecting you agree to acceptable use.",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_tos_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_unsplash_author_name", "Jane Doe",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_unsplash_author_username", "janedoe",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_welcome_text",
+						"Welcome to our guest network",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_welcome_text_enabled", "true",
+					),
+					resource.TestCheckResourceAttr(
+						"unifi_setting.test", "guest_access.portal_customized_welcome_text_position", "under_logo",
+					),
+				),
+			},
+			{
+				ResourceName:      "unifi_setting.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					// SpecSection.Read only fetches a section when
+					// Configured(plan) is true; import's state has just id
+					// set, so guest_access reads back null instead of the
+					// applied values -- the same reason every other
+					// section's import step ignores its own attributes.
+					"guest_access.%",
+					"guest_access.auth",
+					"guest_access.auth_url",
+					"guest_access.authorize_loginid",
+					"guest_access.authorize_transactionkey",
+					"guest_access.authorize_use_sandbox",
+					"guest_access.custom_ip",
+					"guest_access.ec_enabled",
+					"guest_access.expire",
+					"guest_access.expire_number",
+					"guest_access.expire_unit",
+					"guest_access.facebook_app_id",
+					"guest_access.facebook_app_secret",
+					"guest_access.facebook_enabled",
+					"guest_access.facebook_scope_email",
+					"guest_access.gateway",
+					"guest_access.google_client_id",
+					"guest_access.google_client_secret",
+					"guest_access.google_domain",
+					"guest_access.google_enabled",
+					"guest_access.google_scope_email",
+					"guest_access.ippay_terminalid",
+					"guest_access.ippay_use_sandbox",
+					"guest_access.merchantwarrior_apikey",
+					"guest_access.merchantwarrior_apipassphrase",
+					"guest_access.merchantwarrior_merchantuuid",
+					"guest_access.merchantwarrior_use_sandbox",
+					"guest_access.password",
+					"guest_access.password_enabled",
+					"guest_access.payment_enabled",
+					"guest_access.paypal_password",
+					"guest_access.paypal_signature",
+					"guest_access.paypal_use_sandbox",
+					"guest_access.paypal_username",
+					"guest_access.portal_customized",
+					"guest_access.portal_customized_authentication_text",
+					"guest_access.portal_customized_bg_color",
+					"guest_access.portal_customized_bg_image_enabled",
+					"guest_access.portal_customized_bg_image_filename",
+					"guest_access.portal_customized_bg_image_tile",
+					"guest_access.portal_customized_bg_type",
+					"guest_access.portal_customized_box_color",
+					"guest_access.portal_customized_box_link_color",
+					"guest_access.portal_customized_box_opacity",
+					"guest_access.portal_customized_box_radius",
+					"guest_access.portal_customized_box_text_color",
+					"guest_access.portal_customized_button_color",
+					"guest_access.portal_customized_button_text",
+					"guest_access.portal_customized_button_text_color",
+					"guest_access.portal_customized_languages",
+					"guest_access.portal_customized_link_color",
+					"guest_access.portal_customized_logo_enabled",
+					"guest_access.portal_customized_logo_filename",
+					"guest_access.portal_customized_logo_position",
+					"guest_access.portal_customized_logo_size",
+					"guest_access.portal_customized_success_text",
+					"guest_access.portal_customized_text_color",
+					"guest_access.portal_customized_title",
+					"guest_access.portal_customized_tos",
+					"guest_access.portal_customized_tos_enabled",
+					"guest_access.portal_customized_unsplash_author_name",
+					"guest_access.portal_customized_unsplash_author_username",
+					"guest_access.portal_customized_welcome_text",
+					"guest_access.portal_customized_welcome_text_enabled",
+					"guest_access.portal_customized_welcome_text_position",
+					"guest_access.portal_enabled",
+					"guest_access.portal_hostname",
+					"guest_access.portal_use_hostname",
+					"guest_access.quickpay_agreementid",
+					"guest_access.quickpay_apikey",
+					"guest_access.quickpay_merchantid",
+					"guest_access.quickpay_testmode",
+					"guest_access.radius_auth_type",
+					"guest_access.radius_disconnect_enabled",
+					"guest_access.radius_disconnect_port",
+					"guest_access.radius_enabled",
+					"guest_access.radiusprofile_id",
+					"guest_access.redirect_enabled",
+					"guest_access.redirect_https",
+					"guest_access.redirect_to_https",
+					"guest_access.redirect_url",
+					"guest_access.restricted_dns_enabled",
+					"guest_access.restricted_dns_servers",
+					"guest_access.stripe_api_key",
+					"guest_access.voucher_customized",
+					"guest_access.voucher_enabled",
+					"guest_access.wechat_app_id",
+					"guest_access.wechat_app_secret",
+					"guest_access.wechat_enabled",
+					"guest_access.wechat_secret_key",
+					"guest_access.wechat_shop_id",
+				},
+			},
+			{
+				Config: testAccSettingConfig_guestAccessUpdate(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.auth", "none"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.payment_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.gateway", "stripe"),
+					// expire_number, expire_unit and radius_disconnect_port
+					// are absent from this step's config -- the #303 write
+					// guard means that must apply cleanly rather than send a
+					// literal 0 the controller's own validators reject
+					// (expire_number wants a leading 1-9 or 1000000,
+					// expire_unit is the enum 1/60/1440,
+					// radius_disconnect_port has a minimum of 1).
+					resource.TestCheckResourceAttr("unifi_setting.test", "guest_access.radius_enabled", "false"),
+					// This step's config (testAccSettingConfig_guestAccessUpdate)
+					// omits every one of the 18 secrets the previous step set --
+					// the live proof that guestAccessAfterReceive forces an
+					// unconfigured secret null rather than carrying the
+					// controller's previously-written value into state. One
+					// representative from each of the three groups (the portal
+					// password, a social-login secret, and a payment-gateway
+					// credential/identifier) stands in for all 18; the unit-level
+					// TestGuestAccessAfterReceiveKeepsThePlansSecretWhenNamed
+					// already covers every one of them in isolation.
+					resource.TestCheckNoResourceAttr("unifi_setting.test", "guest_access.password"),
+					resource.TestCheckNoResourceAttr("unifi_setting.test", "guest_access.wechat_app_secret"),
+					resource.TestCheckNoResourceAttr("unifi_setting.test", "guest_access.stripe_api_key"),
+					resource.TestCheckNoResourceAttr("unifi_setting.test", "guest_access.authorize_loginid"),
+				),
+			},
+		},
+	})
+}
+
+func testAccSettingConfig_guestAccess() string {
+	return `
+resource "unifi_setting" "test" {
+  guest_access = {
+    portal_enabled             = true
+    auth                       = "hotspot"
+    password_enabled           = true
+    voucher_enabled            = true
+    payment_enabled            = false
+    ec_enabled                 = false
+    redirect_enabled           = true
+    redirect_url               = "https://example.com/welcome"
+    expire                     = "custom"
+    expire_number               = 30
+    expire_unit                = 60
+    radius_enabled             = true
+    radius_auth_type           = "chap"
+    radius_disconnect_enabled  = true
+    radius_disconnect_port     = 3799
+
+    # Task 3's 18 x_-prefixed fields. Values are synthetic acceptance-test
+    # markers, not real credentials -- per the brief, this test never asserts
+    # any of them back (see the Check list above and this function's own doc
+    # comment), only that the apply is clean.
+    password                      = "acctest-password-9f2b1e"
+    facebook_app_secret           = "acctest-facebook-app-secret-9f2b1e"
+    google_client_secret          = "acctest-google-client-secret-9f2b1e"
+    wechat_app_secret             = "acctest-wechat-app-secret-9f2b1e"
+    wechat_secret_key             = "acctest-wechat-secret-key-9f2b1e"
+    authorize_loginid             = "acctest-authorize-loginid-9f2b1e"
+    authorize_transactionkey      = "acctest-authorize-transactionkey-9f2b1e"
+    paypal_username               = "acctest-paypal-username-9f2b1e"
+    paypal_password               = "acctest-paypal-password-9f2b1e"
+    paypal_signature              = "acctest-paypal-signature-9f2b1e"
+    quickpay_agreementid          = "acctest-quickpay-agreementid-9f2b1e"
+    quickpay_merchantid           = "acctest-quickpay-merchantid-9f2b1e"
+    quickpay_apikey               = "acctest-quickpay-apikey-9f2b1e"
+    merchantwarrior_merchantuuid  = "acctest-merchantwarrior-merchantuuid-9f2b1e"
+    merchantwarrior_apikey        = "acctest-merchantwarrior-apikey-9f2b1e"
+    merchantwarrior_apipassphrase = "acctest-merchantwarrior-apipassphrase-9f2b1e"
+    ippay_terminalid              = "acctest-ippay-terminalid-9f2b1e"
+    stripe_api_key                = "acctest-stripe-api-key-9f2b1e"
+
+    # Task 4's 20 fields: network scoping, social-login companions,
+    # payment-gateway sandbox/test switches and three stragglers. None of
+    # these are secrets, so the Check block above asserts every one of them
+    # back. allowed_subnet_ and restricted_subnet_ are not here -- a live
+    # apply against the pinned controller rejected both with
+    # api.err.InvalidKey, so they were withdrawn (see
+    # setting_guest_access_descriptor.go's own comment).
+    restricted_dns_enabled      = true
+    restricted_dns_servers      = ["1.1.1.1", "8.8.8.8"]
+    facebook_enabled            = true
+    facebook_app_id             = "acctest-facebook-app-id-9f2b1e"
+    facebook_scope_email        = true
+    google_enabled              = true
+    google_client_id            = "acctest-google-client-id-9f2b1e"
+    google_domain               = "example.com"
+    google_scope_email          = true
+    wechat_enabled              = true
+    wechat_app_id               = "acctest-wechat-app-id-9f2b1e"
+    wechat_shop_id              = "acctest-wechat-shop-id-9f2b1e"
+    authorize_use_sandbox       = true
+    ippay_use_sandbox           = true
+    merchantwarrior_use_sandbox = true
+    paypal_use_sandbox          = true
+    quickpay_testmode           = true
+    # auth_url is deliberately absent: the controller only stores it when
+    # auth is custom (see the Check block's own comment above), which this
+    # step's auth = "hotspot" is not.
+    custom_ip                   = "203.0.113.5"
+    voucher_customized          = true
+
+    # Task 5's 31 portal_customized_* fields. portal_customized_box_radius
+    # is deliberately 0: its own constraint's minimum is 0 (unlike
+    # box_opacity's 1 and logo_size's 64), so this is the live proof that an
+    # explicit 0 reaches the controller rather than being silently elided
+    # (see the Check block's own comment above).
+    portal_customized                          = true
+    portal_customized_authentication_text      = "Please sign in to continue"
+    portal_customized_bg_color                 = "#f5f5f5"
+    portal_customized_bg_image_enabled         = true
+    portal_customized_bg_image_filename        = "acctest-background-9f2b1e.jpg"
+    portal_customized_bg_image_tile            = false
+    portal_customized_bg_type                  = "image"
+    portal_customized_box_color                = "#ffffff"
+    portal_customized_box_link_color           = "#0066cc"
+    portal_customized_box_opacity              = 90
+    portal_customized_box_radius               = 0
+    portal_customized_box_text_color           = "#222222"
+    portal_customized_button_color             = "#0066cc"
+    portal_customized_button_text              = "Continue"
+    portal_customized_button_text_color        = "#ffffff"
+    portal_customized_languages                = ["en", "zh-CN"]
+    portal_customized_link_color               = "#0066cc"
+    portal_customized_logo_enabled             = true
+    portal_customized_logo_filename            = "acctest-logo-9f2b1e.png"
+    portal_customized_logo_position            = "center"
+    portal_customized_logo_size                = 96
+    portal_customized_success_text             = "You're connected"
+    portal_customized_text_color               = "#333333"
+    portal_customized_title                    = "Guest Wi-Fi"
+    portal_customized_tos                      = "By connecting you agree to acceptable use."
+    portal_customized_tos_enabled              = true
+    portal_customized_unsplash_author_name     = "Jane Doe"
+    portal_customized_unsplash_author_username = "janedoe"
+    portal_customized_welcome_text             = "Welcome to our guest network"
+    portal_customized_welcome_text_enabled     = true
+    portal_customized_welcome_text_position    = "under_logo"
+  }
+}
+`
+}
+
+func testAccSettingConfig_guestAccessUpdate() string {
+	return `
+resource "unifi_setting" "test" {
+  guest_access = {
+    portal_enabled    = true
+    auth              = "none"
+    password_enabled  = true
+    voucher_enabled   = true
+    payment_enabled   = true
+    gateway           = "stripe"
+    ec_enabled        = false
+    redirect_enabled  = true
+    redirect_url      = "https://example.com/welcome"
+    radius_enabled    = false
   }
 }
 `

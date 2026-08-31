@@ -5,10 +5,9 @@ package datasource_radius_user
 
 import (
 	"context"
-	"regexp"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 )
@@ -26,7 +25,7 @@ func RadiusUserDsDataSourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the account to look up.",
 				MarkdownDescription: "The name of the account to look up.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^[^"' ]+$`), ""),
+					controllerregex.Matches(`^[^"' ]+$`, ""),
 				},
 			},
 			"network_id": schema.StringAttribute{

@@ -50,9 +50,9 @@ func TestEverySettingSectionIsServedByExactlyOneSpecSection(t *testing.T) {
 	// A schema that stopped declaring any nested section (a generator
 	// regression, or built.Attributes silently coming back empty) would
 	// otherwise pass the loop above with nothing to check -- this pins that
-	// the walk actually saw the thirteen sections it's meant to.
-	if sawNested != 13 {
-		t.Errorf("resource_setting.SettingResourceSchema declares %d non-timeouts SingleNestedAttribute(s), want 13",
+	// the walk actually saw the twenty-four sections it's meant to.
+	if sawNested != 29 {
+		t.Errorf("resource_setting.SettingResourceSchema declares %d non-timeouts SingleNestedAttribute(s), want 29",
 			sawNested)
 	}
 
@@ -81,10 +81,10 @@ type settingSectionConformanceCase struct {
 // descriptor's own KitSpecConformance test applies (e.g.
 // TestRadiusKitSpecConformance in setting_radius_descriptor_test.go),
 // against one section's Spec and its own nested schema rather than a whole
-// resource's. Kept generic so every case in the table below -- thirteen
-// sections plus ips_suppression and usg_geo, ips's and usg's own second
-// Spec each -- can share it instead of repeating the four loops fifteen
-// times.
+// resource's. Kept generic so every case in the table below -- every
+// section plus ips_suppression and usg_geo, ips's and usg's own second
+// Spec each -- can share it instead of repeating the four loops once per
+// row.
 func checkSectionConformance[M any, S any](t *testing.T, spec resourcekit.Spec[M, S], built schema.Schema) {
 	t.Helper()
 	for _, problem := range resourcekit.WireNameProblems(spec) {
@@ -108,8 +108,8 @@ func checkSectionConformance[M any, S any](t *testing.T, spec resourcekit.Spec[M
 // descriptors under test to match settingKitSectionTable. A descriptor
 // deleted, renamed, or never wired into the table would leave its own test
 // file passing (or gone) without this failing; this table is keyed off the
-// same thirteen names settingKitSectionTable uses, plus the two Extra
-// documents, so a missing row here is as visible as a missing row there.
+// same names settingKitSectionTable uses, plus the two Extra documents, so
+// a missing row here is as visible as a missing row there.
 func TestEverySettingSectionPassesTheConformanceInstruments(t *testing.T) {
 	ctx := context.Background()
 
@@ -159,9 +159,57 @@ func TestEverySettingSectionPassesTheConformanceInstruments(t *testing.T) {
 		{"igmp_snooping", func(t *testing.T) {
 			checkSectionConformance(t, igmpSnoopingKitSpec(), igmpSnoopingNestedSchema(ctx))
 		}},
+		{"locale", func(t *testing.T) {
+			checkSectionConformance(t, localeKitSpec(), localeNestedSchema(ctx))
+		}},
+		{"global_nat", func(t *testing.T) {
+			checkSectionConformance(t, globalNatKitSpec(), globalNatNestedSchema(ctx))
+		}},
+		{"ssl_inspection", func(t *testing.T) {
+			checkSectionConformance(t, sslInspectionKitSpec(), sslInspectionNestedSchema(ctx))
+		}},
+		{"ipsec", func(t *testing.T) {
+			checkSectionConformance(t, ipsecKitSpec(), ipsecNestedSchema(ctx))
+		}},
+		{"dashboard", func(t *testing.T) {
+			checkSectionConformance(t, dashboardKitSpec(), dashboardNestedSchema(ctx))
+		}},
+		{"ether_lighting", func(t *testing.T) {
+			checkSectionConformance(t, etherLightingKitSpec(), etherLightingNestedSchema(ctx))
+		}},
+		{"global_network", func(t *testing.T) {
+			checkSectionConformance(t, globalNetworkKitSpec(), globalNetworkNestedSchema(ctx))
+		}},
+		{"traffic_flow", func(t *testing.T) {
+			checkSectionConformance(t, trafficFlowKitSpec(), trafficFlowNestedSchema(ctx))
+		}},
+		{"mdns", func(t *testing.T) {
+			checkSectionConformance(t, mdnsKitSpec(), mdnsNestedSchema(ctx))
+		}},
+		{"teleport", func(t *testing.T) {
+			checkSectionConformance(t, teleportKitSpec(), teleportNestedSchema(ctx))
+		}},
+		{"magic_site_to_site_vpn", func(t *testing.T) {
+			checkSectionConformance(t, magicSiteToSiteVpnKitSpec(), magicSiteToSiteVpnNestedSchema(ctx))
+		}},
+		{"global_switch", func(t *testing.T) {
+			checkSectionConformance(t, globalSwitchKitSpec(), globalSwitchNestedSchema(ctx))
+		}},
+		{"netflow", func(t *testing.T) {
+			checkSectionConformance(t, netflowKitSpec(), netflowNestedSchema(ctx))
+		}},
+		{"radio_ai", func(t *testing.T) {
+			checkSectionConformance(t, radioAiKitSpec(), radioAiNestedSchema(ctx))
+		}},
+		{"snmp", func(t *testing.T) {
+			checkSectionConformance(t, snmpKitSpec(), snmpNestedSchema(ctx))
+		}},
+		{"guest_access", func(t *testing.T) {
+			checkSectionConformance(t, guestAccessKitSpec(), guestAccessNestedSchema(ctx))
+		}},
 	}
-	if len(cases) != 15 {
-		t.Fatalf("settingSectionConformanceCase table has %d row(s), want 15 (thirteen sections plus "+
+	if len(cases) != 31 {
+		t.Fatalf("settingSectionConformanceCase table has %d row(s), want 31 (twenty-nine sections plus "+
 			"ips_suppression and usg_geo)", len(cases))
 	}
 

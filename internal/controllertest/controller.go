@@ -71,11 +71,41 @@ func DefaultControllerImage() string {
 // it's asked to set is already present there — so restating an override here
 // would collide with the value WithOsEnv just forwarded. The harness's only
 // job is supplying the default when there is nothing to forward.
+// effectiveControllerImage is the image this run actually uses: the caller's
+// override when there is one, the SDK-derived default otherwise. Start's log
+// line and composeEnv both read it, so a run's log cannot name an image
+// different from the one it started.
+func effectiveControllerImage() string {
+	if img := os.Getenv("UNIFI_TEST_CONTROLLER_IMAGE"); img != "" {
+		return img
+	}
+	return DefaultControllerImage()
+}
+
 func composeEnv() map[string]string {
 	if os.Getenv("UNIFI_TEST_CONTROLLER_IMAGE") != "" {
 		return nil
 	}
-	return map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": DefaultControllerImage()}
+	return map[string]string{"UNIFI_TEST_CONTROLLER_IMAGE": effectiveControllerImage()}
+}
+
+// verifyControllerVersion fails the run when the version the controller
+// itself reports disagrees with unifi.UnifiVersion, the SDK pin
+// DefaultControllerImage derives the image tag from. The tag cannot drift
+// from the pin, but nothing before this checked that the image that actually
+// booted agrees with its own tag — a mismatch here means the published image
+// was built from the wrong controller release. Start logs what it asked for
+// (effectiveControllerImage) before it starts anything; this logs what it
+// got, once there is a logged-in client to ask.
+func verifyControllerVersion(logger Logger, reported string) error {
+	logger.Printf("UniFi controller version: %s", reported)
+	if reported != unifi.UnifiVersion {
+		return fmt.Errorf(
+			"controller reported version %q, the SDK is pinned to %q: the running image does not match its own tag",
+			reported, unifi.UnifiVersion,
+		)
+	}
+	return nil
 }
 
 // Start brings up the controller, waits for its API, then starts the device
@@ -90,6 +120,11 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 		return nil, fmt.Errorf("read the compose file: %w", err)
 	}
 	c := &Controller{stack: stack}
+
+	// Named before the start, so a failed start still records what it tried.
+	// A run log that gives only an endpoint reads as though the default image
+	// produced the results, whatever actually ran.
+	logger.Printf("UniFi controller image: %s", effectiveControllerImage())
 
 	// Compose's own wait is not used: the image's healthcheck has a fixed
 	// retry budget a slow JVM can exhaust, and the failure would then be an
@@ -133,6 +168,9 @@ func Start(ctx context.Context, logger Logger, composePath string) (*Controller,
 		return c, err
 	}
 	c.Client = client
+	if err := verifyControllerVersion(logger, client.Version()); err != nil {
+		return c, err
+	}
 
 	// Every device the suite drives comes from the herder, which owns device
 	// planning and device-container lifecycle only: the network, the

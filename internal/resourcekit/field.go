@@ -364,6 +364,63 @@ func (f StringListField[M, S]) CopyPlanToState(plan, state *M) {
 	}
 }
 
+// Int64ListField maps a types.List of int64 to a []int64. Mirrors
+// StringListField almost exactly (int64 in place of string throughout) --
+// the same reasoning about a nil-versus-empty SDK slice applies unchanged.
+// radio_ai's channels_6e/channels_na/channels_ng/ht_modes_na/ht_modes_ng are
+// this kind's first five consumers; no existing Field kind covered []int64
+// before this one.
+type Int64ListField[M any, S any] struct {
+	Wire  string
+	Model func(*M) *types.List
+	SDK   func(*S) *[]int64
+	// Elide answers whether an empty collection from the API is an absence.
+	// Only an Optional-and-not-Computed attribute may set NullZero -- an
+	// Optional+Computed one may hold an explicit empty from the practitioner,
+	// and nulling it disagrees with config.
+	Elide ElideZero
+}
+
+func (f Int64ListField[M, S]) WireName() string { return f.Wire }
+
+func (f Int64ListField[M, S]) ToSDK(ctx context.Context, model *M, sdk *S) diag.Diagnostics {
+	// See StringListField.ToSDK: the seed comes before the null check so an
+	// absent list marshals as [] rather than the nil the SDK's zero value
+	// would otherwise leave in place.
+	*f.SDK(sdk) = []int64{}
+	value := f.Model(model)
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	return value.ElementsAs(ctx, f.SDK(sdk), false)
+}
+
+func (f Int64ListField[M, S]) ToModel(ctx context.Context, sdk *S, model *M) diag.Diagnostics {
+	values := *f.SDK(sdk)
+	if len(values) == 0 && bool(f.Elide) {
+		*f.Model(model) = types.ListNull(types.Int64Type)
+		return nil
+	}
+	// Same nil-is-not-empty trap as StringListField; see the note there.
+	if values == nil {
+		values = []int64{}
+	}
+	list, diags := types.ListValueFrom(ctx, types.Int64Type, values)
+	*f.Model(model) = list
+	return diags
+}
+
+func (f Int64ListField[M, S]) SetInPlan(plan *M) bool {
+	value := f.Model(plan)
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+func (f Int64ListField[M, S]) CopyPlanToState(plan, state *M) {
+	if f.SetInPlan(plan) {
+		*f.Model(state) = *f.Model(plan)
+	}
+}
+
 // StringSetField maps a types.Set of strings to a []string.
 //
 // A set is not a list with a different name: Terraform compares set

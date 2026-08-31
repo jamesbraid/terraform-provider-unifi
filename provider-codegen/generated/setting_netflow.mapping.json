@@ -1,0 +1,86 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.netflow",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "auto_engine_id_enabled",
+      "terraform_name": "auto_engine_id_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "engine_id",
+      "terraform_name": "engine_id",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "export_frequency",
+      "terraform_name": "export_frequency",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "network_ids",
+      "terraform_name": "network_ids",
+      "structural_type": "array<string>",
+      "terraform_type": "list",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "port",
+      "terraform_name": "port",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "refresh_rate",
+      "terraform_name": "refresh_rate",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "sampling_mode",
+      "terraform_name": "sampling_mode",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "sampling_rate",
+      "terraform_name": "sampling_rate",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "server",
+      "terraform_name": "server",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "version",
+      "terraform_name": "version",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

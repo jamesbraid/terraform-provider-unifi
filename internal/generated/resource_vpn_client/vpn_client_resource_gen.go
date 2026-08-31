@@ -5,18 +5,17 @@ package resource_vpn_client
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/cidrtypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/ubiquiti-community/terraform-provider-unifi/internal/controllerregex"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -51,7 +50,7 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The name of the VPN client.",
 				MarkdownDescription: "The name of the VPN client.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(?:.{1,128})$`), ""),
+					controllerregex.Matches(`.{1,128}`, ""),
 				},
 			},
 			"pull_dns": schema.BoolAttribute{
@@ -77,7 +76,7 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "The local IP address for the WireGuard tunnel in CIDR notation (e.g., `10.0.0.2/24`).",
 				MarkdownDescription: "The local IP address for the WireGuard tunnel in CIDR notation (e.g., `10.0.0.2/24`).",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$`), ""),
+					controllerregex.Matches(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\/([1-9]|[1-2][0-9]|3[0-2])$`, ""),
 				},
 			},
 			"wireguard": schema.SingleNestedAttribute{
@@ -115,7 +114,7 @@ func VpnClientResourceSchema(ctx context.Context) schema.Schema {
 						Description:         "WAN interface to use for the VPN connection (e.g., `wan`, `wan2`).",
 						MarkdownDescription: "WAN interface to use for the VPN connection (e.g., `wan`, `wan2`).",
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(regexp.MustCompile(`^(?:wan[2-9]?)$`), ""),
+							controllerregex.Matches(`wan[2-9]?`, ""),
 						},
 						Default: stringdefault.StaticString("wan"),
 					},

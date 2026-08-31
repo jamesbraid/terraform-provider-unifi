@@ -3,6 +3,8 @@ package resourcekit
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
@@ -12,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	ui "github.com/ubiquiti-community/go-unifi/unifi"
+	"github.com/ubiquiti-community/go-unifi/unifi/settings"
 )
 
 // ssModel stands in for settingResourceModel: one section attribute (plus a
@@ -179,6 +182,153 @@ func TestSpecSectionWriteSkipsAnEmptyMaskInsteadOfErroring(t *testing.T) {
 	}
 	if called {
 		t.Error("Backend.UpdateFields was called with an empty mask; it should have been skipped")
+	}
+}
+
+// TestSpecSectionWriteDiagnosticNeverCarriesTheRealSDKsPayload is the
+// load-bearing regression test for the guest_access-secrets-review finding:
+// go-unifi's client appends the raw request body to every non-2xx error
+// ("... \npayload: {...}"), redacted by a fixed substring list keyed on
+// field NAME that the SDK guesses at without ever consulting this
+// provider's own schema. Eleven of guest_access's 18 Sensitive wire names
+// (and snmp's community) are outside that list, so a failed write printed
+// them verbatim into a practitioner-visible diagnostic -- the console, CI
+// logs, TF_LOG files, Terraform Cloud run logs.
+//
+// This drives the real pinned go-unifi client (ui.New, the same
+// constructor every kit backend uses) against an httptest server that
+// returns a genuine 400, so the error text this test inspects is whatever
+// unifi.go's doRequest actually formats today, not a string this test
+// wrote. A future go-unifi bump that changes the marker text, the field
+// order, or drops the payload tail entirely changes what this test
+// exercises along with it, instead of leaving a hand-built stand-in green
+// while the real thing silently stops matching.
+func TestSpecSectionWriteDiagnosticNeverCarriesTheRealSDKsPayload(t *testing.T) {
+	const marker = "LEAKMARK-should-never-reach-a-diagnostic"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/proxy/network/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"meta":{"server_version":"10.4.57"}}`))
+			return
+		}
+		// Every other request -- including the real masked PUT
+		// UpdateSettingFields sends -- is rejected, so the client's real
+		// error-formatting path runs and appends its own payload tail.
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"meta":{"rc":"error","msg":"api.err.InvalidPayload"}}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := ui.New(context.Background(), &ui.Config{BaseURL: server.URL, APIKey: "test-key"})
+	if err != nil {
+		t.Fatalf("create the API client: %v", err)
+	}
+
+	// x_stripe_api_key is a real settings.GuestAccess field, and one of the
+	// five genuine credentials the review measured leaking through this
+	// exact path -- wire name unmatched by the SDK's own redaction
+	// substrings, same as it was in production.
+	attrTypes := map[string]attr.Type{"stripe_api_key": types.StringType}
+	spec := Spec[sdkPayloadProbeModel, settings.GuestAccess]{
+		TypeName: "sdk_payload_probe",
+		Subject:  "SDK Payload Probe",
+		New:      func() *settings.GuestAccess { return &settings.GuestAccess{} },
+		Fields: []Field[sdkPayloadProbeModel, settings.GuestAccess]{
+			StringField[sdkPayloadProbeModel, settings.GuestAccess]{
+				Wire:  "x_stripe_api_key",
+				Model: func(m *sdkPayloadProbeModel) *types.String { return &m.StripeApiKey },
+				SDK:   func(s *settings.GuestAccess) *string { return &s.StripeApiKey },
+				Elide: KeepZero,
+			},
+		},
+		Backend: Backend[settings.GuestAccess]{
+			UpdateFields: func(ctx context.Context, site string, in *settings.GuestAccess, fields ...string) (*settings.GuestAccess, error) {
+				if err := client.UpdateSettingFields(ctx, site, in, fields...); err != nil {
+					return nil, err
+				}
+				return in, nil
+			},
+		},
+	}
+
+	section := SpecSection[ssModel, sdkPayloadProbeModel, settings.GuestAccess]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   attrTypes,
+		Spec:        spec,
+	}
+
+	object, diags := types.ObjectValueFrom(context.Background(), attrTypes, sdkPayloadProbeModel{
+		StripeApiKey: types.StringValue(marker),
+	})
+	if diags.HasError() {
+		t.Fatalf("build section object: %v", diags)
+	}
+	plan := ssModel{Section: object}
+
+	writeDiags := section.Write(context.Background(), "default", &plan, nil, "Creating")
+	if !writeDiags.HasError() {
+		t.Fatal("expected the controller's 400 to produce a diagnostic")
+	}
+	for _, d := range writeDiags.Errors() {
+		if strings.Contains(d.Detail(), marker) {
+			t.Errorf("diagnostic detail carries the real SDK's request payload verbatim: %q", d.Detail())
+		}
+		if strings.Contains(d.Detail(), "payload:") {
+			t.Errorf("diagnostic detail still carries a payload tail: %q", d.Detail())
+		}
+	}
+}
+
+// sdkPayloadProbeModel is the minimal model
+// TestSpecSectionWriteDiagnosticNeverCarriesTheRealSDKsPayload needs: one
+// string attribute standing in for a Sensitive field on a real SDK struct.
+type sdkPayloadProbeModel struct {
+	StripeApiKey types.String `tfsdk:"stripe_api_key"`
+}
+
+// TestSpecSectionWriteDiagnosticDropsAHandBuiltSDKShapedPayload documents
+// the shape unifi.go's doRequest formats a non-2xx error in
+// ("... \npayload: {...}"), against a string this test constructs rather
+// than the SDK's own. Kept alongside
+// TestSpecSectionWriteDiagnosticNeverCarriesTheRealSDKsPayload (the
+// load-bearing case, which drives the real client) because a hand-built
+// string is cheap to read and exercises the truncation directly, but it
+// cannot by itself prove the fix still matches a future SDK format change
+// -- only the real-client test can.
+func TestSpecSectionWriteDiagnosticDropsAHandBuiltSDKShapedPayload(t *testing.T) {
+	sdkErr := errors.New(
+		"api.err.InvalidPayload (400 Bad Request) for PUT https://example.invalid/api/s/default/set/setting/guest_access\n" +
+			`payload: {"key":"guest_access","name":"LEAKMARK-should-never-reach-a-diagnostic"}`,
+	)
+	section := SpecSection[ssModel, ssSectionModel, ssSDK]{
+		SectionName: "section",
+		Get:         func(m *ssModel) *types.Object { return &m.Section },
+		Set:         func(m *ssModel, o types.Object) { m.Section = o },
+		AttrTypes:   ssAttrTypes(),
+		Spec: ssSpec(Backend[ssSDK]{
+			UpdateFields: func(_ context.Context, _ string, _ *ssSDK, _ ...string) (*ssSDK, error) {
+				return nil, sdkErr
+			},
+		}),
+	}
+
+	name := "foo"
+	plan := ssModel{Section: ssSectionObject(t, &name)}
+	diags := section.Write(context.Background(), "site-1", &plan, nil, "Creating")
+	if !diags.HasError() {
+		t.Fatal("expected the backend's error to produce a diagnostic")
+	}
+	for _, d := range diags.Errors() {
+		if strings.Contains(d.Detail(), "LEAKMARK") {
+			t.Errorf("diagnostic detail carries the SDK's request payload verbatim: %q", d.Detail())
+		}
+		if strings.Contains(d.Detail(), "payload:") {
+			t.Errorf("diagnostic detail still carries a payload tail: %q", d.Detail())
+		}
 	}
 }
 

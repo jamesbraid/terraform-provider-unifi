@@ -247,14 +247,14 @@ func deviceKitPrefetch() func(context.Context, string) (any, diag.Diagnostics) {
 	}
 }
 
-// deviceKitBeforeSend adopts the device when creating, and merges port
-// overrides on every write.
+// deviceKitBeforeSend adopts the device when creating, and writes declared
+// port overrides through the keyed overlay.
 func deviceKitBeforeSend(
 	client *ui.ApiClient,
 ) func(context.Context, *deviceKitModel, *deviceKitModel, deviceKitModel, *ui.Device, any) diag.Diagnostics {
 	return func(
 		ctx context.Context,
-		_, effective *deviceKitModel,
+		config, effective *deviceKitModel,
 		_ deviceKitModel,
 		sdk *ui.Device,
 		prefetched any,
@@ -302,8 +302,9 @@ func deviceKitBeforeSend(
 				return diags
 			}
 		} else {
-			// An update tolerates a failed lookup; the merge below simply
-			// has nothing to preserve.
+			// An update tolerates a failed lookup: current only feeds the type
+			// echo below, and an update's state already carries its own type
+			// from the last read.
 			current, _ = client.GetDeviceByMAC(ctx, site, mac)
 		}
 
@@ -346,27 +347,42 @@ func deviceKitBeforeSend(
 			sdk.ID = current.ID
 		}
 
-		// The PUT replaces the whole port array, so this always starts from
-		// what the controller holds to avoid clobbering unmanaged ports.
-		// port_overrides is deliberately not in AlwaysWire -- forcing it in
-		// would undo that.
-		//
 		// type is echoed from the controller on create: it's Computed, so the
 		// plan holds it unknown and the mask would otherwise omit it entirely.
 		if sdk.Type == "" && current != nil {
 			sdk.Type = current.Type
 		}
 
-		// port_overrides is not a Field, so ToSDK left it empty and the
-		// declared blocks have to be encoded here.
-		declared, d := devicePortOverridesFromModel(ctx, effective.PortOverride)
+		// port_overrides is not a Field and stays off AlwaysWire: it is
+		// written through its own keyed overlay
+		// (updateDevicePortOverridesGrouped), one UpdateDevicePortOverrides
+		// call per distinct declared member set, never through the general
+		// masked device write. Measured against a live controller: a single
+		// call carrying every declared member forces each port's undeclared
+		// members to their Go zero value, so ports with different declared
+		// member sets can never share a call, and an update that declares no
+		// port_override block sends no port-overrides call at all, which is
+		// what leaves an unconfigured port untouched.
+		declared, d := devicePortOverridesDeclaredFromConfig(ctx, config.PortOverride)
 		diags.Append(d...)
 		if diags.HasError() {
 			return diags
 		}
-		sdk.PortOverrides = portOverridesForUpdate(
-			current, deviceDedupePortOverrides(declared),
-		)
+		declared = dedupeDeclaredPortOverrides(declared)
+		// A block that declares no writable member -- port_override { index
+		// = 1 }, or one naming only index and the default op_mode -- means
+		// "manage this port, change nothing" under a masked write, so it is
+		// dropped here rather than sent: UpdateDevicePortOverrides refuses an
+		// empty mask outright, and letting that error through would abort
+		// every other declared port's write too, mid-apply, after some of
+		// them had already gone out.
+		declared = declaredPortOverridesWithFields(declared)
+		if len(declared) > 0 {
+			if _, err := updateDevicePortOverridesGrouped(ctx, client, site, sdk, declared); err != nil {
+				diags.AddError("Error Updating Port Overrides", err.Error())
+				return diags
+			}
+		}
 
 		return diags
 	}
@@ -383,14 +399,21 @@ func deviceKitBeforeSend(
 //
 // tagged_networkconf_ids is declarable-but-inert: this Encode never writes
 // it, even though the SDK has DevicePortOverrides.TaggedNetworkIDs, because
-// wiring only one direction would create a permanent diff.
+// wiring only one direction would create a permanent diff. Wiring both
+// directions would not fix the practitioner-visible problem either: measured
+// directly against this controller generation (bypassing this dead code
+// path, straight through UpdateDevicePortOverrides), a value placed on the
+// wire is accepted and discarded, and forward is additionally reverted to
+// "all". See the tagged_networkconf_ids description in
+// provider-codegen/policy/device.json and this resource's ValidateConfig
+// (device_validate.go) for the practitioner-facing side of that finding.
 func devicePortOverrideEncode(
 	ctx context.Context, object types.Object,
-) (ui.DevicePortOverrides, diag.Diagnostics) {
+) (ui.DevicePortOverrides, []string, diag.Diagnostics) {
 	var model portOverrideModel
 	diags := object.As(ctx, &model, basetypes.ObjectAsOptions{})
 	if diags.HasError() {
-		return ui.DevicePortOverrides{}, diags
+		return ui.DevicePortOverrides{}, nil, diags
 	}
 
 	po := ui.DevicePortOverrides{
@@ -460,27 +483,156 @@ func devicePortOverrideEncode(
 		diags.Append(model.PortSecurityMACAddress.ElementsAs(
 			ctx, &po.PortSecurityMACAddress, true)...)
 	}
-	return po, diags
+
+	fields := devicePortOverrideDeclaredFields(model)
+	if model.Index.IsUnknown() {
+		// An index Terraform has not resolved yet cannot address a real
+		// port: ValueInt64Pointer() returns a pointer to 0 for an unknown
+		// value rather than nil, so leaving this alone would aim the write
+		// at port 0. Report nothing declared instead -- the caller drops an
+		// empty-fields entry (see the F1 fix in deviceKitBeforeSend), and
+		// the block takes effect on a later apply once index is known.
+		po.PortIDX = nil
+		fields = nil
+	}
+	return po, fields, diags
 }
 
-// deviceDedupePortOverrides keeps one block per port index, the last one wins.
+// devicePortOverrideDeclaredFields lists the wire names of the members this
+// block's config actually set, for the masked write
+// (updateDevicePortOverridesGrouped, driven from
+// devicePortOverridesDeclaredFromConfig).
+//
+// It reads model's own null-ness and known-ness, not the po struct
+// devicePortOverrideEncode just built: every member of
+// ui.DevicePortOverrides sits at its Go zero value when the config left it
+// alone, indistinguishable from a member the config set to that same zero
+// value. Inferring "declared" from po would reintroduce, one layer up, the
+// exact bug measured against a live controller: a member two ports
+// disagree on gets forced to its zero value on whichever port didn't name
+// it. Unknown is checked alongside null for the same reason resourcekit's
+// own Field implementations do (field.go, object_field.go,
+// conditional_field.go, elide_check.go): a value Terraform has not
+// resolved yet has no value to write, and the unsafe ValueString/
+// ValueBool/ValueInt64Pointer accessors return the Go zero for it just
+// like they do for null.
+//
+// index and tagged_networkconf_ids never appear here: index addresses the
+// entry rather than configuring it, and tagged_networkconf_ids is
+// declarable-but-inert (see the comment on devicePortOverrideEncode).
+//
+// A member added to devicePortOverrideEncode without a matching declare()
+// call here silently stops being writable through the masked path.
+// Test_devicePortOverrideDeclaredFields_matchesEveryModeledMember pins the
+// full set so that gap fails a test instead of shipping quietly.
+func devicePortOverrideDeclaredFields(model portOverrideModel) []string {
+	var fields []string
+	declare := func(wire string, v attr.Value) {
+		if !v.IsNull() && !v.IsUnknown() {
+			fields = append(fields, wire)
+		}
+	}
+
+	declare("name", model.Name)
+	declare("portconf_id", model.PortProfileID)
+	declare("poe_mode", model.PoeMode)
+	declare("dot1x_ctrl", model.Dot1XCtrl)
+	declare("fec_mode", model.FecMode)
+	declare("forward", model.Forward)
+	declare("native_networkconf_id", model.NativeNetworkID)
+	declare("setting_preference", model.SettingPreference)
+	declare("stormctrl_type", model.StormctrlType)
+	declare("tagged_vlan_mgmt", model.TaggedVLANMgmt)
+	declare("voice_networkconf_id", model.VoiceNetworkID)
+
+	declare("autoneg", model.Autoneg)
+	declare("egress_rate_limit_kbps_enabled", model.EgressRateLimitKbpsEnabled)
+	declare("flow_control_enabled", model.FlowControlEnabled)
+	declare("full_duplex", model.FullDuplex)
+	declare("isolation", model.Isolation)
+	declare("lldpmed_enabled", model.LldpmedEnabled)
+	declare("lldpmed_notify_enabled", model.LldpmedNotifyEnabled)
+	declare("port_keepalive_enabled", model.PortKeepaliveEnabled)
+	declare("port_security_enabled", model.PortSecurityEnabled)
+	declare("stormctrl_bcast_enabled", model.StormctrlBroadcastEnabled)
+	declare("stormctrl_mcast_enabled", model.StormctrlMcastEnabled)
+	declare("stormctrl_ucast_enabled", model.StormctrlUcastEnabled)
+	declare("stp_port_mode", model.StpPortMode)
+
+	declare("egress_rate_limit_kbps", model.EgressRateLimitKbps)
+	declare("mirror_port_idx", model.MirrorPortIDX)
+	declare("priority_queue1_level", model.PriorityQueue1Level)
+	declare("priority_queue2_level", model.PriorityQueue2Level)
+	declare("priority_queue3_level", model.PriorityQueue3Level)
+	declare("priority_queue4_level", model.PriorityQueue4Level)
+	declare("speed", model.Speed)
+	declare("stormctrl_bcast_level", model.StormctrlBroadcastLevel)
+	declare("stormctrl_bcast_rate", model.StormctrlBroadcastRate)
+	declare("stormctrl_mcast_level", model.StormctrlMcastLevel)
+	declare("stormctrl_mcast_rate", model.StormctrlMcastRate)
+	declare("stormctrl_ucast_level", model.StormctrlUcastLevel)
+	declare("stormctrl_ucast_rate", model.StormctrlUcastRate)
+
+	// Same non-default rule devicePortOverrideEncode applies to op_mode
+	// above: a config value of "switch" is the default and must stay off
+	// the wire on gateway devices, so it isn't treated as declared either.
+	// Unknown is excluded explicitly rather than through declare(): an
+	// unknown ValueString() also returns "", so opMode != "" already
+	// excludes it, but that's incidental to the != "" check rather than a
+	// stated rule, and this makes it one.
+	if !model.OpMode.IsUnknown() {
+		if opMode := model.OpMode.ValueString(); opMode != "" && opMode != "switch" {
+			fields = append(fields, "op_mode")
+		}
+	}
+	declare("dot1x_idle_timeout", model.Dot1XIDleTimeout)
+	declare("aggregate_members", model.AggregateMembers)
+	declare("excluded_networkconf_ids", model.ExcludedNetworkIDs)
+	declare("multicast_router_networkconf_ids", model.MulticastRouterNetworkIDs)
+	declare("port_security_mac_address", model.PortSecurityMACAddress)
+
+	return fields
+}
+
+// dedupeDeclaredPortOverrides keeps one declared entry per port index, the
+// last one wins.
 //
 // A set won't catch two blocks that name the same port but differ elsewhere;
-// without this dedup, both would be sent.
-func deviceDedupePortOverrides(overrides []ui.DevicePortOverrides) []ui.DevicePortOverrides {
-	seen := make(map[int64]int, len(overrides))
-	out := make([]ui.DevicePortOverrides, 0, len(overrides))
-	for _, po := range overrides {
-		if po.PortIDX == nil {
-			out = append(out, po)
+// without this dedup, both would be sent -- as two separate
+// UpdateDevicePortOverrides calls if their declared fields differ, racing
+// each other for the same port_idx.
+func dedupeDeclaredPortOverrides(declared []declaredPortOverride) []declaredPortOverride {
+	seen := make(map[int64]int, len(declared))
+	out := make([]declaredPortOverride, 0, len(declared))
+	for _, d := range declared {
+		if d.Override.PortIDX == nil {
+			out = append(out, d)
 			continue
 		}
-		if at, duplicate := seen[*po.PortIDX]; duplicate {
-			out[at] = po
+		if at, duplicate := seen[*d.Override.PortIDX]; duplicate {
+			out[at] = d
 			continue
 		}
-		seen[*po.PortIDX] = len(out)
-		out = append(out, po)
+		seen[*d.Override.PortIDX] = len(out)
+		out = append(out, d)
+	}
+	return out
+}
+
+// declaredPortOverridesWithFields drops entries whose config declared no
+// writable member: an unknown index also lands here, since
+// devicePortOverrideEncode clears Fields for it rather than address a
+// still-unresolved port (see the comment there). Writing nothing is the
+// correct answer for "manage this port, change nothing" under a masked
+// write, and it also has to happen before grouping -- an empty mask is not
+// a valid UpdateDevicePortOverrides call, it is a refused one.
+func declaredPortOverridesWithFields(declared []declaredPortOverride) []declaredPortOverride {
+	out := make([]declaredPortOverride, 0, len(declared))
+	for _, d := range declared {
+		if len(d.Fields) == 0 {
+			continue
+		}
+		out = append(out, d)
 	}
 	return out
 }
@@ -597,16 +749,29 @@ func deviceReconcilePortOverrides(
 	return setValue, diags
 }
 
-// devicePortOverridesFromModel encodes the declared blocks into SDK overrides.
-func devicePortOverridesFromModel(
-	ctx context.Context, set types.Set,
-) ([]ui.DevicePortOverrides, diag.Diagnostics) {
+// devicePortOverridesDeclaredFromConfig encodes port_override blocks
+// together with the exact members each block's config named, for the
+// masked write updateDevicePortOverridesGrouped performs.
+//
+// It reads config, not the plan/state effective carries: an Optional+Computed
+// member (autoneg, stp_port_mode, op_mode, ...) can be non-null in state
+// purely because a prior read filled it in, never because the practitioner
+// wrote it -- treating that as "declared" would send it on every future
+// update regardless of what config says, and, worse, would make two ports
+// with different Optional+Computed history look like they declared
+// different member sets when neither's config named the member at all.
+// config carries none of that: an attribute the practitioner did not write
+// is null there, full stop, which is exactly the "declared or not" signal
+// the masked write needs -- see devicePortOverrideDeclaredFields.
+func devicePortOverridesDeclaredFromConfig(
+	ctx context.Context, config types.Set,
+) ([]declaredPortOverride, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	if set.IsNull() || set.IsUnknown() {
+	if config.IsNull() || config.IsUnknown() {
 		return nil, diags
 	}
-	elements := set.Elements()
-	out := make([]ui.DevicePortOverrides, 0, len(elements))
+	elements := config.Elements()
+	out := make([]declaredPortOverride, 0, len(elements))
 	for _, elem := range elements {
 		object, ok := elem.(types.Object)
 		if !ok {
@@ -616,12 +781,12 @@ func devicePortOverridesFromModel(
 			))
 			continue
 		}
-		po, d := devicePortOverrideEncode(ctx, object)
+		po, fields, d := devicePortOverrideEncode(ctx, object)
 		diags.Append(d...)
 		if diags.HasError() {
 			return nil, diags
 		}
-		out = append(out, po)
+		out = append(out, declaredPortOverride{Override: po, Fields: fields})
 	}
 	return out, diags
 }
@@ -1004,10 +1169,18 @@ func deviceKitSpec() resourcekit.Spec[deviceKitModel, ui.Device] {
 		Prefetch:     deviceKitPrefetch(),
 		AfterReceive: deviceKitAfterReceive(),
 
-		// AlwaysWire only for values BeforeSend fills that no Field's plan value
-		// could carry: port_overrides isn't a Field at all, and type is
-		// Computed so an unknown create-time plan would otherwise omit it.
-		AlwaysWire: []string{"port_overrides", "type"},
+		// AlwaysWire only for values BeforeSend fills that no Field's plan
+		// value could carry: type is Computed, so an unknown create-time plan
+		// would otherwise omit it. port_overrides is not here -- it is never
+		// part of the general masked write at all, see deviceKitBeforeSend.
+		AlwaysWire: []string{"type"},
+
+		// port_overrides round-trips (deviceReconcilePortOverrides on read,
+		// updateDevicePortOverridesGrouped via deviceKitBeforeSend on write)
+		// without ever being a Fields entry or an AlwaysWire name, so it
+		// needs to be named here or TestEveryDescriptorAgreesWithItsSources
+		// reads it as a managed mapping.json field this descriptor drops.
+		MappedElsewhere: []string{"port_overrides"},
 
 		// A device is hardware. Destroying the resource releases it from state;
 		// forgetting the device is a separate, opt-in act.

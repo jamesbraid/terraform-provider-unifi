@@ -85,13 +85,13 @@ resource "unifi_device" "us_24_poe" {
 - `locked` (Boolean) Specifies whether the device is locked.
 - `mac` (String) The MAC address of the device. This can be specified so that the provider can take control of a device (since devices are created through adoption).
 - `mesh_sta_vap_enabled` (Boolean) Enable the mesh station VAP (the UI "Mesh Connect" toggle), letting this AP uplink wirelessly to a mesh parent.
-- `mgmt_network_id` (String) Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink (a port_override tagged_networkconf_ids entry) first, then set mgmt_network_id. Leave unset to manage on the uplink's native (untagged) network.
+- `mgmt_network_id` (String) Management network ID. The network this device uses for its own management traffic (the UI's Network Override). When set, the device tags its management onto this network's VLAN, so that VLAN must already be tagged on the device's upstream switch port(s) before this attribute is applied. Otherwise the device loses its management path, drops off, and the apply fails with an inconsistent-result error. Apply in two steps: tag the VLAN on the uplink first, then set mgmt_network_id. Measured on this controller generation: port_override's tagged_networkconf_ids does not achieve the first step -- it is accepted and discarded -- so tag the VLAN through the controller's own UI until a working provider path exists. Leave unset to manage on the uplink's native (untagged) network.
 - `name` (String) The name of the device.
 - `outdoor_mode_override` (String) Outdoor mode override; valid values are `default`, `on`, and `off`.
 - `outlet_enabled` (Boolean) Enable outlet control.
 - `outlet_overrides` (Attributes List) Outlet configuration overrides. (see [below for nested schema](#nestedatt--outlet_overrides))
 - `poe_mode` (String) PoE mode; valid values are `auto`, `pasv24`, `passthrough`, and `off`.
-- `port_override` (Block Set) Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration — the provider merges your declared ports (by `index`) into the device's current overrides rather than replacing the whole set. Removing a block stops managing that port but does not reset it; clear a port by overriding it back to the defaults instead. (see [below for nested schema](#nestedblock--port_override))
+- `port_override` (Block Set) Per-port settings overrides, applied only to the ports you declare. Ports without a `port_override` block keep their existing controller-side configuration, and each declared block writes only the attributes it names — an attribute you never set, or later remove from the block, keeps whatever the controller currently holds rather than reverting to a default. To change a value set it explicitly; to clear one, set it to the value you want rather than deleting the line. Removing a block entirely stops managing that port but does not reset it either. (see [below for nested schema](#nestedblock--port_override))
 - `radio_table` (Attributes List) Radio configuration table. (see [below for nested schema](#nestedatt--radio_table))
 - `site` (String) The name of the site to associate the device with.
 - `stp_priority` (Number) STP priority.
@@ -165,7 +165,7 @@ Optional:
 - `multicast_router_networkconf_ids` (Set of String) List of network IDs for multicast router.
 - `name` (String) Human-readable name of the port.
 - `native_networkconf_id` (String) Native network ID (VLAN).
-- `op_mode` (String) Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update.
+- `op_mode` (String) Operating mode of the port: `switch` (default), `mirror`, or `aggregate`. Set `aggregate` on the lead port of an SFP+/link-aggregation (LAG) group and list the member ports in `aggregate_members`. Only written when not `switch`, as gateway devices (UDM) reject op_mode on update -- which also means setting this back to `switch` has no effect on the controller; remove the aggregation there directly.
 - `poe_mode` (String) PoE mode of the port; valid values are `auto`, `pasv24`, `passthrough`, and `off`.
 - `port_keepalive_enabled` (Boolean) Enable port keepalive.
 - `port_profile_id` (String) ID of the Port Profile used on this port.
@@ -188,7 +188,7 @@ Optional:
 - `stormctrl_ucast_level` (Number) Unicast storm control level.
 - `stormctrl_ucast_rate` (Number) Unicast storm control rate.
 - `stp_port_mode` (Boolean) STP port mode.
-- `tagged_networkconf_ids` (Set of String) List of network IDs to tag on this port.
+- `tagged_networkconf_ids` (Set of String) List of network IDs to tag on this port. Measured on this controller generation: a declared value is accepted (`200`/`rc:ok`) and discarded, and `forward` is additionally reverted to `"all"` -- so setting this attribute currently has no effect. This is scoped to this controller generation, not asserted as a permanent property of the field; a different or newer controller may honor it.
 - `tagged_vlan_mgmt` (String) Tagged VLAN management.
 - `voice_networkconf_id` (String) Voice network ID.
 

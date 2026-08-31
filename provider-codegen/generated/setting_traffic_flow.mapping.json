@@ -1,0 +1,37 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.traffic_flow",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "enabled_allowed_traffic",
+      "terraform_name": "enabled_allowed_traffic",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "gateway_dns_enabled",
+      "terraform_name": "gateway_dns_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "unifi_device_management_enabled",
+      "terraform_name": "unifi_device_management_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "unifi_services_enabled",
+      "terraform_name": "unifi_services_enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}

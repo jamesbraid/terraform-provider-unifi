@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_section",
+  "surface_name": "unifi_setting.ipsec",
+  "resource": "unifi_setting",
+  "fields": [
+    {
+      "structural_name": "ikev2_reauthentication_method",
+      "terraform_name": "ikev2_reauthentication_method",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": []
+}
