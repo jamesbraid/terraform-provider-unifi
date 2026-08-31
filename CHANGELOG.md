@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.109.0] - DRAFT, unreleased
+## [v0.109.0] - 2026-08-31
 
 ### ⚠️ Breaking Changes
 
@@ -33,6 +33,112 @@ All notable changes to this project will be documented in this file.
   the whole array.** This is what makes the two changes above safe; a
   config declaring many differently-shaped `port_override` blocks now
   issues more requests per apply than before.
+
+- **`unifi_network.domain_name` now rejects dotted names whose final label
+  is not 2 to 63 ASCII letters.** The attribute never carried a derived
+  validator before: the controller's own pattern uses lookahead, which Go's
+  regular expression engine cannot compile, so the provider suppressed it.
+  This release compiles the controller's patterns with an engine that
+  handles them, so the rule reaches plan time for the first time. Names such
+  as `internal.corp1`, `domain.local2`, `net.1`, `a.b` and `192.168.1.1` are
+  now refused. None of them ever worked — the controller rejected them at
+  apply, re-measured against a live controller for this release — so what
+  changes is when the failure arrives, not whether it does. A single
+  undotted label still works, so `corp1` is accepted where `internal.corp1`
+  is not. Note that the controller's pattern refuses every punycode top
+  level domain, so an internationalised domain cannot be set here at all.
+- **Five `unifi_setting` attributes gain validation they never had.** The
+  code generator had never derived validators for the top-level fields of
+  any settings section, because the controller's constraint table is keyed
+  differently from its Go types and the lookup silently found nothing.
+  Fixed here. Nineteen sets that had been transcribed by hand turn out to
+  have been transcribed correctly and are unchanged. Five fields had no
+  validator at all and now do: `mgmt.ssh_password` (1 to 128 characters and
+  no newline, so an empty value is refused), `mgmt.ssh_username` (a
+  Unix-style name), `usg.mss_clamp` (`auto`, `custom`, `disabled`),
+  `usg.timeout_setting_preference` (`auto`, `reduced`, `manual`), and
+  `usg.upnp_wan_interface` (`WAN`, or `WAN2` through `WAN9` — there is no
+  `WAN1`).
+- **`unifi_firewall_policy.protocol` no longer accepts malformed values such
+  as `axX25` or `ax:25`.** The controller's constraint table spelled the
+  AX.25 protocol with an unescaped dot, so the derived validator read it as
+  "any character" and accepted anything of that shape. Values naming the
+  real `ax.25` protocol are unaffected. This does not apply to
+  `unifi_firewall_rule.protocol`, which continues to accept those values —
+  measured on the same controller, the newer firewall-policy endpoint
+  refuses them while the older firewall-rule endpoint accepts and stores
+  them. The two attributes differ because the two controller surfaces do.
+
+### 🔒 Fixed
+
+- **Credentials no longer appear in Terraform error messages.** When the
+  controller rejected a write, the provider included the request body in the
+  resulting error. Values were redacted only if the field's name contained
+  one of six substrings, so anything named differently was printed in full.
+  Affected fields included OpenVPN CA, server, Diffie-Hellman and shared
+  client private keys, and the guest portal's payment gateway credentials.
+  Any failed apply could disclose them — into a terminal, a CI log, or a bug
+  report. The provider now strips the request body from every error it
+  raises, using the schema's own record of which attributes are sensitive
+  rather than guessing from field names.
+
+### ✨ Features
+
+- **`unifi_setting` gains sixteen new sections**: `locale`, `global_nat`,
+  `ssl_inspection`, `ipsec`, `dashboard`, `ether_lighting`,
+  `global_network`, `traffic_flow`, `mdns`, `teleport`,
+  `magic_site_to_site_vpn`, `global_switch`, `netflow`, `radio_ai`, `snmp`
+  and `guest_access`, each derived from the pinned controller's own
+  definitions.
+- **`guest_access` covers the guest portal** — authentication mode, session
+  expiry, RADIUS and voucher access, payment gateways, social login, network
+  scoping and the portal's appearance — managing 90 of the 92 settings the
+  controller defines. The two it does not, `allowed_subnet_` and
+  `restricted_subnet_`, are refused by this controller generation on every
+  write.
+- Two sections are readable but not writable on this controller generation:
+  `ipsec` and `global_network` refuse every write with `api.err.Invalid`.
+  They are exposed so their values can be read.
+
+### ⚠️ Known Issues
+
+- **Stored credentials are readable back through the API.** On this
+  controller generation, every `x_`-prefixed secret in `guest_access`,
+  `radius` and `snmp` is returned in full when read, so anyone with read
+  access to the settings API can retrieve payment gateway keys, RADIUS
+  secrets and SNMP community strings. This is the controller's behaviour and
+  is unchanged by this release, but the release exposes eighteen more such
+  fields than before.
+- **Four `unifi_network` DHCP attributes are silently discarded when
+  `setting_preference` is `"auto"`.** `dhcp_server.wins.enabled`,
+  `dhcp_server.ntp_enabled`, `dhcp_server.dns_enabled` and
+  `dhcp_server.unifi_controller` apply cleanly, are recorded in state as
+  written, and are dropped by the controller. Set `setting_preference =
+  "manual"` to have them stick. A WINS address is stored while its enable
+  flag reverts, so the address looks configured but is switched off. This
+  has been true since the controller lock in v0.106.0 and is documented here
+  for the first time.
+- **`guest_access.auth_url` is silently discarded unless `auth` is
+  `custom`**, and setting `auth = custom` requires `custom_ip`.
+- **`dashboard.widgets` is accepted on the first write to the section and
+  silently discarded on every write after**, on this controller generation.
+
+### 🔧 Maintenance
+
+- Controller validation patterns are now executed by an engine that
+  understands the dialect they were written in, rather than Go's own. Across
+  the 583 patterns both engines can compile there are zero behavioural
+  differences. The gain is the four patterns Go could never compile at all.
+- A golden corpus records what each of the controller's 723 constraint
+  patterns accepts and rejects, so a future dependency bump reports which
+  values changed meaning rather than only that a pattern's text moved.
+- `unifi_setting.radius.secret` accepts slightly more than before: its old
+  length check counted bytes and its derived replacement counts characters,
+  so a secret under 48 characters but over 48 bytes is now accepted.
+- The acceptance harness names the controller image it starts and fails the
+  run if the controller that boots reports a different version than the one
+  pinned.
+- go-unifi is pinned to v1.111.0.
 
 ### 📖 Documentation
 
