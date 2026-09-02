@@ -27,6 +27,7 @@ unifi_dns_record.enabled
 unifi_dpi_app.blocked
 unifi_dpi_app.enabled
 unifi_dpi_app.log
+unifi_dpi_group.enabled
 unifi_dynamic_dns.interface
 unifi_firewall_policy.create_allow_respond
 unifi_firewall_policy.description

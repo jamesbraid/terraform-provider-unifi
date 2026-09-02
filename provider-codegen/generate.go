@@ -240,6 +240,13 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-app.json -policy policy/dpi_app_list.json -artifact-prefix dpi_app_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/dpi_app_list.provider-code-spec.json --output ../internal/generated/listresource_dpi_app --package listresource_dpi_app
 
+//go:generate sdkbootstrap -struct DpiGroup -resource unifi_dpi_group -output bootstrap/go-unifi-v1.103.0-dpi-group.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-group.json -policy policy/dpi_group.json -artifact-prefix dpi_group -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/dpi_group.provider-code-spec.json --output ../internal/generated/resource_dpi_group --package resource_dpi_group
+//go:generate gofmt -w ../internal/generated/resource_dpi_group/dpi_group_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-group.json -policy policy/dpi_group_list.json -artifact-prefix dpi_group_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/dpi_group_list.provider-code-spec.json --output ../internal/generated/listresource_dpi_group --package listresource_dpi_group
+
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.
 //go:generate go run ../cmd/nested-custom-type-strip ../internal/generated

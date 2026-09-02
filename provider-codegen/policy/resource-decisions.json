@@ -78,6 +78,17 @@
       },
       "schema_version": 0
     },
+    "unifi_dpi_group": {
+      "sdk_type": "DpiGroup",
+      "duration_units": {},
+      "list": {
+        "display_field": "Name",
+        "filters": [
+          "name"
+        ]
+      },
+      "schema_version": 0
+    },
     "unifi_dns_record": {
       "sdk_type": "DNSRecord",
       "duration_units": {
