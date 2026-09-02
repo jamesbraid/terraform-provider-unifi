@@ -1,0 +1,147 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "surface_name": "unifi_nat",
+  "resource": "unifi_nat",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "description",
+      "terraform_name": "description",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "destination_filter",
+      "terraform_name": "destination_filter",
+      "structural_type": "object",
+      "terraform_type": "single_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "exclude",
+      "terraform_name": "exclude",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "in_interface",
+      "terraform_name": "in_interface",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip_address",
+      "terraform_name": "ip_address",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "ip_version",
+      "terraform_name": "ip_version",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "is_predefined",
+      "terraform_name": "is_predefined",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "logging",
+      "terraform_name": "logging",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "out_interface",
+      "terraform_name": "out_interface",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "port",
+      "terraform_name": "port",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "pppoe_use_base_interface",
+      "terraform_name": "pppoe_use_base_interface",
+      "structural_type": "bool",
+      "terraform_type": "bool",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "protocol",
+      "terraform_name": "protocol",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "rule_index",
+      "terraform_name": "rule_index",
+      "structural_type": "int64",
+      "terraform_type": "int64",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "source_filter",
+      "terraform_name": "source_filter",
+      "structural_type": "object",
+      "terraform_type": "single_nested",
+      "disposition": "managed"
+    },
+    {
+      "structural_name": "type",
+      "terraform_name": "type",
+      "structural_type": "string",
+      "terraform_type": "string",
+      "disposition": "managed"
+    }
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}

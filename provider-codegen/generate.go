@@ -233,26 +233,12 @@ package providercodegen
 //go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dhcp-option.json -policy policy/dhcp_option_list.json -artifact-prefix dhcp_option_list -output-dir generated
 //go:generate go run ../cmd/list-resource-gen --input generated/dhcp_option_list.provider-code-spec.json --output ../internal/generated/listresource_dhcp_option --package listresource_dhcp_option
 
-//go:generate sdkbootstrap -struct DpiApp -resource unifi_dpi_app -output bootstrap/go-unifi-v1.103.0-dpi-app.json
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-app.json -policy policy/dpi_app.json -artifact-prefix dpi_app -output-dir generated
-//go:generate go tool tfplugingen-framework generate resources --input generated/dpi_app.provider-code-spec.json --output ../internal/generated/resource_dpi_app --package resource_dpi_app
-//go:generate gofmt -w ../internal/generated/resource_dpi_app/dpi_app_resource_gen.go
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-app.json -policy policy/dpi_app_list.json -artifact-prefix dpi_app_list -output-dir generated
-//go:generate go run ../cmd/list-resource-gen --input generated/dpi_app_list.provider-code-spec.json --output ../internal/generated/listresource_dpi_app --package listresource_dpi_app
-
-//go:generate sdkbootstrap -struct DpiGroup -resource unifi_dpi_group -output bootstrap/go-unifi-v1.103.0-dpi-group.json
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-group.json -policy policy/dpi_group.json -artifact-prefix dpi_group -output-dir generated
-//go:generate go tool tfplugingen-framework generate resources --input generated/dpi_group.provider-code-spec.json --output ../internal/generated/resource_dpi_group --package resource_dpi_group
-//go:generate gofmt -w ../internal/generated/resource_dpi_group/dpi_group_resource_gen.go
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-dpi-group.json -policy policy/dpi_group_list.json -artifact-prefix dpi_group_list -output-dir generated
-//go:generate go run ../cmd/list-resource-gen --input generated/dpi_group_list.provider-code-spec.json --output ../internal/generated/listresource_dpi_group --package listresource_dpi_group
-
-//go:generate sdkbootstrap -struct HotspotOp -resource unifi_hotspot_op -output bootstrap/go-unifi-v1.103.0-hotspot-op.json
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-hotspot-op.json -policy policy/hotspot_op.json -artifact-prefix hotspot_op -output-dir generated
-//go:generate go tool tfplugingen-framework generate resources --input generated/hotspot_op.provider-code-spec.json --output ../internal/generated/resource_hotspot_op --package resource_hotspot_op
-//go:generate gofmt -w ../internal/generated/resource_hotspot_op/hotspot_op_resource_gen.go
-//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-hotspot-op.json -policy policy/hotspot_op_list.json -artifact-prefix hotspot_op_list -output-dir generated
-//go:generate go run ../cmd/list-resource-gen --input generated/hotspot_op_list.provider-code-spec.json --output ../internal/generated/listresource_hotspot_op --package listresource_hotspot_op
+//go:generate sdkbootstrap -struct Nat -resource unifi_nat -output bootstrap/go-unifi-v1.103.0-nat.json
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-nat.json -policy policy/nat.json -artifact-prefix nat -output-dir generated
+//go:generate go tool tfplugingen-framework generate resources --input generated/nat.provider-code-spec.json --output ../internal/generated/resource_nat --package resource_nat
+//go:generate gofmt -w ../internal/generated/resource_nat/nat_resource_gen.go
+//go:generate go run ../cmd/provider-spec-compiler -bootstrap bootstrap/go-unifi-v1.103.0-nat.json -policy policy/nat_list.json -artifact-prefix nat_list -output-dir generated
+//go:generate go run ../cmd/list-resource-gen --input generated/nat_list.provider-code-spec.json --output ../internal/generated/listresource_nat --package listresource_nat
 
 // Runs once, after every generated package above exists -- new sdkbootstrap/generate
 // lines must go before this.

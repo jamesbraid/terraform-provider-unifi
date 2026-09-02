@@ -154,13 +154,14 @@
       },
       "schema_version": 0
     },
-    "unifi_hotspot_op": {
-      "sdk_type": "HotspotOp",
+    "unifi_nat": {
+      "sdk_type": "Nat",
       "duration_units": {},
       "list": {
-        "display_field": "Name",
+        "display_field": "Description",
         "filters": [
-          "name"
+          "type",
+          "out_interface"
         ]
       },
       "schema_version": 0

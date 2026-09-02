@@ -1,0 +1,502 @@
+{
+  "format_version": 1,
+  "surface_kind": "managed_resource",
+  "resource": "unifi_nat",
+  "generator_name": "nat",
+  "source_specification_sha256": "b83f31d729ffe2f7d727760773a5e07436ef666ff8a1e8f2fc9bafbbcfa8e4ff",
+  "description": "Manages a source NAT rule: the controller rewrites the address of traffic leaving a WAN interface, most commonly masquerading a network behind the WAN's own address.",
+  "fields": [
+    {
+      "structural_name": "_id",
+      "terraform_name": "id",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The ID of the NAT rule.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "description",
+      "terraform_name": "description",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": ""
+        },
+        "description": "A human-readable description of the NAT rule."
+      }
+    },
+    {
+      "structural_name": "destination_filter",
+      "terraform_name": "destination_filter",
+      "terraform_type": "single_nested",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "Which traffic the rule matches on its destination address and port. Leave `filter_type` at `NONE` to match any destination."
+      },
+      "fields": [
+        {
+          "structural_name": "address",
+          "terraform_name": "address",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": ""
+            },
+            "description": "The destination address or CIDR to match when `filter_type` is `ADDRESS_AND_PORT`."
+          }
+        },
+        {
+          "structural_name": "filter_type",
+          "terraform_name": "filter_type",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": "NONE"
+            },
+            "description": "How the destination is matched: `NONE`, `ADDRESS_AND_PORT`, `FIREWALL_GROUPS` or `NETWORK_CONF`."
+          }
+        },
+        {
+          "structural_name": "firewall_group_ids",
+          "terraform_name": "firewall_group_ids",
+          "disposition": "managed",
+          "terraform_type": "list",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IDs of the `unifi_firewall_group`s to match when `filter_type` is `FIREWALL_GROUPS`.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "invert_address",
+          "terraform_name": "invert_address",
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Match every destination except the one described, rather than only it."
+          }
+        },
+        {
+          "structural_name": "invert_port",
+          "terraform_name": "invert_port",
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Match every destination port except the one described, rather than only it."
+          }
+        },
+        {
+          "structural_name": "network_conf_id",
+          "terraform_name": "network_conf_id",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": ""
+            },
+            "description": "ID of the `unifi_network` to match when `filter_type` is `NETWORK_CONF`."
+          }
+        },
+        {
+          "structural_name": "port",
+          "terraform_name": "port",
+          "disposition": "managed",
+          "terraform_type": "int64",
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "The destination port to match when `filter_type` is `ADDRESS_AND_PORT`."
+          }
+        }
+      ]
+    },
+    {
+      "structural_name": "enabled",
+      "terraform_name": "enabled",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": true
+        },
+        "description": "Whether the rule is enabled."
+      }
+    },
+    {
+      "structural_name": "exclude",
+      "terraform_name": "exclude",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "Whether the rule excludes rather than includes the matched traffic. Controller-managed.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "in_interface",
+      "terraform_name": "in_interface",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": ""
+        },
+        "description": "The inbound interface the rule matches on. Usually left unset for a source NAT rule."
+      }
+    },
+    {
+      "structural_name": "ip_address",
+      "terraform_name": "ip_address",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": ""
+        },
+        "description": "The address traffic is translated to. Empty for `MASQUERADE`, which uses the outbound interface's own address."
+      }
+    },
+    {
+      "structural_name": "ip_version",
+      "terraform_name": "ip_version",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "IPV4"
+        },
+        "description": "The IP version the rule applies to: `IPV4` or `IPV6`."
+      }
+    },
+    {
+      "structural_name": "is_predefined",
+      "terraform_name": "is_predefined",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "Whether the rule is one the controller ships. Controller-managed.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "logging",
+      "terraform_name": "logging",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": false
+        },
+        "description": "Whether traffic the rule matches is logged."
+      }
+    },
+    {
+      "structural_name": "out_interface",
+      "terraform_name": "out_interface",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The outbound interface the rule masquerades on: the `_id` of a WAN `unifi_network`, not the literal `wan`."
+      }
+    },
+    {
+      "structural_name": "port",
+      "terraform_name": "port",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "optional",
+        "description": "The translated port, for a `DNAT` rule that also rewrites the port."
+      }
+    },
+    {
+      "structural_name": "pppoe_use_base_interface",
+      "terraform_name": "pppoe_use_base_interface",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "Whether a PPPoE outbound interface masquerades on its base interface. Controller-managed.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+                }
+              ],
+              "schema_definition": "boolplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "protocol",
+      "terraform_name": "protocol",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "all"
+        },
+        "description": "The protocol the rule matches: `all`, `tcp`, `udp` or `tcp_udp`. The controller requires this on every write."
+      }
+    },
+    {
+      "structural_name": "rule_index",
+      "terraform_name": "rule_index",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed",
+        "description": "The rule's position in the controller's evaluation order. Controller-assigned.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+                }
+              ],
+              "schema_definition": "int64planmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "structural_name": "setting_preference",
+      "terraform_name": "setting_preference",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "default": {
+          "static": "auto"
+        },
+        "description": "Whether the controller orders the rule automatically (`auto`) or honours `rule_index` (`manual`)."
+      }
+    },
+    {
+      "structural_name": "source_filter",
+      "terraform_name": "source_filter",
+      "terraform_type": "single_nested",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "Which traffic the rule matches on its source address and port. Leave `filter_type` at `NONE` to match any source."
+      },
+      "fields": [
+        {
+          "structural_name": "address",
+          "terraform_name": "address",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": ""
+            },
+            "description": "The source address or CIDR to match when `filter_type` is `ADDRESS_AND_PORT`."
+          }
+        },
+        {
+          "structural_name": "filter_type",
+          "terraform_name": "filter_type",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": "NONE"
+            },
+            "description": "How the source is matched: `NONE`, `ADDRESS_AND_PORT`, `FIREWALL_GROUPS` or `NETWORK_CONF`."
+          }
+        },
+        {
+          "structural_name": "firewall_group_ids",
+          "terraform_name": "firewall_group_ids",
+          "disposition": "managed",
+          "terraform_type": "list",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "description": "IDs of the `unifi_firewall_group`s to match when `filter_type` is `FIREWALL_GROUPS`.",
+            "element_type": {
+              "string": {}
+            },
+            "plan_modifiers": [
+              {
+                "custom": {
+                  "imports": [
+                    {
+                      "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+                    }
+                  ],
+                  "schema_definition": "listplanmodifier.UseStateForUnknown()"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "structural_name": "invert_address",
+          "terraform_name": "invert_address",
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Match every source except the one described, rather than only it."
+          }
+        },
+        {
+          "structural_name": "invert_port",
+          "terraform_name": "invert_port",
+          "disposition": "managed",
+          "terraform_type": "bool",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": false
+            },
+            "description": "Match every source port except the one described, rather than only it."
+          }
+        },
+        {
+          "structural_name": "network_conf_id",
+          "terraform_name": "network_conf_id",
+          "disposition": "managed",
+          "attribute": {
+            "computed_optional_required": "computed_optional",
+            "default": {
+              "static": ""
+            },
+            "description": "ID of the `unifi_network` to match when `filter_type` is `NETWORK_CONF`."
+          }
+        },
+        {
+          "structural_name": "port",
+          "terraform_name": "port",
+          "disposition": "managed",
+          "terraform_type": "int64",
+          "attribute": {
+            "computed_optional_required": "optional",
+            "description": "The source port to match when `filter_type` is `ADDRESS_AND_PORT`."
+          }
+        }
+      ]
+    },
+    {
+      "structural_name": "type",
+      "terraform_name": "type",
+      "disposition": "managed",
+      "attribute": {
+        "computed_optional_required": "required",
+        "description": "The kind of NAT the rule performs: `DNAT`, `SNAT` or `MASQUERADE`."
+      }
+    }
+  ],
+  "omitted": [
+    "attr_hidden",
+    "attr_hidden_id",
+    "attr_no_delete",
+    "attr_no_edit",
+    "site_id"
+  ],
+  "provider_owned": [
+    {
+      "terraform_name": "site",
+      "terraform_type": "string",
+      "disposition": "managed",
+      "generated": true,
+      "attribute": {
+        "computed_optional_required": "computed_optional",
+        "description": "The name of the site the NAT rule belongs to.",
+        "plan_modifiers": [
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.RequiresReplace()"
+            }
+          },
+          {
+            "custom": {
+              "imports": [
+                {
+                  "path": "github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+                }
+              ],
+              "schema_definition": "stringplanmodifier.UseStateForUnknown()"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "terraform_name": "timeouts",
+      "disposition": "managed",
+      "generated": false
+    }
+  ]
+}
